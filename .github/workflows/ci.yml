@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project Verbinal.xcodeproj \
+            -scheme Verbinal \
+            -destination 'platform=macOS' \
+            -derivedDataPath .derivedData \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Test
+        run: |
+          xcodebuild test \
+            -project Verbinal.xcodeproj \
+            -scheme Verbinal \
+            -destination 'platform=macOS' \
+            -derivedDataPath .derivedData \
+            CODE_SIGNING_ALLOWED=NO

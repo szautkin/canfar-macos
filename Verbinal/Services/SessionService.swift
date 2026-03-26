@@ -1,0 +1,107 @@
+// Verbinal - A CANFAR Science Portal Companion
+// Copyright (C) 2025-2026 Serhii Zautkin
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+import Foundation
+
+final class SessionService: Sendable {
+    private let network: NetworkClient
+    private let endpoints: APIEndpoints
+
+    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
+        self.network = network
+        self.endpoints = endpoints
+    }
+
+    /// Fetches all sessions, returning normalized Session models.
+    func getSessions() async throws -> [Session] {
+        let responses = try await network.getJSON(
+            endpoints.sessionsURL,
+            type: [SkahaSessionResponse].self
+        )
+        return responses.map { Session(from: $0) }
+    }
+
+    /// Launches a new session. Returns the session ID on success.
+    func launchSession(_ params: SessionLaunchParams) async throws -> String? {
+        var formData: [String: String] = [
+            "name": params.name,
+            "image": params.image,
+            "type": params.type
+        ]
+
+        // Only include resource fields if > 0 (fixed resources)
+        if params.cores > 0 { formData["cores"] = String(params.cores) }
+        if params.ram > 0 { formData["ram"] = String(params.ram) }
+        if params.gpus > 0 { formData["gpus"] = String(params.gpus) }
+        if let cmd = params.cmd, !cmd.isEmpty { formData["cmd"] = cmd }
+
+        // Build custom headers for registry auth
+        var headers: [String: String]?
+        if let regUser = params.registryUsername,
+           let regSecret = params.registrySecret,
+           !regUser.isEmpty, !regSecret.isEmpty {
+            let credentials = "\(regUser):\(regSecret)"
+            if let data = credentials.data(using: .utf8) {
+                let encoded = data.base64EncodedString()
+                headers = ["x-skaha-registry-auth": encoded]
+            }
+        }
+
+        let (data, _) = try await network.post(
+            endpoints.sessionsURL,
+            formData: formData,
+            headers: headers
+        )
+
+        // Response can be JSON array ["sessionId"] or plain text
+        let responseText = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if responseText.hasPrefix("[") {
+            // JSON array
+            if let ids = try? JSONDecoder().decode([String].self, from: data), let first = ids.first {
+                return first
+            }
+        }
+
+        return responseText.isEmpty ? nil : responseText
+    }
+
+    /// Deletes a session by ID.
+    func deleteSession(id: String) async throws {
+        _ = try await network.delete(endpoints.sessionURL(id))
+    }
+
+    /// Renews/extends a session by ID.
+    func renewSession(id: String) async throws {
+        _ = try await network.post(endpoints.sessionRenewURL(id), formData: [:])
+    }
+
+    /// Fetches Kubernetes events for a session.
+    func getSessionEvents(id: String) async throws -> String {
+        try await network.getText(endpoints.sessionEventsURL(id))
+    }
+
+    /// Fetches container logs for a session.
+    func getSessionLogs(id: String) async throws -> String {
+        try await network.getText(endpoints.sessionLogsURL(id))
+    }
+
+    /// Fetches platform stats.
+    func getStats() async throws -> SkahaStatsResponse {
+        try await network.getJSON(endpoints.statsURL, type: SkahaStatsResponse.self)
+    }
+}

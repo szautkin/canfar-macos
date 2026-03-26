@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos-app:
+    name: Build macOS app
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project Verbinal.xcodeproj \
+            -scheme Verbinal \
+            -destination 'platform=macOS' \
+            -derivedDataPath .derivedData \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Build release app
+        run: |
+          xcodebuild build \
+            -project Verbinal.xcodeproj \
+            -scheme Verbinal \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath .derivedData \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package app
+        run: |
+          ditto -c -k --keepParent \
+            .derivedData/Build/Products/Release/Verbinal.app \
+            Verbinal-macOS.zip
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: verbinal-macos
+          path: Verbinal-macOS.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Verbinal-macOS.zip
+          generate_release_notes: true

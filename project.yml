@@ -1,0 +1,42 @@
+name: Verbinal
+options:
+  bundleIdPrefix: net.canfar
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    PRODUCT_BUNDLE_IDENTIFIER: net.canfar.Verbinal
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    PRODUCT_NAME: Verbinal
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    PROVISIONING_PROFILE_SPECIFIER: ""
+targets:
+  Verbinal:
+    type: application
+    platform: macOS
+    sources:
+      - Verbinal
+    settings:
+      base:
+        INFOPLIST_FILE: Verbinal/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: net.canfar.Verbinal
+        CODE_SIGN_ENTITLEMENTS: Verbinal/Verbinal.entitlements
+  VerbinalTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - VerbinalTests
+    dependencies:
+      - target: Verbinal
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: net.canfar.VerbinalTests
+        PRODUCT_NAME: VerbinalTests
+        PRODUCT_MODULE_NAME: VerbinalTests
