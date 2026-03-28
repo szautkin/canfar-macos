@@ -20,7 +20,7 @@ This is the macOS counterpart of [Verbinal for Linux](https://github.com/szautki
 
 ## Screenshot
 
-*(coming soon)*
+![Verbinal for macOS](assets/screenshot.png)
 
 ## Installation
 
