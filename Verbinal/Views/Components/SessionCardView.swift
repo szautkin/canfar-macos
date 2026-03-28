@@ -137,7 +137,6 @@ struct SessionCardView: View {
         case "carta": return .teal
         case "contributed": return Color(.systemOrange)
         case "firefly": return .orange
-        case "headless": return .gray
         default: return .secondary
         }
     }
@@ -160,7 +159,6 @@ struct SessionCardView: View {
         case "carta": return "map"
         case "contributed": return "shippingbox"
         case "firefly": return "flame"
-        case "headless": return "terminal"
         default: return "questionmark.square"
         }
     }

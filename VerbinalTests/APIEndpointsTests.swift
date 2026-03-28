@@ -21,7 +21,7 @@ final class APIEndpointsTests: XCTestCase {
     func testUserURL() {
         XCTAssertEqual(
             endpoints.userURL("alice"),
-            "https://ws-uv.canfar.net/ac/users/alice"
+            "https://ws-cadc.canfar.net/ac/users/alice?idType=HTTP&detail=display"
         )
     }
 

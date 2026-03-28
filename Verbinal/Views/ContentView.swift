@@ -105,7 +105,12 @@ struct ContentView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "person.circle.fill")
-                        Text(appState.username)
+                        if let info = appState.userInfo,
+                           let first = info.firstName {
+                            Text([first, info.lastName].compactMap { $0 }.joined(separator: " "))
+                        } else {
+                            Text(appState.username)
+                        }
                     }
                 }
             } else {

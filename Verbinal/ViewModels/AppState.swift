@@ -75,7 +75,10 @@ final class AppState {
         self.username = username
         self.userInfo = userInfo
         self.isAuthenticated = true
-        self.statusMessage = "Welcome, \(userInfo?.firstName ?? username)"
+        let displayName = [userInfo?.firstName, userInfo?.lastName]
+            .compactMap { $0 }
+            .joined(separator: " ")
+        self.statusMessage = "Welcome, \(displayName.isEmpty ? username : displayName)"
     }
 
     func logout() async {

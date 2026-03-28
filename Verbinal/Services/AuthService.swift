@@ -67,25 +67,70 @@ final class AuthService: Sendable {
             let username = try await network.getText(endpoints.whoAmIURL)
             return username.isEmpty ? .expired : .valid(username)
         } catch let error as NetworkError {
-            if case .unauthorized = error {
+            switch error {
+            case .unauthorized:
                 await network.setToken(nil)
                 return .expired
+            case .httpError(let code, _) where code == 403:
+                // 403 from /whoami = token is invalid
+                await network.setToken(nil)
+                return .expired
+            default:
+                // Actual network failure — keep the token
+                return .networkError(error.localizedDescription ?? "Network error")
             }
-            // Keep the token — this is a transient network failure, not an auth problem
-            return .networkError(error.localizedDescription ?? "Network error")
         } catch {
             return .networkError(error.localizedDescription)
         }
     }
 
-    /// Fetches user profile info.
+    /// Fetches user profile info from the CADC user service (XML response).
     func getUserInfo(username: String) async -> UserInfo? {
         do {
-            return try await network.getJSON(endpoints.userURL(username), type: UserInfo.self)
+            let (data, _) = try await network.get(endpoints.userURL(username), accept: "text/xml")
+            guard let xmlString = String(data: data, encoding: .utf8) else { return nil }
+            logger.info("User XML response: \(xmlString, privacy: .public)")
+            return parseUserXML(xmlString, username: username)
         } catch {
             logger.warning("Failed to fetch user info: \(error.localizedDescription, privacy: .public)")
             return nil
         }
+    }
+
+    /// Parses CADC user XML to extract profile details.
+    private func parseUserXML(_ xml: String, username: String) -> UserInfo? {
+        guard let data = xml.data(using: .utf8) else {
+            logger.error("parseUserXML: failed to convert string to data")
+            return nil
+        }
+
+        let doc: XMLDocument
+        do {
+            doc = try XMLDocument(data: data)
+        } catch {
+            logger.error("parseUserXML: XMLDocument init failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+
+        func text(_ xpath: String) -> String? {
+            (try? doc.nodes(forXPath: xpath))?.first?.stringValue
+        }
+
+        let firstName = text("//*[local-name()='firstName']")
+        let lastName = text("//*[local-name()='lastName']")
+        let email = text("//*[local-name()='email']")
+        let institute = text("//*[local-name()='institute']")
+
+        logger.info("Parsed user: firstName=\(firstName ?? "nil", privacy: .public) lastName=\(lastName ?? "nil", privacy: .public)")
+
+        return UserInfo(
+            username: username,
+            email: email,
+            firstName: firstName,
+            lastName: lastName,
+            institute: institute,
+            internalID: nil
+        )
     }
 
     /// Clears auth state.

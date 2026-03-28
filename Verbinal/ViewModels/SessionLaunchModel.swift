@@ -45,7 +45,9 @@ final class SessionLaunchModel {
     // Advanced mode
     var useCustomImage = false
     var customImageUrl = ""
-    var repositoryHost = ""
+    var repositoryHost = "" {
+        didSet { if oldValue != repositoryHost { onRegistryChanged() } }
+    }
     var repositoryUsername = ""
     var repositorySecret = ""
 
@@ -111,14 +113,6 @@ final class SessionLaunchModel {
                 repositoryHost = first
             }
 
-            // Determine available session types from images (interactive only)
-            let availableTypes = Array(Set(imagesByTypeAndProject.keys))
-                .filter { $0 != "headless" }
-                .sorted()
-            if !availableTypes.isEmpty {
-                sessionTypes = availableTypes
-            }
-
             // Set resource options
             coreOptions = context.cores.options
             ramOptions = context.memoryGB.options
@@ -128,11 +122,8 @@ final class SessionLaunchModel {
             cores = defaultCores
             ram = defaultRam
 
-            // Set initial type and cascade
-            if !sessionTypes.contains(selectedType) {
-                selectedType = sessionTypes.first ?? "notebook"
-            }
-            onTypeChanged()
+            // Filter images by selected registry and cascade
+            rebuildFilteredImages()
             generateSessionName()
         } catch {
             hasError = true
@@ -144,13 +135,46 @@ final class SessionLaunchModel {
 
     // MARK: - Cascading Selection
 
+    private func onRegistryChanged() {
+        rebuildFilteredImages()
+    }
+
     private func onTypeChanged() {
         updateProjects()
+        updateImages()
         generateSessionName()
     }
 
     private func onProjectChanged() {
         updateImages()
+    }
+
+    /// Re-filters cached images by the selected registry and rebuilds the cascade.
+    private func rebuildFilteredImages() {
+        let filtered: [RawImage]
+        if repositoryHost.isEmpty {
+            filtered = cachedImages
+        } else {
+            filtered = cachedImages.filter { rawImage in
+                let registry = rawImage.id.split(separator: "/").first.map(String.init) ?? ""
+                return registry == repositoryHost
+            }
+        }
+
+        imagesByTypeAndProject = ImageParser.groupByTypeAndProject(filtered)
+
+        let excludedTypes: Set<String> = ["headless", "desktop-app"]
+        let availableTypes = Array(Set(imagesByTypeAndProject.keys))
+            .filter { !excludedTypes.contains($0) }
+            .sorted()
+        if !availableTypes.isEmpty {
+            sessionTypes = availableTypes
+        }
+
+        if !sessionTypes.contains(selectedType) {
+            selectedType = sessionTypes.first ?? "notebook"
+        }
+        onTypeChanged()
     }
 
     private func updateProjects() {

@@ -14,7 +14,7 @@ struct APIEndpoints {
 
     var loginURL: String { "\(loginBaseURL)/login" }
     var whoAmIURL: String { "\(loginBaseURL)/whoami" }
-    func userURL(_ username: String) -> String { "\(acBaseURL)/users/\(username)" }
+    func userURL(_ username: String) -> String { "\(loginBaseURL)/users/\(username)?idType=HTTP&detail=display" }
 
     var sessionsURL: String { "\(skahaBaseURL)/v1/session" }
     func sessionURL(_ id: String) -> String { "\(skahaBaseURL)/v1/session/\(id)" }

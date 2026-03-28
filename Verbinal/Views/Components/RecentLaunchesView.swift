@@ -62,7 +62,7 @@ struct RecentLaunchesView: View {
                             }
                         }
                     }
-                    .frame(maxHeight: 340)
+                    .frame(maxHeight: 200)
                 }
             }
         }
