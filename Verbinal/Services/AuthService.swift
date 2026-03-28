@@ -10,7 +10,7 @@ import os.log
 final class AuthService: Sendable {
     private let network: NetworkClient
     private let endpoints: APIEndpoints
-    private let logger = Logger(subsystem: "net.canfar.Verbinal", category: "Auth")
+    private let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Auth")
 
     init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
         self.network = network

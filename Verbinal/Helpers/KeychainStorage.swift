@@ -9,8 +9,8 @@ import Security
 import os.log
 
 enum KeychainStorage {
-    private static let logger = Logger(subsystem: "net.canfar.Verbinal", category: "Keychain")
-    private static let service = "net.canfar.Verbinal"
+    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Keychain")
+    private static let service = "com.codebg.Verbinal"
     private static let tokenAccount = "AuthToken"
     private static let usernameAccount = "Username"
 

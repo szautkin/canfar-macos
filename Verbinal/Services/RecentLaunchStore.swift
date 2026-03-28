@@ -10,7 +10,7 @@ import os.log
 
 @Observable
 final class RecentLaunchStore {
-    private static let logger = Logger(subsystem: "net.canfar.Verbinal", category: "RecentLaunches")
+    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "RecentLaunches")
     private let maxEntries = 10
     private let fileName = "recent_launches.json"
     private(set) var launches: [RecentLaunch] = []
