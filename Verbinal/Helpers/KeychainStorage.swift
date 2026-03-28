@@ -1,79 +1,83 @@
-// Verbinal - A CANFAR Science Portal Companion
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
 // Copyright (C) 2025-2026 Serhii Zautkin
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
+import Security
 import os.log
 
-/// Stores auth credentials in Application Support with restrictive file permissions.
-/// File-based storage avoids macOS Keychain prompts that occur on every rebuild
-/// with ad-hoc signed apps.
 enum KeychainStorage {
-    private static let logger = Logger(subsystem: "net.canfar.Verbinal", category: "Auth")
-    private static let fileName = "auth.json"
-
-    private struct StoredCredentials: Codable {
-        var token: String
-        var username: String
-    }
+    private static let logger = Logger(subsystem: "net.canfar.Verbinal", category: "Keychain")
+    private static let service = "net.canfar.Verbinal"
+    private static let tokenAccount = "AuthToken"
+    private static let usernameAccount = "Username"
 
     static func saveToken(_ token: String, username: String) {
-        guard let url = fileURL else { return }
-        do {
-            let creds = StoredCredentials(token: token, username: username)
-            let data = try JSONEncoder().encode(creds)
-            try data.write(to: url, options: .atomic)
-            // Restrict to owner read/write only
-            try FileManager.default.setAttributes(
-                [.posixPermissions: 0o600], ofItemAtPath: url.path
-            )
-        } catch {
-            logger.error("Failed to save credentials: \(error.localizedDescription, privacy: .public)")
-        }
+        save(account: tokenAccount, data: token)
+        save(account: usernameAccount, data: username)
     }
 
     static func loadToken() -> (token: String?, username: String?) {
-        guard let url = fileURL,
-              FileManager.default.fileExists(atPath: url.path) else {
-            return (nil, nil)
-        }
-        do {
-            let data = try Data(contentsOf: url)
-            let creds = try JSONDecoder().decode(StoredCredentials.self, from: data)
-            return (creds.token, creds.username)
-        } catch {
-            logger.warning("Failed to load credentials: \(error.localizedDescription, privacy: .public)")
-            return (nil, nil)
-        }
+        let token = load(account: tokenAccount)
+        let username = load(account: usernameAccount)
+        return (token, username)
     }
 
     static func clearToken() {
-        guard let url = fileURL else { return }
-        try? FileManager.default.removeItem(at: url)
+        delete(account: tokenAccount)
+        delete(account: usernameAccount)
     }
 
     // MARK: - Private
 
-    private static var fileURL: URL? {
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory, in: .userDomainMask
-        ).first
-        guard let dir = appSupport?.appendingPathComponent("Verbinal", isDirectory: true) else {
+    private static func save(account: String, data: String) {
+        guard let dataBytes = data.data(using: .utf8) else { return }
+
+        // Delete existing item first
+        delete(account: account)
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: dataBytes,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
+        ]
+
+        let status = SecItemAdd(query as CFDictionary, nil)
+        if status != errSecSuccess {
+            logger.error("Save failed for \(account, privacy: .public): OSStatus \(status)")
+        }
+    }
+
+    private static func load(account: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess, let data = result as? Data else {
             return nil
         }
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent(fileName)
+
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func delete(account: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+
+        SecItemDelete(query as CFDictionary)
     }
 }

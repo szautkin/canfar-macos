@@ -6,7 +6,7 @@ This is the macOS counterpart of [Verbinal for Linux](https://github.com/szautki
 
 [![CI](https://github.com/szautkin/canfar-macos/actions/workflows/ci.yml/badge.svg)](https://github.com/szautkin/canfar-macos/actions/workflows/ci.yml)
 [![Release](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml/badge.svg)](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue)](LICENSE)
 
 ## Features
 
@@ -93,7 +93,7 @@ xcodebuild test \
 
 ## Code Quality
 
-- All source files include AGPL-3.0 license headers
+- All source files include MPL-2.0 license headers
 - CI runs build and test on every push and pull request
 - Unit tests cover URL construction, model mapping, networking, XML parsing, and image parsing
 - Strict separation of concerns: views, view models, services, and models
@@ -127,7 +127,7 @@ All communication is with CANFAR services over HTTPS. No telemetry, analytics, o
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE)
+[Mozilla Public License 2.0](LICENSE)
 
 Copyright (C) 2025-2026 Serhii Zautkin
 

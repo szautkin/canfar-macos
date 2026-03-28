@@ -53,4 +53,4 @@ Thank you for your interest in contributing. This document provides the baseline
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [AGPL-3.0 license](LICENSE).
+By contributing, you agree that your contributions will be licensed under the [MPL-2.0 license](LICENSE).

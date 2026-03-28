@@ -57,4 +57,4 @@ If this policy changes, the updated version will be published in the source repo
 - GitHub: open an issue in the repository
 - Developer: Serhii Zautkin
 
-This privacy policy applies to the Verbinal for macOS application distributed via source code under the AGPL-3.0 license.
+This privacy policy applies to the Verbinal for macOS application distributed via source code under the MPL-2.0 license.
