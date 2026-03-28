@@ -77,7 +77,7 @@ final class AuthService: Sendable {
                 return .expired
             default:
                 // Actual network failure — keep the token
-                return .networkError(error.localizedDescription ?? "Network error")
+                return .networkError(error.localizedDescription)
             }
         } catch {
             return .networkError(error.localizedDescription)
