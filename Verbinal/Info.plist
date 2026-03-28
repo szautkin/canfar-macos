@@ -21,6 +21,6 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2025 Serhii Zautkin. All rights reserved.</string>
+	<string>Copyright © 2025-2026 Serhii Zautkin. All rights reserved.</string>
 </dict>
 </plist>

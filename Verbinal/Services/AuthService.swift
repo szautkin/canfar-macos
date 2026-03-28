@@ -15,10 +15,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
+import os.log
 
 final class AuthService: Sendable {
     private let network: NetworkClient
     private let endpoints: APIEndpoints
+    private let logger = Logger(subsystem: "net.canfar.Verbinal", category: "Auth")
 
     init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
         self.network = network
@@ -91,6 +93,7 @@ final class AuthService: Sendable {
         do {
             return try await network.getJSON(endpoints.userURL(username), type: UserInfo.self)
         } catch {
+            logger.warning("Failed to fetch user info: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }

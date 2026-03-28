@@ -16,9 +16,11 @@
 
 import Foundation
 import Observation
+import os.log
 
 @Observable
 final class RecentLaunchStore {
+    private static let logger = Logger(subsystem: "net.canfar.Verbinal", category: "RecentLaunches")
     private let maxEntries = 10
     private let fileName = "recent_launches.json"
     private(set) var launches: [RecentLaunch] = []
@@ -68,22 +70,28 @@ final class RecentLaunchStore {
     }
 
     private func readFromDisk() -> [RecentLaunch] {
-        guard let url = fileURL,
-              let data = try? Data(contentsOf: url) else {
+        guard let url = fileURL else { return [] }
+        do {
+            let data = try Data(contentsOf: url)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode([RecentLaunch].self, from: data)
+        } catch {
+            Self.logger.warning("Read failed: \(error.localizedDescription, privacy: .public)")
             return []
         }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return (try? decoder.decode([RecentLaunch].self, from: data)) ?? []
     }
 
     private func writeToDisk() {
         guard let url = fileURL else { return }
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = .prettyPrinted
-        guard let data = try? encoder.encode(launches) else { return }
-        try? data.write(to: url, options: .atomic)
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(launches)
+            try data.write(to: url, options: .atomic)
+        } catch {
+            Self.logger.error("Write failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }

@@ -16,8 +16,10 @@
 
 import Foundation
 import Security
+import os.log
 
 enum KeychainStorage {
+    private static let logger = Logger(subsystem: "net.canfar.Verbinal", category: "Keychain")
     private static let service = "net.canfar.Verbinal"
     private static let tokenAccount = "AuthToken"
     private static let usernameAccount = "Username"
@@ -56,7 +58,7 @@ enum KeychainStorage {
 
         let status = SecItemAdd(query as CFDictionary, nil)
         if status != errSecSuccess {
-            print("[Keychain] save failed for \(account): OSStatus \(status)")
+            logger.error("Save failed for \(account, privacy: .public): OSStatus \(status)")
         }
     }
 

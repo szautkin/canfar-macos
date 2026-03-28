@@ -39,20 +39,42 @@ jobs:
             -derivedDataPath .derivedData \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Package app
+      - name: Create DMG
+        run: |
+          APP_PATH=".derivedData/Build/Products/Release/Verbinal.app"
+          DMG_DIR="$(mktemp -d)"
+          cp -R "$APP_PATH" "$DMG_DIR/"
+          ln -s /Applications "$DMG_DIR/Applications"
+          hdiutil create -volname "Verbinal" \
+            -srcfolder "$DMG_DIR" \
+            -ov -format UDZO \
+            Verbinal-macOS.dmg
+
+      - name: Create ZIP
         run: |
           ditto -c -k --keepParent \
             .derivedData/Build/Products/Release/Verbinal.app \
             Verbinal-macOS.zip
 
-      - name: Upload release artifact
+      - name: Generate checksums
+        run: |
+          shasum -a 256 Verbinal-macOS.dmg Verbinal-macOS.zip > checksums-sha256.txt
+          cat checksums-sha256.txt
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: verbinal-macos
-          path: Verbinal-macOS.zip
+          path: |
+            Verbinal-macOS.dmg
+            Verbinal-macOS.zip
+            checksums-sha256.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: Verbinal-macOS.zip
+          files: |
+            Verbinal-macOS.dmg
+            Verbinal-macOS.zip
+            checksums-sha256.txt
           generate_release_notes: true

@@ -22,6 +22,28 @@ This is the macOS counterpart of [Verbinal for Linux](https://github.com/szautki
 
 *(coming soon)*
 
+## Installation
+
+### Download
+
+Download the latest `.dmg` from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
+
+1. Open `Verbinal-macOS.dmg`
+2. Drag **Verbinal** to **Applications**
+3. On first launch, right-click the app and select **Open** (macOS Gatekeeper requires this for unsigned apps)
+
+A `.zip` archive is also available if you prefer.
+
+Verify your download with the `checksums-sha256.txt` file:
+
+```bash
+shasum -a 256 -c checksums-sha256.txt
+```
+
+### Build from source
+
+See [Building](#building) below.
+
 ## Requirements
 
 ### Runtime

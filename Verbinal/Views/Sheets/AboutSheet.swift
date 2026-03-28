@@ -53,13 +53,15 @@ struct AboutSheet: View {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 
-            Link("Visit canfar.net", destination: URL(string: "https://www.canfar.net")!)
-                .font(.caption)
+            if let url = URL(string: "https://www.canfar.net") {
+                Link("Visit canfar.net", destination: url)
+                    .font(.caption)
+            }
 
             Divider()
                 .frame(width: 200)
 
-            Text("\u{00A9} 2025 Serhii Zautkin")
+            Text("\u{00A9} 2025-2026 Serhii Zautkin")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 

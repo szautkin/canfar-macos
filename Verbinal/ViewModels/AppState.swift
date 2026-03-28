@@ -31,9 +31,6 @@ final class AppState {
     let storageService: StorageService
     let recentLaunchStore = RecentLaunchStore()
 
-    @ObservationIgnored
-    private var _initialized = false
-
     init() {
         let network = NetworkClient()
         let endpoints = APIEndpoints()
