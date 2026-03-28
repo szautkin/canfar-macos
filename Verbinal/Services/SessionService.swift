@@ -34,18 +34,33 @@ final class SessionService: Sendable {
         return responses.map { Session(from: $0) }
     }
 
+    private static let defaultRegistry = "images.canfar.net"
+
     /// Launches a new session. Returns the session ID on success.
     func launchSession(_ params: SessionLaunchParams) async throws -> String? {
+        // Ensure image has the registry prefix (API requires it)
+        var image = params.image
+        let firstComponent = image.split(separator: "/").first.map(String.init) ?? ""
+        if !firstComponent.contains(".") {
+            image = "\(Self.defaultRegistry)/\(image)"
+        }
+
         var formData: [String: String] = [
             "name": params.name,
-            "image": params.image,
+            "image": image,
             "type": params.type
         ]
 
-        // Only include resource fields if > 0 (fixed resources)
-        if params.cores > 0 { formData["cores"] = String(params.cores) }
-        if params.ram > 0 { formData["ram"] = String(params.ram) }
-        if params.gpus > 0 { formData["gpus"] = String(params.gpus) }
+        // Fixed: send resourceType=custom + cores/ram/gpus
+        // Flexible: send resourceType=shared only (server uses defaults)
+        if params.cores > 0 {
+            formData["resourceType"] = "custom"
+            formData["cores"] = String(params.cores)
+            formData["ram"] = String(params.ram)
+            if params.gpus > 0 { formData["gpus"] = String(params.gpus) }
+        } else {
+            formData["resourceType"] = "shared"
+        }
         if let cmd = params.cmd, !cmd.isEmpty { formData["cmd"] = cmd }
 
         // Build custom headers for registry auth

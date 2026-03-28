@@ -25,6 +25,14 @@ struct SessionListView: View {
     @State private var eventsTitle = ""
     @State private var showEventsSheet = false
 
+    // Action feedback
+    @State private var showActionSheet = false
+    @State private var actionInProgress = false
+    @State private var actionSuccess = false
+    @State private var actionError = false
+    @State private var actionTitle = ""
+    @State private var actionMessage = ""
+
     var body: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 12) {
@@ -100,11 +108,19 @@ struct SessionListView: View {
             presenting: sessionToDelete
         ) { session in
             Button("Delete", role: .destructive) {
-                Task { await model.deleteSession(id: session.id) }
+                performAction(
+                    title: "Deleting Session",
+                    successMessage: "Session '\(session.sessionName)' deleted."
+                ) {
+                    await model.deleteSession(id: session.id)
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: { session in
             Text("Are you sure you want to delete '\(session.sessionName)'? This action cannot be undone.")
+        }
+        .sheet(isPresented: $showActionSheet) {
+            actionFeedbackSheet
         }
         .sheet(isPresented: $showEventsSheet) {
             SessionEventsSheet(
@@ -113,6 +129,67 @@ struct SessionListView: View {
                 logs: logsContent ?? "No logs available"
             )
         }
+    }
+
+    private func performAction(title: String, successMessage: String, action: @escaping () async -> Void) {
+        actionTitle = title
+        actionMessage = ""
+        actionInProgress = true
+        actionSuccess = false
+        actionError = false
+        showActionSheet = true
+        Task {
+            await action()
+            actionInProgress = false
+            if model.hasError {
+                actionError = true
+                actionMessage = model.errorMessage
+            } else {
+                actionSuccess = true
+                actionMessage = successMessage
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var actionFeedbackSheet: some View {
+        VStack(spacing: 20) {
+            if actionInProgress {
+                ProgressView()
+                    .scaleEffect(1.5)
+                Text(actionTitle + "...")
+                    .font(.body)
+            } else if actionSuccess {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.green)
+                Text(actionTitle)
+                    .font(.headline)
+                Text(actionMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if actionError {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.red)
+                Text("Action Failed")
+                    .font(.headline)
+                Text(actionMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            if !actionInProgress {
+                Button("Done") {
+                    showActionSheet = false
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(32)
+        .frame(width: 380)
     }
 
     @ViewBuilder
@@ -124,7 +201,14 @@ struct SessionListView: View {
                 sessionToDelete = session
                 showDeleteConfirmation = true
             },
-            onRenew: { Task { await model.renewSession(id: session.id) } },
+            onRenew: {
+                performAction(
+                    title: "Renewing Session",
+                    successMessage: "Session '\(session.sessionName)' renewed."
+                ) {
+                    await model.renewSession(id: session.id)
+                }
+            },
             onEvents: {
                 Task {
                     eventsTitle = session.sessionName

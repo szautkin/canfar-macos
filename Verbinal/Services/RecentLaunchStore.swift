@@ -29,6 +29,10 @@ final class RecentLaunchStore {
         launches = readFromDisk()
     }
 
+    func contains(name: String) -> Bool {
+        launches.contains { $0.name == name }
+    }
+
     func save(_ launch: RecentLaunch) {
         // If same session name exists, update and move to top
         if let idx = launches.firstIndex(where: { $0.name == launch.name }) {

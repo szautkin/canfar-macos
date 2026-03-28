@@ -110,6 +110,7 @@ struct SessionCardView: View {
                 Button("Open") { onOpen() }
                     .disabled(!session.isRunning)
                 Button("Renew") { onRenew() }
+                    .disabled(!session.isRunning)
                 Button("Events") { onEvents() }
                 Spacer()
                 Button("Delete", role: .destructive) { onDelete() }

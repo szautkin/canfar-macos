@@ -57,17 +57,20 @@ final class PlatformLoadModel {
             let stats = try await platformService.getStats()
 
             if let cores = stats.cores {
-                cpuAvailable = cores.cpuCoresAvailable
-                cpuTotal = cores.requestedCPUCores + cores.cpuCoresAvailable
-                // Bar shows usage (how loaded the platform is)
+                // cpuCoresAvailable = total cluster capacity
+                // requestedCPUCores = currently in use
+                cpuTotal = cores.cpuCoresAvailable
+                cpuAvailable = cores.cpuCoresAvailable - cores.requestedCPUCores
                 cpuPercent = cpuTotal > 0 ? (cores.requestedCPUCores / cpuTotal) * 100 : 0
             }
 
             if let ram = stats.ram {
-                ramAvailableGB = Self.parseRamGB(ram.ramAvailable ?? "0")
+                // ramAvailable = total cluster capacity
+                // requestedRAM = currently in use
+                let totalGB = Self.parseRamGB(ram.ramAvailable ?? "0")
                 let requestedGB = Self.parseRamGB(ram.requestedRAM ?? "0")
-                ramTotalGB = requestedGB + ramAvailableGB
-                // Bar shows usage (how loaded the platform is)
+                ramTotalGB = totalGB
+                ramAvailableGB = totalGB - requestedGB
                 ramPercent = ramTotalGB > 0 ? (requestedGB / ramTotalGB) * 100 : 0
             }
 

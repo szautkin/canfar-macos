@@ -67,11 +67,24 @@ struct LaunchFormView: View {
                 }
             }
         }
-        .sheet(isPresented: $showLaunchProgress) {
+        .sheet(isPresented: $showLaunchProgress, onDismiss: {
+            if model.launchSuccess {
+                model.savePendingRecentLaunch()
+            }
+        }) {
             LaunchProgressSheet(model: model) {
                 showLaunchProgress = false
                 onLaunched?()
             }
+        }
+        .alert(
+            "Replace Recent Launch?",
+            isPresented: $model.showRecentLaunchConflict
+        ) {
+            Button("Replace") { model.confirmRecentLaunchOverride() }
+            Button("Skip", role: .cancel) { model.skipRecentLaunchSave() }
+        } message: {
+            Text("'\(model.pendingRecentLaunch?.name ?? "")' already exists in recent launches. Replace it?")
         }
     }
 
@@ -85,6 +98,13 @@ struct LaunchFormView: View {
                     Text(type.capitalized).tag(type)
                 }
             }
+
+            Picker("Registry", selection: $model.repositoryHost) {
+                ForEach(model.repositories, id: \.self) { repo in
+                    Text(repo).tag(repo)
+                }
+            }
+            .disabled(model.repositories.count <= 1)
 
             Picker("Project", selection: $model.selectedProject) {
                 ForEach(model.projects, id: \.self) { project in
@@ -129,6 +149,7 @@ struct LaunchFormView: View {
             }
         }
         .formStyle(.grouped)
+        .fixedSize(horizontal: false, vertical: true)
 
         Button {
             showLaunchProgress = true
@@ -200,6 +221,7 @@ struct LaunchFormView: View {
             }
         }
         .formStyle(.grouped)
+        .fixedSize(horizontal: false, vertical: true)
 
         Button {
             model.useCustomImage = true

@@ -81,6 +81,10 @@ final class SessionLaunchModel {
     var sessionLimitMessage = ""
     let maxConcurrentSessions = 3
 
+    // Recent launch collision
+    var pendingRecentLaunch: RecentLaunch?
+    var showRecentLaunchConflict = false
+
     // Callbacks to query session state from SessionListModel
     var sessionCounter: ((String) -> Int)?
     var totalSessionCounter: (() -> Int)?
@@ -112,8 +116,15 @@ final class SessionLaunchModel {
             imagesByTypeAndProject = ImageParser.groupByTypeAndProject(rawImages)
             repositories = repos
 
-            // Determine available session types from images
-            let availableTypes = Array(Set(imagesByTypeAndProject.keys)).sorted()
+            // Auto-select first registry
+            if repositoryHost.isEmpty, let first = repos.first {
+                repositoryHost = first
+            }
+
+            // Determine available session types from images (interactive only)
+            let availableTypes = Array(Set(imagesByTypeAndProject.keys))
+                .filter { $0 != "headless" }
+                .sorted()
             if !availableTypes.isEmpty {
                 sessionTypes = availableTypes
             }
@@ -243,6 +254,33 @@ final class SessionLaunchModel {
         return false
     }
 
+    // MARK: - Recent Launch Save (after progress sheet dismissed)
+
+    /// Call after the launch progress sheet is closed.
+    /// Saves to recent launches, or asks for confirmation on name collision.
+    func savePendingRecentLaunch() {
+        guard let pending = pendingRecentLaunch else { return }
+        if recentLaunchStore.contains(name: pending.name) {
+            showRecentLaunchConflict = true
+        } else {
+            recentLaunchStore.save(pending)
+            pendingRecentLaunch = nil
+        }
+    }
+
+    func confirmRecentLaunchOverride() {
+        if let pending = pendingRecentLaunch {
+            recentLaunchStore.save(pending)
+        }
+        pendingRecentLaunch = nil
+        showRecentLaunchConflict = false
+    }
+
+    func skipRecentLaunchSave() {
+        pendingRecentLaunch = nil
+        showRecentLaunchConflict = false
+    }
+
     // MARK: - Session Limit
 
     func updateSessionLimit() {
@@ -269,7 +307,12 @@ final class SessionLaunchModel {
                 errorMessage = "Custom image URL is required"
                 return
             }
-            imageId = customImageUrl
+            // Advanced tab: prepend selected registry host to custom image path
+            if !repositoryHost.isEmpty {
+                imageId = "\(repositoryHost)/\(customImageUrl)"
+            } else {
+                imageId = customImageUrl
+            }
         } else {
             guard let img = selectedImage else {
                 hasError = true
@@ -310,8 +353,8 @@ final class SessionLaunchModel {
             launchSuccess = true
             launchStatus = "Session launched! ID: \(sessionId ?? "unknown")"
 
-            // Save to recent launches
-            let recent = RecentLaunch(
+            // Hold pending entry — saved when user closes the progress sheet
+            pendingRecentLaunch = RecentLaunch(
                 name: sessionName,
                 type: selectedType,
                 image: imageId,
@@ -323,7 +366,6 @@ final class SessionLaunchModel {
                 gpus: params.gpus,
                 launchedAt: Date()
             )
-            recentLaunchStore.save(recent)
 
             // Reset form
             generateSessionName()

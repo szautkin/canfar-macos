@@ -18,9 +18,10 @@ This is the macOS counterpart of [Verbinal for Linux](https://github.com/szautki
 - Secure credentials stored in macOS Keychain
 - XcodeGen-based project configuration
 
-## Screenshot
+## Screenshots
 
-![Verbinal for macOS](assets/screenshot.png)
+![Verbinal for macOS — Login](assets/screenshot-1.png)
+![Verbinal for macOS — Dashboard](assets/screenshot-2.png)
 
 ## Installation
 
