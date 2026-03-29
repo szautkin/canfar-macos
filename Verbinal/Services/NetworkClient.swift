@@ -46,9 +46,10 @@ actor NetworkClient {
     func post(
         _ urlString: String,
         formData: [String: String],
-        headers: [String: String]? = nil
+        headers: [String: String]? = nil,
+        timeout: TimeInterval = 30
     ) async throws -> (Data, HTTPURLResponse) {
-        var request = try makeRequest(urlString, method: "POST")
+        var request = try makeRequest(urlString, method: "POST", timeout: timeout)
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
         let body = formData
@@ -77,13 +78,13 @@ actor NetworkClient {
 
     // MARK: - Private
 
-    private func makeRequest(_ urlString: String, method: String) throws -> URLRequest {
+    private func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = 30) throws -> URLRequest {
         guard let url = URL(string: urlString) else {
             throw NetworkError.invalidURL(urlString)
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
-        request.timeoutInterval = 30
+        request.timeoutInterval = timeout
 
         if let token, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

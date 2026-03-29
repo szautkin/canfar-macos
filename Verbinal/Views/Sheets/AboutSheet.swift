@@ -24,7 +24,7 @@ struct AboutSheet: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            Text("Version 1.0.0")
+            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 
@@ -51,7 +51,7 @@ struct AboutSheet: View {
             Divider()
                 .frame(width: 200)
 
-            Text("\u{00A9} 2025-2026 Serhii Zautkin")
+            Text("\u{00A9} 2026 Serhii Zautkin")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 

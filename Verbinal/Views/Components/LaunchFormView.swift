@@ -141,19 +141,23 @@ struct LaunchFormView: View {
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
 
-        Button {
-            showLaunchProgress = true
-            Task { await model.launch() }
-        } label: {
-            HStack {
-                Image(systemName: "play.fill")
-                Text("Launch Session")
+        HStack {
+            Spacer()
+            Button {
+                showLaunchProgress = true
+                Task { await model.launch() }
+            } label: {
+                HStack {
+                    Image(systemName: "play.fill")
+                    Text("Launch Session")
+                }
+                .padding(.horizontal, 24)
             }
-            .frame(maxWidth: .infinity)
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(model.isLaunching || model.isAtSessionLimit || model.selectedImage == nil)
+            Spacer()
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .disabled(model.isLaunching || model.isAtSessionLimit || model.selectedImage == nil)
     }
 
     // MARK: - Advanced Form
@@ -213,19 +217,23 @@ struct LaunchFormView: View {
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
 
-        Button {
-            model.useCustomImage = true
-            showLaunchProgress = true
-            Task { await model.launch() }
-        } label: {
-            HStack {
-                Image(systemName: "play.fill")
-                Text("Launch (Custom Image)")
+        HStack {
+            Spacer()
+            Button {
+                model.useCustomImage = true
+                showLaunchProgress = true
+                Task { await model.launch() }
+            } label: {
+                HStack {
+                    Image(systemName: "play.fill")
+                    Text("Launch (Custom Image)")
+                }
+                .padding(.horizontal, 24)
             }
-            .frame(maxWidth: .infinity)
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(model.isLaunching || model.isAtSessionLimit || model.customImageUrl.isEmpty)
+            Spacer()
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .disabled(model.isLaunching || model.isAtSessionLimit || model.customImageUrl.isEmpty)
     }
 }

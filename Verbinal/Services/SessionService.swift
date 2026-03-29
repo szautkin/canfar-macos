@@ -68,7 +68,8 @@ final class SessionService: Sendable {
         let (data, _) = try await network.post(
             endpoints.sessionsURL,
             formData: formData,
-            headers: headers
+            headers: headers,
+            timeout: 120
         )
 
         // Response can be JSON array ["sessionId"] or plain text
