@@ -216,71 +216,14 @@ struct iOSSessionsTab: View {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Display Helpers (delegated to shared SessionDisplay)
 
-    private func shortImageLabel(_ image: String) -> String {
-        String(image.split(separator: "/").last ?? Substring(image))
-    }
-
-    private func statusColor(_ session: Session) -> Color {
-        switch session.status.lowercased() {
-        case "running": return .green
-        case "pending": return .orange
-        case "failed", "error": return .red
-        case "terminating": return .gray
-        default: return .gray
-        }
-    }
-
-    private func typeColor(_ session: Session) -> Color {
-        switch session.sessionType.lowercased() {
-        case "notebook": return .blue
-        case "desktop": return .purple
-        case "carta": return .teal
-        case "contributed": return Color(.systemOrange)
-        case "firefly": return .orange
-        default: return .secondary
-        }
-    }
-
-    private func typeImageAsset(_ session: Session) -> String? {
-        switch session.sessionType.lowercased() {
-        case "notebook": return "session-notebook"
-        case "desktop": return "session-desktop"
-        case "carta": return "session-carta"
-        case "contributed": return "session-contributed"
-        case "firefly": return "session-firefly"
-        default: return nil
-        }
-    }
-
-    private func formatTime(_ isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: isoString) {
-            let display = DateFormatter()
-            display.dateFormat = "MMM d, HH:mm"
-            return display.string(from: date)
-        }
-        formatter.formatOptions = [.withInternetDateTime]
-        if let date = formatter.date(from: isoString) {
-            let display = DateFormatter()
-            display.dateFormat = "MMM d, HH:mm"
-            return display.string(from: date)
-        }
-        return isoString
-    }
-
-    private func typeIcon(_ session: Session) -> String {
-        switch session.sessionType.lowercased() {
-        case "notebook": return "book.pages"
-        case "desktop": return "desktopcomputer"
-        case "carta": return "map"
-        case "contributed": return "shippingbox"
-        case "firefly": return "flame"
-        default: return "questionmark.square"
-        }
-    }
+    private func statusColor(_ session: Session) -> Color { SessionDisplay.statusColor(session.status) }
+    private func typeColor(_ session: Session) -> Color { SessionDisplay.typeColor(session.sessionType) }
+    private func typeImageAsset(_ session: Session) -> String? { SessionDisplay.typeImageAsset(session.sessionType) }
+    private func typeIcon(_ session: Session) -> String { SessionDisplay.typeIcon(session.sessionType) }
+    private func formatTime(_ s: String) -> String { SessionDisplay.formatTime(s) }
+    private func shortImageLabel(_ image: String) -> String { SessionDisplay.shortImageLabel(image) }
 }
 
 // MARK: - Events Sheet (immediate open, loading inside)

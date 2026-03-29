@@ -118,66 +118,11 @@ struct SessionCardView: View {
         )
     }
 
-    // MARK: - Colors
+    // MARK: - Display Helpers
 
-    private var statusColor: Color {
-        switch session.status.lowercased() {
-        case "running": return .green
-        case "pending": return .orange
-        case "failed", "error": return .red
-        case "terminating": return .gray
-        default: return .gray
-        }
-    }
-
-    private var typeColor: Color {
-        switch session.sessionType.lowercased() {
-        case "notebook": return .blue
-        case "desktop": return .purple
-        case "carta": return .teal
-        case "contributed": return Color(.systemOrange)
-        case "firefly": return .orange
-        default: return .secondary
-        }
-    }
-
-    private var typeImageAsset: String? {
-        switch session.sessionType.lowercased() {
-        case "notebook": return "session-notebook"
-        case "desktop": return "session-desktop"
-        case "carta": return "session-carta"
-        case "contributed": return "session-contributed"
-        case "firefly": return "session-firefly"
-        default: return nil
-        }
-    }
-
-    private var typeIcon: String {
-        switch session.sessionType.lowercased() {
-        case "notebook": return "book.pages"
-        case "desktop": return "desktopcomputer"
-        case "carta": return "map"
-        case "contributed": return "shippingbox"
-        case "firefly": return "flame"
-        default: return "questionmark.square"
-        }
-    }
-
-    private func formatTime(_ isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: isoString) {
-            let display = DateFormatter()
-            display.dateFormat = "MMM d, HH:mm"
-            return display.string(from: date)
-        }
-        // Try without fractional seconds
-        formatter.formatOptions = [.withInternetDateTime]
-        if let date = formatter.date(from: isoString) {
-            let display = DateFormatter()
-            display.dateFormat = "MMM d, HH:mm"
-            return display.string(from: date)
-        }
-        return isoString
-    }
+    private var statusColor: Color { SessionDisplay.statusColor(session.status) }
+    private var typeColor: Color { SessionDisplay.typeColor(session.sessionType) }
+    private var typeImageAsset: String? { SessionDisplay.typeImageAsset(session.sessionType) }
+    private var typeIcon: String { SessionDisplay.typeIcon(session.sessionType) }
+    private func formatTime(_ s: String) -> String { SessionDisplay.formatTime(s) }
 }

@@ -166,40 +166,11 @@ struct RecentLaunchesView: View {
         )
     }
 
-    // MARK: - Helpers
+    // MARK: - Display Helpers (delegated to shared SessionDisplay)
 
-    private func typeColor(_ type: String) -> Color {
-        switch type.lowercased() {
-        case "notebook": return .blue
-        case "desktop": return .purple
-        case "carta": return .teal
-        case "contributed": return Color(.systemOrange)
-        case "firefly": return .orange
-        default: return .gray
-        }
-    }
-
-    private func typeImageAsset(_ type: String) -> String? {
-        switch type.lowercased() {
-        case "notebook": return "session-notebook"
-        case "desktop": return "session-desktop"
-        case "carta": return "session-carta"
-        case "contributed": return "session-contributed"
-        case "firefly": return "session-firefly"
-        default: return nil
-        }
-    }
-
-    private func typeIcon(_ type: String) -> String {
-        switch type.lowercased() {
-        case "notebook": return "book.pages"
-        case "desktop": return "desktopcomputer"
-        case "carta": return "map"
-        case "contributed": return "shippingbox"
-        case "firefly": return "flame"
-        default: return "terminal"
-        }
-    }
+    private func typeColor(_ type: String) -> Color { SessionDisplay.typeColor(type) }
+    private func typeImageAsset(_ type: String) -> String? { SessionDisplay.typeImageAsset(type) }
+    private func typeIcon(_ type: String) -> String { SessionDisplay.typeIcon(type) }
 
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
