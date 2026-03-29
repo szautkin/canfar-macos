@@ -67,35 +67,50 @@ private struct iPadSplitView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(iPadSection.allCases, selection: $selectedSection) { section in
-                Label(section.rawValue, systemImage: section.icon)
+            List(selection: $selectedSection) {
+                ForEach(iPadSection.allCases) { section in
+                    NavigationLink(value: section) {
+                        Label(section.rawValue, systemImage: section.icon)
+                    }
+                }
             }
             .navigationTitle("Verbinal")
         } detail: {
-            Group {
-                switch selectedSection {
-                case .sessions:
-                    iOSSessionsTab(model: sessionListModel)
-                case .launch:
-                    iOSLaunchTab(
-                        launchModel: sessionLaunchModel,
-                        recentLaunchStore: appState.recentLaunchStore,
-                        onLaunched: {
-                            Task { await sessionListModel.loadSessions() }
-                        }
-                    )
-                case .monitor:
-                    iOSMonitorTab(
-                        storageModel: storageModel,
-                        platformLoadModel: platformLoadModel
-                    )
-                case .account:
-                    iOSAccountTab()
-                case .none:
-                    Text("Select a section")
-                        .foregroundStyle(.secondary)
-                }
+            detailView
+        }
+    }
+
+    @ViewBuilder
+    private var detailView: some View {
+        switch selectedSection {
+        case .sessions:
+            NavigationStack {
+                iOSSessionsTab(model: sessionListModel)
             }
+        case .launch:
+            NavigationStack {
+                iOSLaunchTab(
+                    launchModel: sessionLaunchModel,
+                    recentLaunchStore: appState.recentLaunchStore,
+                    onLaunched: {
+                        Task { await sessionListModel.loadSessions() }
+                    }
+                )
+            }
+        case .monitor:
+            NavigationStack {
+                iOSMonitorTab(
+                    storageModel: storageModel,
+                    platformLoadModel: platformLoadModel
+                )
+            }
+        case .account:
+            NavigationStack {
+                iOSAccountTab()
+            }
+        case .none:
+            Text("Select a section")
+                .foregroundStyle(.secondary)
         }
     }
 }
