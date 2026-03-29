@@ -19,7 +19,11 @@ final class AppState {
     let imageService: ImageService
     let platformService: PlatformService
     let storageService: StorageService
+    let headlessService: HeadlessService
     let recentLaunchStore = RecentLaunchStore()
+
+    // Headless job monitor (created on auth, destroyed on logout)
+    private(set) var headlessMonitor: HeadlessMonitorModel?
 
     init() {
         let network = NetworkClient()
@@ -31,6 +35,7 @@ final class AppState {
         self.imageService = ImageService(network: network, endpoints: endpoints)
         self.platformService = PlatformService(network: network, endpoints: endpoints)
         self.storageService = StorageService(network: network, endpoints: endpoints)
+        self.headlessService = HeadlessService(network: network, endpoints: endpoints)
     }
 
     // Auth state
@@ -79,9 +84,17 @@ final class AppState {
             .compactMap { $0 }
             .joined(separator: " ")
         self.statusMessage = "Welcome, \(displayName.isEmpty ? username : displayName)"
+
+        // Start headless job monitoring
+        let monitor = HeadlessMonitorModel(headlessService: headlessService)
+        headlessMonitor = monitor
+        monitor.startMonitoring()
     }
 
     func logout() async {
+        headlessMonitor?.stopMonitoring()
+        headlessMonitor = nil
+
         await authService.logout()
         isAuthenticated = false
         username = ""

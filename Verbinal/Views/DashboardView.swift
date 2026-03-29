@@ -17,16 +17,21 @@ struct DashboardView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Top row: Sessions + Storage
+                // Top row: Sessions + (Storage / Batch Jobs)
                 HStack(alignment: .top, spacing: 16) {
                     if let slm = sessionListModel {
                         SessionListView(model: slm)
                             .frame(maxWidth: .infinity)
                     }
-                    if let sm = storageModel {
-                        StorageQuotaView(model: sm)
-                            .frame(minWidth: 220, maxWidth: 280)
+                    VStack(spacing: 16) {
+                        if let sm = storageModel {
+                            StorageQuotaView(model: sm)
+                        }
+                        if let hm = appState.headlessMonitor {
+                            HeadlessJobsView(model: hm)
+                        }
                     }
+                    .frame(minWidth: 220, maxWidth: 280)
                 }
 
                 // Bottom row: Launch Form + (Recent + Platform)

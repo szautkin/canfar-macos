@@ -6,6 +6,15 @@
 
 import Foundation
 
+/// Decodes an element or silently returns nil on failure,
+/// allowing the rest of the array to decode successfully.
+private struct SafeDecodable<T: Decodable>: Decodable {
+    let value: T?
+    init(from decoder: Decoder) throws {
+        value = try? T(from: decoder)
+    }
+}
+
 final class SessionService: Sendable {
     private let network: NetworkClient
     private let endpoints: APIEndpoints
@@ -15,13 +24,12 @@ final class SessionService: Sendable {
         self.endpoints = endpoints
     }
 
-    /// Fetches all sessions, returning normalized Session models.
+    /// Fetches interactive sessions, skipping headless entries that have a
+    /// different JSON shape (missing startTime/expiryTime).
     func getSessions() async throws -> [Session] {
-        let responses = try await network.getJSON(
-            endpoints.sessionsURL,
-            type: [SkahaSessionResponse].self
-        )
-        return responses.map { Session(from: $0) }
+        let (data, _) = try await network.get(endpoints.sessionsURL, accept: "application/json")
+        let containers = try JSONDecoder().decode([SafeDecodable<SkahaSessionResponse>].self, from: data)
+        return containers.compactMap(\.value).map { Session(from: $0) }
     }
 
     private static let defaultRegistry = "images.canfar.net"

@@ -15,6 +15,7 @@ struct VerbinalApp: App {
             ContentView()
                 .environment(appState)
                 .frame(minWidth: 900, minHeight: 600)
+                .task { NotificationService.requestPermissionIfNeeded() }
         }
         .defaultSize(width: 1200, height: 800)
     }
