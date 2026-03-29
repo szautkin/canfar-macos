@@ -92,7 +92,7 @@ struct HeadlessJobsDetailSheet: View {
                 .listStyle(.inset)
             }
         }
-        .frame(minWidth: 600, minHeight: 400)
+        .sheetFrame(minWidth: 600, minHeight: 400)
         .sheet(item: $eventsSheetJob) { job in
             SessionEventsSheet(
                 title: job.name,

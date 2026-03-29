@@ -139,7 +139,11 @@ struct LaunchFormView: View {
             }
         }
         .formStyle(.grouped)
+        #if os(macOS)
         .fixedSize(horizontal: false, vertical: true)
+        #else
+        .scrollDisabled(true)
+        #endif
 
         HStack {
             Spacer()
@@ -215,7 +219,11 @@ struct LaunchFormView: View {
             }
         }
         .formStyle(.grouped)
+        #if os(macOS)
         .fixedSize(horizontal: false, vertical: true)
+        #else
+        .scrollDisabled(true)
+        #endif
 
         HStack {
             Spacer()

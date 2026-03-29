@@ -6,7 +6,6 @@
 
 import Foundation
 import Observation
-import AppKit
 
 @Observable
 @MainActor
@@ -83,9 +82,9 @@ final class SessionListModel {
         try? await sessionService.getSessionLogs(id: id)
     }
 
-    func openSessionInBrowser(_ session: Session) {
-        guard session.isRunning, let url = URL(string: session.connectUrl) else { return }
-        NSWorkspace.shared.open(url)
+    func connectURL(for session: Session) -> URL? {
+        guard session.isRunning else { return nil }
+        return URL(string: session.connectUrl)
     }
 
     var hasPendingSessions: Bool {

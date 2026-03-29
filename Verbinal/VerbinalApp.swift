@@ -14,9 +14,13 @@ struct VerbinalApp: App {
         WindowGroup {
             ContentView()
                 .environment(appState)
+                #if os(macOS)
                 .frame(minWidth: 900, minHeight: 600)
+                #endif
                 .task { NotificationService.requestPermissionIfNeeded() }
         }
+        #if os(macOS)
         .defaultSize(width: 1200, height: 800)
+        #endif
     }
 }

@@ -31,25 +31,15 @@ final class StorageService: Sendable {
 
     /// Parses VOSpace XML to extract quota and usage.
     private func parseVOSpaceXML(_ xmlString: String) throws -> StorageQuota {
-        guard let xmlData = xmlString.data(using: .utf8) else {
-            throw StorageError.invalidXML
-        }
-
-        let doc = try XMLDocument(data: xmlData)
-
         var quotaBytes: Int64 = 0
         var usedBytes: Int64 = 0
         var lastModified: String?
 
-        // Find all <property> elements
-        let properties = try doc.nodes(forXPath: "//*[local-name()='property']")
+        let properties = SimpleXML.elements(localName: "property", in: xmlString)
 
-        for node in properties {
-            guard let element = node as? XMLElement,
-                  let uri = element.attribute(forName: "uri")?.stringValue,
-                  let value = element.stringValue else {
-                continue
-            }
+        for prop in properties {
+            guard let uri = prop.attributes["uri"] else { continue }
+            let value = prop.text
 
             if uri.contains("core#quota") {
                 quotaBytes = Int64(value) ?? 0

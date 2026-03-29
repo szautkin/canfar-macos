@@ -11,37 +11,15 @@ struct ContentView: View {
     @State private var showAbout = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            toolbarView
-            Divider()
-
+        Group {
             if appState.isAuthenticated {
-                DashboardView()
+                authenticatedView
             } else if appState.isLoading {
                 Spacer()
                 ProgressView("Checking authentication...")
                 Spacer()
             } else {
-                Spacer()
-                VStack(spacing: 16) {
-                    Image("VerbinalIcon")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 96, height: 96)
-                    Text("Welcome to Verbinal")
-                        .font(.title)
-                    Text("A CANFAR Science Portal Companion")
-                        .foregroundStyle(.secondary)
-                    Text(appState.statusMessage)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                    Button("Login") {
-                        appState.showLoginSheet = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                }
-                Spacer()
+                welcomeView
             }
         }
         .sheet(isPresented: Bindable(appState).showLoginSheet) {
@@ -55,6 +33,51 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Authenticated
+
+    @ViewBuilder
+    private var authenticatedView: some View {
+        #if os(macOS)
+        VStack(spacing: 0) {
+            toolbarView
+            Divider()
+            AuthenticatedRootView()
+        }
+        #else
+        AuthenticatedRootView()
+        #endif
+    }
+
+    // MARK: - Welcome
+
+    private var welcomeView: some View {
+        VStack {
+            Spacer()
+            VStack(spacing: 16) {
+                Image("VerbinalIcon")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 96, height: 96)
+                Text("Welcome to Verbinal")
+                    .font(.title)
+                Text("A CANFAR Science Portal Companion")
+                    .foregroundStyle(.secondary)
+                Text(appState.statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Button("Login") {
+                    appState.showLoginSheet = true
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: - macOS Toolbar
+
+    #if os(macOS)
     @ViewBuilder
     private var toolbarView: some View {
         HStack(spacing: 12) {
@@ -124,4 +147,5 @@ struct ContentView: View {
         .padding(.vertical, 8)
         .background(.bar)
     }
+    #endif
 }

@@ -6,7 +6,6 @@
 
 import Foundation
 import Observation
-import AppKit
 
 @Observable
 @MainActor
@@ -148,10 +147,10 @@ final class HeadlessMonitorModel {
     }
 
     private func updateDockBadge() {
-        NSApp.dockTile.badgeLabel = totalActive > 0 ? "\(totalActive)" : nil
+        PlatformBadge.set(totalActive)
     }
 
     private func clearDockBadge() {
-        NSApp.dockTile.badgeLabel = nil
+        PlatformBadge.clear()
     }
 }

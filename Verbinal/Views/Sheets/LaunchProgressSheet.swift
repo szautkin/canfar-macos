@@ -47,6 +47,6 @@ struct LaunchProgressSheet: View {
             }
         }
         .padding(32)
-        .frame(width: 380)
+        .sheetFrame(width: 380)
     }
 }

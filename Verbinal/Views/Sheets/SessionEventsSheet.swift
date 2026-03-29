@@ -37,13 +37,12 @@ struct SessionEventsSheet: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(8)
             }
-            .background(Color(nsColor: .textBackgroundColor))
+            .background(Color.textFieldBackground)
             .clipShape(RoundedRectangle(cornerRadius: 6))
 
             HStack {
                 Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(currentContent, forType: .string)
+                    PlatformClipboard.copy(currentContent)
                 }
 
                 Spacer()
@@ -55,6 +54,6 @@ struct SessionEventsSheet: View {
             }
         }
         .padding(20)
-        .frame(minWidth: 600, minHeight: 450)
+        .sheetFrame(minWidth: 600, minHeight: 450)
     }
 }

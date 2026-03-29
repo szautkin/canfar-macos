@@ -35,18 +35,28 @@ final class AuthService: Sendable {
             // Set token on network client for subsequent requests
             await network.setToken(token)
 
+            // Get canonical username from /whoami (case-sensitive for storage paths).
+            // Don't use validateToken() here — it clears the token on failure.
+            let canonicalUsername: String
+            if let apiUsername = try? await network.getText(endpoints.whoAmIURL),
+               !apiUsername.isEmpty {
+                canonicalUsername = apiUsername
+            } else {
+                canonicalUsername = username.lowercased()
+            }
+
             // Persist to Keychain if requested
             if rememberMe {
-                KeychainStorage.saveToken(token, username: username)
+                KeychainStorage.saveToken(token, username: canonicalUsername)
             }
 
             // Fetch user info
-            let userInfo = await getUserInfo(username: username)
+            let userInfo = await getUserInfo(username: canonicalUsername)
 
             return AuthResult(
                 success: true,
                 token: token,
-                username: username,
+                username: canonicalUsername,
                 userInfo: userInfo
             )
         } catch let error as NetworkError {
@@ -99,27 +109,10 @@ final class AuthService: Sendable {
 
     /// Parses CADC user XML to extract profile details.
     private func parseUserXML(_ xml: String, username: String) -> UserInfo? {
-        guard let data = xml.data(using: .utf8) else {
-            logger.error("parseUserXML: failed to convert string to data")
-            return nil
-        }
-
-        let doc: XMLDocument
-        do {
-            doc = try XMLDocument(data: data)
-        } catch {
-            logger.error("parseUserXML: XMLDocument init failed: \(error.localizedDescription, privacy: .public)")
-            return nil
-        }
-
-        func text(_ xpath: String) -> String? {
-            (try? doc.nodes(forXPath: xpath))?.first?.stringValue
-        }
-
-        let firstName = text("//*[local-name()='firstName']")
-        let lastName = text("//*[local-name()='lastName']")
-        let email = text("//*[local-name()='email']")
-        let institute = text("//*[local-name()='institute']")
+        let firstName = SimpleXML.textOfFirst(localName: "firstName", in: xml)
+        let lastName = SimpleXML.textOfFirst(localName: "lastName", in: xml)
+        let email = SimpleXML.textOfFirst(localName: "email", in: xml)
+        let institute = SimpleXML.textOfFirst(localName: "institute", in: xml)
 
         logger.info("Parsed user: firstName=\(firstName ?? "nil", privacy: .public) lastName=\(lastName ?? "nil", privacy: .public)")
 

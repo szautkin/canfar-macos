@@ -24,12 +24,17 @@ final class SessionService: Sendable {
         self.endpoints = endpoints
     }
 
-    /// Fetches interactive sessions, skipping headless entries that have a
-    /// different JSON shape (missing startTime/expiryTime).
+    /// Excluded session types — these are handled by their own dedicated modules.
+    private static let excludedTypes: Set<String> = ["headless", "desktop-app"]
+
+    /// Fetches interactive sessions only, excluding headless/desktop-app entries.
     func getSessions() async throws -> [Session] {
         let (data, _) = try await network.get(endpoints.sessionsURL, accept: "application/json")
         let containers = try JSONDecoder().decode([SafeDecodable<SkahaSessionResponse>].self, from: data)
-        return containers.compactMap(\.value).map { Session(from: $0) }
+        return containers
+            .compactMap(\.value)
+            .filter { !Self.excludedTypes.contains($0.type.lowercased()) }
+            .map { Session(from: $0) }
     }
 
     private static let defaultRegistry = "images.canfar.net"

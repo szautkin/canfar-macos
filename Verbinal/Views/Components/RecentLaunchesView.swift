@@ -158,11 +158,11 @@ struct RecentLaunchesView: View {
             }
         }
         .padding(10)
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(Color.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor), lineWidth: 0.5)
+                .stroke(Color.platformSeparator, lineWidth: 0.5)
         )
     }
 

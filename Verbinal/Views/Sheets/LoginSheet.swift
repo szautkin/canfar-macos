@@ -39,9 +39,11 @@ struct LoginSheet: View {
                     .onSubmit { Task { await login() } }
 
                 Toggle("Remember me", isOn: $rememberMe)
+                    #if os(macOS)
                     .toggleStyle(.checkbox)
+                    #endif
             }
-            .frame(width: 260)
+            .frame(maxWidth: 260)
 
             if hasError {
                 Label(errorMessage, systemImage: "xmark.circle")
@@ -68,7 +70,7 @@ struct LoginSheet: View {
             }
         }
         .padding(32)
-        .frame(width: 360)
+        .sheetFrame(width: 360)
     }
 
     private func login() async {

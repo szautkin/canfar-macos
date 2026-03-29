@@ -32,14 +32,14 @@ struct AboutSheet: View {
                 .frame(width: 200)
 
             VStack(spacing: 4) {
-                Text("Verbinal provides a native desktop interface for managing")
+                Text("Verbinal provides a native interface for managing")
                 Text("interactive computing sessions on the CANFAR platform.")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
 
-            Text("macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")
+            Text(platformVersionString)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 
@@ -61,6 +61,14 @@ struct AboutSheet: View {
             .keyboardShortcut(.cancelAction)
         }
         .padding(32)
-        .frame(width: 400)
+        .sheetFrame(width: 400)
+    }
+
+    private var platformVersionString: String {
+        #if os(macOS)
+        "macOS \(ProcessInfo.processInfo.operatingSystemVersionString)"
+        #else
+        "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
+        #endif
     }
 }

@@ -8,6 +8,7 @@ import SwiftUI
 
 struct SessionListView: View {
     @Bindable var model: SessionListModel
+    @Environment(\.openURL) private var openURL
     @State private var sessionToDelete: Session?
     @State private var showDeleteConfirmation = false
     @State private var eventsContent: String?
@@ -179,14 +180,16 @@ struct SessionListView: View {
             }
         }
         .padding(32)
-        .frame(width: 380)
+        .sheetFrame(width: 380)
     }
 
     @ViewBuilder
     private func sessionCard(_ session: Session) -> some View {
         SessionCardView(
             session: session,
-            onOpen: { model.openSessionInBrowser(session) },
+            onOpen: {
+                if let url = model.connectURL(for: session) { openURL(url) }
+            },
             onDelete: {
                 sessionToDelete = session
                 showDeleteConfirmation = true
