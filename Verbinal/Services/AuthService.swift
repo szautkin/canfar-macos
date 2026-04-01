@@ -47,7 +47,7 @@ final class AuthService: Sendable {
 
             // Persist to Keychain if requested
             if rememberMe {
-                KeychainStorage.saveToken(token, username: canonicalUsername)
+                KeychainStorage.saveCredentials(token: token, username: canonicalUsername, password: password)
             }
 
             // Fetch user info

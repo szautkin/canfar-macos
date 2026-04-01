@@ -66,7 +66,11 @@ final class AppState {
             let info = await authService.getUserInfo(username: name)
             updateAuthState(username: name, userInfo: info)
         case .expired:
-            KeychainStorage.clearToken()
+            // Try silent re-auth with stored password before prompting
+            if await silentReauth() {
+                isLoading = false
+                return
+            }
             statusMessage = "Session expired. Please log in again."
         case .networkError(let message):
             // Keep the token — just can't reach the server right now
@@ -97,16 +101,47 @@ final class AppState {
     }
 
     /// Called when any service detects a 401 — token has expired mid-session.
+    /// Tries silent re-auth if credentials are stored, otherwise shows login sheet.
     func handleTokenExpired() {
         guard isAuthenticated else { return }
         headlessMonitor?.stopMonitoring()
         headlessMonitor = nil
         isAuthenticated = false
+
+        Task {
+            if await silentReauth() { return }
+            // Silent re-auth failed — prompt user
+            statusMessage = "Session expired. Please log in again."
+            showLoginSheet = true
+        }
+    }
+
+    /// Attempts to re-authenticate using stored Keychain credentials.
+    /// Returns true on success.
+    private func silentReauth() async -> Bool {
+        let (storedUsername, storedPassword) = KeychainStorage.loadCredentials()
+        guard let user = storedUsername, let pass = storedPassword else { return false }
+
+        statusMessage = "Renewing session..."
+        isLoading = true
+
+        let result = await authService.login(username: user, password: pass, rememberMe: true)
+
+        if result.success {
+            updateAuthState(
+                username: result.username ?? user,
+                userInfo: result.userInfo
+            )
+            isLoading = false
+            return true
+        }
+
+        // Credentials no longer valid — clear them
+        KeychainStorage.clearToken()
         username = ""
         userInfo = nil
-        KeychainStorage.clearToken()
-        statusMessage = "Session expired. Please log in again."
-        showLoginSheet = true
+        isLoading = false
+        return false
     }
 
     func logout() async {

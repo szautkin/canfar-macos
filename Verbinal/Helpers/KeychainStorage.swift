@@ -13,6 +13,13 @@ enum KeychainStorage {
     private static let service = "com.codebg.Verbinal"
     private static let tokenAccount = "AuthToken"
     private static let usernameAccount = "Username"
+    private static let passwordAccount = "Password"
+
+    static func saveCredentials(token: String, username: String, password: String) {
+        save(account: tokenAccount, data: token)
+        save(account: usernameAccount, data: username)
+        save(account: passwordAccount, data: password)
+    }
 
     static func saveToken(_ token: String, username: String) {
         save(account: tokenAccount, data: token)
@@ -25,9 +32,21 @@ enum KeychainStorage {
         return (token, username)
     }
 
+    static func loadCredentials() -> (username: String?, password: String?) {
+        let username = load(account: usernameAccount)
+        let password = load(account: passwordAccount)
+        return (username, password)
+    }
+
+    /// Returns true if stored credentials include a password (user chose "Remember me").
+    static var hasStoredPassword: Bool {
+        load(account: passwordAccount) != nil
+    }
+
     static func clearToken() {
         delete(account: tokenAccount)
         delete(account: usernameAccount)
+        delete(account: passwordAccount)
     }
 
     // MARK: - Private

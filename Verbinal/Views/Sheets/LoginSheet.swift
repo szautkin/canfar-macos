@@ -13,6 +13,7 @@ struct LoginSheet: View {
     @State private var username = ""
     @State private var password = ""
     @State private var rememberMe = true
+    @State private var didPrefill = false
     @State private var isLoggingIn = false
     @State private var errorMessage = ""
     @State private var hasError = false
@@ -71,6 +72,14 @@ struct LoginSheet: View {
         }
         .padding(32)
         .sheetFrame(width: 360)
+        .onAppear {
+            guard !didPrefill else { return }
+            didPrefill = true
+            let (storedUsername, _) = KeychainStorage.loadCredentials()
+            if let stored = storedUsername, !stored.isEmpty {
+                username = stored
+            }
+        }
     }
 
     private func login() async {
