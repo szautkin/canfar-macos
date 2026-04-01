@@ -115,6 +115,11 @@ enum NetworkError: LocalizedError {
     case unauthorized
     case httpError(Int, String)
 
+    var isUnauthorized: Bool {
+        if case .unauthorized = self { return true }
+        return false
+    }
+
     var errorDescription: String? {
         switch self {
         case .invalidURL(let url): return "Invalid URL: \(url)"

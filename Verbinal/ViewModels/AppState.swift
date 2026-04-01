@@ -87,8 +87,26 @@ final class AppState {
 
         // Start headless job monitoring
         let monitor = HeadlessMonitorModel(headlessService: headlessService)
+        monitor.onAuthFailure = { [weak self] in
+            Task { @MainActor in
+                self?.handleTokenExpired()
+            }
+        }
         headlessMonitor = monitor
         monitor.startMonitoring()
+    }
+
+    /// Called when any service detects a 401 — token has expired mid-session.
+    func handleTokenExpired() {
+        guard isAuthenticated else { return }
+        headlessMonitor?.stopMonitoring()
+        headlessMonitor = nil
+        isAuthenticated = false
+        username = ""
+        userInfo = nil
+        KeychainStorage.clearToken()
+        statusMessage = "Session expired. Please log in again."
+        showLoginSheet = true
     }
 
     func logout() async {

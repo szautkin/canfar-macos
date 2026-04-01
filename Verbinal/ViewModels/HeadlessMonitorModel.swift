@@ -30,6 +30,9 @@ final class HeadlessMonitorModel {
     private var previousStateMap: [String: String] = [:]
     private var isFirstPoll = true
 
+    /// Called when API returns 401 — signals that the token has expired.
+    var onAuthFailure: (() -> Void)?
+
     init(headlessService: HeadlessService) {
         self.headlessService = headlessService
     }
@@ -54,6 +57,11 @@ final class HeadlessMonitorModel {
             jobs = fetched
             updateCounts()
             updateDockBadge()
+        } catch let error as NetworkError where error.isUnauthorized {
+            hasError = true
+            errorMessage = error.localizedDescription
+            stopMonitoring()
+            onAuthFailure?()
         } catch {
             hasError = true
             errorMessage = error.localizedDescription
