@@ -7,19 +7,28 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(AppState.self) private var appState
-    @State private var showAbout = false
+    @Environment(AppState.self) var appState
+    @State var showAbout = false
+    @State private var searchModel = SearchFormModel()
+    @State private var researchModel = ResearchModel()
 
     var body: some View {
         Group {
-            if appState.isAuthenticated {
-                authenticatedView
-            } else if appState.isLoading {
-                Spacer()
-                ProgressView("Checking authentication...")
-                Spacer()
-            } else {
-                welcomeView
+            switch appState.currentMode {
+            case .landing:
+                if appState.isLoading {
+                    Spacer()
+                    ProgressView("Checking authentication...")
+                    Spacer()
+                } else {
+                    landingContent
+                }
+            case .search:
+                searchContent
+            case .portal:
+                portalContent
+            case .research:
+                researchContent
             }
         }
         .sheet(isPresented: Bindable(appState).showLoginSheet) {
@@ -33,119 +42,117 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Authenticated
+    // MARK: - Landing
 
     @ViewBuilder
-    private var authenticatedView: some View {
+    private var landingContent: some View {
         #if os(macOS)
         VStack(spacing: 0) {
-            toolbarView
+            makeLandingToolbar(showAbout: $showAbout)
             Divider()
-            AuthenticatedRootView()
+            LandingView()
         }
         #else
-        AuthenticatedRootView()
+        LandingView()
         #endif
     }
 
-    // MARK: - Welcome
+    // MARK: - Search
 
-    private var welcomeView: some View {
-        VStack {
-            Spacer()
-            VStack(spacing: 16) {
-                Image("VerbinalIcon")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 96, height: 96)
-                Text("Welcome to Verbinal")
-                    .font(.title)
-                Text("A CANFAR Science Portal Companion")
-                    .foregroundStyle(.secondary)
-                Text(appState.statusMessage)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                Button("Login") {
-                    appState.showLoginSheet = true
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-            }
-            Spacer()
-        }
-    }
-
-    // MARK: - macOS Toolbar
-
-    #if os(macOS)
     @ViewBuilder
-    private var toolbarView: some View {
-        HStack(spacing: 12) {
-            Image("VerbinalIcon")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 24, height: 24)
-            Text("Verbinal")
-                .font(.headline)
-            Text("- a CANFAR Science Portal")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            Text(appState.statusMessage)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-
-            Spacer()
-
-            Button {
-                showAbout = true
-            } label: {
-                Image(systemName: "info.circle")
-            }
-            .buttonStyle(.borderless)
-
-            if appState.isLoading {
-                ProgressView()
-                    .scaleEffect(0.7)
-            }
-
-            if appState.isAuthenticated {
-                Menu {
-                    if let info = appState.userInfo {
-                        Section {
-                            Text(info.email ?? "")
-                            if let inst = info.institute {
-                                Text(inst)
-                            }
-                        }
-                    }
-                    Divider()
-                    Button("Logout") {
-                        Task { await appState.logout() }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.circle.fill")
-                        if let info = appState.userInfo,
-                           let first = info.firstName {
-                            Text([first, info.lastName].compactMap { $0 }.joined(separator: " "))
-                        } else {
-                            Text(appState.username)
+    private var searchContent: some View {
+        #if os(macOS)
+        VStack(spacing: 0) {
+            makeModeToolbar(title: "Search", showAbout: $showAbout)
+            Divider()
+            SearchRootView(searchModel: searchModel, researchModel: researchModel)
+        }
+        #else
+        NavigationStack {
+            SearchRootView(searchModel: searchModel, researchModel: researchModel)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            appState.currentMode = .landing
+                        } label: {
+                            Label("Back", systemImage: "chevron.left")
                         }
                     }
                 }
-            } else {
-                Button("Login") {
-                    appState.showLoginSheet = true
+        }
+        #endif
+    }
+
+    // MARK: - Research
+
+    @ViewBuilder
+    private var researchContent: some View {
+        #if os(macOS)
+        VStack(spacing: 0) {
+            makeModeToolbar(title: "Research", showAbout: $showAbout)
+            Divider()
+            ResearchRootView(researchModel: researchModel)
+        }
+        #else
+        NavigationStack {
+            ResearchRootView(researchModel: researchModel)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            appState.currentMode = .landing
+                        } label: {
+                            Label("Back", systemImage: "chevron.left")
+                        }
+                    }
                 }
-                .buttonStyle(.borderedProminent)
+        }
+        #endif
+    }
+
+    // MARK: - Portal
+
+    @ViewBuilder
+    private var portalContent: some View {
+        if appState.isAuthenticated {
+            #if os(macOS)
+            VStack(spacing: 0) {
+                makePortalToolbar(showAbout: $showAbout)
+                Divider()
+                AuthenticatedRootView()
+            }
+            #else
+            AuthenticatedRootView()
+            #endif
+        } else if appState.isLoading {
+            Spacer()
+            ProgressView("Authenticating...")
+            Spacer()
+        } else {
+            // Not authenticated — show prompt
+            VStack(spacing: 16) {
+                Spacer()
+                Image(systemName: "lock.circle")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.secondary)
+                Text("Login Required")
+                    .font(.title2)
+                Text("Sign in to access sessions and data management.")
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Button("Back") {
+                        appState.currentMode = .landing
+                    }
+                    .buttonStyle(.bordered)
+                    Button("Login") {
+                        appState.showLoginSheet = true
+                        appState.pendingModeAfterLogin = .portal
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
+                Spacer()
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(.bar)
     }
-    #endif
+
 }

@@ -7,6 +7,13 @@
 import Foundation
 import Observation
 
+enum AppMode: Equatable {
+    case landing
+    case search
+    case portal
+    case research
+}
+
 @Observable
 @MainActor
 final class AppState {
@@ -37,6 +44,10 @@ final class AppState {
         self.storageService = StorageService(network: network, endpoints: endpoints)
         self.headlessService = HeadlessService(network: network, endpoints: endpoints)
     }
+
+    // Navigation state
+    var currentMode: AppMode = .landing
+    var pendingModeAfterLogin: AppMode?
 
     // Auth state
     var isAuthenticated = false
@@ -88,6 +99,12 @@ final class AppState {
             .compactMap { $0 }
             .joined(separator: " ")
         self.statusMessage = "Welcome, \(displayName.isEmpty ? username : displayName)"
+
+        // Navigate to pending mode after login (e.g. Portal)
+        if let pending = pendingModeAfterLogin {
+            currentMode = pending
+            pendingModeAfterLogin = nil
+        }
 
         // Start headless job monitoring
         let monitor = HeadlessMonitorModel(headlessService: headlessService)
