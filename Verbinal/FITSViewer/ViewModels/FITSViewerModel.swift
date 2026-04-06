@@ -177,6 +177,18 @@ final class FITSViewerModel: Identifiable {
         viewport = FITSViewport()
     }
 
+    /// Navigate viewport to center on a world coordinate (RA/Dec).
+    func goToCoordinate(ra: Double, dec: Double) {
+        guard let wcs, let hdu = selectedHDU else { return }
+        guard let pixel = wcs.worldToPixel(ra: ra, dec: dec) else { return }
+        let displayY = Double(hdu.header.naxis2 - 1) - pixel.y
+        let imgW = Double(hdu.header.naxis1)
+        let imgH = Double(hdu.header.naxis2)
+        viewport.panX = -(pixel.x - imgW / 2) * viewport.zoom
+        viewport.panY = -(displayY - imgH / 2) * viewport.zoom
+        placeCrosshair(at: CGPoint(x: pixel.x, y: displayY))
+    }
+
     /// Fit image to canvas size by computing the right zoom level.
     func fitToWindow(canvasSize: CGSize) {
         guard let hdu = selectedHDU else {

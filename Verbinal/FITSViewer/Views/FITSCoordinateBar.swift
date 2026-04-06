@@ -37,7 +37,27 @@ struct FITSCoordinateBar: View {
                     .font(.system(.caption2, design: .monospaced))
             }
 
+            // Crosshair info (if placed)
+            if !model.crosshairRA.isEmpty {
+                Divider().frame(height: 12)
+                HStack(spacing: 4) {
+                    Image(systemName: "scope")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                    Text("\(model.crosshairRA) \(model.crosshairDec)")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.red.opacity(0.8))
+                    Text("= \(model.crosshairValue)")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Spacer()
+
+            Text(String(format: "%.0f%%", model.viewport.zoom * 100))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
 
             if let hdu = model.selectedHDU {
                 Text("\(hdu.header.naxis1) \u{00d7} \(hdu.header.naxis2)")

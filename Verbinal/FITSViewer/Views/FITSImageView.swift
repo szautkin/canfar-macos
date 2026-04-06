@@ -78,6 +78,14 @@ struct FITSImageView: View {
                 }
                 .contextMenu {
                     Button("Reset View") { model.fitToWindow(canvasSize: geometry.size) }
+                    if model.crosshairPixel != nil {
+                        Button("Clear Crosshair") {
+                            model.crosshairPixel = nil
+                            model.crosshairRA = ""
+                            model.crosshairDec = ""
+                            model.crosshairValue = ""
+                        }
+                    }
                     if model.wcs != nil {
                         Button("North Up") { model.applyNorthUp() }
                         Divider()
@@ -99,10 +107,19 @@ struct FITSImageView: View {
                     }
                 }
                 .overlay {
-                    // Invisible NSView to capture scroll events (SwiftUI has no scroll gesture)
-                    ScrollCaptureView { delta in
+                    ScrollCaptureView { delta, mouseLocation in
+                        let oldZoom = model.viewport.zoom
                         let zoomFactor = delta > 0 ? 1.1 : 0.9
-                        model.viewport.zoom = max(0.05, min(20, model.viewport.zoom * zoomFactor))
+                        let newZoom = max(0.05, min(20, oldZoom * zoomFactor))
+
+                        // Zoom toward cursor: adjust pan so the pixel under cursor stays fixed
+                        let canvasCenter = CGSize(width: geometry.size.width / 2, height: geometry.size.height / 2)
+                        let dx = mouseLocation.x - canvasCenter.width - model.viewport.panX
+                        let dy = mouseLocation.y - canvasCenter.height - model.viewport.panY
+                        let scale = 1 - newZoom / oldZoom
+                        model.viewport.panX += dx * scale
+                        model.viewport.panY += dy * scale
+                        model.viewport.zoom = newZoom
                         model.onZoomChanged?()
                     }
                 }
@@ -171,9 +188,9 @@ private struct CrosshairOverlay: View {
 #if os(macOS)
 import AppKit
 
-/// Invisible NSView that captures scroll wheel events and forwards delta to SwiftUI.
+/// Invisible NSView that captures scroll wheel events with mouse location.
 struct ScrollCaptureView: NSViewRepresentable {
-    let onScroll: (CGFloat) -> Void
+    let onScroll: (CGFloat, CGPoint) -> Void
 
     func makeNSView(context: Context) -> ScrollCaptureNSView {
         let view = ScrollCaptureNSView()
@@ -187,12 +204,14 @@ struct ScrollCaptureView: NSViewRepresentable {
 }
 
 class ScrollCaptureNSView: NSView {
-    var onScroll: ((CGFloat) -> Void)?
+    var onScroll: ((CGFloat, CGPoint) -> Void)?
 
     override func scrollWheel(with event: NSEvent) {
         let delta = event.scrollingDeltaY
         if abs(delta) > 0.1 {
-            onScroll?(delta)
+            let location = convert(event.locationInWindow, from: nil)
+            let flipped = CGPoint(x: location.x, y: bounds.height - location.y)
+            onScroll?(delta, flipped)
         }
     }
 

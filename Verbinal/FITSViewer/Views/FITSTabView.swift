@@ -10,6 +10,8 @@ import SwiftUI
 struct FITSTabView: View {
     var tabHost: FITSTabHostModel
     @State private var showHeader = false
+    @State private var showBookmarks = false
+    private let bookmarkStore = BookmarkStore()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -100,6 +102,11 @@ struct FITSTabView: View {
                             FITSHeaderPanel(model: activeModel)
                                 .frame(minHeight: 150)
                         }
+                        if showBookmarks {
+                            Divider()
+                            FITSBookmarkPanel(model: activeModel, store: bookmarkStore)
+                                .frame(minHeight: 100)
+                        }
                         Spacer()
                     }
                     .frame(minWidth: 200, idealWidth: 240, maxWidth: 300)
@@ -188,6 +195,13 @@ struct FITSTabView: View {
             }
             .buttonStyle(.bordered).controlSize(.small)
             .help("Toggle FITS header panel")
+
+            Button { showBookmarks.toggle() } label: {
+                Label("Bookmarks", systemImage: "bookmark")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered).controlSize(.small)
+            .help("Toggle coordinate bookmarks panel")
 
             Spacer()
         }
