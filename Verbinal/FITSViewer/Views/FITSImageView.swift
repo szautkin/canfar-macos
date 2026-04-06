@@ -20,6 +20,8 @@ struct FITSImageView: View {
                 let imgHeight = CGFloat(cgImage.height)
 
                 ZStack {
+                    Color.clear.onAppear { model.lastCanvasSize = geometry.size }
+                        .onChange(of: geometry.size) { _, newSize in model.lastCanvasSize = newSize }
                     Image(decorative: cgImage, scale: 1)
                         .resizable()
                         .interpolation(.none)
@@ -107,21 +109,27 @@ struct FITSImageView: View {
                     }
                 }
                 .overlay {
-                    ScrollCaptureView { delta, mouseLocation in
-                        let oldZoom = model.viewport.zoom
-                        let zoomFactor = delta > 0 ? 1.1 : 0.9
-                        let newZoom = max(0.05, min(20, oldZoom * zoomFactor))
+                    ScrollCaptureView(
+                        onScroll: { delta, mouseLocation in
+                            let oldZoom = model.viewport.zoom
+                            let zoomFactor = delta > 0 ? 1.1 : 0.9
+                            let newZoom = max(0.05, min(20, oldZoom * zoomFactor))
 
-                        // Zoom toward cursor: adjust pan so the pixel under cursor stays fixed
-                        let canvasCenter = CGSize(width: geometry.size.width / 2, height: geometry.size.height / 2)
-                        let dx = mouseLocation.x - canvasCenter.width - model.viewport.panX
-                        let dy = mouseLocation.y - canvasCenter.height - model.viewport.panY
-                        let scale = 1 - newZoom / oldZoom
-                        model.viewport.panX += dx * scale
-                        model.viewport.panY += dy * scale
-                        model.viewport.zoom = newZoom
-                        model.onZoomChanged?()
-                    }
+                            // Zoom toward cursor: adjust pan so the pixel under cursor stays fixed
+                            let canvasCenter = CGSize(width: geometry.size.width / 2, height: geometry.size.height / 2)
+                            let dx = mouseLocation.x - canvasCenter.width - model.viewport.panX
+                            let dy = mouseLocation.y - canvasCenter.height - model.viewport.panY
+                            let scale = 1 - newZoom / oldZoom
+                            model.viewport.panX += dx * scale
+                            model.viewport.panY += dy * scale
+                            model.viewport.zoom = newZoom
+                            model.onZoomChanged?()
+                        },
+                        onPan: { dx, dy in
+                            model.viewport.panX += dx
+                            model.viewport.panY += dy
+                        }
+                    )
                 }
                 #endif
             }
@@ -189,28 +197,43 @@ private struct CrosshairOverlay: View {
 import AppKit
 
 /// Invisible NSView that captures scroll wheel events with mouse location.
+/// Shift+scroll sends horizontal pan instead of zoom.
 struct ScrollCaptureView: NSViewRepresentable {
     let onScroll: (CGFloat, CGPoint) -> Void
+    var onPan: ((CGFloat, CGFloat) -> Void)?
 
     func makeNSView(context: Context) -> ScrollCaptureNSView {
         let view = ScrollCaptureNSView()
         view.onScroll = onScroll
+        view.onPan = onPan
         return view
     }
 
     func updateNSView(_ nsView: ScrollCaptureNSView, context: Context) {
         nsView.onScroll = onScroll
+        nsView.onPan = onPan
     }
 }
 
 class ScrollCaptureNSView: NSView {
     var onScroll: ((CGFloat, CGPoint) -> Void)?
+    var onPan: ((CGFloat, CGFloat) -> Void)?
 
     override func scrollWheel(with event: NSEvent) {
+        let location = convert(event.locationInWindow, from: nil)
+        let flipped = CGPoint(x: location.x, y: bounds.height - location.y)
+
+        // Shift+scroll → horizontal pan
+        if event.modifierFlags.contains(.shift) {
+            let dx = event.scrollingDeltaX != 0 ? event.scrollingDeltaX : event.scrollingDeltaY
+            if abs(dx) > 0.1 {
+                onPan?(dx, 0)
+            }
+            return
+        }
+
         let delta = event.scrollingDeltaY
         if abs(delta) > 0.1 {
-            let location = convert(event.locationInWindow, from: nil)
-            let flipped = CGPoint(x: location.x, y: bounds.height - location.y)
             onScroll?(delta, flipped)
         }
     }

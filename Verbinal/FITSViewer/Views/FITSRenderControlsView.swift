@@ -87,8 +87,7 @@ struct FITSRenderControlsView: View {
                 .pickerStyle(.menu)
                 HStack {
                     Button("Fit") {
-                        // Approximate fit using a typical canvas size
-                        model.fitToWindow(canvasSize: CGSize(width: 800, height: 600))
+                        model.fitToWindow(canvasSize: model.lastCanvasSize)
                     }
                     Button("1:1") { model.viewport.zoom = 1.0 }
                     if model.wcs != nil {

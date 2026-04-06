@@ -49,6 +49,14 @@ struct FITSTabView: View {
                         .toggleStyle(.button)
                         .controlSize(.mini)
                         .help("Sync crosshair position across tabs via WCS coordinates")
+                        .onChange(of: tabHost.linkedState.linkCrosshair) { _, enabled in
+                            if enabled {
+                                // Auto-enable North Up on all tabs (matches Windows behavior)
+                                for tab in tabHost.tabs {
+                                    tab.applyNorthUp()
+                                }
+                            }
+                        }
 
                         Toggle(isOn: Bindable(tabHost.linkedState).linkZoom) {
                             Label("Sync Zoom", systemImage: "arrow.up.left.and.arrow.down.right")
@@ -62,11 +70,35 @@ struct FITSTabView: View {
 
                         if tabHost.isBlinking {
                             Button { tabHost.stopBlink() } label: {
-                                Label("Stop Blink", systemImage: "stop.fill")
+                                Label("Stop", systemImage: "stop.fill")
                                     .font(.caption2)
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.mini)
+                            .keyboardShortcut(.escape, modifiers: [])
+
+                            Button { tabHost.toggleBlinkPause() } label: {
+                                Label(tabHost.isBlinkPaused ? "Resume" : "Pause", systemImage: tabHost.isBlinkPaused ? "play.fill" : "pause.fill")
+                                    .font(.caption2)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.mini)
+
+                            Button("A") { tabHost.showBlinkA() }
+                                .font(.caption2).buttonStyle(.bordered).controlSize(.mini)
+                                .help("Show image A")
+                            Button("B") { tabHost.showBlinkB() }
+                                .font(.caption2).buttonStyle(.bordered).controlSize(.mini)
+                                .help("Show image B")
+
+                            Slider(value: Bindable(tabHost).blinkInterval, in: 0.2...3.0, step: 0.1) {
+                                Text(String(format: "%.1fs", tabHost.blinkInterval))
+                                    .font(.caption2)
+                                    .frame(width: 30)
+                            }
+                            .frame(width: 120)
+                            .help("Blink interval")
+
                         } else if tabHost.tabs.count >= 2 {
                             Button {
                                 tabHost.startBlink(tabA: 0, tabB: 1)
@@ -76,7 +108,7 @@ struct FITSTabView: View {
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.mini)
-                            .help("Blink between first two tabs to detect differences")
+                            .help("Blink between first two tabs (Esc to stop)")
                         }
 
                         Spacer()

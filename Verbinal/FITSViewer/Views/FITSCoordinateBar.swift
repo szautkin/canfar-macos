@@ -8,6 +8,8 @@ import SwiftUI
 
 struct FITSCoordinateBar: View {
     var model: FITSViewerModel
+    @State private var zoomText: String = ""
+    @FocusState private var zoomFieldFocused: Bool
 
     var body: some View {
         HStack(spacing: 16) {
@@ -55,9 +57,27 @@ struct FITSCoordinateBar: View {
 
             Spacer()
 
-            Text(String(format: "%.0f%%", model.viewport.zoom * 100))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            TextField("Zoom", text: $zoomText)
+                .font(.system(.caption2, design: .monospaced))
+                .frame(width: 50)
+                .textFieldStyle(.roundedBorder)
+                .focused($zoomFieldFocused)
+                .onAppear { zoomText = String(format: "%.0f%%", model.viewport.zoom * 100) }
+                .onChange(of: model.viewport.zoom) { _, newZoom in
+                    if !zoomFieldFocused {
+                        zoomText = String(format: "%.0f%%", newZoom * 100)
+                    }
+                }
+                .onSubmit {
+                    let cleaned = zoomText.replacingOccurrences(of: "%", with: "").trimmingCharacters(in: .whitespaces)
+                    if let pct = Double(cleaned), pct > 0 {
+                        model.viewport.zoom = max(0.05, min(20, pct / 100.0))
+                        model.onZoomChanged?()
+                    }
+                    zoomText = String(format: "%.0f%%", model.viewport.zoom * 100)
+                    zoomFieldFocused = false
+                }
+                .help("Type zoom percentage and press Enter")
 
             if let hdu = model.selectedHDU {
                 Text("\(hdu.header.naxis1) \u{00d7} \(hdu.header.naxis2)")

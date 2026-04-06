@@ -17,9 +17,11 @@ final class FITSTabHostModel {
 
     // Blink state
     var isBlinking = false
+    var isBlinkPaused = false
     var blinkTabA: Int = 0
     var blinkTabB: Int = 1
     var blinkOpacity: Double = 1.0
+    var blinkInterval: TimeInterval = 0.8
     private var blinkTask: Task<Void, Never>?
 
     var activeTab: FITSViewerModel? {
@@ -85,7 +87,7 @@ final class FITSTabHostModel {
 
     // MARK: - Linked Zoom
 
-    /// When zoom changes in one tab, match angular extent in all others.
+    /// When zoom changes in one tab, match angular extent and orientation in all others.
     func propagateZoom(from sourceTab: FITSViewerModel) {
         guard linkedState.linkZoom, let sourceWCS = sourceTab.wcs else { return }
         let angularZoom = sourceWCS.pixelScaleArcsec / sourceTab.viewport.zoom
@@ -94,26 +96,33 @@ final class FITSTabHostModel {
         for tab in tabs where tab.id != sourceTab.id {
             if let wcs = tab.wcs {
                 tab.viewport.zoom = wcs.pixelScaleArcsec / angularZoom
+                // Match orientation: apply same North-relative rotation
+                let sourceNorth = -sourceWCS.northAngle * .pi / 180.0
+                let targetNorth = -wcs.northAngle * .pi / 180.0
+                let userRotation = sourceTab.viewport.rotation - sourceNorth
+                tab.viewport.rotation = targetNorth + userRotation
             }
         }
     }
 
     // MARK: - Blink Comparison
 
-    func startBlink(tabA: Int, tabB: Int, interval: TimeInterval = 0.8) {
+    func startBlink(tabA: Int, tabB: Int) {
         guard tabA < tabs.count, tabB < tabs.count, tabA != tabB else { return }
         blinkTabA = tabA
         blinkTabB = tabB
         isBlinking = true
+        isBlinkPaused = false
 
         blinkTask = Task { [weak self] in
             var showA = true
             while !Task.isCancelled {
                 guard let self else { break }
-                self.blinkOpacity = showA ? 1.0 : 0.0
-                self.activeTabIndex = showA ? self.blinkTabA : self.blinkTabB
-                showA.toggle()
-                try? await Task.sleep(for: .seconds(interval))
+                if !self.isBlinkPaused {
+                    self.activeTabIndex = showA ? self.blinkTabA : self.blinkTabB
+                    showA.toggle()
+                }
+                try? await Task.sleep(for: .seconds(self.blinkInterval))
             }
         }
     }
@@ -122,6 +131,21 @@ final class FITSTabHostModel {
         blinkTask?.cancel()
         blinkTask = nil
         isBlinking = false
+        isBlinkPaused = false
         blinkOpacity = 1.0
+    }
+
+    func toggleBlinkPause() {
+        isBlinkPaused.toggle()
+    }
+
+    func showBlinkA() {
+        isBlinkPaused = true
+        activeTabIndex = blinkTabA
+    }
+
+    func showBlinkB() {
+        isBlinkPaused = true
+        activeTabIndex = blinkTabB
     }
 }

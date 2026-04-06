@@ -38,6 +38,7 @@ final class FITSViewerModel: Identifiable {
     var isLoading = false
     var loadError: String?
     var fileURL: URL?
+    var lastCanvasSize: CGSize = CGSize(width: 800, height: 600)
 
     var selectedHDU: FITSHDUnit? {
         guard let file, selectedHDUIndex < file.hdus.count else { return nil }
