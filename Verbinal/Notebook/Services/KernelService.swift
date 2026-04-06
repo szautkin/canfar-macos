@@ -41,9 +41,14 @@ actor KernelService {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: pythonPath)
         proc.arguments = ["-u", harnessPath]
-        proc.environment = ProcessInfo.processInfo.environment
-        proc.environment?["PYTHONIOENCODING"] = "utf-8"
-        proc.environment?["PYTHONUNBUFFERED"] = "1"
+        // Build clean environment — remove sandbox variables so Python subprocess
+        // doesn't inherit App Sandbox restrictions (which block xcrun, pip, etc.)
+        var env = ProcessInfo.processInfo.environment
+        env.removeValue(forKey: "APP_SANDBOX_CONTAINER_ID")
+        env.removeValue(forKey: "APP_SANDBOX_CONTAINER_ID_ALLOW")
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUNBUFFERED"] = "1"
+        proc.environment = env
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()

@@ -606,10 +606,3 @@ private struct SyntaxHighlightedView: View {
 }
 #endif
 
-// MARK: - PythonDiscovery availability
-
-extension PythonDiscovery {
-    static var isPythonAvailable: Bool {
-        findPython3() != nil
-    }
-}

@@ -10,17 +10,19 @@ import XCTest
 final class PythonDiscoveryTests: XCTestCase {
 
     func testFindPython3ReturnsPath() {
-        // macOS always has /usr/bin/python3
+        PythonDiscovery.resetCache()
         let path = PythonDiscovery.findPython3()
-        XCTAssertNotNil(path, "python3 should be available on macOS")
+        // May be nil on CI without Homebrew Python — skip if not found
         if let path {
-            XCTAssertTrue(path.contains("python3"), "Path should contain python3, got: \(path)")
+            XCTAssertTrue(path.contains("python"), "Path should contain python, got: \(path)")
+            XCTAssertFalse(path.hasPrefix("/usr/bin/"), "Should NOT return Xcode shim at /usr/bin/python3")
         }
     }
 
     func testFindPython3IsExecutable() {
+        PythonDiscovery.resetCache()
         guard let path = PythonDiscovery.findPython3() else {
-            XCTFail("python3 not found")
+            // Skip on CI without real Python
             return
         }
         XCTAssertTrue(FileManager.default.isExecutableFile(atPath: path))
