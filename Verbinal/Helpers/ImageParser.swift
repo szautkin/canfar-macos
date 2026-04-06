@@ -64,21 +64,17 @@ enum ImageParser {
             let parsed = parse(raw)
             for type in parsed.types {
                 let typeLower = type.lowercased()
-                if result[typeLower] == nil {
-                    result[typeLower] = [:]
-                }
-                if result[typeLower]![parsed.project] == nil {
-                    result[typeLower]![parsed.project] = []
-                }
-                result[typeLower]![parsed.project]!.append(parsed)
+                result[typeLower, default: [:]][parsed.project, default: []].append(parsed)
             }
         }
 
         // Sort images within each project by version descending
         for type in result.keys {
-            for project in result[type]!.keys {
-                result[type]![project]!.sort { $0.label > $1.label }
+            guard var projects = result[type] else { continue }
+            for project in projects.keys {
+                projects[project]?.sort { $0.label > $1.label }
             }
+            result[type] = projects
         }
 
         return result

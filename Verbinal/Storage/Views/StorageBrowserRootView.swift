@@ -9,7 +9,6 @@ import SwiftUI
 struct StorageBrowserRootView: View {
     var model: StorageBrowserModel
 
-    @State private var newFolderName = ""
     @State private var showNewFolder = false
 
     var body: some View {
@@ -64,7 +63,7 @@ struct StorageBrowserRootView: View {
             await model.loadCurrentFolder()
         }
         .sheet(isPresented: $showNewFolder) {
-            newFolderSheet
+            StorageNewFolderSheet(model: model, isPresented: $showNewFolder)
         }
     }
 
@@ -175,33 +174,4 @@ struct StorageBrowserRootView: View {
         .padding(.vertical, 4)
     }
 
-    // MARK: - New Folder Sheet
-
-    private var newFolderSheet: some View {
-        VStack(spacing: 16) {
-            Text("New Folder")
-                .font(.headline)
-            TextField("Folder name", text: $newFolderName)
-                .textFieldStyle(.roundedBorder)
-            HStack {
-                Button("Cancel") {
-                    newFolderName = ""
-                    showNewFolder = false
-                }
-                .buttonStyle(.bordered)
-                Spacer()
-                Button("Create") {
-                    Task {
-                        await model.createFolder(name: newFolderName)
-                        newFolderName = ""
-                        showNewFolder = false
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(newFolderName.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        }
-        .padding()
-        .frame(width: 300)
-    }
 }

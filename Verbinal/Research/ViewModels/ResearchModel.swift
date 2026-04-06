@@ -14,8 +14,8 @@ import AppKit
 @Observable
 @MainActor
 final class ResearchModel {
-    let observationStore = ObservationStore()
-    let downloadService = DownloadService()
+    let observationStore: ObservationStore
+    let downloadService: DownloadService
 
     var activeDownloads: [UUID: DownloadProgress] = [:]
     var selectedObservation: DownloadedObservation?
@@ -23,6 +23,12 @@ final class ResearchModel {
     var storageUsed: Int64 = 0
     var lastError: String?
     var lastSuccess: String?
+
+    init(observationStore: ObservationStore = ObservationStore(),
+         downloadService: DownloadService = DownloadService()) {
+        self.observationStore = observationStore
+        self.downloadService = downloadService
+    }
 
     var filteredObservations: [DownloadedObservation] {
         guard !filterText.isEmpty else { return observationStore.observations }
@@ -159,10 +165,7 @@ final class ResearchModel {
 
     private func moveToFinal(from tempURL: URL, to saveURL: URL) -> URL? {
         do {
-            if FileManager.default.fileExists(atPath: saveURL.path) {
-                try FileManager.default.removeItem(at: saveURL)
-            }
-            try FileManager.default.moveItem(at: tempURL, to: saveURL)
+            try FileHelper.moveReplacing(from: tempURL, to: saveURL)
             return saveURL
         } catch {
             lastError = "Failed to save: \(error.localizedDescription)"

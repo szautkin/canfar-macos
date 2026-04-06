@@ -281,17 +281,10 @@ struct SearchResultsView: View {
 
         let response = panel.runModal()
         if response == .OK, let saveURL = panel.url {
-            try? moveExport(from: tempURL, to: saveURL)
+            try? FileHelper.moveReplacing(from: tempURL, to: saveURL)
         } else {
             try? FileManager.default.removeItem(at: tempURL)
         }
-    }
-
-    private func moveExport(from tempURL: URL, to saveURL: URL) throws {
-        if FileManager.default.fileExists(atPath: saveURL.path) {
-            try FileManager.default.removeItem(at: saveURL)
-        }
-        try FileManager.default.moveItem(at: tempURL, to: saveURL)
     }
     #endif
 }

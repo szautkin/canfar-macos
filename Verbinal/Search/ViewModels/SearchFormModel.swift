@@ -15,8 +15,8 @@ final class SearchFormModel {
     let formState = SearchFormState()
     let resultsModel = SearchResultsModel()
     let dataTrainModel: DataTrainModel
-    let recentSearchStore = RecentSearchStore()
-    let savedQueryStore = SavedQueryStore()
+    let recentSearchStore: RecentSearchStore
+    let savedQueryStore: SavedQueryStore
 
     let tapClient: TAPClient
     private let resolverService: TargetResolverService
@@ -39,12 +39,15 @@ final class SearchFormModel {
     // Debounce task for target resolution
     private var resolveTask: Task<Void, Never>?
 
-    init() {
-        let client = TAPClient()
-        self.tapClient = client
-        self.resolverService = TargetResolverService(tapClient: client)
+    init(tapClient: TAPClient = TAPClient(),
+         recentSearchStore: RecentSearchStore = RecentSearchStore(),
+         savedQueryStore: SavedQueryStore = SavedQueryStore()) {
+        self.tapClient = tapClient
+        self.recentSearchStore = recentSearchStore
+        self.savedQueryStore = savedQueryStore
+        self.resolverService = TargetResolverService(tapClient: tapClient)
         self.dataTrainModel = DataTrainModel(
-            dataTrainService: DataTrainService(tapClient: client)
+            dataTrainService: DataTrainService(tapClient: tapClient)
         )
     }
 
