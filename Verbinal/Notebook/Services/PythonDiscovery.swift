@@ -14,12 +14,10 @@ enum PythonDiscovery {
 
     /// Cached result to avoid re-scanning on every access.
     private static var _cachedPython: String?
-    private static var _didSearch = false
 
     /// Find a real Python 3 executable (not the Xcode shim).
     static func findPython3() -> String? {
-        if _didSearch { return _cachedPython }
-        _didSearch = true
+        if let cached = _cachedPython { return cached }
 
         let home = FileManager.default.homeDirectoryForCurrentUser.path
 
@@ -27,6 +25,7 @@ enum PythonDiscovery {
         let candidates = [
             // Homebrew (Apple Silicon)
             "/opt/homebrew/bin/python3",
+            "/opt/homebrew/bin/python3.14",
             "/opt/homebrew/bin/python3.13",
             "/opt/homebrew/bin/python3.12",
             "/opt/homebrew/bin/python3.11",
@@ -91,7 +90,6 @@ enum PythonDiscovery {
     /// Reset cached result (for testing).
     static func resetCache() {
         _cachedPython = nil
-        _didSearch = false
     }
 
     // MARK: - Private
