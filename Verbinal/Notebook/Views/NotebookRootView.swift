@@ -7,7 +7,10 @@
 import SwiftUI
 
 struct NotebookRootView: View {
+    @Environment(AppState.self) private var appState
     @State private var tabHost = NotebookTabHostModel()
+    @State private var showRecovery = false
+    @State private var recoverableFiles: [(url: URL, name: String, date: Date)] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,6 +25,27 @@ struct NotebookRootView: View {
                     NotebookView(model: model)
                 }
             }
+        }
+        .onChange(of: appState.pendingNotebookURL) { _, url in
+            guard let url else { return }
+            appState.pendingNotebookURL = nil
+            try? tabHost.openFile(url: url)
+        }
+        .task {
+            if tabHost.tabs.isEmpty {
+                let files = AutoSaveService.findRecoverableFiles()
+                if !files.isEmpty {
+                    recoverableFiles = files
+                    showRecovery = true
+                }
+            }
+        }
+        .sheet(isPresented: $showRecovery) {
+            NotebookRecoverySheet(
+                isPresented: $showRecovery,
+                recoverableFiles: $recoverableFiles,
+                tabHost: tabHost
+            )
         }
     }
 

@@ -11,6 +11,7 @@ struct StorageBrowserRootView: View {
 
     @State private var showNewFolder = false
     @State private var showDeleteConfirm = false
+    @State private var isDragTargeted = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -60,6 +61,20 @@ struct StorageBrowserRootView: View {
             Divider()
             statusBar
         }
+        #if os(macOS)
+        .onDrop(of: [.fileURL], isTargeted: $isDragTargeted) { providers in
+            Task {
+                for provider in providers {
+                    if let url = try? await provider.loadItem(forTypeIdentifier: "public.file-url") as? Data,
+                       let fileURL = URL(dataRepresentation: url, relativeTo: nil) {
+                        await model.uploadDroppedFile(fileURL)
+                    }
+                }
+            }
+            return true
+        }
+        .border(isDragTargeted ? Color.accentColor : Color.clear, width: 2)
+        #endif
         .task {
             await model.loadCurrentFolder()
         }

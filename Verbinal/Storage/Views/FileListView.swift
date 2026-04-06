@@ -60,6 +60,14 @@ struct FileListView: View {
                                     }
                                 }
                             }
+                            if node.fileExtension == "ipynb" {
+                                Button("Open in Notebook") {
+                                    Task {
+                                        model.selectedNode = node
+                                        await model.openInFITSViewer(node) // reuses download + onOpenFile callback
+                                    }
+                                }
+                            }
                         }
                         Button("Copy Path") {
                             let uri = model.vospaceURI(for: node)

@@ -265,10 +265,19 @@ struct ContentView: View {
 
     private func initStorageModel() {
         guard storageBrowserModel == nil, !appState.username.isEmpty else { return }
-        storageBrowserModel = StorageBrowserModel(
+        let model = StorageBrowserModel(
             service: VOSpaceBrowserService(network: appState.network),
             username: appState.username
         )
+        model.onOpenFile = { [weak appState] url in
+            let ext = url.pathExtension.lowercased()
+            if ["fits", "fit", "fts", "fz"].contains(ext) {
+                appState?.dispatch(.openFITS(url: url))
+            } else if ["ipynb", "py", "md"].contains(ext) {
+                appState?.dispatch(.openNotebook(url: url))
+            }
+        }
+        storageBrowserModel = model
     }
 
     private func handleFileOpen(_ url: URL) {

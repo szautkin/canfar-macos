@@ -7,6 +7,7 @@
 import SwiftUI
 
 struct FITSViewerRootView: View {
+    @Environment(AppState.self) private var appState
     @State private var tabHost = FITSTabHostModel()
 
     var body: some View {
@@ -36,6 +37,11 @@ struct FITSViewerRootView: View {
             } else {
                 FITSTabView(tabHost: tabHost)
             }
+        }
+        .onChange(of: appState.pendingFITSURL) { _, url in
+            guard let url else { return }
+            appState.pendingFITSURL = nil
+            Task { await tabHost.openFile(url: url) }
         }
     }
 }

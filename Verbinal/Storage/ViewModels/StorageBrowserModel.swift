@@ -204,6 +204,23 @@ final class StorageBrowserModel {
             errorMessage = error.localizedDescription
         }
     }
+
+    /// Upload a file dropped from Finder.
+    func uploadDroppedFile(_ fileURL: URL) async {
+        let fileName = fileURL.lastPathComponent
+        let remotePath = currentPath.isEmpty ? fileName : "\(currentPath)/\(fileName)"
+        isUploading = true
+        statusMessage = "Uploading \(fileName)..."
+        do {
+            try await service.uploadFile(username: username, remotePath: remotePath, fileURL: fileURL)
+            statusMessage = "Uploaded \(fileName)"
+            await loadCurrentFolder()
+        } catch {
+            hasError = true
+            errorMessage = error.localizedDescription
+        }
+        isUploading = false
+    }
     #endif
 
     func toggleSort(_ key: SortKey) {
