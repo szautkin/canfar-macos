@@ -58,22 +58,26 @@ final class FITSViewerModel: Identifiable {
         fileURL = url
 
         do {
-            let fitsFile = try FITSParser.parse(url: url)
-            guard let imageHDU = fitsFile.firstImageHDU else {
-                throw FITSError.noImageHDU
-            }
+            // Parse and extract pixels off the main thread
+            let (fitsFile, extractedPixels, cuts) = try await Task.detached {
+                let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                let fitsFile = try FITSParser.parse(from: data)
+                guard let imageHDU = fitsFile.firstImageHDU else {
+                    throw FITSError.noImageHDU
+                }
+                let pixels = try FITSParser.extractPixels(from: data, hdu: imageHDU)
+                let cuts = FITSParser.autoCut(pixels: pixels)
+                return (fitsFile, pixels, cuts)
+            }.value
 
             file = fitsFile
-            selectedHDUIndex = imageHDU.id
-
-            let data = try Data(contentsOf: url, options: .mappedIfSafe)
-            pixels = try FITSParser.extractPixels(from: data, hdu: imageHDU)
-
-            let cuts = FITSParser.autoCut(pixels: pixels)
+            selectedHDUIndex = fitsFile.firstImageHDU!.id
+            pixels = extractedPixels
             renderParams.minCut = cuts.min
             renderParams.maxCut = cuts.max
 
-            renderImage()
+            // Render off main thread too
+            await renderImageAsync()
         } catch {
             loadError = error.localizedDescription
         }
@@ -102,12 +106,20 @@ final class FITSViewerModel: Identifiable {
 
     func renderImage() {
         guard let hdu = selectedHDU, !pixels.isEmpty else { return }
-        renderedImage = FITSRenderEngine.render(
-            pixels: pixels,
-            width: hdu.header.naxis1,
-            height: hdu.header.naxis2,
-            params: renderParams
-        )
+        // Run rendering off main thread to avoid UI freeze
+        Task { await renderImageAsync() }
+    }
+
+    private func renderImageAsync() async {
+        guard let hdu = selectedHDU, !pixels.isEmpty else { return }
+        let px = pixels
+        let w = hdu.header.naxis1
+        let h = hdu.header.naxis2
+        let params = renderParams
+        let image = await Task.detached {
+            FITSRenderEngine.render(pixels: px, width: w, height: h, params: params)
+        }.value
+        renderedImage = image
     }
 
     // MARK: - Crosshair
@@ -163,6 +175,23 @@ final class FITSViewerModel: Identifiable {
 
     func resetViewport() {
         viewport = FITSViewport()
+    }
+
+    /// Fit image to canvas size by computing the right zoom level.
+    func fitToWindow(canvasSize: CGSize) {
+        guard let hdu = selectedHDU else {
+            resetViewport()
+            return
+        }
+        let imgW = CGFloat(hdu.header.naxis1)
+        let imgH = CGFloat(hdu.header.naxis2)
+        guard imgW > 0, imgH > 0 else { return }
+        let zoomX = canvasSize.width / imgW
+        let zoomY = canvasSize.height / imgH
+        viewport.zoom = min(zoomX, zoomY) * 0.95 // 5% margin
+        viewport.panX = 0
+        viewport.panY = 0
+        viewport.rotation = 0
     }
 
     #if os(macOS)

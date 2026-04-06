@@ -11,16 +11,16 @@ struct FITSImageView: View {
     var model: FITSViewerModel
 
     @State private var dragStart: CGPoint?
+    @State private var lastHoverPoint: CGPoint?
 
     var body: some View {
         GeometryReader { geometry in
             if let cgImage = model.renderedImage {
-                let image = Image(decorative: cgImage, scale: 1)
                 let imgWidth = CGFloat(cgImage.width)
                 let imgHeight = CGFloat(cgImage.height)
 
                 ZStack {
-                    image
+                    Image(decorative: cgImage, scale: 1)
                         .resizable()
                         .interpolation(.none)
                         .frame(
@@ -47,6 +47,7 @@ struct FITSImageView: View {
                 .onContinuousHover { phase in
                     switch phase {
                     case .active(let location):
+                        lastHoverPoint = location
                         let imgPoint = screenToImage(
                             location,
                             imgSize: CGSize(width: imgWidth, height: imgHeight),
@@ -62,16 +63,21 @@ struct FITSImageView: View {
                 }
                 #if os(macOS)
                 .onTapGesture(count: 1) {
-                    // Place crosshair at last known cursor position
-                    if let hdu = model.selectedHDU {
-                        // Use center of view as fallback
-                        let cx = CGFloat(hdu.header.naxis1) / 2
-                        let cy = CGFloat(hdu.header.naxis2) / 2
-                        model.placeCrosshair(at: CGPoint(x: cx, y: cy))
+                    // Place crosshair at last hover position (converted to image coords)
+                    if let hover = lastHoverPoint {
+                        let imgPoint = screenToImage(
+                            hover,
+                            imgSize: CGSize(width: imgWidth, height: imgHeight),
+                            canvasSize: geometry.size
+                        )
+                        if imgPoint.x >= 0, imgPoint.y >= 0,
+                           imgPoint.x < imgWidth, imgPoint.y < imgHeight {
+                            model.placeCrosshair(at: imgPoint)
+                        }
                     }
                 }
                 .contextMenu {
-                    Button("Reset View") { model.resetViewport() }
+                    Button("Reset View") { model.fitToWindow(canvasSize: geometry.size) }
                     if model.wcs != nil {
                         Button("North Up") { model.applyNorthUp() }
                         Divider()
@@ -92,11 +98,15 @@ struct FITSImageView: View {
                         }
                     }
                 }
-                #endif
-                .onScrollGesture { delta in
-                    let zoomFactor = delta > 0 ? 1.1 : 0.9
-                    model.viewport.zoom = max(0.1, min(20, model.viewport.zoom * zoomFactor))
+                .overlay {
+                    // Invisible NSView to capture scroll events (SwiftUI has no scroll gesture)
+                    ScrollCaptureView { delta in
+                        let zoomFactor = delta > 0 ? 1.1 : 0.9
+                        model.viewport.zoom = max(0.05, min(20, model.viewport.zoom * zoomFactor))
+                        model.onZoomChanged?()
+                    }
                 }
+                #endif
             }
         }
     }
@@ -143,12 +153,10 @@ private struct CrosshairOverlay: View {
 
     var body: some View {
         ZStack {
-            // Horizontal line
             Rectangle()
                 .fill(.red.opacity(0.7))
                 .frame(width: 20, height: 1)
                 .position(position)
-            // Vertical line
             Rectangle()
                 .fill(.red.opacity(0.7))
                 .frame(width: 1, height: 20)
@@ -158,19 +166,36 @@ private struct CrosshairOverlay: View {
     }
 }
 
-// MARK: - Scroll Gesture (macOS)
+// MARK: - NSView Scroll Capture (macOS)
 
-private struct ScrollGestureModifier: ViewModifier {
-    let action: (CGFloat) -> Void
+#if os(macOS)
+import AppKit
 
-    func body(content: Content) -> some View {
-        content
-            .onAppear {} // placeholder — actual scroll handling via NSView event
+/// Invisible NSView that captures scroll wheel events and forwards delta to SwiftUI.
+struct ScrollCaptureView: NSViewRepresentable {
+    let onScroll: (CGFloat) -> Void
+
+    func makeNSView(context: Context) -> ScrollCaptureNSView {
+        let view = ScrollCaptureNSView()
+        view.onScroll = onScroll
+        return view
+    }
+
+    func updateNSView(_ nsView: ScrollCaptureNSView, context: Context) {
+        nsView.onScroll = onScroll
     }
 }
 
-extension View {
-    func onScrollGesture(action: @escaping (CGFloat) -> Void) -> some View {
-        modifier(ScrollGestureModifier(action: action))
+class ScrollCaptureNSView: NSView {
+    var onScroll: ((CGFloat) -> Void)?
+
+    override func scrollWheel(with event: NSEvent) {
+        let delta = event.scrollingDeltaY
+        if abs(delta) > 0.1 {
+            onScroll?(delta)
+        }
     }
+
+    override var acceptsFirstResponder: Bool { true }
 }
+#endif

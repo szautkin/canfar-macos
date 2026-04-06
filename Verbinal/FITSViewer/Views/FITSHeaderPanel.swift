@@ -40,7 +40,7 @@ struct FITSHeaderPanel: View {
                 .font(.caption2)
                 .padding(.horizontal, 8)
 
-            List(filteredCards, id: \.keyword) { card in
+            List(Array(filteredCards.enumerated()), id: \.offset) { _, card in
                 VStack(alignment: .leading, spacing: 1) {
                     HStack {
                         Text(card.keyword)

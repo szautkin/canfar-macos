@@ -95,11 +95,13 @@ final class FITSViewerModelTests: XCTestCase {
         model.renderParams.minCut = 0
         model.renderParams.maxCut = 15
 
-        model.renderImage()
-
-        XCTAssertNotNil(model.renderedImage)
-        XCTAssertEqual(model.renderedImage?.width, 4)
-        XCTAssertEqual(model.renderedImage?.height, 4)
+        // Test the render engine directly since renderImage() is now async
+        let image = FITSRenderEngine.render(
+            pixels: model.pixels, width: 4, height: 4, params: model.renderParams
+        )
+        XCTAssertNotNil(image)
+        XCTAssertEqual(image?.width, 4)
+        XCTAssertEqual(image?.height, 4)
     }
 }
 

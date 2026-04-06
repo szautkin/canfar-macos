@@ -21,8 +21,11 @@ struct FITSWCSTransform: Sendable {
     var isValid: Bool { cd[0][0] != 0 || cd[1][1] != 0 }
 
     /// North angle in degrees (rotation from celestial North).
+    /// North angle in degrees. CD matrix is column-major:
+    /// cd[0] = (CD1_1, CD2_1), cd[1] = (CD1_2, CD2_2)
+    /// Formula: atan2(-CD1_2, CD2_2) = atan2(-cd[1][0], cd[1][1])
     var northAngle: Double {
-        atan2(-cd[0][1], cd[1][1]) * 180.0 / .pi
+        atan2(-cd[1][0], cd[1][1]) * 180.0 / .pi
     }
 
     /// True if image has parity flip (det(CD) > 0).

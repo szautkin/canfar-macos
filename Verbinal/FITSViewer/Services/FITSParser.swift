@@ -13,9 +13,16 @@ enum FITSParser {
     private static let cardSize = 80
     private static let cardsPerBlock = blockSize / cardSize // 36
 
-    /// Parse a FITS file into HDUs.
+    /// Parse a FITS file into HDUs from a URL.
     static func parse(url: URL) throws -> FITSFile {
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
+        return try parse(from: data, url: url)
+    }
+
+    /// Parse FITS from pre-loaded data (avoids double file load).
+    static func parse(from data: Data, url: URL? = nil) throws -> FITSFile {
+        let fileURL = url ?? URL(fileURLWithPath: "/unknown.fits")
+        let _ = fileURL // used below
         var offset = 0
         var hdus: [FITSHDUnit] = []
         var hduIndex = 0
@@ -53,7 +60,7 @@ enum FITSParser {
             hduIndex += 1
         }
 
-        return FITSFile(url: url, hdus: hdus)
+        return FITSFile(url: fileURL, hdus: hdus)
     }
 
     /// Parse header cards until END keyword.
