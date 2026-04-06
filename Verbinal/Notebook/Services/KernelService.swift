@@ -172,10 +172,9 @@ actor KernelService {
 
     private func resolveHarnessPath() throws -> String {
         // Try bundle first
-        if let url = Bundle.main.url(forResource: "kernel_harness", withExtension: "py") {
-            if FileManager.default.fileExists(atPath: url.path) {
-                return url.path
-            }
+        if let url = Bundle.main.url(forResource: "kernel_harness", withExtension: "py"),
+           FileManager.default.fileExists(atPath: url.path) {
+            return url.path
         }
 
         // Fallback: write harness to temp from embedded source
@@ -183,25 +182,15 @@ actor KernelService {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let destURL = tempDir.appendingPathComponent("kernel_harness.py")
 
-        // If already written and recent, reuse
+        // If already written, reuse
         if FileManager.default.fileExists(atPath: destURL.path) {
             return destURL.path
         }
 
-        // Try to find in project source (development builds)
-        let sourceLocations = [
-            Bundle.main.bundlePath + "/Contents/Resources/kernel_harness.py",
-            Bundle.main.resourcePath.map { $0 + "/kernel_harness.py" },
-        ].compactMap { $0 }
-
-        for loc in sourceLocations {
-            if FileManager.default.fileExists(atPath: loc) {
-                return loc
-            }
-        }
-
-        Self.logger.error("kernel_harness.py not found in bundle or temp")
-        throw KernelError.harnessNotFound
+        // Write embedded harness to temp (always available, no bundle dependency)
+        try EmbeddedKernelHarness.source.write(to: destURL, atomically: true, encoding: .utf8)
+        Self.logger.info("Wrote kernel harness to \(destURL.path)")
+        return destURL.path
     }
 
     // MARK: - Private: Background Readers

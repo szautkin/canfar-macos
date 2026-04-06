@@ -29,7 +29,12 @@ struct NotebookRootView: View {
         .onChange(of: appState.pendingNotebookURL) { _, url in
             guard let url else { return }
             appState.pendingNotebookURL = nil
-            try? tabHost.openFile(url: url)
+            do {
+                _ = url.startAccessingSecurityScopedResource()
+                try tabHost.openFile(url: url)
+            } catch {
+                tabHost.lastError = error.localizedDescription
+            }
         }
         .task {
             if tabHost.tabs.isEmpty {
@@ -114,12 +119,24 @@ struct NotebookRootView: View {
                     panel.message = "Select .ipynb, .py, or .md"
                     let response = panel.runModal()
                     if response == .OK, let url = panel.url {
-                        try? tabHost.openFile(url: url)
+                        do {
+                            _ = url.startAccessingSecurityScopedResource()
+                            try tabHost.openFile(url: url)
+                        } catch {
+                            tabHost.lastError = "Failed to open: \(error.localizedDescription)"
+                        }
                     }
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
                 #endif
+            }
+
+            if let error = tabHost.lastError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal)
             }
 
             if !PythonDiscovery.isPythonAvailable {
@@ -173,13 +190,19 @@ private struct NotebookView: View {
 
             // File operations
             #if os(macOS)
-            Button { try? model.openWithPicker() } label: {
+            Button {
+                do { try model.openWithPicker() }
+                catch { model.errorMessage = error.localizedDescription }
+            } label: {
                 Image(systemName: "doc.badge.plus")
             }
             .buttonStyle(.borderless)
             .help("Open file (Cmd+O)")
 
-            Button { try? model.saveFile() } label: {
+            Button {
+                do { try model.saveFile() }
+                catch { model.errorMessage = error.localizedDescription }
+            } label: {
                 Image(systemName: "square.and.arrow.down")
             }
             .buttonStyle(.borderless)

@@ -13,6 +13,7 @@ import Observation
 final class NotebookTabHostModel {
     var tabs: [NotebookModel] = []
     var activeTabIndex: Int = 0
+    var lastError: String?
 
     var activeTab: NotebookModel? {
         guard activeTabIndex >= 0, activeTabIndex < tabs.count else { return nil }
