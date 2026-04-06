@@ -36,6 +36,53 @@ struct FITSTabView: View {
                 }
                 .frame(height: 28)
                 .background(.bar)
+
+                // Linked controls (only with multiple tabs)
+                if tabHost.hasMultipleTabs {
+                    HStack(spacing: 8) {
+                        Toggle(isOn: Bindable(tabHost.linkedState).linkCrosshair) {
+                            Label("Link Crosshair", systemImage: "scope")
+                                .font(.caption2)
+                        }
+                        .toggleStyle(.button)
+                        .controlSize(.mini)
+                        .help("Sync crosshair position across tabs via WCS coordinates")
+
+                        Toggle(isOn: Bindable(tabHost.linkedState).linkZoom) {
+                            Label("Sync Zoom", systemImage: "arrow.up.left.and.arrow.down.right")
+                                .font(.caption2)
+                        }
+                        .toggleStyle(.button)
+                        .controlSize(.mini)
+                        .help("Match angular extent across tabs")
+
+                        Divider().frame(height: 12)
+
+                        if tabHost.isBlinking {
+                            Button { tabHost.stopBlink() } label: {
+                                Label("Stop Blink", systemImage: "stop.fill")
+                                    .font(.caption2)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.mini)
+                        } else if tabHost.tabs.count >= 2 {
+                            Button {
+                                tabHost.startBlink(tabA: 0, tabB: 1)
+                            } label: {
+                                Label("Blink", systemImage: "eye.slash")
+                                    .font(.caption2)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.mini)
+                            .help("Blink between first two tabs to detect differences")
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                }
+
                 Divider()
             }
 

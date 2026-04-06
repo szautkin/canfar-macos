@@ -14,7 +14,8 @@ import AppKit
 /// Per-file FITS viewer state.
 @Observable
 @MainActor
-final class FITSViewerModel {
+final class FITSViewerModel: Identifiable {
+    let id = UUID()
     var file: FITSFile?
     var selectedHDUIndex = 0
     var renderParams = FITSRenderParams()
@@ -111,6 +112,11 @@ final class FITSViewerModel {
 
     // MARK: - Crosshair
 
+    /// Callback for linked crosshair — set by tab host.
+    var onCrosshairPlaced: ((Double, Double) -> Void)?
+    /// Callback for linked zoom — set by tab host.
+    var onZoomChanged: (() -> Void)?
+
     /// Place crosshair at image pixel (0-based, display-space Y already flipped).
     func placeCrosshair(at point: CGPoint) {
         guard let hdu = selectedHDU else { return }
@@ -122,11 +128,11 @@ final class FITSViewerModel {
         }
 
         if let wcs {
-            // Convert display-space to FITS-space (un-flip Y)
             let fitsY = Double(hdu.header.naxis2 - 1) - point.y
             let (ra, dec) = wcs.pixelToWorld(x: point.x, y: fitsY)
             crosshairRA = FITSWCSTransform.formatRA(ra)
             crosshairDec = FITSWCSTransform.formatDec(dec)
+            onCrosshairPlaced?(ra, dec)
         }
     }
 
