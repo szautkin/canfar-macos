@@ -26,17 +26,14 @@ struct LandingView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // Tiles
-            HStack(spacing: 24) {
-                LandingTile(
-                    icon: "scope",
-                    fallbackIcon: "magnifyingglass.circle.fill",
-                    title: "Search",
-                    subtitle: "Explore the CADC archive"
-                ) {
-                    appState.navigateTo(.search)
-                }
+            // Tiles: 3 columns × 2 rows
+            let tileColumns = [
+                GridItem(.fixed(200), spacing: 20),
+                GridItem(.fixed(200), spacing: 20),
+                GridItem(.fixed(200), spacing: 20),
+            ]
 
+            LazyVGrid(columns: tileColumns, spacing: 20) {
                 LandingTile(
                     icon: "desktopcomputer",
                     fallbackIcon: "display",
@@ -49,6 +46,15 @@ struct LandingView: View {
                         appState.showLoginSheet = true
                         appState.pendingModeAfterLogin = .portal
                     }
+                }
+
+                LandingTile(
+                    icon: "scope",
+                    fallbackIcon: "magnifyingglass.circle.fill",
+                    title: "Search",
+                    subtitle: "Explore the CADC archive"
+                ) {
+                    appState.navigateTo(.search)
                 }
 
                 LandingTile(
@@ -75,15 +81,6 @@ struct LandingView: View {
                 }
 
                 LandingTile(
-                    icon: "star.circle.fill",
-                    fallbackIcon: "star.circle.fill",
-                    title: "FITS Viewer",
-                    subtitle: "View astronomical images"
-                ) {
-                    appState.navigateTo(.fitsViewer)
-                }
-
-                LandingTile(
                     icon: "terminal",
                     fallbackIcon: "doc.text",
                     title: "Notebook",
@@ -91,8 +88,16 @@ struct LandingView: View {
                 ) {
                     appState.navigateTo(.notebook)
                 }
+
+                LandingTile(
+                    icon: "star.circle.fill",
+                    fallbackIcon: "star.circle.fill",
+                    title: "FITS Viewer",
+                    subtitle: "View astronomical images"
+                ) {
+                    appState.navigateTo(.fitsViewer)
+                }
             }
-            .padding(.horizontal, 32)
 
             if !appState.statusMessage.isEmpty {
                 Text(appState.statusMessage)
