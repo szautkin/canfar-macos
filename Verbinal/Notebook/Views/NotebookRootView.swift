@@ -150,6 +150,32 @@ struct NotebookRootView: View {
                 }
             }
 
+            // Recent notebooks
+            if !tabHost.recentNotebooks.entries.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Recent Notebooks")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                    ForEach(tabHost.recentNotebooks.entries.prefix(5)) { entry in
+                        Button {
+                            let url = URL(fileURLWithPath: entry.path)
+                            _ = url.startAccessingSecurityScopedResource()
+                            do { try tabHost.openFile(url: url) }
+                            catch { tabHost.lastError = error.localizedDescription }
+                        } label: {
+                            HStack {
+                                Image(systemName: "doc.text")
+                                    .font(.caption2)
+                                Text(entry.name)
+                                    .font(.caption)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.top, 8)
+            }
+
             Spacer()
         }
     }
@@ -159,6 +185,10 @@ struct NotebookRootView: View {
 
 private struct NotebookView: View {
     @Bindable var model: NotebookModel
+    #if os(macOS)
+    @State private var keyMonitor: Any?
+    @State private var pendingDeleteTime: Date?
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
@@ -166,6 +196,10 @@ private struct NotebookView: View {
             Divider()
             cellListView
         }
+        #if os(macOS)
+        .onAppear { installKeyMonitor() }
+        .onDisappear { removeKeyMonitor() }
+        #endif
         .alert("Missing Python Packages", isPresented: Bindable(model).showDependencyAlert) {
             Button("Install") { Task { await model.installMissingPackages() } }
             Button("Skip", role: .cancel) { model.missingPackages = [] }
@@ -173,6 +207,68 @@ private struct NotebookView: View {
             Text("The following packages are needed:\n\(model.missingPackages.joined(separator: ", "))\n\nInstall them via pip?")
         }
     }
+
+    // MARK: - Keyboard Handler
+
+    #if os(macOS)
+    private func installKeyMonitor() {
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // Pass through Cmd/Option combos — system shortcuts
+            guard event.modifierFlags.intersection([.command, .option]).isEmpty else { return event }
+
+            // Edit mode: only handle Escape
+            if model.isEditMode {
+                if event.keyCode == 53 { // Escape
+                    model.isEditMode = false
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                    return nil
+                }
+                return event
+            }
+
+            // Command mode
+            guard model.selectedCellId != nil else { return event }
+            let chars = event.charactersIgnoringModifiers ?? ""
+
+            switch chars {
+            case "a": model.addCellAbove(); return nil
+            case "b": model.addCellBelow(); return nil
+            case "y": model.changeCellType(.code); return nil
+            case "m": model.changeCellType(.markdown); return nil
+            case "c": model.copyCell(); return nil
+            case "v": model.pasteCell(); return nil
+            case "o": model.toggleOutputCollapse(); return nil
+            case "d":
+                let now = Date()
+                if let prev = pendingDeleteTime, now.timeIntervalSince(prev) < 0.5 {
+                    model.deleteSelectedCell()
+                    pendingDeleteTime = nil
+                } else {
+                    pendingDeleteTime = now
+                }
+                return nil
+            case "\r": // Enter → edit mode
+                model.isEditMode = true
+                return nil
+            default:
+                break
+            }
+
+            // Arrow keys
+            if event.keyCode == 126 || chars == "k" { model.selectPreviousCell(); return nil } // Up
+            if event.keyCode == 125 || chars == "j" { model.selectNextCell(); return nil } // Down
+
+            return event
+        }
+    }
+
+    private func removeKeyMonitor() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
+    }
+    #endif
 
     // MARK: - Toolbar
 
@@ -334,15 +430,64 @@ private struct CellView: View {
 
             // Right content — source + outputs
             VStack(alignment: .leading, spacing: 0) {
-                TextEditor(text: $cell.source)
-                    .font(.system(.caption, design: .monospaced))
-                    .scrollContentBackground(.hidden)
-                    .frame(minHeight: 36, maxHeight: 300)
-                    .onChange(of: cell.source) { _, _ in model.isDirty = true }
+                // Dual-view: edit mode shows editor, command mode shows rendered
+                let isThisCellEditing = model.selectedCellId == cell.id && model.isEditMode
+
+                if cell.cellType == .markdown && !isThisCellEditing {
+                    // Rendered markdown
+                    Group {
+                        if let attributed = try? AttributedString(markdown: cell.source, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                            Text(attributed)
+                                .font(.caption)
+                                .textSelection(.enabled)
+                        } else {
+                            Text(cell.source)
+                                .font(.caption)
+                        }
+                    }
+                    .frame(minHeight: 30, maxHeight: 300, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(4)
                     .onTapGesture {
                         model.selectedCellId = cell.id
                         model.isEditMode = true
                     }
+                } else if cell.cellType == .code && !isThisCellEditing {
+                    // Syntax-highlighted read-only view (command mode)
+                    #if os(macOS)
+                    SyntaxHighlightedView(source: cell.source)
+                        .frame(minHeight: 30, maxHeight: 300)
+                        .onTapGesture {
+                            model.selectedCellId = cell.id
+                            model.isEditMode = true
+                        }
+                    #else
+                    Text(cell.source)
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(minHeight: 30, maxHeight: 300)
+                    #endif
+                } else {
+                    // Editable (edit mode)
+                    #if os(macOS)
+                    if cell.cellType == .code {
+                        PythonTextEditor(text: $cell.source)
+                            .frame(minHeight: 36, maxHeight: 300)
+                            .onChange(of: cell.source) { _, _ in model.isDirty = true }
+                    } else {
+                        TextEditor(text: $cell.source)
+                            .font(.system(.caption, design: .monospaced))
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 36, maxHeight: 300)
+                            .onChange(of: cell.source) { _, _ in model.isDirty = true }
+                    }
+                    #else
+                    TextEditor(text: $cell.source)
+                        .font(.system(.caption, design: .monospaced))
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 36, maxHeight: 300)
+                        .onChange(of: cell.source) { _, _ in model.isDirty = true }
+                    #endif
+                }
 
                 // Outputs
                 if !cell.outputs.isEmpty && !cell.isOutputCollapsed {
@@ -401,10 +546,16 @@ private struct CellView: View {
                 .foregroundStyle(.blue)
                 .textSelection(.enabled)
         case .error:
+            #if os(macOS)
+            Text(AttributedString(AnsiColorParser.parse(output.text)))
+                .font(.system(.caption, design: .monospaced))
+                .textSelection(.enabled)
+            #else
             Text(output.text)
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.red)
                 .textSelection(.enabled)
+            #endif
         case .image:
             #if os(macOS)
             if let b64 = output.imageBase64,
@@ -416,9 +567,44 @@ private struct CellView: View {
                     .frame(maxHeight: 400)
             }
             #endif
+        case .html:
+            Text(SimpleHtmlRenderer.render(output.text))
+                .font(.system(.caption, design: .monospaced))
+                .textSelection(.enabled)
         }
     }
 }
+
+// MARK: - Syntax-highlighted read-only view
+
+#if os(macOS)
+private struct SyntaxHighlightedView: View {
+    let source: String
+
+    var body: some View {
+        let tokens = PythonHighlighter.tokens(in: source)
+        let attributed = buildAttributedString(tokens: tokens)
+        Text(AttributedString(attributed))
+            .font(.system(.caption, design: .monospaced))
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(4)
+    }
+
+    private func buildAttributedString(tokens: [PythonToken]) -> NSAttributedString {
+        let nsSource = source as NSString
+        let result = NSMutableAttributedString(string: source, attributes: [
+            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular),
+            .foregroundColor: NSColor.labelColor,
+        ])
+        for token in tokens {
+            guard token.range.location + token.range.length <= nsSource.length else { continue }
+            result.addAttribute(.foregroundColor, value: token.kind.color, range: token.range)
+        }
+        return result
+    }
+}
+#endif
 
 // MARK: - PythonDiscovery availability
 

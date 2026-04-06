@@ -29,6 +29,7 @@ struct CellOutput: Identifiable {
         case result
         case error
         case image
+        case html
     }
 }
 

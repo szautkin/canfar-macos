@@ -288,6 +288,8 @@ actor KernelService {
                 if let data = dict["data"] as? [String: Any] {
                     if let b64 = data["image/png"] as? String {
                         outputs.append(CellOutput(type: .image, text: "", imageBase64: b64))
+                    } else if let html = data["text/html"] as? String {
+                        outputs.append(CellOutput(type: .html, text: html, imageBase64: nil))
                     } else if let text = data["text/plain"] as? String {
                         outputs.append(CellOutput(type: .result, text: text, imageBase64: nil))
                     }
