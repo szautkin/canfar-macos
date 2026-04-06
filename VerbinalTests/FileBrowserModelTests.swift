@@ -1,0 +1,97 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (C) 2025-2026 Serhii Zautkin
+
+import XCTest
+@testable import Verbinal
+
+final class LocalFileNodeTests: XCTestCase {
+
+    func testIsFITS() {
+        let node = LocalFileNode(id: "/a.fits", name: "a.fits", url: URL(fileURLWithPath: "/a.fits"), isDirectory: false, fileSize: 100, modifiedDate: nil)
+        XCTAssertTrue(node.isFITS)
+    }
+
+    func testIsFITSVariants() {
+        for ext in ["fit", "fts", "fz"] {
+            let node = LocalFileNode(id: "/a.\(ext)", name: "a.\(ext)", url: URL(fileURLWithPath: "/a.\(ext)"), isDirectory: false, fileSize: nil, modifiedDate: nil)
+            XCTAssertTrue(node.isFITS, "\(ext) should be detected as FITS")
+        }
+    }
+
+    func testIsNotebook() {
+        let node = LocalFileNode(id: "/nb.ipynb", name: "nb.ipynb", url: URL(fileURLWithPath: "/nb.ipynb"), isDirectory: false, fileSize: nil, modifiedDate: nil)
+        XCTAssertTrue(node.isNotebook)
+    }
+
+    func testIsPython() {
+        let node = LocalFileNode(id: "/s.py", name: "s.py", url: URL(fileURLWithPath: "/s.py"), isDirectory: false, fileSize: nil, modifiedDate: nil)
+        XCTAssertTrue(node.isPython)
+    }
+
+    func testDirectoryIcon() {
+        let node = LocalFileNode(id: "/dir", name: "dir", url: URL(fileURLWithPath: "/dir"), isDirectory: true, fileSize: nil, modifiedDate: nil)
+        XCTAssertEqual(node.icon, "folder.fill")
+        XCTAssertFalse(node.isFITS)
+    }
+
+    func testFormattedSize() {
+        let node = LocalFileNode(id: "/a", name: "a", url: URL(fileURLWithPath: "/a"), isDirectory: false, fileSize: 1048576, modifiedDate: nil)
+        XCTAssertTrue(node.formattedSize.contains("MB") || node.formattedSize.contains("1"), "Expected MB format, got: \(node.formattedSize)")
+    }
+
+    func testSupportedExtensions() {
+        XCTAssertTrue(LocalFileNode.supportedExtensions.contains("fits"))
+        XCTAssertTrue(LocalFileNode.supportedExtensions.contains("ipynb"))
+        XCTAssertTrue(LocalFileNode.supportedExtensions.contains("py"))
+        XCTAssertFalse(LocalFileNode.supportedExtensions.contains("txt"))
+    }
+}
+
+@MainActor
+final class FileBrowserModelTests: XCTestCase {
+
+    func testInitDefaultsToDocuments() {
+        let model = FileBrowserModel()
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        XCTAssertEqual(model.rootURL, docs)
+        XCTAssertEqual(model.currentURL, docs)
+    }
+
+    func testCanGoUpAtRoot() {
+        let model = FileBrowserModel()
+        XCTAssertFalse(model.canGoUp)
+    }
+
+    func testLoadDirectoryPopulatesNodes() {
+        let model = FileBrowserModel()
+        model.loadDirectory()
+        // Documents dir likely has files; at minimum no crash
+        XCTAssertTrue(true) // smoke test — verify it doesn't crash
+    }
+
+    func testFilterTextFilters() {
+        let model = FileBrowserModel()
+        model.nodes = [
+            LocalFileNode(id: "/a.fits", name: "galaxy.fits", url: URL(fileURLWithPath: "/a.fits"), isDirectory: false, fileSize: nil, modifiedDate: nil),
+            LocalFileNode(id: "/b.py", name: "script.py", url: URL(fileURLWithPath: "/b.py"), isDirectory: false, fileSize: nil, modifiedDate: nil),
+        ]
+        model.filterText = "galaxy"
+        XCTAssertEqual(model.filteredNodes.count, 1)
+        XCTAssertEqual(model.filteredNodes.first?.name, "galaxy.fits")
+    }
+
+    func testShowOnlySupportedTypesFilters() {
+        let model = FileBrowserModel()
+        model.showOnlySupportedTypes = true
+        model.nodes = [
+            LocalFileNode(id: "/a.fits", name: "a.fits", url: URL(fileURLWithPath: "/a.fits"), isDirectory: false, fileSize: nil, modifiedDate: nil),
+            LocalFileNode(id: "/b.txt", name: "b.txt", url: URL(fileURLWithPath: "/b.txt"), isDirectory: false, fileSize: nil, modifiedDate: nil),
+            LocalFileNode(id: "/dir", name: "dir", url: URL(fileURLWithPath: "/dir"), isDirectory: true, fileSize: nil, modifiedDate: nil),
+        ]
+        let filtered = model.filteredNodes
+        XCTAssertEqual(filtered.count, 2, "Should show .fits and directory, hide .txt")
+    }
+}

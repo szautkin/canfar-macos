@@ -16,7 +16,12 @@ enum VOSpaceXMLParser {
         return nodeElements.compactMap { element -> VOSpaceNode? in
             guard let uri = element.attributes["uri"], !uri.isEmpty else { return nil }
 
-            let name = uri.contains("/") ? String(uri[uri.index(after: uri.lastIndex(of: "/")!)...]) : uri
+            let name: String
+            if let lastSlash = uri.lastIndex(of: "/") {
+                name = String(uri[uri.index(after: lastSlash)...])
+            } else {
+                name = uri
+            }
             let path = extractPath(uri)
 
             let xsiType = element.attributes["xsi:type"] ?? element.attributes["type"] ?? ""

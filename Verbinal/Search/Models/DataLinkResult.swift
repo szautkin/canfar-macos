@@ -68,7 +68,12 @@ extension DataLinkResult {
             let semantics = cells[semanticsIdx]
             guard !accessUrl.isEmpty, let url = URL(string: accessUrl) else { continue }
 
-            let contentType = (contentTypeIdx != nil && contentTypeIdx! < cells.count) ? cells[contentTypeIdx!] : ""
+            let contentType: String
+            if let ctIdx = contentTypeIdx, ctIdx < cells.count {
+                contentType = cells[ctIdx]
+            } else {
+                contentType = ""
+            }
 
             if semantics == "#thumbnail" {
                 thumbnails.append(url)

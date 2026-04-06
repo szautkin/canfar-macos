@@ -55,7 +55,7 @@ struct DownloadedFilesView: View {
                     let grouped = Dictionary(grouping: model.filteredObservations, by: \.collection)
                     ForEach(grouped.keys.sorted(), id: \.self) { collection in
                         Section(collection) {
-                            ForEach(grouped[collection]!) { obs in
+                            ForEach(grouped[collection] ?? []) { obs in
                                 observationRow(obs)
                                     .tag(obs.id)
                                     .contextMenu {

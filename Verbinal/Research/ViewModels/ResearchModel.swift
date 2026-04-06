@@ -108,7 +108,13 @@ final class ResearchModel {
 
     func deleteObservation(_ observation: DownloadedObservation) {
         let url = URL(fileURLWithPath: observation.localPath)
-        Task { try? await downloadService.deleteFile(at: url) }
+        Task {
+            do {
+                try await downloadService.deleteFile(at: url)
+            } catch {
+                lastError = "Failed to delete file: \(error.localizedDescription)"
+            }
+        }
         observationStore.remove(observation)
         if selectedObservation?.id == observation.id {
             selectedObservation = nil
