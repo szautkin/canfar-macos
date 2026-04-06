@@ -32,6 +32,8 @@ struct ContentView: View {
                 researchContent
             case .storage:
                 storageContent
+            case .fitsViewer:
+                fitsViewerContent
             }
         }
         .sheet(isPresented: Bindable(appState).showLoginSheet) {
@@ -105,6 +107,21 @@ struct ContentView: View {
                     }
                 }
         }
+        #endif
+    }
+
+    // MARK: - FITS Viewer
+
+    @ViewBuilder
+    private var fitsViewerContent: some View {
+        #if os(macOS)
+        VStack(spacing: 0) {
+            makeModeToolbar(title: "FITS Viewer", showAbout: $showAbout)
+            Divider()
+            FITSViewerRootView()
+        }
+        #else
+        FITSViewerRootView()
         #endif
     }
 

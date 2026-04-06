@@ -13,6 +13,7 @@ enum AppMode: Equatable {
     case portal
     case research
     case storage
+    case fitsViewer
 }
 
 @Observable

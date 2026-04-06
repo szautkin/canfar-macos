@@ -73,6 +73,15 @@ struct LandingView: View {
                         appState.pendingModeAfterLogin = .storage
                     }
                 }
+
+                LandingTile(
+                    icon: "star.circle.fill",
+                    fallbackIcon: "star.circle.fill",
+                    title: "FITS Viewer",
+                    subtitle: "View astronomical images"
+                ) {
+                    appState.navigateTo(.fitsViewer)
+                }
             }
             .padding(.horizontal, 32)
 
