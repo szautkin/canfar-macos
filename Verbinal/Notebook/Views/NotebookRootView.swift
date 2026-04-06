@@ -340,6 +340,19 @@ private struct NotebookView: View {
 
             Spacer()
 
+            if model.isInstallingPackages {
+                HStack(spacing: 4) {
+                    ProgressView().scaleEffect(0.5)
+                    Text(model.installStatusMessage ?? "Installing...")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+            } else if let status = model.installStatusMessage {
+                Label(status, systemImage: "checkmark.circle")
+                    .font(.caption2)
+                    .foregroundStyle(.green)
+            }
+
             if let error = model.errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption2)

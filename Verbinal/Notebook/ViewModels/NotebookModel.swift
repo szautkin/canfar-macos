@@ -26,6 +26,8 @@ final class NotebookModel: Identifiable {
     var errorMessage: String?
     var missingPackages: [String] = []
     var showDependencyAlert = false
+    var isInstallingPackages = false
+    var installStatusMessage: String?
 
     // File state
     var filePath: URL?
@@ -341,21 +343,44 @@ final class NotebookModel: Identifiable {
     }
 
     func installMissingPackages() async {
-        guard let pythonPath = PythonDiscovery.findPython3(), !missingPackages.isEmpty else { return }
+        guard !missingPackages.isEmpty else { return }
         let packages = missingPackages.joined(separator: " ")
-        // Run via kernel harness %pip install
+
+        isInstallingPackages = true
+        installStatusMessage = "Installing \(missingPackages.count) package(s)..."
+
         if !isKernelRunning { await startKernel() }
-        guard isKernelRunning else { return }
+        guard isKernelRunning else {
+            isInstallingPackages = false
+            installStatusMessage = "Failed: kernel not running"
+            return
+        }
 
         let code = "%pip install \(packages)"
         let outputs = try? await kernelService.execute(code: code, execCount: 0)
-        // Show install results in a temporary cell
+
+        // Show results in a cell at the top
+        let installCell = NotebookCell(cellType: .code, source: "# Installed: \(packages)")
         if let outputs, !outputs.isEmpty {
-            let installCell = NotebookCell(cellType: .code, source: "# Package installation")
             installCell.outputs = outputs
-            cells.insert(installCell, at: 0)
+            // Check if any output contains "Successfully installed"
+            let success = outputs.contains { $0.text.contains("Successfully installed") }
+            installStatusMessage = success ? "Packages installed successfully" : "Installation completed (check output for details)"
+        } else {
+            installCell.outputs = [CellOutput(type: .stdout, text: "pip install completed", imageBase64: nil)]
+            installStatusMessage = "Installation completed"
         }
+        cells.insert(installCell, at: 0)
+        selectedCellId = installCell.id
+
         missingPackages = []
+        isInstallingPackages = false
+
+        // Clear status after 5 seconds
+        Task {
+            try? await Task.sleep(for: .seconds(5))
+            installStatusMessage = nil
+        }
     }
 
     // MARK: - Private
