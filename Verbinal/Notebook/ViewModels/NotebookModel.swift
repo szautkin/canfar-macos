@@ -22,6 +22,8 @@ final class NotebookModel: Identifiable {
     var selectedCellId: UUID?
     var executionCounter = 0
     var errorMessage: String?
+    var missingPackages: [String] = []
+    var showDependencyAlert = false
 
     // File state
     var filePath: URL?
@@ -80,6 +82,9 @@ final class NotebookModel: Identifiable {
         selectedCellId = cells.first?.id
         filePath = url
         isDirty = false
+
+        // Check for missing Python dependencies
+        checkDependencies()
     }
 
     func saveFile() throws {
@@ -282,6 +287,38 @@ final class NotebookModel: Identifiable {
         for cell in cells where cell.cellType == .code {
             await runCell(cell)
         }
+    }
+
+    // MARK: - Dependencies
+
+    func checkDependencies() {
+        guard let pythonPath = PythonDiscovery.findPython3() else { return }
+        let sources = cells.filter { $0.cellType == .code }.map(\.source)
+        Task.detached {
+            let missing = DependencyScanner.findMissing(sources: sources, pythonPath: pythonPath)
+            await MainActor.run {
+                self.missingPackages = missing
+                self.showDependencyAlert = !missing.isEmpty
+            }
+        }
+    }
+
+    func installMissingPackages() async {
+        guard let pythonPath = PythonDiscovery.findPython3(), !missingPackages.isEmpty else { return }
+        let packages = missingPackages.joined(separator: " ")
+        // Run via kernel harness %pip install
+        if !isKernelRunning { await startKernel() }
+        guard isKernelRunning else { return }
+
+        let code = "%pip install \(packages)"
+        let outputs = try? await kernelService.execute(code: code, execCount: 0)
+        // Show install results in a temporary cell
+        if let outputs, !outputs.isEmpty {
+            let installCell = NotebookCell(cellType: .code, source: "# Package installation")
+            installCell.outputs = outputs
+            cells.insert(installCell, at: 0)
+        }
+        missingPackages = []
     }
 
     // MARK: - Private

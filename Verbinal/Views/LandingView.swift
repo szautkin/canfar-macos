@@ -40,12 +40,7 @@ struct LandingView: View {
                     title: "Portal",
                     subtitle: "Manage sessions & data"
                 ) {
-                    if appState.isAuthenticated {
-                        appState.navigateTo(.portal)
-                    } else {
-                        appState.showLoginSheet = true
-                        appState.pendingModeAfterLogin = .portal
-                    }
+                    appState.navigateTo(.portal)
                 }
 
                 LandingTile(
@@ -72,12 +67,7 @@ struct LandingView: View {
                     title: "Storage",
                     subtitle: "Browse VOSpace files"
                 ) {
-                    if appState.isAuthenticated {
-                        appState.navigateTo(.storage)
-                    } else {
-                        appState.showLoginSheet = true
-                        appState.pendingModeAfterLogin = .storage
-                    }
+                    appState.navigateTo(.storage)
                 }
 
                 LandingTile(

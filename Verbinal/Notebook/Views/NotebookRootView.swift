@@ -125,6 +125,12 @@ private struct NotebookView: View {
             Divider()
             cellListView
         }
+        .alert("Missing Python Packages", isPresented: Bindable(model).showDependencyAlert) {
+            Button("Install") { Task { await model.installMissingPackages() } }
+            Button("Skip", role: .cancel) { model.missingPackages = [] }
+        } message: {
+            Text("The following packages are needed:\n\(model.missingPackages.joined(separator: ", "))\n\nInstall them via pip?")
+        }
     }
 
     // MARK: - Toolbar
