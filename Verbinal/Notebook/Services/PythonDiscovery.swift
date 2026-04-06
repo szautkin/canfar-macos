@@ -96,19 +96,9 @@ enum PythonDiscovery {
 
     /// Check if a Python path is a real interpreter, not an Xcode/xcrun shim.
     private static func isRealPython(_ path: String) -> Bool {
-        // /usr/bin/python3 is always the Xcode shim on macOS
-        if path == "/usr/bin/python3" { return false }
-
-        // Check if the file is a real binary (not a script that calls xcrun)
-        guard let data = FileManager.default.contents(atPath: path),
-              data.count > 4 else { return false }
-
-        // Check for shebang that calls xcrun
-        if let header = String(data: data.prefix(200), encoding: .utf8),
-           header.contains("xcrun") {
-            return false
-        }
-
+        // /usr/bin/python3 is always the Xcode shim on macOS — reject it
+        if path.hasPrefix("/usr/bin/") { return false }
+        // Everything else (Homebrew, conda, pyenv, framework) is real
         return true
     }
 }
