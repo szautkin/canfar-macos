@@ -41,6 +41,7 @@ final class NotebookCell: Identifiable {
     var outputs: [CellOutput] = []
     var executionCount: Int?
     var isExecuting = false
+    var isOutputCollapsed = false
 
     enum CellType: String { case code, markdown }
 

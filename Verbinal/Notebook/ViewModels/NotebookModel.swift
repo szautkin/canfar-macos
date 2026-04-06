@@ -6,11 +6,15 @@
 
 import Foundation
 import Observation
+#if os(macOS)
+import AppKit
+#endif
 
-/// Manages the native notebook: kernel lifecycle, cells, and execution.
+/// Manages a single notebook: kernel lifecycle, cells, file I/O, execution.
 @Observable
 @MainActor
-final class NotebookModel {
+final class NotebookModel: Identifiable {
+    let id = UUID()
     let kernelService = KernelService()
 
     var cells: [NotebookCell] = [NotebookCell(cellType: .code)]
@@ -19,11 +23,112 @@ final class NotebookModel {
     var executionCounter = 0
     var errorMessage: String?
 
+    // File state
+    var filePath: URL?
+    var isDirty = false
+    var isEditMode = false // false = command mode, true = edit mode
+
+    // Cell clipboard
+    var cellClipboard: (source: String, type: NotebookCell.CellType)?
+
     var isPythonAvailable: Bool { PythonDiscovery.findPython3() != nil }
     var isKernelRunning: Bool { kernelState == .idle || kernelState == .busy }
 
+    var fileName: String {
+        filePath?.lastPathComponent ?? "Untitled"
+    }
+
+    var tabTitle: String {
+        isDirty ? "\(fileName)*" : fileName
+    }
+
     var selectedCell: NotebookCell? {
         cells.first { $0.id == selectedCellId }
+    }
+
+    // MARK: - File I/O
+
+    func openFile(url: URL) throws {
+        let data = try Data(contentsOf: url)
+        let ext = url.pathExtension.lowercased()
+
+        let doc: NotebookDocument
+        switch ext {
+        case "py":
+            doc = NotebookParser.fromPythonFile(data)
+        case "md":
+            doc = NotebookParser.fromMarkdownFile(data)
+        default:
+            doc = try NotebookParser.parse(data)
+        }
+
+        cells = doc.cells.map { cellData in
+            let cell = NotebookCell(
+                cellType: cellData.cellType == "markdown" ? .markdown : .code,
+                source: cellData.sourceText
+            )
+            cell.executionCount = cellData.executionCount
+            cell.isOutputCollapsed = cellData.metadata.collapsed ?? false
+            // Convert stored outputs
+            if let outputs = cellData.outputs {
+                cell.outputs = outputs.compactMap { convertOutput($0) }
+            }
+            return cell
+        }
+
+        if cells.isEmpty { cells = [NotebookCell(cellType: .code)] }
+        selectedCellId = cells.first?.id
+        filePath = url
+        isDirty = false
+    }
+
+    func saveFile() throws {
+        guard let url = filePath else {
+            try saveFileAs()
+            return
+        }
+        let data = try serializeToData()
+        try data.write(to: url, options: .atomic)
+        isDirty = false
+    }
+
+    #if os(macOS)
+    func saveFileAs() throws {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = filePath?.lastPathComponent ?? "Untitled.ipynb"
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        panel.title = "Save Notebook"
+
+        let response = panel.runModal()
+        guard response == .OK, let url = panel.url else { return }
+        filePath = url
+        let data = try serializeToData()
+        try data.write(to: url, options: .atomic)
+        isDirty = false
+    }
+
+    func openWithPicker() throws {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.title = "Open Notebook"
+        panel.message = "Select a .ipynb, .py, or .md file"
+
+        let response = panel.runModal()
+        guard response == .OK, let url = panel.url else { return }
+        try openFile(url: url)
+    }
+    #endif
+
+    func newNotebook() {
+        let doc = NotebookParser.createEmpty()
+        cells = doc.cells.map { NotebookCell(cellType: .code, source: $0.sourceText) }
+        if cells.isEmpty { cells = [NotebookCell(cellType: .code)] }
+        selectedCellId = cells.first?.id
+        filePath = nil
+        isDirty = false
+        executionCounter = 0
     }
 
     // MARK: - Kernel Lifecycle
@@ -52,21 +157,35 @@ final class NotebookModel {
 
     // MARK: - Cell Operations
 
-    func addCell(after cell: NotebookCell? = nil, type: NotebookCell.CellType = .code) {
+    func addCellAbove(type: NotebookCell.CellType = .code) {
         let newCell = NotebookCell(cellType: type)
-        if let cell, let idx = cells.firstIndex(where: { $0.id == cell.id }) {
-            cells.insert(newCell, at: idx + 1)
+        if let sel = selectedCell, let idx = cells.firstIndex(where: { $0.id == sel.id }) {
+            cells.insert(newCell, at: idx)
+        } else {
+            cells.insert(newCell, at: 0)
+        }
+        selectedCellId = newCell.id
+        isDirty = true
+    }
+
+    func addCellBelow(type: NotebookCell.CellType = .code) {
+        let newCell = NotebookCell(cellType: type)
+        if let sel = selectedCell, let idx = cells.firstIndex(where: { $0.id == sel.id }) {
+            cells.insert(newCell, at: min(idx + 1, cells.count))
         } else {
             cells.append(newCell)
         }
         selectedCellId = newCell.id
+        isDirty = true
     }
 
-    func deleteCell(_ cell: NotebookCell) {
-        cells.removeAll { $0.id == cell.id }
-        if cells.isEmpty {
-            addCell()
-        }
+    func deleteSelectedCell() {
+        guard let sel = selectedCell else { return }
+        let idx = cells.firstIndex(where: { $0.id == sel.id }) ?? 0
+        cells.removeAll { $0.id == sel.id }
+        if cells.isEmpty { cells = [NotebookCell(cellType: .code)] }
+        selectedCellId = cells[min(idx, cells.count - 1)].id
+        isDirty = true
     }
 
     func moveCell(_ cell: NotebookCell, direction: Int) {
@@ -74,14 +193,60 @@ final class NotebookModel {
         let newIdx = idx + direction
         guard newIdx >= 0, newIdx < cells.count else { return }
         cells.swapAt(idx, newIdx)
+        isDirty = true
+    }
+
+    func changeCellType(_ type: NotebookCell.CellType) {
+        selectedCell?.cellType = type
+        isDirty = true
+    }
+
+    func copyCell() {
+        guard let cell = selectedCell else { return }
+        cellClipboard = (source: cell.source, type: cell.cellType)
+    }
+
+    func pasteCell() {
+        guard let clip = cellClipboard else { return }
+        let newCell = NotebookCell(cellType: clip.type, source: clip.source)
+        if let sel = selectedCell, let idx = cells.firstIndex(where: { $0.id == sel.id }) {
+            cells.insert(newCell, at: idx + 1)
+        } else {
+            cells.append(newCell)
+        }
+        selectedCellId = newCell.id
+        isDirty = true
+    }
+
+    func toggleOutputCollapse() {
+        guard let cell = selectedCell else { return }
+        cell.isOutputCollapsed.toggle()
+    }
+
+    func selectPreviousCell() {
+        guard let sel = selectedCell, let idx = cells.firstIndex(where: { $0.id == sel.id }), idx > 0 else { return }
+        selectedCellId = cells[idx - 1].id
+        isEditMode = false
+    }
+
+    func selectNextCell() {
+        guard let sel = selectedCell, let idx = cells.firstIndex(where: { $0.id == sel.id }), idx < cells.count - 1 else { return }
+        selectedCellId = cells[idx + 1].id
+        isEditMode = false
+    }
+
+    func clearAllOutputs() {
+        for cell in cells {
+            cell.outputs = []
+            cell.executionCount = nil
+        }
+        isDirty = true
     }
 
     // MARK: - Execution
 
     func runCell(_ cell: NotebookCell) async {
-        if !isKernelRunning {
-            await startKernel()
-        }
+        if !isKernelRunning { await startKernel() }
         guard isKernelRunning else { return }
 
         cell.isExecuting = true
@@ -100,22 +265,66 @@ final class NotebookModel {
 
         cell.isExecuting = false
         kernelState = .idle
+        isDirty = true
     }
 
     func runSelectedAndAdvance() async {
         guard let cell = selectedCell else { return }
         await runCell(cell)
-        // Advance to next cell or create new one
         if let idx = cells.firstIndex(where: { $0.id == cell.id }), idx + 1 < cells.count {
             selectedCellId = cells[idx + 1].id
         } else {
-            addCell(after: cell)
+            addCellBelow()
         }
     }
 
     func runAllCells() async {
         for cell in cells where cell.cellType == .code {
             await runCell(cell)
+        }
+    }
+
+    // MARK: - Private
+
+    private func serializeToData() throws -> Data {
+        var doc = NotebookDocument(
+            metadata: NotebookDocMetadata(kernelspec: KernelSpec(), languageInfo: LanguageInfo()),
+            cells: cells.map { cell in
+                var cellData = NotebookCellData(
+                    cellType: cell.cellType == .markdown ? "markdown" : "code",
+                    source: NotebookParser.splitSourceLines(cell.source),
+                    id: NotebookParser.generateCellId()
+                )
+                cellData.executionCount = cell.executionCount
+                if cell.cellType == .code {
+                    cellData.outputs = [] // outputs not serialized for simplicity
+                }
+                cellData.metadata = CellMeta(collapsed: cell.isOutputCollapsed ? true : nil)
+                return cellData
+            }
+        )
+        return try NotebookParser.serialize(doc)
+    }
+
+    private func convertOutput(_ data: CellOutputData) -> CellOutput? {
+        switch data.outputType {
+        case "stream":
+            let name = data.name ?? "stdout"
+            return CellOutput(type: name == "stderr" ? .stderr : .stdout, text: data.text?.text ?? "", imageBase64: nil)
+        case "execute_result":
+            let text = data.data?["text/plain"]?.text ?? ""
+            return CellOutput(type: .result, text: text, imageBase64: nil)
+        case "display_data":
+            if let b64 = data.data?["image/png"]?.text {
+                return CellOutput(type: .image, text: "", imageBase64: b64)
+            }
+            let text = data.data?["text/plain"]?.text ?? ""
+            return CellOutput(type: .result, text: text, imageBase64: nil)
+        case "error":
+            let tb = data.traceback?.joined(separator: "\n") ?? "\(data.ename ?? "Error"): \(data.evalue ?? "")"
+            return CellOutput(type: .error, text: tb, imageBase64: nil)
+        default:
+            return nil
         }
     }
 }

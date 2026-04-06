@@ -59,24 +59,33 @@ final class NotebookModelTests: XCTestCase {
         XCTAssertEqual(model.cells.count, 1, "Should start with one empty cell")
     }
 
-    func testAddCell() {
+    func testAddCellBelow() {
         let model = NotebookModel()
-        model.addCell()
+        model.addCellBelow()
         XCTAssertEqual(model.cells.count, 2)
     }
 
-    func testDeleteCell() {
+    func testAddCellAbove() {
         let model = NotebookModel()
-        model.addCell()
+        model.selectedCellId = model.cells[0].id
+        model.addCellAbove()
         XCTAssertEqual(model.cells.count, 2)
-        model.deleteCell(model.cells[0])
+        XCTAssertEqual(model.selectedCellId, model.cells[0].id, "New cell should be selected")
+    }
+
+    func testDeleteSelectedCell() {
+        let model = NotebookModel()
+        model.addCellBelow()
+        XCTAssertEqual(model.cells.count, 2)
+        model.selectedCellId = model.cells[0].id
+        model.deleteSelectedCell()
         XCTAssertEqual(model.cells.count, 1)
     }
 
     func testDeleteLastCellCreatesNew() {
         let model = NotebookModel()
-        let onlyCell = model.cells[0]
-        model.deleteCell(onlyCell)
+        model.selectedCellId = model.cells[0].id
+        model.deleteSelectedCell()
         XCTAssertEqual(model.cells.count, 1, "Deleting last cell should create a new empty one")
     }
 

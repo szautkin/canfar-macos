@@ -275,6 +275,8 @@ struct ContentView: View {
         let ext = url.pathExtension.lowercased()
         if ["fits", "fit", "fts", "fz"].contains(ext) {
             appState.dispatch(.openFITS(url: url))
+        } else if ["ipynb", "py", "md"].contains(ext) {
+            appState.dispatch(.openNotebook(url: url))
         } else {
             #if os(macOS)
             NSWorkspace.shared.open(url)

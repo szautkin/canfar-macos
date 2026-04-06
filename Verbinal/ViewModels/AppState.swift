@@ -67,8 +67,11 @@ final class AppState {
     // Cross-module actions
     var pendingFITSURL: URL?
 
+    var pendingNotebookURL: URL?
+
     enum AppAction {
         case openFITS(url: URL)
+        case openNotebook(url: URL)
         case searchCoordinates(ra: Double, dec: Double)
     }
 
@@ -77,6 +80,9 @@ final class AppState {
         case .openFITS(let url):
             pendingFITSURL = url
             navigateTo(.fitsViewer)
+        case .openNotebook(let url):
+            pendingNotebookURL = url
+            navigateTo(.notebook)
         case .searchCoordinates(let ra, let dec):
             // Will be wired when SearchFormModel is accessible
             _ = (ra, dec)

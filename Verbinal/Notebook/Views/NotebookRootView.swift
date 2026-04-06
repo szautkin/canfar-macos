@@ -7,25 +7,130 @@
 import SwiftUI
 
 struct NotebookRootView: View {
-    @State private var model = NotebookModel()
+    @State private var tabHost = NotebookTabHostModel()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if tabHost.tabs.isEmpty {
+                welcomePage
+            } else {
+                // Tab bar
+                tabBar
+                Divider()
+                // Active notebook
+                if let model = tabHost.activeTab {
+                    NotebookView(model: model)
+                }
+            }
+        }
+    }
+
+    // MARK: - Tab Bar
+
+    private var tabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                ForEach(Array(tabHost.tabs.enumerated()), id: \.element.id) { index, tab in
+                    HStack(spacing: 4) {
+                        Button { tabHost.activeTabIndex = index } label: {
+                            Text(tab.tabTitle)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                        .background(index == tabHost.activeTabIndex ? Color.accentColor.opacity(0.15) : .clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+
+                        Button { tabHost.closeTab(at: index) } label: {
+                            Image(systemName: "xmark").font(.caption2)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 2)
+                }
+
+                Button { tabHost.newTab() } label: {
+                    Image(systemName: "plus").font(.caption)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 4)
+        }
+        .frame(height: 28)
+        .background(.bar)
+    }
+
+    // MARK: - Welcome Page
+
+    private var welcomePage: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            Image(systemName: "terminal")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+            Text("Notebook")
+                .font(.title2)
+            Text("Create or open a Jupyter notebook.")
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                Button("New Notebook") { tabHost.newTab() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+
+                #if os(macOS)
+                Button("Open File") {
+                    let panel = NSOpenPanel()
+                    panel.allowsMultipleSelection = false
+                    panel.title = "Open Notebook"
+                    panel.message = "Select .ipynb, .py, or .md"
+                    let response = panel.runModal()
+                    if response == .OK, let url = panel.url {
+                        try? tabHost.openFile(url: url)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                #endif
+            }
+
+            if !PythonDiscovery.isPythonAvailable {
+                VStack(spacing: 4) {
+                    Label("Python 3 not found", systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    Text("brew install python3")
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                }
+            }
+
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Single Notebook View
+
+private struct NotebookView: View {
+    @Bindable var model: NotebookModel
 
     var body: some View {
         VStack(spacing: 0) {
             notebookToolbar
             Divider()
-
-            if !model.isPythonAvailable {
-                pythonNotFoundView
-            } else {
-                cellListView
-            }
+            cellListView
         }
     }
 
     // MARK: - Toolbar
 
     private var notebookToolbar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             // Kernel indicator
             Circle()
                 .fill(kernelColor)
@@ -36,71 +141,86 @@ struct NotebookRootView: View {
 
             Divider().frame(height: 16)
 
-            Button { Task { await model.runSelectedAndAdvance() } } label: {
-                Label("Run", systemImage: "play.fill")
-                    .font(.caption)
+            // File operations
+            #if os(macOS)
+            Button { try? model.openWithPicker() } label: {
+                Image(systemName: "doc.badge.plus")
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .keyboardShortcut(.return, modifiers: [.shift])
+            .buttonStyle(.borderless)
+            .help("Open file (Cmd+O)")
+
+            Button { try? model.saveFile() } label: {
+                Image(systemName: "square.and.arrow.down")
+            }
+            .buttonStyle(.borderless)
+            .help("Save (Cmd+S)")
+            .keyboardShortcut("s", modifiers: .command)
+            #endif
+
+            Divider().frame(height: 16)
+
+            // Run controls
+            Button { Task { await model.runSelectedAndAdvance() } } label: {
+                Image(systemName: "play.fill")
+            }
+            .buttonStyle(.borderless)
+            .help("Run cell (Shift+Return)")
             .disabled(model.kernelState == .busy)
-            .help("Run selected cell and advance (Shift+Return)")
 
             Button { Task { await model.runAllCells() } } label: {
-                Label("Run All", systemImage: "play.fill")
-                    .font(.caption)
+                Image(systemName: "forward.fill")
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            .buttonStyle(.borderless)
+            .help("Run all cells")
             .disabled(model.kernelState == .busy)
 
             Divider().frame(height: 16)
 
-            Button { model.addCell(after: model.selectedCell, type: .code) } label: {
-                Label("Code", systemImage: "plus")
-                    .font(.caption)
+            // Cell operations
+            Button { model.addCellBelow(type: .code) } label: {
+                Image(systemName: "plus")
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .help("Add code cell below")
+            .buttonStyle(.borderless)
+            .help("Add code cell below (B)")
 
-            Button { model.addCell(after: model.selectedCell, type: .markdown) } label: {
-                Label("Markdown", systemImage: "text.badge.plus")
-                    .font(.caption)
+            Button { model.clearAllOutputs() } label: {
+                Image(systemName: "eraser")
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            .buttonStyle(.borderless)
+            .help("Clear all outputs")
 
             Spacer()
 
             if let error = model.errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.red)
                     .lineLimit(1)
             }
 
+            if model.isDirty {
+                Text("Modified")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
             if model.isKernelRunning {
                 Button("Restart") { Task { await model.restartKernel() } }
-                    .font(.caption)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .font(.caption2).buttonStyle(.bordered).controlSize(.mini)
             } else {
-                Button("Start Kernel") { Task { await model.startKernel() } }
-                    .font(.caption)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                Button("Start") { Task { await model.startKernel() } }
+                    .font(.caption2).buttonStyle(.borderedProminent).controlSize(.mini)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
     }
 
     // MARK: - Cell List
 
     private var cellListView: some View {
         ScrollView {
-            LazyVStack(spacing: 8) {
+            LazyVStack(spacing: 6) {
                 ForEach(model.cells) { cell in
                     CellView(cell: cell, model: model)
                 }
@@ -108,29 +228,6 @@ struct NotebookRootView: View {
             .padding()
         }
     }
-
-    // MARK: - Python Not Found
-
-    private var pythonNotFoundView: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
-                .foregroundStyle(.orange)
-            Text("Python 3 Not Found")
-                .font(.title2)
-            Text("Install Python 3 to use the notebook:")
-                .foregroundStyle(.secondary)
-            Text("brew install python3")
-                .font(.system(.body, design: .monospaced))
-                .padding(8)
-                .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
-                .textSelection(.enabled)
-            Spacer()
-        }
-    }
-
-    // MARK: - Helpers
 
     private var kernelColor: Color {
         switch model.kernelState {
@@ -164,42 +261,62 @@ private struct CellView: View {
             // Cell header
             HStack(spacing: 6) {
                 Text(cell.executionLabel)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced))
                     .foregroundStyle(.secondary)
-                    .frame(width: 32)
+                    .frame(width: 28)
 
-                Text(cell.cellType == .code ? "Code" : "Markdown")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                Picker("", selection: $cell.cellType) {
+                    Text("Code").tag(NotebookCell.CellType.code)
+                    Text("Md").tag(NotebookCell.CellType.markdown)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 100)
 
                 Spacer()
 
-                Button { Task { await model.runCell(cell) } } label: {
-                    Image(systemName: "play.fill")
-                        .font(.caption2)
+                if cell.cellType == .code {
+                    Button { Task { await model.runCell(cell) } } label: {
+                        Image(systemName: "play.fill").font(.caption2)
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(model.kernelState == .busy)
+                }
+
+                Button { model.moveCell(cell, direction: -1) } label: {
+                    Image(systemName: "chevron.up").font(.caption2)
                 }
                 .buttonStyle(.borderless)
-                .disabled(cell.cellType != .code || model.kernelState == .busy)
 
-                Button { model.deleteCell(cell) } label: {
-                    Image(systemName: "trash")
-                        .font(.caption2)
+                Button { model.moveCell(cell, direction: 1) } label: {
+                    Image(systemName: "chevron.down").font(.caption2)
+                }
+                .buttonStyle(.borderless)
+
+                Button {
+                    model.selectedCellId = cell.id
+                    model.deleteSelectedCell()
+                } label: {
+                    Image(systemName: "trash").font(.caption2)
                 }
                 .buttonStyle(.borderless)
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.vertical, 3)
 
             // Source editor
             TextEditor(text: $cell.source)
                 .font(.system(.caption, design: .monospaced))
                 .scrollContentBackground(.hidden)
-                .frame(minHeight: 40, maxHeight: 200)
+                .frame(minHeight: 36, maxHeight: 300)
                 .padding(.horizontal, 8)
-                .onTapGesture { model.selectedCellId = cell.id }
+                .onChange(of: cell.source) { _, _ in model.isDirty = true }
+                .onTapGesture {
+                    model.selectedCellId = cell.id
+                    model.isEditMode = true
+                }
 
             // Outputs
-            if !cell.outputs.isEmpty {
+            if !cell.outputs.isEmpty && !cell.isOutputCollapsed {
                 Divider()
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(cell.outputs) { output in
@@ -207,22 +324,33 @@ private struct CellView: View {
                     }
                 }
                 .padding(8)
+            } else if cell.isOutputCollapsed && !cell.outputs.isEmpty {
+                Button { cell.isOutputCollapsed = false } label: {
+                    Text("Output collapsed (\(cell.outputs.count) items)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
             }
 
             if cell.isExecuting {
-                ProgressView()
-                    .scaleEffect(0.6)
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 4)
+                ProgressView().scaleEffect(0.6).padding(.horizontal, 8).padding(.bottom, 2)
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 6)
                 .fill(model.selectedCellId == cell.id ? Color.accentColor.opacity(0.05) : .clear)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(model.selectedCellId == cell.id ? Color.accentColor.opacity(0.3) : Color.secondary.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(
+                    model.selectedCellId == cell.id
+                        ? (model.isEditMode ? Color.green.opacity(0.5) : Color.accentColor.opacity(0.4))
+                        : Color.secondary.opacity(0.15),
+                    lineWidth: 1
+                )
         )
     }
 
@@ -249,6 +377,7 @@ private struct CellView: View {
                 .foregroundStyle(.red)
                 .textSelection(.enabled)
         case .image:
+            #if os(macOS)
             if let b64 = output.imageBase64,
                let data = Data(base64Encoded: b64),
                let nsImage = NSImage(data: data) {
@@ -257,6 +386,15 @@ private struct CellView: View {
                     .scaledToFit()
                     .frame(maxHeight: 400)
             }
+            #endif
         }
+    }
+}
+
+// MARK: - PythonDiscovery availability
+
+extension PythonDiscovery {
+    static var isPythonAvailable: Bool {
+        findPython3() != nil
     }
 }
