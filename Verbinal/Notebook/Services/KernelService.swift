@@ -22,7 +22,8 @@ actor KernelService {
     func getState() -> KernelState { state }
 
     /// Start the Python kernel subprocess.
-    func start() async throws {
+    /// - Parameter workingDirectory: Set as cwd so relative paths in notebooks resolve correctly.
+    func start(workingDirectory: URL? = nil) async throws {
         guard case .stopped = state else { return }
 
         guard let pythonPath = PythonDiscoveryService.findPython() else {
@@ -49,6 +50,9 @@ actor KernelService {
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONUNBUFFERED"] = "1"
         proc.environment = env
+        if let dir = workingDirectory {
+            proc.currentDirectoryURL = dir
+        }
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()

@@ -155,7 +155,7 @@ final class NotebookModel: Identifiable {
         kernelState = .starting
         errorMessage = nil
         do {
-            try await kernelService.start()
+            try await kernelService.start(workingDirectory: filePath?.deletingLastPathComponent())
             kernelState = .idle
         } catch {
             kernelState = .error(error.localizedDescription)
