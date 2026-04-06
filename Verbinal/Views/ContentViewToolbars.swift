@@ -32,6 +32,14 @@ extension ContentView {
             Spacer()
 
             Button {
+                showFileBrowser.toggle()
+            } label: {
+                Image(systemName: "sidebar.left")
+            }
+            .buttonStyle(.borderless)
+            .help("Toggle file browser (Cmd+B)")
+
+            Button {
                 showAbout.wrappedValue = true
             } label: {
                 Image(systemName: "info.circle")
@@ -63,6 +71,13 @@ extension ContentView {
                 .foregroundStyle(.secondary)
 
             Spacer()
+
+            Button {
+                showFileBrowser.toggle()
+            } label: {
+                Image(systemName: "sidebar.left")
+            }
+            .buttonStyle(.borderless)
 
             Button {
                 showAbout.wrappedValue = true

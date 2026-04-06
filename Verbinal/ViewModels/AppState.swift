@@ -63,6 +63,26 @@ final class AppState {
         currentMode = previous
     }
 
+    // Cross-module actions
+    var pendingFITSURL: URL?
+
+    enum AppAction {
+        case openFITS(url: URL)
+        case searchCoordinates(ra: Double, dec: Double)
+    }
+
+    func dispatch(_ action: AppAction) {
+        switch action {
+        case .openFITS(let url):
+            pendingFITSURL = url
+            navigateTo(.fitsViewer)
+        case .searchCoordinates(let ra, let dec):
+            // Will be wired when SearchFormModel is accessible
+            _ = (ra, dec)
+            navigateTo(.search)
+        }
+    }
+
     // Auth state
     var isAuthenticated = false
     var isLoading = false

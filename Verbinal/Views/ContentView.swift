@@ -12,8 +12,25 @@ struct ContentView: View {
     @State private var searchModel = SearchFormModel()
     @State private var researchModel = ResearchModel()
     @State private var storageBrowserModel: StorageBrowserModel?
+    @State private var fileBrowserModel = FileBrowserModel()
+    @State var showFileBrowser = false
 
     var body: some View {
+        HStack(spacing: 0) {
+            if showFileBrowser {
+                FileBrowserPanel(model: fileBrowserModel) { url in
+                    handleFileOpen(url)
+                }
+                .frame(width: 260)
+                Divider()
+            }
+
+            mainContent
+        }
+    }
+
+    @ViewBuilder
+    private var mainContent: some View {
         Group {
             switch appState.currentMode {
             case .landing:
@@ -204,5 +221,16 @@ struct ContentView: View {
             service: VOSpaceBrowserService(network: appState.network),
             username: appState.username
         )
+    }
+
+    private func handleFileOpen(_ url: URL) {
+        let ext = url.pathExtension.lowercased()
+        if ["fits", "fit", "fts", "fz"].contains(ext) {
+            appState.dispatch(.openFITS(url: url))
+        } else {
+            #if os(macOS)
+            NSWorkspace.shared.open(url)
+            #endif
+        }
     }
 }
