@@ -257,22 +257,12 @@ private struct CellView: View {
     var model: NotebookModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Cell header
-            HStack(spacing: 6) {
+        HStack(alignment: .top, spacing: 0) {
+            // Left gutter — execution label + run button
+            VStack(spacing: 2) {
                 Text(cell.executionLabel)
                     .font(.system(.caption2, design: .monospaced))
                     .foregroundStyle(.secondary)
-                    .frame(width: 28)
-
-                Picker("", selection: $cell.cellType) {
-                    Text("Code").tag(NotebookCell.CellType.code)
-                    Text("Md").tag(NotebookCell.CellType.markdown)
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 100)
-
-                Spacer()
 
                 if cell.cellType == .code {
                     Button { Task { await model.runCell(cell) } } label: {
@@ -280,63 +270,49 @@ private struct CellView: View {
                     }
                     .buttonStyle(.borderless)
                     .disabled(model.kernelState == .busy)
-                }
-
-                Button { model.moveCell(cell, direction: -1) } label: {
-                    Image(systemName: "chevron.up").font(.caption2)
-                }
-                .buttonStyle(.borderless)
-
-                Button { model.moveCell(cell, direction: 1) } label: {
-                    Image(systemName: "chevron.down").font(.caption2)
-                }
-                .buttonStyle(.borderless)
-
-                Button {
-                    model.selectedCellId = cell.id
-                    model.deleteSelectedCell()
-                } label: {
-                    Image(systemName: "trash").font(.caption2)
-                }
-                .buttonStyle(.borderless)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-
-            // Source editor
-            TextEditor(text: $cell.source)
-                .font(.system(.caption, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .frame(minHeight: 36, maxHeight: 300)
-                .padding(.horizontal, 8)
-                .onChange(of: cell.source) { _, _ in model.isDirty = true }
-                .onTapGesture {
-                    model.selectedCellId = cell.id
-                    model.isEditMode = true
-                }
-
-            // Outputs
-            if !cell.outputs.isEmpty && !cell.isOutputCollapsed {
-                Divider()
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(cell.outputs) { output in
-                        outputView(output)
-                    }
-                }
-                .padding(8)
-            } else if cell.isOutputCollapsed && !cell.outputs.isEmpty {
-                Button { cell.isOutputCollapsed = false } label: {
-                    Text("Output collapsed (\(cell.outputs.count) items)")
+                } else {
+                    Image(systemName: "text.quote")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
             }
+            .frame(width: 44)
+            .padding(.top, 6)
 
-            if cell.isExecuting {
-                ProgressView().scaleEffect(0.6).padding(.horizontal, 8).padding(.bottom, 2)
+            // Right content — source + outputs
+            VStack(alignment: .leading, spacing: 0) {
+                TextEditor(text: $cell.source)
+                    .font(.system(.caption, design: .monospaced))
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 36, maxHeight: 300)
+                    .onChange(of: cell.source) { _, _ in model.isDirty = true }
+                    .onTapGesture {
+                        model.selectedCellId = cell.id
+                        model.isEditMode = true
+                    }
+
+                // Outputs
+                if !cell.outputs.isEmpty && !cell.isOutputCollapsed {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(cell.outputs) { output in
+                            outputView(output)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } else if cell.isOutputCollapsed && !cell.outputs.isEmpty {
+                    Button { cell.isOutputCollapsed = false } label: {
+                        Text("Output collapsed (\(cell.outputs.count) items)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 2)
+                }
+
+                if cell.isExecuting {
+                    ProgressView().scaleEffect(0.6).padding(.bottom, 2)
+                }
             }
         }
         .background(
