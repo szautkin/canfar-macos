@@ -44,7 +44,11 @@ struct SearchResultsView: View {
     private var infoBar: some View {
         HStack {
             if resultsModel.totalRows > 0 {
-                if resultsModel.maxRecordReached {
+                if resultsModel.filteredCount != resultsModel.totalRows {
+                    Text("\(resultsModel.filteredCount) of \(resultsModel.totalRows) results")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if resultsModel.maxRecordReached {
                     Label(
                         "\(resultsModel.totalRows) rows (limit reached)",
                         systemImage: "exclamationmark.triangle"
@@ -59,6 +63,39 @@ struct SearchResultsView: View {
             }
 
             Spacer()
+
+            // Pagination
+            if resultsModel.totalPages > 1 {
+                HStack(spacing: 4) {
+                    Button { resultsModel.currentPage = max(0, resultsModel.currentPage - 1) } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(resultsModel.currentPage == 0)
+
+                    Text("\(resultsModel.currentPage + 1)/\(resultsModel.totalPages)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 40)
+
+                    Button { resultsModel.currentPage = min(resultsModel.totalPages - 1, resultsModel.currentPage + 1) } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(resultsModel.currentPage >= resultsModel.totalPages - 1)
+                }
+
+                Picker("", selection: Bindable(resultsModel).rowsPerPage) {
+                    Text("50").tag(50)
+                    Text("100").tag(100)
+                    Text("500").tag(500)
+                    Text("All").tag(0)
+                }
+                .pickerStyle(.menu)
+                .frame(width: 70)
+            }
 
             Menu {
                 Button("Export CSV") { Task { await exportResults(format: "csv", ext: "csv") } }
@@ -97,42 +134,72 @@ struct SearchResultsView: View {
         return ScrollView([.horizontal, .vertical]) {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                 Section {
-                    ForEach(resultsModel.results) { result in
+                    ForEach(resultsModel.paginatedResults) { result in
                         resultRow(result, columns: visibleCols)
                     }
                 } header: {
-                    headerRow(columns: visibleCols)
+                    VStack(spacing: 0) {
+                        sortableHeaderRow(columns: visibleCols)
+                        filterRow(columns: visibleCols)
+                        Divider()
+                    }
                 }
             }
         }
     }
 
-    private func headerRow(columns: [SearchResultColumn]) -> some View {
+    private func sortableHeaderRow(columns: [SearchResultColumn]) -> some View {
         HStack(spacing: 0) {
-            // Preview column header
             Text("")
                 .frame(width: 30)
 
             ForEach(columns) { col in
-                Text(col.label)
-                    .font(.caption.bold())
+                Button { resultsModel.toggleSort(col.id) } label: {
+                    HStack(spacing: 2) {
+                        Text(col.label)
+                            .font(.caption.bold())
+                        if resultsModel.sortColumnId == col.id {
+                            Image(systemName: resultsModel.sortAscending ? "chevron.up" : "chevron.down")
+                                .font(.caption2)
+                        }
+                    }
                     .frame(width: columnWidth(col.id), alignment: .leading)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
             }
         }
         .background(.bar)
     }
 
+    private func filterRow(columns: [SearchResultColumn]) -> some View {
+        HStack(spacing: 0) {
+            Text("")
+                .frame(width: 30)
+
+            ForEach(columns) { col in
+                TextField("", text: Binding(
+                    get: { resultsModel.columnFilters[col.id] ?? "" },
+                    set: { resultsModel.setFilter(col.id, text: $0) }
+                ))
+                .textFieldStyle(.plain)
+                .font(.caption2)
+                .frame(width: columnWidth(col.id))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+            }
+        }
+        .background(.bar.opacity(0.5))
+    }
+
     private func resultRow(_ result: SearchResult, columns: [SearchResultColumn]) -> some View {
         HStack(spacing: 0) {
-            // Preview thumbnail icon — click opens detail
             PreviewThumbnailCell(result: result, tapClient: tapClient) {
                 selectedResult = result
             }
             .frame(width: 30)
 
-            // Data columns — click opens detail
             Button {
                 selectedResult = result
             } label: {

@@ -12,6 +12,7 @@ enum AppMode: Equatable {
     case search
     case portal
     case research
+    case storage
 }
 
 @Observable
@@ -48,6 +49,18 @@ final class AppState {
     // Navigation state
     var currentMode: AppMode = .landing
     var pendingModeAfterLogin: AppMode?
+    private(set) var navigationStack: [AppMode] = []
+    var canGoBack: Bool { !navigationStack.isEmpty }
+
+    func navigateTo(_ mode: AppMode) {
+        navigationStack.append(currentMode)
+        currentMode = mode
+    }
+
+    func navigateBack() {
+        guard let previous = navigationStack.popLast() else { return }
+        currentMode = previous
+    }
 
     // Auth state
     var isAuthenticated = false
@@ -100,9 +113,9 @@ final class AppState {
             .joined(separator: " ")
         self.statusMessage = "Welcome, \(displayName.isEmpty ? username : displayName)"
 
-        // Navigate to pending mode after login (e.g. Portal)
+        // Navigate to pending mode after login (e.g. Portal, Storage)
         if let pending = pendingModeAfterLogin {
-            currentMode = pending
+            navigateTo(pending)
             pendingModeAfterLogin = nil
         }
 

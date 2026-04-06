@@ -34,7 +34,7 @@ struct LandingView: View {
                     title: "Search",
                     subtitle: "Explore the CADC archive"
                 ) {
-                    appState.currentMode = .search
+                    appState.navigateTo(.search)
                 }
 
                 LandingTile(
@@ -44,7 +44,7 @@ struct LandingView: View {
                     subtitle: "Manage sessions & data"
                 ) {
                     if appState.isAuthenticated {
-                        appState.currentMode = .portal
+                        appState.navigateTo(.portal)
                     } else {
                         appState.showLoginSheet = true
                         appState.pendingModeAfterLogin = .portal
@@ -57,7 +57,21 @@ struct LandingView: View {
                     title: "Research",
                     subtitle: "Downloaded observations"
                 ) {
-                    appState.currentMode = .research
+                    appState.navigateTo(.research)
+                }
+
+                LandingTile(
+                    icon: "externaldrive.fill",
+                    fallbackIcon: "externaldrive.fill",
+                    title: "Storage",
+                    subtitle: "Browse VOSpace files"
+                ) {
+                    if appState.isAuthenticated {
+                        appState.navigateTo(.storage)
+                    } else {
+                        appState.showLoginSheet = true
+                        appState.pendingModeAfterLogin = .storage
+                    }
                 }
             }
             .padding(.horizontal, 32)

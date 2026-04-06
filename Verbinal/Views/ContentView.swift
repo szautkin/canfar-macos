@@ -11,6 +11,7 @@ struct ContentView: View {
     @State var showAbout = false
     @State private var searchModel = SearchFormModel()
     @State private var researchModel = ResearchModel()
+    @State private var storageBrowserModel: StorageBrowserModel?
 
     var body: some View {
         Group {
@@ -29,6 +30,8 @@ struct ContentView: View {
                 portalContent
             case .research:
                 researchContent
+            case .storage:
+                storageContent
             }
         }
         .sheet(isPresented: Bindable(appState).showLoginSheet) {
@@ -72,9 +75,7 @@ struct ContentView: View {
             SearchRootView(searchModel: searchModel, researchModel: researchModel)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button {
-                            appState.currentMode = .landing
-                        } label: {
+                        Button { appState.navigateBack() } label: {
                             Label("Back", systemImage: "chevron.left")
                         }
                     }
@@ -98,15 +99,39 @@ struct ContentView: View {
             ResearchRootView(researchModel: researchModel)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button {
-                            appState.currentMode = .landing
-                        } label: {
+                        Button { appState.navigateBack() } label: {
                             Label("Back", systemImage: "chevron.left")
                         }
                     }
                 }
         }
         #endif
+    }
+
+    // MARK: - Storage
+
+    @ViewBuilder
+    private var storageContent: some View {
+        if appState.isAuthenticated {
+            #if os(macOS)
+            VStack(spacing: 0) {
+                makeModeToolbar(title: "Storage", showAbout: $showAbout)
+                Divider()
+                if let model = storageBrowserModel {
+                    StorageBrowserRootView(model: model)
+                } else {
+                    ProgressView("Loading...")
+                        .task { initStorageModel() }
+                }
+            }
+            #else
+            if let model = storageBrowserModel {
+                StorageBrowserRootView(model: model)
+            }
+            #endif
+        } else {
+            loginRequiredView(for: .storage)
+        }
     }
 
     // MARK: - Portal
@@ -123,36 +148,44 @@ struct ContentView: View {
             #else
             AuthenticatedRootView()
             #endif
-        } else if appState.isLoading {
-            Spacer()
-            ProgressView("Authenticating...")
-            Spacer()
         } else {
-            // Not authenticated — show prompt
-            VStack(spacing: 16) {
-                Spacer()
-                Image(systemName: "lock.circle")
-                    .font(.system(size: 48))
-                    .foregroundStyle(.secondary)
-                Text("Login Required")
-                    .font(.title2)
-                Text("Sign in to access sessions and data management.")
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 12) {
-                    Button("Back") {
-                        appState.currentMode = .landing
-                    }
-                    .buttonStyle(.bordered)
-                    Button("Login") {
-                        appState.showLoginSheet = true
-                        appState.pendingModeAfterLogin = .portal
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                }
-                Spacer()
-            }
+            loginRequiredView(for: .portal)
         }
     }
 
+    // MARK: - Login Required (shared)
+
+    private func loginRequiredView(for mode: AppMode) -> some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: "lock.circle")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+            Text("Login Required")
+                .font(.title2)
+            Text("Sign in to continue.")
+                .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Button("Back") { appState.navigateBack() }
+                    .buttonStyle(.bordered)
+                Button("Login") {
+                    appState.showLoginSheet = true
+                    appState.pendingModeAfterLogin = mode
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func initStorageModel() {
+        guard storageBrowserModel == nil, !appState.username.isEmpty else { return }
+        storageBrowserModel = StorageBrowserModel(
+            service: VOSpaceBrowserService(network: appState.network),
+            username: appState.username
+        )
+    }
 }

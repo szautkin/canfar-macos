@@ -46,7 +46,7 @@ extension ContentView {
     func makeModeToolbar(title: String, showAbout: Binding<Bool>) -> some View {
         HStack(spacing: 12) {
             Button {
-                appState.currentMode = .landing
+                appState.navigateBack()
             } label: {
                 Image(systemName: "chevron.left")
             }
@@ -79,7 +79,7 @@ extension ContentView {
     func makePortalToolbar(showAbout: Binding<Bool>) -> some View {
         HStack(spacing: 12) {
             Button {
-                appState.currentMode = .landing
+                appState.navigateBack()
             } label: {
                 Image(systemName: "chevron.left")
             }
