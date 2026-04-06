@@ -106,11 +106,12 @@ final class FITSTabHostModel {
         blinkTabB = tabB
         isBlinking = true
 
-        blinkTask = Task {
+        blinkTask = Task { [weak self] in
             var showA = true
             while !Task.isCancelled {
-                blinkOpacity = showA ? 1.0 : 0.0
-                activeTabIndex = showA ? blinkTabA : blinkTabB
+                guard let self else { break }
+                self.blinkOpacity = showA ? 1.0 : 0.0
+                self.activeTabIndex = showA ? self.blinkTabA : self.blinkTabB
                 showA.toggle()
                 try? await Task.sleep(for: .seconds(interval))
             }

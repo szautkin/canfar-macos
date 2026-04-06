@@ -271,7 +271,7 @@ struct ContentView: View {
         )
         model.onOpenFile = { [weak appState] url in
             let ext = url.pathExtension.lowercased()
-            if ["fits", "fit", "fts", "fz"].contains(ext) {
+            if FileHelper.isFITS(ext) {
                 appState?.dispatch(.openFITS(url: url))
             } else if ["ipynb", "py", "md"].contains(ext) {
                 appState?.dispatch(.openNotebook(url: url))
@@ -282,7 +282,7 @@ struct ContentView: View {
 
     private func handleFileOpen(_ url: URL) {
         let ext = url.pathExtension.lowercased()
-        if ["fits", "fit", "fts", "fz"].contains(ext) {
+        if FileHelper.isFITS(ext) {
             appState.dispatch(.openFITS(url: url))
         } else if ["ipynb", "py", "md"].contains(ext) {
             appState.dispatch(.openNotebook(url: url))

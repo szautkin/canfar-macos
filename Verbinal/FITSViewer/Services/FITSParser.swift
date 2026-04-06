@@ -132,6 +132,15 @@ enum FITSParser {
         let count = header.naxis1 * header.naxis2
         guard count > 0 else { throw FITSError.invalidFile("Empty image") }
 
+        let bytesPerPixel = abs(header.bitpix) / 8
+        let expectedBytes = count * bytesPerPixel
+        guard hdu.dataLength >= expectedBytes else {
+            throw FITSError.invalidFile("Truncated data: expected \(expectedBytes) bytes, got \(hdu.dataLength)")
+        }
+        guard hdu.dataOffset + hdu.dataLength <= data.count else {
+            throw FITSError.invalidFile("Data segment extends beyond file")
+        }
+
         let dataSlice = data[hdu.dataOffset..<(hdu.dataOffset + hdu.dataLength)]
         let bscale = Float(header.bscale)
         let bzero = Float(header.bzero)

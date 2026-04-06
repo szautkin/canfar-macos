@@ -29,7 +29,7 @@ struct VOSpaceNode: Identifiable, Equatable {
     }
 
     var isFITS: Bool {
-        ["fits", "fit", "fts", "fz"].contains(fileExtension)
+        FileHelper.isFITS(fileExtension)
     }
 
     var formattedSize: String {

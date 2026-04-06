@@ -82,10 +82,10 @@ struct FITSImageView: View {
                                 NSPasteboard.general.setString(coords, forType: .string)
                             }
                             Button("Search at Position") {
-                                if let wcs = model.wcs, let pixel = model.crosshairPixel {
-                                    let fitsY = Double(model.selectedHDU!.header.naxis2 - 1) - pixel.y
+                                if let wcs = model.wcs, let pixel = model.crosshairPixel,
+                                   let hdu = model.selectedHDU {
+                                    let fitsY = Double(hdu.header.naxis2 - 1) - pixel.y
                                     let (ra, dec) = wcs.pixelToWorld(x: pixel.x, y: fitsY)
-                                    // Dispatch to search via AppState (will be wired by parent)
                                     model.onSearchAtPosition?(ra, dec)
                                 }
                             }

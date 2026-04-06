@@ -43,6 +43,9 @@ final class NotebookTabHostModel {
 
     func closeTab(at index: Int) {
         guard index >= 0, index < tabs.count else { return }
+        let model = tabs[index]
+        model.stopAutoSave()
+        Task { await model.stopKernel() }
         tabs.remove(at: index)
         if activeTabIndex >= tabs.count {
             activeTabIndex = max(0, tabs.count - 1)

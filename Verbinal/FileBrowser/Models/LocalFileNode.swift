@@ -16,7 +16,7 @@ struct LocalFileNode: Identifiable, Equatable {
 
     var fileExtension: String { url.pathExtension.lowercased() }
 
-    var isFITS: Bool { ["fits", "fit", "fts", "fz"].contains(fileExtension) }
+    var isFITS: Bool { FileHelper.isFITS(fileExtension) }
     var isNotebook: Bool { fileExtension == "ipynb" }
     var isPython: Bool { fileExtension == "py" }
     var isMarkdown: Bool { fileExtension == "md" }
