@@ -16,6 +16,7 @@ struct NotebookRootView: View {
         VStack(spacing: 0) {
             if tabHost.tabs.isEmpty {
                 welcomePage
+                    .task { PythonDiscoveryService.shared.discoverIfNeeded() }
             } else {
                 // Tab bar
                 tabBar
@@ -139,7 +140,14 @@ struct NotebookRootView: View {
                     .padding(.horizontal)
             }
 
-            if !PythonDiscovery.isPythonAvailable {
+            if PythonDiscoveryService.shared.isSearching {
+                HStack(spacing: 4) {
+                    ProgressView().scaleEffect(0.6)
+                    Text("Looking for Python...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if PythonDiscoveryService.shared.didSearch && !PythonDiscoveryService.shared.isAvailable {
                 VStack(spacing: 4) {
                     Label("Python 3 not found", systemImage: "exclamationmark.triangle")
                         .font(.caption)
@@ -148,6 +156,10 @@ struct NotebookRootView: View {
                         .font(.system(.caption, design: .monospaced))
                         .textSelection(.enabled)
                 }
+            } else if let path = PythonDiscoveryService.shared.pythonPath {
+                Label(path, systemImage: "checkmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.green)
             }
 
             // Recent notebooks

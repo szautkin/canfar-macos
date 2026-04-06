@@ -25,7 +25,7 @@ actor KernelService {
     func start() async throws {
         guard case .stopped = state else { return }
 
-        guard let pythonPath = PythonDiscovery.findPython3() else {
+        guard let pythonPath = PythonDiscoveryService.findPython() else {
             state = .error("Python 3 not found")
             throw KernelError.pythonNotFound
         }

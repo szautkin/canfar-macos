@@ -7,6 +7,7 @@
 import XCTest
 @testable import Verbinal
 
+@MainActor
 final class PythonDiscoveryTests: XCTestCase {
 
     func testFindPython3ReturnsPath() {
