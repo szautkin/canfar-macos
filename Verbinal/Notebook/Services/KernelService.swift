@@ -8,13 +8,13 @@ import Foundation
 import os.log
 
 /// Manages a Python subprocess for code execution via the kernel harness protocol.
-/// Uses a dedicated reader thread to avoid pipe race conditions.
+/// Defensive: all pipe writes are safe (no ObjC exception crashes), process death is handled.
 actor KernelService {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Kernel")
     private static let sentinel = "\u{04}__CANFAR_EXEC_BOUNDARY__\u{04}"
 
     private var process: Process?
-    private var stdinPipe: Pipe?
+    private var stdinHandle: FileHandle?
     private var messageStream: AsyncStream<[Any]>?
     private var messageContinuation: AsyncStream<[Any]>.Continuation?
     private var state: KernelState = .stopped
@@ -30,10 +30,13 @@ actor KernelService {
             throw KernelError.pythonNotFound
         }
 
-        let harnessPath = try writeHarness()
+        let harnessPath = try resolveHarnessPath()
 
         state = .starting
-        Self.logger.info("Starting kernel with \(pythonPath)")
+        Self.logger.info("Starting kernel with \(pythonPath), harness: \(harnessPath)")
+
+        // Ignore SIGPIPE globally so broken pipe doesn't kill the app
+        signal(SIGPIPE, SIG_IGN)
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: pythonPath)
@@ -42,54 +45,61 @@ actor KernelService {
         proc.environment?["PYTHONIOENCODING"] = "utf-8"
         proc.environment?["PYTHONUNBUFFERED"] = "1"
 
-        let stdin = Pipe()
-        let stdout = Pipe()
-        let stderr = Pipe()
-        proc.standardInput = stdin
-        proc.standardOutput = stdout
-        proc.standardError = stderr
+        let stdinPipe = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        proc.standardInput = stdinPipe
+        proc.standardOutput = stdoutPipe
+        proc.standardError = stderrPipe
 
-        // Ignore SIGPIPE so we don't crash if the pipe breaks
-        signal(SIGPIPE, SIG_IGN)
+        do {
+            try proc.run()
+        } catch {
+            state = .error("Failed to start Python: \(error.localizedDescription)")
+            throw error
+        }
 
-        try proc.run()
         process = proc
-        stdinPipe = stdin
+        stdinHandle = stdinPipe.fileHandleForWriting
 
-        // Set up the message stream with a background reader thread
+        // Set up message stream with background reader
         let (stream, continuation) = AsyncStream<[Any]>.makeStream()
         messageStream = stream
         messageContinuation = continuation
 
-        startReaderThread(handle: stdout.fileHandleForReading, continuation: continuation)
+        startReaderThread(handle: stdoutPipe.fileHandleForReading, continuation: continuation)
 
-        // Wait for initial idle sentinel
-        for await batch in stream {
-            // First batch is the initial idle status — kernel is ready
-            _ = batch
-            break
+        // Log stderr in background for debugging
+        startStderrLogger(handle: stderrPipe.fileHandleForReading)
+
+        // Wait for initial idle sentinel (with timeout)
+        let gotIdle = await waitForFirstBatch(stream: stream)
+        if !gotIdle {
+            cleanup()
+            state = .error("Kernel failed to start (no idle signal)")
+            throw KernelError.startupFailed
         }
 
         state = .idle
-        Self.logger.info("Kernel started")
+        Self.logger.info("Kernel started successfully")
 
         // Monitor for termination
         Task.detached { [weak self] in
             proc.waitUntilExit()
             Self.logger.info("Kernel exited with code \(proc.terminationStatus)")
-            await self?.handleExit()
+            await self?.cleanup()
         }
-    }
-
-    private func handleExit() {
-        state = .stopped
-        process = nil
-        messageContinuation?.finish()
     }
 
     /// Execute code and return outputs.
     func execute(code: String, execCount: Int) async throws -> [CellOutput] {
-        guard let stdin = stdinPipe, let stream = messageStream else {
+        guard let handle = stdinHandle, let stream = messageStream else {
+            throw KernelError.notRunning
+        }
+
+        // Verify process is alive
+        guard let proc = process, proc.isRunning else {
+            cleanup()
             throw KernelError.notRunning
         }
 
@@ -99,44 +109,103 @@ actor KernelService {
         let jsonData = try JSONSerialization.data(withJSONObject: request)
         var line = jsonData
         line.append(contentsOf: "\n".utf8)
-        stdin.fileHandleForWriting.write(line)
 
-        // Wait for the next batch of messages (until boundary)
+        // Safe write — catches ObjC NSFileHandleOperationException
+        guard safePipeWrite(handle: handle, data: line) else {
+            cleanup()
+            throw KernelError.notRunning
+        }
+
+        // Wait for response batch
         var outputs: [CellOutput] = []
         for await batch in stream {
             outputs = parseMessages(batch)
-            break // one batch per execute
+            break
         }
 
         state = .idle
         return outputs
     }
 
-    /// Stop the kernel.
+    /// Stop the kernel gracefully.
     func stop() {
-        if let stdin = stdinPipe {
-            let quit = "{\"type\":\"quit\"}\n".data(using: .utf8)!
-            try? stdin.fileHandleForWriting.write(contentsOf: quit)
+        if let handle = stdinHandle {
+            let quit = Data("{\"type\":\"quit\"}\n".utf8)
+            safePipeWrite(handle: handle, data: quit)
         }
         process?.terminate()
+        cleanup()
+    }
+
+    var isRunning: Bool {
+        if case .stopped = state { return false }
+        if case .error = state { return false }
+        return process?.isRunning == true
+    }
+
+    // MARK: - Private: Safe Pipe Write
+
+    /// Write data to a FileHandle without crashing on broken pipe.
+    /// FileHandle.write() throws ObjC NSException on broken pipe, which Swift can't catch.
+    /// This uses POSIX write() directly instead.
+    @discardableResult
+    private nonisolated func safePipeWrite(handle: FileHandle, data: Data) -> Bool {
+        data.withUnsafeBytes { buffer -> Bool in
+            guard let ptr = buffer.baseAddress else { return false }
+            let written = Darwin.write(handle.fileDescriptor, ptr, data.count)
+            return written == data.count
+        }
+    }
+
+    // MARK: - Private: Cleanup
+
+    private func cleanup() {
+        stdinHandle = nil
         process = nil
-        stdinPipe = nil
         messageContinuation?.finish()
         messageStream = nil
         messageContinuation = nil
         state = .stopped
     }
 
-    var isRunning: Bool {
-        if case .stopped = state { return false }
-        if case .error = state { return false }
-        return true
+    // MARK: - Private: Harness Resolution
+
+    private func resolveHarnessPath() throws -> String {
+        // Try bundle first
+        if let url = Bundle.main.url(forResource: "kernel_harness", withExtension: "py") {
+            if FileManager.default.fileExists(atPath: url.path) {
+                return url.path
+            }
+        }
+
+        // Fallback: write harness to temp from embedded source
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("Verbinal")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let destURL = tempDir.appendingPathComponent("kernel_harness.py")
+
+        // If already written and recent, reuse
+        if FileManager.default.fileExists(atPath: destURL.path) {
+            return destURL.path
+        }
+
+        // Try to find in project source (development builds)
+        let sourceLocations = [
+            Bundle.main.bundlePath + "/Contents/Resources/kernel_harness.py",
+            Bundle.main.resourcePath.map { $0 + "/kernel_harness.py" },
+        ].compactMap { $0 }
+
+        for loc in sourceLocations {
+            if FileManager.default.fileExists(atPath: loc) {
+                return loc
+            }
+        }
+
+        Self.logger.error("kernel_harness.py not found in bundle or temp")
+        throw KernelError.harnessNotFound
     }
 
-    // MARK: - Background Reader Thread
+    // MARK: - Private: Background Readers
 
-    /// Reads stdout line by line on a background thread. Groups messages between sentinels
-    /// and yields each group as an array through the AsyncStream.
     private nonisolated func startReaderThread(
         handle: FileHandle,
         continuation: AsyncStream<[Any]>.Continuation
@@ -147,11 +216,10 @@ actor KernelService {
 
             while true {
                 let chunk = handle.availableData
-                if chunk.isEmpty { break } // EOF
+                if chunk.isEmpty { break } // EOF — process died
 
                 buffer.append(chunk)
 
-                // Process complete lines
                 while let newlineRange = buffer.range(of: Data("\n".utf8)) {
                     let lineData = buffer[buffer.startIndex..<newlineRange.lowerBound]
                     buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
@@ -161,7 +229,6 @@ actor KernelService {
                     if trimmed.isEmpty { continue }
 
                     if trimmed.contains(Self.sentinel) {
-                        // Boundary found — yield current batch
                         continuation.yield(currentBatch)
                         currentBatch = []
                     } else if let data = trimmed.data(using: .utf8),
@@ -171,7 +238,6 @@ actor KernelService {
                 }
             }
 
-            // EOF — yield remaining and finish
             if !currentBatch.isEmpty {
                 continuation.yield(currentBatch)
             }
@@ -179,7 +245,37 @@ actor KernelService {
         }
     }
 
-    // MARK: - Message Parsing
+    private nonisolated func startStderrLogger(handle: FileHandle) {
+        Thread.detachNewThread {
+            while true {
+                let data = handle.availableData
+                if data.isEmpty { break }
+                if let text = String(data: data, encoding: .utf8) {
+                    Self.logger.debug("Python stderr: \(text)")
+                }
+            }
+        }
+    }
+
+    // MARK: - Private: Wait for First Batch
+
+    private func waitForFirstBatch(stream: AsyncStream<[Any]>) async -> Bool {
+        return await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                for await _ in stream { return true }
+                return false
+            }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(10))
+                return false
+            }
+            let result = await group.next() ?? false
+            group.cancelAll()
+            return result
+        }
+    }
+
+    // MARK: - Private: Message Parsing
 
     private func parseMessages(_ messages: [Any]) -> [CellOutput] {
         var outputs: [CellOutput] = []
@@ -220,26 +316,13 @@ actor KernelService {
         }
         return outputs
     }
-
-    // MARK: - Harness
-
-    private func writeHarness() throws -> String {
-        if let harnessURL = Bundle.main.url(forResource: "kernel_harness", withExtension: "py") {
-            return harnessURL.path
-        }
-        // Fallback: copy from source
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("Verbinal")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        let destPath = tempDir.appendingPathComponent("kernel_harness.py").path
-        if FileManager.default.fileExists(atPath: destPath) { return destPath }
-        throw KernelError.harnessNotFound
-    }
 }
 
 enum KernelError: LocalizedError {
     case pythonNotFound
     case notRunning
     case harnessNotFound
+    case startupFailed
     case timeout
 
     var errorDescription: String? {
@@ -247,6 +330,7 @@ enum KernelError: LocalizedError {
         case .pythonNotFound: return "Python 3 not found on this system"
         case .notRunning: return "Kernel is not running"
         case .harnessNotFound: return "Kernel harness script not found in app bundle"
+        case .startupFailed: return "Kernel failed to start"
         case .timeout: return "Kernel execution timed out"
         }
     }
