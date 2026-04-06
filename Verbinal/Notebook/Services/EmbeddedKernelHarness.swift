@@ -51,7 +51,7 @@ def _handle_magic(line):
     import subprocess as _sp
     if line.startswith("%pip ") or line.startswith("!pip "):
         args = line.split(None, 1)[1]
-        cmd = [sys.executable, "-m", "pip"] + args.split()
+        cmd = [sys.executable, "-m", "pip"] + args.split() + ["--break-system-packages"]
         try:
             result = _sp.run(cmd, capture_output=True, text=True, timeout=300)
             outputs = []
