@@ -5,45 +5,71 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
-import WebKit
 
 struct NotebookRootView: View {
     @State private var model = NotebookModel()
 
     var body: some View {
         VStack(spacing: 0) {
-            // Status bar
-            statusBar
+            notebookToolbar
             Divider()
 
-            // Content
-            if let url = model.serverURL {
-                JupyterWebView(url: url)
-            } else if model.isStarting {
-                Spacer()
-                ProgressView("Starting Jupyter...")
-                    .font(.subheadline)
-                Spacer()
-            } else if !model.isAvailable {
-                notInstalledView
+            if !model.isPythonAvailable {
+                pythonNotFoundView
             } else {
-                startView
+                cellListView
             }
-        }
-        .onDisappear {
-            // Don't stop on disappear — keep Jupyter running in background
         }
     }
 
-    private var statusBar: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(model.isRunning ? .green : .secondary)
-                .frame(width: 8, height: 8)
+    // MARK: - Toolbar
 
-            Text(model.isRunning ? "Jupyter Running" : "Jupyter Stopped")
+    private var notebookToolbar: some View {
+        HStack(spacing: 8) {
+            // Kernel indicator
+            Circle()
+                .fill(kernelColor)
+                .frame(width: 8, height: 8)
+            Text(kernelLabel)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            Divider().frame(height: 16)
+
+            Button { Task { await model.runSelectedAndAdvance() } } label: {
+                Label("Run", systemImage: "play.fill")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .keyboardShortcut(.return, modifiers: [.shift])
+            .disabled(model.kernelState == .busy)
+            .help("Run selected cell and advance (Shift+Return)")
+
+            Button { Task { await model.runAllCells() } } label: {
+                Label("Run All", systemImage: "play.fill")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(model.kernelState == .busy)
+
+            Divider().frame(height: 16)
+
+            Button { model.addCell(after: model.selectedCell, type: .code) } label: {
+                Label("Code", systemImage: "plus")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Add code cell below")
+
+            Button { model.addCell(after: model.selectedCell, type: .markdown) } label: {
+                Label("Markdown", systemImage: "text.badge.plus")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
 
             Spacer()
 
@@ -54,15 +80,15 @@ struct NotebookRootView: View {
                     .lineLimit(1)
             }
 
-            if model.isRunning {
-                Button("Restart") { Task { await model.restartServer() } }
+            if model.isKernelRunning {
+                Button("Restart") { Task { await model.restartKernel() } }
                     .font(.caption)
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-
-                Button("Stop") { Task { await model.stopServer() } }
+            } else {
+                Button("Start Kernel") { Task { await model.startKernel() } }
                     .font(.caption)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                     .controlSize(.small)
             }
         }
@@ -70,36 +96,32 @@ struct NotebookRootView: View {
         .padding(.vertical, 6)
     }
 
-    private var startView: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "terminal")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Notebook")
-                .font(.title2)
-            Text("Run Jupyter notebooks locally.")
-                .foregroundStyle(.secondary)
-            Button("Start Jupyter") {
-                Task { await model.startServer() }
+    // MARK: - Cell List
+
+    private var cellListView: some View {
+        ScrollView {
+            LazyVStack(spacing: 8) {
+                ForEach(model.cells) { cell in
+                    CellView(cell: cell, model: model)
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            Spacer()
+            .padding()
         }
     }
 
-    private var notInstalledView: some View {
+    // MARK: - Python Not Found
+
+    private var pythonNotFoundView: some View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
                 .foregroundStyle(.orange)
-            Text("Jupyter Not Found")
+            Text("Python 3 Not Found")
                 .font(.title2)
-            Text("Install JupyterLab to use this feature:")
+            Text("Install Python 3 to use the notebook:")
                 .foregroundStyle(.secondary)
-            Text("pip install jupyterlab")
+            Text("brew install python3")
                 .font(.system(.body, design: .monospaced))
                 .padding(8)
                 .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
@@ -107,38 +129,134 @@ struct NotebookRootView: View {
             Spacer()
         }
     }
-}
 
-// MARK: - WKWebView Wrapper
+    // MARK: - Helpers
 
-#if os(macOS)
-struct JupyterWebView: NSViewRepresentable {
-    let url: URL
-
-    func makeNSView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.preferences.setValue(true, forKey: "developerExtrasEnabled")
-        let webView = WKWebView(frame: .zero, configuration: config)
-        webView.load(URLRequest(url: url))
-        return webView
+    private var kernelColor: Color {
+        switch model.kernelState {
+        case .idle: return .green
+        case .busy: return .orange
+        case .starting: return .yellow
+        case .stopped: return .secondary
+        case .error: return .red
+        }
     }
 
-    func updateNSView(_ webView: WKWebView, context: Context) {
-        if webView.url != url {
-            webView.load(URLRequest(url: url))
+    private var kernelLabel: String {
+        switch model.kernelState {
+        case .idle: return "Idle"
+        case .busy: return "Busy"
+        case .starting: return "Starting..."
+        case .stopped: return "Stopped"
+        case .error: return "Error"
         }
     }
 }
-#else
-struct JupyterWebView: UIViewRepresentable {
-    let url: URL
 
-    func makeUIView(context: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.load(URLRequest(url: url))
-        return webView
+// MARK: - Cell View
+
+private struct CellView: View {
+    @Bindable var cell: NotebookCell
+    var model: NotebookModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Cell header
+            HStack(spacing: 6) {
+                Text(cell.executionLabel)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32)
+
+                Text(cell.cellType == .code ? "Code" : "Markdown")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+
+                Spacer()
+
+                Button { Task { await model.runCell(cell) } } label: {
+                    Image(systemName: "play.fill")
+                        .font(.caption2)
+                }
+                .buttonStyle(.borderless)
+                .disabled(cell.cellType != .code || model.kernelState == .busy)
+
+                Button { model.deleteCell(cell) } label: {
+                    Image(systemName: "trash")
+                        .font(.caption2)
+                }
+                .buttonStyle(.borderless)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+
+            // Source editor
+            TextEditor(text: $cell.source)
+                .font(.system(.caption, design: .monospaced))
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 40, maxHeight: 200)
+                .padding(.horizontal, 8)
+                .onTapGesture { model.selectedCellId = cell.id }
+
+            // Outputs
+            if !cell.outputs.isEmpty {
+                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(cell.outputs) { output in
+                        outputView(output)
+                    }
+                }
+                .padding(8)
+            }
+
+            if cell.isExecuting {
+                ProgressView()
+                    .scaleEffect(0.6)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 4)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(model.selectedCellId == cell.id ? Color.accentColor.opacity(0.05) : .clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(model.selectedCellId == cell.id ? Color.accentColor.opacity(0.3) : Color.secondary.opacity(0.2), lineWidth: 1)
+        )
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {}
+    @ViewBuilder
+    private func outputView(_ output: CellOutput) -> some View {
+        switch output.type {
+        case .stdout:
+            Text(output.text)
+                .font(.system(.caption, design: .monospaced))
+                .textSelection(.enabled)
+        case .stderr:
+            Text(output.text)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.orange)
+                .textSelection(.enabled)
+        case .result:
+            Text(output.text)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.blue)
+                .textSelection(.enabled)
+        case .error:
+            Text(output.text)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.red)
+                .textSelection(.enabled)
+        case .image:
+            if let b64 = output.imageBase64,
+               let data = Data(base64Encoded: b64),
+               let nsImage = NSImage(data: data) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 400)
+            }
+        }
+    }
 }
-#endif

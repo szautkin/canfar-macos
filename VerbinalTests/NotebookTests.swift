@@ -27,24 +27,24 @@ final class PythonDiscoveryTests: XCTestCase {
     }
 }
 
-final class JupyterErrorTests: XCTestCase {
+final class KernelErrorTests: XCTestCase {
 
-    func testNotInstalledDescription() {
-        let error = JupyterError.notInstalled
+    func testPythonNotFoundDescription() {
+        let error = KernelError.pythonNotFound
         XCTAssertNotNil(error.errorDescription)
-        XCTAssertTrue(error.errorDescription!.contains("jupyter-lab"))
+        XCTAssertTrue(error.errorDescription!.contains("Python"))
     }
 
-    func testAlreadyRunningDescription() {
-        let error = JupyterError.alreadyRunning
+    func testNotRunningDescription() {
+        let error = KernelError.notRunning
         XCTAssertNotNil(error.errorDescription)
-        XCTAssertTrue(error.errorDescription!.contains("already running"))
+        XCTAssertTrue(error.errorDescription!.contains("not running"))
     }
 
-    func testStartupFailedDescription() {
-        let error = JupyterError.startupFailed("timeout")
+    func testTimeoutDescription() {
+        let error = KernelError.timeout
         XCTAssertNotNil(error.errorDescription)
-        XCTAssertTrue(error.errorDescription!.contains("timeout"))
+        XCTAssertTrue(error.errorDescription!.contains("timed out"))
     }
 }
 
@@ -53,9 +53,40 @@ final class NotebookModelTests: XCTestCase {
 
     func testInitialState() {
         let model = NotebookModel()
-        XCTAssertNil(model.serverURL)
-        XCTAssertFalse(model.isStarting)
-        XCTAssertFalse(model.isRunning)
+        XCTAssertEqual(model.kernelState, .stopped)
+        XCTAssertFalse(model.isKernelRunning)
         XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.cells.count, 1, "Should start with one empty cell")
+    }
+
+    func testAddCell() {
+        let model = NotebookModel()
+        model.addCell()
+        XCTAssertEqual(model.cells.count, 2)
+    }
+
+    func testDeleteCell() {
+        let model = NotebookModel()
+        model.addCell()
+        XCTAssertEqual(model.cells.count, 2)
+        model.deleteCell(model.cells[0])
+        XCTAssertEqual(model.cells.count, 1)
+    }
+
+    func testDeleteLastCellCreatesNew() {
+        let model = NotebookModel()
+        let onlyCell = model.cells[0]
+        model.deleteCell(onlyCell)
+        XCTAssertEqual(model.cells.count, 1, "Deleting last cell should create a new empty one")
+    }
+
+    func testCellExecutionLabel() {
+        let cell = NotebookCell(cellType: .code)
+        XCTAssertEqual(cell.executionLabel, "[ ]")
+        cell.isExecuting = true
+        XCTAssertEqual(cell.executionLabel, "[*]")
+        cell.isExecuting = false
+        cell.executionCount = 3
+        XCTAssertEqual(cell.executionLabel, "[3]")
     }
 }

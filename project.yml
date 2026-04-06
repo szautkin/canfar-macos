@@ -20,7 +20,12 @@ targets:
     type: application
     platform: macOS
     sources:
-      - Verbinal
+      - path: Verbinal
+        excludes:
+          - "**/*.py"
+      - path: Verbinal/Resources
+        type: resource
+        buildPhase: resources
     settings:
       base:
         INFOPLIST_FILE: Verbinal/Info.plist
