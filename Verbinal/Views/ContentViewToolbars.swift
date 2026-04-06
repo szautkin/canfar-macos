@@ -59,6 +59,7 @@ extension ContentView {
                 Image(systemName: "chevron.left")
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("Go back")
 
             Image("VerbinalIcon")
                 .resizable()
@@ -99,6 +100,7 @@ extension ContentView {
                 Image(systemName: "chevron.left")
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("Go back")
 
             Image("VerbinalIcon")
                 .resizable()

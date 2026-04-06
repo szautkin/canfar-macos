@@ -10,6 +10,7 @@ struct StorageBrowserRootView: View {
     var model: StorageBrowserModel
 
     @State private var showNewFolder = false
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -76,11 +77,16 @@ struct StorageBrowserRootView: View {
             }
             .buttonStyle(.borderless)
             .disabled(model.currentPath.isEmpty)
+            .help("Navigate to parent folder")
+            .accessibilityLabel("Go up one folder")
 
             Button { Task { await model.refresh() } } label: {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
+            .help("Refresh folder contents")
+            .keyboardShortcut("r", modifiers: .command)
+            .accessibilityLabel("Refresh")
 
             Divider().frame(height: 16)
 
@@ -92,6 +98,8 @@ struct StorageBrowserRootView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .disabled(model.isUploading)
+            .help("Upload a file to the current folder")
+            .accessibilityLabel("Upload file")
 
             Button { Task { await model.downloadSelected() } } label: {
                 Label("Download", systemImage: "arrow.down.doc")
@@ -100,6 +108,8 @@ struct StorageBrowserRootView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .disabled(model.selectedNode == nil || model.selectedNode?.isContainer == true)
+            .help("Download the selected file")
+            .accessibilityLabel("Download selected file")
             #endif
 
             Button { showNewFolder = true } label: {
@@ -108,14 +118,24 @@ struct StorageBrowserRootView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
+            .keyboardShortcut("n", modifiers: [.command, .shift])
+            .help("Create a new folder")
+            .accessibilityLabel("New folder")
 
-            Button { Task { await model.deleteSelected() } } label: {
+            Button { showDeleteConfirm = true } label: {
                 Label("Delete", systemImage: "trash")
                     .font(.caption)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
             .disabled(model.selectedNode == nil)
+            .confirmationDialog("Delete \(model.selectedNode?.name ?? "")?", isPresented: $showDeleteConfirm) {
+                Button("Delete", role: .destructive) {
+                    Task { await model.deleteSelected() }
+                }
+            } message: {
+                Text("This cannot be undone.")
+            }
 
             Spacer()
 

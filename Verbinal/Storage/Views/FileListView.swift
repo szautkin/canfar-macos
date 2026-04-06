@@ -8,6 +8,7 @@ import SwiftUI
 
 struct FileListView: View {
     var model: StorageBrowserModel
+    @State private var nodeToDelete: VOSpaceNode?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -59,13 +60,28 @@ struct FileListView: View {
                         }
                         Divider()
                         Button("Delete", role: .destructive) {
-                            model.selectedNode = node
-                            Task { await model.deleteSelected() }
+                            nodeToDelete = node
                         }
                     }
                     #endif
             }
             .listStyle(.plain)
+            .confirmationDialog("Delete \(nodeToDelete?.name ?? "")?", isPresented: Binding(
+                get: { nodeToDelete != nil },
+                set: { if !$0 { nodeToDelete = nil } }
+            )) {
+                Button("Delete", role: .destructive) {
+                    if let node = nodeToDelete {
+                        model.selectedNode = node
+                        Task { await model.deleteSelected() }
+                    }
+                    nodeToDelete = nil
+                }
+            } message: {
+                Text(nodeToDelete?.isContainer == true
+                     ? "This folder and its contents will be permanently deleted."
+                     : "This file will be permanently deleted from VOSpace.")
+            }
         }
     }
 

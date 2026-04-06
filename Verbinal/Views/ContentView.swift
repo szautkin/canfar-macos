@@ -48,11 +48,23 @@ struct ContentView: View {
             case .research:
                 researchContent
             case .storage:
+                #if os(macOS)
                 storageContent
+                #else
+                macOSOnlyPlaceholder("Storage")
+                #endif
             case .fitsViewer:
+                #if os(macOS)
                 fitsViewerContent
+                #else
+                macOSOnlyPlaceholder("FITS Viewer")
+                #endif
             case .notebook:
+                #if os(macOS)
                 notebookContent
+                #else
+                macOSOnlyPlaceholder("Notebook")
+                #endif
             }
         }
         .sheet(isPresented: Bindable(appState).showLoginSheet) {
@@ -229,6 +241,25 @@ struct ContentView: View {
             Spacer()
         }
     }
+
+    // MARK: - iOS Placeholder
+
+    #if os(iOS)
+    private func macOSOnlyPlaceholder(_ feature: String) -> some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Image(systemName: "desktopcomputer")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+            Text("\(feature) is available on macOS")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Button("Go Back") { appState.navigateBack() }
+                .buttonStyle(.bordered)
+            Spacer()
+        }
+    }
+    #endif
 
     // MARK: - Helpers
 

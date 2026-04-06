@@ -10,6 +10,7 @@ struct ObservationDetailView: View {
     let observation: DownloadedObservation
     var model: ResearchModel
     @Environment(\.openURL) private var openURL
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         ScrollView {
@@ -80,12 +81,19 @@ struct ObservationDetailView: View {
                     Spacer()
 
                     Button(role: .destructive) {
-                        model.deleteObservation(observation)
+                        showDeleteConfirm = true
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .confirmationDialog("Delete Observation?", isPresented: $showDeleteConfirm) {
+                        Button("Delete", role: .destructive) {
+                            model.deleteObservation(observation)
+                        }
+                    } message: {
+                        Text("This will remove the file from disk. This cannot be undone.")
+                    }
                 }
 
                 Divider()

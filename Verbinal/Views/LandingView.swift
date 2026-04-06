@@ -143,6 +143,7 @@ private struct LandingTile: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(title): \(subtitle)")
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering

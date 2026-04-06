@@ -7,109 +7,35 @@
 import SwiftUI
 
 struct FITSViewerRootView: View {
-    @State private var viewerModel = FITSViewerModel()
+    @State private var tabHost = FITSTabHostModel()
 
     var body: some View {
-        HSplitView {
-            // Left: HDU list + controls
-            sidebar
-                .frame(minWidth: 200, idealWidth: 240, maxWidth: 300)
-
-            // Right: image viewer + coordinate bar
-            VStack(spacing: 0) {
-                if viewerModel.isLoading {
-                    Spacer()
-                    ProgressView("Loading FITS...")
-                    Spacer()
-                } else if let error = viewerModel.loadError {
-                    Spacer()
-                    VStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.title)
-                            .foregroundStyle(.orange)
-                        Text(error)
-                            .font(.caption)
-                    }
-                    Spacer()
-                } else if viewerModel.renderedImage != nil {
-                    FITSImageView(model: viewerModel)
-                    Divider()
-                    FITSCoordinateBar(model: viewerModel)
-                } else {
-                    emptyState
-                }
-            }
-        }
-    }
-
-    // MARK: - Sidebar
-
-    private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Open file button
-            HStack {
-                #if os(macOS)
-                Button {
-                    Task { await viewerModel.openWithPicker() }
-                } label: {
-                    Label("Open FITS", systemImage: "doc.badge.plus")
+        Group {
+            if tabHost.tabs.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "star.circle")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.secondary)
+                    Text("FITS Viewer")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("Open a FITS file to view astronomical images.")
                         .font(.caption)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                #endif
-                Spacer()
-            }
-            .padding(8)
-
-            Divider()
-
-            // HDU list
-            if !viewerModel.imageHDUs.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("HDUs")
-                        .font(.caption.bold())
-                        .padding(.horizontal, 8)
-                    ForEach(viewerModel.imageHDUs) { hdu in
-                        Button {
-                            Task { await viewerModel.selectHDU(hdu.id) }
-                        } label: {
-                            HStack {
-                                Image(systemName: viewerModel.selectedHDUIndex == hdu.id ? "circle.fill" : "circle")
-                                    .font(.caption2)
-                                Text(hdu.label)
-                                    .font(.caption)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                        }
-                        .buttonStyle(.plain)
+                        .foregroundStyle(.tertiary)
+                    #if os(macOS)
+                    Button("Open FITS File") {
+                        let model = tabHost.addTab()
+                        Task { await model.openWithPicker() }
                     }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .accessibilityLabel("Open a FITS file")
+                    #endif
                 }
-                .padding(.vertical, 4)
-                Divider()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                FITSTabView(tabHost: tabHost)
             }
-
-            // Render controls
-            FITSRenderControlsView(model: viewerModel)
-
-            Spacer()
         }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "star.circle")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("No FITS file open")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            Text("Open a FITS file to view it here.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
