@@ -52,6 +52,14 @@ struct FileListView: View {
                                 model.selectedNode = node
                                 await model.downloadSelected()
                             }}
+                            if node.isFITS {
+                                Button("Open in FITS Viewer") {
+                                    Task {
+                                        model.selectedNode = node
+                                        await model.openInFITSViewer(node)
+                                    }
+                                }
+                            }
                         }
                         Button("Copy Path") {
                             let uri = model.vospaceURI(for: node)

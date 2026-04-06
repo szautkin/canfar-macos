@@ -73,8 +73,18 @@ struct FITSRenderControlsView: View {
 
             // Zoom
             VStack(alignment: .leading, spacing: 4) {
-                Text("Zoom: \(String(format: "%.0f%%", model.viewport.zoom * 100))")
+                Text("Zoom")
                     .font(.caption.bold())
+                Picker("", selection: Bindable(model).viewport.zoom) {
+                    Text("25%").tag(0.25)
+                    Text("50%").tag(0.5)
+                    Text("100%").tag(1.0)
+                    Text("200%").tag(2.0)
+                    Text("400%").tag(4.0)
+                    Text("800%").tag(8.0)
+                    Text("1200%").tag(12.0)
+                }
+                .pickerStyle(.menu)
                 HStack {
                     Button("Fit") { model.resetViewport() }
                     Button("1:1") { model.viewport.zoom = 1.0 }

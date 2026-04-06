@@ -16,6 +16,8 @@ import AppKit
 final class NotebookModel: Identifiable {
     let id = UUID()
     let kernelService = KernelService()
+    let autoSave = AutoSaveService()
+    let undoRedo = UndoRedoService()
 
     var cells: [NotebookCell] = [NotebookCell(cellType: .code)]
     var kernelState: KernelState = .stopped
@@ -32,6 +34,15 @@ final class NotebookModel: Identifiable {
 
     // Cell clipboard
     var cellClipboard: (source: String, type: NotebookCell.CellType)?
+
+    func startAutoSave() {
+        autoSave.start(model: self)
+    }
+
+    func stopAutoSave() {
+        autoSave.stop()
+        autoSave.cleanup(for: self)
+    }
 
     var isPythonAvailable: Bool { PythonDiscovery.findPython3() != nil }
     var isKernelRunning: Bool { kernelState == .idle || kernelState == .busy }
@@ -160,9 +171,33 @@ final class NotebookModel: Identifiable {
         await startKernel()
     }
 
+    // MARK: - Undo/Redo
+
+    private func captureForUndo() {
+        let idx = cells.firstIndex(where: { $0.id == selectedCellId }) ?? 0
+        undoRedo.captureState(cells: cells, selectedIndex: idx)
+    }
+
+    func undo() {
+        let idx = cells.firstIndex(where: { $0.id == selectedCellId }) ?? 0
+        guard let restored = undoRedo.undo(currentCells: cells, currentSelectedIndex: idx) else { return }
+        cells = restored.cells
+        selectedCellId = cells.indices.contains(restored.selectedIndex) ? cells[restored.selectedIndex].id : cells.first?.id
+        isDirty = true
+    }
+
+    func redo() {
+        let idx = cells.firstIndex(where: { $0.id == selectedCellId }) ?? 0
+        guard let restored = undoRedo.redo(currentCells: cells, currentSelectedIndex: idx) else { return }
+        cells = restored.cells
+        selectedCellId = cells.indices.contains(restored.selectedIndex) ? cells[restored.selectedIndex].id : cells.first?.id
+        isDirty = true
+    }
+
     // MARK: - Cell Operations
 
     func addCellAbove(type: NotebookCell.CellType = .code) {
+        captureForUndo()
         let newCell = NotebookCell(cellType: type)
         if let sel = selectedCell, let idx = cells.firstIndex(where: { $0.id == sel.id }) {
             cells.insert(newCell, at: idx)
@@ -174,6 +209,7 @@ final class NotebookModel: Identifiable {
     }
 
     func addCellBelow(type: NotebookCell.CellType = .code) {
+        captureForUndo()
         let newCell = NotebookCell(cellType: type)
         if let sel = selectedCell, let idx = cells.firstIndex(where: { $0.id == sel.id }) {
             cells.insert(newCell, at: min(idx + 1, cells.count))
@@ -185,6 +221,7 @@ final class NotebookModel: Identifiable {
     }
 
     func deleteSelectedCell() {
+        captureForUndo()
         guard let sel = selectedCell else { return }
         let idx = cells.firstIndex(where: { $0.id == sel.id }) ?? 0
         cells.removeAll { $0.id == sel.id }

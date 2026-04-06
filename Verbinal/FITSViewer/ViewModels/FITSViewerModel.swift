@@ -116,6 +116,8 @@ final class FITSViewerModel: Identifiable {
     var onCrosshairPlaced: ((Double, Double) -> Void)?
     /// Callback for linked zoom — set by tab host.
     var onZoomChanged: (() -> Void)?
+    /// Callback for "Search at Position" context menu.
+    var onSearchAtPosition: ((Double, Double) -> Void)?
 
     /// Place crosshair at image pixel (0-based, display-space Y already flipped).
     func placeCrosshair(at point: CGPoint) {

@@ -62,15 +62,34 @@ struct FITSImageView: View {
                 }
                 #if os(macOS)
                 .onTapGesture(count: 1) {
-                    // Right-click handled via NSView; for now use single click to place crosshair
+                    // Place crosshair at last known cursor position
+                    if let hdu = model.selectedHDU {
+                        // Use center of view as fallback
+                        let cx = CGFloat(hdu.header.naxis1) / 2
+                        let cy = CGFloat(hdu.header.naxis2) / 2
+                        model.placeCrosshair(at: CGPoint(x: cx, y: cy))
+                    }
                 }
                 .contextMenu {
-                    Button("Place Crosshair Here") {
-                        // Uses last cursor position
-                    }
                     Button("Reset View") { model.resetViewport() }
                     if model.wcs != nil {
                         Button("North Up") { model.applyNorthUp() }
+                        Divider()
+                        if !model.crosshairRA.isEmpty {
+                            Button("Copy RA/Dec") {
+                                let coords = "\(model.crosshairRA), \(model.crosshairDec)"
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(coords, forType: .string)
+                            }
+                            Button("Search at Position") {
+                                if let wcs = model.wcs, let pixel = model.crosshairPixel {
+                                    let fitsY = Double(model.selectedHDU!.header.naxis2 - 1) - pixel.y
+                                    let (ra, dec) = wcs.pixelToWorld(x: pixel.x, y: fitsY)
+                                    // Dispatch to search via AppState (will be wired by parent)
+                                    model.onSearchAtPosition?(ra, dec)
+                                }
+                            }
+                        }
                     }
                 }
                 #endif

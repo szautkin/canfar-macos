@@ -17,6 +17,9 @@ final class StorageBrowserModel {
     private let service: VOSpaceBrowserService
     private let username: String
 
+    /// Callback to open a file in another module (e.g. FITS Viewer).
+    var onOpenFile: ((URL) -> Void)?
+
     var nodes: [VOSpaceNode] = []
     var currentPath = ""
     var selectedNode: VOSpaceNode?
@@ -183,6 +186,19 @@ final class StorageBrowserModel {
                 try? FileManager.default.removeItem(at: tempURL)
                 statusMessage = ""
             }
+        } catch {
+            hasError = true
+            errorMessage = error.localizedDescription
+        }
+    }
+    /// Download a .fits file to temp and open in FITS Viewer.
+    func openInFITSViewer(_ node: VOSpaceNode) async {
+        let path = currentPath.isEmpty ? node.name : "\(currentPath)/\(node.name)"
+        statusMessage = "Downloading \(node.name) for viewing..."
+        do {
+            let (tempURL, _) = try await service.downloadFile(username: username, path: path)
+            statusMessage = ""
+            onOpenFile?(tempURL)
         } catch {
             hasError = true
             errorMessage = error.localizedDescription
