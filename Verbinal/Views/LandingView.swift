@@ -82,6 +82,15 @@ struct LandingView: View {
                 ) {
                     appState.navigateTo(.fitsViewer)
                 }
+
+                LandingTile(
+                    icon: "terminal",
+                    fallbackIcon: "doc.text",
+                    title: "Notebook",
+                    subtitle: "Run Jupyter notebooks"
+                ) {
+                    appState.navigateTo(.notebook)
+                }
             }
             .padding(.horizontal, 32)
 

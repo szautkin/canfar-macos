@@ -51,6 +51,8 @@ struct ContentView: View {
                 storageContent
             case .fitsViewer:
                 fitsViewerContent
+            case .notebook:
+                notebookContent
             }
         }
         .sheet(isPresented: Bindable(appState).showLoginSheet) {
@@ -124,6 +126,21 @@ struct ContentView: View {
                     }
                 }
         }
+        #endif
+    }
+
+    // MARK: - Notebook
+
+    @ViewBuilder
+    private var notebookContent: some View {
+        #if os(macOS)
+        VStack(spacing: 0) {
+            makeModeToolbar(title: "Notebook", showAbout: $showAbout)
+            Divider()
+            NotebookRootView()
+        }
+        #else
+        NotebookRootView()
         #endif
     }
 

@@ -14,6 +14,7 @@ enum AppMode: Equatable {
     case research
     case storage
     case fitsViewer
+    case notebook
 }
 
 @Observable
