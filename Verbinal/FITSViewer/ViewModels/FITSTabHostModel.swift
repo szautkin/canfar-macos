@@ -8,12 +8,20 @@ import Foundation
 import Observation
 
 /// Manages multiple FITS viewer tabs with linked crosshair and blink comparison.
+///
+/// Uses a **pull-on-activation store pattern** (matching Windows):
+/// - Active tab writes to shared store (RA/Dec, angular zoom) via callbacks
+/// - On tab switch, the newly active tab reads from the store and applies locally
+/// - Shared state is never pushed to hidden tabs
+/// - Applying shared state skips callbacks to prevent feedback loops
 @Observable
 @MainActor
 final class FITSTabHostModel {
     var tabs: [FITSViewerModel] = []
-    var activeTabIndex: Int = 0
     let linkedState = FITSLinkedState()
+
+    /// Prevents feedback loops when applying shared state to a tab.
+    private var isApplyingSharedState = false
 
     // Blink state
     var isBlinking = false
@@ -24,6 +32,14 @@ final class FITSTabHostModel {
     var blinkInterval: TimeInterval = 0.8
     private var blinkTask: Task<Void, Never>?
 
+    /// Active tab index — applies shared state on change (pull-on-activation).
+    var activeTabIndex: Int = 0 {
+        didSet {
+            guard activeTabIndex != oldValue else { return }
+            applySharedStateToActiveTab()
+        }
+    }
+
     var activeTab: FITSViewerModel? {
         guard activeTabIndex >= 0, activeTabIndex < tabs.count else { return nil }
         return tabs[activeTabIndex]
@@ -31,14 +47,14 @@ final class FITSTabHostModel {
 
     func addTab() -> FITSViewerModel {
         let model = FITSViewerModel()
-        // Wire linked crosshair callback
+        // Active tab writes to store on crosshair/zoom change
         model.onCrosshairPlaced = { [weak self, weak model] ra, dec in
             guard let self, let model else { return }
-            self.propagateCrosshair(from: model, ra: ra, dec: dec)
+            self.writeToStore(crosshairFrom: model, ra: ra, dec: dec)
         }
         model.onZoomChanged = { [weak self, weak model] in
             guard let self, let model else { return }
-            self.propagateZoom(from: model)
+            self.writeToStore(zoomFrom: model)
         }
         tabs.append(model)
         activeTabIndex = tabs.count - 1
@@ -65,43 +81,63 @@ final class FITSTabHostModel {
     var tabCount: Int { tabs.count }
     var hasMultipleTabs: Bool { tabs.count > 1 }
 
-    // MARK: - Linked Crosshair
+    // MARK: - Store: Write (active tab → store)
 
-    /// When a crosshair is placed in one tab, propagate to all others via WCS.
-    func propagateCrosshair(from sourceTab: FITSViewerModel, ra: Double, dec: Double) {
-        guard linkedState.linkCrosshair else { return }
+    /// Write crosshair position to shared store. Only stores — does NOT touch other tabs.
+    func writeToStore(crosshairFrom sourceTab: FITSViewerModel, ra: Double, dec: Double) {
+        guard linkedState.linkCrosshair, !isApplyingSharedState else { return }
         linkedState.sharedCrosshair = (ra: ra, dec: dec)
+    }
 
-        for tab in tabs where tab.id != sourceTab.id {
-            if let wcs = tab.wcs, let pixel = wcs.worldToPixel(ra: ra, dec: dec) {
-                // Convert FITS pixel (0-based) to display pixel (Y-flipped)
-                if let hdu = tab.selectedHDU {
-                    let displayY = Double(hdu.header.naxis2 - 1) - pixel.y
-                    tab.crosshairPixel = CGPoint(x: pixel.x, y: displayY)
-                    tab.crosshairRA = FITSWCSTransform.formatRA(ra)
-                    tab.crosshairDec = FITSWCSTransform.formatDec(dec)
-                }
-            }
+    /// Write zoom/orientation to shared store. Only stores — does NOT touch other tabs.
+    func writeToStore(zoomFrom sourceTab: FITSViewerModel) {
+        guard linkedState.linkZoom, !isApplyingSharedState else { return }
+        guard let wcs = sourceTab.wcs else { return }
+        linkedState.sharedAngularZoom = wcs.pixelScaleArcsec / sourceTab.viewport.zoom
+        // Store the source's North-relative user rotation for orientation matching
+        let northRotation = -wcs.northAngle * .pi / 180.0
+        linkedState.sharedUserRotation = sourceTab.viewport.rotation - northRotation
+    }
+
+    // MARK: - Store: Read (on tab activation → apply to active tab)
+
+    /// Apply shared crosshair and zoom to the newly active tab.
+    /// Called on tab switch (pull-on-activation pattern).
+    func applySharedStateToActiveTab() {
+        guard let tab = activeTab else { return }
+
+        isApplyingSharedState = true
+        defer { isApplyingSharedState = false }
+
+        // Apply shared crosshair
+        if linkedState.linkCrosshair, let shared = linkedState.sharedCrosshair {
+            applyCrosshair(to: tab, ra: shared.ra, dec: shared.dec)
+        }
+
+        // Apply shared zoom + orientation
+        if linkedState.linkZoom, let angularZoom = linkedState.sharedAngularZoom {
+            applyZoom(to: tab, angularZoom: angularZoom)
         }
     }
 
-    // MARK: - Linked Zoom
+    /// Apply a world coordinate crosshair to a tab without triggering callbacks.
+    private func applyCrosshair(to tab: FITSViewerModel, ra: Double, dec: Double) {
+        guard let wcs = tab.wcs,
+              let pixel = wcs.worldToPixel(ra: ra, dec: dec),
+              let hdu = tab.selectedHDU else { return }
+        let displayY = Double(hdu.header.naxis2 - 1) - pixel.y
+        tab.crosshairPixel = CGPoint(x: pixel.x, y: displayY)
+        tab.crosshairRA = FITSWCSTransform.formatRA(ra)
+        tab.crosshairDec = FITSWCSTransform.formatDec(dec)
+    }
 
-    /// When zoom changes in one tab, match angular extent and orientation in all others.
-    func propagateZoom(from sourceTab: FITSViewerModel) {
-        guard linkedState.linkZoom, let sourceWCS = sourceTab.wcs else { return }
-        let angularZoom = sourceWCS.pixelScaleArcsec / sourceTab.viewport.zoom
-        linkedState.sharedAngularZoom = angularZoom
-
-        for tab in tabs where tab.id != sourceTab.id {
-            if let wcs = tab.wcs {
-                tab.viewport.zoom = wcs.pixelScaleArcsec / angularZoom
-                // Match orientation: apply same North-relative rotation
-                let sourceNorth = -sourceWCS.northAngle * .pi / 180.0
-                let targetNorth = -wcs.northAngle * .pi / 180.0
-                let userRotation = sourceTab.viewport.rotation - sourceNorth
-                tab.viewport.rotation = targetNorth + userRotation
-            }
+    /// Apply angular zoom and orientation to a tab without triggering callbacks.
+    private func applyZoom(to tab: FITSViewerModel, angularZoom: Double) {
+        guard let wcs = tab.wcs else { return }
+        tab.viewport.zoom = wcs.pixelScaleArcsec / angularZoom
+        if let userRotation = linkedState.sharedUserRotation {
+            let targetNorth = -wcs.northAngle * .pi / 180.0
+            tab.viewport.rotation = targetNorth + userRotation
         }
     }
 

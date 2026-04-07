@@ -55,12 +55,14 @@ struct FITSViewport: Sendable, Equatable {
     var rotation: Double = 0 // radians
 }
 
-/// Shared state across linked tabs.
+/// Shared state store for linked tabs (pull-on-activation pattern).
+/// Active tab writes here; tabs read on activation.
 @Observable
 @MainActor
 final class FITSLinkedState {
     var sharedCrosshair: (ra: Double, dec: Double)?
-    var sharedAngularZoom: Double? // arcsec per screen pixel
+    var sharedAngularZoom: Double?       // arcsec per screen pixel
+    var sharedUserRotation: Double?      // North-relative user rotation (radians)
     var linkCrosshair = false
     var linkZoom = false
 }
