@@ -39,83 +39,83 @@ struct FITSTabView: View {
                 .frame(height: 28)
                 .background(.bar)
 
-                // Linked controls (only with multiple tabs)
-                if tabHost.hasMultipleTabs {
-                    HStack(spacing: 8) {
-                        Toggle(isOn: Bindable(tabHost.linkedState).linkCrosshair) {
-                            Label("Link Crosshair", systemImage: "scope")
-                                .font(.caption2)
-                        }
-                        .toggleStyle(.button)
-                        .controlSize(.mini)
-                        .help("Sync crosshair position across tabs via WCS coordinates")
-                        .onChange(of: tabHost.linkedState.linkCrosshair) { _, enabled in
-                            if enabled {
-                                // Auto-enable North Up on all tabs (matches Windows behavior)
-                                for tab in tabHost.tabs {
-                                    tab.applyNorthUp()
-                                }
-                            }
-                        }
-
-                        Toggle(isOn: Bindable(tabHost.linkedState).linkZoom) {
-                            Label("Sync Zoom", systemImage: "arrow.up.left.and.arrow.down.right")
-                                .font(.caption2)
-                        }
-                        .toggleStyle(.button)
-                        .controlSize(.mini)
-                        .help("Match angular extent across tabs")
-
-                        Divider().frame(height: 12)
-
-                        if tabHost.isBlinking {
-                            Button { tabHost.stopBlink() } label: {
-                                Label("Stop", systemImage: "stop.fill")
-                                    .font(.caption2)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.mini)
-                            .keyboardShortcut(.escape, modifiers: [])
-
-                            Button { tabHost.toggleBlinkPause() } label: {
-                                Label(tabHost.isBlinkPaused ? "Resume" : "Pause", systemImage: tabHost.isBlinkPaused ? "play.fill" : "pause.fill")
-                                    .font(.caption2)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.mini)
-
-                            Button("A") { tabHost.showBlinkA() }
-                                .font(.caption2).buttonStyle(.bordered).controlSize(.mini)
-                                .help("Show image A")
-                            Button("B") { tabHost.showBlinkB() }
-                                .font(.caption2).buttonStyle(.bordered).controlSize(.mini)
-                                .help("Show image B")
-
-                            Slider(value: Bindable(tabHost).blinkInterval, in: 0.2...3.0, step: 0.1) {
-                                Text(String(format: "%.1fs", tabHost.blinkInterval))
-                                    .font(.caption2)
-                                    .frame(width: 30)
-                            }
-                            .frame(width: 120)
-                            .help("Blink interval")
-
-                        } else if tabHost.tabs.count >= 2 {
-                            Button {
-                                tabHost.startBlink(tabA: 0, tabB: 1)
-                            } label: {
-                                Label("Blink", systemImage: "eye.slash")
-                                    .font(.caption2)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.mini)
-                            .help("Blink between first two tabs (Esc to stop)")
-                        }
-
-                        Spacer()
+                // Linked controls — always visible, disabled when < 2 tabs
+                HStack(spacing: 8) {
+                    Toggle(isOn: Bindable(tabHost.linkedState).linkCrosshair) {
+                        Label("Link Crosshair", systemImage: "scope")
+                            .font(.caption2)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
+                    .toggleStyle(.button)
+                    .controlSize(.mini)
+                    .disabled(!tabHost.hasMultipleTabs)
+                    .help("Sync crosshair position across tabs via WCS coordinates")
+                    .onChange(of: tabHost.linkedState.linkCrosshair) { _, enabled in
+                        if enabled {
+                            for tab in tabHost.tabs {
+                                tab.applyNorthUp()
+                            }
+                        }
+                    }
+
+                    Toggle(isOn: Bindable(tabHost.linkedState).linkZoom) {
+                        Label("Sync Zoom", systemImage: "arrow.up.left.and.arrow.down.right")
+                            .font(.caption2)
+                    }
+                    .toggleStyle(.button)
+                    .controlSize(.mini)
+                    .disabled(!tabHost.hasMultipleTabs)
+                    .help("Match angular extent across tabs")
+
+                    Divider().frame(height: 12)
+
+                    if tabHost.isBlinking {
+                        Button { tabHost.stopBlink() } label: {
+                            Label("Stop", systemImage: "stop.fill")
+                                .font(.caption2)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                        .keyboardShortcut(.escape, modifiers: [])
+
+                        Button { tabHost.toggleBlinkPause() } label: {
+                            Label(tabHost.isBlinkPaused ? "Resume" : "Pause", systemImage: tabHost.isBlinkPaused ? "play.fill" : "pause.fill")
+                                .font(.caption2)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+
+                        Button("A") { tabHost.showBlinkA() }
+                            .font(.caption2).buttonStyle(.bordered).controlSize(.mini)
+                            .help("Show image A")
+                        Button("B") { tabHost.showBlinkB() }
+                            .font(.caption2).buttonStyle(.bordered).controlSize(.mini)
+                            .help("Show image B")
+
+                        Slider(value: Bindable(tabHost).blinkInterval, in: 0.2...3.0, step: 0.1) {
+                            Text(String(format: "%.1fs", tabHost.blinkInterval))
+                                .font(.caption2)
+                                .frame(width: 30)
+                        }
+                        .frame(width: 120)
+                        .help("Blink interval")
+
+                    } else {
+                        Button {
+                            tabHost.startBlink(tabA: 0, tabB: 1)
+                        } label: {
+                            Label("Blink", systemImage: "eye.slash")
+                                .font(.caption2)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                        .disabled(tabHost.tabs.count < 2)
+                        .help("Blink between first two tabs (Esc to stop)")
+                    }
+
+                    Spacer()
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
 
                 Divider()
             }
@@ -127,21 +127,24 @@ struct FITSTabView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         fitsToolbar(activeModel)
                         Divider()
-                        hduList(activeModel)
-                        FITSRenderControlsView(model: activeModel)
-                        if showHeader {
-                            Divider()
-                            FITSHeaderPanel(model: activeModel)
-                                .frame(minHeight: 150)
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                hduList(activeModel)
+                                FITSRenderControlsView(model: activeModel)
+                                if showHeader {
+                                    Divider()
+                                    FITSHeaderPanel(model: activeModel)
+                                        .frame(minHeight: 150)
+                                }
+                                if showBookmarks {
+                                    Divider()
+                                    FITSBookmarkPanel(model: activeModel, store: bookmarkStore)
+                                        .frame(minHeight: 100)
+                                }
+                            }
                         }
-                        if showBookmarks {
-                            Divider()
-                            FITSBookmarkPanel(model: activeModel, store: bookmarkStore)
-                                .frame(minHeight: 100)
-                        }
-                        Spacer()
                     }
-                    .frame(minWidth: 200, idealWidth: 240, maxWidth: 300)
+                    .frame(minWidth: 220, idealWidth: 260, maxWidth: 320)
 
                     // Viewer
                     VStack(spacing: 0) {

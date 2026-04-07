@@ -8,6 +8,8 @@ import SwiftUI
 
 struct FITSRenderControlsView: View {
     var model: FITSViewerModel
+    @State private var goToRA: String = ""
+    @State private var goToDec: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -41,23 +43,37 @@ struct FITSRenderControlsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Cuts")
                     .font(.caption.bold())
-                HStack {
-                    Text("Min")
-                        .font(.caption2)
-                        .frame(width: 30)
-                    TextField("", value: Bindable(model).renderParams.minCut, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.caption2)
-                        .onSubmit { model.renderImage() }
-                }
-                HStack {
-                    Text("Max")
-                        .font(.caption2)
-                        .frame(width: 30)
-                    TextField("", value: Bindable(model).renderParams.maxCut, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.caption2)
-                        .onSubmit { model.renderImage() }
+                VStack(spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text("Min")
+                            .font(.caption2)
+                            .frame(width: 28, alignment: .trailing)
+                        Slider(
+                            value: Bindable(model).renderParams.minCut,
+                            in: cutRange
+                        )
+                        .onChange(of: model.renderParams.minCut) { _, _ in model.renderImage() }
+                        TextField("", value: Bindable(model).renderParams.minCut, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.caption2, design: .monospaced))
+                            .frame(width: 60)
+                            .onSubmit { model.renderImage() }
+                    }
+                    HStack(spacing: 4) {
+                        Text("Max")
+                            .font(.caption2)
+                            .frame(width: 28, alignment: .trailing)
+                        Slider(
+                            value: Bindable(model).renderParams.maxCut,
+                            in: cutRange
+                        )
+                        .onChange(of: model.renderParams.maxCut) { _, _ in model.renderImage() }
+                        TextField("", value: Bindable(model).renderParams.maxCut, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.caption2, design: .monospaced))
+                            .frame(width: 60)
+                            .onSubmit { model.renderImage() }
+                    }
                 }
                 Button("Auto Cut") {
                     let cuts = FITSParser.autoCut(pixels: model.pixels)
@@ -69,6 +85,86 @@ struct FITSRenderControlsView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .disabled(model.pixels.isEmpty)
+            }
+
+            // Crosshair & Coordinates
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Crosshair")
+                    .font(.caption.bold())
+
+                // Current crosshair display
+                if model.crosshairPixel != nil {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "scope")
+                                .font(.caption2).foregroundStyle(.red)
+                            Text("RA:").font(.caption2.bold()).foregroundStyle(.secondary)
+                            Text(model.crosshairRA)
+                                .font(.system(.caption2, design: .monospaced))
+                                .textSelection(.enabled)
+                        }
+                        HStack(spacing: 4) {
+                            Text("     Dec:").font(.caption2.bold()).foregroundStyle(.secondary)
+                            Text(model.crosshairDec)
+                                .font(.system(.caption2, design: .monospaced))
+                                .textSelection(.enabled)
+                        }
+                        if !model.crosshairValue.isEmpty {
+                            HStack(spacing: 4) {
+                                Text("     Val:").font(.caption2.bold()).foregroundStyle(.secondary)
+                                Text(model.crosshairValue)
+                                    .font(.system(.caption2, design: .monospaced))
+                            }
+                        }
+                    }
+                    HStack(spacing: 4) {
+                        #if os(macOS)
+                        Button("Copy") {
+                            let coords = "\(model.crosshairRA), \(model.crosshairDec)"
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(coords, forType: .string)
+                        }
+                        #endif
+                        Button("Clear") {
+                            model.crosshairPixel = nil
+                            model.crosshairRA = ""
+                            model.crosshairDec = ""
+                            model.crosshairValue = ""
+                        }
+                    }
+                    .font(.caption2)
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                } else {
+                    Text("Click on image to place crosshair")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Go To coordinates
+                if model.wcs != nil {
+                    Divider()
+                    Text("Go To (degrees)")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        TextField("RA", text: $goToRA)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.caption2, design: .monospaced))
+                        TextField("Dec", text: $goToDec)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.caption2, design: .monospaced))
+                        Button("Go") {
+                            if let ra = Double(goToRA.trimmingCharacters(in: .whitespaces)),
+                               let dec = Double(goToDec.trimmingCharacters(in: .whitespaces)) {
+                                model.goToCoordinate(ra: ra, dec: dec)
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                        .font(.caption2)
+                    }
+                }
             }
 
             // Zoom
@@ -102,6 +198,10 @@ struct FITSRenderControlsView: View {
             }
         }
         .padding(8)
+    }
+
+    private var cutRange: ClosedRange<Float> {
+        model.pixelMin < model.pixelMax ? model.pixelMin...model.pixelMax : 0...1
     }
 
     private func zoomLabel(_ level: Double) -> String {

@@ -21,7 +21,11 @@ final class FITSViewerModel: Identifiable {
     var renderParams = FITSRenderParams()
     var viewport = FITSViewport()
     var renderedImage: CGImage?
-    var pixels: [Float] = []
+    var pixels: [Float] = [] { didSet { updatePixelRange() } }
+
+    /// Cached min/max of finite pixel values (for slider range).
+    var pixelMin: Float = 0
+    var pixelMax: Float = 1
 
     // Crosshair
     var crosshairPixel: CGPoint?
@@ -205,6 +209,18 @@ final class FITSViewerModel: Identifiable {
         viewport.panX = 0
         viewport.panY = 0
         viewport.rotation = 0
+    }
+
+    private func updatePixelRange() {
+        guard !pixels.isEmpty else { pixelMin = 0; pixelMax = 1; return }
+        var lo: Float = .greatestFiniteMagnitude
+        var hi: Float = -.greatestFiniteMagnitude
+        for p in pixels where p.isFinite {
+            if p < lo { lo = p }
+            if p > hi { hi = p }
+        }
+        pixelMin = lo < hi ? lo : 0
+        pixelMax = lo < hi ? hi : 1
     }
 
     #if os(macOS)
