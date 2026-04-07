@@ -10,6 +10,7 @@ struct FITSRenderControlsView: View {
     var model: FITSViewerModel
     @State private var goToRA: String = ""
     @State private var goToDec: String = ""
+    @Environment(\.fitsToast) private var toast
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -123,6 +124,7 @@ struct FITSRenderControlsView: View {
                             let coords = "\(model.crosshairRA), \(model.crosshairDec)"
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(coords, forType: .string)
+                            toast?.show("Coordinates copied")
                         }
                         #endif
                         Button("Clear") {

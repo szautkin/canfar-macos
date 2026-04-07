@@ -34,6 +34,8 @@ final class FITSViewerModel: Identifiable {
     var crosshairRA: String = ""
     var crosshairDec: String = ""
     var crosshairValue: String = ""
+    /// True when the crosshair was applied from the linked-tab store, false when user-placed.
+    var isLinkedCrosshair: Bool = false
 
     // Mouse readout
     var cursorRA: String = ""
@@ -140,6 +142,15 @@ final class FITSViewerModel: Identifiable {
     /// Callback for "Search at Position" context menu.
     var onSearchAtPosition: ((Double, Double) -> Void)?
 
+    /// Apply a linked crosshair from the shared store (marks crosshair as linked).
+    /// FITSTabHostModel should call this instead of setting crosshairPixel directly.
+    func applyLinkedCrosshair(pixel: CGPoint, ra: Double, dec: Double) {
+        crosshairPixel = pixel
+        crosshairRA = FITSWCSTransform.formatRA(ra)
+        crosshairDec = FITSWCSTransform.formatDec(dec)
+        isLinkedCrosshair = true
+    }
+
     /// Place crosshair at image pixel (0-based, display-space Y already flipped).
     func placeCrosshair(at point: CGPoint) {
         guard let hdu = selectedHDU else {
@@ -148,6 +159,7 @@ final class FITSViewerModel: Identifiable {
         }
         Self.logger.debug("placeCrosshair at (\(point.x), \(point.y))")
         crosshairPixel = point
+        isLinkedCrosshair = false
 
         let pixelIdx = Int(point.y) * hdu.header.naxis1 + Int(point.x)
         if pixelIdx >= 0 && pixelIdx < pixels.count {
@@ -184,6 +196,7 @@ final class FITSViewerModel: Identifiable {
     func applyNorthUp() {
         guard let wcs else { return }
         viewport.rotation = -wcs.northAngle * .pi / 180.0
+        viewport.flipX = wcs.hasParityFlip
     }
 
     func resetViewport() {
@@ -210,15 +223,18 @@ final class FITSViewerModel: Identifiable {
         onZoomChanged?()
     }
 
-    /// Center viewport on an image pixel, accounting for rotation.
+    /// Center viewport on an image pixel, accounting for flip and rotation.
     func centerOnPixel(_ imgPoint: CGPoint, canvasSize: CGSize) {
         guard let hdu = selectedHDU else { return }
         let imgW = Double(hdu.header.naxis1)
         let imgH = Double(hdu.header.naxis2)
 
         // Offset from image center, scaled
-        let dx = (imgPoint.x - imgW / 2) * viewport.zoom
+        var dx = (imgPoint.x - imgW / 2) * viewport.zoom
         let dy = (imgPoint.y - imgH / 2) * viewport.zoom
+
+        // Apply horizontal flip before rotation (mirrors imageToScreen)
+        if viewport.flipX { dx = -dx }
 
         // Apply rotation to get screen-space offset
         let cosR = cos(viewport.rotation)

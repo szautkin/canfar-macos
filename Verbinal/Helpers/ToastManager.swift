@@ -68,3 +68,17 @@ extension View {
         modifier(ToastOverlay(toast: manager))
     }
 }
+
+// MARK: - Environment Key
+
+private struct FITSToastKey: EnvironmentKey {
+    static let defaultValue: ToastManager? = nil
+}
+
+extension EnvironmentValues {
+    /// Optional ToastManager for FITS viewer components. Injected at FITSViewerRootView.
+    var fitsToast: ToastManager? {
+        get { self[FITSToastKey.self] }
+        set { self[FITSToastKey.self] = newValue }
+    }
+}

@@ -11,8 +11,16 @@ import os.log
 ///
 /// All mouse interaction is handled by ScrollCaptureNSView (NSView subclass)
 /// to avoid SwiftUI gesture conflicts between tap and drag.
+///
+/// When `tabHost` is provided and a blink session is active, a second image layer
+/// is rendered on top of the primary image using the WCS-aligned `BlinkTransform`.
+/// The overlay opacity is driven by `tabHost.blinkOpacity`.
 struct FITSImageView: View {
     var model: FITSViewerModel
+    /// Optional tab host for blink overlay state. Nil in single-tab contexts.
+    var tabHost: FITSTabHostModel?
+
+    @Environment(\.fitsToast) private var toast
 
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "FITSImageView")
 
@@ -33,13 +41,17 @@ struct FITSImageView: View {
                             width: imgWidth * model.viewport.zoom,
                             height: imgHeight * model.viewport.zoom
                         )
+                        .scaleEffect(x: model.viewport.flipX ? -1 : 1, y: 1)
                         .rotationEffect(.radians(model.viewport.rotation))
                         .offset(x: model.viewport.panX, y: model.viewport.panY)
+
+                    // Blink overlay (image B), rendered with WCS-aligned transform
+                    blinkOverlay(imgSize: imgSize)
 
                     // Crosshair overlay
                     if let crosshair = model.crosshairPixel {
                         let screenPos = imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
-                        CrosshairOverlay(position: screenPos)
+                        CrosshairOverlay(position: screenPos, isLinked: model.isLinkedCrosshair)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -63,6 +75,7 @@ struct FITSImageView: View {
                                 let coords = "\(model.crosshairRA), \(model.crosshairDec)"
                                 NSPasteboard.general.clearContents()
                                 NSPasteboard.general.setString(coords, forType: .string)
+                                toast?.show("Coordinates copied")
                             }
                             Button("Search at Position") {
                                 if let wcs = model.wcs, let pixel = model.crosshairPixel,
@@ -100,10 +113,12 @@ struct FITSImageView: View {
                             // Apply new zoom
                             model.viewport.zoom = newZoom
 
-                            // Compute pan so anchorImg maps back to anchorScreen
+                            // Compute pan so anchorImg maps back to anchorScreen.
+                            // Must replicate imageToScreen's flip + rotate logic.
                             let rot = model.viewport.rotation
-                            let dx = (anchorImg.x - imgSize.width / 2) * newZoom
+                            var dx = (anchorImg.x - imgSize.width / 2) * newZoom
                             let dy = (anchorImg.y - imgSize.height / 2) * newZoom
+                            if model.viewport.flipX { dx = -dx }
                             let cosR = cos(rot)
                             let sinR = sin(rot)
                             model.viewport.panX = anchorScreen.x - geometry.size.width / 2 - (dx * cosR - dy * sinR)
@@ -145,17 +160,82 @@ struct FITSImageView: View {
         }
     }
 
+    // MARK: - Blink Overlay
+
+    /// Renders image B as an aligned overlay on top of image A.
+    ///
+    /// When WCS alignment is available (`blinkTransform` is set), the overlay is
+    /// positioned using the computed `BlinkTransform` (North-up, matched angular scale,
+    /// centered on the reference RA/Dec).
+    ///
+    /// When WCS is absent (no transform), the overlay tracks image A's zoom/pan —
+    /// a best-effort unaligned blink, still useful for same-instrument images.
+    @ViewBuilder
+    private func blinkOverlay(imgSize: CGSize) -> some View {
+        if let host = tabHost,
+           host.isBlinking,
+           let overlayImage = host.blinkOverlayImage
+        {
+            if let transform = host.blinkTransform {
+                // WCS-aligned overlay using the computed BlinkTransform.
+                //
+                // The overlay fills image A's pixel dimensions (Stretch=Fill equivalent).
+                // Transform order (center-origin CompositeTransform, matching Windows):
+                //   1. frame() sets the image to A's pixel dimensions
+                //   2. scaleEffect(x: ±1) mirrors for parity flip when scaleX < 0
+                //   3. rotationEffect rotates around image center
+                //   4. scaleEffect(abs) applies the zoom magnitude
+                //   5. offset() applies the WCS-computed pan/translate
+                Image(decorative: overlayImage, scale: 1)
+                    .resizable()
+                    .interpolation(.none)
+                    .frame(width: imgSize.width, height: imgSize.height)
+                    .scaleEffect(
+                        x: transform.scaleX < 0 ? -1 : 1,
+                        y: 1,
+                        anchor: .center
+                    )
+                    .rotationEffect(.radians(transform.rotation))
+                    .scaleEffect(
+                        x: abs(transform.scaleX),
+                        y: transform.scaleY,
+                        anchor: .center
+                    )
+                    .offset(x: transform.translateX, y: transform.translateY)
+                    .opacity(host.blinkOpacity)
+                    .allowsHitTesting(false)
+            } else {
+                // No WCS: unaligned overlay tracks image A's current zoom/pan.
+                Image(decorative: overlayImage, scale: 1)
+                    .resizable()
+                    .interpolation(.none)
+                    .frame(
+                        width: imgSize.width * model.viewport.zoom,
+                        height: imgSize.height * model.viewport.zoom
+                    )
+                    .scaleEffect(x: model.viewport.flipX ? -1 : 1, y: 1)
+                    .rotationEffect(.radians(model.viewport.rotation))
+                    .offset(x: model.viewport.panX, y: model.viewport.panY)
+                    .opacity(host.blinkOpacity)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
     // MARK: - Coordinate Transforms (rotation-aware, matches Windows ViewportMath)
 
     /// Convert image pixel coordinates to screen coordinates.
-    /// Applies: center → scale → rotate → translate (matching Windows ViewportMath.LocalToScreen).
+    /// Applies: center → scale → flip → rotate → translate (matching Windows ViewportMath.LocalToScreen).
     private func imageToScreen(_ imgPoint: CGPoint, imgSize: CGSize, canvasSize: CGSize) -> CGPoint {
         let zoom = model.viewport.zoom
         let rotation = model.viewport.rotation
 
         // Offset from image center, scaled
-        let dx = (imgPoint.x - imgSize.width / 2) * zoom
+        var dx = (imgPoint.x - imgSize.width / 2) * zoom
         let dy = (imgPoint.y - imgSize.height / 2) * zoom
+
+        // Apply horizontal flip before rotation (mirrors the .scaleEffect on the Image)
+        if model.viewport.flipX { dx = -dx }
 
         // Apply rotation
         let cosR = cos(rotation)
@@ -171,7 +251,7 @@ struct FITSImageView: View {
     }
 
     /// Convert screen coordinates to image pixel coordinates.
-    /// Inverse of imageToScreen: un-translate → un-rotate → un-scale → un-center.
+    /// Inverse of imageToScreen: un-translate → un-rotate → un-flip → un-scale → un-center.
     private func screenToImage(_ screenPoint: CGPoint, imgSize: CGSize, canvasSize: CGSize) -> CGPoint {
         let zoom = model.viewport.zoom
         let rotation = model.viewport.rotation
@@ -183,8 +263,11 @@ struct FITSImageView: View {
         // Inverse rotation
         let cosR = cos(-rotation)
         let sinR = sin(-rotation)
-        let ux = relX * cosR - relY * sinR
+        var ux = relX * cosR - relY * sinR
         let uy = relX * sinR + relY * cosR
+
+        // Undo horizontal flip (inverse of the .scaleEffect on the Image)
+        if model.viewport.flipX { ux = -ux }
 
         // Un-scale and offset back to image center
         return CGPoint(
@@ -197,8 +280,11 @@ struct FITSImageView: View {
 // MARK: - Crosshair Overlay
 
 /// Full-canvas crosshair lines intersecting at the given position (matches Windows).
+/// - Primary (user-placed, isLinked=false): solid red lines at 0.7 opacity.
+/// - Linked (from store, isLinked=true): dashed yellow lines at 0.7 opacity.
 private struct CrosshairOverlay: View {
     let position: CGPoint
+    let isLinked: Bool
 
     var body: some View {
         Canvas { context, size in
@@ -206,13 +292,20 @@ private struct CrosshairOverlay: View {
             var hPath = Path()
             hPath.move(to: CGPoint(x: 0, y: position.y))
             hPath.addLine(to: CGPoint(x: size.width, y: position.y))
-            context.stroke(hPath, with: .color(.red.opacity(0.7)), lineWidth: 1)
 
             // Vertical line
             var vPath = Path()
             vPath.move(to: CGPoint(x: position.x, y: 0))
             vPath.addLine(to: CGPoint(x: position.x, y: size.height))
-            context.stroke(vPath, with: .color(.red.opacity(0.7)), lineWidth: 1)
+
+            if isLinked {
+                let style = StrokeStyle(lineWidth: 1, dash: [4, 4])
+                context.stroke(hPath, with: .color(.yellow.opacity(0.7)), style: style)
+                context.stroke(vPath, with: .color(.yellow.opacity(0.7)), style: style)
+            } else {
+                context.stroke(hPath, with: .color(.red.opacity(0.7)), lineWidth: 1)
+                context.stroke(vPath, with: .color(.red.opacity(0.7)), lineWidth: 1)
+            }
         }
         .allowsHitTesting(false)
     }
@@ -315,6 +408,14 @@ class ScrollCaptureNSView: NSView {
 
     override func mouseMoved(with event: NSEvent) {
         onHover?(flippedLocation(for: event))
+    }
+
+    override func magnify(with event: NSEvent) {
+        let location = flippedLocation(for: event)
+        // magnification is a delta: positive = zoom in, negative = zoom out.
+        // Scale to a delta comparable to Cmd+scroll for consistent zoom speed.
+        let delta = event.magnification * 5.0
+        if abs(delta) > 0.01 { onScroll?(delta, location) }
     }
 
     override var acceptsFirstResponder: Bool { true }

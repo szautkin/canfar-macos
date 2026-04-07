@@ -9,6 +9,7 @@ import SwiftUI
 struct FITSViewerRootView: View {
     @Environment(AppState.self) private var appState
     @State private var tabHost = FITSTabHostModel()
+    @State private var toastManager = ToastManager()
 
     var body: some View {
         Group {
@@ -38,6 +39,8 @@ struct FITSViewerRootView: View {
                 FITSTabView(tabHost: tabHost)
             }
         }
+        .environment(\.fitsToast, toastManager)
+        .toast(toastManager)
         .onChange(of: appState.pendingFITSURL) { _, url in
             guard let url else { return }
             appState.pendingFITSURL = nil

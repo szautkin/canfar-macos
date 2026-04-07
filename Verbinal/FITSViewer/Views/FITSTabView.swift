@@ -5,6 +5,9 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// Multi-tab container for FITS viewer instances.
 struct FITSTabView: View {
@@ -12,6 +15,11 @@ struct FITSTabView: View {
     @State private var showHeader = false
     @State private var showBookmarks = false
     private let bookmarkStore = BookmarkStore()
+
+    #if os(macOS)
+    /// Retains the NSEvent local monitor while blink is active.
+    @State private var blinkKeyMonitor: Any?
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
@@ -91,25 +99,32 @@ struct FITSTabView: View {
                             .font(.caption2).buttonStyle(.bordered).controlSize(.mini)
                             .help("Show image B")
 
-                        Slider(value: Bindable(tabHost).blinkInterval, in: 0.2...3.0, step: 0.1) {
+                        Slider(value: Bindable(tabHost).blinkInterval, in: 0.5...5.0, step: 0.5) {
                             Text(String(format: "%.1fs", tabHost.blinkInterval))
                                 .font(.caption2)
                                 .frame(width: 30)
                         }
                         .frame(width: 120)
-                        .help("Blink interval")
+                        .help("Blink interval (0.5–5.0 seconds)")
 
                     } else {
-                        Button {
-                            tabHost.startBlink(tabA: 0, tabB: 1)
+                        // Menu showing all other tabs as blink targets
+                        Menu {
+                            ForEach(Array(tabHost.tabs.enumerated()), id: \.offset) { index, tab in
+                                if index != tabHost.activeTabIndex {
+                                    Button(tab.fileURL?.lastPathComponent ?? "Tab \(index + 1)") {
+                                        tabHost.startBlink(tabA: tabHost.activeTabIndex, tabB: index)
+                                    }
+                                }
+                            }
                         } label: {
                             Label("Blink", systemImage: "eye.slash")
                                 .font(.caption2)
                         }
-                        .buttonStyle(.bordered)
+                        .menuStyle(.borderedButton)
                         .controlSize(.mini)
                         .disabled(tabHost.tabs.count < 2)
-                        .help("Blink between first two tabs (Esc to stop)")
+                        .help("Blink current tab against another tab (Space=pause, ←=A, →=B, Esc=stop)")
                     }
 
                     Spacer()
@@ -167,7 +182,7 @@ struct FITSTabView: View {
                             }
                             Spacer()
                         } else if activeModel.renderedImage != nil {
-                            FITSImageView(model: activeModel)
+                            FITSImageView(model: activeModel, tabHost: tabHost)
                             Divider()
                             FITSCoordinateBar(model: activeModel)
                         } else {
@@ -179,7 +194,60 @@ struct FITSTabView: View {
                 emptyState
             }
         }
+        #if os(macOS)
+        .onChange(of: tabHost.isBlinking) { _, blinking in
+            if blinking {
+                installBlinkKeyMonitor()
+            } else {
+                removeBlinkKeyMonitor()
+            }
+        }
+        #endif
     }
+
+    // MARK: - Blink Keyboard Controls (macOS)
+
+    #if os(macOS)
+    /// Install a local NSEvent key monitor for blink keyboard shortcuts.
+    ///
+    /// Uses a local (not global) monitor so it only fires when the app is active.
+    /// The monitor is removed when blink stops or the view disappears.
+    ///
+    /// Shortcuts (matching Windows FitsTabHost.OnKeyDown):
+    ///   - Space     → toggle pause/resume
+    ///   - Left arrow → show image A (opacity=0, freeze)
+    ///   - Right arrow → show image B (opacity=1, freeze)
+    ///   (Esc is handled by the Stop button's .keyboardShortcut modifier)
+    private func installBlinkKeyMonitor() {
+        guard blinkKeyMonitor == nil else { return }
+        blinkKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard tabHost.isBlinking else {
+                removeBlinkKeyMonitor()
+                return event
+            }
+            switch event.keyCode {
+            case 49: // Space
+                tabHost.toggleBlinkPause()
+                return nil
+            case 123: // Left arrow
+                tabHost.showBlinkA()
+                return nil
+            case 124: // Right arrow
+                tabHost.showBlinkB()
+                return nil
+            default:
+                return event
+            }
+        }
+    }
+
+    private func removeBlinkKeyMonitor() {
+        if let monitor = blinkKeyMonitor {
+            NSEvent.removeMonitor(monitor)
+            blinkKeyMonitor = nil
+        }
+    }
+    #endif
 
     // MARK: - Tab Button
 

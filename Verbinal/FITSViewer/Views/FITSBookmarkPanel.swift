@@ -10,6 +10,9 @@ struct FITSBookmarkPanel: View {
     var model: FITSViewerModel
     var store: BookmarkStore
 
+    @State private var labelText: String = ""
+    @Environment(\.fitsToast) private var toast
+
     private var bookmarks: [CoordinateBookmark] {
         guard let path = model.fileURL?.path else { return store.bookmarks }
         return store.bookmarks(for: path)
@@ -29,12 +32,16 @@ struct FITSBookmarkPanel: View {
                           let hdu = model.selectedHDU else { return }
                     let fitsY = Double(hdu.header.naxis2 - 1) - pixel.y
                     let (ra, dec) = wcs.pixelToWorld(x: pixel.x, y: fitsY)
-                    let label = "\(model.crosshairRA) \(model.crosshairDec)"
+                    let resolvedLabel = labelText.trimmingCharacters(in: .whitespaces).isEmpty
+                        ? "\(model.crosshairRA) \(model.crosshairDec)"
+                        : labelText.trimmingCharacters(in: .whitespaces)
                     let bookmark = CoordinateBookmark(
-                        label: label, ra: ra, dec: dec,
+                        label: resolvedLabel, ra: ra, dec: dec,
                         sourceFilePath: model.fileURL?.path ?? ""
                     )
                     store.save(bookmark)
+                    labelText = ""
+                    toast?.show("Bookmark saved")
                 } label: {
                     Image(systemName: "bookmark.fill")
                         .font(.caption2)
@@ -44,6 +51,13 @@ struct FITSBookmarkPanel: View {
                 .help("Save current crosshair position")
             }
             .padding(.horizontal, 8)
+
+            if model.crosshairPixel != nil {
+                TextField("Label (optional)", text: $labelText)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption2)
+                    .padding(.horizontal, 8)
+            }
 
             if bookmarks.isEmpty {
                 Text("No bookmarks")

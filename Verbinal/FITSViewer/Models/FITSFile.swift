@@ -53,6 +53,7 @@ struct FITSViewport: Sendable, Equatable {
     var panX: Double = 0
     var panY: Double = 0
     var rotation: Double = 0 // radians
+    var flipX: Bool = false   // horizontal mirror for parity-flipped WCS
 }
 
 /// Shared state store for linked tabs (pull-on-activation pattern).
