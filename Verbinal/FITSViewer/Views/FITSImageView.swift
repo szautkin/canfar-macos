@@ -78,25 +78,37 @@ struct FITSImageView: View {
                 .overlay {
                     ScrollCaptureView(
                         onScroll: { delta, mouseLocation in
-                            let oldZoom = model.viewport.zoom
-                            let zoomFactor = delta > 0 ? 1.15 : 1.0 / 1.15
-                            let newZoom = max(0.05, min(20, oldZoom * zoomFactor))
+                            let newZoom = max(0.05, min(20,
+                                model.viewport.zoom * (delta > 0 ? 1.15 : 1.0 / 1.15)))
 
-                            // Zoom toward crosshair if placed, otherwise toward cursor (Windows behavior)
-                            let anchor: CGPoint
+                            // Windows ComputeZoomTranslate pattern:
+                            // 1. Pick anchor: crosshair screen pos if placed, else cursor
+                            // 2. Find what image pixel is at that anchor (old zoom)
+                            // 3. Set new zoom
+                            // 4. Compute exact pan so that image pixel stays at anchor
+
+                            let anchorScreen: CGPoint
                             if let crosshair = model.crosshairPixel {
-                                anchor = imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
+                                anchorScreen = imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
                             } else {
-                                anchor = mouseLocation
+                                anchorScreen = mouseLocation
                             }
 
-                            let canvasCenter = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                            let dx = anchor.x - canvasCenter.x - model.viewport.panX
-                            let dy = anchor.y - canvasCenter.y - model.viewport.panY
-                            let scale = 1 - newZoom / oldZoom
-                            model.viewport.panX += dx * scale
-                            model.viewport.panY += dy * scale
+                            // Image pixel under anchor (old zoom still in effect)
+                            let anchorImg = screenToImage(anchorScreen, imgSize: imgSize, canvasSize: geometry.size)
+
+                            // Apply new zoom
                             model.viewport.zoom = newZoom
+
+                            // Compute pan so anchorImg maps back to anchorScreen
+                            let rot = model.viewport.rotation
+                            let dx = (anchorImg.x - imgSize.width / 2) * newZoom
+                            let dy = (anchorImg.y - imgSize.height / 2) * newZoom
+                            let cosR = cos(rot)
+                            let sinR = sin(rot)
+                            model.viewport.panX = anchorScreen.x - geometry.size.width / 2 - (dx * cosR - dy * sinR)
+                            model.viewport.panY = anchorScreen.y - geometry.size.height / 2 - (dx * sinR + dy * cosR)
+
                             model.onZoomChanged?()
                         },
                         onPan: { dx, dy in
@@ -109,7 +121,6 @@ struct FITSImageView: View {
                             if imgPoint.x >= 0, imgPoint.y >= 0,
                                imgPoint.x < imgWidth, imgPoint.y < imgHeight {
                                 model.placeCrosshair(at: imgPoint)
-                                // Auto-center on crosshair when zoomed in (Windows behavior)
                                 if model.viewport.zoom > 1.05 {
                                     model.centerOnPixel(imgPoint, canvasSize: geometry.size)
                                 }
