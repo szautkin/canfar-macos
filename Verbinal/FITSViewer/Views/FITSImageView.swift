@@ -79,12 +79,20 @@ struct FITSImageView: View {
                     ScrollCaptureView(
                         onScroll: { delta, mouseLocation in
                             let oldZoom = model.viewport.zoom
-                            let zoomFactor = delta > 0 ? 1.1 : 0.9
+                            let zoomFactor = delta > 0 ? 1.15 : 1.0 / 1.15
                             let newZoom = max(0.05, min(20, oldZoom * zoomFactor))
 
-                            let canvasCenter = CGSize(width: geometry.size.width / 2, height: geometry.size.height / 2)
-                            let dx = mouseLocation.x - canvasCenter.width - model.viewport.panX
-                            let dy = mouseLocation.y - canvasCenter.height - model.viewport.panY
+                            // Zoom toward crosshair if placed, otherwise toward cursor (Windows behavior)
+                            let anchor: CGPoint
+                            if let crosshair = model.crosshairPixel {
+                                anchor = imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
+                            } else {
+                                anchor = mouseLocation
+                            }
+
+                            let canvasCenter = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                            let dx = anchor.x - canvasCenter.x - model.viewport.panX
+                            let dy = anchor.y - canvasCenter.y - model.viewport.panY
                             let scale = 1 - newZoom / oldZoom
                             model.viewport.panX += dx * scale
                             model.viewport.panY += dy * scale
@@ -101,6 +109,10 @@ struct FITSImageView: View {
                             if imgPoint.x >= 0, imgPoint.y >= 0,
                                imgPoint.x < imgWidth, imgPoint.y < imgHeight {
                                 model.placeCrosshair(at: imgPoint)
+                                // Auto-center on crosshair when zoomed in (Windows behavior)
+                                if model.viewport.zoom > 1.05 {
+                                    model.centerOnPixel(imgPoint, canvasSize: geometry.size)
+                                }
                                 Self.logger.info("Crosshair placed at (\(imgPoint.x), \(imgPoint.y))")
                             }
                         },
@@ -122,42 +134,74 @@ struct FITSImageView: View {
         }
     }
 
-    // MARK: - Coordinate Transforms
+    // MARK: - Coordinate Transforms (rotation-aware, matches Windows ViewportMath)
 
+    /// Convert image pixel coordinates to screen coordinates.
+    /// Applies: center → scale → rotate → translate (matching Windows ViewportMath.LocalToScreen).
     private func imageToScreen(_ imgPoint: CGPoint, imgSize: CGSize, canvasSize: CGSize) -> CGPoint {
         let zoom = model.viewport.zoom
-        let centerX = canvasSize.width / 2 + model.viewport.panX
-        let centerY = canvasSize.height / 2 + model.viewport.panY
-        let x = centerX + (imgPoint.x - imgSize.width / 2) * zoom
-        let y = centerY + (imgPoint.y - imgSize.height / 2) * zoom
-        return CGPoint(x: x, y: y)
+        let rotation = model.viewport.rotation
+
+        // Offset from image center, scaled
+        let dx = (imgPoint.x - imgSize.width / 2) * zoom
+        let dy = (imgPoint.y - imgSize.height / 2) * zoom
+
+        // Apply rotation
+        let cosR = cos(rotation)
+        let sinR = sin(rotation)
+        let rx = dx * cosR - dy * sinR
+        let ry = dx * sinR + dy * cosR
+
+        // Offset to canvas center + pan
+        return CGPoint(
+            x: canvasSize.width / 2 + model.viewport.panX + rx,
+            y: canvasSize.height / 2 + model.viewport.panY + ry
+        )
     }
 
+    /// Convert screen coordinates to image pixel coordinates.
+    /// Inverse of imageToScreen: un-translate → un-rotate → un-scale → un-center.
     private func screenToImage(_ screenPoint: CGPoint, imgSize: CGSize, canvasSize: CGSize) -> CGPoint {
         let zoom = model.viewport.zoom
-        let centerX = canvasSize.width / 2 + model.viewport.panX
-        let centerY = canvasSize.height / 2 + model.viewport.panY
-        let x = (screenPoint.x - centerX) / zoom + imgSize.width / 2
-        let y = (screenPoint.y - centerY) / zoom + imgSize.height / 2
-        return CGPoint(x: x, y: y)
+        let rotation = model.viewport.rotation
+
+        // Relative to canvas center + pan
+        let relX = screenPoint.x - canvasSize.width / 2 - model.viewport.panX
+        let relY = screenPoint.y - canvasSize.height / 2 - model.viewport.panY
+
+        // Inverse rotation
+        let cosR = cos(-rotation)
+        let sinR = sin(-rotation)
+        let ux = relX * cosR - relY * sinR
+        let uy = relX * sinR + relY * cosR
+
+        // Un-scale and offset back to image center
+        return CGPoint(
+            x: ux / zoom + imgSize.width / 2,
+            y: uy / zoom + imgSize.height / 2
+        )
     }
 }
 
 // MARK: - Crosshair Overlay
 
+/// Full-canvas crosshair lines intersecting at the given position (matches Windows).
 private struct CrosshairOverlay: View {
     let position: CGPoint
 
     var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.red.opacity(0.7))
-                .frame(width: 20, height: 1)
-                .position(position)
-            Rectangle()
-                .fill(.red.opacity(0.7))
-                .frame(width: 1, height: 20)
-                .position(position)
+        Canvas { context, size in
+            // Horizontal line
+            var hPath = Path()
+            hPath.move(to: CGPoint(x: 0, y: position.y))
+            hPath.addLine(to: CGPoint(x: size.width, y: position.y))
+            context.stroke(hPath, with: .color(.red.opacity(0.7)), lineWidth: 1)
+
+            // Vertical line
+            var vPath = Path()
+            vPath.move(to: CGPoint(x: position.x, y: 0))
+            vPath.addLine(to: CGPoint(x: position.x, y: size.height))
+            context.stroke(vPath, with: .color(.red.opacity(0.7)), lineWidth: 1)
         }
         .allowsHitTesting(false)
     }

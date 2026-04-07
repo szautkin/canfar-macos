@@ -194,11 +194,30 @@ final class FITSViewerModel: Identifiable {
         guard let wcs, let hdu = selectedHDU else { return }
         guard let pixel = wcs.worldToPixel(ra: ra, dec: dec) else { return }
         let displayY = Double(hdu.header.naxis2 - 1) - pixel.y
+        let imgPoint = CGPoint(x: pixel.x, y: displayY)
+        placeCrosshair(at: imgPoint)
+        centerOnPixel(imgPoint, canvasSize: lastCanvasSize)
+    }
+
+    /// Center viewport on an image pixel, accounting for rotation.
+    func centerOnPixel(_ imgPoint: CGPoint, canvasSize: CGSize) {
+        guard let hdu = selectedHDU else { return }
         let imgW = Double(hdu.header.naxis1)
         let imgH = Double(hdu.header.naxis2)
-        viewport.panX = -(pixel.x - imgW / 2) * viewport.zoom
-        viewport.panY = -(displayY - imgH / 2) * viewport.zoom
-        placeCrosshair(at: CGPoint(x: pixel.x, y: displayY))
+
+        // Offset from image center, scaled
+        let dx = (imgPoint.x - imgW / 2) * viewport.zoom
+        let dy = (imgPoint.y - imgH / 2) * viewport.zoom
+
+        // Apply rotation to get screen-space offset
+        let cosR = cos(viewport.rotation)
+        let sinR = sin(viewport.rotation)
+        let rx = dx * cosR - dy * sinR
+        let ry = dx * sinR + dy * cosR
+
+        // Pan so this point is at canvas center
+        viewport.panX = -rx
+        viewport.panY = -ry
     }
 
     /// Fit image to canvas size by computing the right zoom level.
