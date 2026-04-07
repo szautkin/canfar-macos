@@ -70,6 +70,7 @@ final class ObservationStore {
 
     private func readFromDisk() -> [DownloadedObservation] {
         guard let url = fileURL else { return [] }
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
         do {
             let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()

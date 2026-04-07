@@ -5,19 +5,23 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import os.log
 
 /// Displays the rendered FITS image with zoom, pan, and crosshair interaction.
+///
+/// All mouse interaction is handled by ScrollCaptureNSView (NSView subclass)
+/// to avoid SwiftUI gesture conflicts between tap and drag.
 struct FITSImageView: View {
     var model: FITSViewerModel
 
-    @State private var dragStart: CGPoint?
-    @State private var lastHoverPoint: CGPoint?
+    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "FITSImageView")
 
     var body: some View {
         GeometryReader { geometry in
             if let cgImage = model.renderedImage {
                 let imgWidth = CGFloat(cgImage.width)
                 let imgHeight = CGFloat(cgImage.height)
+                let imgSize = CGSize(width: imgWidth, height: imgHeight)
 
                 ZStack {
                     Color.clear.onAppear { model.lastCanvasSize = geometry.size }
@@ -34,50 +38,13 @@ struct FITSImageView: View {
 
                     // Crosshair overlay
                     if let crosshair = model.crosshairPixel {
-                        let screenPos = imageToScreen(
-                            crosshair,
-                            imgSize: CGSize(width: imgWidth, height: imgHeight),
-                            canvasSize: geometry.size
-                        )
+                        let screenPos = imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
                         CrosshairOverlay(position: screenPos)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-                .contentShape(Rectangle())
-                .gesture(dragGesture)
-                .onContinuousHover { phase in
-                    switch phase {
-                    case .active(let location):
-                        lastHoverPoint = location
-                        let imgPoint = screenToImage(
-                            location,
-                            imgSize: CGSize(width: imgWidth, height: imgHeight),
-                            canvasSize: geometry.size
-                        )
-                        if imgPoint.x >= 0, imgPoint.y >= 0,
-                           imgPoint.x < imgWidth, imgPoint.y < imgHeight {
-                            model.updateCursorInfo(at: imgPoint)
-                        }
-                    case .ended:
-                        break
-                    }
-                }
                 #if os(macOS)
-                .onTapGesture(count: 1) {
-                    // Place crosshair at last hover position (converted to image coords)
-                    if let hover = lastHoverPoint {
-                        let imgPoint = screenToImage(
-                            hover,
-                            imgSize: CGSize(width: imgWidth, height: imgHeight),
-                            canvasSize: geometry.size
-                        )
-                        if imgPoint.x >= 0, imgPoint.y >= 0,
-                           imgPoint.x < imgWidth, imgPoint.y < imgHeight {
-                            model.placeCrosshair(at: imgPoint)
-                        }
-                    }
-                }
                 .contextMenu {
                     Button("Reset View") { model.fitToWindow(canvasSize: geometry.size) }
                     if model.crosshairPixel != nil {
@@ -115,7 +82,6 @@ struct FITSImageView: View {
                             let zoomFactor = delta > 0 ? 1.1 : 0.9
                             let newZoom = max(0.05, min(20, oldZoom * zoomFactor))
 
-                            // Zoom toward cursor: adjust pan so the pixel under cursor stays fixed
                             let canvasCenter = CGSize(width: geometry.size.width / 2, height: geometry.size.height / 2)
                             let dx = mouseLocation.x - canvasCenter.width - model.viewport.panX
                             let dy = mouseLocation.y - canvasCenter.height - model.viewport.panY
@@ -128,26 +94,32 @@ struct FITSImageView: View {
                         onPan: { dx, dy in
                             model.viewport.panX += dx
                             model.viewport.panY += dy
+                        },
+                        onClick: { screenPoint in
+                            let imgPoint = screenToImage(screenPoint, imgSize: imgSize, canvasSize: geometry.size)
+                            Self.logger.debug("Click at screen=(\(screenPoint.x), \(screenPoint.y)) → image=(\(imgPoint.x), \(imgPoint.y))")
+                            if imgPoint.x >= 0, imgPoint.y >= 0,
+                               imgPoint.x < imgWidth, imgPoint.y < imgHeight {
+                                model.placeCrosshair(at: imgPoint)
+                                Self.logger.info("Crosshair placed at (\(imgPoint.x), \(imgPoint.y))")
+                            }
+                        },
+                        onDrag: { dx, dy in
+                            model.viewport.panX += dx
+                            model.viewport.panY += dy
+                        },
+                        onHover: { screenPoint in
+                            let imgPoint = screenToImage(screenPoint, imgSize: imgSize, canvasSize: geometry.size)
+                            if imgPoint.x >= 0, imgPoint.y >= 0,
+                               imgPoint.x < imgWidth, imgPoint.y < imgHeight {
+                                model.updateCursorInfo(at: imgPoint)
+                            }
                         }
                     )
                 }
                 #endif
             }
         }
-    }
-
-    // MARK: - Gestures
-
-    private var dragGesture: some Gesture {
-        DragGesture()
-            .onChanged { value in
-                model.viewport.panX += value.translation.width - (dragStart?.x ?? 0)
-                model.viewport.panY += value.translation.height - (dragStart?.y ?? 0)
-                dragStart = CGPoint(x: value.translation.width, y: value.translation.height)
-            }
-            .onEnded { _ in
-                dragStart = nil
-            }
     }
 
     // MARK: - Coordinate Transforms
@@ -196,48 +168,96 @@ private struct CrosshairOverlay: View {
 #if os(macOS)
 import AppKit
 
-/// Invisible NSView that captures scroll wheel events with mouse location.
-/// Shift+scroll sends horizontal pan instead of zoom.
+/// Invisible NSView that captures scroll wheel, click, and drag events.
+/// - Scroll: zoom toward cursor
+/// - Shift+scroll: horizontal pan
+/// - Click (no drag): place crosshair
+/// - Drag: pan image
 struct ScrollCaptureView: NSViewRepresentable {
     let onScroll: (CGFloat, CGPoint) -> Void
     var onPan: ((CGFloat, CGFloat) -> Void)?
+    var onClick: ((CGPoint) -> Void)?
+    var onDrag: ((CGFloat, CGFloat) -> Void)?
+    var onHover: ((CGPoint) -> Void)?
 
     func makeNSView(context: Context) -> ScrollCaptureNSView {
         let view = ScrollCaptureNSView()
         view.onScroll = onScroll
         view.onPan = onPan
+        view.onClick = onClick
+        view.onDrag = onDrag
+        view.onHover = onHover
+        // Enable mouse tracking for hover
+        let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: view)
+        view.addTrackingArea(area)
         return view
     }
 
     func updateNSView(_ nsView: ScrollCaptureNSView, context: Context) {
         nsView.onScroll = onScroll
         nsView.onPan = onPan
+        nsView.onClick = onClick
+        nsView.onDrag = onDrag
+        nsView.onHover = onHover
     }
 }
 
 class ScrollCaptureNSView: NSView {
     var onScroll: ((CGFloat, CGPoint) -> Void)?
     var onPan: ((CGFloat, CGFloat) -> Void)?
+    var onClick: ((CGPoint) -> Void)?
+    var onDrag: ((CGFloat, CGFloat) -> Void)?
+    var onHover: ((CGPoint) -> Void)?
+
+    private var mouseDownLocation: CGPoint?
+    private var didDrag = false
+    private static let dragThreshold: CGFloat = 3.0
 
     override func scrollWheel(with event: NSEvent) {
-        let location = convert(event.locationInWindow, from: nil)
-        let flipped = CGPoint(x: location.x, y: bounds.height - location.y)
+        let location = flippedLocation(for: event)
 
-        // Shift+scroll → horizontal pan
         if event.modifierFlags.contains(.shift) {
             let dx = event.scrollingDeltaX != 0 ? event.scrollingDeltaX : event.scrollingDeltaY
-            if abs(dx) > 0.1 {
-                onPan?(dx, 0)
-            }
+            if abs(dx) > 0.1 { onPan?(dx, 0) }
             return
         }
 
         let delta = event.scrollingDeltaY
-        if abs(delta) > 0.1 {
-            onScroll?(delta, flipped)
+        if abs(delta) > 0.1 { onScroll?(delta, location) }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        mouseDownLocation = flippedLocation(for: event)
+        didDrag = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = mouseDownLocation else { return }
+        let current = flippedLocation(for: event)
+        let dx = current.x - start.x
+        let dy = current.y - start.y
+        if !didDrag && sqrt(dx * dx + dy * dy) < Self.dragThreshold { return }
+        didDrag = true
+        onDrag?(event.deltaX, -event.deltaY)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if !didDrag, let loc = mouseDownLocation {
+            onClick?(loc)
         }
+        mouseDownLocation = nil
+        didDrag = false
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        onHover?(flippedLocation(for: event))
     }
 
     override var acceptsFirstResponder: Bool { true }
+
+    private func flippedLocation(for event: NSEvent) -> CGPoint {
+        let loc = convert(event.locationInWindow, from: nil)
+        return CGPoint(x: loc.x, y: bounds.height - loc.y)
+    }
 }
 #endif

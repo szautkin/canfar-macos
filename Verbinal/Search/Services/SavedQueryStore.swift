@@ -60,6 +60,7 @@ final class SavedQueryStore {
 
     private func readFromDisk() -> [SavedQuery] {
         guard let url = fileURL else { return [] }
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
         do {
             let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()

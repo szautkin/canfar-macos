@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 import CoreGraphics
+import os.log
 #if os(macOS)
 import AppKit
 #endif
@@ -15,6 +16,7 @@ import AppKit
 @Observable
 @MainActor
 final class FITSViewerModel: Identifiable {
+    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "FITSViewer")
     let id = UUID()
     var file: FITSFile?
     var selectedHDUIndex = 0
@@ -58,12 +60,12 @@ final class FITSViewerModel: Identifiable {
     // MARK: - File Operations
 
     func open(url: URL) async {
+        Self.logger.info("Opening FITS file: \(url.lastPathComponent, privacy: .public)")
         isLoading = true
         loadError = nil
         fileURL = url
 
         do {
-            // Parse and extract pixels off the main thread
             let (fitsFile, extractedPixels, cuts) = try await Task.detached {
                 let data = try Data(contentsOf: url, options: .mappedIfSafe)
                 let fitsFile = try FITSParser.parse(from: data)
@@ -80,10 +82,11 @@ final class FITSViewerModel: Identifiable {
             pixels = extractedPixels
             renderParams.minCut = cuts.min
             renderParams.maxCut = cuts.max
+            Self.logger.info("Loaded \(extractedPixels.count) pixels, cuts=[\(cuts.min), \(cuts.max)], HDUs=\(fitsFile.hdus.count), WCS=\(fitsFile.firstImageHDU?.wcs != nil)")
 
-            // Render off main thread too
             await renderImageAsync()
         } catch {
+            Self.logger.error("Failed to open FITS: \(error.localizedDescription, privacy: .public)")
             loadError = error.localizedDescription
         }
 
@@ -138,7 +141,11 @@ final class FITSViewerModel: Identifiable {
 
     /// Place crosshair at image pixel (0-based, display-space Y already flipped).
     func placeCrosshair(at point: CGPoint) {
-        guard let hdu = selectedHDU else { return }
+        guard let hdu = selectedHDU else {
+            Self.logger.warning("placeCrosshair: no selected HDU")
+            return
+        }
+        Self.logger.debug("placeCrosshair at (\(point.x), \(point.y))")
         crosshairPixel = point
 
         let pixelIdx = Int(point.y) * hdu.header.naxis1 + Int(point.x)

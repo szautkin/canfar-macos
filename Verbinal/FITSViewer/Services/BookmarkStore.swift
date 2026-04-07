@@ -53,6 +53,7 @@ final class BookmarkStore {
 
     private func readFromDisk() -> [CoordinateBookmark] {
         guard let url = fileURL else { return [] }
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
         do {
             let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()
