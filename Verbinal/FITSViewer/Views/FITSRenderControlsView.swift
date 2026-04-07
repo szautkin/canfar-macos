@@ -75,16 +75,17 @@ struct FITSRenderControlsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Zoom")
                     .font(.caption.bold())
-                Picker("", selection: Bindable(model).viewport.zoom) {
-                    Text("25%").tag(0.25)
-                    Text("50%").tag(0.5)
-                    Text("100%").tag(1.0)
-                    Text("200%").tag(2.0)
-                    Text("400%").tag(4.0)
-                    Text("800%").tag(8.0)
-                    Text("1200%").tag(12.0)
+                HStack(spacing: 4) {
+                    ForEach([0.25, 0.5, 1.0, 2.0, 4.0, 8.0], id: \.self) { level in
+                        Button(zoomLabel(level)) {
+                            model.viewport.zoom = level
+                            model.onZoomChanged?()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                        .font(.caption2)
+                    }
                 }
-                .pickerStyle(.menu)
                 HStack {
                     Button("Fit") {
                         model.fitToWindow(canvasSize: model.lastCanvasSize)
@@ -101,5 +102,10 @@ struct FITSRenderControlsView: View {
             }
         }
         .padding(8)
+    }
+
+    private func zoomLabel(_ level: Double) -> String {
+        if level >= 1 { return "\(Int(level * 100))%" }
+        return "\(Int(level * 100))%"
     }
 }
