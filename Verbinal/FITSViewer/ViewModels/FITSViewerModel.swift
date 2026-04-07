@@ -85,6 +85,7 @@ final class FITSViewerModel: Identifiable {
             Self.logger.info("Loaded \(extractedPixels.count) pixels, cuts=[\(cuts.min), \(cuts.max)], HDUs=\(fitsFile.hdus.count), WCS=\(fitsFile.firstImageHDU?.wcs != nil)")
 
             await renderImageAsync()
+            fitToWindow(canvasSize: lastCanvasSize)
         } catch {
             Self.logger.error("Failed to open FITS: \(error.localizedDescription, privacy: .public)")
             loadError = error.localizedDescription
@@ -199,6 +200,16 @@ final class FITSViewerModel: Identifiable {
         centerOnPixel(imgPoint, canvasSize: lastCanvasSize)
     }
 
+    /// Set zoom from UI controls. Centers on crosshair if placed (matches Windows SetZoomLevel).
+    func setZoom(_ level: Double) {
+        let clamped = max(0.05, min(20, level))
+        viewport.zoom = clamped
+        if let crosshair = crosshairPixel {
+            centerOnPixel(crosshair, canvasSize: lastCanvasSize)
+        }
+        onZoomChanged?()
+    }
+
     /// Center viewport on an image pixel, accounting for rotation.
     func centerOnPixel(_ imgPoint: CGPoint, canvasSize: CGSize) {
         guard let hdu = selectedHDU else { return }
@@ -232,9 +243,13 @@ final class FITSViewerModel: Identifiable {
         let zoomX = canvasSize.width / imgW
         let zoomY = canvasSize.height / imgH
         viewport.zoom = min(zoomX, zoomY) * 0.95 // 5% margin
-        viewport.panX = 0
-        viewport.panY = 0
         viewport.rotation = 0
+        if let crosshair = crosshairPixel {
+            centerOnPixel(crosshair, canvasSize: canvasSize)
+        } else {
+            viewport.panX = 0
+            viewport.panY = 0
+        }
     }
 
     private func updatePixelRange() {

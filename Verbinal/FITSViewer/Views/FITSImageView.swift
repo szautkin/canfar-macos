@@ -271,14 +271,23 @@ class ScrollCaptureNSView: NSView {
     override func scrollWheel(with event: NSEvent) {
         let location = flippedLocation(for: event)
 
+        if event.modifierFlags.contains(.command) {
+            // Cmd+scroll = zoom toward crosshair/cursor (matches Windows Ctrl+scroll)
+            let delta = event.scrollingDeltaY
+            if abs(delta) > 0.1 { onScroll?(delta, location) }
+            return
+        }
+
         if event.modifierFlags.contains(.shift) {
+            // Shift+scroll = horizontal pan
             let dx = event.scrollingDeltaX != 0 ? event.scrollingDeltaX : event.scrollingDeltaY
             if abs(dx) > 0.1 { onPan?(dx, 0) }
             return
         }
 
-        let delta = event.scrollingDeltaY
-        if abs(delta) > 0.1 { onScroll?(delta, location) }
+        // Bare scroll = vertical pan (matches Windows bare scroll)
+        let dy = event.scrollingDeltaY
+        if abs(dy) > 0.1 { onPan?(0, -dy) }
     }
 
     override func mouseDown(with event: NSEvent) {

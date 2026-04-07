@@ -71,8 +71,7 @@ struct FITSCoordinateBar: View {
                 .onSubmit {
                     let cleaned = zoomText.replacingOccurrences(of: "%", with: "").trimmingCharacters(in: .whitespaces)
                     if let pct = Double(cleaned), pct > 0 {
-                        model.viewport.zoom = max(0.05, min(20, pct / 100.0))
-                        model.onZoomChanged?()
+                        model.setZoom(pct / 100.0)
                     }
                     zoomText = String(format: "%.0f%%", model.viewport.zoom * 100)
                     zoomFieldFocused = false

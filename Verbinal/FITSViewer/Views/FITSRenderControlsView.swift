@@ -174,8 +174,7 @@ struct FITSRenderControlsView: View {
                 HStack(spacing: 4) {
                     ForEach([0.25, 0.5, 1.0, 2.0, 4.0, 8.0], id: \.self) { level in
                         Button(zoomLabel(level)) {
-                            model.viewport.zoom = level
-                            model.onZoomChanged?()
+                            model.setZoom(level)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.mini)
@@ -186,7 +185,7 @@ struct FITSRenderControlsView: View {
                     Button("Fit") {
                         model.fitToWindow(canvasSize: model.lastCanvasSize)
                     }
-                    Button("1:1") { model.viewport.zoom = 1.0 }
+                    Button("1:1") { model.setZoom(1.0) }
                     if model.wcs != nil {
                         Button("N") { model.applyNorthUp() }
                             .help("North Up")
