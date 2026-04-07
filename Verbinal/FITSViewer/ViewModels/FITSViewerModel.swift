@@ -219,8 +219,79 @@ final class FITSViewerModel: Identifiable {
         viewport.zoom = clamped
         if let crosshair = crosshairPixel {
             centerOnPixel(crosshair, canvasSize: lastCanvasSize)
+            Self.logger.debug("setZoom(\(level)): crosshair=(\(crosshair.x), \(crosshair.y)), canvas=\(self.lastCanvasSize.width)×\(self.lastCanvasSize.height), pan=(\(self.viewport.panX), \(self.viewport.panY))")
         }
         onZoomChanged?()
+    }
+
+    // MARK: - Coordinate Transforms (rotation-aware, matches Windows ViewportMath)
+
+    /// Convert image pixel coordinates to screen coordinates.
+    ///
+    /// Applies: center → scale → flip → rotate → translate, matching
+    /// Windows `ViewportMath.LocalToScreen`.
+    ///
+    /// - Parameters:
+    ///   - imgPoint: Pixel position in image space (0-based, origin top-left).
+    ///   - imgSize: Full pixel dimensions of the image.
+    ///   - canvasSize: Size of the rendering canvas in screen points.
+    /// - Returns: Position in screen/canvas coordinates.
+    func imageToScreen(_ imgPoint: CGPoint, imgSize: CGSize, canvasSize: CGSize) -> CGPoint {
+        let zoom = viewport.zoom
+        let rotation = viewport.rotation
+
+        // Offset from image center, scaled
+        var dx = (imgPoint.x - imgSize.width / 2) * zoom
+        let dy = (imgPoint.y - imgSize.height / 2) * zoom
+
+        // Apply horizontal flip before rotation (mirrors the .scaleEffect on the Image)
+        if viewport.flipX { dx = -dx }
+
+        // Apply rotation
+        let cosR = cos(rotation)
+        let sinR = sin(rotation)
+        let rx = dx * cosR - dy * sinR
+        let ry = dx * sinR + dy * cosR
+
+        // Offset to canvas center + pan
+        return CGPoint(
+            x: canvasSize.width / 2 + viewport.panX + rx,
+            y: canvasSize.height / 2 + viewport.panY + ry
+        )
+    }
+
+    /// Convert screen coordinates to image pixel coordinates.
+    ///
+    /// Inverse of `imageToScreen`: un-translate → un-rotate → un-flip →
+    /// un-scale → un-center.
+    ///
+    /// - Parameters:
+    ///   - screenPoint: Position in screen/canvas coordinates.
+    ///   - imgSize: Full pixel dimensions of the image.
+    ///   - canvasSize: Size of the rendering canvas in screen points.
+    /// - Returns: Pixel position in image space.
+    func screenToImage(_ screenPoint: CGPoint, imgSize: CGSize, canvasSize: CGSize) -> CGPoint {
+        let zoom = viewport.zoom
+        let rotation = viewport.rotation
+
+        // Relative to canvas center + pan
+        let relX = screenPoint.x - canvasSize.width / 2 - viewport.panX
+        let relY = screenPoint.y - canvasSize.height / 2 - viewport.panY
+
+        // Inverse rotation
+        let cosR = cos(-rotation)
+        let sinR = sin(-rotation)
+        var ux = relX * cosR - relY * sinR
+        let uy = relX * sinR + relY * cosR
+
+        // Undo horizontal flip (inverse of the .scaleEffect on the Image)
+        if viewport.flipX { ux = -ux }
+
+        // Un-scale and offset back to image center
+        return CGPoint(
+            x: ux / zoom + imgSize.width / 2,
+            y: uy / zoom + imgSize.height / 2
+        )
     }
 
     /// Center viewport on an image pixel, accounting for flip and rotation.

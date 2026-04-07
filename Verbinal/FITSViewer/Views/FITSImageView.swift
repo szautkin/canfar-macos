@@ -50,7 +50,7 @@ struct FITSImageView: View {
 
                     // Crosshair overlay
                     if let crosshair = model.crosshairPixel {
-                        let screenPos = imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
+                        let screenPos = model.imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
                         CrosshairOverlay(position: screenPos, isLinked: model.isLinkedCrosshair)
                     }
                 }
@@ -102,13 +102,13 @@ struct FITSImageView: View {
 
                             let anchorScreen: CGPoint
                             if let crosshair = model.crosshairPixel {
-                                anchorScreen = imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
+                                anchorScreen = model.imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
                             } else {
                                 anchorScreen = mouseLocation
                             }
 
                             // Image pixel under anchor (old zoom still in effect)
-                            let anchorImg = screenToImage(anchorScreen, imgSize: imgSize, canvasSize: geometry.size)
+                            let anchorImg = model.screenToImage(anchorScreen, imgSize: imgSize, canvasSize: geometry.size)
 
                             // Apply new zoom
                             model.viewport.zoom = newZoom
@@ -131,7 +131,7 @@ struct FITSImageView: View {
                             model.viewport.panY += dy
                         },
                         onClick: { screenPoint in
-                            let imgPoint = screenToImage(screenPoint, imgSize: imgSize, canvasSize: geometry.size)
+                            let imgPoint = model.screenToImage(screenPoint, imgSize: imgSize, canvasSize: geometry.size)
                             Self.logger.debug("Click at screen=(\(screenPoint.x), \(screenPoint.y)) → image=(\(imgPoint.x), \(imgPoint.y))")
                             if imgPoint.x >= 0, imgPoint.y >= 0,
                                imgPoint.x < imgWidth, imgPoint.y < imgHeight {
@@ -147,7 +147,7 @@ struct FITSImageView: View {
                             model.viewport.panY += dy
                         },
                         onHover: { screenPoint in
-                            let imgPoint = screenToImage(screenPoint, imgSize: imgSize, canvasSize: geometry.size)
+                            let imgPoint = model.screenToImage(screenPoint, imgSize: imgSize, canvasSize: geometry.size)
                             if imgPoint.x >= 0, imgPoint.y >= 0,
                                imgPoint.x < imgWidth, imgPoint.y < imgHeight {
                                 model.updateCursorInfo(at: imgPoint)
@@ -222,59 +222,6 @@ struct FITSImageView: View {
         }
     }
 
-    // MARK: - Coordinate Transforms (rotation-aware, matches Windows ViewportMath)
-
-    /// Convert image pixel coordinates to screen coordinates.
-    /// Applies: center → scale → flip → rotate → translate (matching Windows ViewportMath.LocalToScreen).
-    private func imageToScreen(_ imgPoint: CGPoint, imgSize: CGSize, canvasSize: CGSize) -> CGPoint {
-        let zoom = model.viewport.zoom
-        let rotation = model.viewport.rotation
-
-        // Offset from image center, scaled
-        var dx = (imgPoint.x - imgSize.width / 2) * zoom
-        let dy = (imgPoint.y - imgSize.height / 2) * zoom
-
-        // Apply horizontal flip before rotation (mirrors the .scaleEffect on the Image)
-        if model.viewport.flipX { dx = -dx }
-
-        // Apply rotation
-        let cosR = cos(rotation)
-        let sinR = sin(rotation)
-        let rx = dx * cosR - dy * sinR
-        let ry = dx * sinR + dy * cosR
-
-        // Offset to canvas center + pan
-        return CGPoint(
-            x: canvasSize.width / 2 + model.viewport.panX + rx,
-            y: canvasSize.height / 2 + model.viewport.panY + ry
-        )
-    }
-
-    /// Convert screen coordinates to image pixel coordinates.
-    /// Inverse of imageToScreen: un-translate → un-rotate → un-flip → un-scale → un-center.
-    private func screenToImage(_ screenPoint: CGPoint, imgSize: CGSize, canvasSize: CGSize) -> CGPoint {
-        let zoom = model.viewport.zoom
-        let rotation = model.viewport.rotation
-
-        // Relative to canvas center + pan
-        let relX = screenPoint.x - canvasSize.width / 2 - model.viewport.panX
-        let relY = screenPoint.y - canvasSize.height / 2 - model.viewport.panY
-
-        // Inverse rotation
-        let cosR = cos(-rotation)
-        let sinR = sin(-rotation)
-        var ux = relX * cosR - relY * sinR
-        let uy = relX * sinR + relY * cosR
-
-        // Undo horizontal flip (inverse of the .scaleEffect on the Image)
-        if model.viewport.flipX { ux = -ux }
-
-        // Un-scale and offset back to image center
-        return CGPoint(
-            x: ux / zoom + imgSize.width / 2,
-            y: uy / zoom + imgSize.height / 2
-        )
-    }
 }
 
 // MARK: - Crosshair Overlay
