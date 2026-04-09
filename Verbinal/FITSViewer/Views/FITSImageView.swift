@@ -7,20 +7,26 @@
 import SwiftUI
 import os.log
 
+/// Passes the crosshair's actual screen position from the image transform chain
+/// up to the canvas overlay, so H/V lines are always at the correct position.
+private struct CrosshairScreenPosKey: PreferenceKey {
+    static var defaultValue: CGPoint? = nil
+    static func reduce(value: inout CGPoint?, nextValue: () -> CGPoint?) {
+        value = value ?? nextValue()
+    }
+}
+
 /// Displays the rendered FITS image with zoom, pan, and crosshair interaction.
 ///
-/// All mouse interaction is handled by ScrollCaptureNSView (NSView subclass)
-/// to avoid SwiftUI gesture conflicts between tap and drag.
-///
-/// When `tabHost` is provided and a blink session is active, a second image layer
-/// is rendered on top of the primary image using the WCS-aligned `BlinkTransform`.
-/// The overlay opacity is driven by `tabHost.blinkOpacity`.
+/// Crosshair rendering uses a two-layer approach:
+/// 1. An invisible marker inside the image transform chain (tracks the pixel exactly)
+/// 2. H/V lines in canvas space at the marker's actual screen position (always horizontal/vertical)
 struct FITSImageView: View {
     var model: FITSViewerModel
-    /// Optional tab host for blink overlay state. Nil in single-tab contexts.
     var tabHost: FITSTabHostModel?
 
     @Environment(\.fitsToast) private var toast
+    @State private var crosshairScreenPos: CGPoint?
 
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "FITSImageView")
 
@@ -34,6 +40,7 @@ struct FITSImageView: View {
                 ZStack {
                     Color.clear.onAppear { model.lastCanvasSize = geometry.size }
                         .onChange(of: geometry.size) { _, newSize in model.lastCanvasSize = newSize }
+
                     Image(decorative: cgImage, scale: 1)
                         .resizable()
                         .interpolation(.none)
@@ -43,44 +50,40 @@ struct FITSImageView: View {
                         )
                         .scaleEffect(x: model.viewport.flipX ? -1 : 1, y: 1)
                         .rotationEffect(.radians(model.viewport.rotation))
-                        .offset(x: model.viewport.panX, y: model.viewport.panY)
+                        .position(
+                            x: geometry.size.width / 2 + model.viewport.panX,
+                            y: geometry.size.height / 2 + model.viewport.panY
+                        )
 
-                    // Blink overlay (image B), rendered with WCS-aligned transform
-                    blinkOverlay(imgSize: imgSize)
+                    // Blink overlay
+                    blinkOverlay(imgSize: imgSize, canvasSize: geometry.size)
 
-                    // Crosshair overlay
+                    // Crosshair — simple imageToScreen
                     if let crosshair = model.crosshairPixel {
-                        let screenPos = model.imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
-                        CrosshairOverlay(position: screenPos, isLinked: model.isLinkedCrosshair)
+                        let pos = model.imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
+                        CrosshairCanvasOverlay(position: pos, isLinked: model.isLinkedCrosshair)
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(width: geometry.size.width, height: geometry.size.height)
                 .clipped()
                 #if os(macOS)
                 .contextMenu {
                     Button("Reset View") { model.fitToWindow(canvasSize: geometry.size) }
                     if model.crosshairPixel != nil {
-                        Button("Clear Crosshair") {
-                            model.crosshairPixel = nil
-                            model.crosshairRA = ""
-                            model.crosshairDec = ""
-                            model.crosshairValue = ""
-                        }
+                        Button("Clear Crosshair") { model.clearCrosshair() }
                     }
                     if model.wcs != nil {
                         Button("North Up") { model.applyNorthUp() }
                         Divider()
                         if !model.crosshairRA.isEmpty {
                             Button("Copy RA/Dec") {
-                                let coords = "\(model.crosshairRA), \(model.crosshairDec)"
-                                NSPasteboard.general.clearContents()
-                                NSPasteboard.general.setString(coords, forType: .string)
+                                model.copyCoordsToClipboard()
                                 toast?.show("Coordinates copied")
                             }
                             Button("Search at Position") {
                                 if let wcs = model.wcs, let pixel = model.crosshairPixel,
                                    let hdu = model.selectedHDU {
-                                    let fitsY = Double(hdu.header.naxis2 - 1) - pixel.y
+                                    let fitsY = FITSViewerModel.displayToFITSY(pixel.y, naxis2: hdu.header.naxis2)
                                     let (ra, dec) = wcs.pixelToWorld(x: pixel.x, y: fitsY)
                                     model.onSearchAtPosition?(ra, dec)
                                 }
@@ -91,8 +94,9 @@ struct FITSImageView: View {
                 .overlay {
                     ScrollCaptureView(
                         onScroll: { delta, mouseLocation in
-                            let newZoom = max(0.05, min(20,
-                                model.viewport.zoom * (delta > 0 ? 1.15 : 1.0 / 1.15)))
+                            let factor = FITSViewerConstants.scrollZoomFactor
+                            let newZoom = max(FITSViewerConstants.zoomMin, min(FITSViewerConstants.zoomMax,
+                                model.viewport.zoom * (delta > 0 ? factor : 1.0 / factor)))
 
                             // Windows ComputeZoomTranslate pattern:
                             // 1. Pick anchor: crosshair screen pos if placed, else cursor
@@ -136,7 +140,7 @@ struct FITSImageView: View {
                             if imgPoint.x >= 0, imgPoint.y >= 0,
                                imgPoint.x < imgWidth, imgPoint.y < imgHeight {
                                 model.placeCrosshair(at: imgPoint)
-                                if model.viewport.zoom > 1.05 {
+                                if model.viewport.zoom > FITSViewerConstants.autoCenterThreshold {
                                     model.centerOnPixel(imgPoint, canvasSize: geometry.size)
                                 }
                                 Self.logger.info("Crosshair placed at (\(imgPoint.x), \(imgPoint.y))")
@@ -152,6 +156,11 @@ struct FITSImageView: View {
                                imgPoint.x < imgWidth, imgPoint.y < imgHeight {
                                 model.updateCursorInfo(at: imgPoint)
                             }
+                        },
+                        onMagnify: { magnification in
+                            // Trackpad pinch: apply magnification directly, center on crosshair
+                            let newZoom = model.viewport.zoom * (1.0 + magnification)
+                            model.setZoom(newZoom)
                         }
                     )
                 }
@@ -171,21 +180,13 @@ struct FITSImageView: View {
     /// When WCS is absent (no transform), the overlay tracks image A's zoom/pan —
     /// a best-effort unaligned blink, still useful for same-instrument images.
     @ViewBuilder
-    private func blinkOverlay(imgSize: CGSize) -> some View {
+    private func blinkOverlay(imgSize: CGSize, canvasSize: CGSize) -> some View {
         if let host = tabHost,
            host.isBlinking,
            let overlayImage = host.blinkOverlayImage
         {
             if let transform = host.blinkTransform {
                 // WCS-aligned overlay using the computed BlinkTransform.
-                //
-                // The overlay fills image A's pixel dimensions (Stretch=Fill equivalent).
-                // Transform order (center-origin CompositeTransform, matching Windows):
-                //   1. frame() sets the image to A's pixel dimensions
-                //   2. scaleEffect(x: ±1) mirrors for parity flip when scaleX < 0
-                //   3. rotationEffect rotates around image center
-                //   4. scaleEffect(abs) applies the zoom magnitude
-                //   5. offset() applies the WCS-computed pan/translate
                 Image(decorative: overlayImage, scale: 1)
                     .resizable()
                     .interpolation(.none)
@@ -201,7 +202,10 @@ struct FITSImageView: View {
                         y: transform.scaleY,
                         anchor: .center
                     )
-                    .offset(x: transform.translateX, y: transform.translateY)
+                    .position(
+                        x: canvasSize.width / 2 + transform.translateX,
+                        y: canvasSize.height / 2 + transform.translateY
+                    )
                     .opacity(host.blinkOpacity)
                     .allowsHitTesting(false)
             } else {
@@ -215,7 +219,10 @@ struct FITSImageView: View {
                     )
                     .scaleEffect(x: model.viewport.flipX ? -1 : 1, y: 1)
                     .rotationEffect(.radians(model.viewport.rotation))
-                    .offset(x: model.viewport.panX, y: model.viewport.panY)
+                    .position(
+                        x: canvasSize.width / 2 + model.viewport.panX,
+                        y: canvasSize.height / 2 + model.viewport.panY
+                    )
                     .opacity(host.blinkOpacity)
                     .allowsHitTesting(false)
             }
@@ -224,34 +231,36 @@ struct FITSImageView: View {
 
 }
 
-// MARK: - Crosshair Overlay
+// MARK: - Crosshair Canvas Overlay (screen space, always H/V)
 
-/// Full-canvas crosshair lines intersecting at the given position (matches Windows).
-/// - Primary (user-placed, isLinked=false): solid red lines at 0.7 opacity.
-/// - Linked (from store, isLinked=true): dashed yellow lines at 0.7 opacity.
-private struct CrosshairOverlay: View {
+/// Full-canvas crosshair lines at a screen position. Always horizontal/vertical.
+/// Position is determined by the invisible marker inside the image transform chain
+/// via PreferenceKey — guaranteed to match the actual pixel position.
+private struct CrosshairCanvasOverlay: View {
     let position: CGPoint
     let isLinked: Bool
 
     var body: some View {
         Canvas { context, size in
-            // Horizontal line
             var hPath = Path()
             hPath.move(to: CGPoint(x: 0, y: position.y))
             hPath.addLine(to: CGPoint(x: size.width, y: position.y))
 
-            // Vertical line
             var vPath = Path()
             vPath.move(to: CGPoint(x: position.x, y: 0))
             vPath.addLine(to: CGPoint(x: position.x, y: size.height))
 
+            // Dark outline for contrast against bright backgrounds
+            context.stroke(hPath, with: .color(.black.opacity(0.5)), lineWidth: 3)
+            context.stroke(vPath, with: .color(.black.opacity(0.5)), lineWidth: 3)
+
             if isLinked {
-                let style = StrokeStyle(lineWidth: 1, dash: [4, 4])
-                context.stroke(hPath, with: .color(.yellow.opacity(0.7)), style: style)
-                context.stroke(vPath, with: .color(.yellow.opacity(0.7)), style: style)
+                let style = StrokeStyle(lineWidth: 1.5, dash: [6, 4])
+                context.stroke(hPath, with: .color(.cyan), style: style)
+                context.stroke(vPath, with: .color(.cyan), style: style)
             } else {
-                context.stroke(hPath, with: .color(.red.opacity(0.7)), lineWidth: 1)
-                context.stroke(vPath, with: .color(.red.opacity(0.7)), lineWidth: 1)
+                context.stroke(hPath, with: .color(.green), lineWidth: 1.5)
+                context.stroke(vPath, with: .color(.green), lineWidth: 1.5)
             }
         }
         .allowsHitTesting(false)
@@ -274,6 +283,7 @@ struct ScrollCaptureView: NSViewRepresentable {
     var onClick: ((CGPoint) -> Void)?
     var onDrag: ((CGFloat, CGFloat) -> Void)?
     var onHover: ((CGPoint) -> Void)?
+    var onMagnify: ((CGFloat) -> Void)?
 
     func makeNSView(context: Context) -> ScrollCaptureNSView {
         let view = ScrollCaptureNSView()
@@ -282,7 +292,7 @@ struct ScrollCaptureView: NSViewRepresentable {
         view.onClick = onClick
         view.onDrag = onDrag
         view.onHover = onHover
-        // Enable mouse tracking for hover
+        view.onMagnify = onMagnify
         let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: view)
         view.addTrackingArea(area)
         return view
@@ -294,6 +304,7 @@ struct ScrollCaptureView: NSViewRepresentable {
         nsView.onClick = onClick
         nsView.onDrag = onDrag
         nsView.onHover = onHover
+        nsView.onMagnify = onMagnify
     }
 }
 
@@ -357,12 +368,13 @@ class ScrollCaptureNSView: NSView {
         onHover?(flippedLocation(for: event))
     }
 
+    var onMagnify: ((CGFloat) -> Void)?
+
     override func magnify(with event: NSEvent) {
-        let location = flippedLocation(for: event)
-        // magnification is a delta: positive = zoom in, negative = zoom out.
-        // Scale to a delta comparable to Cmd+scroll for consistent zoom speed.
-        let delta = event.magnification * 5.0
-        if abs(delta) > 0.01 { onScroll?(delta, location) }
+        // Trackpad pinch: use magnification directly (not routed through scroll)
+        if abs(event.magnification) > 0.001 {
+            onMagnify?(event.magnification)
+        }
     }
 
     override var acceptsFirstResponder: Bool { true }

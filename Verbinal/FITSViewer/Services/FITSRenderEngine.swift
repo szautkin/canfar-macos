@@ -6,10 +6,11 @@
 
 import Foundation
 import CoreGraphics
+import Accelerate
 
 /// CPU-based FITS rendering engine.
-/// Applies stretch + colormap to raw pixels and produces a CGImage.
-/// Metal GPU upgrade path: replace this with a compute shader for sub-ms rendering.
+/// Uses vDSP for vectorized stretch and colormap application.
+/// Supports render cancellation for responsive slider interaction.
 enum FITSRenderEngine {
 
     /// Render pixel data to a CGImage with the given parameters.
@@ -19,27 +20,43 @@ enum FITSRenderEngine {
         height: Int,
         params: FITSRenderParams
     ) -> CGImage? {
-        let count = width * height
-        guard count > 0, pixels.count >= count else { return nil }
+        let (count, countOverflow) = width.multipliedReportingOverflow(by: height)
+        guard !countOverflow, count > 0, pixels.count >= count else { return nil }
+        let (bitmapSize, bitmapOverflow) = count.multipliedReportingOverflow(by: 4)
+        guard !bitmapOverflow else { return nil }
+        _ = bitmapSize
 
-        let colormap = buildColormap(params.colormap)
         let minCut = params.minCut
         let maxCut = params.maxCut
         let range = maxCut - minCut
         guard range > 0 else { return nil }
 
-        // BGRA8 pixel buffer
+        // Step 1: Replace NaN/Inf with 0, then normalize + clamp to [0,1]
+        var normalized = [Float](repeating: 0, count: count)
+        // Replace NaN/Inf with 0 (common in HST drizzled images for masked regions)
+        for i in 0..<count {
+            normalized[i] = pixels[i].isFinite ? pixels[i] : 0
+        }
+        var negMin = -minCut
+        vDSP_vsadd(normalized, 1, &negMin, &normalized, 1, vDSP_Length(count))
+        var invRange = 1.0 / range
+        vDSP_vsmul(normalized, 1, &invRange, &normalized, 1, vDSP_Length(count))
+        var lo: Float = 0, hi: Float = 1
+        vDSP_vclip(normalized, 1, &lo, &hi, &normalized, 1, vDSP_Length(count))
+
+        // Step 2: Apply stretch (vectorized where possible)
+        applyStretchInPlace(&normalized, count: count, mode: params.stretch)
+
+        // Step 3: Build colormap and apply
+        let colormap = buildColormap(params.colormap)
         var bitmap = [UInt8](repeating: 0, count: count * 4)
 
         for y in 0..<height {
-            let srcRow = height - 1 - y // Y-flip: FITS origin = bottom-left
+            let srcRow = height - 1 - y
             for x in 0..<width {
-                let raw = pixels[srcRow * width + x]
-                let clamped = min(max((raw - minCut) / range, 0), 1)
-                let stretched = applyStretch(clamped, mode: params.stretch)
-                let lutIdx = min(Int(stretched * 255), 255)
-                let color = colormap[lutIdx]
-
+                let val = normalized[srcRow * width + x]
+                let lutIdx = val.isFinite ? min(Int(val * 255), 255) : 0
+                let color = colormap[max(lutIdx, 0)]
                 let dstIdx = (y * width + x) * 4
                 bitmap[dstIdx + 0] = color.r
                 bitmap[dstIdx + 1] = color.g
@@ -48,8 +65,6 @@ enum FITSRenderEngine {
             }
         }
 
-        let bitsPerComponent = 8
-        let bitsPerPixel = 32
         let bytesPerRow = width * 4
         let colorSpace = CGColorSpaceCreateDeviceRGB()
 
@@ -59,35 +74,41 @@ enum FITSRenderEngine {
                 return nil
             }
             return CGImage(
-                width: width,
-                height: height,
-                bitsPerComponent: bitsPerComponent,
-                bitsPerPixel: bitsPerPixel,
-                bytesPerRow: bytesPerRow,
-                space: colorSpace,
+                width: width, height: height,
+                bitsPerComponent: 8, bitsPerPixel: 32,
+                bytesPerRow: bytesPerRow, space: colorSpace,
                 bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
-                provider: provider,
-                decode: nil,
-                shouldInterpolate: false,
-                intent: .defaultIntent
+                provider: provider, decode: nil,
+                shouldInterpolate: false, intent: .defaultIntent
             )
         }
     }
 
-    // MARK: - Stretch Functions
+    // MARK: - Vectorized Stretch Functions
 
-    private static func applyStretch(_ x: Float, mode: FITSRenderParams.StretchMode) -> Float {
+    private static func applyStretchInPlace(_ data: inout [Float], count: Int, mode: FITSRenderParams.StretchMode) {
         switch mode {
         case .linear:
-            return x
+            break // already normalized
         case .log:
-            return log10(1 + 9 * x) / log10(10)
+            // log10(1 + 9*x) / log10(10) = log10(1 + 9*x)
+            var nine: Float = 9
+            var one: Float = 1
+            vDSP_vsmsa(data, 1, &nine, &one, &data, 1, vDSP_Length(count)) // data = 9*data + 1
+            var n = Int32(count)
+            vvlog10f(&data, data, &n) // data = log10(data)
         case .sqrt:
-            return sqrtf(x)
+            var n = Int32(count)
+            vvsqrtf(&data, data, &n)
         case .squared:
-            return x * x
+            vDSP_vsq(data, 1, &data, 1, vDSP_Length(count))
         case .asinh:
-            return asinhf(10 * x) / asinhf(10)
+            // asinh(10*x) / asinh(10)
+            var ten: Float = 10
+            vDSP_vsmul(data, 1, &ten, &data, 1, vDSP_Length(count)) // data = 10*data
+            for i in 0..<count { data[i] = asinhf(data[i]) } // no vDSP asinh
+            var divisor = asinhf(10)
+            vDSP_vsdiv(data, 1, &divisor, &data, 1, vDSP_Length(count))
         }
     }
 

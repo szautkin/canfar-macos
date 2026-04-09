@@ -10,6 +10,7 @@ import os.log
 
 /// Persists coordinate bookmarks for the FITS viewer.
 @Observable
+@MainActor
 final class BookmarkStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Bookmarks")
     private let fileName: String

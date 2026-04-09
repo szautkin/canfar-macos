@@ -6,15 +6,32 @@
 
 import Foundation
 
-/// Result from the CADC DataLink service — thumbnail and preview image URLs.
+/// A downloadable file from DataLink (#this semantic).
+struct DataLinkFile {
+    let url: URL
+    let contentType: String
+    let filename: String
+
+    /// True if this is an uncompressed FITS file (not .fz or .gz).
+    var isUncompressedFITS: Bool {
+        contentType.contains("fits") && !filename.hasSuffix(".fz") && !filename.hasSuffix(".gz")
+    }
+}
+
+/// Result from the CADC DataLink service — thumbnails, previews, and direct file URLs.
 struct DataLinkResult {
     let thumbnails: [URL]
     let previews: [URL]
+    /// Direct download URLs for science data files (#this semantic).
+    let directFiles: [DataLinkFile]
 
     var firstThumbnail: URL? { thumbnails.first }
     var firstPreview: URL? { previews.first }
-    var isEmpty: Bool { thumbnails.isEmpty && previews.isEmpty }
-    /// Best available image: prefer preview, fallback to thumbnail.
+    /// Best direct file URL — prefer uncompressed FITS, then any direct file.
+    var bestDirectFileURL: URL? {
+        directFiles.first(where: \.isUncompressedFITS)?.url ?? directFiles.first?.url
+    }
+    var isEmpty: Bool { thumbnails.isEmpty && previews.isEmpty && directFiles.isEmpty }
     var bestImage: URL? { previews.first ?? thumbnails.first }
 }
 
@@ -22,10 +39,11 @@ struct DataLinkResult {
 
 extension DataLinkResult {
 
-    /// Parse a DataLink VOTable XML response to extract thumbnail and preview URLs.
+    /// Parse a DataLink VOTable XML response to extract thumbnail, preview, and direct file URLs.
     static func fromVOTable(_ xml: String) -> DataLinkResult {
         var thumbnails: [URL] = []
         var previews: [URL] = []
+        var directFiles: [DataLinkFile] = []
 
         // Extract FIELD names to determine column indices
         let fieldPattern = try! NSRegularExpression(pattern: #"<FIELD[^>]*name="([^"]*)"[^>]*/?>"#, options: .caseInsensitive)
@@ -41,7 +59,7 @@ extension DataLinkResult {
         let contentTypeIdx = fieldNames.firstIndex(of: "content_type")
 
         guard let accessUrlIdx, let semanticsIdx else {
-            return DataLinkResult(thumbnails: [], previews: [])
+            return DataLinkResult(thumbnails: [], previews: [], directFiles: [])
         }
 
         // Extract rows
@@ -79,9 +97,12 @@ extension DataLinkResult {
                 thumbnails.append(url)
             } else if semantics == "#preview" && contentType.contains("image") {
                 previews.append(url)
+            } else if semantics == "#this" {
+                let filename = url.lastPathComponent
+                directFiles.append(DataLinkFile(url: url, contentType: contentType, filename: filename))
             }
         }
 
-        return DataLinkResult(thumbnails: thumbnails, previews: previews)
+        return DataLinkResult(thumbnails: thumbnails, previews: previews, directFiles: directFiles)
     }
 }

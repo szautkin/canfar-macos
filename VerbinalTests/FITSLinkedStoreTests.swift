@@ -149,7 +149,7 @@ final class FITSLinkedStoreTests: XCTestCase {
         // Write crosshair to store (as if user placed it on tab A)
         let testRA = 180.001
         let testDec = 45.001
-        host.linkedState.sharedCrosshair = (ra: testRA, dec: testDec)
+        host.linkedState.sharedCrosshair = WorldPosition(ra: testRA, dec: testDec)
 
         // Switch to tab B → should pull from store
         host.activeTabIndex = 1
@@ -246,7 +246,7 @@ final class FITSLinkedStoreTests: XCTestCase {
         // Set initial store value
         let originalRA = 180.123
         let originalDec = 45.456
-        host.linkedState.sharedCrosshair = (ra: originalRA, dec: originalDec)
+        host.linkedState.sharedCrosshair = WorldPosition(ra: originalRA, dec: originalDec)
 
         // Switch to tab B → applies store → should NOT overwrite store
         host.activeTabIndex = 1
@@ -268,7 +268,7 @@ final class FITSLinkedStoreTests: XCTestCase {
         tabA.pixels = modelA.pixels
 
         host.linkedState.linkCrosshair = true
-        host.linkedState.sharedCrosshair = (ra: 180.0, dec: 45.0)
+        host.linkedState.sharedCrosshair = WorldPosition(ra: 180.0, dec: 45.0)
 
         // Simulate: writeToStore is called while isApplyingSharedState is true
         // We can test this indirectly — place crosshair during activation
@@ -324,7 +324,7 @@ final class FITSLinkedStoreTests: XCTestCase {
         // Linking is off
         host.linkedState.linkCrosshair = false
         host.linkedState.linkZoom = false
-        host.linkedState.sharedCrosshair = (ra: 180.0, dec: 45.0)
+        host.linkedState.sharedCrosshair = WorldPosition(ra: 180.0, dec: 45.0)
         host.linkedState.sharedAngularZoom = 1.0
 
         host.activeTabIndex = 0
@@ -381,7 +381,7 @@ final class FITSLinkedStoreTests: XCTestCase {
 
         host.linkedState.linkCrosshair = true
         host.linkedState.linkZoom = true
-        host.linkedState.sharedCrosshair = (ra: 180.0, dec: 45.0)
+        host.linkedState.sharedCrosshair = WorldPosition(ra: 180.0, dec: 45.0)
         host.linkedState.sharedAngularZoom = 1.0
 
         // Switch to tab B (no WCS) → should not crash
@@ -407,7 +407,7 @@ final class FITSLinkedStoreTests: XCTestCase {
         tabB.pixels = modelB.pixels
 
         host.linkedState.linkCrosshair = true
-        host.linkedState.sharedCrosshair = (ra: 180.0, dec: 45.0)
+        host.linkedState.sharedCrosshair = WorldPosition(ra: 180.0, dec: 45.0)
 
         // Manually switch like blink does
         host.activeTabIndex = 0

@@ -24,7 +24,7 @@ struct FITSRenderControlsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: model.renderParams.stretch) { _, _ in model.renderImage() }
+                .onChange(of: model.renderParams.stretch) { _, _ in model.renderImageDebounced() }
             }
 
             // Colormap
@@ -37,13 +37,20 @@ struct FITSRenderControlsView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .onChange(of: model.renderParams.colormap) { _, _ in model.renderImage() }
+                .onChange(of: model.renderParams.colormap) { _, _ in model.renderImageDebounced() }
             }
 
             // Min/Max cuts
             VStack(alignment: .leading, spacing: 4) {
-                Text("Cuts")
-                    .font(.caption.bold())
+                HStack {
+                    Text("Cuts")
+                        .font(.caption.bold())
+                    if model.isRendering {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .scaleEffect(0.6)
+                    }
+                }
                 VStack(spacing: 2) {
                     HStack(spacing: 4) {
                         Text("Min")
@@ -53,7 +60,7 @@ struct FITSRenderControlsView: View {
                             value: Bindable(model).renderParams.minCut,
                             in: cutRange
                         )
-                        .onChange(of: model.renderParams.minCut) { _, _ in model.renderImage() }
+                        .onChange(of: model.renderParams.minCut) { _, _ in model.renderImageDebounced() }
                         TextField("", value: Bindable(model).renderParams.minCut, format: .number)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(.caption2, design: .monospaced))
@@ -68,7 +75,7 @@ struct FITSRenderControlsView: View {
                             value: Bindable(model).renderParams.maxCut,
                             in: cutRange
                         )
-                        .onChange(of: model.renderParams.maxCut) { _, _ in model.renderImage() }
+                        .onChange(of: model.renderParams.maxCut) { _, _ in model.renderImageDebounced() }
                         TextField("", value: Bindable(model).renderParams.maxCut, format: .number)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(.caption2, design: .monospaced))
@@ -121,18 +128,11 @@ struct FITSRenderControlsView: View {
                     HStack(spacing: 4) {
                         #if os(macOS)
                         Button("Copy") {
-                            let coords = "\(model.crosshairRA), \(model.crosshairDec)"
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(coords, forType: .string)
+                            model.copyCoordsToClipboard()
                             toast?.show("Coordinates copied")
                         }
                         #endif
-                        Button("Clear") {
-                            model.crosshairPixel = nil
-                            model.crosshairRA = ""
-                            model.crosshairDec = ""
-                            model.crosshairValue = ""
-                        }
+                        Button("Clear") { model.clearCrosshair() }
                     }
                     .font(.caption2)
                     .buttonStyle(.bordered)
@@ -141,6 +141,29 @@ struct FITSRenderControlsView: View {
                     Text("Click on image to place crosshair")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                }
+
+                // Issue 6: out-of-bounds linked crosshair warning
+                if model.crosshairOutOfBounds {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label("Linked position outside image", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                        if !model.outOfBoundsRA.isEmpty {
+                            HStack(spacing: 4) {
+                                Text("RA:").font(.caption2.bold()).foregroundStyle(.secondary)
+                                Text(model.outOfBoundsRA)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(.orange)
+                            }
+                            HStack(spacing: 4) {
+                                Text("Dec:").font(.caption2.bold()).foregroundStyle(.secondary)
+                                Text(model.outOfBoundsDec)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
                 }
 
                 // Go To coordinates
@@ -159,7 +182,10 @@ struct FITSRenderControlsView: View {
                         Button("Go") {
                             if let ra = Double(goToRA.trimmingCharacters(in: .whitespaces)),
                                let dec = Double(goToDec.trimmingCharacters(in: .whitespaces)) {
-                                model.goToCoordinate(ra: ra, dec: dec)
+                                let inBounds = model.goToCoordinate(ra: ra, dec: dec)
+                                if !inBounds {
+                                    toast?.show("Coordinates outside image bounds", isError: true)
+                                }
                             }
                         }
                         .buttonStyle(.bordered)
@@ -206,7 +232,6 @@ struct FITSRenderControlsView: View {
     }
 
     private func zoomLabel(_ level: Double) -> String {
-        if level >= 1 { return "\(Int(level * 100))%" }
-        return "\(Int(level * 100))%"
+        "\(Int(level * 100))%"
     }
 }

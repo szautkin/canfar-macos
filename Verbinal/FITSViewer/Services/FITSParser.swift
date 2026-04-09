@@ -22,14 +22,20 @@ enum FITSParser {
     /// Parse FITS from pre-loaded data (avoids double file load).
     static func parse(from data: Data, url: URL? = nil) throws -> FITSFile {
         let fileURL = url ?? URL(fileURLWithPath: "/unknown.fits")
-        let _ = fileURL // used below
         var offset = 0
         var hdus: [FITSHDUnit] = []
         var hduIndex = 0
 
-        while offset < data.count {
-            // Parse header
-            let (header, headerEndOffset) = try parseHeader(data: data, from: offset)
+        while offset + blockSize <= data.count {
+            // Try to parse next HDU header. Stop if we hit padding or invalid data.
+            let header: FITSHeader
+            let headerEndOffset: Int
+            do {
+                (header, headerEndOffset) = try parseHeader(data: data, from: offset)
+            } catch {
+                // Trailing padding or non-standard block — stop parsing, not an error
+                break
+            }
             let dataOffset = headerEndOffset
 
             // Calculate data length
@@ -37,18 +43,47 @@ enum FITSParser {
             if header.naxis == 0 {
                 dataLength = 0
             } else {
+                guard header.naxis >= 1, header.naxis <= 999 else {
+                    throw FITSError.invalidFile("NAXIS \(header.naxis) out of range [1, 999]")
+                }
+                guard abs(header.bitpix) > 0 else {
+                    throw FITSError.invalidFile("BITPIX must be non-zero")
+                }
                 var size = abs(header.bitpix) / 8
                 for i in 1...header.naxis {
-                    size *= header.int("NAXIS\(i)")
+                    let axisSize = header.int("NAXIS\(i)")
+                    let (newSize, overflow) = size.multipliedReportingOverflow(by: axisSize)
+                    guard !overflow else {
+                        throw FITSError.invalidFile("NAXIS product overflow at axis \(i)")
+                    }
+                    size = newSize
                 }
                 dataLength = size
             }
 
-            let wcs = FITSWCSTransform.fromHeader(header)
+            // Detect fpack-compressed extensions (ZCMPTYPE present)
+            // and use ZNAXIS/ZBITPIX for the actual image dimensions
+            var effectiveHeader = header
+            if header.contains("ZCMPTYPE"), header.contains("ZNAXIS1") {
+                // Preserve the raw binary table geometry before overwriting with image dimensions.
+                // These are needed by FITSDecompressor to locate the heap and variable-length arrays.
+                effectiveHeader.add(FITSCard(keyword: "_TNAXIS1", value: String(header.int("NAXIS1")), comment: "raw table bytes-per-row"))
+                effectiveHeader.add(FITSCard(keyword: "_TNAXIS2", value: String(header.int("NAXIS2")), comment: "raw table row count"))
+                effectiveHeader.add(FITSCard(keyword: "_PCOUNT", value: String(header.int("PCOUNT")), comment: "heap size in bytes"))
+                // Replace NAXIS/BITPIX with the original (uncompressed) values
+                effectiveHeader.add(FITSCard(keyword: "NAXIS", value: String(header.int("ZNAXIS")), comment: "from ZNAXIS"))
+                effectiveHeader.add(FITSCard(keyword: "NAXIS1", value: String(header.int("ZNAXIS1")), comment: "from ZNAXIS1"))
+                effectiveHeader.add(FITSCard(keyword: "NAXIS2", value: String(header.int("ZNAXIS2")), comment: "from ZNAXIS2"))
+                effectiveHeader.add(FITSCard(keyword: "BITPIX", value: String(header.int("ZBITPIX")), comment: "from ZBITPIX"))
+                // Mark as compressed — extractPixels will need to handle this
+                effectiveHeader.add(FITSCard(keyword: "_COMPRESSED", value: "T", comment: "fpack compressed"))
+            }
+
+            let wcs = FITSWCSTransform.fromHeader(effectiveHeader)
 
             hdus.append(FITSHDUnit(
                 id: hduIndex,
-                header: header,
+                header: effectiveHeader,
                 dataOffset: dataOffset,
                 dataLength: dataLength,
                 wcs: wcs
@@ -63,15 +98,21 @@ enum FITSParser {
         return FITSFile(url: fileURL, hdus: hdus)
     }
 
-    /// Parse header cards until END keyword.
+    /// Parse header cards until END keyword. No artificial limit on header size.
+    /// Tolerates trailing padding blocks that lack a valid FITS keyword.
     private static func parseHeader(data: Data, from start: Int) throws -> (FITSHeader, Int) {
         var header = FITSHeader()
         var offset = start
-        let maxBlocks = 1000
 
-        for _ in 0..<maxBlocks {
-            guard offset + blockSize <= data.count else {
-                throw FITSError.invalidFile("Unexpected end of file in header")
+        while offset + blockSize <= data.count {
+            // Check first card of this block — if it's all spaces/nulls, this is padding, not a header
+            let firstCardData = data[offset..<(offset + cardSize)]
+            if let firstCard = String(data: firstCardData, encoding: .ascii) {
+                let firstKeyword = firstCard.prefix(8).trimmingCharacters(in: .whitespaces)
+                if firstKeyword.isEmpty && header.orderedCards.isEmpty {
+                    // Padding block at start of a would-be HDU — not a real header
+                    throw FITSError.invalidFile("No valid header (padding block)")
+                }
             }
 
             for cardIdx in 0..<cardsPerBlock {
@@ -95,7 +136,7 @@ enum FITSParser {
             offset += blockSize
         }
 
-        throw FITSError.invalidFile("Header too large (>1000 blocks)")
+        throw FITSError.invalidFile("Unexpected end of file in header (no END card found)")
     }
 
     /// Parse a single 80-character FITS card.
@@ -109,18 +150,40 @@ enum FITSParser {
         let rest = String(cardString.dropFirst(10))
 
         // String value: starts with '
+        // FITS spec (section 4.2.1): a single quote is represented as '' (two consecutive quotes).
         if rest.trimmingCharacters(in: .whitespaces).hasPrefix("'") {
             let stripped = rest.trimmingCharacters(in: .whitespaces).dropFirst()
-            if let endQuote = stripped.firstIndex(of: "'") {
-                let value = String(stripped[stripped.startIndex..<endQuote])
-                let afterQuote = stripped[stripped.index(after: endQuote)...]
+            var value = ""
+            var idx = stripped.startIndex
+            var foundEnd = false
+            while idx < stripped.endIndex {
+                if stripped[idx] == "'" {
+                    let next = stripped.index(after: idx)
+                    if next < stripped.endIndex && stripped[next] == "'" {
+                        // Escaped single quote — include one literal ' and skip both chars
+                        value.append("'")
+                        idx = stripped.index(after: next)
+                    } else {
+                        // Real closing quote
+                        foundEnd = true
+                        idx = next
+                        break
+                    }
+                } else {
+                    value.append(stripped[idx])
+                    idx = stripped.index(after: idx)
+                }
+            }
+            if foundEnd {
+                let afterQuote = stripped[idx...]
                 let comment: String
                 if let slashIdx = afterQuote.firstIndex(of: "/") {
                     comment = String(afterQuote[afterQuote.index(after: slashIdx)...]).trimmingCharacters(in: .whitespaces)
                 } else {
                     comment = ""
                 }
-                return FITSCard(keyword: keyword, value: value, comment: comment)
+                // Strip trailing spaces from value per FITS spec
+                return FITSCard(keyword: keyword, value: value.replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression), comment: comment)
             }
         }
 
@@ -136,8 +199,20 @@ enum FITSParser {
     /// Extract pixel data from a FITS HDU as Float32 array with BSCALE/BZERO applied.
     static func extractPixels(from data: Data, hdu: FITSHDUnit) throws -> [Float] {
         let header = hdu.header
-        let count = header.naxis1 * header.naxis2
+
+        // fpack-compressed: delegate to the Rice decompressor
+        if header.contains("_COMPRESSED") {
+            return try FITSDecompressor.decompress(from: data, hdu: hdu)
+        }
+
+        let (count, countOverflow) = header.naxis1.multipliedReportingOverflow(by: header.naxis2)
+        guard !countOverflow else {
+            throw FITSError.invalidFile("Image dimensions overflow: \(header.naxis1) × \(header.naxis2)")
+        }
         guard count > 0 else { throw FITSError.invalidFile("Empty image") }
+        guard count <= FITSViewerConstants.maxPixels else {
+            throw FITSError.invalidFile("Image too large: \(count) pixels exceeds 500 Mpx cap")
+        }
 
         let bytesPerPixel = abs(header.bitpix) / 8
         let expectedBytes = count * bytesPerPixel
@@ -211,9 +286,9 @@ enum FITSParser {
         return pixels
     }
 
-    /// Compute auto-cut percentiles from pixel data.
-    static func autoCut(pixels: [Float], lowPercentile: Float = 0.005, highPercentile: Float = 0.995) -> (min: Float, max: Float) {
-        // Sample up to 100K pixels
+    /// Compute auto-cut using median + sigma clipping (matches DS9/SAOImage behavior).
+    /// Falls back to tighter percentiles (1%/99%) if sigma clipping produces a degenerate range.
+    static func autoCut(pixels: [Float], lowPercentile: Float = 0.01, highPercentile: Float = 0.99) -> (min: Float, max: Float) {
         let maxSamples = 100_000
         let step = max(1, pixels.count / maxSamples)
         var samples: [Float] = []
@@ -227,8 +302,27 @@ enum FITSParser {
         guard !samples.isEmpty else { return (0, 1) }
         samples.sort()
 
+        // Compute median
+        let median = samples[samples.count / 2]
+
+        // Compute MAD (median absolute deviation) for robust sigma estimate
+        var deviations = samples.map { abs($0 - median) }
+        deviations.sort()
+        let mad = deviations[deviations.count / 2]
+        let sigma = mad * 1.4826 // MAD to sigma conversion factor
+
+        if sigma > 0 {
+            // Use median ± 3*sigma for initial cut, then clamp to data range
+            let lo = max(samples.first!, median - 3 * sigma)
+            let hi = min(samples.last!, median + 3 * sigma)
+            if hi > lo { return (lo, hi) }
+        }
+
+        // Fallback: percentile-based cuts
         let lowIdx = Int(Float(samples.count - 1) * lowPercentile)
         let highIdx = Int(Float(samples.count - 1) * highPercentile)
-        return (samples[lowIdx], samples[highIdx])
+        let lo = samples[lowIdx]
+        let hi = samples[highIdx]
+        return lo < hi ? (lo, hi) : (samples.first!, samples.last!)
     }
 }

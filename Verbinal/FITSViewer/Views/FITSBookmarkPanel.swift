@@ -30,7 +30,7 @@ struct FITSBookmarkPanel: View {
                           let wcs = model.wcs,
                           let pixel = model.crosshairPixel,
                           let hdu = model.selectedHDU else { return }
-                    let fitsY = Double(hdu.header.naxis2 - 1) - pixel.y
+                    let fitsY = FITSViewerModel.displayToFITSY(pixel.y, naxis2: hdu.header.naxis2)
                     let (ra, dec) = wcs.pixelToWorld(x: pixel.x, y: fitsY)
                     let resolvedLabel = labelText.trimmingCharacters(in: .whitespaces).isEmpty
                         ? "\(model.crosshairRA) \(model.crosshairDec)"

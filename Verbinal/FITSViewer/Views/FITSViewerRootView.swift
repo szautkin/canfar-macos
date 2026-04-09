@@ -46,5 +46,10 @@ struct FITSViewerRootView: View {
             appState.pendingFITSURL = nil
             Task { await tabHost.openFile(url: url) }
         }
+        .onChange(of: tabHost.activeTab?.pendingToast) { _, message in
+            guard let message else { return }
+            toastManager.show(message)
+            tabHost.activeTab?.pendingToast = nil
+        }
     }
 }

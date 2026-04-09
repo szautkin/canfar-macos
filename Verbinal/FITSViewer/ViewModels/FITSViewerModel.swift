@@ -36,6 +36,13 @@ final class FITSViewerModel: Identifiable {
     var crosshairValue: String = ""
     /// True when the crosshair was applied from the linked-tab store, false when user-placed.
     var isLinkedCrosshair: Bool = false
+    /// True when a linked crosshair coordinate is outside this image's bounds.
+    var crosshairOutOfBounds: Bool = false
+    /// RA/Dec strings for the out-of-bounds linked position (shown in sidebar).
+    var outOfBoundsRA: String = ""
+    var outOfBoundsDec: String = ""
+    /// Pending toast message for the view layer to display. Consumed once shown.
+    var pendingToast: String?
 
     // Mouse readout
     var cursorRA: String = ""
@@ -69,6 +76,10 @@ final class FITSViewerModel: Identifiable {
 
         do {
             let (fitsFile, extractedPixels, cuts) = try await Task.detached {
+                let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                guard fileSize <= FITSViewerConstants.maxFileSize else {
+                    throw FITSError.invalidFile("File too large: \(fileSize) bytes exceeds 4 GB limit")
+                }
                 let data = try Data(contentsOf: url, options: .mappedIfSafe)
                 let fitsFile = try FITSParser.parse(from: data)
                 guard let imageHDU = fitsFile.firstImageHDU else {
@@ -79,8 +90,11 @@ final class FITSViewerModel: Identifiable {
                 return (fitsFile, pixels, cuts)
             }.value
 
+            guard let firstImageHDU = fitsFile.firstImageHDU else {
+                throw FITSError.noImageHDU
+            }
             file = fitsFile
-            selectedHDUIndex = fitsFile.firstImageHDU!.id
+            selectedHDUIndex = firstImageHDU.id
             pixels = extractedPixels
             renderParams.minCut = cuts.min
             renderParams.maxCut = cuts.max
@@ -102,6 +116,11 @@ final class FITSViewerModel: Identifiable {
 
         guard let url = fileURL else { return }
         do {
+            let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            guard fileSize <= FITSViewerConstants.maxFileSize else {
+                loadError = "File too large: \(fileSize) bytes exceeds 4 GB limit"
+                return
+            }
             let data = try Data(contentsOf: url, options: .mappedIfSafe)
             pixels = try FITSParser.extractPixels(from: data, hdu: file.hdus[index])
             let cuts = FITSParser.autoCut(pixels: pixels)
@@ -111,36 +130,108 @@ final class FITSViewerModel: Identifiable {
         } catch {
             loadError = error.localizedDescription
         }
+
+        // Issue 7: validate crosshair is still within the new HDU's bounds
+        if let crosshair = crosshairPixel, let newHDU = selectedHDU {
+            let naxis1 = Double(newHDU.header.naxis1)
+            let naxis2 = Double(newHDU.header.naxis2)
+            if crosshair.x < 0 || crosshair.x >= naxis1 ||
+               crosshair.y < 0 || crosshair.y >= naxis2 {
+                Self.logger.info("selectHDU: clearing crosshair out of new HDU bounds (\(crosshair.x), \(crosshair.y)) vs \(naxis1)×\(naxis2)")
+                clearCrosshair()
+            }
+        }
     }
 
     // MARK: - Rendering
 
+    /// Current render task — cancelled when a new render is requested.
+    private var renderTask: Task<Void, Never>?
+    /// Debounce task for slider-driven renders.
+    private var renderDebounceTask: Task<Void, Never>?
+
     func renderImage() {
-        guard let hdu = selectedHDU, !pixels.isEmpty else { return }
-        // Run rendering off main thread to avoid UI freeze
-        Task { await renderImageAsync() }
+        guard selectedHDU != nil, !pixels.isEmpty else { return }
+        renderTask?.cancel()
+        renderTask = Task { await renderImageAsync() }
     }
+
+    /// Debounced render — waits 80ms after last call before actually rendering.
+    /// Use for slider drags to avoid 60 renders/sec.
+    func renderImageDebounced() {
+        renderDebounceTask?.cancel()
+        renderDebounceTask = Task {
+            try? await Task.sleep(for: .milliseconds(FITSViewerConstants.renderDebounceMs))
+            guard !Task.isCancelled else { return }
+            renderImage()
+        }
+    }
+
+    /// True while an image render is in progress (drives the sidebar spinner).
+    var isRendering = false
 
     private func renderImageAsync() async {
         guard let hdu = selectedHDU, !pixels.isEmpty else { return }
+        isRendering = true
         let px = pixels
         let w = hdu.header.naxis1
         let h = hdu.header.naxis2
         let params = renderParams
         let image = await Task.detached {
-            FITSRenderEngine.render(pixels: px, width: w, height: h, params: params)
+            guard !Task.isCancelled else { return nil as CGImage? }
+            let result = FITSRenderEngine.render(pixels: px, width: w, height: h, params: params)
+            return Task.isCancelled ? nil : result  // Check INSIDE detached task
         }.value
+        guard !Task.isCancelled, let image else {
+            isRendering = false
+            return
+        }
         renderedImage = image
+        isRendering = false
     }
 
     // MARK: - Crosshair
 
-    /// Callback for linked crosshair — set by tab host.
-    var onCrosshairPlaced: ((Double, Double) -> Void)?
+    /// Callback for linked crosshair (WCS) — set by tab host.
+    var onCrosshairPlaced: (@MainActor (Double, Double) -> Void)?
+    /// Callback for linked crosshair (pixel-only, no WCS) — set by tab host.
+    var onPixelCrosshairPlaced: (@MainActor (CGPoint) -> Void)?
     /// Callback for linked zoom — set by tab host.
-    var onZoomChanged: (() -> Void)?
+    var onZoomChanged: (@MainActor () -> Void)?
     /// Callback for "Search at Position" context menu.
-    var onSearchAtPosition: ((Double, Double) -> Void)?
+    var onSearchAtPosition: (@MainActor (Double, Double) -> Void)?
+
+    /// Clear the crosshair and all associated coordinate/value state.
+    func clearCrosshair() {
+        crosshairPixel = nil
+        crosshairRA = ""
+        crosshairDec = ""
+        crosshairValue = ""
+        crosshairOutOfBounds = false
+        outOfBoundsRA = ""
+        outOfBoundsDec = ""
+    }
+
+    #if os(macOS)
+    /// Copy the current crosshair RA/Dec to the system clipboard.
+    func copyCoordsToClipboard() {
+        let coords = "\(crosshairRA), \(crosshairDec)"
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(coords, forType: .string)
+    }
+    #endif
+
+    // MARK: - Geometry Utilities
+
+    /// Convert display Y (origin top-left) to FITS Y (origin bottom-left).
+    static func displayToFITSY(_ displayY: Double, naxis2: Int) -> Double {
+        Double(naxis2 - 1) - displayY
+    }
+
+    /// Compute linear pixel index from (x, y) position and image width.
+    static func pixelIndex(x: Double, y: Double, width: Int) -> Int {
+        Int(y) * width + Int(x)
+    }
 
     /// Apply a linked crosshair from the shared store (marks crosshair as linked).
     /// FITSTabHostModel should call this instead of setting crosshairPixel directly.
@@ -157,34 +248,52 @@ final class FITSViewerModel: Identifiable {
             Self.logger.warning("placeCrosshair: no selected HDU")
             return
         }
+        guard point.x >= 0, point.y >= 0,
+              point.x < Double(hdu.header.naxis1),
+              point.y < Double(hdu.header.naxis2) else {
+            Self.logger.warning("placeCrosshair: out of bounds (\(point.x), \(point.y)) for \(hdu.header.naxis1)×\(hdu.header.naxis2)")
+            return
+        }
         Self.logger.debug("placeCrosshair at (\(point.x), \(point.y))")
         crosshairPixel = point
         isLinkedCrosshair = false
 
-        let pixelIdx = Int(point.y) * hdu.header.naxis1 + Int(point.x)
+        let pixelIdx = Self.pixelIndex(x: point.x, y: point.y, width: hdu.header.naxis1)
         if pixelIdx >= 0 && pixelIdx < pixels.count {
-            crosshairValue = String(format: "%.4g", pixels[pixelIdx])
+            let val = pixels[pixelIdx]
+            crosshairValue = val.isFinite ? String(format: "%.4g", val) : "NaN"
         }
 
+        // Clear out-of-bounds state when user places a new crosshair
+        crosshairOutOfBounds = false
+
         if let wcs {
-            let fitsY = Double(hdu.header.naxis2 - 1) - point.y
+            let fitsY = Self.displayToFITSY(point.y, naxis2: hdu.header.naxis2)
             let (ra, dec) = wcs.pixelToWorld(x: point.x, y: fitsY)
             crosshairRA = FITSWCSTransform.formatRA(ra)
             crosshairDec = FITSWCSTransform.formatDec(dec)
+            Self.logger.info("Crosshair WCS: RA=\(self.crosshairRA) Dec=\(self.crosshairDec) val=\(self.crosshairValue)")
             onCrosshairPlaced?(ra, dec)
+        } else {
+            Self.logger.info("placeCrosshair: no WCS — using pixel-only sync")
+            crosshairRA = String(format: "px %.0f", point.x)
+            crosshairDec = String(format: "py %.0f", point.y)
+            // Fire pixel-only sync callback for images without WCS
+            onPixelCrosshairPlaced?(point)
         }
     }
 
     /// Update cursor readout (no permanent crosshair).
     func updateCursorInfo(at point: CGPoint) {
         guard let hdu = selectedHDU else { return }
-        let pixelIdx = Int(point.y) * hdu.header.naxis1 + Int(point.x)
+        let pixelIdx = Self.pixelIndex(x: point.x, y: point.y, width: hdu.header.naxis1)
         if pixelIdx >= 0 && pixelIdx < pixels.count {
-            cursorPixelValue = String(format: "%.4g", pixels[pixelIdx])
+            let val = pixels[pixelIdx]
+            cursorPixelValue = val.isFinite ? String(format: "%.4g", val) : "NaN"
         }
 
         if let wcs {
-            let fitsY = Double(hdu.header.naxis2 - 1) - point.y
+            let fitsY = Self.displayToFITSY(point.y, naxis2: hdu.header.naxis2)
             let (ra, dec) = wcs.pixelToWorld(x: point.x, y: fitsY)
             cursorRA = FITSWCSTransform.formatRA(ra)
             cursorDec = FITSWCSTransform.formatDec(dec)
@@ -194,9 +303,13 @@ final class FITSViewerModel: Identifiable {
     // MARK: - Viewport
 
     func applyNorthUp() {
-        guard let wcs else { return }
+        guard let wcs else {
+            Self.logger.warning("applyNorthUp: no WCS")
+            return
+        }
         viewport.rotation = -wcs.northAngle * .pi / 180.0
         viewport.flipX = wcs.hasParityFlip
+        Self.logger.info("North Up: angle=\(wcs.northAngle)° rotation=\(self.viewport.rotation) flipX=\(self.viewport.flipX) pixelScale=\(wcs.pixelScaleArcsec)\"/px")
     }
 
     func resetViewport() {
@@ -204,22 +317,36 @@ final class FITSViewerModel: Identifiable {
     }
 
     /// Navigate viewport to center on a world coordinate (RA/Dec).
-    func goToCoordinate(ra: Double, dec: Double) {
-        guard let wcs, let hdu = selectedHDU else { return }
-        guard let pixel = wcs.worldToPixel(ra: ra, dec: dec) else { return }
-        let displayY = Double(hdu.header.naxis2 - 1) - pixel.y
+    ///
+    /// - Returns: `true` if the coordinate maps to a pixel within the image bounds,
+    ///   `false` if the coordinate falls outside (crosshair is NOT placed).
+    @discardableResult
+    func goToCoordinate(ra: Double, dec: Double) -> Bool {
+        guard let wcs, let hdu = selectedHDU else { return false }
+        guard let pixel = wcs.worldToPixel(ra: ra, dec: dec) else { return false }
+
+        let naxis1 = hdu.header.naxis1
+        let naxis2 = hdu.header.naxis2
+        guard pixel.x >= 0, pixel.x < Double(naxis1),
+              pixel.y >= 0, pixel.y < Double(naxis2) else {
+            Self.logger.info("goToCoordinate: (\(ra), \(dec)) → pixel (\(pixel.x), \(pixel.y)) outside \(naxis1)×\(naxis2)")
+            return false
+        }
+
+        let displayY = Self.displayToFITSY(pixel.y, naxis2: naxis2)
         let imgPoint = CGPoint(x: pixel.x, y: displayY)
         placeCrosshair(at: imgPoint)
         centerOnPixel(imgPoint, canvasSize: lastCanvasSize)
+        return true
     }
 
     /// Set zoom from UI controls. Centers on crosshair if placed (matches Windows SetZoomLevel).
     func setZoom(_ level: Double) {
-        let clamped = max(0.05, min(20, level))
+        let clamped = max(FITSViewerConstants.zoomMin, min(FITSViewerConstants.zoomMax, level))
         viewport.zoom = clamped
         if let crosshair = crosshairPixel {
             centerOnPixel(crosshair, canvasSize: lastCanvasSize)
-            Self.logger.debug("setZoom(\(level)): crosshair=(\(crosshair.x), \(crosshair.y)), canvas=\(self.lastCanvasSize.width)×\(self.lastCanvasSize.height), pan=(\(self.viewport.panX), \(self.viewport.panY))")
+            Self.logger.info("setZoom(\(level)): pixel=(\(crosshair.x), \(crosshair.y)) RA=\(self.crosshairRA) Dec=\(self.crosshairDec) val=\(self.crosshairValue) zoom=\(self.viewport.zoom) pan=(\(self.viewport.panX), \(self.viewport.panY)) canvas=\(self.lastCanvasSize.width)×\(self.lastCanvasSize.height)")
         }
         onZoomChanged?()
     }
@@ -329,7 +456,7 @@ final class FITSViewerModel: Identifiable {
         guard imgW > 0, imgH > 0 else { return }
         let zoomX = canvasSize.width / imgW
         let zoomY = canvasSize.height / imgH
-        viewport.zoom = min(zoomX, zoomY) * 0.95 // 5% margin
+        viewport.zoom = min(zoomX, zoomY) * FITSViewerConstants.fitMargin
         viewport.rotation = 0
         if let crosshair = crosshairPixel {
             centerOnPixel(crosshair, canvasSize: canvasSize)

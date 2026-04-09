@@ -238,7 +238,7 @@ struct ResultDetailSheet: View {
         do {
             dataLink = try await tapClient.fetchDataLinks(publisherID: pid)
         } catch {
-            dataLink = DataLinkResult(thumbnails: [], previews: [])
+            dataLink = DataLinkResult(thumbnails: [], previews: [], directFiles: [])
         }
         isLoadingImages = false
     }

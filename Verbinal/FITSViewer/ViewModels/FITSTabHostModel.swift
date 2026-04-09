@@ -7,6 +7,7 @@
 import Foundation
 import CoreGraphics
 import Observation
+import os.log
 
 /// Manages multiple FITS viewer tabs with linked crosshair and blink comparison.
 ///
@@ -23,6 +24,8 @@ import Observation
 @Observable
 @MainActor
 final class FITSTabHostModel {
+    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "FITSTabHost")
+
     var tabs: [FITSViewerModel] = []
     let linkedState = FITSLinkedState()
 
@@ -49,7 +52,7 @@ final class FITSTabHostModel {
     var blinkInterval: TimeInterval = 1.0
     /// Current fade direction: +1 fading toward B, -1 fading toward A.
     private var blinkFadeDirection: Int = 1
-    private var blinkTask: Task<Void, Never>?
+    nonisolated(unsafe) private var blinkTask: Task<Void, Never>?
 
     /// Active tab index — applies shared state on change (pull-on-activation).
     var activeTabIndex: Int = 0 {
@@ -70,6 +73,10 @@ final class FITSTabHostModel {
         model.onCrosshairPlaced = { [weak self, weak model] ra, dec in
             guard let self, let model else { return }
             self.writeToStore(crosshairFrom: model, ra: ra, dec: dec)
+        }
+        model.onPixelCrosshairPlaced = { [weak self, weak model] pixel in
+            guard let self, let model else { return }
+            self.writePixelToStore(from: model, pixel: pixel)
         }
         model.onZoomChanged = { [weak self, weak model] in
             guard let self, let model else { return }
@@ -109,7 +116,16 @@ final class FITSTabHostModel {
     /// Write crosshair position to shared store. Only stores — does NOT touch other tabs.
     func writeToStore(crosshairFrom sourceTab: FITSViewerModel, ra: Double, dec: Double) {
         guard linkedState.linkCrosshair, !isApplyingSharedState else { return }
-        linkedState.sharedCrosshair = (ra: ra, dec: dec)
+        linkedState.sharedCrosshair = WorldPosition(ra: ra, dec: dec)
+        linkedState.sharedPixel = sourceTab.crosshairPixel
+        Self.logger.info("writeToStore crosshair: RA=\(ra) Dec=\(dec)")
+    }
+
+    /// Write crosshair pixel position to shared store (for images without WCS).
+    func writePixelToStore(from sourceTab: FITSViewerModel, pixel: CGPoint) {
+        guard linkedState.linkCrosshair, !isApplyingSharedState else { return }
+        linkedState.sharedPixel = pixel
+        Self.logger.info("writePixelToStore: pixel=(\(pixel.x), \(pixel.y))")
     }
 
     /// Write zoom/orientation to shared store. Only stores — does NOT touch other tabs.
@@ -128,13 +144,19 @@ final class FITSTabHostModel {
     /// Called on tab switch (pull-on-activation pattern).
     func applySharedStateToActiveTab() {
         guard let tab = activeTab else { return }
+        Self.logger.info("applySharedState: tabIdx=\(self.activeTabIndex) linkCrosshair=\(self.linkedState.linkCrosshair) hasCrosshair=\(self.linkedState.sharedCrosshair != nil) linkZoom=\(self.linkedState.linkZoom)")
 
         isApplyingSharedState = true
         defer { isApplyingSharedState = false }
 
-        // Apply shared crosshair
-        if linkedState.linkCrosshair, let shared = linkedState.sharedCrosshair {
-            applyCrosshair(to: tab, ra: shared.ra, dec: shared.dec)
+        // Apply shared crosshair: prefer WCS (RA/Dec), fall back to pixel position
+        if linkedState.linkCrosshair {
+            if let pos = linkedState.sharedCrosshair, tab.wcs != nil {
+                applyCrosshair(to: tab, ra: pos.ra, dec: pos.dec)
+            } else if let pixel = linkedState.sharedPixel {
+                // Pixel-only fallback (no WCS on source or target)
+                applyPixelCrosshair(to: tab, pixel: pixel)
+            }
         }
 
         // Apply shared zoom + orientation
@@ -147,25 +169,82 @@ final class FITSTabHostModel {
     ///
     /// Uses `applyLinkedCrosshair` so the crosshair is rendered in linked style
     /// (dashed yellow) to distinguish it from user-placed crosshairs (solid red).
+    /// If the pixel is outside the image bounds, sets `crosshairOutOfBounds` and
+    /// stores the RA/Dec for display in the sidebar, but does NOT place the crosshair.
     private func applyCrosshair(to tab: FITSViewerModel, ra: Double, dec: Double) {
         guard let wcs = tab.wcs,
               let pixel = wcs.worldToPixel(ra: ra, dec: dec),
               let hdu = tab.selectedHDU else { return }
-        let displayY = Double(hdu.header.naxis2 - 1) - pixel.y
-        tab.applyLinkedCrosshair(
-            pixel: CGPoint(x: pixel.x, y: displayY),
-            ra: ra,
-            dec: dec
-        )
+
+        let naxis1 = hdu.header.naxis1
+        let naxis2 = hdu.header.naxis2
+
+        guard pixel.x >= 0, pixel.x < Double(naxis1),
+              pixel.y >= 0, pixel.y < Double(naxis2) else {
+            Self.logger.info("Linked crosshair out of bounds: pixel=(\(pixel.x), \(pixel.y)) naxis=\(naxis1)×\(naxis2)")
+            tab.crosshairOutOfBounds = true
+            tab.outOfBoundsRA = FITSWCSTransform.formatRA(ra)
+            tab.outOfBoundsDec = FITSWCSTransform.formatDec(dec)
+            return
+        }
+
+        tab.crosshairOutOfBounds = false
+        let displayY = FITSViewerModel.displayToFITSY(pixel.y, naxis2: naxis2)
+        let crosshairPoint = CGPoint(x: pixel.x, y: displayY)
+        tab.applyLinkedCrosshair(pixel: crosshairPoint, ra: ra, dec: dec)
+        // Center viewport on crosshair so it's visible after tab switch
+        tab.centerOnPixel(crosshairPoint, canvasSize: tab.lastCanvasSize)
+    }
+
+    /// Apply a pixel-position crosshair to a tab (fallback when WCS is unavailable).
+    /// Checks bounds and applies as a linked crosshair.
+    private func applyPixelCrosshair(to tab: FITSViewerModel, pixel: CGPoint) {
+        guard let hdu = tab.selectedHDU else { return }
+        let naxis1 = hdu.header.naxis1
+        let naxis2 = hdu.header.naxis2
+
+        guard pixel.x >= 0, pixel.x < Double(naxis1),
+              pixel.y >= 0, pixel.y < Double(naxis2) else {
+            Self.logger.info("Linked pixel crosshair out of bounds: (\(pixel.x), \(pixel.y)) vs \(naxis1)×\(naxis2)")
+            tab.crosshairOutOfBounds = true
+            tab.outOfBoundsRA = String(format: "px %.0f", pixel.x)
+            tab.outOfBoundsDec = String(format: "py %.0f", pixel.y)
+            return
+        }
+
+        tab.crosshairOutOfBounds = false
+        tab.crosshairPixel = pixel
+        tab.crosshairRA = String(format: "px %.0f", pixel.x)
+        tab.crosshairDec = String(format: "py %.0f", pixel.y)
+        tab.isLinkedCrosshair = true
+
+        let pixelIdx = FITSViewerModel.pixelIndex(x: pixel.x, y: pixel.y, width: naxis1)
+        if pixelIdx >= 0 && pixelIdx < tab.pixels.count {
+            tab.crosshairValue = String(format: "%.4g", tab.pixels[pixelIdx])
+        }
+        // Center on crosshair so it's visible after tab switch
+        tab.centerOnPixel(pixel, canvasSize: tab.lastCanvasSize)
     }
 
     /// Apply angular zoom and orientation to a tab without triggering callbacks.
+    /// Clamps computed zoom to [0.05, 20] and sets a pending toast on the tab
+    /// if the raw value was outside that range (indicating very different pixel scales).
     private func applyZoom(to tab: FITSViewerModel, angularZoom: Double) {
         guard let wcs = tab.wcs else { return }
-        tab.viewport.zoom = wcs.pixelScaleArcsec / angularZoom
+        let rawZoom = wcs.pixelScaleArcsec / angularZoom
+        let clampedZoom = max(FITSViewerConstants.zoomMin, min(FITSViewerConstants.zoomMax, rawZoom))
+        if clampedZoom != rawZoom {
+            Self.logger.info("Linked zoom clamped: raw=\(rawZoom) clamped=\(clampedZoom)")
+            tab.pendingToast = "Linked zoom clamped — images have very different pixel scales"
+        }
+        tab.viewport.zoom = clampedZoom
         if let userRotation = linkedState.sharedUserRotation {
             let targetNorth = -wcs.northAngle * .pi / 180.0
             tab.viewport.rotation = targetNorth + userRotation
+        }
+        // Center on crosshair after zoom change so it stays visible
+        if let crosshair = tab.crosshairPixel {
+            tab.centerOnPixel(crosshair, canvasSize: tab.lastCanvasSize)
         }
     }
 
@@ -191,6 +270,7 @@ final class FITSTabHostModel {
 
         // Capture image B's current rendered output as the overlay
         blinkOverlayImage = tabBModel.renderedImage
+        Self.logger.info("startBlink: tabA=\(tabA) tabB=\(tabB) overlayImage=\(tabBModel.renderedImage != nil) transform=\(self.blinkTransform != nil)")
 
         // Compute WCS alignment transform if both images have valid WCS
         blinkTransform = computeBlinkTransform(tabAModel: tabAModel, tabBModel: tabBModel)
@@ -227,7 +307,7 @@ final class FITSTabHostModel {
         let referenceRA: Double
         let referenceDec: Double
         if let crosshair = tabAModel.crosshairPixel {
-            let fitsY = Double(hduA.header.naxis2 - 1) - crosshair.y
+            let fitsY = FITSViewerModel.displayToFITSY(crosshair.y, naxis2: hduA.header.naxis2)
             let (ra, dec) = wcsA.pixelToWorld(x: crosshair.x, y: fitsY)
             referenceRA = ra
             referenceDec = dec
@@ -283,6 +363,8 @@ final class FITSTabHostModel {
             blinkFadeDirection = 1
         }
     }
+
+    deinit { blinkTask?.cancel() }
 
     func stopBlink() {
         blinkTask?.cancel()

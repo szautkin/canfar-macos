@@ -7,6 +7,7 @@
 import XCTest
 @testable import Verbinal
 
+@MainActor
 final class BookmarkStoreTests: XCTestCase {
 
     private func makeStore() -> BookmarkStore {

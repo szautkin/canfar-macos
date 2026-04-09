@@ -123,7 +123,7 @@ actor TAPClient {
         let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            return DataLinkResult(thumbnails: [], previews: [])
+            return DataLinkResult(thumbnails: [], previews: [], directFiles: [])
         }
 
         let xml = String(data: data, encoding: .utf8) ?? ""

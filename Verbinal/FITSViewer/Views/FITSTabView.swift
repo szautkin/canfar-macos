@@ -14,7 +14,7 @@ struct FITSTabView: View {
     var tabHost: FITSTabHostModel
     @State private var showHeader = false
     @State private var showBookmarks = false
-    private let bookmarkStore = BookmarkStore()
+    @State private var bookmarkStore = BookmarkStore()
 
     #if os(macOS)
     /// Retains the NSEvent local monitor while blink is active.
@@ -59,7 +59,7 @@ struct FITSTabView: View {
                     .help("Sync crosshair position across tabs via WCS coordinates")
                     .onChange(of: tabHost.linkedState.linkCrosshair) { _, enabled in
                         if enabled {
-                            for tab in tabHost.tabs {
+                            for tab in tabHost.tabs where tab.viewport.rotation == 0 {
                                 tab.applyNorthUp()
                             }
                         }
@@ -107,24 +107,44 @@ struct FITSTabView: View {
                         .frame(width: 120)
                         .help("Blink interval (0.5–5.0 seconds)")
 
+                        if tabHost.blinkTransform == nil {
+                            Label("No WCS — unaligned", systemImage: "exclamationmark.triangle")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
                     } else {
-                        // Menu showing all other tabs as blink targets
-                        Menu {
-                            ForEach(Array(tabHost.tabs.enumerated()), id: \.offset) { index, tab in
-                                if index != tabHost.activeTabIndex {
-                                    Button(tab.fileURL?.lastPathComponent ?? "Tab \(index + 1)") {
-                                        tabHost.startBlink(tabA: tabHost.activeTabIndex, tabB: index)
+                        // Direct button for exactly 2 tabs; Menu for 3+ tabs
+                        if tabHost.tabs.count == 2 {
+                            let otherIndex = tabHost.activeTabIndex == 0 ? 1 : 0
+                            Button {
+                                tabHost.startBlink(tabA: tabHost.activeTabIndex, tabB: otherIndex)
+                            } label: {
+                                Label("Blink", systemImage: "rectangle.2.swap")
+                                    .font(.caption2)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.mini)
+                            .keyboardShortcut("b", modifiers: [.command, .shift])
+                            .help("Blink current tab against another tab (Space=pause, ←=A, →=B, Esc=stop)")
+                        } else {
+                            Menu {
+                                ForEach(Array(tabHost.tabs.enumerated()), id: \.offset) { index, tab in
+                                    if index != tabHost.activeTabIndex {
+                                        Button(tab.fileURL?.lastPathComponent ?? "Tab \(index + 1)") {
+                                            tabHost.startBlink(tabA: tabHost.activeTabIndex, tabB: index)
+                                        }
                                     }
                                 }
+                            } label: {
+                                Label("Blink", systemImage: "rectangle.2.swap")
+                                    .font(.caption2)
                             }
-                        } label: {
-                            Label("Blink", systemImage: "eye.slash")
-                                .font(.caption2)
+                            .menuStyle(.borderedButton)
+                            .controlSize(.mini)
+                            .disabled(tabHost.tabs.count < 2)
+                            .help("Blink current tab against another tab (Space=pause, ←=A, →=B, Esc=stop)")
                         }
-                        .menuStyle(.borderedButton)
-                        .controlSize(.mini)
-                        .disabled(tabHost.tabs.count < 2)
-                        .help("Blink current tab against another tab (Space=pause, ←=A, →=B, Esc=stop)")
                     }
 
                     Spacer()
@@ -189,7 +209,9 @@ struct FITSTabView: View {
                             emptyState
                         }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .transaction { $0.animation = nil }
             } else {
                 emptyState
             }
@@ -202,6 +224,7 @@ struct FITSTabView: View {
                 removeBlinkKeyMonitor()
             }
         }
+        .onDisappear { removeBlinkKeyMonitor() }
         #endif
     }
 

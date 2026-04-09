@@ -18,13 +18,24 @@ actor DownloadService {
     }
 
     /// Download an observation file to a temporary location.
-    /// Returns the temp file URL. Caller is responsible for moving it to the final destination.
+    /// Uses DataLink #this semantic for direct FITS (no tar), falls back to /pkg endpoint.
     func downloadToTemp(publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
-        var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.downloadPath)")!
-        components.queryItems = [URLQueryItem(name: "ID", value: publisherID)]
+        // Step 1: Try DataLink to get direct file URL (matches Windows approach)
+        let directURL = await resolveDirectFileURL(publisherID: publisherID)
 
-        guard let url = components.url else {
-            throw SearchError.networkError("Invalid download URL")
+        // Step 2: Use direct URL if available, otherwise fall back to /pkg (tar archive)
+        let url: URL
+        if let directURL {
+            Self.logger.info("Using DataLink direct URL: \(directURL.lastPathComponent)")
+            url = directURL
+        } else {
+            var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.downloadPath)")!
+            components.queryItems = [URLQueryItem(name: "ID", value: publisherID)]
+            guard let pkgURL = components.url else {
+                throw SearchError.networkError("Invalid download URL")
+            }
+            Self.logger.info("DataLink unavailable, falling back to /pkg")
+            url = pkgURL
         }
 
         let request = URLRequest(url: url)
@@ -60,6 +71,33 @@ actor DownloadService {
     func fileSize(at url: URL) -> Int64? {
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) else { return nil }
         return attrs[.size] as? Int64
+    }
+
+    // MARK: - DataLink Resolution
+
+    /// Resolve DataLink to find direct FITS file URL (#this semantic).
+    /// Returns nil if DataLink fails or has no direct files.
+    private func resolveDirectFileURL(publisherID: String) async -> URL? {
+        var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.datalinkPath)")!
+        components.queryItems = [
+            URLQueryItem(name: "id", value: publisherID),
+            URLQueryItem(name: "request", value: "downloads-only"),
+        ]
+        guard let url = components.url else { return nil }
+
+        do {
+            var request = URLRequest(url: url)
+            request.setValue("application/x-votable+xml", forHTTPHeaderField: "Accept")
+            let (data, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200,
+                  let xml = String(data: data, encoding: .utf8) else { return nil }
+            let result = DataLinkResult.fromVOTable(xml)
+            return result.bestDirectFileURL
+        } catch {
+            Self.logger.warning("DataLink resolution failed: \(error.localizedDescription)")
+            return nil
+        }
     }
 
     // MARK: - Private

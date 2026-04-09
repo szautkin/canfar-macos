@@ -56,12 +56,19 @@ struct FITSViewport: Sendable, Equatable {
     var flipX: Bool = false   // horizontal mirror for parity-flipped WCS
 }
 
+/// Sky position with RA and Dec (degrees). Sendable value type for safe cross-actor use.
+struct WorldPosition: Sendable {
+    let ra: Double
+    let dec: Double
+}
+
 /// Shared state store for linked tabs (pull-on-activation pattern).
 /// Active tab writes here; tabs read on activation.
 @Observable
 @MainActor
 final class FITSLinkedState {
-    var sharedCrosshair: (ra: Double, dec: Double)?
+    var sharedCrosshair: WorldPosition?
+    var sharedPixel: CGPoint?            // pixel position fallback (for images without WCS)
     var sharedAngularZoom: Double?       // arcsec per screen pixel
     var sharedUserRotation: Double?      // North-relative user rotation (radians)
     var linkCrosshair = false
