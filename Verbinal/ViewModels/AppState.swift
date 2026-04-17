@@ -37,6 +37,12 @@ final class AppState {
     // Headless job monitor (created on auth, destroyed on logout)
     private(set) var headlessMonitor: HeadlessMonitorModel?
 
+    // Addon system
+    let addonRegistry = AddonRegistry()
+    /// Addons discovered at launch (or whenever `refreshAddons()` is called).
+    /// Never nil; empty array = none of the known addons are installed.
+    private(set) var installedAddons: [InstalledAddon] = []
+
     init() {
         let network = NetworkClient()
         let endpoints = APIEndpoints()
@@ -48,6 +54,23 @@ final class AppState {
         self.platformService = PlatformService(network: network, endpoints: endpoints)
         self.storageService = StorageService(network: network, endpoints: endpoints)
         self.headlessService = HeadlessService(network: network, endpoints: endpoints)
+
+        // Route Keychain through the shared addon-family access group so every
+        // first-party addon can read the CADC token without re-authing. Default
+        // is unset when the entitlement isn't granted — the call is a no-op.
+        KeychainStorage.configure(accessGroup: "A4ABW5VD88.codebg.verbinal.family")
+    }
+
+    /// Re-scan installed addons. Call at app launch and whenever the user
+    /// returns to the landing page (LaunchServices doesn't push updates).
+    func refreshAddons() {
+        installedAddons = addonRegistry.discoverInstalled()
+    }
+
+    /// Quick lookup for the notebook addon (Pi) specifically — the landing tile
+    /// uses this to decide "launch it" vs "suggest installing it".
+    var notebookAddon: InstalledAddon? {
+        installedAddons.first { $0.manifest.addonID == "com.codebg.Verbinal.addon.notebook" }
     }
 
     // Navigation state
