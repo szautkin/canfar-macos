@@ -14,6 +14,10 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
+            GeneralSettingsTab()
+                .environment(appState)
+                .tabItem { Label("General", systemImage: "gear") }
+
             PortalSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Portal", systemImage: "play.circle") }
@@ -22,6 +26,48 @@ struct SettingsView: View {
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
         .frame(width: 520, height: 420)
+    }
+}
+
+// MARK: - General tab
+
+private struct GeneralSettingsTab: View {
+    @Environment(AppState.self) private var appState
+
+    /// Bridges AppState.preferredLocaleIdentifier (UserDefaults-backed) to a
+    /// SwiftUI Picker binding so selection writes-through on change and
+    /// re-renders the whole app via the .environment(\.locale) at the root.
+    private var localeBinding: Binding<String> {
+        Binding(
+            get: { appState.preferredLocaleIdentifier },
+            set: { appState.preferredLocaleIdentifier = $0 }
+        )
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Picker(selection: localeBinding) {
+                    Text("System").tag("system")
+                    Text("English").tag("en")
+                    Text("Français").tag("fr")
+                } label: {
+                    Label("Language", systemImage: "globe")
+                }
+                .pickerStyle(.menu)
+            } header: {
+                Text("Language")
+            } footer: {
+                // The standard macOS behavior is to relaunch for full effect.
+                // Live switching works for most SwiftUI views but not for
+                // strings read from NSBundle in other code paths.
+                Text("Switches the app language immediately. Some text may only update after the next launch.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
     }
 }
 

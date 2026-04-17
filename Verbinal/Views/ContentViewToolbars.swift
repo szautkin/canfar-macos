@@ -39,6 +39,13 @@ extension ContentView {
             .buttonStyle(.borderless)
             .help("Toggle file browser (Cmd+B)")
 
+            // Settings — SettingsLink (macOS 14+) opens the Settings scene.
+            SettingsLink {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.borderless)
+            .help("Open Settings (⌘,)")
+
             Button {
                 showAbout.wrappedValue = true
             } label: {
