@@ -64,8 +64,9 @@ final class AppNavigationTests: XCTestCase {
     }
 
     func testAllAppModesExist() {
-        // Verify all 7 modes from Windows parity exist
-        let modes: [AppMode] = [.landing, .search, .portal, .research, .storage, .fitsViewer, .notebook]
-        XCTAssertEqual(modes.count, 7)
+        // Six modes in the slim Verbinal SKU. The .notebook mode exists only in
+        // Verbinal Pi (which also ships the bundled Python kernel).
+        let modes: [AppMode] = [.landing, .search, .portal, .research, .storage, .fitsViewer]
+        XCTAssertEqual(modes.count, 6)
     }
 }

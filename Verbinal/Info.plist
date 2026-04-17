@@ -46,8 +46,8 @@
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Serhii Zautkin. Licensed under MPL-2.0.</string>
 
-    <!-- Document types the app opens (FITS images + notebooks). These let Finder
-         present the app in "Open With…" and enable drag-drop onto the Dock icon. -->
+    <!-- Document types the app opens. Lets Finder present Verbinal in
+         "Open With…" and enables drag-drop onto the Dock icon. -->
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>
@@ -67,22 +67,6 @@
                 <string>fit</string>
                 <string>fts</string>
                 <string>fz</string>
-            </array>
-        </dict>
-        <dict>
-            <key>CFBundleTypeName</key>
-            <string>Jupyter Notebook</string>
-            <key>CFBundleTypeRole</key>
-            <string>Editor</string>
-            <key>LSHandlerRank</key>
-            <string>Alternate</string>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>public.json</string>
-            </array>
-            <key>CFBundleTypeExtensions</key>
-            <array>
-                <string>ipynb</string>
             </array>
         </dict>
     </array>

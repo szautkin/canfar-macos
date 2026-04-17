@@ -19,8 +19,6 @@ struct ContentView: View {
             let ext = url.pathExtension.lowercased()
             if FileHelper.isFITS(ext) {
                 appState.dispatch(.openFITS(url: url))
-            } else if FileHelper.isNotebook(ext) {
-                appState.dispatch(.openNotebook(url: url))
             } else {
                 #if os(macOS)
                 NSWorkspace.shared.open(url)
@@ -74,12 +72,6 @@ struct ContentView: View {
                 fitsViewerContent
                 #else
                 macOSOnlyPlaceholder("FITS Viewer")
-                #endif
-            case .notebook:
-                #if os(macOS)
-                notebookContent
-                #else
-                macOSOnlyPlaceholder("Notebook")
                 #endif
             }
         }
@@ -256,21 +248,6 @@ struct ContentView: View {
         #endif
     }
 
-    // MARK: - Notebook
-
-    @ViewBuilder
-    private var notebookContent: some View {
-        #if os(macOS)
-        VStack(spacing: 0) {
-            makeModeToolbar(title: "Notebook", showAbout: $showAbout)
-            Divider()
-            NotebookRootView()
-        }
-        #else
-        NotebookRootView()
-        #endif
-    }
-
     // MARK: - FITS Viewer
 
     @ViewBuilder
@@ -388,8 +365,10 @@ struct ContentView: View {
             let ext = url.pathExtension.lowercased()
             if FileHelper.isFITS(ext) {
                 appState?.dispatch(.openFITS(url: url))
-            } else if FileHelper.isNotebook(ext) {
-                appState?.dispatch(.openNotebook(url: url))
+            } else {
+                #if os(macOS)
+                NSWorkspace.shared.open(url)
+                #endif
             }
         }
         storageBrowserModel = model
@@ -399,8 +378,6 @@ struct ContentView: View {
         let ext = url.pathExtension.lowercased()
         if FileHelper.isFITS(ext) {
             appState.dispatch(.openFITS(url: url))
-        } else if ["ipynb", "py", "md"].contains(ext) {
-            appState.dispatch(.openNotebook(url: url))
         } else {
             #if os(macOS)
             NSWorkspace.shared.open(url)

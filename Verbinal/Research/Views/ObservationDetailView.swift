@@ -56,8 +56,6 @@ struct ObservationDetailView: View {
                         let ext = observation.localURL.pathExtension.lowercased()
                         if FileHelper.isFITS(ext) {
                             Label("Open in FITS Viewer", systemImage: "star.circle")
-                        } else if FileHelper.isNotebook(ext) {
-                            Label("Open in Notebook", systemImage: "note.text")
                         } else {
                             Label("Open File", systemImage: "doc")
                         }

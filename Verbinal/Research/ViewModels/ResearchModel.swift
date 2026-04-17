@@ -225,7 +225,7 @@ final class ResearchModel {
         let url = URL(fileURLWithPath: observation.localPath)
         guard observation.fileExists else { return }
         let ext = url.pathExtension.lowercased()
-        if FileHelper.isFITS(ext) || FileHelper.isNotebook(ext) {
+        if FileHelper.isFITS(ext) {
             onOpenFile?(url)
         } else {
             NSWorkspace.shared.open(url)

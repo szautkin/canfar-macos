@@ -71,15 +71,6 @@ struct LandingView: View {
                 }
 
                 LandingTile(
-                    icon: "terminal",
-                    fallbackIcon: "doc.text",
-                    title: "Notebook",
-                    subtitle: "Run Jupyter notebooks"
-                ) {
-                    appState.navigateTo(.notebook)
-                }
-
-                LandingTile(
                     icon: "star.circle.fill",
                     fallbackIcon: "star.circle.fill",
                     title: "FITS Viewer",

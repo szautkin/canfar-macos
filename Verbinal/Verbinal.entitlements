@@ -1,16 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+Entitlements for Verbinal (slim). No bundled Python, no notebook, no subprocess
+spawning, so we can run with the minimum modern-sandbox profile.
+
+  app-sandbox                               — required for MAS; hardens direct
+                                              distribution too.
+  network.client                            — CADC / VOSpace HTTPS calls.
+  files.user-selected.read-write            — NSOpenPanel / NSSavePanel for
+                                              FITS downloads and research exports.
+  files.downloads.read-write                — default save target for
+                                              research observations.
+  keychain-access-groups                    — CADC auth token + credentials.
+
+Intentionally NOT present (dropped from the Pi entitlements when this branch
+diverged; re-add only if you reintroduce features requiring them):
+  cs.disable-library-validation             — only needed when loading
+                                              non-platform-signed dylibs.
+  cs.allow-unsigned-executable-memory       — only needed for Python C extensions.
+  cs.allow-jit                              — only needed for JIT'd numerical code.
+  inherit                                   — only needed when spawning subprocesses.
+  files.all                                 — overbroad, never needed for this app.
+-->
 <plist version="1.0">
 <dict>
-	<key>com.apple.security.app-sandbox</key>
-	<false/>
-	<key>com.apple.security.network.client</key>
-	<true/>
-	<key>com.apple.security.files.user-selected.read-write</key>
-	<true/>
-	<key>keychain-access-groups</key>
-	<array>
-		<string>$(AppIdentifierPrefix)com.codebg.Verbinal</string>
-	</array>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.codebg.Verbinal</string>
+    </array>
 </dict>
 </plist>

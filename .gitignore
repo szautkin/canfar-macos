@@ -38,7 +38,9 @@ Packages/
 .claude/
 .build.log
 
-# Bundled Python cache — rebuilt on demand by scripts/bundle-python.sh.
+# Bundled Python cache — unused on this branch (Verbinal slim has no Python);
+# kept in .gitignore for symmetry with the Verbinal-Pi branch so a stray cache
+# directory created from a branch switch does not get accidentally committed.
 .python-bundle-cache/
 
 # Debug symbols

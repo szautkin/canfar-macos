@@ -33,7 +33,6 @@ settings:
       SWIFT_COMPILATION_MODE: wholemodule
       DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
       ENABLE_NS_ASSERTIONS: NO
-      # Keep Debug builds fast — opt out of symbol stripping there.
     Debug:
       SWIFT_OPTIMIZATION_LEVEL: "-Onone"
       SWIFT_COMPILATION_MODE: incremental
@@ -47,35 +46,11 @@ targets:
       - path: Verbinal
         excludes:
           - "**/*.py"
-      - path: Verbinal/Resources
-        type: resource
-        buildPhase: resources
-    preBuildScripts:
-      - name: Bundle Python (opt-in in Debug, always in Release)
-        # Always runs in Release (MAS + direct distribution both need the
-        # bundled interpreter). In Debug it's opt-in via BUNDLE_PYTHON=1
-        # so day-to-day dev builds can fall back to host Python.
-        # KEEP_PIP defaults to 0 — pip is stripped for MAS compliance (2.5.2).
-        script: |
-          set -euo pipefail
-          if [ "${CONFIGURATION:-Debug}" != "Release" ] && [ "${BUNDLE_PYTHON:-0}" != "1" ]; then
-              echo "Debug build without BUNDLE_PYTHON=1 — skipping (will use host Python)."
-              exit 0
-          fi
-          OUTPUT_DIR="$DERIVED_FILE_DIR/python" \
-          SIGN_IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY_NAME:--}" \
-          KEEP_PIP="${KEEP_PIP:-0}" \
-          "${SRCROOT}/scripts/bundle-python.sh"
-          DEST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/python"
-          rm -rf "$DEST"
-          mkdir -p "$(dirname "$DEST")"
-          cp -R "$DERIVED_FILE_DIR/python" "$DEST"
-        basedOnDependencyAnalysis: false
     settings:
       base:
         INFOPLIST_FILE: Verbinal/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
-        CODE_SIGN_ENTITLEMENTS: Verbinal/Verbinal-Sandboxed.entitlements
+        CODE_SIGN_ENTITLEMENTS: Verbinal/Verbinal.entitlements
   VerbinalTests:
     type: bundle.unit-test
     platform: macOS
