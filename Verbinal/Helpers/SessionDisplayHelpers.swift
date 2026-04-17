@@ -21,6 +21,26 @@ enum SessionDisplay {
         }
     }
 
+    // MARK: - Status Localization
+
+    /// Map a raw backend status string ("Running", "pending", "Failed", …) to
+    /// a locale-aware display string routed through the catalog. Unknown
+    /// statuses are returned as-is so we don't eat novel server states.
+    static func localizedStatus(_ status: String) -> String {
+        switch status.lowercased() {
+        case "running":     return String(localized: "Running")
+        case "pending":     return String(localized: "Pending")
+        case "failed",
+             "error":       return String(localized: "Failed")
+        case "completed":   return String(localized: "Completed")
+        case "succeeded":   return String(localized: "Succeeded")
+        case "terminated",
+             "terminating": return String(localized: "Terminated")
+        case "stopped":     return String(localized: "Stopped")
+        default:            return status
+        }
+    }
+
     // MARK: - Type Color
 
     static func typeColor(_ type: String) -> Color {

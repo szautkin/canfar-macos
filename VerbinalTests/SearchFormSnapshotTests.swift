@@ -126,24 +126,34 @@ final class SearchFormSnapshotTests: XCTestCase {
     func testAutoNameWithoutCollection() {
         let snapshot = SearchFormSnapshot()
         let name = snapshot.autoName()
-        XCTAssertTrue(name.hasPrefix("Search"), "Name should start with 'Search', got: \(name)")
+        // Localized — assert structural invariant (non-empty + contains em-dash
+        // separator between fallback label and timestamp) rather than English
+        // prefix. The same call on an fr-locale machine returns "Recherche — …".
+        XCTAssertFalse(name.isEmpty)
+        XCTAssertTrue(name.contains("\u{2014}"), "Name should contain em-dash, got: \(name)")
     }
 
     func testAutoNameContainsTimestamp() {
         let snapshot = SearchFormSnapshot()
         let name = snapshot.autoName()
-        // Should contain a year like "2026"
+        // Should contain a year like "2026". Matches both "Aug 17, 2026" (en)
+        // and "17 août 2026" (fr) date styles.
         let yearStr = String(Calendar.current.component(.year, from: Date()))
         XCTAssertTrue(name.contains(yearStr), "Name should contain current year, got: \(name)")
     }
 
     // MARK: - Filter Summary
 
+    // Assertions below check that user data (M31, JWST) appears in the
+    // localized summary, not that the summary matches a specific English
+    // phrasing. filterSummary() now routes each fragment through
+    // String(localized:) so "Target: M31" appears as "Cible : M31" in fr.
+
     func testFilterSummaryWithTarget() {
         var snapshot = SearchFormSnapshot()
         snapshot.target = "M31"
         let summary = snapshot.filterSummary()
-        XCTAssertEqual(summary, "Target: M31")
+        XCTAssertTrue(summary.contains("M31"), "Summary should include target value, got: \(summary)")
     }
 
     func testFilterSummaryMultipleFields() {
@@ -151,13 +161,14 @@ final class SearchFormSnapshotTests: XCTestCase {
         snapshot.target = "M31"
         snapshot.selectedCollections = ["JWST"]
         let summary = snapshot.filterSummary()
-        XCTAssertTrue(summary.contains("Target: M31"))
-        XCTAssertTrue(summary.contains("Collection: JWST"))
-        XCTAssertTrue(summary.contains(" | "))
+        XCTAssertTrue(summary.contains("M31"), "Summary should include target, got: \(summary)")
+        XCTAssertTrue(summary.contains("JWST"), "Summary should include collection, got: \(summary)")
+        XCTAssertTrue(summary.contains(" | "), "Summary should join fragments with ' | ', got: \(summary)")
     }
 
     func testFilterSummaryEmpty() {
         let snapshot = SearchFormSnapshot()
-        XCTAssertEqual(snapshot.filterSummary(), "No filters")
+        // "No filters" in en, "Aucun filtre" in fr — both non-empty.
+        XCTAssertFalse(snapshot.filterSummary().isEmpty)
     }
 }

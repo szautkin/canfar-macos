@@ -76,16 +76,16 @@ struct HeadlessJobsView: View {
     private var summaryRow: some View {
         HStack(spacing: 10) {
             if model.runningCount > 0 {
-                statusPill(count: model.runningCount, label: "running", color: .green)
+                statusPill(count: model.runningCount, label: String(localized: "running"), color: .green)
             }
             if model.pendingCount > 0 {
-                statusPill(count: model.pendingCount, label: "pending", color: .orange)
+                statusPill(count: model.pendingCount, label: String(localized: "pending"), color: .orange)
             }
             if model.completedCount > 0 {
-                statusPill(count: model.completedCount, label: "done", color: .blue)
+                statusPill(count: model.completedCount, label: String(localized: "done"), color: .blue)
             }
             if model.failedCount > 0 {
-                statusPill(count: model.failedCount, label: "failed", color: .red)
+                statusPill(count: model.failedCount, label: String(localized: "failed"), color: .red)
             }
         }
     }
@@ -95,7 +95,7 @@ struct HeadlessJobsView: View {
             Circle()
                 .fill(color)
                 .frame(width: 6, height: 6)
-            Text("\(count) \(label)")
+            Text(verbatim: String(localized: "\(count) \(label)"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

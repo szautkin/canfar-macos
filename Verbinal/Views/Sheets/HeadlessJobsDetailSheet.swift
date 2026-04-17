@@ -43,7 +43,7 @@ struct HeadlessJobsDetailSheet: View {
                 Text("Batch Jobs")
                     .font(.title3)
                     .fontWeight(.semibold)
-                Text("(\(model.jobs.count) total)")
+                Text("(\(String(model.jobs.count)) total)")
                     .font(.title3)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -62,7 +62,7 @@ struct HeadlessJobsDetailSheet: View {
                             Circle()
                                 .fill(tab.color)
                                 .frame(width: 6, height: 6)
-                            Text("\(tab.label) (\(tab.count))")
+                            Text("\(tab.label) (\(String(tab.count)))")
                                 .font(.caption)
                         }
                         .padding(.horizontal, 10)
@@ -133,7 +133,7 @@ struct HeadlessJobsDetailSheet: View {
                     .foregroundStyle(.tertiary)
             }
 
-            Text(job.status)
+            Text(verbatim: SessionDisplay.localizedStatus(job.status))
                 .font(.caption2)
                 .fontWeight(.semibold)
                 .padding(.horizontal, 6)

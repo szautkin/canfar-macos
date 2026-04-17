@@ -123,7 +123,7 @@ struct iOSSessionsTab: View {
 
                 Spacer()
 
-                Text(session.status)
+                Text(verbatim: SessionDisplay.localizedStatus(session.status))
                     .font(.caption)
                     .fontWeight(.semibold)
                     .padding(.horizontal, 8)

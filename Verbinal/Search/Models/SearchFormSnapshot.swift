@@ -36,10 +36,13 @@ struct SearchFormSnapshot: Codable, Equatable {
     var selectedDataTypes: [String] = []
     var selectedObsTypes: [String] = []
 
-    /// Generate a default name for this search snapshot.
+    /// Generate a default name for this search snapshot. Uses locale-aware
+    /// date formatting + catalog-resolved fallback label so recent-search
+    /// chips render in the user's language.
     func autoName() -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy h:mm a"
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
         let timestamp = formatter.string(from: Date())
 
         if let first = selectedCollections.first, !first.isEmpty {
@@ -48,21 +51,40 @@ struct SearchFormSnapshot: Codable, Equatable {
         if !target.isEmpty {
             return "\(target) \u{2014} \(timestamp)"
         }
-        return "Search \u{2014} \(timestamp)"
+        return String(localized: "Search \u{2014} \(timestamp)")
     }
 
-    /// Summary of active filters for display in card.
+    /// Summary of active filters for display in card. Each fragment goes
+    /// through String(localized:) so French users see a translated chip.
     func filterSummary() -> String {
         var parts: [String] = []
-        if !target.isEmpty { parts.append("Target: \(target)") }
-        if !selectedCollections.isEmpty { parts.append("Collection: \(selectedCollections.joined(separator: ", "))") }
-        if !observationDate.isEmpty { parts.append("Date: \(observationDate)") }
-        if !observationID.isEmpty { parts.append("Obs ID: \(observationID)") }
-        if !piName.isEmpty { parts.append("PI: \(piName)") }
-        if !selectedInstruments.isEmpty { parts.append("Instrument: \(selectedInstruments.joined(separator: ", "))") }
-        if intent != "" && intent != IntentValue.any.rawValue { parts.append("Intent: \(intent)") }
-        if publicOnly { parts.append("Public only") }
-        if parts.isEmpty { return "No filters" }
+        if !target.isEmpty {
+            parts.append(String(localized: "Target: \(target)"))
+        }
+        if !selectedCollections.isEmpty {
+            parts.append(String(localized: "Collection: \(selectedCollections.joined(separator: ", "))"))
+        }
+        if !observationDate.isEmpty {
+            parts.append(String(localized: "Date: \(observationDate)"))
+        }
+        if !observationID.isEmpty {
+            parts.append(String(localized: "Obs ID: \(observationID)"))
+        }
+        if !piName.isEmpty {
+            parts.append(String(localized: "PI: \(piName)"))
+        }
+        if !selectedInstruments.isEmpty {
+            parts.append(String(localized: "Instrument: \(selectedInstruments.joined(separator: ", "))"))
+        }
+        if intent != "" && intent != IntentValue.any.rawValue {
+            parts.append(String(localized: "Intent: \(intent)"))
+        }
+        if publicOnly {
+            parts.append(String(localized: "Public only"))
+        }
+        if parts.isEmpty {
+            return String(localized: "No filters")
+        }
         return parts.joined(separator: " | ")
     }
 }

@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import SwiftUI
 
 // MARK: - Range Parsing
 
@@ -52,7 +53,9 @@ enum IntentValue: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var displayName: String {
+    /// LocalizedStringKey so Pickers using Text(intent.displayName) route
+    /// through the String Catalog.
+    var displayName: LocalizedStringKey {
         switch self {
         case .any: return "Science and Calibration"
         case .science: return "Science only"
@@ -71,7 +74,9 @@ enum DatePresetValue: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var displayName: String {
+    /// LocalizedStringKey so Pickers using Text(preset.displayName) route
+    /// through the String Catalog.
+    var displayName: LocalizedStringKey {
         switch self {
         case .none: return "None"
         case .past24Hours: return "Past 24 hours"

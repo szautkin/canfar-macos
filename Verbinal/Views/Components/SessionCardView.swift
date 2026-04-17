@@ -47,7 +47,7 @@ struct SessionCardView: View {
                 Spacer()
 
                 // Status badge
-                Text(session.status)
+                Text(verbatim: SessionDisplay.localizedStatus(session.status))
                     .font(.caption2)
                     .fontWeight(.semibold)
                     .padding(.horizontal, 7)

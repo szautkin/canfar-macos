@@ -52,19 +52,24 @@ struct SearchResultsView: View {
     private var infoBar: some View {
         HStack {
             if resultsModel.totalRows > 0 {
+                // Interpolations coerce Int → String so catalog keys are
+                // `%@ of %@ results` / `%@ rows (limit reached)` / `%@ results`
+                // (the object-typed forms that already have French). Raw Int
+                // interpolation would produce `%lld …` keys that aren't in
+                // the catalog and fall back to English.
                 if resultsModel.filteredCount != resultsModel.totalRows {
-                    Text("\(resultsModel.filteredCount) of \(resultsModel.totalRows) results")
+                    Text("\(String(resultsModel.filteredCount)) of \(String(resultsModel.totalRows)) results")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if resultsModel.maxRecordReached {
                     Label(
-                        "\(resultsModel.totalRows) rows (limit reached)",
+                        "\(String(resultsModel.totalRows)) rows (limit reached)",
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.caption)
                     .foregroundStyle(.orange)
                 } else {
-                    Text("\(resultsModel.totalRows) results")
+                    Text("\(String(resultsModel.totalRows)) results")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -295,7 +300,7 @@ struct SearchResultsView: View {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = filename
         panel.canCreateDirectories = true
-        panel.title = "Save Results"
+        panel.title = String(localized: "Save Results")
 
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
         panel.directoryURL = docs

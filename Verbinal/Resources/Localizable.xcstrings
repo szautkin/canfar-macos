@@ -96,6 +96,12 @@
             "state": "new",
             "value": "%1$@ × %2$@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ × %2$@"
+          }
         }
       }
     },
@@ -208,11 +214,50 @@
             "state": "new",
             "value": "%1$@/%2$@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@/%2$@"
+          }
         }
       }
     },
     "%@c": {},
     "%@s": {},
+    "%lld %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "%lld images cached for %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld images en cache pour %2$@"
+          }
+        }
+      }
+    },
+    "%lld total": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld au total"
+          }
+        }
+      }
+    },
     "© 2026 Serhii Zautkin": {
       "localizations": {
         "fr": {
@@ -225,9 +270,36 @@
     },
     "=": {},
     "= %@": {},
-    "50": {},
-    "100": {},
-    "500": {},
+    "50": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "50"
+          }
+        }
+      }
+    },
+    "100": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "100"
+          }
+        }
+      }
+    },
+    "500": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "500"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion": {
       "localizations": {
         "fr": {
@@ -309,6 +381,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sessions actives"
+          }
+        }
+      }
+    },
+    "Active Sessions (%lld)": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions actives (%lld)"
           }
         }
       }
@@ -462,6 +545,39 @@
         }
       }
     },
+    "Auto-refresh %llds": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualisation auto dans %lld s"
+          }
+        }
+      }
+    },
+    "Available CPU Cores": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cœurs CPU disponibles"
+          }
+        }
+      }
+    },
+    "Available RAM": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAM disponible"
+          }
+        }
+      }
+    },
     "Back": {
       "extractionState": "stale",
       "localizations": {
@@ -484,6 +600,17 @@
         }
       }
     },
+    "Bandpass Width": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Largeur de bande passante"
+          }
+        }
+      }
+    },
     "Bands": {
       "extractionState": "stale",
       "localizations": {
@@ -501,6 +628,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tâches en lot"
+          }
+        }
+      }
+    },
+    "Bookmark saved": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signet enregistré"
           }
         }
       }
@@ -558,6 +696,17 @@
         }
       }
     },
+    "Cached container image metadata makes the Portal tab feel instant. The cache refreshes automatically every 24 hours.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les métadonnées d'images en cache rendent l'onglet Portail instantané. Le cache est actualisé automatiquement toutes les 24 heures."
+          }
+        }
+      }
+    },
     "Cancel": {
       "extractionState": "stale",
       "localizations": {
@@ -565,6 +714,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Annuler"
+          }
+        }
+      }
+    },
+    "canfar.net": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "canfar.net"
           }
         }
       }
@@ -663,6 +823,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tout effacer"
+          }
+        }
+      }
+    },
+    "Clear All Defaults": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer toutes les valeurs par défaut"
+          }
+        }
+      }
+    },
+    "Clear Cache": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vider le cache"
           }
         }
       }
@@ -808,6 +990,28 @@
         }
       }
     },
+    "Container Image": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image du conteneur"
+          }
+        }
+      }
+    },
+    "Container Image URL": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL de l'image du conteneur"
+          }
+        }
+      }
+    },
     "Continue": {
       "extractionState": "stale",
       "localizations": {
@@ -826,6 +1030,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coordonnées copiées"
+          }
+        }
+      }
+    },
+    "Coordinates outside image bounds": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coordonnées hors des limites de l'image"
           }
         }
       }
@@ -916,6 +1131,17 @@
         }
       }
     },
+    "CPU: %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UC : %@"
+          }
+        }
+      }
+    },
     "CPU: %@ | RAM: %@G": {
       "localizations": {
         "en": {
@@ -928,6 +1154,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "CPU : %1$@ | RAM : %2$@ Go"
+          }
+        }
+      }
+    },
+    "CPU: %lld | RAM: %lldG": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UC : %1$lld | RAM : %2$lld Go"
           }
         }
       }
@@ -975,6 +1212,17 @@
         }
       }
     },
+    "Current default — tap to clear": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valeur par défaut — cliquez pour effacer"
+          }
+        }
+      }
+    },
     "Custom Image": {
       "extractionState": "stale",
       "localizations": {
@@ -982,6 +1230,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Image personnalisée"
+          }
+        }
+      }
+    },
+    "Custom image URL contains invalid characters": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'URL de l'image personnalisée contient des caractères invalides"
+          }
+        }
+      }
+    },
+    "Custom image URL is required": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'URL de l'image personnalisée est requise"
           }
         }
       }
@@ -1003,6 +1273,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tableau de bord"
+          }
+        }
+      }
+    },
+    "Data Release": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version des données"
           }
         }
       }
@@ -1029,7 +1310,16 @@
         }
       }
     },
-    "Dec:": {},
+    "Dec:": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déc :"
+          }
+        }
+      }
+    },
     "Default": {
       "extractionState": "stale",
       "localizations": {
@@ -1095,6 +1385,17 @@
         }
       }
     },
+    "Delete Session": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la session"
+          }
+        }
+      }
+    },
     "Deleted": {
       "extractionState": "stale",
       "localizations": {
@@ -1102,6 +1403,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Supprimé"
+          }
+        }
+      }
+    },
+    "Deleting Session": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suppression de la session"
           }
         }
       }
@@ -1150,6 +1462,17 @@
         }
       }
     },
+    "Dismiss": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer"
+          }
+        }
+      }
+    },
     "Don't have an account?": {
       "extractionState": "stale",
       "localizations": {
@@ -1157,6 +1480,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vous n'avez pas de compte ?"
+          }
+        }
+      }
+    },
+    "done": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "terminées"
           }
         }
       }
@@ -1215,6 +1549,17 @@
         }
       }
     },
+    "Downloaded": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléchargé"
+          }
+        }
+      }
+    },
     "Downloaded observations": {
       "extractionState": "stale",
       "localizations": {
@@ -1237,7 +1582,16 @@
         }
       }
     },
-    "Downloads": {},
+    "Downloads": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléchargements"
+          }
+        }
+      }
+    },
     "Duplicate": {
       "extractionState": "stale",
       "localizations": {
@@ -1260,7 +1614,16 @@
         }
       }
     },
-    "Edited %@": {},
+    "Edited %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifié %@"
+          }
+        }
+      }
+    },
     "Empty folder": {
       "localizations": {
         "fr": {
@@ -1334,7 +1697,38 @@
         }
       }
     },
-    "Execute": {},
+    "Excellent": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Excellente"
+          }
+        }
+      }
+    },
+    "Execute": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exécuter"
+          }
+        }
+      }
+    },
+    "Exists": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Présent"
+          }
+        }
+      }
+    },
     "Explore the CADC archive": {
       "extractionState": "stale",
       "localizations": {
@@ -1368,6 +1762,17 @@
         }
       }
     },
+    "Export complete": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportation terminée"
+          }
+        }
+      }
+    },
     "Export Complete": {
       "extractionState": "stale",
       "localizations": {
@@ -1396,6 +1801,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Échec de l'exportation"
+          }
+        }
+      }
+    },
+    "Export failed (HTTP %@).": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de l'exportation (HTTP %@)."
           }
         }
       }
@@ -1433,12 +1849,45 @@
         }
       }
     },
+    "Export…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporter…"
+          }
+        }
+      }
+    },
+    "Exported %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporté %@"
+          }
+        }
+      }
+    },
     "Exporting…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Exportation…"
+          }
+        }
+      }
+    },
+    "failed": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "échouées"
           }
         }
       }
@@ -1454,7 +1903,38 @@
         }
       }
     },
-    "Failed to load": {},
+    "Failed to load": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec du chargement"
+          }
+        }
+      }
+    },
+    "Failed to save: %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de l'enregistrement : %@"
+          }
+        }
+      }
+    },
+    "Fair": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moyenne"
+          }
+        }
+      }
+    },
     "Favorites": {
       "extractionState": "stale",
       "localizations": {
@@ -1505,6 +1985,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Filtrer"
+          }
+        }
+      }
+    },
+    "Filter...": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrer…"
           }
         }
       }
@@ -1659,6 +2150,17 @@
         }
       }
     },
+    "Go Back": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour"
+          }
+        }
+      }
+    },
     "Go To (degrees)": {
       "localizations": {
         "fr": {
@@ -1669,7 +2171,40 @@
         }
       }
     },
+    "Good": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonne"
+          }
+        }
+      }
+    },
     "GPU": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPU"
+          }
+        }
+      }
+    },
+    "GPU: %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPU : %@"
+          }
+        }
+      }
+    },
+    "GPUs": {
       "extractionState": "stale",
       "localizations": {
         "fr": {
@@ -1861,6 +2396,17 @@
         }
       }
     },
+    "Instances: %lld total (%lld sessions, %lld desktop, %lld headless)": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instances : %1$lld au total (%2$lld sessions, %3$lld bureau, %4$lld sans tête)"
+          }
+        }
+      }
+    },
     "Instrument": {
       "extractionState": "stale",
       "localizations": {
@@ -1922,6 +2468,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Réponse du serveur invalide"
+          }
+        }
+      }
+    },
+    "Invalid server response.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réponse du serveur invalide."
           }
         }
       }
@@ -2034,8 +2591,28 @@
         }
       }
     },
-    "Launch a session from the Launch tab": {},
+    "Launch a session from the Launch tab": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancez une session depuis l'onglet Lancement"
+          }
+        }
+      }
+    },
     "Launch a session from the sidebar": {},
+    "Launch failed": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec du lancement"
+          }
+        }
+      }
+    },
     "Launch Failed": {
       "localizations": {
         "fr": {
@@ -2052,6 +2629,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lancer la session"
+          }
+        }
+      }
+    },
+    "Launching session…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancement de la session…"
           }
         }
       }
@@ -2078,6 +2666,17 @@
         }
       }
     },
+    "Linked zoom clamped — images have very different pixel scales": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom lié ajusté — les images ont des échelles de pixels très différentes"
+          }
+        }
+      }
+    },
     "Load Query": {
       "extractionState": "stale",
       "localizations": {
@@ -2096,6 +2695,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chargement"
+          }
+        }
+      }
+    },
+    "Loading images...": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement des images…"
+          }
+        }
+      }
+    },
+    "Loading...": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement…"
           }
         }
       }
@@ -2122,6 +2743,17 @@
         }
       }
     },
+    "Log in to manage Portal defaults.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous pour gérer les valeurs par défaut du Portail."
+          }
+        }
+      }
+    },
     "Logged out": {
       "extractionState": "stale",
       "localizations": {
@@ -2134,6 +2766,7 @@
       }
     },
     "Login": {
+      "extractionState": "stale",
       "localizations": {
         "fr": {
           "stringUnit": {
@@ -2231,6 +2864,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Min"
+          }
+        }
+      }
+    },
+    "Missing": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manquant"
           }
         }
       }
@@ -2375,7 +3019,27 @@
         }
       }
     },
-    "No bookmarks": {},
+    "No batch jobs": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune tâche en lot"
+          }
+        }
+      }
+    },
+    "No bookmarks": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun signet"
+          }
+        }
+      }
+    },
     "No cache on disk": {
       "localizations": {
         "fr": {
@@ -2393,6 +3057,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aucune image en cache pour le moment"
+          }
+        }
+      }
+    },
+    "No cached images yet — open the Portal tab once to populate these options.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune image en cache — ouvrez l'onglet Portail une fois pour remplir ces options."
           }
         }
       }
@@ -2424,6 +3099,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aucun téléchargement pour le moment"
+          }
+        }
+      }
+    },
+    "No events available": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun événement disponible"
+          }
+        }
+      }
+    },
+    "No export URL available for this query.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune URL d'exportation disponible pour cette requête."
           }
         }
       }
@@ -2460,6 +3157,17 @@
         }
       }
     },
+    "No logs available": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun journal disponible"
+          }
+        }
+      }
+    },
     "No matches": {
       "localizations": {
         "fr": {
@@ -2470,7 +3178,27 @@
         }
       }
     },
-    "No preview available": {},
+    "No preview available": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun aperçu disponible"
+          }
+        }
+      }
+    },
+    "No recent launches": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun lancement récent"
+          }
+        }
+      }
+    },
     "No results": {
       "extractionState": "stale",
       "localizations": {
@@ -2640,7 +3368,16 @@
         }
       }
     },
-    "Open a FITS file or drag one here.": {},
+    "Open a FITS file or drag one here.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez un fichier FITS ou glissez-en un ici."
+          }
+        }
+      }
+    },
     "Open a FITS file to view astronomical images.": {
       "localizations": {
         "fr": {
@@ -2706,6 +3443,17 @@
         }
       }
     },
+    "Open Settings (⌘,)": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir les Réglages (⌘,)"
+          }
+        }
+      }
+    },
     "Optional": {
       "extractionState": "stale",
       "localizations": {
@@ -2713,6 +3461,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Optionnel"
+          }
+        }
+      }
+    },
+    "Optional. When set, the launch form starts with these resource settings. CPU / RAM / GPU options are populated from the CANFAR context.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facultatif. Lorsqu'elles sont définies, ces ressources sont préchargées dans le formulaire de lancement. Les options CPU / RAM / GPU proviennent du contexte CANFAR."
           }
         }
       }
@@ -2782,6 +3541,17 @@
         }
       }
     },
+    "pending": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en attente"
+          }
+        }
+      }
+    },
     "Pending": {
       "extractionState": "stale",
       "localizations": {
@@ -2804,6 +3574,17 @@
         }
       }
     },
+    "Platform Load": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Charge de la plate-forme"
+          }
+        }
+      }
+    },
     "Please log in": {
       "extractionState": "stale",
       "localizations": {
@@ -2811,6 +3592,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Veuillez vous connecter"
+          }
+        }
+      }
+    },
+    "Please select an image": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veuillez sélectionner une image"
+          }
+        }
+      }
+    },
+    "Poor": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mauvaise"
           }
         }
       }
@@ -2844,6 +3647,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Puissance"
+          }
+        }
+      }
+    },
+    "Preset": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préréglage"
           }
         }
       }
@@ -2891,7 +3705,49 @@
         }
       }
     },
-    "Quality": {},
+    "Proposal Keywords": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mots-clés de la proposition"
+          }
+        }
+      }
+    },
+    "Proposal Title": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Titre de la proposition"
+          }
+        }
+      }
+    },
+    "Quality": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qualité"
+          }
+        }
+      }
+    },
+    "Quality rating %lld of 5": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note de qualité %lld sur 5"
+          }
+        }
+      }
+    },
     "Quota": {
       "localizations": {
         "fr": {
@@ -2934,12 +3790,56 @@
         }
       }
     },
+    "RAM (GB)": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAM (Go)"
+          }
+        }
+      }
+    },
     "RAM (GB):": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Mémoire (Go) :"
+          }
+        }
+      }
+    },
+    "RAM: %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAM : %@"
+          }
+        }
+      }
+    },
+    "Rate %lld star": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld étoile"
+          }
+        }
+      }
+    },
+    "Rate %lld stars": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld étoiles"
           }
         }
       }
@@ -2998,6 +3898,17 @@
         }
       }
     },
+    "Refresh Now": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiser maintenant"
+          }
+        }
+      }
+    },
     "Refreshing…": {
       "localizations": {
         "fr": {
@@ -3008,12 +3919,56 @@
         }
       }
     },
+    "Registry": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registre"
+          }
+        }
+      }
+    },
+    "Registry Authentication (optional)": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentification du registre (facultatif)"
+          }
+        }
+      }
+    },
     "Relaunch": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Relancer"
+          }
+        }
+      }
+    },
+    "Relaunch failed": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de la relance"
+          }
+        }
+      }
+    },
+    "Relaunching session…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relance de la session…"
           }
         }
       }
@@ -3062,6 +4017,39 @@
         }
       }
     },
+    "Renew": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renouveler"
+          }
+        }
+      }
+    },
+    "Renewing Session": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renouvellement de la session"
+          }
+        }
+      }
+    },
+    "Renewing session...": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renouvellement de la session…"
+          }
+        }
+      }
+    },
     "Renewing session…": {
       "extractionState": "stale",
       "localizations": {
@@ -3069,6 +4057,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Renouvellement de la session…"
+          }
+        }
+      }
+    },
+    "Replace": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remplacer"
+          }
+        }
+      }
+    },
+    "Replace Recent Launch?": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remplacer le lancement récent ?"
+          }
+        }
+      }
+    },
+    "Report an Issue…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signaler un problème…"
           }
         }
       }
@@ -3128,6 +4149,17 @@
         }
       }
     },
+    "Resolving Power": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pouvoir de résolution"
+          }
+        }
+      }
+    },
     "Resource Defaults": {
       "localizations": {
         "fr": {
@@ -3145,6 +4177,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ressources"
+          }
+        }
+      }
+    },
+    "Rest-frame Energy": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Énergie au repos"
           }
         }
       }
@@ -3177,6 +4220,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Résultats"
+          }
+        }
+      }
+    },
+    "Results (%@)": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Résultats (%@)"
           }
         }
       }
@@ -3253,6 +4307,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lancer la recherche"
+          }
+        }
+      }
+    },
+    "running": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en cours"
           }
         }
       }
@@ -3345,6 +4410,17 @@
         }
       }
     },
+    "Saved: %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré : %@"
+          }
+        }
+      }
+    },
     "Search": {
       "localizations": {
         "fr": {
@@ -3383,6 +4459,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Recherche…"
+          }
+        }
+      }
+    },
+    "Secret": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secret"
           }
         }
       }
@@ -3428,6 +4515,28 @@
         }
       }
     },
+    "Session '%@' deleted.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session « %@ » supprimée."
+          }
+        }
+      }
+    },
+    "Session '%@' renewed.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session « %@ » renouvelée."
+          }
+        }
+      }
+    },
     "Session expired. Please log in again.": {
       "extractionState": "stale",
       "localizations": {
@@ -3449,6 +4558,28 @@
         }
       }
     },
+    "Session launched! ID: %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session lancée ! ID : %@"
+          }
+        }
+      }
+    },
+    "Session limit reached (%lld/%lld)": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite de sessions atteinte (%1$lld/%2$lld)"
+          }
+        }
+      }
+    },
     "Session Name": {
       "extractionState": "stale",
       "localizations": {
@@ -3456,6 +4587,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nom de la session"
+          }
+        }
+      }
+    },
+    "Session name is required": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le nom de la session est requis"
+          }
+        }
+      }
+    },
+    "Session relaunched!": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session relancée !"
+          }
+        }
+      }
+    },
+    "Session Type": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type de session"
           }
         }
       }
@@ -3471,6 +4635,50 @@
         }
       }
     },
+    "Set as default container image": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Définir comme image de conteneur par défaut"
+          }
+        }
+      }
+    },
+    "Set as default project": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Définir comme projet par défaut"
+          }
+        }
+      }
+    },
+    "Set as default session type": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Définir comme type de session par défaut"
+          }
+        }
+      }
+    },
+    "Set current resources as default": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Définir les ressources actuelles par défaut"
+          }
+        }
+      }
+    },
     "Settings": {
       "extractionState": "stale",
       "localizations": {
@@ -3478,6 +4686,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Réglages"
+          }
+        }
+      }
+    },
+    "Share…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partager…"
           }
         }
       }
@@ -3635,8 +4854,48 @@
         }
       }
     },
-    "Spatial": {},
-    "Spectral": {},
+    "Spatial": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spatial"
+          }
+        }
+      }
+    },
+    "Spectral": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spectral"
+          }
+        }
+      }
+    },
+    "Spectral Coverage": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couverture spectrale"
+          }
+        }
+      }
+    },
+    "Spectral Sampling": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échantillonnage spectral"
+          }
+        }
+      }
+    },
     "Square Root": {
       "extractionState": "stale",
       "localizations": {
@@ -3713,6 +4972,17 @@
         }
       }
     },
+    "Storage nearly full!": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espace de stockage presque plein !"
+          }
+        }
+      }
+    },
     "Storage Usage": {
       "extractionState": "stale",
       "localizations": {
@@ -3777,6 +5047,17 @@
         }
       }
     },
+    "Tap to clear": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cliquez pour effacer"
+          }
+        }
+      }
+    },
     "Target": {
       "extractionState": "stale",
       "localizations": {
@@ -3788,7 +5069,16 @@
         }
       }
     },
-    "Target / Coordinates": {},
+    "Target / Coordinates": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cible / Coordonnées"
+          }
+        }
+      }
+    },
     "Target Name": {
       "extractionState": "stale",
       "localizations": {
@@ -3822,7 +5112,16 @@
         }
       }
     },
-    "Temporal": {},
+    "Temporal": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temporel"
+          }
+        }
+      }
+    },
     "Terminate": {
       "extractionState": "stale",
       "localizations": {
@@ -3845,6 +5144,17 @@
         }
       }
     },
+    "These selections are automatically applied whenever you open the Portal tab. They are stored per-user under Application Support.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ces choix sont appliqués automatiquement à l'ouverture de l'onglet Portail. Ils sont enregistrés par utilisateur sous Application Support."
+          }
+        }
+      }
+    },
     "This action cannot be undone.": {
       "extractionState": "stale",
       "localizations": {
@@ -3862,6 +5172,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Action irréversible."
+          }
+        }
+      }
+    },
+    "This file will be permanently deleted from VOSpace.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier sera supprimé définitivement de VOSpace."
+          }
+        }
+      }
+    },
+    "This folder and its contents will be permanently deleted.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce dossier et son contenu seront supprimés définitivement."
           }
         }
       }
@@ -3911,7 +5243,38 @@
         }
       }
     },
-    "Updated %@ ago": {},
+    "Unusable": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inutilisable"
+          }
+        }
+      }
+    },
+    "Updated %@ ago": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mis à jour il y a %@"
+          }
+        }
+      }
+    },
+    "Upload": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléverser"
+          }
+        }
+      }
+    },
     "Upload complete": {
       "extractionState": "stale",
       "localizations": {
@@ -4029,6 +5392,17 @@
         }
       }
     },
+    "Validating session...": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Validation de la session…"
+          }
+        }
+      }
+    },
     "Validating session…": {
       "extractionState": "stale",
       "localizations": {
@@ -4057,6 +5431,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verbinal"
+          }
+        }
+      }
+    },
+    "Verbinal Help": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aide Verbinal"
           }
         }
       }
@@ -4092,6 +5477,17 @@
         }
       }
     },
+    "Verbinal provides a native interface for managing interactive computing sessions on the CANFAR platform.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinal offre une interface native pour gérer les sessions de calcul interactif sur la plate-forme CANFAR."
+          }
+        }
+      }
+    },
     "Version %@": {
       "localizations": {
         "fr": {
@@ -4120,6 +5516,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Voir les événements"
+          }
+        }
+      }
+    },
+    "View Events & Logs": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher événements et journaux"
           }
         }
       }
@@ -4179,7 +5586,16 @@
         }
       }
     },
-    "Window: %.1f": {},
+    "Window: %.1f": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fenêtre : %.1f"
+          }
+        }
+      }
+    },
     "Write Notes": {
       "extractionState": "stale",
       "localizations": {
@@ -4256,1122 +5672,902 @@
         }
       }
     },
-    "Go Back": {
+    "Target: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retour"
+            "value": "Cible : %@"
           }
         }
       }
     },
-    "Open Settings (⌘,)": {
+    "Collection: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir les Réglages (⌘,)"
+            "value": "Collection : %@"
           }
         }
       }
     },
-    "Clear All Defaults": {
+    "Date: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Effacer toutes les valeurs par défaut"
+            "value": "Date : %@"
           }
         }
       }
     },
-    "Export complete": {
+    "Obs ID: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Exportation terminée"
+            "value": "ID d'obs. : %@"
           }
         }
       }
     },
-    "Share…": {
+    "PI: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Partager…"
+            "value": "Resp. : %@"
           }
         }
       }
     },
-    "Export…": {
+    "Instrument: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Exporter…"
+            "value": "Instrument : %@"
           }
         }
       }
     },
-    "Verbinal Help": {
+    "Intent: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aide Verbinal"
+            "value": "Intention : %@"
           }
         }
       }
     },
-    "Report an Issue…": {
+    "Public only": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Signaler un problème…"
+            "value": "Publiques uniquement"
           }
         }
       }
     },
-    "Replace": {
+    "No filters": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remplacer"
+            "value": "Aucun filtre"
           }
         }
       }
     },
-    "Validating session...": {
+    "Search — %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Validation de la session…"
+            "value": "Recherche — %@"
           }
         }
       }
     },
-    "Renewing session...": {
+    "Science and Calibration": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Renouvellement de la session…"
+            "value": "Science et étalonnage"
           }
         }
       }
     },
-    "Verbinal provides a native interface for managing interactive computing sessions on the CANFAR platform.": {
+    "Science only": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verbinal offre une interface native pour gérer les sessions de calcul interactif sur la plate-forme CANFAR."
+            "value": "Science uniquement"
           }
         }
       }
     },
-    "Loading images...": {
+    "Calibration only": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chargement des images…"
+            "value": "Étalonnage uniquement"
           }
         }
       }
     },
-    "Loading...": {
+    "Past 24 hours": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chargement…"
+            "value": "Dernières 24 heures"
           }
         }
       }
     },
-    "Session Type": {
+    "Past week": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Type de session"
+            "value": "Semaine dernière"
           }
         }
       }
     },
-    "Registry": {
+    "Past month": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Registre"
+            "value": "Mois dernier"
           }
         }
       }
     },
-    "Container Image": {
+    "Choose Export Destination": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Image du conteneur"
+            "value": "Choisir la destination d'exportation"
           }
         }
       }
     },
-    "Container Image URL": {
+    "A timestamped folder will be created inside the selected directory.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "URL de l'image du conteneur"
+            "value": "Un dossier horodaté sera créé dans le répertoire sélectionné."
           }
         }
       }
     },
-    "Registry Authentication (optional)": {
+    "Export Here": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Authentification du registre (facultatif)"
+            "value": "Exporter ici"
           }
         }
       }
     },
-    "Secret": {
+    "Save Observation": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Secret"
+            "value": "Enregistrer l'observation"
           }
         }
       }
     },
-    "%lld images cached for %@": {
+    "Choose where to save the downloaded observation file.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld images en cache pour %2$@"
+            "value": "Choisissez où enregistrer le fichier d'observation téléchargé."
           }
         }
       }
     },
-    "Replace Recent Launch?": {
+    "Select a FITS file (.fits, .fit, .fts)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remplacer le lancement récent ?"
+            "value": "Sélectionnez un fichier FITS (.fits, .fit, .fts)"
           }
         }
       }
     },
-    "Current default — tap to clear": {
+    "Save Results": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Valeur par défaut — cliquez pour effacer"
+            "value": "Enregistrer les résultats"
           }
         }
       }
     },
-    "Set as default session type": {
+    "Upload File": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Définir comme type de session par défaut"
+            "value": "Téléverser un fichier"
           }
         }
       }
     },
-    "Set as default project": {
+    "Save File": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Définir comme projet par défaut"
+            "value": "Enregistrer le fichier"
           }
         }
       }
     },
-    "Set as default container image": {
+    "%@ rows (limit reached)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Définir comme image de conteneur par défaut"
+            "value": "%@ lignes (limite atteinte)"
           }
         }
       }
     },
-    "Set current resources as default": {
+    "Loading FITS...": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Définir les ressources actuelles par défaut"
+            "value": "Chargement FITS…"
           }
         }
       }
     },
-    "Active Sessions (%lld)": {
+    "Loading FITS…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sessions actives (%lld)"
+            "value": "Chargement FITS…"
           }
         }
       }
     },
-    "Auto-refresh %llds": {
+    "Loading data train...": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actualisation auto dans %lld s"
+            "value": "Chargement du data train…"
           }
         }
       }
     },
-    "Delete Session": {
+    "Loading data train…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Supprimer la session"
+            "value": "Chargement du data train…"
           }
         }
       }
     },
-    "Deleting Session": {
+    "Loading preview...": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Suppression de la session"
+            "value": "Chargement de l'aperçu…"
           }
         }
       }
     },
-    "Session '%@' deleted.": {
+    "Loading preview…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Session « %@ » supprimée."
+            "value": "Chargement de l'aperçu…"
           }
         }
       }
     },
-    "Renewing Session": {
+    "Loading FITS": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Renouvellement de la session"
+            "value": "Chargement FITS"
           }
         }
       }
     },
-    "Session '%@' renewed.": {
+    "Val:": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Session « %@ » renouvelée."
+            "value": "Val :"
           }
         }
       }
     },
-    "Renew": {
+    "Search Here": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Renouveler"
+            "value": "Rechercher ici"
           }
         }
       }
     },
-    "No events available": {
+    "Search for observations at this sky position (⌘⇧L)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun événement disponible"
+            "value": "Rechercher des observations à cette position (⌘⇧L)"
           }
         }
       }
     },
-    "No logs available": {
+    "Requires WCS calibration data": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun journal disponible"
+            "value": "Nécessite les données d'étalonnage WCS"
           }
         }
       }
     },
-    "CPU: %@": {
+    "WCS approximate": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "UC : %@"
+            "value": "WCS approximatif"
           }
         }
       }
     },
-    "RAM: %@": {
+    "This file lacks standard WCS calibration. Coordinates are estimated from legacy header keywords and may be imprecise.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "RAM : %@"
+            "value": "Ce fichier n'a pas d'étalonnage WCS standard. Les coordonnées sont estimées à partir des mots-clés d'en-tête hérités et peuvent être imprécises."
           }
         }
       }
     },
-    "GPU: %@": {
+    "Linked position outside image": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "GPU : %@"
+            "value": "Position liée hors image"
           }
         }
       }
     },
-    "CPU: %lld | RAM: %lldG": {
+    "Link Crosshair": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "UC : %1$lld | RAM : %2$lld Go"
+            "value": "Lier le réticule"
           }
         }
       }
     },
-    "Filter...": {
+    "Sync Zoom": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Filtrer…"
+            "value": "Synchroniser le zoom"
           }
         }
       }
     },
-    "No recent launches": {
+    "Blink": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun lancement récent"
+            "value": "Blink"
           }
         }
       }
     },
-    "Platform Load": {
+    "Stop": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Charge de la plate-forme"
+            "value": "Arrêter"
           }
         }
       }
     },
-    "Available CPU Cores": {
+    "Pause": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cœurs CPU disponibles"
+            "value": "Pause"
           }
         }
       }
     },
-    "Available RAM": {
+    "Resume": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "RAM disponible"
+            "value": "Reprendre"
           }
         }
       }
     },
-    "Instances: %lld total (%lld sessions, %lld desktop, %lld headless)": {
+    "Show image A": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Instances : %1$lld au total (%2$lld sessions, %3$lld bureau, %4$lld sans tête)"
+            "value": "Afficher l'image A"
           }
         }
       }
     },
-    "Storage nearly full!": {
+    "Show image B": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Espace de stockage presque plein !"
+            "value": "Afficher l'image B"
           }
         }
       }
     },
-    "No batch jobs": {
+    "Blink interval (0.5–5.0 seconds)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune tâche en lot"
+            "value": "Intervalle de clignotement (0,5–5,0 secondes)"
           }
         }
       }
     },
-    "View Events & Logs": {
+    "No WCS — unaligned": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Afficher événements et journaux"
+            "value": "Pas de WCS — non aligné"
           }
         }
       }
     },
-    "running": {
+    "Sync crosshair position across tabs via WCS coordinates": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "en cours"
+            "value": "Synchroniser la position du réticule entre les onglets via les coordonnées WCS"
           }
         }
       }
     },
-    "pending": {
+    "Match angular extent across tabs": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "en attente"
+            "value": "Adapter l'étendue angulaire entre les onglets"
           }
         }
       }
     },
-    "done": {
+    "Blink current tab against another tab (Space=pause, ←=A, →=B, Esc=stop)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "terminées"
+            "value": "Blink entre l'onglet courant et un autre onglet (Espace = pause, ← = A, → = B, Échap = arrêt)"
           }
         }
       }
     },
-    "failed": {
+    "Save current crosshair position": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "échouées"
+            "value": "Enregistrer la position actuelle du réticule"
           }
         }
       }
     },
-    "%lld total": {
+    "Label (optional)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld au total"
+            "value": "Libellé (facultatif)"
           }
         }
       }
     },
-    "%lld %@": {
+    "Filter keywords…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld %2$@"
+            "value": "Filtrer les mots-clés…"
           }
         }
       }
     },
-    "Log in to manage Portal defaults.": {
+    "Start Date": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connectez-vous pour gérer les valeurs par défaut du Portail."
+            "value": "Date de début"
           }
         }
       }
     },
-    "No cached images yet — open the Portal tab once to populate these options.": {
+    "Cal. Level": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune image en cache — ouvrez l'onglet Portail une fois pour remplir ces options."
+            "value": "Niv. étalonnage"
           }
         }
       }
     },
-    "Preset": {
+    "Filter downloads": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Préréglage"
+            "value": "Filtrer les téléchargements"
           }
         }
       }
     },
-    "RAM (GB)": {
+    "empty": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "RAM (Go)"
+            "value": "vide"
           }
         }
       }
     },
-    "GPUs": {
+    "%@ saved, %@ recent": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "GPU"
+            "value": "%1$@ enregistrées, %2$@ récentes"
           }
         }
       }
     },
-    "Cached container image metadata makes the Portal tab feel instant. The cache refreshes automatically every 24 hours.": {
+    "Download File": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les métadonnées d'images en cache rendent l'onglet Portail instantané. Le cache est actualisé automatiquement toutes les 24 heures."
+            "value": "Télécharger le fichier"
           }
         }
       }
     },
-    "Refresh Now": {
+    "Downloading...": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actualiser maintenant"
+            "value": "Téléchargement…"
           }
         }
       }
     },
-    "Clear Cache": {
+    "Re-download": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vider le cache"
+            "value": "Télécharger à nouveau"
           }
         }
       }
     },
-    "Session limit reached (%lld/%lld)": {
+    "View on CADC": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Limite de sessions atteinte (%1$lld/%2$lld)"
+            "value": "Voir sur le CADC"
           }
         }
       }
     },
-    "Session name is required": {
+    "Generate from Form": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le nom de la session est requis"
+            "value": "Générer depuis le formulaire"
           }
         }
       }
     },
-    "Custom image URL is required": {
+    "Execute search (⌘↩)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'URL de l'image personnalisée est requise"
+            "value": "Lancer la recherche (⌘↩)"
           }
         }
       }
     },
-    "Custom image URL contains invalid characters": {
+    "Columns": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'URL de l'image personnalisée contient des caractères invalides"
+            "value": "Colonnes"
           }
         }
       }
     },
-    "Please select an image": {
+    "Refresh data train from CADC": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Veuillez sélectionner une image"
+            "value": "Actualiser le data train depuis le CADC"
           }
         }
       }
     },
-    "Launching session…": {
+    "Data Type": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lancement de la session…"
+            "value": "Type de données"
           }
         }
       }
     },
-    "Session launched! ID: %@": {
+    "Obs. Type": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Session lancée ! ID : %@"
+            "value": "Type d'obs."
           }
         }
       }
     },
-    "Launch failed": {
+    "Resolver": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec du lancement"
+            "value": "Résolveur"
           }
         }
       }
     },
-    "Relaunching session…": {
+    "Resolved: RA %@, Dec %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Relance de la session…"
+            "value": "Résolu : A.D. %1$@, Déc. %2$@"
           }
         }
       }
     },
-    "Session relaunched!": {
+    "e.g. M31, 10.68 41.27": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Session relancée !"
+            "value": "ex. M31, 10.68 41.27"
           }
         }
       }
     },
-    "Relaunch failed": {
+    "e.g. 0.5..2 arcsec": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la relance"
+            "value": "ex. 0,5..2 arcsec"
           }
         }
       }
     },
-    "These selections are automatically applied whenever you open the Portal tab. They are stored per-user under Application Support.": {
+    "Time Span": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ces choix sont appliqués automatiquement à l'ouverture de l'onglet Portail. Ils sont enregistrés par utilisateur sous Application Support."
+            "value": "Durée"
           }
         }
       }
     },
-    "Optional. When set, the launch form starts with these resource settings. CPU / RAM / GPU options are populated from the CANFAR context.": {
+    "e.g. 2020..2021, > 2019": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Facultatif. Lorsqu'elles sont définies, ces ressources sont préchargées dans le formulaire de lancement. Les options CPU / RAM / GPU proviennent du contexte CANFAR."
+            "value": "ex. 2020..2021, > 2019"
           }
         }
       }
     },
-    "Tap to clear": {
+    "e.g. 100..500s": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cliquez pour effacer"
+            "value": "ex. 100..500s"
           }
         }
       }
     },
-    "This folder and its contents will be permanently deleted.": {
+    "e.g. > 1d": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce dossier et son contenu seront supprimés définitivement."
+            "value": "ex. > 1j"
           }
         }
       }
     },
-    "This file will be permanently deleted from VOSpace.": {
+    "e.g. ia5q06010 or ia*": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce fichier sera supprimé définitivement de VOSpace."
+            "value": "ex. ia5q06010 ou ia*"
           }
         }
       }
     },
-    "Upload": {
+    "e.g. Abraham": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléverser"
+            "value": "ex. Abraham"
           }
         }
       }
     },
-    "Bandpass Width": {
+    "e.g. 11095": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Largeur de bande passante"
+            "value": "ex. 11095"
           }
         }
       }
     },
-    "Data Release": {
+    "e.g. 2020..2021": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Version des données"
+            "value": "ex. 2020..2021"
           }
         }
       }
     },
-    "Proposal Keywords": {
+    "Intent": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mots-clés de la proposition"
+            "value": "Intention"
           }
         }
       }
     },
-    "Proposal Title": {
+    "Save Current Query": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Titre de la proposition"
+            "value": "Enregistrer la requête actuelle"
           }
         }
       }
     },
-    "Rest-frame Energy": {
+    "No recent searches": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Énergie au repos"
+            "value": "Aucune recherche récente"
           }
         }
       }
     },
-    "Spectral Coverage": {
+    "Load": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couverture spectrale"
+            "value": "Charger"
           }
         }
       }
     },
-    "Spectral Sampling": {
+    "Run": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échantillonnage spectral"
+            "value": "Exécuter"
           }
         }
       }
     },
-    "Resolving Power": {
+    "e.g. usable, calibration, reprocess": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pouvoir de résolution"
+            "value": "ex. : utilisable, étalonnage, retraitement"
           }
         }
       }
     },
-    "Downloaded": {
+    "Generated: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléchargé"
-          }
-        }
-      }
-    },
-    "Exists": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Présent"
-          }
-        }
-      }
-    },
-    "Missing": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Manquant"
-          }
-        }
-      }
-    },
-    "Unusable": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inutilisable"
-          }
-        }
-      }
-    },
-    "Poor": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mauvaise"
-          }
-        }
-      }
-    },
-    "Fair": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moyenne"
-          }
-        }
-      }
-    },
-    "Good": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bonne"
-          }
-        }
-      }
-    },
-    "Excellent": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Excellente"
-          }
-        }
-      }
-    },
-    "Dismiss": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ignorer"
-          }
-        }
-      }
-    },
-    "Rate %lld star": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld étoile"
-          }
-        }
-      }
-    },
-    "Rate %lld stars": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld étoiles"
-          }
-        }
-      }
-    },
-    "Quality rating %lld of 5": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Note de qualité %lld sur 5"
-          }
-        }
-      }
-    },
-    "canfar.net": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "canfar.net"
-          }
-        }
-      }
-    },
-    "Saved: %@": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enregistré : %@"
-          }
-        }
-      }
-    },
-    "Exported %@": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Exporté %@"
-          }
-        }
-      }
-    },
-    "Failed to save: %@": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Échec de l'enregistrement : %@"
-          }
-        }
-      }
-    },
-    "Bookmark saved": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Signet enregistré"
-          }
-        }
-      }
-    },
-    "Coordinates outside image bounds": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coordonnées hors des limites de l'image"
-          }
-        }
-      }
-    },
-    "Linked zoom clamped — images have very different pixel scales": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zoom lié ajusté — les images ont des échelles de pixels très différentes"
-          }
-        }
-      }
-    },
-    "No export URL available for this query.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucune URL d'exportation disponible pour cette requête."
-          }
-        }
-      }
-    },
-    "Invalid server response.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réponse du serveur invalide."
-          }
-        }
-      }
-    },
-    "Export failed (HTTP %@).": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Échec de l'exportation (HTTP %@)."
-          }
-        }
-      }
-    },
-    "Results (%@)": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Résultats (%@)"
+            "value": "Généré : %@"
           }
         }
       }

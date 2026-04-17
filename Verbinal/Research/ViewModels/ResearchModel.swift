@@ -196,9 +196,9 @@ final class ResearchModel {
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        panel.title = "Choose Export Destination"
-        panel.message = "A timestamped folder will be created inside the selected directory."
-        panel.prompt = "Export Here"
+        panel.title = String(localized: "Choose Export Destination")
+        panel.message = String(localized: "A timestamped folder will be created inside the selected directory.")
+        panel.prompt = String(localized: "Export Here")
 
         // Default to iCloud Drive/Verbinal if it exists, else ~/Documents
         let fm = FileManager.default
@@ -241,8 +241,8 @@ final class ResearchModel {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = suggestedFilename
         panel.canCreateDirectories = true
-        panel.title = "Save Observation"
-        panel.message = "Choose where to save the downloaded observation file."
+        panel.title = String(localized: "Save Observation")
+        panel.message = String(localized: "Choose where to save the downloaded observation file.")
 
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
         let verbinalDir = docs?.appendingPathComponent("Verbinal")

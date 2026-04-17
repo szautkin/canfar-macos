@@ -502,9 +502,9 @@ final class FITSViewerModel: Identifiable {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.data]
         panel.allowsMultipleSelection = false
-        panel.title = "Open FITS File"
+        panel.title = String(localized: "Open FITS File")
         // Filter in panel message since UTI for FITS doesn't exist natively
-        panel.message = "Select a FITS file (.fits, .fit, .fts)"
+        panel.message = String(localized: "Select a FITS file (.fits, .fit, .fts)")
 
         let response = panel.runModal()
         guard response == .OK, let url = panel.url else { return }

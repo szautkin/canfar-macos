@@ -79,7 +79,7 @@ struct FITSCoordinateBar: View {
                 .help("Type zoom percentage and press Enter")
 
             if let hdu = model.selectedHDU {
-                Text("\(hdu.header.naxis1) \u{00d7} \(hdu.header.naxis2)")
+                Text("\(String(hdu.header.naxis1)) \u{00d7} \(String(hdu.header.naxis2))")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
 
