@@ -32,9 +32,25 @@ diverged; re-add only if you reintroduce features requiring them):
     <true/>
     <key>com.apple.security.files.downloads.read-write</key>
     <true/>
+    <!--
+    Two keychain-access-groups:
+      1. $(AppIdentifierPrefix)com.codebg.Verbinal — app-default group; keeps
+         compatibility with tokens written by pre-addon-family builds.
+      2. A4ABW5VD88.codebg.verbinal.family — shared with official Verbinal
+         addons (first: Verbinal Pi at com.codebg.Verbinal.addon.notebook).
+         `AppState.init` points `KeychainStorage.configure(accessGroup:)` at
+         this string so writes/reads route through the shared group and the
+         CADC token is visible to Pi without a second sign-in.
+
+    Note for MAS release: the "Verbinal MAS" provisioning profile must be
+    regenerated at developer.apple.com to include the
+    A4ABW5VD88.codebg.verbinal.family access group. Apple Development
+    automatic signing in Debug handles the new group without manual steps.
+    -->
     <key>keychain-access-groups</key>
     <array>
         <string>$(AppIdentifierPrefix)com.codebg.Verbinal</string>
+        <string>A4ABW5VD88.codebg.verbinal.family</string>
     </array>
 </dict>
 </plist>

@@ -33,12 +33,14 @@ public enum KeychainStorage {
 
     /// Service identifier used as `kSecAttrService` on every item written.
     /// Host and addons share this value so they index into the same items.
-    public static var service: String = "com.codebg.Verbinal"
+    /// Mutated only via `configure(service:accessGroup:)`.
+    public private(set) static var service: String = "com.codebg.Verbinal"
 
     /// Shared Keychain access group. `nil` = app-default (bundle-scoped) access.
     /// When set, every query includes `kSecAttrAccessGroup` so items are visible
     /// to every target whose entitlements declare that group.
-    public static var accessGroup: String?
+    /// Mutated only via `configure(service:accessGroup:)`.
+    public private(set) static var accessGroup: String?
 
     private static let tokenAccount = "AuthToken"
     private static let usernameAccount = "Username"

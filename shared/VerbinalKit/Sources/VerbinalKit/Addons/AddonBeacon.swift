@@ -16,7 +16,8 @@ import os.log
 /// coordinator: holding the manifest in memory for any host-initiated RPC that
 /// could come later, and routing URL activations into an `AsyncStream` the
 /// addon's SwiftUI root view can drain.
-public final class AddonBeacon: @unchecked Sendable {
+@MainActor
+public final class AddonBeacon {
 
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "AddonBeacon")
 

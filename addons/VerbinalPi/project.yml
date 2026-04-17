@@ -71,8 +71,27 @@ targets:
         INFOPLIST_FILE: VerbinalPi/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal.addon.notebook
         CODE_SIGN_ENTITLEMENTS: VerbinalPi/Verbinal-Pi.entitlements
+  VerbinalPiTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - VerbinalPiTests
+    dependencies:
+      - target: VerbinalPi
+      - package: VerbinalKit
+        product: VerbinalKit
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal.addon.notebook.tests
+        PRODUCT_NAME: VerbinalPiTests
+        PRODUCT_MODULE_NAME: VerbinalPiTests
 schemes:
   VerbinalPi:
     build:
       targets:
         VerbinalPi: all
+        VerbinalPiTests: [test]
+    test:
+      targets:
+        - VerbinalPiTests

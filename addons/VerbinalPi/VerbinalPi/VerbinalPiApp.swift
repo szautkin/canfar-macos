@@ -70,24 +70,32 @@ struct VerbinalPiApp: App {
             break
 
         case .openFile(let url):
-            _ = url.startAccessingSecurityScopedResource()
-            do {
-                try tabHost.openFile(url: url)
-            } catch {
-                tabHost.lastError = error.localizedDescription
-            }
+            openSecurityScopedFile(url)
 
         case .openSkyCoordinate(let ra, let dec, _, let fileURL):
             // Future: pre-populate a cone-search / cutout cell. For now,
             // log and open the attached file if present.
             logger.info("Activation with sky coord RA=\(ra) Dec=\(dec); will open \(fileURL?.lastPathComponent ?? "—", privacy: .public)")
             if let fileURL {
-                _ = fileURL.startAccessingSecurityScopedResource()
-                try? tabHost.openFile(url: fileURL)
+                openSecurityScopedFile(fileURL)
             }
 
         case .custom(let payload):
             logger.info("Custom activation payload: keys=\(payload.keys.joined(separator: ","), privacy: .public)")
+        }
+    }
+
+    /// Open a URL received in an activation payload with security-scoped resource
+    /// balancing. The `stopAccessing…` call must match `startAccessing…`; without
+    /// it the kernel leaks the access grant.
+    @MainActor
+    private func openSecurityScopedFile(_ url: URL) {
+        let didStart = url.startAccessingSecurityScopedResource()
+        defer { if didStart { url.stopAccessingSecurityScopedResource() } }
+        do {
+            try tabHost.openFile(url: url)
+        } catch {
+            tabHost.lastError = error.localizedDescription
         }
     }
 
