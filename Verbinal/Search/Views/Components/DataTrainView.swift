@@ -65,7 +65,7 @@ struct DataTrainView: View {
                     HStack(alignment: .top, spacing: 8) {
                         ForEach(Array(ADQL.dataTrainColumns.enumerated()), id: \.offset) { index, column in
                             DataTrainColumnView(
-                                title: ADQL.dataTrainColumnLabels[column] ?? column,
+                                title: LocalizedStringKey(ADQL.dataTrainColumnLabels[column] ?? column),
                                 options: dataTrainModel.filteredOptions(for: index, formState: formState),
                                 selection: selectionBinding(for: index),
                                 onToggle: { value in

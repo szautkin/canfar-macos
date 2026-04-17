@@ -8,9 +8,12 @@ import SwiftUI
 
 /// A labeled text field for search constraint input.
 struct ConstraintField: View {
-    let label: String
+    /// Declared as LocalizedStringKey so literal-string call sites
+    /// (`label: "Pixel Scale"`, `"P.I. Name"`, …) route through the
+    /// String Catalog instead of the verbatim Text initializer.
+    let label: LocalizedStringKey
     @Binding var value: String
-    var hint: String = ""
+    var hint: LocalizedStringKey = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {

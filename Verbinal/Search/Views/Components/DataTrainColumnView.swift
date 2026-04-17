@@ -7,7 +7,11 @@
 import SwiftUI
 
 struct DataTrainColumnView: View {
-    let title: String
+    /// Catalog-routed column heading. Runtime values from
+    /// `ADQL.dataTrainColumnLabels` are wrapped with
+    /// `LocalizedStringKey(_:)` at the call site — catalog miss falls
+    /// back to the raw string.
+    let title: LocalizedStringKey
     let options: [String]
     let selection: [String]
     let onToggle: (String) -> Void
@@ -31,7 +35,7 @@ struct DataTrainColumnView: View {
                 }
             }
 
-            TextField("Filter...", text: $searchText)
+            TextField("Filter…", text: $searchText)
                 .textFieldStyle(.roundedBorder)
                 .font(.caption)
 

@@ -76,9 +76,9 @@ extension ContentView {
                         Image(systemName: "person.crop.circle.fill")
                         if let info = appState.userInfo,
                            let first = info.firstName {
-                            Text([first, info.lastName].compactMap { $0 }.joined(separator: " "))
+                            Text(verbatim: [first, info.lastName].compactMap { $0 }.joined(separator: " "))
                         } else {
-                            Text(appState.username)
+                            Text(verbatim: appState.username)
                         }
                     }
                 }
@@ -191,7 +191,7 @@ extension ContentView {
                         }
                     }
                     Divider()
-                    Button("Logout") {
+                    Button("Sign Out") {
                         Task { await appState.logout() }
                     }
                 } label: {
@@ -199,14 +199,14 @@ extension ContentView {
                         Image(systemName: "person.circle.fill")
                         if let info = appState.userInfo,
                            let first = info.firstName {
-                            Text([first, info.lastName].compactMap { $0 }.joined(separator: " "))
+                            Text(verbatim: [first, info.lastName].compactMap { $0 }.joined(separator: " "))
                         } else {
-                            Text(appState.username)
+                            Text(verbatim: appState.username)
                         }
                     }
                 }
             } else {
-                Button("Login") {
+                Button("Sign In") {
                     appState.showLoginSheet = true
                 }
                 .buttonStyle(.borderedProminent)
