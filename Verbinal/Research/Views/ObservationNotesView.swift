@@ -148,7 +148,11 @@ struct ObservationNotesView: View {
     private var footerRow: some View {
         HStack {
             if !text.isEmpty {
-                Text("\(wordCount) words")
+                // Coerce to String so the interpolation key is `%@ words`
+                // (what Xcode extracts for object interpolations).
+                // `\(wordCount)` as a raw Int would auto-generate `%lld words`,
+                // which wouldn't match the object-typed catalog entry.
+                Text("\(String(wordCount)) words")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .monospacedDigit()
