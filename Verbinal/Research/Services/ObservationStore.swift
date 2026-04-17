@@ -12,7 +12,7 @@ import os.log
 @Observable
 final class ObservationStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ObservationStore")
-    private let fileName: String
+    private let persistence: DiskPersistence<[DownloadedObservation]>
     private(set) var observations: [DownloadedObservation] = []
 
     /// Observations grouped by collection.
@@ -21,11 +21,14 @@ final class ObservationStore {
     }
 
     init(fileName: String = "downloaded_observations.json") {
-        self.fileName = fileName
-        observations = readFromDisk()
-        // Validate file existence on load
-        observations = observations.filter { $0.fileExists }
-        writeToDisk()
+        self.persistence = DiskPersistence(
+            subdirectory: "Verbinal",
+            fileName: fileName,
+            logger: Self.logger
+        )
+        // File existence is surfaced via DownloadedObservation.fileExists — do not prune on load.
+        // Pruning on launch would silently destroy metadata for files on remounted/offline volumes.
+        self.observations = persistence.read() ?? []
     }
 
     func save(_ observation: DownloadedObservation) {
@@ -35,17 +38,17 @@ final class ObservationStore {
         } else {
             observations.insert(observation, at: 0)
         }
-        writeToDisk()
+        persistence.write(observations)
     }
 
     func remove(_ observation: DownloadedObservation) {
         observations.removeAll { $0.id == observation.id }
-        writeToDisk()
+        persistence.write(observations)
     }
 
     func clear() {
         observations.removeAll()
-        writeToDisk()
+        persistence.write(observations)
     }
 
     func contains(publisherID: String) -> Bool {
@@ -55,43 +58,7 @@ final class ObservationStore {
     func updateFileSize(_ observation: DownloadedObservation, size: Int64) {
         if let idx = observations.firstIndex(where: { $0.id == observation.id }) {
             observations[idx].fileSize = size
-            writeToDisk()
-        }
-    }
-
-    // MARK: - Persistence
-
-    private var fileURL: URL? {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        guard let dir = appSupport?.appendingPathComponent("Verbinal", isDirectory: true) else { return nil }
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent(fileName)
-    }
-
-    private func readFromDisk() -> [DownloadedObservation] {
-        guard let url = fileURL else { return [] }
-        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
-        do {
-            let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode([DownloadedObservation].self, from: data)
-        } catch {
-            Self.logger.warning("Read failed: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
-    }
-
-    private func writeToDisk() {
-        guard let url = fileURL else { return }
-        do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(observations)
-            try data.write(to: url, options: .atomic)
-        } catch {
-            Self.logger.error("Write failed: \(error.localizedDescription, privacy: .public)")
+            persistence.write(observations)
         }
     }
 }

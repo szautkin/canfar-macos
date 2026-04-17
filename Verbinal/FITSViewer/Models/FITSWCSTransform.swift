@@ -17,8 +17,16 @@ struct FITSWCSTransform: Sendable {
     let cdInv: simd_double2x2
     let ctype1: String
     let ctype2: String
+    /// True when the WCS was constructed from legacy header keywords (RA/DEC strings)
+    /// rather than standard WCS keywords. Coordinates are approximate — no CD matrix,
+    /// pixel scale is guessed, no rotation. The user should be warned that spatial
+    /// operations (crosshair, Go To, Search Here) may be imprecise.
+    var isApproximate: Bool = false
 
-    var isValid: Bool { cd[0][0] != 0 || cd[1][1] != 0 }
+    /// Valid only when BOTH diagonal CD elements are non-zero — a half-zero
+    /// matrix (e.g. CDELT1=0, CDELT2≠0) is degenerate and produces unreliable
+    /// pixel↔world transforms.
+    var isValid: Bool { cd[0][0] != 0 && cd[1][1] != 0 }
 
     /// North angle in degrees (rotation from celestial North).
     /// North angle in degrees. CD matrix is column-major:
@@ -147,7 +155,9 @@ struct FITSWCSTransform: Sendable {
             ))
         }
 
-        guard cd[0][0] != 0 || cd[1][1] != 0 else {
+        // Reject degenerate/half-zero CD matrices (e.g. CDELT1=0 with CDELT2≠0).
+        // AND instead of OR — a half-zero matrix is non-invertible for WCS purposes.
+        guard cd[0][0] != 0 && cd[1][1] != 0 else {
             // No CD matrix or CDELT — try to construct approximate WCS
             // from non-standard RA/DEC header keywords (common in old observatory files)
             return fromLegacyHeader(header)
@@ -161,7 +171,8 @@ struct FITSWCSTransform: Sendable {
             cd: cd,
             cdInv: simd_inverse(cd),
             ctype1: header.string("CTYPE1") ?? "",
-            ctype2: header.string("CTYPE2") ?? ""
+            ctype2: header.string("CTYPE2") ?? "",
+            isApproximate: false
         )
     }
 
@@ -199,7 +210,8 @@ struct FITSWCSTransform: Sendable {
             cd: cd,
             cdInv: simd_inverse(cd),
             ctype1: "RA---TAN",
-            ctype2: "DEC--TAN"
+            ctype2: "DEC--TAN",
+            isApproximate: true
         )
     }
 

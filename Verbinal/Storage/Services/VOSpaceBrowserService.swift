@@ -20,10 +20,23 @@ actor VOSpaceBrowserService {
         self.network = network
     }
 
+    /// Percent-encode a single path segment (slashes are preserved in input by the caller
+    /// splitting on `/` first). VOSpace filenames legally include `#`, `?`, `%`, spaces.
+    private static func encodeSegment(_ segment: String) -> String {
+        segment.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? segment
+    }
+
+    /// Encode a `/`-separated path, preserving separators but encoding each segment.
+    private static func encodePath(_ path: String) -> String {
+        path.split(separator: "/", omittingEmptySubsequences: false)
+            .map { encodeSegment(String($0)) }
+            .joined(separator: "/")
+    }
+
     // MARK: - List
 
     func listNodes(username: String, path: String = "", limit: Int = 500) async throws -> [VOSpaceNode] {
-        let basePath = path.isEmpty ? username : "\(username)/\(path)"
+        let basePath = path.isEmpty ? Self.encodeSegment(username) : "\(Self.encodeSegment(username))/\(Self.encodePath(path))"
         let urlString = "\(Self.nodesBase)/\(basePath)?limit=\(limit)"
         let (data, _) = try await network.get(urlString, accept: "text/xml")
         guard let xml = String(data: data, encoding: .utf8) else {
@@ -35,9 +48,9 @@ actor VOSpaceBrowserService {
     // MARK: - Download
 
     func downloadFile(username: String, path: String) async throws -> (tempURL: URL, filename: String) {
-        let urlString = "\(Self.filesBase)/\(username)/\(path)"
+        let urlString = "\(Self.filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
         let (data, _) = try await network.get(urlString)
-        let filename = (path as NSString).lastPathComponent
+        let filename = URL(fileURLWithPath: (path as NSString).lastPathComponent).lastPathComponent
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         if FileManager.default.fileExists(atPath: tempURL.path) {
             try FileManager.default.removeItem(at: tempURL)
@@ -49,23 +62,12 @@ actor VOSpaceBrowserService {
     // MARK: - Upload
 
     func uploadFile(username: String, remotePath: String, fileURL: URL) async throws {
-        let urlString = "\(Self.filesBase)/\(username)/\(remotePath)"
-        guard let url = URL(string: urlString) else { throw VOSpaceError.invalidPath }
-
+        let urlString = "\(Self.filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(remotePath))"
         let fileData = try Data(contentsOf: fileURL)
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.httpBody = fileData
-        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 300
-
-        if let token = await network.token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw VOSpaceError.operationFailed("Upload failed")
+        do {
+            _ = try await network.put(urlString, body: fileData, contentType: "application/octet-stream", timeout: 300)
+        } catch {
+            throw VOSpaceError.operationFailed("Upload failed: \(error.localizedDescription)")
         }
     }
 
@@ -76,28 +78,21 @@ actor VOSpaceBrowserService {
         let nodeURI = "\(Self.vosPrefix)/\(fullPath)"
         let xml = VOSpaceXMLParser.buildContainerNodeXml(nodeURI: nodeURI)
 
-        let urlString = "\(Self.nodesBase)/\(fullPath)"
-        guard let url = URL(string: urlString) else { throw VOSpaceError.invalidPath }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.httpBody = xml.data(using: .utf8)
-        request.setValue("text/xml", forHTTPHeaderField: "Content-Type")
-
-        if let token = await network.token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let urlString = "\(Self.nodesBase)/\(Self.encodePath(fullPath))"
+        guard let body = xml.data(using: .utf8) else {
+            throw VOSpaceError.operationFailed("Could not encode folder XML")
         }
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw VOSpaceError.operationFailed("Create folder failed")
+        do {
+            _ = try await network.put(urlString, body: body, contentType: "text/xml")
+        } catch {
+            throw VOSpaceError.operationFailed("Create folder failed: \(error.localizedDescription)")
         }
     }
 
     // MARK: - Delete
 
     func deleteNode(username: String, path: String) async throws {
-        let urlString = "\(Self.nodesBase)/\(username)/\(path)"
+        let urlString = "\(Self.nodesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
         let response = try await network.delete(urlString)
         guard (200...299).contains(response.statusCode) else {
             throw VOSpaceError.operationFailed("Delete failed (HTTP \(response.statusCode))")

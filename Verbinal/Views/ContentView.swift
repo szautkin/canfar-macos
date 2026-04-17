@@ -12,6 +12,22 @@ struct ContentView: View {
     @State private var searchModel = SearchFormModel()
     @State private var researchModel = ResearchModel()
     @State private var storageBrowserModel: StorageBrowserModel?
+
+    private func initResearchModel() {
+        researchModel.onOpenFile = { [weak appState] url in
+            guard let appState else { return }
+            let ext = url.pathExtension.lowercased()
+            if FileHelper.isFITS(ext) {
+                appState.dispatch(.openFITS(url: url))
+            } else if FileHelper.isNotebook(ext) {
+                appState.dispatch(.openNotebook(url: url))
+            } else {
+                #if os(macOS)
+                NSWorkspace.shared.open(url)
+                #endif
+            }
+        }
+    }
     @State private var fileBrowserModel = FileBrowserModel()
     @State var showFileBrowser = false
 
@@ -67,16 +83,115 @@ struct ContentView: View {
                 #endif
             }
         }
-        .sheet(isPresented: Bindable(appState).showLoginSheet) {
-            LoginSheet()
-        }
-        .sheet(isPresented: $showAbout) {
-            AboutSheet()
+        // Single sheet presenter — SwiftUI's .sheet has a one-at-a-time limitation,
+        // so we drive all three (login, about, export) through one enum-based modifier.
+        // This prevents silent sheet drops when two triggers fire in the same tick.
+        .sheet(item: Bindable(appState).activeSheet) { sheet in
+            switch sheet {
+            case .login:
+                LoginSheet()
+            case .about:
+                AboutSheet()
+            case .export:
+                #if os(macOS)
+                globalExportDialog
+                #else
+                EmptyView()
+                #endif
+            }
         }
         .task {
+            initResearchModel()
             await appState.initialize()
         }
+        .task(id: appState.pendingSearchCoordinate) {
+            guard let coord = appState.pendingSearchCoordinate else { return }
+            appState.pendingSearchCoordinate = nil
+            searchModel.setSearchCoordinates(ra: coord.ra, dec: coord.dec)
+        }
+        // Bridge local `showAbout` binding (used by toolbars) to the unified
+        // activeSheet on AppState. When toolbars set `showAbout = true`, we
+        // route it to `activeSheet = .about` and reset the local flag.
+        .onChange(of: showAbout) { _, newValue in
+            if newValue {
+                appState.activeSheet = .about
+                showAbout = false
+            }
+        }
     }
+
+    #if os(macOS)
+    /// Global export dialog — can be opened via ⌘⇧E from anywhere in the app.
+    /// Exposes whichever modules are currently populated.
+    private var globalExportDialog: some View {
+        ExportDialogView(
+            availableModules: buildGlobalExportModules(),
+            exportService: researchModel.exportService,
+            onVOSpaceUpload: { bundleURL in
+                let vospace = VOSpaceBrowserService(network: appState.network)
+                return try await researchModel.exportService.uploadBundleToVOSpace(
+                    bundleURL: bundleURL,
+                    vospace: vospace,
+                    username: appState.username
+                )
+            },
+            canUploadToVOSpace: appState.isAuthenticated && !appState.username.isEmpty,
+            onComplete: { url in
+                let summary = ResearchExporter.itemCountLabel(
+                    observations: researchModel.observationStore.observations.count,
+                    notes: researchModel.noteStore.notes.count
+                )
+                NotificationService.sendExportCompleted(
+                    bundleName: url.lastPathComponent,
+                    moduleSummary: summary
+                )
+            }
+        )
+    }
+
+    private func buildGlobalExportModules() -> [ExportDialogView.ModuleSelection] {
+        var modules: [ExportDialogView.ModuleSelection] = []
+
+        modules.append(
+            ExportDialogView.ModuleSelection(
+                moduleID: "research",
+                displayName: "Research",
+                itemCountLabel: ResearchExporter.itemCountLabel(
+                    observations: researchModel.observationStore.observations.count,
+                    notes: researchModel.noteStore.notes.count
+                ),
+                module: ResearchExporter(
+                    observationStore: researchModel.observationStore,
+                    noteStore: researchModel.noteStore
+                ),
+                isEnabled: true
+            )
+        )
+
+        let saved = searchModel.savedQueryStore.queries.count
+        let recent = searchModel.recentSearchStore.searches.count
+        let searchLabel: String
+        if saved == 0 && recent == 0 {
+            searchLabel = "empty"
+        } else {
+            searchLabel = "\(saved) saved, \(recent) recent"
+        }
+        modules.append(
+            ExportDialogView.ModuleSelection(
+                moduleID: "search",
+                displayName: "Search",
+                itemCountLabel: searchLabel,
+                module: SearchExporter(
+                    savedQueryStore: searchModel.savedQueryStore,
+                    recentSearchStore: searchModel.recentSearchStore
+                ),
+                isEnabled: false
+            )
+        )
+
+        return modules
+    }
+    #endif
 
     // MARK: - Landing
 
@@ -125,11 +240,11 @@ struct ContentView: View {
         VStack(spacing: 0) {
             makeModeToolbar(title: "Research", showAbout: $showAbout)
             Divider()
-            ResearchRootView(researchModel: researchModel)
+            ResearchRootView(researchModel: researchModel, searchModel: searchModel)
         }
         #else
         NavigationStack {
-            ResearchRootView(researchModel: researchModel)
+            ResearchRootView(researchModel: researchModel, searchModel: searchModel)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button { appState.navigateBack() } label: {
@@ -273,7 +388,7 @@ struct ContentView: View {
             let ext = url.pathExtension.lowercased()
             if FileHelper.isFITS(ext) {
                 appState?.dispatch(.openFITS(url: url))
-            } else if ["ipynb", "py", "md"].contains(ext) {
+            } else if FileHelper.isNotebook(ext) {
                 appState?.dispatch(.openNotebook(url: url))
             }
         }

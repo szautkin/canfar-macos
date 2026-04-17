@@ -29,7 +29,9 @@ actor DownloadService {
             Self.logger.info("Using DataLink direct URL: \(directURL.lastPathComponent)")
             url = directURL
         } else {
-            var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.downloadPath)")!
+            guard var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.downloadPath)") else {
+                throw SearchError.networkError("Invalid download URL")
+            }
             components.queryItems = [URLQueryItem(name: "ID", value: publisherID)]
             guard let pkgURL = components.url else {
                 throw SearchError.networkError("Invalid download URL")
@@ -78,7 +80,7 @@ actor DownloadService {
     /// Resolve DataLink to find direct FITS file URL (#this semantic).
     /// Returns nil if DataLink fails or has no direct files.
     private func resolveDirectFileURL(publisherID: String) async -> URL? {
-        var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.datalinkPath)")!
+        guard var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.datalinkPath)") else { return nil }
         components.queryItems = [
             URLQueryItem(name: "id", value: publisherID),
             URLQueryItem(name: "request", value: "downloads-only"),
@@ -106,14 +108,15 @@ actor DownloadService {
         // Try Content-Disposition header
         if let disposition = response.value(forHTTPHeaderField: "Content-Disposition"),
            let range = disposition.range(of: "filename=") {
-            var filename = String(disposition[range.upperBound...])
+            let raw = String(disposition[range.upperBound...])
                 .trimmingCharacters(in: .init(charactersIn: "\"' "))
-            if !filename.isEmpty { return filename }
+            let safe = Self.sanitizeFilename(raw)
+            if !safe.isEmpty { return safe }
         }
 
         // Try suggested filename from response
         if let suggested = response.suggestedFilename, !suggested.isEmpty, suggested != "Unknown" {
-            return suggested
+            return Self.sanitizeFilename(suggested)
         }
 
         // Build from publisherID: ivo://cadc.nrc.ca/COLLECTION?OBSID/PRODUCTID
@@ -139,6 +142,15 @@ actor DownloadService {
             ext = ""
         }
 
-        return productID.replacingOccurrences(of: "/", with: "_") + ext
+        return Self.sanitizeFilename(productID.replacingOccurrences(of: "/", with: "_") + ext)
+    }
+
+    /// Strip any path separators and parent-directory traversal from a server-supplied
+    /// filename so it cannot escape the temp directory when appended.
+    private static func sanitizeFilename(_ name: String) -> String {
+        // Keep only the last path component, then strip illegal characters.
+        let last = (name as NSString).lastPathComponent
+        let disallowed = CharacterSet(charactersIn: "/\\:\u{0}")
+        return last.components(separatedBy: disallowed).joined()
     }
 }

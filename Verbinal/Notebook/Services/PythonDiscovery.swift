@@ -46,10 +46,30 @@ final class PythonDiscoveryService {
 
     // MARK: - Static sync finder (called from background thread only)
 
-    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "PythonDiscovery")
+    nonisolated static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "PythonDiscovery")
+
+    /// Path to the bundled python interpreter inside the app, if present.
+    /// Shipping a bundled Python is required for sandboxed distribution, since
+    /// sandbox forbids launching binaries outside the app container.
+    nonisolated static var bundledPythonPath: String? {
+        guard let url = Bundle.main.url(forResource: "python/bin/python3", withExtension: nil)
+                     ?? Bundle.main.bundleURL
+                        .appendingPathComponent("Contents/Resources/python/bin/python3")
+                        .existingFile
+        else { return nil }
+        return url.path
+    }
 
     /// Synchronous Python discovery — MUST be called off main thread.
+    /// Preference order:
+    ///   1. Bundled python (shipped inside the app — sandbox-safe).
+    ///   2. User-installed pythons on the host (dev builds only; sandbox would block).
     nonisolated static func findPython() -> String? {
+        if let bundled = bundledPythonPath, tryPython(bundled) {
+            logger.info("Using bundled Python at \(bundled, privacy: .public)")
+            return bundled
+        }
+
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let candidates = [
             "/opt/homebrew/bin/python3",
@@ -68,7 +88,10 @@ final class PythonDiscoveryService {
             "/Library/Frameworks/Python.framework/Versions/Current/bin/python3",
         ]
         for path in candidates {
-            if tryPython(path) { return path }
+            if tryPython(path) {
+                logger.info("Using host Python at \(path, privacy: .public) (bundled not available)")
+                return path
+            }
         }
         return nil
     }
@@ -109,5 +132,14 @@ enum PythonDiscovery {
     }
     @MainActor static func resetCache() {
         PythonDiscoveryService.shared.reset()
+    }
+}
+
+private extension URL {
+    /// Returns self when the file at this URL exists, otherwise nil.
+    /// Used by bundledPythonPath to probe Contents/Resources/python without
+    /// depending on Bundle's flat resource-lookup semantics.
+    var existingFile: URL? {
+        FileManager.default.fileExists(atPath: path) ? self : nil
     }
 }

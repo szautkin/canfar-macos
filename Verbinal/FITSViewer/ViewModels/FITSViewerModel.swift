@@ -34,6 +34,9 @@ final class FITSViewerModel: Identifiable {
     var crosshairRA: String = ""
     var crosshairDec: String = ""
     var crosshairValue: String = ""
+    /// Raw WCS coordinates in decimal degrees (nil when no WCS or no crosshair).
+    var crosshairRADeg: Double?
+    var crosshairDecDeg: Double?
     /// True when the crosshair was applied from the linked-tab store, false when user-placed.
     var isLinkedCrosshair: Bool = false
     /// True when a linked crosshair coordinate is outside this image's bounds.
@@ -115,15 +118,19 @@ final class FITSViewerModel: Identifiable {
         selectedHDUIndex = index
 
         guard let url = fileURL else { return }
+        let hdu = file.hdus[index]
         do {
-            let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            guard fileSize <= FITSViewerConstants.maxFileSize else {
-                loadError = "File too large: \(fileSize) bytes exceeds 4 GB limit"
-                return
-            }
-            let data = try Data(contentsOf: url, options: .mappedIfSafe)
-            pixels = try FITSParser.extractPixels(from: data, hdu: file.hdus[index])
-            let cuts = FITSParser.autoCut(pixels: pixels)
+            let (extractedPixels, cuts) = try await Task.detached {
+                let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                guard fileSize <= FITSViewerConstants.maxFileSize else {
+                    throw FITSError.invalidFile("File too large: \(fileSize) bytes exceeds 4 GB limit")
+                }
+                let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                let pixels = try FITSParser.extractPixels(from: data, hdu: hdu)
+                let cuts = FITSParser.autoCut(pixels: pixels)
+                return (pixels, cuts)
+            }.value
+            pixels = extractedPixels
             renderParams.minCut = cuts.min
             renderParams.maxCut = cuts.max
             renderImage()
@@ -207,9 +214,17 @@ final class FITSViewerModel: Identifiable {
         crosshairRA = ""
         crosshairDec = ""
         crosshairValue = ""
+        crosshairRADeg = nil
+        crosshairDecDeg = nil
         crosshairOutOfBounds = false
         outOfBoundsRA = ""
         outOfBoundsDec = ""
+    }
+
+    /// Dispatch a "search at crosshair" action if WCS coordinates are available.
+    func searchAtCrosshair() {
+        guard let ra = crosshairRADeg, let dec = crosshairDecDeg else { return }
+        onSearchAtPosition?(ra, dec)
     }
 
     #if os(macOS)
@@ -272,12 +287,16 @@ final class FITSViewerModel: Identifiable {
             let (ra, dec) = wcs.pixelToWorld(x: point.x, y: fitsY)
             crosshairRA = FITSWCSTransform.formatRA(ra)
             crosshairDec = FITSWCSTransform.formatDec(dec)
+            crosshairRADeg = ra
+            crosshairDecDeg = dec
             Self.logger.info("Crosshair WCS: RA=\(self.crosshairRA) Dec=\(self.crosshairDec) val=\(self.crosshairValue)")
             onCrosshairPlaced?(ra, dec)
         } else {
             Self.logger.info("placeCrosshair: no WCS — using pixel-only sync")
             crosshairRA = String(format: "px %.0f", point.x)
             crosshairDec = String(format: "py %.0f", point.y)
+            crosshairRADeg = nil
+            crosshairDecDeg = nil
             // Fire pixel-only sync callback for images without WCS
             onPixelCrosshairPlaced?(point)
         }

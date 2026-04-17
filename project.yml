@@ -5,6 +5,9 @@ options:
     macOS: "14.0"
   xcodeVersion: "16.0"
   generateEmptyDirectories: true
+configs:
+  Debug: debug
+  Release: release
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -15,6 +18,27 @@ settings:
     PRODUCT_NAME: Verbinal
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: A4ABW5VD88
+  configs:
+    Release:
+      # Mac App Store submissions require Manual signing with the
+      # "3rd Party Mac Developer Application" identity + a MAS-enabled
+      # provisioning profile. These values assume a profile named
+      # "Verbinal MAS" has been created at developer.apple.com and
+      # downloaded to ~/Library/MobileDevice/Provisioning Profiles/.
+      # See scripts/mas-submit.sh for the submission pipeline.
+      CODE_SIGN_STYLE: Manual
+      CODE_SIGN_IDENTITY: "3rd Party Mac Developer Application"
+      PROVISIONING_PROFILE_SPECIFIER: "Verbinal MAS"
+      SWIFT_OPTIMIZATION_LEVEL: "-O"
+      SWIFT_COMPILATION_MODE: wholemodule
+      DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+      ENABLE_NS_ASSERTIONS: NO
+      # Keep Debug builds fast — opt out of symbol stripping there.
+    Debug:
+      SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+      SWIFT_COMPILATION_MODE: incremental
+      DEBUG_INFORMATION_FORMAT: dwarf
+      ENABLE_NS_ASSERTIONS: YES
 targets:
   Verbinal:
     type: application
@@ -26,11 +50,32 @@ targets:
       - path: Verbinal/Resources
         type: resource
         buildPhase: resources
+    preBuildScripts:
+      - name: Bundle Python (opt-in in Debug, always in Release)
+        # Always runs in Release (MAS + direct distribution both need the
+        # bundled interpreter). In Debug it's opt-in via BUNDLE_PYTHON=1
+        # so day-to-day dev builds can fall back to host Python.
+        # KEEP_PIP defaults to 0 — pip is stripped for MAS compliance (2.5.2).
+        script: |
+          set -euo pipefail
+          if [ "${CONFIGURATION:-Debug}" != "Release" ] && [ "${BUNDLE_PYTHON:-0}" != "1" ]; then
+              echo "Debug build without BUNDLE_PYTHON=1 — skipping (will use host Python)."
+              exit 0
+          fi
+          OUTPUT_DIR="$DERIVED_FILE_DIR/python" \
+          SIGN_IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY_NAME:--}" \
+          KEEP_PIP="${KEEP_PIP:-0}" \
+          "${SRCROOT}/scripts/bundle-python.sh"
+          DEST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/python"
+          rm -rf "$DEST"
+          mkdir -p "$(dirname "$DEST")"
+          cp -R "$DERIVED_FILE_DIR/python" "$DEST"
+        basedOnDependencyAnalysis: false
     settings:
       base:
         INFOPLIST_FILE: Verbinal/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
-        CODE_SIGN_ENTITLEMENTS: Verbinal/Verbinal.entitlements
+        CODE_SIGN_ENTITLEMENTS: Verbinal/Verbinal-Sandboxed.entitlements
   VerbinalTests:
     type: bundle.unit-test
     platform: macOS

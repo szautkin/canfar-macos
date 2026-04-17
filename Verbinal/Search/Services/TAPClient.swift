@@ -69,7 +69,9 @@ actor TAPClient {
 
     /// Resolve a target name to coordinates using the CADC target resolver.
     func resolveTarget(name: String, service: String = "all") async throws -> ResolverResult {
-        var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.resolverPath)")!
+        guard var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.resolverPath)") else {
+            throw SearchError.networkError("Invalid resolver URL")
+        }
         components.queryItems = [
             URLQueryItem(name: "target", value: name),
             URLQueryItem(name: "service", value: service.lowercased()),
@@ -106,7 +108,9 @@ actor TAPClient {
             return cached
         }
 
-        var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.datalinkPath)")!
+        guard var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.datalinkPath)") else {
+            throw SearchError.networkError("Invalid DataLink URL")
+        }
         components.queryItems = [
             URLQueryItem(name: "id", value: publisherID),
             URLQueryItem(name: "request", value: "downloads-only"),

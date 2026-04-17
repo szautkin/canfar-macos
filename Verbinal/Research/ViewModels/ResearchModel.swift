@@ -16,6 +16,8 @@ import AppKit
 final class ResearchModel {
     let observationStore: ObservationStore
     let downloadService: DownloadService
+    let noteStore: ObservationNoteStore
+    let exportService = ExportService()
 
     var activeDownloads: [UUID: DownloadProgress] = [:]
     var selectedObservation: DownloadedObservation?
@@ -24,10 +26,20 @@ final class ResearchModel {
     var lastError: String?
     var lastSuccess: String?
 
+    /// Pending auto-dismiss task for toast-style status strings. A single handle
+    /// ensures a new success/error replaces any in-flight dismissal, preventing an
+    /// older task from clearing a newer message mid-stream.
+    private var statusDismissTask: Task<Void, Never>?
+
+    /// Called when the user opens a file; routes FITS/notebook files to in-app viewers.
+    var onOpenFile: ((URL) -> Void)?
+
     init(observationStore: ObservationStore = ObservationStore(),
-         downloadService: DownloadService = DownloadService()) {
+         downloadService: DownloadService = DownloadService(),
+         noteStore: ObservationNoteStore = ObservationNoteStore()) {
         self.observationStore = observationStore
         self.downloadService = downloadService
+        self.noteStore = noteStore
     }
 
     var filteredObservations: [DownloadedObservation] {
@@ -94,15 +106,31 @@ final class ResearchModel {
             lastSuccess = "Saved: \(suggestedFilename)"
 
             // Clean up active download indicator
-            Task {
-                try? await Task.sleep(for: .seconds(2))
-                activeDownloads.removeValue(forKey: downloadID)
-                lastSuccess = nil
+            scheduleStatusDismiss(after: 2) { [weak self] in
+                self?.activeDownloads.removeValue(forKey: downloadID)
+                self?.lastSuccess = nil
             }
 
         } catch {
             activeDownloads[downloadID]?.state = .failed(error.localizedDescription)
             lastError = error.localizedDescription
+            // Auto-remove failed entry after a short delay
+            scheduleStatusDismiss(after: 6) { [weak self] in
+                self?.activeDownloads.removeValue(forKey: downloadID)
+                self?.lastError = nil
+            }
+        }
+    }
+
+    /// Schedule a delayed clean-up, replacing any pending dismiss so an old handle
+    /// cannot wipe state that belongs to a newer download.
+    private func scheduleStatusDismiss(after seconds: TimeInterval, _ body: @escaping @MainActor () -> Void) {
+        statusDismissTask?.cancel()
+        statusDismissTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            body()
+            self?.statusDismissTask = nil
         }
     }
 
@@ -115,17 +143,77 @@ final class ResearchModel {
     func deleteObservation(_ observation: DownloadedObservation) {
         let url = URL(fileURLWithPath: observation.localPath)
         Task {
-            do {
-                try await downloadService.deleteFile(at: url)
-            } catch {
-                lastError = "Failed to delete file: \(error.localizedDescription)"
+            // Delete file first; ignore errors — file may already be gone
+            try? await downloadService.deleteFile(at: url)
+            // Remove metadata only after file deletion is attempted
+            observationStore.remove(observation)
+            if selectedObservation?.id == observation.id {
+                selectedObservation = nil
             }
         }
-        observationStore.remove(observation)
-        if selectedObservation?.id == observation.id {
-            selectedObservation = nil
+    }
+
+    // MARK: - Export
+
+    /// Run an export bundle containing this module's data. Presents a folder picker,
+    /// writes a Claude-friendly bundle, and reveals it in Finder on success.
+    #if os(macOS)
+    func presentExportFlow() async {
+        guard let destination = await pickExportDestination() else { return }
+        let exporter = ResearchExporter(
+            observationStore: observationStore,
+            noteStore: noteStore
+        )
+        if let bundleURL = await exportService.exportAll(to: destination, modules: [exporter]) {
+            let summary = exportSummary()
+            lastSuccess = "Exported \(summary)"
+            NSWorkspace.shared.selectFile(
+                bundleURL.path,
+                inFileViewerRootedAtPath: destination.path
+            )
+            NotificationService.sendExportCompleted(
+                bundleName: bundleURL.lastPathComponent,
+                moduleSummary: summary
+            )
+            scheduleStatusDismiss(after: 4) { [weak self] in self?.lastSuccess = nil }
+        } else if let err = exportService.lastError {
+            lastError = "Export failed: \(err)"
+            scheduleStatusDismiss(after: 6) { [weak self] in self?.lastError = nil }
         }
     }
+
+    private func exportSummary() -> String {
+        ResearchExporter.itemCountLabel(
+            observations: observationStore.observations.count,
+            notes: noteStore.notes.count
+        )
+    }
+
+    @MainActor
+    private func pickExportDestination() async -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.title = "Choose Export Destination"
+        panel.message = "A timestamped folder will be created inside the selected directory."
+        panel.prompt = "Export Here"
+
+        // Default to iCloud Drive/Verbinal if it exists, else ~/Documents
+        let fm = FileManager.default
+        let iCloud = fm.url(forUbiquityContainerIdentifier: nil)?
+            .appendingPathComponent("Documents/Verbinal")
+        let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first
+        if let iCloud, fm.fileExists(atPath: iCloud.path) {
+            panel.directoryURL = iCloud
+        } else {
+            panel.directoryURL = docs
+        }
+
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+    #endif
 
     #if os(macOS)
     func revealInFinder(_ observation: DownloadedObservation) {
@@ -135,7 +223,13 @@ final class ResearchModel {
 
     func openFile(_ observation: DownloadedObservation) {
         let url = URL(fileURLWithPath: observation.localPath)
-        NSWorkspace.shared.open(url)
+        guard observation.fileExists else { return }
+        let ext = url.pathExtension.lowercased()
+        if FileHelper.isFITS(ext) || FileHelper.isNotebook(ext) {
+            onOpenFile?(url)
+        } else {
+            NSWorkspace.shared.open(url)
+        }
     }
     #endif
 

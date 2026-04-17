@@ -52,7 +52,7 @@ final class FITSTabHostModel {
     var blinkInterval: TimeInterval = 1.0
     /// Current fade direction: +1 fading toward B, -1 fading toward A.
     private var blinkFadeDirection: Int = 1
-    nonisolated(unsafe) private var blinkTask: Task<Void, Never>?
+    private var blinkTask: Task<Void, Never>?
 
     /// Active tab index — applies shared state on change (pull-on-activation).
     var activeTabIndex: Int = 0 {
@@ -364,7 +364,9 @@ final class FITSTabHostModel {
         }
     }
 
-    deinit { blinkTask?.cancel() }
+    // No custom deinit: the blink task captures `[weak self]` and exits on the
+    // next 50 ms tick when self is deallocated, so the actor-isolated task handle
+    // does not need to be touched from a nonisolated deinit.
 
     func stopBlink() {
         blinkTask?.cancel()

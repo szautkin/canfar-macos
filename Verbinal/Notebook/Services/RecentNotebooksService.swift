@@ -26,64 +26,34 @@ struct RecentNotebookEntry: Codable, Identifiable, Equatable {
 final class RecentNotebooksService {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "RecentNotebooks")
     private let maxEntries = 15
-    private let fileName: String
+    private let persistence: DiskPersistence<[RecentNotebookEntry]>
     private(set) var entries: [RecentNotebookEntry] = []
 
     init(fileName: String = "recent-notebooks.json") {
-        self.fileName = fileName
-        entries = readFromDisk()
+        self.persistence = DiskPersistence(
+            subdirectory: "Verbinal/Notebook",
+            fileName: fileName,
+            logger: Self.logger
+        )
+        self.entries = persistence.read() ?? []
     }
 
     func add(url: URL) {
-        // Remove existing entry for same path
         entries.removeAll { $0.path == url.path }
         entries.insert(RecentNotebookEntry(url: url), at: 0)
         if entries.count > maxEntries {
             entries = Array(entries.prefix(maxEntries))
         }
-        writeToDisk()
+        persistence.write(entries)
     }
 
     func remove(_ entry: RecentNotebookEntry) {
         entries.removeAll { $0.id == entry.id }
-        writeToDisk()
+        persistence.write(entries)
     }
 
     func clear() {
         entries.removeAll()
-        writeToDisk()
-    }
-
-    // MARK: - Persistence
-
-    private var fileURL: URL? {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        guard let dir = appSupport?.appendingPathComponent("Verbinal/Notebook", isDirectory: true) else { return nil }
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent(fileName)
-    }
-
-    private func readFromDisk() -> [RecentNotebookEntry] {
-        guard let url = fileURL else { return [] }
-        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
-        do {
-            let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode([RecentNotebookEntry].self, from: data)
-        } catch { return [] }
-    }
-
-    private func writeToDisk() {
-        guard let url = fileURL else { return }
-        do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(entries)
-            try data.write(to: url, options: .atomic)
-        } catch {
-            Self.logger.error("Write failed: \(error.localizedDescription)")
-        }
+        persistence.write(entries)
     }
 }

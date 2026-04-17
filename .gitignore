@@ -38,6 +38,9 @@ Packages/
 .claude/
 .build.log
 
+# Bundled Python cache — rebuilt on demand by scripts/bundle-python.sh.
+.python-bundle-cache/
+
 # Debug symbols
 *.dSYM.zip
 *.dSYM/

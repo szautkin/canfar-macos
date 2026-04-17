@@ -186,12 +186,19 @@ actor KernelService {
             return url.path
         }
 
-        // Fallback: write harness to temp from embedded source
+        // Fallback: write harness to temp from embedded source. Include the app's
+        // build version in the filename so an app update that ships a new harness
+        // doesn't silently reuse the cached one from the previous install.
+        // `temporaryDirectory` resolves to the sandbox container's tmp when the
+        // app is sandboxed, so this path is always legal to write.
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("Verbinal")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        let destURL = tempDir.appendingPathComponent("kernel_harness.py")
 
-        // If already written, reuse
+        let buildStamp = (Bundle.main.infoDictionary?["CFBundleVersion"] as? String)
+            ?? (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)
+            ?? "dev"
+        let destURL = tempDir.appendingPathComponent("kernel_harness-\(buildStamp).py")
+
         if FileManager.default.fileExists(atPath: destURL.path) {
             return destURL.path
         }

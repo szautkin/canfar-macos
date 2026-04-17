@@ -41,26 +41,39 @@ struct SearchRootView: View {
 
     // MARK: - Tab Bar
 
+    /// macOS-native segmented control with icons + labels, centered in the window.
+    /// Matches the pattern used by Xcode's scheme picker and System Settings.
     private var tabBar: some View {
-        HStack(spacing: 0) {
-            Picker("", selection: Bindable(searchModel).selectedTab) {
-                Text("Search").tag(SearchFormModel.SearchTab.search)
-                Text(resultsTabLabel).tag(SearchFormModel.SearchTab.results)
-                Text("ADQL").tag(SearchFormModel.SearchTab.adql)
+        ZStack {
+            HStack(spacing: 0) {
+                Spacer()
+                Picker("", selection: Bindable(searchModel).selectedTab) {
+                    Label("Search", systemImage: "magnifyingglass")
+                        .tag(SearchFormModel.SearchTab.search)
+                    Label(resultsTabLabel, systemImage: "tablecells")
+                        .tag(SearchFormModel.SearchTab.results)
+                    Label("ADQL", systemImage: "curlybraces")
+                        .tag(SearchFormModel.SearchTab.adql)
+                }
+                .pickerStyle(.segmented)
+                .labelStyle(.titleAndIcon)
+                .frame(width: 420)
+                .controlSize(.large)
+                Spacer()
             }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 400)
 
-            Spacer()
-
-            if searchModel.isSearching {
-                ProgressView()
-                    .scaleEffect(0.7)
-                    .padding(.trailing, 8)
+            HStack {
+                Spacer()
+                if searchModel.isSearching {
+                    ProgressView()
+                        .scaleEffect(0.75)
+                        .padding(.trailing, 16)
+                }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 6)
+        .padding(.vertical, 10)
+        .background(.bar)
     }
 
     // MARK: - Tab Content

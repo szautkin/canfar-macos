@@ -1,23 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+Privacy manifest for Verbinal. Required since May 2024 for App Store submission.
+
+Contents verified against actual API usage in Verbinal/ — any change to this
+manifest must be accompanied by a code grep showing the declared APIs are used
+and the undeclared ones are not.
+
+Required-reason APIs used by the app:
+
+  NSPrivacyAccessedAPICategoryFileTimestamp
+    Sources:
+      FileBrowser/ViewModels/FileBrowserModel.swift     — contentModificationDateKey, for displayed file rows
+      Notebook/Services/AutoSaveService.swift           — contentModificationDateKey, mtime diffing
+      Research/Services/DownloadService.swift           — FileManager.attributesOfItem, for .size of saved downloads
+      FITSViewer/ViewModels/FITSViewerModel.swift       — fileSizeKey pre-mmap size guard
+    Reasons:
+      3B52.1 — display to user (FileBrowser rows)
+      DDA9.1 — user-granted via NSOpenPanel / NSSavePanel (downloads, notebooks, FITS)
+
+  NSPrivacyAccessedAPICategoryUserDefaults
+    Sources:
+      ViewModels/SessionLaunchModel.swift               — remember last launch params
+      (multiple stores)                                  — UI state persistence
+    Reason:
+      CA92.1 — access info from the same app
+
+APIs NOT used (verified by grep, 2026-04-17):
+  NSPrivacyAccessedAPICategorySystemBootTime   — no systemUptime / mach_absolute_time usage
+  NSPrivacyAccessedAPICategoryDiskSpace        — no volumeAvailableCapacityKey / volumeTotalCapacityKey usage
+  NSPrivacyAccessedAPICategoryActiveKeyboard   — no keyboard introspection
+
+Data collection:
+  The app transmits credentials and a bearer token to CADC (the Canadian Astronomy
+  Data Centre) for the user to authenticate into their own institutional account.
+  We operate no servers; all data goes to CADC over TLS at the user's direction.
+  These are declared here as "collected" under Apple's broad reading of the term,
+  linked to the user's CADC identity, never used for tracking.
+
+Tracking:
+  The app contains no tracking, analytics, or ad frameworks. NSPrivacyTracking is
+  false and NSPrivacyTrackingDomains is empty.
+-->
 <plist version="1.0">
 <dict>
-	<key>NSPrivacyTracking</key>
-	<false/>
-	<key>NSPrivacyTrackingDomains</key>
-	<array/>
-	<key>NSPrivacyCollectedDataTypes</key>
-	<array/>
-	<key>NSPrivacyAccessedAPITypes</key>
-	<array>
-		<dict>
-			<key>NSPrivacyAccessedAPIType</key>
-			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
-			<key>NSPrivacyAccessedAPITypeReasons</key>
-			<array>
-				<string>CA92.1</string>
-			</array>
-		</dict>
-	</array>
+    <key>NSPrivacyTracking</key>
+    <false/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeUserID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeCredentials</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+    </array>
+
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>3B52.1</string>
+                <string>DDA9.1</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

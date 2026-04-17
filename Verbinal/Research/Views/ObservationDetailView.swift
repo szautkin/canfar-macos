@@ -24,7 +24,7 @@ struct ObservationDetailView: View {
                             image
                                 .resizable()
                                 .scaledToFit()
-                                .frame(maxHeight: 400)
+                                .frame(minHeight: 120, maxHeight: 280)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                         case .failure:
                             imagePlaceholder
@@ -53,11 +53,19 @@ struct ObservationDetailView: View {
                     Button {
                         model.openFile(observation)
                     } label: {
-                        Label("Open File", systemImage: "doc")
+                        let ext = observation.localURL.pathExtension.lowercased()
+                        if FileHelper.isFITS(ext) {
+                            Label("Open in FITS Viewer", systemImage: "star.circle")
+                        } else if FileHelper.isNotebook(ext) {
+                            Label("Open in Notebook", systemImage: "note.text")
+                        } else {
+                            Label("Open File", systemImage: "doc")
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
                     .disabled(!observation.fileExists)
+                    .keyboardShortcut("o")
 
                     Button {
                         model.revealInFinder(observation)
@@ -66,6 +74,7 @@ struct ObservationDetailView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
                     #endif
 
                     if let url = TAPClient.detailURL(publisherID: observation.publisherID) {
@@ -87,7 +96,11 @@ struct ObservationDetailView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .confirmationDialog("Delete Observation?", isPresented: $showDeleteConfirm) {
+                    .keyboardShortcut(.delete)
+                    .confirmationDialog(
+                        "Delete \"\(observation.targetName.isEmpty ? observation.observationID : observation.targetName)\"?",
+                        isPresented: $showDeleteConfirm
+                    ) {
                         Button("Delete", role: .destructive) {
                             model.deleteObservation(observation)
                         }
@@ -125,6 +138,13 @@ struct ObservationDetailView: View {
                     metadataRow("Downloaded", formatDate(observation.downloadedAt))
                     metadataRow("Exists", observation.fileExists ? "Yes" : "Missing")
                 }
+
+                Divider()
+
+                ObservationNotesView(
+                    publisherID: observation.publisherID,
+                    store: model.noteStore
+                )
             }
             .padding()
         }
@@ -155,6 +175,7 @@ struct ObservationDetailView: View {
                 .textSelection(.enabled)
             Spacer()
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func formatDate(_ date: Date) -> String {

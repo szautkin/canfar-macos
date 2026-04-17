@@ -13,6 +13,7 @@ struct SearchResultsView: View {
     @Environment(\.openURL) private var openURL
     @State private var selectedResult: SearchResult?
     @State private var isExporting = false
+    @State private var exportErrorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,10 +26,12 @@ struct SearchResultsView: View {
                     systemImage: "magnifyingglass",
                     description: Text("Run a search to see results here.")
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 resultsTable
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .sheet(item: $selectedResult) { result in
             ResultDetailSheet(
                 result: result,
@@ -36,6 +39,11 @@ struct SearchResultsView: View {
                 tapClient: tapClient,
                 researchModel: researchModel
             )
+        }
+        .alert("Export failed", isPresented: .constant(exportErrorMessage != nil), presenting: exportErrorMessage) { _ in
+            Button("OK", role: .cancel) { exportErrorMessage = nil }
+        } message: { msg in
+            Text(msg)
         }
     }
 
@@ -131,19 +139,25 @@ struct SearchResultsView: View {
     private var resultsTable: some View {
         let visibleCols = resultsModel.visibleColumns
 
-        return ScrollView([.horizontal, .vertical]) {
-            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                Section {
-                    ForEach(resultsModel.paginatedResults) { result in
-                        resultRow(result, columns: visibleCols)
+        return GeometryReader { geo in
+            ScrollView([.horizontal, .vertical]) {
+                VStack(spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                        Section {
+                            ForEach(resultsModel.paginatedResults) { result in
+                                resultRow(result, columns: visibleCols)
+                            }
+                        } header: {
+                            VStack(spacing: 0) {
+                                sortableHeaderRow(columns: visibleCols)
+                                filterRow(columns: visibleCols)
+                                Divider()
+                            }
+                        }
                     }
-                } header: {
-                    VStack(spacing: 0) {
-                        sortableHeaderRow(columns: visibleCols)
-                        filterRow(columns: visibleCols)
-                        Divider()
-                    }
+                    Spacer(minLength: 0)
                 }
+                .frame(minHeight: geo.size.height)
             }
         }
     }
@@ -241,13 +255,22 @@ struct SearchResultsView: View {
     // MARK: - Export
 
     private func exportResults(format: String, ext: String) async {
-        guard let url = resultsModel.exportURL(format: format) else { return }
+        guard let url = resultsModel.exportURL(format: format) else {
+            exportErrorMessage = "No export URL available for this query."
+            return
+        }
         isExporting = true
+        defer { isExporting = false }
 
         do {
             let (tempURL, response) = try await URLSession.shared.download(for: URLRequest(url: url))
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-                isExporting = false
+            guard let http = response as? HTTPURLResponse else {
+                exportErrorMessage = "Invalid server response."
+                return
+            }
+            guard http.statusCode == 200 else {
+                exportErrorMessage = "Export failed (HTTP \(http.statusCode))."
+                try? FileManager.default.removeItem(at: tempURL)
                 return
             }
 
@@ -262,10 +285,8 @@ struct SearchResultsView: View {
             await presentExportSavePanel(filename: filename, tempURL: stableTemp)
             #endif
         } catch {
-            // Silent failure — user can retry
+            exportErrorMessage = error.localizedDescription
         }
-
-        isExporting = false
     }
 
     #if os(macOS)

@@ -13,11 +13,12 @@ final class SessionLaunchModel {
     private let sessionService: SessionService
     private let imageService: ImageService
     private let recentLaunchStore: RecentLaunchStore
+    private let cacheService: PortalImageCacheService?
+    private let settingsService: PortalSettingsService?
+    private let username: String
 
     private var imagesByTypeAndProject: [String: [String: [ParsedImage]]] = [:]
     private var cachedImages: [RawImage] = []
-    private var cacheTime: Date?
-    private let cacheDuration: TimeInterval = 300 // 5 minutes
 
     // Default images per session type
     private static let defaultImageNames: [String: String] = [
@@ -82,38 +83,111 @@ final class SessionLaunchModel {
     var totalSessionCounter: (() -> Int)?
     var sessionNamesForType: ((String) -> [String])?
 
-    init(sessionService: SessionService, imageService: ImageService, recentLaunchStore: RecentLaunchStore) {
+    init(sessionService: SessionService,
+         imageService: ImageService,
+         recentLaunchStore: RecentLaunchStore,
+         cacheService: PortalImageCacheService? = nil,
+         settingsService: PortalSettingsService? = nil,
+         username: String = "") {
         self.sessionService = sessionService
         self.imageService = imageService
         self.recentLaunchStore = recentLaunchStore
+        self.cacheService = cacheService
+        self.settingsService = settingsService
+        self.username = username
     }
 
     // MARK: - Load Data
 
+    /// Loads images + context + repositories through the cache service (when present).
+    /// Returns cached data immediately and kicks off a background refresh if stale.
     func loadImagesAndContext() async {
         isLoading = true
         hasError = false
 
         do {
-            async let rawImagesTask = imageService.getImages()
-            async let contextTask = imageService.getContext()
-            async let reposTask = imageService.getRepositories()
+            if let cacheService, !username.isEmpty {
+                let (cache, wasCached) = try await cacheService.loadOrFetch(
+                    username: username,
+                    imageService: imageService
+                )
+                apply(cache: cache)
+                applyDefaults()
+                isLoading = false
 
-            let rawImages = try await rawImagesTask
-            let context = try await contextTask
-            let repos = (try? await reposTask) ?? []
+                // Stale-while-revalidate: background refresh if the cached data is too old.
+                if wasCached && cacheService.isStale {
+                    Task { [weak self] in
+                        guard let self else { return }
+                        do {
+                            let fresh = try await cacheService.fetchFresh(
+                                username: self.username,
+                                imageService: self.imageService
+                            )
+                            self.apply(cache: fresh)
+                            self.applyDefaults()
+                        } catch {
+                            // Silent — we already have the stale data visible
+                        }
+                    }
+                }
+            } else {
+                // Fallback path for tests / legacy callers without a cache service.
+                async let rawImagesTask = imageService.getImages()
+                async let contextTask = imageService.getContext()
+                async let reposTask = imageService.getRepositories()
 
-            cachedImages = rawImages
-            cacheTime = Date()
-            imagesByTypeAndProject = ImageParser.groupByTypeAndProject(rawImages)
-            repositories = repos
+                let rawImages = try await rawImagesTask
+                let context = try await contextTask
+                let repos = (try? await reposTask) ?? []
 
-            // Auto-select first registry
-            if repositoryHost.isEmpty, let first = repos.first {
-                repositoryHost = first
+                let cache = PortalImageCache(
+                    username: username,
+                    images: rawImages,
+                    context: context,
+                    repositories: repos,
+                    fetchedAt: Date()
+                )
+                apply(cache: cache)
+                applyDefaults()
+                isLoading = false
             }
+        } catch {
+            hasError = true
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
 
-            // Set resource options
+    /// Force a fresh network fetch, bypassing the cache TTL.
+    func refreshImages() async {
+        guard let cacheService, !username.isEmpty else { return }
+        isLoading = true
+        hasError = false
+        do {
+            let fresh = try await cacheService.fetchFresh(
+                username: username,
+                imageService: imageService
+            )
+            apply(cache: fresh)
+            applyDefaults()
+        } catch {
+            hasError = true
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    private func apply(cache: PortalImageCache) {
+        cachedImages = cache.images
+        imagesByTypeAndProject = ImageParser.groupByTypeAndProject(cache.images)
+        repositories = cache.repositories
+
+        if repositoryHost.isEmpty, let first = cache.repositories.first {
+            repositoryHost = first
+        }
+
+        if let context = cache.context {
             coreOptions = context.cores.options
             ramOptions = context.memoryGB.options
             gpuOptions = context.gpus.options
@@ -121,16 +195,130 @@ final class SessionLaunchModel {
             defaultRam = context.memoryGB.default
             cores = defaultCores
             ram = defaultRam
-
-            // Filter images by selected registry and cascade
-            rebuildFilteredImages()
-            generateSessionName()
-        } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
         }
 
-        isLoading = false
+        rebuildFilteredImages()
+        generateSessionName()
+    }
+
+    /// Apply the user's saved Portal defaults on top of the freshly-loaded data.
+    /// Silently falls through if the saved default no longer exists in the current list.
+    private func applyDefaults() {
+        guard let settings = settingsService?.settings(for: username) else { return }
+
+        // Default session type → triggers the cascade via didSet
+        if let type = settings.defaultSessionType,
+           sessionTypes.contains(type),
+           selectedType != type {
+            selectedType = type
+        }
+
+        // Default project (projects is now populated for the current session type)
+        if let project = settings.defaultProject,
+           projects.contains(project),
+           selectedProject != project {
+            selectedProject = project
+        }
+
+        // Default container image (images list now reflects the chosen project)
+        if let imageID = settings.defaultContainerImageID,
+           let match = images.first(where: { $0.id == imageID }) {
+            selectedImage = match
+        }
+
+        // Default resources (falls back to context defaults if saved values are out of range)
+        if let type = settings.defaultResourceType {
+            resourceType = type
+            if type == "fixed" {
+                if let c = settings.defaultCores, coreOptions.contains(c) { cores = c }
+                if let r = settings.defaultRam, ramOptions.contains(r) { ram = r }
+                if let g = settings.defaultGpus, gpuOptions.contains(g) { gpus = g }
+            }
+        }
+    }
+
+    // MARK: - Default management
+
+    /// Toggle whether the current project selection is saved as the user's default.
+    func toggleDefaultProject() {
+        guard let settingsService, !username.isEmpty, !selectedProject.isEmpty else { return }
+        let current = settingsService.settings(for: username)?.defaultProject
+        let next = (current == selectedProject) ? nil : selectedProject
+        settingsService.setDefaultProject(next, for: username)
+    }
+
+    /// Toggle whether the current image selection is saved as the user's default.
+    func toggleDefaultImage() {
+        guard let settingsService, !username.isEmpty, let img = selectedImage else { return }
+        let current = settingsService.settings(for: username)?.defaultContainerImageID
+        let next = (current == img.id) ? nil : img.id
+        settingsService.setDefaultImage(next, for: username)
+    }
+
+    /// Toggle whether the current session type is saved as the user's default.
+    func toggleDefaultSessionType() {
+        guard let settingsService, !username.isEmpty else { return }
+        let current = settingsService.settings(for: username)?.defaultSessionType
+        let next = (current == selectedType) ? nil : selectedType
+        settingsService.setDefaultSessionType(next, for: username)
+    }
+
+    var isSelectedProjectDefault: Bool {
+        guard let settingsService, !username.isEmpty, !selectedProject.isEmpty else { return false }
+        return settingsService.settings(for: username)?.defaultProject == selectedProject
+    }
+
+    var isSelectedImageDefault: Bool {
+        guard let settingsService, !username.isEmpty, let img = selectedImage else { return false }
+        return settingsService.settings(for: username)?.defaultContainerImageID == img.id
+    }
+
+    var isSelectedSessionTypeDefault: Bool {
+        guard let settingsService, !username.isEmpty else { return false }
+        return settingsService.settings(for: username)?.defaultSessionType == selectedType
+    }
+
+    /// True when the current resource selection matches the saved defaults.
+    var isSelectedResourcesDefault: Bool {
+        guard let settingsService, !username.isEmpty,
+              let saved = settingsService.settings(for: username),
+              let savedType = saved.defaultResourceType else { return false }
+        guard savedType == resourceType else { return false }
+        if savedType == "flexible" { return true }
+        return saved.defaultCores == cores
+            && saved.defaultRam == ram
+            && saved.defaultGpus == gpus
+    }
+
+    /// Save (or clear) the current resource selection as the user's default.
+    func toggleDefaultResources() {
+        guard let settingsService, !username.isEmpty else { return }
+        if isSelectedResourcesDefault {
+            settingsService.setDefaultResources(
+                resourceType: nil, cores: nil, ram: nil, gpus: nil,
+                for: username
+            )
+        } else {
+            settingsService.setDefaultResources(
+                resourceType: resourceType,
+                cores: resourceType == "fixed" ? cores : nil,
+                ram: resourceType == "fixed" ? ram : nil,
+                gpus: resourceType == "fixed" ? gpus : nil,
+                for: username
+            )
+        }
+    }
+
+    private static let cacheAgeFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .short
+        return f
+    }()
+
+    /// Relative description of when the image cache was last updated, e.g. "3h ago".
+    var cacheAgeDescription: String? {
+        guard let timestamp = cacheService?.cacheTimestamp else { return nil }
+        return Self.cacheAgeFormatter.localizedString(for: timestamp, relativeTo: Date())
     }
 
     // MARK: - Cascading Selection
@@ -316,16 +504,27 @@ final class SessionLaunchModel {
 
         let imageId: String
         if useCustomImage {
-            guard !customImageUrl.isEmpty else {
+            let trimmed = customImageUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
                 hasError = true
                 errorMessage = "Custom image URL is required"
                 return
             }
+            // Allow only characters that are legal in container image references:
+            // lowercase alphanumerics, digits, "-", ".", "_", ":", "/". Reject path
+            // traversal, whitespace, and shell metacharacters before string-interpolating.
+            let imageRefPattern = #"^[A-Za-z0-9][A-Za-z0-9._/:@-]*$"#
+            guard trimmed.range(of: imageRefPattern, options: .regularExpression) != nil,
+                  !trimmed.contains("..") else {
+                hasError = true
+                errorMessage = "Custom image URL contains invalid characters"
+                return
+            }
             // Advanced tab: prepend selected registry host to custom image path
             if !repositoryHost.isEmpty {
-                imageId = "\(repositoryHost)/\(customImageUrl)"
+                imageId = "\(repositoryHost)/\(trimmed)"
             } else {
-                imageId = customImageUrl
+                imageId = trimmed
             }
         } else {
             guard let img = selectedImage else {

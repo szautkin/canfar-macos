@@ -51,6 +51,20 @@ final class SearchFormModel {
         )
     }
 
+    // MARK: - Coordinate Pre-population
+
+    /// Pre-populate the search form with sky coordinates (decimal degrees) from an
+    /// external source such as the FITS viewer crosshair. Sets `resolver = .none`
+    /// since we already have resolved coordinates — no name lookup needed.
+    func setSearchCoordinates(ra: Double, dec: Double) {
+        formState.target = String(format: "%.6f %.6f", ra, dec)
+        formState.resolver = .none
+        resolverStatus = .idle
+        resolverResult = nil
+        resolveTask?.cancel()
+        selectedTab = .search
+    }
+
     // MARK: - Target Resolution
 
     func targetChanged() {

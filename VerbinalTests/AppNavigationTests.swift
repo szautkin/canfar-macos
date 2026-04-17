@@ -41,19 +41,14 @@ final class AppNavigationTests: XCTestCase {
         XCTAssertEqual(state.currentMode, .landing)
     }
 
-    func testMultiLevelNavigation() {
+    func testNavigateBackAlwaysGoesHome() {
         let state = AppState()
         state.navigateTo(.search)
         state.navigateTo(.research)
         state.navigateTo(.fitsViewer)
         XCTAssertEqual(state.currentMode, .fitsViewer)
 
-        state.navigateBack()
-        XCTAssertEqual(state.currentMode, .research)
-
-        state.navigateBack()
-        XCTAssertEqual(state.currentMode, .search)
-
+        // navigateBack() always goes home and clears the stack
         state.navigateBack()
         XCTAssertEqual(state.currentMode, .landing)
         XCTAssertFalse(state.canGoBack)

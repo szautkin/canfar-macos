@@ -49,7 +49,10 @@ struct AuthenticatedRootView: View {
         let launch = SessionLaunchModel(
             sessionService: appState.sessionService,
             imageService: appState.imageService,
-            recentLaunchStore: appState.recentLaunchStore
+            recentLaunchStore: appState.recentLaunchStore,
+            cacheService: appState.portalImageCacheService,
+            settingsService: appState.portalSettingsService,
+            username: appState.username
         )
         let plm = PlatformLoadModel(platformService: appState.platformService)
         let sm = StorageModel(storageService: appState.storageService)

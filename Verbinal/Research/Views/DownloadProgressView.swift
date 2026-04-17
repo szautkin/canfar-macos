@@ -20,18 +20,22 @@ struct DownloadProgressView: View {
                         case .downloading:
                             ProgressView()
                                 .scaleEffect(0.6)
+                                .accessibilityLabel("Downloading")
                         case .completed:
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(.green)
                                 .font(.caption)
+                                .accessibilityLabel("Download complete")
                         case .failed:
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.red)
                                 .font(.caption)
+                                .accessibilityLabel("Download failed")
                         case .cancelled:
                             Image(systemName: "minus.circle.fill")
                                 .foregroundStyle(.secondary)
                                 .font(.caption)
+                                .accessibilityLabel("Download cancelled")
                         }
 
                         VStack(alignment: .leading, spacing: 2) {
@@ -42,8 +46,13 @@ struct DownloadProgressView: View {
                                 .lineLimit(1)
 
                             if download.state == .downloading {
-                                ProgressView(value: download.fractionCompleted)
-                                    .progressViewStyle(.linear)
+                                if download.totalBytes != nil {
+                                    ProgressView(value: download.fractionCompleted)
+                                        .progressViewStyle(.linear)
+                                } else {
+                                    ProgressView()
+                                        .progressViewStyle(.linear)
+                                }
 
                                 Text(download.formattedProgress)
                                     .font(.caption2)

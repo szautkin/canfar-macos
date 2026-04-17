@@ -76,6 +76,18 @@ actor NetworkClient {
         return response
     }
 
+    func put(
+        _ urlString: String,
+        body: Data,
+        contentType: String,
+        timeout: TimeInterval = 300
+    ) async throws -> (Data, HTTPURLResponse) {
+        var request = try makeRequest(urlString, method: "PUT", timeout: timeout)
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        return try await execute(request)
+    }
+
     // MARK: - Private
 
     private func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = 30) throws -> URLRequest {

@@ -51,6 +51,37 @@ final class FITSWCSTransformTests: XCTestCase {
         XCTAssertEqual(result!.y, y, accuracy: 1e-8)
     }
 
+    func testIsValidRejectsHalfZeroCDMatrix() {
+        // CDELT1=0, CDELT2≠0 — degenerate, non-invertible CD matrix.
+        // The old OR guard (cd[0][0] != 0 || cd[1][1] != 0) incorrectly passed this.
+        let degenerateCD = simd_double2x2(columns: (
+            simd_double2(0, 0),              // CD1_1 = 0  (CDELT1=0)
+            simd_double2(0, 1.0 / 3600.0)    // CD2_2 ≠ 0  (CDELT2=1 arcsec)
+        ))
+        let wcs = FITSWCSTransform(
+            crpix1: 100, crpix2: 100,
+            crval1: 0, crval2: 0,
+            cd: degenerateCD, cdInv: degenerateCD,  // cdInv is also degenerate
+            ctype1: "RA---TAN", ctype2: "DEC--TAN"
+        )
+        XCTAssertFalse(wcs.isValid, "Half-zero CD matrix should be rejected as invalid")
+    }
+
+    func testIsValidRejectsSymmetricHalfZeroCDMatrix() {
+        // CDELT2=0, CDELT1≠0 — the symmetric degenerate case.
+        let degenerateCD = simd_double2x2(columns: (
+            simd_double2(1.0 / 3600.0, 0),   // CD1_1 ≠ 0
+            simd_double2(0, 0)                // CD2_2 = 0
+        ))
+        let wcs = FITSWCSTransform(
+            crpix1: 100, crpix2: 100,
+            crval1: 0, crval2: 0,
+            cd: degenerateCD, cdInv: degenerateCD,
+            ctype1: "RA---TAN", ctype2: "DEC--TAN"
+        )
+        XCTAssertFalse(wcs.isValid, "Symmetric half-zero CD matrix should be rejected")
+    }
+
     func testWorldToPixelRoundTrip() {
         let wcs = makeWCS()
         let (ra, dec) = wcs.pixelToWorld(x: 100, y: 200)

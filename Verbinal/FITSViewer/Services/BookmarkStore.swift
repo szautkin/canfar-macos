@@ -13,12 +13,16 @@ import os.log
 @MainActor
 final class BookmarkStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Bookmarks")
-    private let fileName: String
+    private let persistence: DiskPersistence<[CoordinateBookmark]>
     private(set) var bookmarks: [CoordinateBookmark] = []
 
     init(fileName: String = "bookmarks.json") {
-        self.fileName = fileName
-        bookmarks = readFromDisk()
+        self.persistence = DiskPersistence(
+            subdirectory: "Verbinal/Bookmarks",
+            fileName: fileName,
+            logger: Self.logger
+        )
+        self.bookmarks = persistence.read() ?? []
     }
 
     /// Bookmarks for a specific file.
@@ -28,53 +32,18 @@ final class BookmarkStore {
 
     func save(_ bookmark: CoordinateBookmark) {
         bookmarks.insert(bookmark, at: 0)
-        writeToDisk()
+        persistence.write(bookmarks)
     }
 
     func delete(_ bookmark: CoordinateBookmark) {
         bookmarks.removeAll { $0.id == bookmark.id }
-        writeToDisk()
+        persistence.write(bookmarks)
     }
 
     func rename(_ bookmark: CoordinateBookmark, label: String) {
         if let idx = bookmarks.firstIndex(where: { $0.id == bookmark.id }) {
             bookmarks[idx].label = label
-            writeToDisk()
-        }
-    }
-
-    // MARK: - Persistence
-
-    private var fileURL: URL? {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        guard let dir = appSupport?.appendingPathComponent("Verbinal/Bookmarks", isDirectory: true) else { return nil }
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent(fileName)
-    }
-
-    private func readFromDisk() -> [CoordinateBookmark] {
-        guard let url = fileURL else { return [] }
-        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
-        do {
-            let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode([CoordinateBookmark].self, from: data)
-        } catch {
-            return []
-        }
-    }
-
-    private func writeToDisk() {
-        guard let url = fileURL else { return }
-        do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(bookmarks)
-            try data.write(to: url, options: .atomic)
-        } catch {
-            Self.logger.error("Bookmark write failed: \(error.localizedDescription)")
+            persistence.write(bookmarks)
         }
     }
 }

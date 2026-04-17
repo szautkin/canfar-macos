@@ -35,29 +35,48 @@ struct DataTrainColumnView: View {
                 .textFieldStyle(.roundedBorder)
                 .font(.caption)
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    ForEach(filteredOptions, id: \.self) { option in
-                        Button {
-                            onToggle(option)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: selection.contains(option) ? "checkmark.square.fill" : "square")
-                                    .font(.caption)
-                                    .foregroundColor(selection.contains(option) ? .accentColor : .secondary)
-                                Text(option)
-                                    .font(.caption)
-                                    .lineLimit(1)
-                                Spacer()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 2) {
+                        ForEach(filteredOptions, id: \.self) { option in
+                            Button {
+                                onToggle(option)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: selection.contains(option) ? "checkmark.square.fill" : "square")
+                                        .font(.caption)
+                                        .foregroundColor(selection.contains(option) ? .accentColor : .secondary)
+                                    Text(option)
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                    Spacer()
+                                }
+                                .contentShape(Rectangle())
                             }
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            .id(option)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
+                .onAppear { scrollToAnchor(proxy: proxy) }
+                .onChange(of: searchText) { _, _ in scrollToAnchor(proxy: proxy) }
             }
             .frame(height: 160)
         }
         .frame(width: 130)
+    }
+
+    /// Scroll to the first selected option (or top if none). Anchors at top of viewport.
+    private func scrollToAnchor(proxy: ScrollViewProxy) {
+        let anchor = firstVisibleSelection ?? filteredOptions.first
+        guard let anchor else { return }
+        withAnimation(.easeOut(duration: 0.15)) {
+            proxy.scrollTo(anchor, anchor: .top)
+        }
+    }
+
+    /// First option in the current filtered list that is also in the selection.
+    private var firstVisibleSelection: String? {
+        filteredOptions.first(where: { selection.contains($0) })
     }
 }

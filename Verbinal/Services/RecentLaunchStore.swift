@@ -12,11 +12,15 @@ import os.log
 final class RecentLaunchStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "RecentLaunches")
     private let maxEntries = 10
-    private let fileName = "recent_launches.json"
+    private let persistence = DiskPersistence<[RecentLaunch]>(
+        subdirectory: "Verbinal",
+        fileName: "recent_launches.json",
+        logger: logger
+    )
     private(set) var launches: [RecentLaunch] = []
 
     init() {
-        launches = readFromDisk()
+        launches = persistence.read() ?? []
     }
 
     func contains(name: String) -> Bool {
@@ -24,69 +28,25 @@ final class RecentLaunchStore {
     }
 
     func save(_ launch: RecentLaunch) {
-        // If same session name exists, update and move to top
         if let idx = launches.firstIndex(where: { $0.name == launch.name }) {
             launches.remove(at: idx)
         }
-
         var updated = launch
         updated.launchedAt = Date()
         launches.insert(updated, at: 0)
-
-        // Trim to max
         if launches.count > maxEntries {
             launches = Array(launches.prefix(maxEntries))
         }
-
-        writeToDisk()
+        persistence.write(launches)
     }
 
     func remove(_ launch: RecentLaunch) {
         launches.removeAll { $0.id == launch.id }
-        writeToDisk()
+        persistence.write(launches)
     }
 
     func clear() {
         launches.removeAll()
-        writeToDisk()
-    }
-
-    // MARK: - Persistence
-
-    private var fileURL: URL? {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        guard let dir = appSupport?.appendingPathComponent("Verbinal", isDirectory: true) else { return nil }
-
-        // Ensure directory exists
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-
-        return dir.appendingPathComponent(fileName)
-    }
-
-    private func readFromDisk() -> [RecentLaunch] {
-        guard let url = fileURL else { return [] }
-        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
-        do {
-            let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode([RecentLaunch].self, from: data)
-        } catch {
-            Self.logger.warning("Read failed: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
-    }
-
-    private func writeToDisk() {
-        guard let url = fileURL else { return }
-        do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(launches)
-            try data.write(to: url, options: .atomic)
-        } catch {
-            Self.logger.error("Write failed: \(error.localizedDescription, privacy: .public)")
-        }
+        persistence.write(launches)
     }
 }

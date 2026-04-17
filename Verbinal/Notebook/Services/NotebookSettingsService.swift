@@ -6,6 +6,7 @@
 
 import Foundation
 import Observation
+import os.log
 
 struct NotebookSettings: Codable, Equatable {
     var fontSize: Double = 12
@@ -16,6 +17,7 @@ struct NotebookSettings: Codable, Equatable {
 
 @Observable
 final class NotebookSettingsService {
+    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "NotebookSettings")
     private(set) var settings: NotebookSettings
 
     init() {
@@ -37,11 +39,16 @@ final class NotebookSettingsService {
     }
 
     private static func load() -> NotebookSettings {
-        guard let url = fileURL else { return NotebookSettings() }
+        guard let url = fileURL, FileManager.default.fileExists(atPath: url.path) else {
+            return NotebookSettings()
+        }
         do {
             let data = try Data(contentsOf: url)
             return try JSONDecoder().decode(NotebookSettings.self, from: data)
-        } catch { return NotebookSettings() }
+        } catch {
+            logger.warning("Failed to decode notebook settings, using defaults: \(error.localizedDescription, privacy: .public)")
+            return NotebookSettings()
+        }
     }
 
     private func save() {
@@ -49,6 +56,8 @@ final class NotebookSettingsService {
         do {
             let data = try JSONEncoder().encode(settings)
             try data.write(to: url, options: .atomic)
-        } catch {}
+        } catch {
+            Self.logger.error("Failed to save notebook settings: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }

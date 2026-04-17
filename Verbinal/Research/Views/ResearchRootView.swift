@@ -8,25 +8,52 @@ import SwiftUI
 
 struct ResearchRootView: View {
     var researchModel: ResearchModel
+    var searchModel: SearchFormModel?
 
     var body: some View {
-        HSplitView {
-            // Left: File browser
-            DownloadedFilesView(model: researchModel)
-                .frame(minWidth: 250, idealWidth: 300)
-
-            // Right: Detail
-            if let observation = researchModel.selectedObservation {
-                ObservationDetailView(observation: observation, model: researchModel)
-            } else {
-                emptyState
+        VStack(spacing: 0) {
+            // Error banner
+            if let error = researchModel.lastError {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text(error)
+                        .font(.caption)
+                    Spacer()
+                    Button("Dismiss") { researchModel.lastError = nil }
+                        .font(.caption)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(.red.opacity(0.08))
+                Divider()
             }
-        }
-        .overlay(alignment: .bottom) {
-            if researchModel.hasActiveDownloads {
-                DownloadProgressView(model: researchModel)
-                    .frame(maxWidth: .infinity)
-                    .background(.bar)
+
+            GeometryReader { geometry in
+                HStack(spacing: 0) {
+                    // Left: File browser — 1/4 width, fixed
+                    DownloadedFilesView(model: researchModel, searchModel: searchModel)
+                        .frame(width: geometry.size.width * 0.25)
+
+                    Divider()
+
+                    // Right: Detail — 3/4 width
+                    Group {
+                        if let observation = researchModel.selectedObservation {
+                            ObservationDetailView(observation: observation, model: researchModel)
+                        } else {
+                            emptyState
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if researchModel.hasActiveDownloads {
+                    DownloadProgressView(model: researchModel)
+                        .frame(maxWidth: .infinity)
+                        .background(.bar)
+                }
             }
         }
     }

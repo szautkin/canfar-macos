@@ -31,6 +31,8 @@ final class AppState {
     let storageService: StorageService
     let headlessService: HeadlessService
     let recentLaunchStore = RecentLaunchStore()
+    let portalSettingsService = PortalSettingsService()
+    let portalImageCacheService = PortalImageCacheService()
 
     // Headless job monitor (created on auth, destroyed on logout)
     private(set) var headlessMonitor: HeadlessMonitorModel?
@@ -60,14 +62,23 @@ final class AppState {
     }
 
     func navigateBack() {
-        guard let previous = navigationStack.popLast() else { return }
-        currentMode = previous
+        navigationStack.removeAll()
+        currentMode = .landing
     }
 
     // Cross-module actions
     var pendingFITSURL: URL?
-
     var pendingNotebookURL: URL?
+
+    /// Pending sky coordinates from FITS viewer crosshair → Search tab.
+    /// Includes a unique `id` so `.task(id:)` always re-fires, even if the
+    /// same sky position is searched twice in a row.
+    struct PendingCoordinate: Equatable {
+        let id = UUID()
+        let ra: Double
+        let dec: Double
+    }
+    var pendingSearchCoordinate: PendingCoordinate?
 
     enum AppAction {
         case openFITS(url: URL)
@@ -84,8 +95,7 @@ final class AppState {
             pendingNotebookURL = url
             navigateTo(.notebook)
         case .searchCoordinates(let ra, let dec):
-            // Will be wired when SearchFormModel is accessible
-            _ = (ra, dec)
+            pendingSearchCoordinate = PendingCoordinate(ra: ra, dec: dec)
             navigateTo(.search)
         }
     }
@@ -98,7 +108,29 @@ final class AppState {
     var userInfo: UserInfo?
 
     // UI state
-    var showLoginSheet = false
+
+    /// One-at-a-time sheet presentation. SwiftUI's `.sheet` modifier only shows
+    /// one sheet per view hierarchy — using a single item-based sheet with this
+    /// enum prevents silent sheet drops when two triggers fire in the same tick
+    /// (e.g. token-expiry login prompt while export is open).
+    enum ActiveSheet: String, Identifiable {
+        case login, about, export
+        var id: String { rawValue }
+    }
+    var activeSheet: ActiveSheet?
+
+    /// True if the login sheet should be shown. Convenience for call sites that
+    /// only need to know about the login sheet specifically.
+    var showLoginSheet: Bool {
+        get { activeSheet == .login }
+        set {
+            if newValue {
+                activeSheet = .login
+            } else if activeSheet == .login {
+                activeSheet = nil
+            }
+        }
+    }
 
     /// Called on app launch — checks Keychain for a stored token.
     func initialize() async {
@@ -156,21 +188,65 @@ final class AppState {
         }
         headlessMonitor = monitor
         monitor.startMonitoring()
+
+        // Warm the Portal image cache in the background so the Portal tab feels instant
+        // on first navigation. If the cache is already fresh, this is a no-op.
+        prewarmPortalCache()
     }
+
+    /// Active prewarm task — cancelled on logout so an in-flight fetch cannot
+    /// repopulate the cache with the previous user's data after `clear()` runs.
+    private var prewarmTask: Task<Void, Never>?
+
+    /// Background-fetch the Portal image cache right after login so the Portal tab
+    /// feels instant on first navigation. Honors the existing cache TTL.
+    private func prewarmPortalCache() {
+        let user = username
+        guard !user.isEmpty else { return }
+        prewarmTask?.cancel()
+        prewarmTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let (_, wasCached) = try await self.portalImageCacheService.loadOrFetch(
+                    username: user,
+                    imageService: self.imageService
+                )
+                try Task.checkCancellation()
+                if wasCached && self.portalImageCacheService.isStale {
+                    _ = try? await self.portalImageCacheService.fetchFresh(
+                        username: user,
+                        imageService: self.imageService
+                    )
+                }
+            } catch {
+                // Silent — SessionLaunchModel will retry when the user opens Portal.
+            }
+        }
+    }
+
+    /// Active token-expiry handler. Guarded so two simultaneous 401s don't
+    /// race two concurrent re-auth attempts and double-fire updateAuthState.
+    private var tokenExpiryTask: Task<Void, Never>?
 
     /// Called when any service detects a 401 — token has expired mid-session.
     /// Tries silent re-auth if credentials are stored, otherwise shows login sheet.
     func handleTokenExpired() {
         guard isAuthenticated else { return }
+        // Coalesce concurrent 401s: if a reauth task is already running, keep it.
+        if let task = tokenExpiryTask, !task.isCancelled {
+            return
+        }
         headlessMonitor?.stopMonitoring()
         headlessMonitor = nil
         isAuthenticated = false
 
-        Task {
-            if await silentReauth() { return }
+        tokenExpiryTask = Task { [weak self] in
+            guard let self else { return }
+            defer { self.tokenExpiryTask = nil }
+            if await self.silentReauth() { return }
             // Silent re-auth failed — prompt user
-            statusMessage = "Session expired. Please log in again."
-            showLoginSheet = true
+            self.statusMessage = "Session expired. Please log in again."
+            self.showLoginSheet = true
         }
     }
 
@@ -205,6 +281,17 @@ final class AppState {
     func logout() async {
         headlessMonitor?.stopMonitoring()
         headlessMonitor = nil
+
+        // Cancel any in-flight prewarm so it cannot repopulate the cache after clear().
+        prewarmTask?.cancel()
+        prewarmTask = nil
+
+        // Cancel any pending re-auth so it cannot surface a stale login prompt after logout.
+        tokenExpiryTask?.cancel()
+        tokenExpiryTask = nil
+
+        // Drop user-scoped cached data — settings are per-user and survive logout/login.
+        portalImageCacheService.clear()
 
         await authService.logout()
         isAuthenticated = false

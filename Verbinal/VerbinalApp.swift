@@ -11,16 +11,34 @@ struct VerbinalApp: App {
     @State private var appState = AppState()
 
     var body: some Scene {
+        #if os(macOS)
         WindowGroup {
             ContentView()
                 .environment(appState)
-                #if os(macOS)
                 .frame(minWidth: 900, minHeight: 600)
-                #endif
                 .task { NotificationService.requestPermissionIfNeeded() }
         }
-        #if os(macOS)
         .defaultSize(width: 1200, height: 800)
+        .commands {
+            CommandGroup(after: .saveItem) {
+                Divider()
+                Button("Export All…") {
+                    appState.activeSheet = .export
+                }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+            }
+        }
+
+        Settings {
+            SettingsView()
+                .environment(appState)
+        }
+        #else
+        WindowGroup {
+            ContentView()
+                .environment(appState)
+                .task { NotificationService.requestPermissionIfNeeded() }
+        }
         #endif
     }
 }

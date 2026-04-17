@@ -42,6 +42,17 @@ enum NotificationService {
         send(id: "failed-\(sessionName)-\(Date().timeIntervalSince1970)", content: content)
     }
 
+    static func sendExportCompleted(bundleName: String, moduleSummary: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "Export Complete"
+        content.body = moduleSummary
+        content.subtitle = bundleName
+        content.sound = .default
+        content.threadIdentifier = "com.codebg.Verbinal.export"
+
+        send(id: "export-\(Date().timeIntervalSince1970)", content: content)
+    }
+
     // MARK: - Private
 
     private static func send(id: String, content: UNNotificationContent) {

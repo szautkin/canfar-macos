@@ -27,8 +27,8 @@ struct NotebookRootView: View {
                 }
             }
         }
-        .onChange(of: appState.pendingNotebookURL) { _, url in
-            guard let url else { return }
+        .task(id: appState.pendingNotebookURL) {
+            guard let url = appState.pendingNotebookURL else { return }
             appState.pendingNotebookURL = nil
             do {
                 _ = url.startAccessingSecurityScopedResource()

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+Export options for a Mac App Store submission.
+
+Consumed by:
+    xcodebuild -exportArchive -archivePath build/Verbinal.xcarchive \
+                              -exportPath build/mas \
+                              -exportOptionsPlist scripts/mas-export-options.plist
+
+Notes:
+  - method=app-store produces a signed .pkg ready for `xcrun altool --upload-app`
+    (or the newer `xcrun notarytool` equivalent for MAS).
+  - teamID matches DEVELOPMENT_TEAM in project.yml.
+  - signingStyle=manual requires the MAS provisioning profile (see project.yml
+    Release config PROVISIONING_PROFILE_SPECIFIER).
+  - Do NOT enable uploadBitcode (removed from MAS) or uploadSymbols (DWARF is
+    embedded already via DEBUG_INFORMATION_FORMAT=dwarf-with-dsym).
+-->
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store</string>
+    <key>teamID</key>
+    <string>A4ABW5VD88</string>
+    <key>destination</key>
+    <string>export</string>
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>signingCertificate</key>
+    <string>3rd Party Mac Developer Application</string>
+    <key>installerSigningCertificate</key>
+    <string>3rd Party Mac Developer Installer</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.codebg.Verbinal</key>
+        <string>Verbinal MAS</string>
+    </dict>
+    <key>uploadSymbols</key>
+    <false/>
+    <key>stripSwiftSymbols</key>
+    <true/>
+</dict>
+</plist>

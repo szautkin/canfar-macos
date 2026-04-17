@@ -83,9 +83,19 @@ struct LaunchFormView: View {
     @ViewBuilder
     private var standardForm: some View {
         Form {
-            Picker("Session Type", selection: $model.selectedType) {
-                ForEach(model.sessionTypes, id: \.self) { type in
-                    Text(type.capitalized).tag(type)
+            LabeledContent("Session Type") {
+                HStack(spacing: 4) {
+                    Picker("", selection: $model.selectedType) {
+                        ForEach(model.sessionTypes, id: \.self) { type in
+                            Text(type.capitalized).tag(type)
+                        }
+                    }
+                    .labelsHidden()
+                    defaultStar(isOn: model.isSelectedSessionTypeDefault,
+                                tipOn: "Current default — tap to clear",
+                                tipOff: "Set as default session type") {
+                        model.toggleDefaultSessionType()
+                    }
                 }
             }
 
@@ -96,18 +106,40 @@ struct LaunchFormView: View {
             }
             .disabled(model.repositories.count <= 1)
 
-            Picker("Project", selection: $model.selectedProject) {
-                ForEach(model.projects, id: \.self) { project in
-                    Text(project).tag(project)
+            LabeledContent("Project") {
+                HStack(spacing: 4) {
+                    Picker("", selection: $model.selectedProject) {
+                        ForEach(model.projects, id: \.self) { project in
+                            Text(project).tag(project)
+                        }
+                    }
+                    .labelsHidden()
+                    defaultStar(isOn: model.isSelectedProjectDefault,
+                                tipOn: "Current default — tap to clear",
+                                tipOff: "Set as default project") {
+                        model.toggleDefaultProject()
+                    }
+                    .disabled(model.selectedProject.isEmpty)
                 }
             }
 
-            Picker("Container Image", selection: $model.selectedImage) {
-                if model.selectedImage == nil {
-                    Text("Select an image").tag(nil as ParsedImage?)
-                }
-                ForEach(model.images) { img in
-                    Text(img.label).tag(Optional(img))
+            LabeledContent("Container Image") {
+                HStack(spacing: 4) {
+                    Picker("", selection: $model.selectedImage) {
+                        if model.selectedImage == nil {
+                            Text("Select an image").tag(nil as ParsedImage?)
+                        }
+                        ForEach(model.images) { img in
+                            Text(img.label).tag(Optional(img))
+                        }
+                    }
+                    .labelsHidden()
+                    defaultStar(isOn: model.isSelectedImageDefault,
+                                tipOn: "Current default — tap to clear",
+                                tipOff: "Set as default container image") {
+                        model.toggleDefaultImage()
+                    }
+                    .disabled(model.selectedImage == nil)
                 }
             }
 
@@ -121,11 +153,21 @@ struct LaunchFormView: View {
                 .buttonStyle(.borderless)
             }
 
-            Picker("Resources", selection: $model.resourceType) {
-                Text("Flexible").tag("flexible")
-                Text("Fixed").tag("fixed")
+            LabeledContent("Resources") {
+                HStack(spacing: 4) {
+                    Picker("", selection: $model.resourceType) {
+                        Text("Flexible").tag("flexible")
+                        Text("Fixed").tag("fixed")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    defaultStar(isOn: model.isSelectedResourcesDefault,
+                                tipOn: "Current default — tap to clear",
+                                tipOff: "Set current resources as default") {
+                        model.toggleDefaultResources()
+                    }
+                }
             }
-            .pickerStyle(.segmented)
 
             if model.resourceType == "fixed" {
                 ResourceSelectorView(
@@ -162,6 +204,49 @@ struct LaunchFormView: View {
             .disabled(model.isLaunching || model.isAtSessionLimit || model.selectedImage == nil)
             Spacer()
         }
+
+        cacheStatusBar
+    }
+
+    /// Small footer showing cache freshness + manual refresh.
+    @ViewBuilder
+    private var cacheStatusBar: some View {
+        if let age = model.cacheAgeDescription {
+            HStack(spacing: 6) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Text("Images cached \(age)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Button("Refresh") {
+                    Task { await model.refreshImages() }
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.mini)
+                .font(.caption2)
+                .disabled(model.isLoading)
+                Spacer()
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    /// Small inline star button used next to Portal default pickers.
+    @ViewBuilder
+    private func defaultStar(
+        isOn: Bool,
+        tipOn: String,
+        tipOff: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: isOn ? "star.fill" : "star")
+                .foregroundStyle(isOn ? Color.yellow : Color.secondary)
+                .font(.caption)
+        }
+        .buttonStyle(.borderless)
+        .help(isOn ? tipOn : tipOff)
     }
 
     // MARK: - Advanced Form
@@ -169,9 +254,19 @@ struct LaunchFormView: View {
     @ViewBuilder
     private var advancedForm: some View {
         Form {
-            Picker("Session Type", selection: $model.selectedType) {
-                ForEach(model.sessionTypes, id: \.self) { type in
-                    Text(type.capitalized).tag(type)
+            LabeledContent("Session Type") {
+                HStack(spacing: 4) {
+                    Picker("", selection: $model.selectedType) {
+                        ForEach(model.sessionTypes, id: \.self) { type in
+                            Text(type.capitalized).tag(type)
+                        }
+                    }
+                    .labelsHidden()
+                    defaultStar(isOn: model.isSelectedSessionTypeDefault,
+                                tipOn: "Current default — tap to clear",
+                                tipOff: "Set as default session type") {
+                        model.toggleDefaultSessionType()
+                    }
                 }
             }
 

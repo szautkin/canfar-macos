@@ -31,11 +31,12 @@ enum SpatialBuilder {
                 clauses.append(
                     "INTERSECTS( RANGE_S2D(\(range.raLo), \(range.raHi), \(range.decLo), \(range.decHi)), \(SpatialTAPColumns.positionBounds) ) = 1"
                 )
-            } else if params.resolver == .none || params.resolverCoords == nil {
-                // Name match mode
-                let escaped = escapeSql(targetTrimmed.lowercased())
+            } else if let (ra, dec, radius) = parseCoordinatePair(targetTrimmed) {
+                // Direct coordinate pair: "10.68 41.27" or "10.68 41.27 0.5deg"
+                // Detected before name-match so that pasted/injected coordinates always
+                // produce a cone search, regardless of the resolver setting.
                 clauses.append(
-                    "lower(\(SpatialTAPColumns.targetName)) LIKE '%\(escaped)%'"
+                    "INTERSECTS( CIRCLE('ICRS', \(ra), \(dec), \(radius)), \(SpatialTAPColumns.positionBounds) ) = 1"
                 )
             } else if let coords = params.resolverCoords {
                 // Resolved target mode
@@ -58,6 +59,12 @@ enum SpatialBuilder {
                 clauses.append(
                     "INTERSECTS( CIRCLE('ICRS', \(ra), \(dec), \(radius)), \(SpatialTAPColumns.positionBounds) ) = 1"
                 )
+            } else if !targetTrimmed.isEmpty {
+                // Name match mode — plain text target name substring search
+                let escaped = escapeSql(targetTrimmed.lowercased())
+                clauses.append(
+                    "lower(\(SpatialTAPColumns.targetName)) LIKE '%\(escaped)%'"
+                )
             }
         }
 
@@ -71,6 +78,28 @@ enum SpatialBuilder {
     }
 
     // MARK: - Private
+
+    /// Parse a coordinate pair from the target field.
+    /// Accepts: "RA DEC" or "RA DEC RADIUS" where RA/DEC are decimal degree numbers
+    /// and RADIUS is an optional value with optional unit (deg/arcmin/arcsec).
+    /// Returns nil if the input doesn't look like a coordinate pair (e.g. "M31").
+    private static func parseCoordinatePair(_ input: String) -> (ra: Double, dec: Double, radius: Double)? {
+        let parts = input.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        guard parts.count >= 2 else { return nil }
+
+        // First two tokens must be valid doubles that look like sky coordinates
+        guard let ra = Double(parts[0]), let dec = Double(parts[1]) else { return nil }
+        guard (0...360).contains(ra), (-90...90).contains(dec) else { return nil }
+
+        // Optional third token: search radius with optional unit
+        var radius = ADQL.defaultSearchRadius
+        if parts.count >= 3 {
+            let parsed = parseRadius(parts[2])
+            if parsed > 0 { radius = parsed }
+        }
+
+        return (ra, dec, radius)
+    }
 
     private static func parseCoordRange(_ input: String) -> (raLo: Double, raHi: Double, decLo: Double, decHi: Double)? {
         let parts = input.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
@@ -87,13 +116,22 @@ enum SpatialBuilder {
         return (raLo, raHi, decLo, decHi)
     }
 
+    /// Compiled once at module load. Fails at load rather than per call if the
+    /// pattern is ever edited incorrectly.
+    private static let radiusPattern: NSRegularExpression = {
+        // swiftlint:disable:next force_try
+        try! NSRegularExpression(
+            pattern: #"([0-9.eE+-]+)\s*(arcmin|arcsec|deg)?$"#,
+            options: .caseInsensitive
+        )
+    }()
+
     private static func parseRadius(_ input: String) -> Double {
         var trimmed = input.trimmingCharacters(in: .whitespaces)
         trimmed = trimmed.replacingOccurrences(of: "'", with: "arcmin")
 
-        let pattern = try! NSRegularExpression(pattern: #"([0-9.eE+-]+)\s*(arcmin|arcsec|deg)?$"#, options: .caseInsensitive)
         let nsRange = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
-        guard let match = pattern.firstMatch(in: trimmed, range: nsRange),
+        guard let match = radiusPattern.firstMatch(in: trimmed, range: nsRange),
               let valueRange = Range(match.range(at: 1), in: trimmed),
               let value = Double(trimmed[valueRange]) else {
             return ADQL.defaultSearchRadius

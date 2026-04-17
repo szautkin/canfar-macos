@@ -99,7 +99,7 @@ final class AuthService: Sendable {
         do {
             let (data, _) = try await network.get(endpoints.userURL(username), accept: "text/xml")
             guard let xmlString = String(data: data, encoding: .utf8) else { return nil }
-            logger.info("User XML response: \(xmlString, privacy: .public)")
+            logger.debug("User XML response: \(xmlString, privacy: .private)")
             return parseUserXML(xmlString, username: username)
         } catch {
             logger.warning("Failed to fetch user info: \(error.localizedDescription, privacy: .public)")
@@ -114,7 +114,7 @@ final class AuthService: Sendable {
         let email = SimpleXML.textOfFirst(localName: "email", in: xml)
         let institute = SimpleXML.textOfFirst(localName: "institute", in: xml)
 
-        logger.info("Parsed user: firstName=\(firstName ?? "nil", privacy: .public) lastName=\(lastName ?? "nil", privacy: .public)")
+        logger.debug("Parsed user: firstName=\(firstName ?? "nil", privacy: .private) lastName=\(lastName ?? "nil", privacy: .private)")
 
         return UserInfo(
             username: username,

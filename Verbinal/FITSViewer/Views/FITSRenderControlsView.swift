@@ -50,11 +50,24 @@ struct FITSRenderControlsView: View {
                             .controlSize(.mini)
                             .scaleEffect(0.6)
                     }
+                    Spacer()
+                    Button("Auto") {
+                        let cuts = FITSParser.autoCut(pixels: model.pixels)
+                        model.renderParams.minCut = cuts.min
+                        model.renderParams.maxCut = cuts.max
+                        model.renderImage()
+                    }
+                    .font(.caption2)
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .disabled(model.pixels.isEmpty)
+                    .help("Auto-stretch using median + sigma clipping")
                 }
                 VStack(spacing: 2) {
                     HStack(spacing: 4) {
                         Text("Min")
                             .font(.caption2)
+                            .foregroundStyle(.secondary)
                             .frame(width: 28, alignment: .trailing)
                         Slider(
                             value: Bindable(model).renderParams.minCut,
@@ -64,12 +77,17 @@ struct FITSRenderControlsView: View {
                         TextField("", value: Bindable(model).renderParams.minCut, format: .number)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(.caption2, design: .monospaced))
-                            .frame(width: 60)
+                            .frame(width: 80)
                             .onSubmit { model.renderImage() }
+                        Stepper("", value: Bindable(model).renderParams.minCut, in: cutRange, step: cutStep)
+                            .labelsHidden()
+                            .controlSize(.mini)
+                            .onChange(of: model.renderParams.minCut) { _, _ in model.renderImageDebounced() }
                     }
                     HStack(spacing: 4) {
                         Text("Max")
                             .font(.caption2)
+                            .foregroundStyle(.secondary)
                             .frame(width: 28, alignment: .trailing)
                         Slider(
                             value: Bindable(model).renderParams.maxCut,
@@ -79,26 +97,36 @@ struct FITSRenderControlsView: View {
                         TextField("", value: Bindable(model).renderParams.maxCut, format: .number)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(.caption2, design: .monospaced))
-                            .frame(width: 60)
+                            .frame(width: 80)
                             .onSubmit { model.renderImage() }
+                        Stepper("", value: Bindable(model).renderParams.maxCut, in: cutRange, step: cutStep)
+                            .labelsHidden()
+                            .controlSize(.mini)
+                            .onChange(of: model.renderParams.maxCut) { _, _ in model.renderImageDebounced() }
                     }
                 }
-                Button("Auto Cut") {
-                    let cuts = FITSParser.autoCut(pixels: model.pixels)
-                    model.renderParams.minCut = cuts.min
-                    model.renderParams.maxCut = cuts.max
-                    model.renderImage()
+                // Cut window width — helps the astronomer gauge contrast
+                HStack {
+                    Spacer()
+                    Text("Window: \(cutWindow, specifier: "%.1f")")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                        .monospacedDigit()
                 }
-                .font(.caption2)
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(model.pixels.isEmpty)
             }
 
             // Crosshair & Coordinates
             VStack(alignment: .leading, spacing: 6) {
-                Text("Crosshair")
-                    .font(.caption.bold())
+                HStack {
+                    Text("Crosshair")
+                        .font(.caption.bold())
+                    if model.wcs?.isApproximate == true {
+                        Label("WCS approximate", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                            .help("This file lacks standard WCS calibration. Coordinates are estimated from legacy header keywords and may be imprecise.")
+                    }
+                }
 
                 // Current crosshair display
                 if model.crosshairPixel != nil {
@@ -133,10 +161,23 @@ struct FITSRenderControlsView: View {
                         }
                         #endif
                         Button("Clear") { model.clearCrosshair() }
+                            .keyboardShortcut(.escape, modifiers: [])
                     }
                     .font(.caption2)
                     .buttonStyle(.bordered)
                     .controlSize(.mini)
+
+                    Button {
+                        model.searchAtCrosshair()
+                    } label: {
+                        Label("Search Here", systemImage: "location.magnifyingglass")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(model.crosshairRADeg == nil)
+                    .keyboardShortcut("l", modifiers: [.command, .shift])
+                    .help(model.wcs != nil ? "Search for observations at this sky position (⌘⇧L)" : "Requires WCS calibration data")
                 } else {
                     Text("Click on image to place crosshair")
                         .font(.caption2)
@@ -229,6 +270,20 @@ struct FITSRenderControlsView: View {
 
     private var cutRange: ClosedRange<Float> {
         model.pixelMin < model.pixelMax ? model.pixelMin...model.pixelMax : 0...1
+    }
+
+    /// Current cut window width (maxCut − minCut).
+    private var cutWindow: Float {
+        max(model.renderParams.maxCut - model.renderParams.minCut, 0)
+    }
+
+    /// Stepper increment: 1% of the *current cut window*, not the full pixel range.
+    /// As the astronomer narrows the cuts to find faint features, the step auto-refines.
+    /// Floor at 0.1 to allow fine control on narrow-band calibration data (window < 10 ADU).
+    private var cutStep: Float.Stride {
+        let window = cutWindow
+        guard window > 0 else { return 1 }
+        return Float.Stride(max(window / 100, 0.1))
     }
 
     private func zoomLabel(_ level: Double) -> String {
