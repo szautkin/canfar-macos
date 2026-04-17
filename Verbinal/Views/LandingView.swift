@@ -38,13 +38,18 @@ struct LandingView: View {
             ]
 
             LazyVGrid(columns: tileColumns, spacing: 20) {
+                // Portal + Storage need the CADC token; lock them when not
+                // signed in. Tapping a locked tile remembers the intended
+                // destination and opens the login sheet — AppState.updateAuthState
+                // navigates there automatically on successful sign-in.
                 LandingTile(
                     icon: "desktopcomputer",
                     fallbackIcon: "display",
                     title: "Portal",
-                    subtitle: "Manage sessions & data"
+                    subtitle: "Manage sessions & data",
+                    locked: !appState.isAuthenticated
                 ) {
-                    appState.navigateTo(.portal)
+                    navigateOrPromptLogin(.portal)
                 }
 
                 LandingTile(
@@ -69,9 +74,10 @@ struct LandingView: View {
                     icon: "externaldrive.fill",
                     fallbackIcon: "externaldrive.fill",
                     title: "Storage",
-                    subtitle: "Browse VOSpace files"
+                    subtitle: "Browse VOSpace files",
+                    locked: !appState.isAuthenticated
                 ) {
-                    appState.navigateTo(.storage)
+                    navigateOrPromptLogin(.storage)
                 }
 
                 LandingTile(
@@ -103,6 +109,20 @@ struct LandingView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { appState.refreshAddons() }
+    }
+
+    // MARK: - Auth-gated navigation
+
+    /// Navigates to `mode` if the user is signed in. Otherwise remembers the
+    /// intent in `pendingModeAfterLogin` and opens the login sheet —
+    /// `AppState.updateAuthState` will complete the navigation on success.
+    private func navigateOrPromptLogin(_ mode: AppMode) {
+        if appState.isAuthenticated {
+            appState.navigateTo(mode)
+        } else {
+            appState.pendingModeAfterLogin = mode
+            appState.showLoginSheet = true
+        }
     }
 
     // MARK: - Addon slot (sixth landing tile)
@@ -167,6 +187,10 @@ private struct LandingTile: View {
     /// the user can fill by installing something". Used for the generic
     /// Addons placeholder; not a per-addon state.
     var dashedBorder: Bool = false
+    /// Auth-gated tile. Renders a lock badge, a "Sign in to …" tooltip,
+    /// and dims the content. Tap action is still fired — the caller is
+    /// responsible for opening the login flow.
+    var locked: Bool = false
     let action: () -> Void
 
     @State private var isHovering = false
@@ -187,34 +211,52 @@ private struct LandingTile: View {
                 }
             }
             .frame(width: 200, height: 180)
-            .opacity(dashedBorder ? 0.7 : 1.0)
+            .opacity(dashedBorder || locked ? 0.7 : 1.0)
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(isHovering ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear))
             )
             .overlay(borderShape)
-            .overlay(alignment: .topTrailing) {
-                if let trustBadge {
-                    Image(systemName: trustBadge)
-                        .font(.caption)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.tint)
-                        .padding(8)
-                } else if dashedBorder {
-                    Image(systemName: "arrow.down.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(8)
-                }
-            }
+            .overlay(alignment: .topTrailing) { cornerBadge }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(title): \(subtitle)")
+        .accessibilityLabel(accessibilityLabel)
+        .help(locked ? "Sign in to CADC to access \(title)" : "")
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
+    }
+
+    /// Top-trailing overlay — lock + trust-badge + install-arrow compete
+    /// for the same corner; locked wins when active because it's a
+    /// blocking state (user cannot get past it without action).
+    @ViewBuilder
+    private var cornerBadge: some View {
+        if locked {
+            Image(systemName: "lock.fill")
+                .font(.caption)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .padding(8)
+        } else if let trustBadge {
+            Image(systemName: trustBadge)
+                .font(.caption)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.tint)
+                .padding(8)
+        } else if dashedBorder {
+            Image(systemName: "arrow.down.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(8)
+        }
+    }
+
+    private var accessibilityLabel: String {
+        if locked { return "\(title), locked: \(subtitle). Sign in required." }
+        return "\(title): \(subtitle)"
     }
 
     /// Solid 1pt for a regular tile, dashed for the addon placeholder.

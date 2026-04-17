@@ -45,6 +45,47 @@ extension ContentView {
                 Image(systemName: "info.circle")
             }
             .buttonStyle(.borderless)
+
+            if appState.isLoading {
+                ProgressView().scaleEffect(0.7)
+            }
+
+            // Profile / login control — mirrors the Portal toolbar so users
+            // see the same affordance across the app.
+            if appState.isAuthenticated {
+                Menu {
+                    if let info = appState.userInfo {
+                        Section {
+                            if let email = info.email { Text(email) }
+                            if let inst = info.institute { Text(inst) }
+                        }
+                    }
+                    Divider()
+                    Button("Sign Out") {
+                        Task { await appState.logout() }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "person.crop.circle.fill")
+                        if let info = appState.userInfo,
+                           let first = info.firstName {
+                            Text([first, info.lastName].compactMap { $0 }.joined(separator: " "))
+                        } else {
+                            Text(appState.username)
+                        }
+                    }
+                }
+                .help("Your CADC account")
+            } else {
+                Button {
+                    appState.showLoginSheet = true
+                } label: {
+                    Label("Sign In", systemImage: "person.crop.circle")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help("Sign in to CADC to use Portal, Storage, and other authenticated services")
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
