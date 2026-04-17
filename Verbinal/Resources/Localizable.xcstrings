@@ -746,6 +746,9 @@
     "Logs" : {
 
     },
+    "macOS applies app-language overrides at launch. Changing this setting writes the preference; the next launch picks it up." : {
+
+    },
     "Manage sessions & data" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -960,6 +963,9 @@
     "Resource Defaults" : {
 
     },
+    "Restart required" : {
+
+    },
     "Retry" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1054,6 +1060,16 @@
         }
       }
     },
+    "Sign in to access this feature" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous pour accéder à cette fonctionnalité"
+          }
+        }
+      }
+    },
     "Sign in to CADC to access %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1133,9 +1149,6 @@
       }
     },
     "Stretch" : {
-
-    },
-    "Switches the app language immediately. Some text may only update after the next launch." : {
 
     },
     "System" : {
@@ -1225,6 +1238,9 @@
           }
         }
       }
+    },
+    "Verbinal needs to restart to apply the new language." : {
+
     },
     "Verbinal provides a native interface for managing" : {
 

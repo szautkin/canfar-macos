@@ -131,12 +131,15 @@ struct LandingView: View {
     private var addonSlot: some View {
         if let addon = appState.notebookAddon {
             // First-party addon installed → render its own tile.
-            // Future: loop over `installedAddons` once there is more than one.
+            // Manifest strings are English in the plist; wrapping with
+            // LocalizedStringKey runs them through the catalog so first-
+            // party translations take effect. Missing keys fall back to
+            // the raw manifest string — correct for community addons.
             LandingTile(
                 icon: addon.manifest.systemIconName ?? "terminal",
                 fallbackIcon: "doc.text",
-                title: addon.manifest.displayName,
-                subtitle: addon.manifest.subtitle,
+                title: LocalizedStringKey(addon.manifest.displayName),
+                subtitle: LocalizedStringKey(addon.manifest.subtitle),
                 trustBadge: addon.manifest.trustBadge
             ) {
                 _ = appState.addonRegistry.activate(addon, context: .launchEmpty)
@@ -180,8 +183,13 @@ private extension AddonManifest {
 private struct LandingTile: View {
     let icon: String
     let fallbackIcon: String
-    let title: String
-    let subtitle: String
+    /// Declared as `LocalizedStringKey` so string-literal call sites auto-
+    /// route through the String Catalog. For dynamic strings (e.g. addon
+    /// manifest `displayName`), wrap with `LocalizedStringKey(_:)` at the
+    /// call site — the lookup still happens; missing keys fall back to
+    /// the raw string.
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey
     var trustBadge: String? = nil
     /// Dashed border + slightly dimmed content — signals "empty slot that
     /// the user can fill by installing something". Used for the generic
@@ -220,8 +228,8 @@ private struct LandingTile: View {
             .overlay(alignment: .topTrailing) { cornerBadge }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
-        .help(locked ? "Sign in to CADC to access \(title)" : "")
+        .accessibilityLabel(Text(title))
+        .help(locked ? LocalizedStringKey("Sign in to access this feature") : "")
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
@@ -252,11 +260,6 @@ private struct LandingTile: View {
                 .foregroundStyle(.secondary)
                 .padding(8)
         }
-    }
-
-    private var accessibilityLabel: String {
-        if locked { return "\(title), locked: \(subtitle). Sign in required." }
-        return "\(title): \(subtitle)"
     }
 
     /// Solid 1pt for a regular tile, dashed for the addon placeholder.
