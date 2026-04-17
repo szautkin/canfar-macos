@@ -38,6 +38,9 @@ settings:
       SWIFT_COMPILATION_MODE: incremental
       DEBUG_INFORMATION_FORMAT: dwarf
       ENABLE_NS_ASSERTIONS: YES
+packages:
+  VerbinalKit:
+    path: shared/VerbinalKit
 targets:
   Verbinal:
     type: application
@@ -46,6 +49,9 @@ targets:
       - path: Verbinal
         excludes:
           - "**/*.py"
+    dependencies:
+      - package: VerbinalKit
+        product: VerbinalKit
     settings:
       base:
         INFOPLIST_FILE: Verbinal/Info.plist
