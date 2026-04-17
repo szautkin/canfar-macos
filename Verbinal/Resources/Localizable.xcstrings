@@ -1,0 +1,372 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "A CANFAR Science Portal Companion" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Un compagnon du portail scientifique CANFAR" } }
+      }
+    },
+    "- a CANFAR Science Portal" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "— un portail scientifique CANFAR" } }
+      }
+    },
+    "About" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "À propos" } }
+      }
+    },
+    "About Verbinal" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "À propos de Verbinal" } }
+      }
+    },
+    "Account" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Compte" } }
+      }
+    },
+    "Addons" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Extensions" } }
+      }
+    },
+    "Advanced" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Avancé" } }
+      }
+    },
+    "Appearance" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Apparence" } }
+      }
+    },
+    "Browse the App Store" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Parcourir le Mac App Store" } }
+      }
+    },
+    "Browse VOSpace files" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Parcourir les fichiers VOSpace" } }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } }
+      }
+    },
+    "Cannot connect: %@. Please try again." : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexion impossible : %@. Veuillez réessayer." } }
+      }
+    },
+    "Checking authentication..." : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vérification de l'authentification…" } }
+      }
+    },
+    "Close" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fermer" } }
+      }
+    },
+    "Delete" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer" } }
+      }
+    },
+    "Done" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Terminé" } }
+      }
+    },
+    "Download" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Télécharger" } }
+      }
+    },
+    "Downloaded observations" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Observations téléchargées" } }
+      }
+    },
+    "Empty token received" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Jeton vide reçu" } }
+      }
+    },
+    "English" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Anglais" } }
+      }
+    },
+    "Error" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur" } }
+      }
+    },
+    "Explore the CADC archive" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Explorer l'archive du CADC" } }
+      }
+    },
+    "Export All…" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout exporter…" } }
+      }
+    },
+    "Export Complete" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exportation terminée" } }
+      }
+    },
+    "Export failed" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'exportation" } }
+      }
+    },
+    "Export failed: %@" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'exportation : %@" } }
+      }
+    },
+    "File" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichier" } }
+      }
+    },
+    "FITS Viewer" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Visionneuse FITS" } }
+      }
+    },
+    "Français" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Français" } }
+      }
+    },
+    "General" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Général" } }
+      }
+    },
+    "Go" : {
+      "comment" : "Menu bar title for navigation commands",
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aller" } }
+      }
+    },
+    "Help" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aide" } }
+      }
+    },
+    "Invalid server response" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réponse du serveur invalide" } }
+      }
+    },
+    "Invalid URL: %@" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "URL invalide : %@" } }
+      }
+    },
+    "Invalid username or password." : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom d'utilisateur ou mot de passe invalide." } }
+      }
+    },
+    "Landing" : {
+      "comment" : "Main landing / home screen",
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Accueil" } }
+      }
+    },
+    "Language" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Langue" } }
+      }
+    },
+    "Loading…" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Chargement…" } }
+      }
+    },
+    "Logged out" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Déconnecté" } }
+      }
+    },
+    "Login" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexion" } }
+      }
+    },
+    "Logout" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Déconnexion" } }
+      }
+    },
+    "Manage sessions & data" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gérer les sessions et les données" } }
+      }
+    },
+    "Network Error: %@" : {
+      "comment" : "Error category prefix; the trailing %@ is the raw server message and must not be translated.",
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur réseau : %@" } }
+      }
+    },
+    "Notebook" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Calepin" } }
+      }
+    },
+    "OK" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "OK" } }
+      }
+    },
+    "Password" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mot de passe" } }
+      }
+    },
+    "Please log in" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Veuillez vous connecter" } }
+      }
+    },
+    "Portal" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Portail" } }
+      }
+    },
+    "Remember me" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Se souvenir de moi" } }
+      }
+    },
+    "Renewing session…" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Renouvellement de la session…" } }
+      }
+    },
+    "Research" : {
+      "comment" : "Landing tile: user's personal research library (downloaded observations + notes)",
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Recherche" } }
+      }
+    },
+    "Retry" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réessayer" } }
+      }
+    },
+    "Run Jupyter notebooks locally" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exécuter des calepins Jupyter localement" } }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer" } }
+      }
+    },
+    "Search" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rechercher" } }
+      }
+    },
+    "Session expired. Please log in again." : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Session expirée. Veuillez vous reconnecter." } }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglages" } }
+      }
+    },
+    "Sign In" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Se connecter" } }
+      }
+    },
+    "Sign Out" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Se déconnecter" } }
+      }
+    },
+    "Sign Up" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Créer un compte" } }
+      }
+    },
+    "Sign in to CADC to access %@" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connectez-vous au CADC pour accéder à %@" } }
+      }
+    },
+    "Sign in to CADC to use Portal, Storage, and other authenticated services" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connectez-vous au CADC pour utiliser Portail, Stockage et les autres services authentifiés" } }
+      }
+    },
+    "Status" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "État" } }
+      }
+    },
+    "Storage" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Stockage" } }
+      }
+    },
+    "System" : {
+      "comment" : "Language picker option — follow the macOS system language",
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Système" } }
+      }
+    },
+    "Toggle file browser (Cmd+B)" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher ou masquer le navigateur de fichiers (Cmd+B)" } }
+      }
+    },
+    "Username" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom d'utilisateur" } }
+      }
+    },
+    "Validating session…" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Validation de la session…" } }
+      }
+    },
+    "Verbinal" : {
+      "comment" : "App name — do NOT translate",
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Verbinal" } }
+      }
+    },
+    "View astronomical images" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher les images astronomiques" } }
+      }
+    },
+    "Welcome, %@" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Bienvenue, %@" } }
+      }
+    },
+    "Your CADC account" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Votre compte CADC" } }
+      }
+    }
+  }
+}

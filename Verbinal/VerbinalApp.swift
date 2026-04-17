@@ -15,6 +15,7 @@ struct VerbinalApp: App {
         WindowGroup {
             ContentView()
                 .environment(appState)
+                .environment(\.locale, appState.locale)
                 .frame(minWidth: 900, minHeight: 600)
                 .task { NotificationService.requestPermissionIfNeeded() }
         }
@@ -32,6 +33,7 @@ struct VerbinalApp: App {
         Settings {
             SettingsView()
                 .environment(appState)
+                .environment(\.locale, appState.locale)
         }
         #else
         WindowGroup {

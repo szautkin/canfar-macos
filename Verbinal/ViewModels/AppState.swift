@@ -43,6 +43,33 @@ final class AppState {
     /// Never nil; empty array = none of the known addons are installed.
     private(set) var installedAddons: [InstalledAddon] = []
 
+    // MARK: - Localization
+
+    /// UserDefaults key for the user's preferred language override.
+    /// Values: "system" (follow macOS), "en", "fr".
+    private static let preferredLocaleKey = "VerbinalPreferredLocale"
+
+    /// Raw preference. Read/written via UserDefaults. Observable so the
+    /// Settings view and WindowGroup react to changes.
+    var preferredLocaleIdentifier: String {
+        get {
+            UserDefaults.standard.string(forKey: Self.preferredLocaleKey) ?? "system"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Self.preferredLocaleKey)
+        }
+    }
+
+    /// Effective locale for the SwiftUI environment. Computed from the
+    /// preference; "system" falls back to the user's current system locale.
+    var locale: Locale {
+        let id = preferredLocaleIdentifier
+        if id == "system" {
+            return .current
+        }
+        return Locale(identifier: id)
+    }
+
     init() {
         let network = NetworkClient()
         let endpoints = APIEndpoints()
