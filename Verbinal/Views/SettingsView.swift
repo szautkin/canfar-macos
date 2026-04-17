@@ -55,13 +55,32 @@ private struct GeneralSettingsTab: View {
                     Label("Language", systemImage: "globe")
                 }
                 .pickerStyle(.menu)
+
+                if appState.languageChangePendingRelaunch {
+                    HStack(spacing: 10) {
+                        Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                            .foregroundStyle(.tint)
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Restart required")
+                                .font(.callout.bold())
+                            Text("Verbinal needs to restart to apply the new language.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Restart Now") {
+                            appState.relaunch()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                    .padding(.vertical, 4)
+                }
             } header: {
                 Text("Language")
             } footer: {
-                // The standard macOS behavior is to relaunch for full effect.
-                // Live switching works for most SwiftUI views but not for
-                // strings read from NSBundle in other code paths.
-                Text("Switches the app language immediately. Some text may only update after the next launch.")
+                Text("macOS applies app-language overrides at launch. Changing this setting writes the preference; the next launch picks it up.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

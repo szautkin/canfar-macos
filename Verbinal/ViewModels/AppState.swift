@@ -7,6 +7,9 @@
 import Foundation
 import Observation
 import VerbinalKit
+#if os(macOS)
+import AppKit
+#endif
 
 enum AppMode: Equatable {
     case landing
@@ -49,25 +52,59 @@ final class AppState {
     /// Values: "system" (follow macOS), "en", "fr".
     private static let preferredLocaleKey = "VerbinalPreferredLocale"
 
-    /// Raw preference. Read/written via UserDefaults. Observable so the
-    /// Settings view and WindowGroup react to changes.
-    var preferredLocaleIdentifier: String {
-        get {
-            UserDefaults.standard.string(forKey: Self.preferredLocaleKey) ?? "system"
-        }
-        set {
-            UserDefaults.standard.set(newValue, forKey: Self.preferredLocaleKey)
+    /// Raw preference, stored so `@Observable` tracks mutations. Loaded
+    /// from UserDefaults in `init()`. Changing it writes `AppleLanguages`
+    /// into UserDefaults, which Bundle.main reads at launch to decide which
+    /// lproj to load for string-catalog lookups. SwiftUI `Text` literals
+    /// pick up the new language only after the next launch — live locale
+    /// switching isn't supported on macOS for string resolution.
+    ///
+    /// Swift property observers don't fire when a class assigns to the
+    /// property inside its own initializer (before super.init), so the
+    /// load in `init()` safely bypasses the restart-required bookkeeping.
+    var preferredLocaleIdentifier: String = "system" {
+        didSet {
+            guard preferredLocaleIdentifier != oldValue else { return }
+            writePreferenceToDisk()
+            languageChangePendingRelaunch = true
         }
     }
 
-    /// Effective locale for the SwiftUI environment. Computed from the
-    /// preference; "system" falls back to the user's current system locale.
+    /// True when the user has changed the language since launch but hasn't
+    /// relaunched yet. Drives the restart banner in the Settings General tab.
+    private(set) var languageChangePendingRelaunch: Bool = false
+
+    /// Effective locale for date/number/currency formatting. Does NOT change
+    /// which lproj Bundle.main reads from; that's driven by AppleLanguages
+    /// and is only consulted at launch.
     var locale: Locale {
         let id = preferredLocaleIdentifier
-        if id == "system" {
-            return .current
-        }
+        if id == "system" { return .current }
         return Locale(identifier: id)
+    }
+
+    /// Push the current preference into UserDefaults, including the
+    /// AppleLanguages override macOS uses for bundle lookups.
+    private func writePreferenceToDisk() {
+        UserDefaults.standard.set(preferredLocaleIdentifier, forKey: Self.preferredLocaleKey)
+        if preferredLocaleIdentifier == "system" {
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        } else {
+            UserDefaults.standard.set([preferredLocaleIdentifier], forKey: "AppleLanguages")
+        }
+    }
+
+    /// Quit-and-relaunch Verbinal so the new AppleLanguages value takes
+    /// effect for bundle-resolved strings.
+    func relaunch() {
+        #if os(macOS)
+        let bundleURL = Bundle.main.bundleURL
+        let config = NSWorkspace.OpenConfiguration()
+        config.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: bundleURL, configuration: config) { _, _ in
+            DispatchQueue.main.async { NSApp.terminate(nil) }
+        }
+        #endif
     }
 
     init() {
@@ -86,6 +123,13 @@ final class AppState {
         // first-party addon can read the CADC token without re-authing. Default
         // is unset when the entitlement isn't granted — the call is a no-op.
         KeychainStorage.configure(accessGroup: "A4ABW5VD88.codebg.verbinal.family")
+
+        // Restore saved language preference. didSet does NOT fire for this
+        // assignment (Swift rule: property observers skipped inside the
+        // declaring class's own init), so no spurious "restart required".
+        if let stored = UserDefaults.standard.string(forKey: Self.preferredLocaleKey) {
+            self.preferredLocaleIdentifier = stored
+        }
     }
 
     /// Re-scan installed addons. Call at app launch and whenever the user

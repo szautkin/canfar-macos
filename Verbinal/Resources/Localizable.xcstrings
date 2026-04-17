@@ -1,372 +1,1276 @@
 {
   "sourceLanguage" : "en",
-  "version" : "1.0",
   "strings" : {
-    "A CANFAR Science Portal Companion" : {
-      "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Un compagnon du portail scientifique CANFAR" } }
-      }
+    "" : {
+
+    },
+    "     Dec:" : {
+
+    },
+    "     Val:" : {
+
     },
     "- a CANFAR Science Portal" : {
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "— un portail scientifique CANFAR" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "— un portail scientifique CANFAR"
+          }
+        }
       }
     },
-    "About" : {
+    "'%@' already exists in recent launches. Replace it?" : {
+
+    },
+    "'%@' already exists. Replace it?" : {
+
+    },
+    "(%@ total)" : {
+
+    },
+    "(%@)" : {
+
+    },
+    "/ %@" : {
+
+    },
+    "%@" : {
+
+    },
+    "%@ — %@" : {
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "À propos" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "%@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "%@ × %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ × %2$@"
+          }
+        }
+      }
+    },
+    "%@ active" : {
+
+    },
+    "%@ cards" : {
+
+    },
+    "%@ files" : {
+
+    },
+    "%@ images cached for %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ images cached for %2$@"
+          }
+        }
+      }
+    },
+    "%@ is available on macOS" : {
+
+    },
+    "%@ of %@ results" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@ results"
+          }
+        }
+      }
+    },
+    "%@ results" : {
+
+    },
+    "%@ total" : {
+
+    },
+    "%@ words" : {
+
+    },
+    "%@/%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@/%2$@"
+          }
+        }
+      }
+    },
+    "%@c" : {
+
+    },
+    "%@s" : {
+
+    },
+    "© 2026 Serhii Zautkin" : {
+
+    },
+    "=" : {
+
+    },
+    "= %@" : {
+
+    },
+    "50" : {
+
+    },
+    "100" : {
+
+    },
+    "500" : {
+
+    },
+    "A CANFAR Science Portal Companion" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un compagnon du portail scientifique CANFAR"
+          }
+        }
+      }
+    },
+    "A macOS companion for the CANFAR Science Platform." : {
+
+    },
+    "About" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos"
+          }
+        }
       }
     },
     "About Verbinal" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "À propos de Verbinal" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos de Verbinal"
+          }
+        }
       }
     },
     "Account" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Compte" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compte"
+          }
+        }
       }
     },
+    "Action Failed" : {
+
+    },
+    "Additional Constraints" : {
+
+    },
     "Addons" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Extensions" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Extensions"
+          }
+        }
       }
     },
     "Advanced" : {
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Avancé" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avancé"
+          }
+        }
       }
+    },
+    "All" : {
+
     },
     "Appearance" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Apparence" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apparence"
+          }
+        }
       }
     },
+    "Are you sure you want to delete '%@'? This action cannot be undone." : {
+
+    },
+    "Auto-refresh %@s" : {
+
+    },
+    "Batch Jobs" : {
+
+    },
+    "Bookmarks" : {
+
+    },
     "Browse the App Store" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Parcourir le Mac App Store" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parcourir le Mac App Store"
+          }
+        }
       }
     },
     "Browse VOSpace files" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Parcourir les fichiers VOSpace" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parcourir les fichiers VOSpace"
+          }
+        }
       }
     },
+    "Cached %@" : {
+
+    },
     "Cancel" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
+          }
+        }
       }
     },
     "Cannot connect: %@. Please try again." : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexion impossible : %@. Veuillez réessayer." } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion impossible : %@. Veuillez réessayer."
+          }
+        }
       }
     },
     "Checking authentication..." : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vérification de l'authentification…" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérification de l'authentification…"
+          }
+        }
       }
+    },
+    "Choose what to include in your Claude-friendly export bundle." : {
+
+    },
+    "Click on image to place crosshair" : {
+
     },
     "Close" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fermer" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer"
+          }
+        }
       }
     },
-    "Delete" : {
+    "Colormap" : {
+
+    },
+    "Copies FITS / notebook files into the bundle. Bundle size will be much larger." : {
+
+    },
+    "CPU Cores:" : {
+
+    },
+    "CPU: %@ | RAM: %@G" : {
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "CPU: %1$@ | RAM: %2$@G"
+          }
+        }
+      }
+    },
+    "Crosshair" : {
+
+    },
+    "Cuts" : {
+
+    },
+    "Dec:" : {
+
+    },
+    "Defaults" : {
+
+    },
+    "Delete" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer"
+          }
+        }
       }
     },
     "Done" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Terminé" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé"
+          }
+        }
       }
     },
     "Download" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Télécharger" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger"
+          }
+        }
       }
+    },
+    "Download observations from Search to view them here." : {
+
     },
     "Downloaded observations" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Observations téléchargées" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Observations téléchargées"
+          }
+        }
       }
     },
+    "Downloads" : {
+
+    },
+    "Edited %@" : {
+
+    },
+    "Empty folder" : {
+
+    },
     "Empty token received" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Jeton vide reçu" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeton vide reçu"
+          }
+        }
       }
     },
     "English" : {
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Anglais" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anglais"
+          }
+        }
       }
     },
     "Error" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erreur"
+          }
+        }
       }
     },
+    "Events" : {
+
+    },
+    "Events / Logs: %@" : {
+
+    },
+    "Execute" : {
+
+    },
     "Explore the CADC archive" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Explorer l'archive du CADC" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explorer l'archive du CADC"
+          }
+        }
       }
     },
     "Export All…" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout exporter…" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout exporter…"
+          }
+        }
       }
     },
     "Export Complete" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exportation terminée" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportation terminée"
+          }
+        }
       }
     },
+    "Export Data" : {
+
+    },
     "Export failed" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'exportation" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec de l'exportation"
+          }
+        }
       }
     },
     "Export failed: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'exportation : %@" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec de l'exportation : %@"
+          }
+        }
       }
     },
+    "Exporting…" : {
+
+    },
+    "Failed to load" : {
+
+    },
     "File" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fichier" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichier"
+          }
+        }
       }
+    },
+    "File Info" : {
+
     },
     "FITS Viewer" : {
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Visionneuse FITS" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visionneuse FITS"
+          }
+        }
       }
+    },
+    "Fixed" : {
+
+    },
+    "FLEX" : {
+
+    },
+    "Flexible" : {
+
     },
     "Français" : {
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Français" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Français"
+          }
+        }
       }
     },
     "General" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Général" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Général"
+          }
+        }
       }
     },
     "Go" : {
       "comment" : "Menu bar title for navigation commands",
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aller" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aller"
+          }
+        }
       }
+    },
+    "Go To (degrees)" : {
+
+    },
+    "GPUs:" : {
+
+    },
+    "HDUs" : {
+
+    },
+    "Header" : {
+
     },
     "Help" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aide" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aide"
+          }
+        }
       }
     },
+    "Image Cache" : {
+
+    },
+    "Images cached %@" : {
+
+    },
+    "Include downloaded files" : {
+
+    },
+    "interactive computing sessions on the CANFAR platform." : {
+
+    },
     "Invalid server response" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réponse du serveur invalide" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réponse du serveur invalide"
+          }
+        }
       }
     },
     "Invalid URL: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "URL invalide : %@" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL invalide : %@"
+          }
+        }
       }
     },
     "Invalid username or password." : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom d'utilisateur ou mot de passe invalide." } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nom d'utilisateur ou mot de passe invalide."
+          }
+        }
       }
     },
     "Landing" : {
       "comment" : "Main landing / home screen",
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Accueil" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accueil"
+          }
+        }
       }
     },
     "Language" : {
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Langue" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langue"
+          }
+        }
       }
     },
+    "Last updated: %@" : {
+
+    },
+    "Launch (Custom Image)" : {
+
+    },
+    "Launch a session from the Launch tab" : {
+
+    },
+    "Launch a session from the sidebar" : {
+
+    },
+    "Launch Failed" : {
+
+    },
+    "Launch Session" : {
+
+    },
     "Loading…" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Chargement…" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chargement…"
+          }
+        }
       }
     },
     "Logged out" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Déconnecté" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déconnecté"
+          }
+        }
       }
     },
     "Login" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexion" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion"
+          }
+        }
       }
+    },
+    "Login Required" : {
+
+    },
+    "Login to CANFAR" : {
+
     },
     "Logout" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Déconnexion" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déconnexion"
+          }
+        }
       }
     },
+    "Logs" : {
+
+    },
     "Manage sessions & data" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gérer les sessions et les données" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gérer les sessions et les données"
+          }
+        }
       }
+    },
+    "Max" : {
+
+    },
+    "Metadata" : {
+
+    },
+    "Min" : {
+
+    },
+    "Modules" : {
+
     },
     "Network Error: %@" : {
       "comment" : "Error category prefix; the trailing %@ is the raw server message and must not be translated.",
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur réseau : %@" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erreur réseau : %@"
+          }
+        }
       }
+    },
+    "New Folder" : {
+
+    },
+    "No %@ jobs" : {
+
+    },
+    "No active sessions" : {
+
+    },
+    "No bookmarks" : {
+
+    },
+    "No cache on disk" : {
+
+    },
+    "No default" : {
+
+    },
+    "No downloads yet" : {
+
+    },
+    "No FITS file open" : {
+
+    },
+    "No matches" : {
+
+    },
+    "No preview available" : {
+
+    },
+    "No saved queries" : {
+
+    },
+    "None" : {
+
     },
     "Notebook" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Calepin" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calepin"
+          }
+        }
       }
+    },
+    "Notes" : {
+
+    },
+    "Observation" : {
+
+    },
+    "Observation Date" : {
+
+    },
+    "Observation Detail" : {
+
+    },
+    "Observing conditions, calibration notes, reduction steps, reminders…" : {
+
     },
     "OK" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "OK" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
       }
     },
+    "Open a FITS file or drag one here." : {
+
+    },
+    "Open a FITS file to view astronomical images." : {
+
+    },
+    "Options" : {
+
+    },
     "Password" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mot de passe" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mot de passe"
+          }
+        }
       }
     },
     "Please log in" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Veuillez vous connecter" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veuillez vous connecter"
+          }
+        }
       }
     },
     "Portal" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Portail" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portail"
+          }
+        }
       }
     },
+    "Preview" : {
+
+    },
+    "Quality" : {
+
+    },
+    "Quota" : {
+
+    },
+    "RA:" : {
+
+    },
+    "RAM (GB):" : {
+
+    },
+    "Recent Launches" : {
+
+    },
+    "Refreshing…" : {
+
+    },
+    "Relaunch" : {
+
+    },
     "Remember me" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Se souvenir de moi" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se souvenir de moi"
+          }
+        }
       }
     },
     "Renewing session…" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Renouvellement de la session…" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renouvellement de la session…"
+          }
+        }
       }
     },
     "Research" : {
       "comment" : "Landing tile: user's personal research library (downloaded observations + notes)",
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Recherche" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche"
+          }
+        }
       }
+    },
+    "Reset" : {
+
+    },
+    "Resource Defaults" : {
+
     },
     "Retry" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réessayer" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer"
+          }
+        }
       }
     },
+    "Run a search to see results here." : {
+
+    },
     "Run Jupyter notebooks locally" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exécuter des calepins Jupyter localement" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécuter des calepins Jupyter localement"
+          }
+        }
       }
     },
     "Save" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer"
+          }
+        }
       }
     },
     "Search" : {
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rechercher" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher"
+          }
+        }
       }
+    },
+    "Search CADC to find observations" : {
+
+    },
+    "Select a section" : {
+
+    },
+    "Select an image" : {
+
+    },
+    "Select an observation" : {
+
     },
     "Session expired. Please log in again." : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Session expirée. Veuillez vous reconnecter." } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session expirée. Veuillez vous reconnecter."
+          }
+        }
       }
     },
+    "Session launched successfully!" : {
+
+    },
     "Settings" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglages" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réglages"
+          }
+        }
       }
     },
     "Sign In" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Se connecter" } }
-      }
-    },
-    "Sign Out" : {
-      "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Se déconnecter" } }
-      }
-    },
-    "Sign Up" : {
-      "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Créer un compte" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se connecter"
+          }
+        }
       }
     },
     "Sign in to CADC to access %@" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connectez-vous au CADC pour accéder à %@" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous au CADC pour accéder à %@"
+          }
+        }
       }
     },
     "Sign in to CADC to use Portal, Storage, and other authenticated services" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connectez-vous au CADC pour utiliser Portail, Stockage et les autres services authentifiés" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous au CADC pour utiliser Portail, Stockage et les autres services authentifiés"
+          }
+        }
       }
     },
-    "Status" : {
+    "Sign in to continue." : {
+
+    },
+    "Sign Out" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "État" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se déconnecter"
+          }
+        }
+      }
+    },
+    "Sign Up" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer un compte"
+          }
+        }
+      }
+    },
+    "Spatial" : {
+
+    },
+    "Spectral" : {
+
+    },
+    "Standard" : {
+
+    },
+    "Status" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "État"
+          }
+        }
       }
     },
     "Storage" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Stockage" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stockage"
+          }
+        }
       }
+    },
+    "Stretch" : {
+
+    },
+    "Switches the app language immediately. Some text may only update after the next launch." : {
+
     },
     "System" : {
       "comment" : "Language picker option — follow the macOS system language",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Système" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Système"
+          }
+        }
       }
+    },
+    "Tags" : {
+
+    },
+    "Target / Coordinates" : {
+
+    },
+    "Temporal" : {
+
+    },
+    "This cannot be undone." : {
+
+    },
+    "This will remove the file from disk. This cannot be undone." : {
+
     },
     "Toggle file browser (Cmd+B)" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher ou masquer le navigateur de fichiers (Cmd+B)" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher ou masquer le navigateur de fichiers (Cmd+B)"
+          }
+        }
       }
     },
+    "Updated %@ ago" : {
+
+    },
+    "Uploaded to VOSpace: %@" : {
+
+    },
+    "Uploading…" : {
+
+    },
+    "Usage" : {
+
+    },
+    "Used" : {
+
+    },
     "Username" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom d'utilisateur" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nom d'utilisateur"
+          }
+        }
       }
     },
     "Validating session…" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Validation de la session…" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validation de la session…"
+          }
+        }
       }
+    },
+    "Value:" : {
+
     },
     "Verbinal" : {
       "comment" : "App name — do NOT translate",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Verbinal" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal"
+          }
+        }
       }
     },
+    "Verbinal provides a native interface for managing" : {
+
+    },
+    "Version %@" : {
+
+    },
     "View astronomical images" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher les images astronomiques" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher les images astronomiques"
+          }
+        }
       }
     },
     "Welcome, %@" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Bienvenue, %@" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bienvenue, %@"
+          }
+        }
       }
     },
+    "Window: %.1f" : {
+
+    },
     "Your CADC account" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Votre compte CADC" } }
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre compte CADC"
+          }
+        }
       }
+    },
+    "Zoom" : {
+
     }
-  }
+  },
+  "version" : "1.0"
 }
