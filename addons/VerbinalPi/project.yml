@@ -1,0 +1,78 @@
+name: VerbinalPi
+options:
+  bundleIdPrefix: com.codebg.Verbinal.addon
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+configs:
+  Debug: debug
+  Release: release
+packages:
+  VerbinalKit:
+    path: ../../shared/VerbinalKit
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal.addon.notebook
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    PRODUCT_NAME: VerbinalPi
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: A4ABW5VD88
+  configs:
+    Release:
+      CODE_SIGN_STYLE: Manual
+      CODE_SIGN_IDENTITY: "3rd Party Mac Developer Application"
+      PROVISIONING_PROFILE_SPECIFIER: "Verbinal Pi MAS"
+      SWIFT_OPTIMIZATION_LEVEL: "-O"
+      SWIFT_COMPILATION_MODE: wholemodule
+      DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+      ENABLE_NS_ASSERTIONS: NO
+    Debug:
+      SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+      SWIFT_COMPILATION_MODE: incremental
+      DEBUG_INFORMATION_FORMAT: dwarf
+      ENABLE_NS_ASSERTIONS: YES
+targets:
+  VerbinalPi:
+    type: application
+    platform: macOS
+    sources:
+      - path: VerbinalPi
+        excludes:
+          - "**/*.py"
+      - path: VerbinalPi/Resources
+        type: resource
+        buildPhase: resources
+    dependencies:
+      - package: VerbinalKit
+        product: VerbinalKit
+    preBuildScripts:
+      - name: Bundle Python (opt-in in Debug, always in Release)
+        script: |
+          set -euo pipefail
+          if [ "${CONFIGURATION:-Debug}" != "Release" ] && [ "${BUNDLE_PYTHON:-0}" != "1" ]; then
+              echo "Debug build without BUNDLE_PYTHON=1 — skipping (will use host Python)."
+              exit 0
+          fi
+          OUTPUT_DIR="$DERIVED_FILE_DIR/python" \
+          SIGN_IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY_NAME:--}" \
+          KEEP_PIP="${KEEP_PIP:-0}" \
+          "${SRCROOT}/../../scripts/bundle-python.sh"
+          DEST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/python"
+          rm -rf "$DEST"
+          mkdir -p "$(dirname "$DEST")"
+          cp -R "$DERIVED_FILE_DIR/python" "$DEST"
+        basedOnDependencyAnalysis: false
+    settings:
+      base:
+        INFOPLIST_FILE: VerbinalPi/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal.addon.notebook
+        CODE_SIGN_ENTITLEMENTS: VerbinalPi/Verbinal-Pi.entitlements
+schemes:
+  VerbinalPi:
+    build:
+      targets:
+        VerbinalPi: all

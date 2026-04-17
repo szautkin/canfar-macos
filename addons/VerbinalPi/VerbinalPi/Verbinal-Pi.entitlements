@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+Entitlements for Verbinal Pi (bundle id com.codebg.Verbinal.addon.notebook).
+
+Pi adds a bundled CPython interpreter and an in-app notebook; that forces three
+cs.* keys plus `inherit` for the subprocess. These keys are absent from the
+host Verbinal entitlements.
+
+Keychain access group matches the host's:
+    A4ABW5VD88.codebg.verbinal.family
+so the CADC token the user enters in the host is readable here without a
+second sign-in.
+-->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.inherit</key>
+    <true/>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>A4ABW5VD88.codebg.verbinal.family</string>
+    </array>
+</dict>
+</plist>

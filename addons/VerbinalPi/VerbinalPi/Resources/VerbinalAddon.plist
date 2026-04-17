@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+Addon manifest baked into the Pi bundle at Contents/Resources/VerbinalAddon.plist.
+The Verbinal host reads this file via AddonRegistry.discoverInstalled() to
+present the Notebook tile on its landing page. Keep in sync with the fallback
+manifest in VerbinalPiApp.swift.
+-->
+<plist version="1.0">
+<dict>
+    <key>schemaVersion</key>
+    <integer>1</integer>
+    <key>addonID</key>
+    <string>com.codebg.Verbinal.addon.notebook</string>
+    <key>displayName</key>
+    <string>Notebook</string>
+    <key>subtitle</key>
+    <string>Run Jupyter notebooks locally</string>
+    <key>systemIconName</key>
+    <string>terminal</string>
+    <key>urlScheme</key>
+    <string>verbinal-notebook</string>
+    <key>version</key>
+    <string>1.0.0</string>
+    <key>minimumHostVersion</key>
+    <string>1.2.0</string>
+    <key>capabilities</key>
+    <array>
+        <dict>
+            <key>viewer</key>
+            <dict>
+                <key>fileTypes</key>
+                <array>
+                    <string>public.python-script</string>
+                    <string>public.json</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>producer</key>
+            <dict/>
+        </dict>
+    </array>
+    <key>authRequirement</key>
+    <string>cadcOptional</string>
+    <key>trust</key>
+    <dict>
+        <key>official</key>
+        <dict>
+            <key>teamID</key>
+            <string>A4ABW5VD88</string>
+            <key>keychainAccessGroup</key>
+            <string>A4ABW5VD88.codebg.verbinal.family</string>
+        </dict>
+    </dict>
+</dict>
+</plist>
