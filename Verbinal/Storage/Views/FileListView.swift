@@ -93,7 +93,7 @@ struct FileListView: View {
         }
     }
 
-    private func sortableHeader(_ title: String, key: StorageBrowserModel.SortKey) -> some View {
+    private func sortableHeader(_ title: LocalizedStringKey, key: StorageBrowserModel.SortKey) -> some View {
         Button {
             model.toggleSort(key)
         } label: {

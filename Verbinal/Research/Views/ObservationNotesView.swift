@@ -97,6 +97,8 @@ struct ObservationNotesView: View {
             }
 
             if rating > 0 {
+                // qualityLabel returns a LocalizedStringKey so Text routes
+                // through the String Catalog (each star tier has a FR value).
                 Text(qualityLabel(rating))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -188,7 +190,7 @@ struct ObservationNotesView: View {
             .filter { !$0.isEmpty }
     }
 
-    private func qualityLabel(_ stars: Int) -> String {
+    private func qualityLabel(_ stars: Int) -> LocalizedStringKey {
         switch stars {
         case 1: return "Unusable"
         case 2: return "Poor"

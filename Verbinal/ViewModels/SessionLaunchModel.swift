@@ -488,17 +488,23 @@ final class SessionLaunchModel {
     func updateSessionLimit() {
         let total = totalSessionCounter?() ?? 0
         isAtSessionLimit = total >= maxConcurrentSessions
+        // View layer renders `Label(model.sessionLimitMessage, ...)` with a
+        // String, bypassing LocalizedStringKey. Resolve at assignment time so
+        // the message is already in the user's language.
         sessionLimitMessage = isAtSessionLimit
-            ? "Session limit reached (\(total)/\(maxConcurrentSessions))"
+            ? String(localized: "Session limit reached (\(total)/\(maxConcurrentSessions))")
             : ""
     }
 
     // MARK: - Launch
 
     func launch() async {
+        // errorMessage + launchStatus are displayed via `Text(model.errorMessage)`
+        // (verbatim String initializer) — localize at assignment to keep the
+        // surface type `String` while still routing through the catalog.
         guard !sessionName.isEmpty else {
             hasError = true
-            errorMessage = "Session name is required"
+            errorMessage = String(localized: "Session name is required")
             return
         }
 
@@ -507,7 +513,7 @@ final class SessionLaunchModel {
             let trimmed = customImageUrl.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
                 hasError = true
-                errorMessage = "Custom image URL is required"
+                errorMessage = String(localized: "Custom image URL is required")
                 return
             }
             // Allow only characters that are legal in container image references:
@@ -517,7 +523,7 @@ final class SessionLaunchModel {
             guard trimmed.range(of: imageRefPattern, options: .regularExpression) != nil,
                   !trimmed.contains("..") else {
                 hasError = true
-                errorMessage = "Custom image URL contains invalid characters"
+                errorMessage = String(localized: "Custom image URL contains invalid characters")
                 return
             }
             // Advanced tab: prepend selected registry host to custom image path
@@ -529,7 +535,7 @@ final class SessionLaunchModel {
         } else {
             guard let img = selectedImage else {
                 hasError = true
-                errorMessage = "Please select an image"
+                errorMessage = String(localized: "Please select an image")
                 return
             }
             imageId = img.id
@@ -538,7 +544,7 @@ final class SessionLaunchModel {
         isLaunching = true
         launchSuccess = false
         hasError = false
-        launchStatus = "Launching session..."
+        launchStatus = String(localized: "Launching session…")
 
         var params = SessionLaunchParams(
             type: selectedType,
@@ -564,7 +570,7 @@ final class SessionLaunchModel {
         do {
             let sessionId = try await sessionService.launchSession(params)
             launchSuccess = true
-            launchStatus = "Session launched! ID: \(sessionId ?? "unknown")"
+            launchStatus = String(localized: "Session launched! ID: \(sessionId ?? "unknown")")
 
             // Hold pending entry — saved when user closes the progress sheet
             pendingRecentLaunch = RecentLaunch(
@@ -585,7 +591,7 @@ final class SessionLaunchModel {
         } catch {
             hasError = true
             errorMessage = error.localizedDescription
-            launchStatus = "Launch failed"
+            launchStatus = String(localized: "Launch failed")
         }
 
         isLaunching = false
@@ -596,7 +602,7 @@ final class SessionLaunchModel {
         isLaunching = true
         launchSuccess = false
         hasError = false
-        launchStatus = "Relaunching session..."
+        launchStatus = String(localized: "Relaunching session…")
 
         var params = SessionLaunchParams(
             type: launch.type,
@@ -613,7 +619,7 @@ final class SessionLaunchModel {
         do {
             _ = try await sessionService.launchSession(params)
             launchSuccess = true
-            launchStatus = "Session relaunched!"
+            launchStatus = String(localized: "Session relaunched!")
 
             var updated = launch
             updated.launchedAt = Date()
@@ -623,7 +629,7 @@ final class SessionLaunchModel {
         } catch {
             hasError = true
             errorMessage = error.localizedDescription
-            launchStatus = "Relaunch failed"
+            launchStatus = String(localized: "Relaunch failed")
             isLaunching = false
             return false
         }

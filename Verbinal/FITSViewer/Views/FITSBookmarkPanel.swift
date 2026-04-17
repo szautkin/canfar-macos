@@ -41,7 +41,7 @@ struct FITSBookmarkPanel: View {
                     )
                     store.save(bookmark)
                     labelText = ""
-                    toast?.show("Bookmark saved")
+                    toast?.show(String(localized: "Bookmark saved"))
                 } label: {
                     Image(systemName: "bookmark.fill")
                         .font(.caption2)

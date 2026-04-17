@@ -78,7 +78,7 @@ struct FITSImageView: View {
                         if !model.crosshairRA.isEmpty {
                             Button("Copy RA/Dec") {
                                 model.copyCoordsToClipboard()
-                                toast?.show("Coordinates copied")
+                                toast?.show(String(localized: "Coordinates copied"))
                             }
                             Button("Search at Position") {
                                 if let wcs = model.wcs, let pixel = model.crosshairPixel,

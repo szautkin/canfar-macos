@@ -235,7 +235,7 @@ final class FITSTabHostModel {
         let clampedZoom = max(FITSViewerConstants.zoomMin, min(FITSViewerConstants.zoomMax, rawZoom))
         if clampedZoom != rawZoom {
             Self.logger.info("Linked zoom clamped: raw=\(rawZoom) clamped=\(clampedZoom)")
-            tab.pendingToast = "Linked zoom clamped — images have very different pixel scales"
+            tab.pendingToast = String(localized: "Linked zoom clamped — images have very different pixel scales")
         }
         tab.viewport.zoom = clampedZoom
         if let userRotation = linkedState.sharedUserRotation {

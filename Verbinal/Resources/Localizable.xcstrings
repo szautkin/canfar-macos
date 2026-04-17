@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "": {},
     "     Dec:": {},
     "     Val:": {},
     "- a CANFAR Science Portal": {
@@ -43,6 +44,9 @@
         }
       }
     },
+    "(%@)": {},
+    "/ %@": {},
+    "%@": {},
     "%@ — %@": {
       "localizations": {
         "en": {
@@ -207,6 +211,8 @@
         }
       }
     },
+    "%@c": {},
+    "%@s": {},
     "© 2026 Serhii Zautkin": {
       "localizations": {
         "fr": {
@@ -217,6 +223,11 @@
         }
       }
     },
+    "=": {},
+    "= %@": {},
+    "50": {},
+    "100": {},
+    "500": {},
     "A CANFAR Science Portal Companion": {
       "localizations": {
         "fr": {
@@ -270,12 +281,45 @@
         }
       }
     },
+    "Acknowledgements": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remerciements"
+          }
+        }
+      }
+    },
     "Action Failed": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Échec de l'action"
+          }
+        }
+      }
+    },
+    "Active Sessions": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions actives"
+          }
+        }
+      }
+    },
+    "Add Tag": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une étiquette"
           }
         }
       }
@@ -321,6 +365,17 @@
         }
       }
     },
+    "All files": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tous les fichiers"
+          }
+        }
+      }
+    },
     "Appearance": {
       "extractionState": "stale",
       "localizations": {
@@ -328,6 +383,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apparence"
+          }
+        }
+      }
+    },
+    "Apply": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appliquer"
           }
         }
       }
@@ -342,12 +408,89 @@
         }
       }
     },
+    "Are you sure?": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Êtes-vous sûr ?"
+          }
+        }
+      }
+    },
+    "Asinh": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asinh"
+          }
+        }
+      }
+    },
+    "Authentication failed": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de l'authentification"
+          }
+        }
+      }
+    },
+    "Auto-cuts": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coupes automatiques"
+          }
+        }
+      }
+    },
     "Auto-refresh %@s": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Actualiser toutes les %@ s"
+          }
+        }
+      }
+    },
+    "Back": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour"
+          }
+        }
+      }
+    },
+    "Band": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bande"
+          }
+        }
+      }
+    },
+    "Bands": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bandes"
           }
         }
       }
@@ -394,6 +537,17 @@
         }
       }
     },
+    "Bundle created": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquet créé"
+          }
+        }
+      }
+    },
     "Cached %@": {
       "localizations": {
         "fr": {
@@ -426,6 +580,17 @@
         }
       }
     },
+    "Center": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Centrer"
+          }
+        }
+      }
+    },
     "Checking authentication...": {
       "extractionState": "stale",
       "localizations": {
@@ -437,12 +602,78 @@
         }
       }
     },
+    "Choose destination": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir l'emplacement"
+          }
+        }
+      }
+    },
+    "Choose Destination": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir la destination"
+          }
+        }
+      }
+    },
+    "Choose Location": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir l'emplacement"
+          }
+        }
+      }
+    },
     "Choose what to include in your Claude-friendly export bundle.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Choisissez ce qu'il faut inclure dans votre paquet d'exportation."
+          }
+        }
+      }
+    },
+    "Clear": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer"
+          }
+        }
+      }
+    },
+    "Clear All": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout effacer"
+          }
+        }
+      }
+    },
+    "Clear Crosshair": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer le réticule"
           }
         }
       }
@@ -468,6 +699,39 @@
         }
       }
     },
+    "Close Tab": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermer l'onglet"
+          }
+        }
+      }
+    },
+    "Collection": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collection"
+          }
+        }
+      }
+    },
+    "Collections": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collections"
+          }
+        }
+      }
+    },
     "Colormap": {
       "localizations": {
         "fr": {
@@ -478,12 +742,166 @@
         }
       }
     },
+    "Completed": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminée"
+          }
+        }
+      }
+    },
+    "Confirm": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmer"
+          }
+        }
+      }
+    },
+    "Confirm Deletion": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmer la suppression"
+          }
+        }
+      }
+    },
+    "Connect": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecter"
+          }
+        }
+      }
+    },
+    "Connect to session": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se connecter à la session"
+          }
+        }
+      }
+    },
+    "Connection error": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erreur de connexion"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuer"
+          }
+        }
+      }
+    },
+    "Coordinates copied": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coordonnées copiées"
+          }
+        }
+      }
+    },
+    "Copied to clipboard": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copié dans le presse-papiers"
+          }
+        }
+      }
+    },
     "Copies FITS / notebook files into the bundle. Bundle size will be much larger.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Copie les fichiers FITS et calepins dans le paquet. Sa taille sera bien plus grande."
+          }
+        }
+      }
+    },
+    "Copy": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier"
+          }
+        }
+      }
+    },
+    "Copy Coordinates": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier les coordonnées"
+          }
+        }
+      }
+    },
+    "Copy Path": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier le chemin"
+          }
+        }
+      }
+    },
+    "Copy RA/Dec": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier RA/Dec"
+          }
+        }
+      }
+    },
+    "Cores": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cœurs"
           }
         }
       }
@@ -514,12 +932,56 @@
         }
       }
     },
+    "Create": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créer"
+          }
+        }
+      }
+    },
+    "Create Folder…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créer un dossier…"
+          }
+        }
+      }
+    },
+    "Credits": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crédits"
+          }
+        }
+      }
+    },
     "Crosshair": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Réticule"
+          }
+        }
+      }
+    },
+    "Custom Image": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image personnalisée"
           }
         }
       }
@@ -534,7 +996,84 @@
         }
       }
     },
+    "Dashboard": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tableau de bord"
+          }
+        }
+      }
+    },
+    "Date": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date"
+          }
+        }
+      }
+    },
+    "Date Range": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plage de dates"
+          }
+        }
+      }
+    },
     "Dec:": {},
+    "Default": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par défaut"
+          }
+        }
+      }
+    },
+    "Default Image": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image par défaut"
+          }
+        }
+      }
+    },
+    "Default Project": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projet par défaut"
+          }
+        }
+      }
+    },
+    "Default Session Type": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type de session par défaut"
+          }
+        }
+      }
+    },
     "Defaults": {
       "localizations": {
         "fr": {
@@ -552,6 +1091,72 @@
           "stringUnit": {
             "state": "translated",
             "value": "Supprimer"
+          }
+        }
+      }
+    },
+    "Deleted": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimé"
+          }
+        }
+      }
+    },
+    "Details": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détails"
+          }
+        }
+      }
+    },
+    "Discard": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer"
+          }
+        }
+      }
+    },
+    "Discard changes?": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer les modifications ?"
+          }
+        }
+      }
+    },
+    "Disconnect": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déconnecter"
+          }
+        }
+      }
+    },
+    "Don't have an account?": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous n'avez pas de compte ?"
           }
         }
       }
@@ -578,6 +1183,28 @@
         }
       }
     },
+    "Download All": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout télécharger"
+          }
+        }
+      }
+    },
+    "Download complete": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléchargement terminé"
+          }
+        }
+      }
+    },
     "Download observations from Search to view them here.": {
       "localizations": {
         "fr": {
@@ -599,9 +1226,51 @@
         }
       }
     },
+    "Downloading %@…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléchargement de %@…"
+          }
+        }
+      }
+    },
     "Downloads": {},
+    "Duplicate": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dupliquer"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier"
+          }
+        }
+      }
+    },
     "Edited %@": {},
-    "Empty folder": {},
+    "Empty folder": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier vide"
+          }
+        }
+      }
+    },
     "Empty token received": {
       "extractionState": "stale",
       "localizations": {
@@ -609,6 +1278,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jeton vide reçu"
+          }
+        }
+      }
+    },
+    "Energy": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Énergie"
           }
         }
       }
@@ -634,8 +1314,26 @@
         }
       }
     },
-    "Events": {},
-    "Events / Logs: %@": {},
+    "Events": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Événements"
+          }
+        }
+      }
+    },
+    "Events / Logs: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Événements / Journaux : %@"
+          }
+        }
+      }
+    },
     "Execute": {},
     "Explore the CADC archive": {
       "extractionState": "stale",
@@ -655,6 +1353,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tout exporter…"
+          }
+        }
+      }
+    },
+    "Export Bundle": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquet d'exportation"
           }
         }
       }
@@ -702,6 +1411,28 @@
         }
       }
     },
+    "Export Research": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporter la recherche"
+          }
+        }
+      }
+    },
+    "Export Search": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporter les recherches"
+          }
+        }
+      }
+    },
     "Exporting…": {
       "localizations": {
         "fr": {
@@ -712,7 +1443,29 @@
         }
       }
     },
+    "Failed": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec"
+          }
+        }
+      }
+    },
     "Failed to load": {},
+    "Favorites": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favoris"
+          }
+        }
+      }
+    },
     "File": {
       "extractionState": "stale",
       "localizations": {
@@ -724,7 +1477,71 @@
         }
       }
     },
-    "File Info": {},
+    "File Info": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Infos du fichier"
+          }
+        }
+      }
+    },
+    "Files": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fichiers"
+          }
+        }
+      }
+    },
+    "Filter": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrer"
+          }
+        }
+      }
+    },
+    "Filter…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrer…"
+          }
+        }
+      }
+    },
+    "Filter/Band": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtre/Bande"
+          }
+        }
+      }
+    },
+    "Fit to Window": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajuster à la fenêtre"
+          }
+        }
+      }
+    },
     "FITS Viewer": {
       "localizations": {
         "fr": {
@@ -745,13 +1562,66 @@
         }
       }
     },
-    "FLEX": {},
+    "FLEX": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FLEX"
+          }
+        }
+      }
+    },
     "Flexible": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Flexible"
+          }
+        }
+      }
+    },
+    "Flip X": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retourner X"
+          }
+        }
+      }
+    },
+    "Flip Y": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retourner Y"
+          }
+        }
+      }
+    },
+    "Folder": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier"
+          }
+        }
+      }
+    },
+    "Forgot password?": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mot de passe oublié ?"
           }
         }
       }
@@ -799,12 +1669,34 @@
         }
       }
     },
+    "GPU": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPU"
+          }
+        }
+      }
+    },
     "GPUs:": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "GPU :"
+          }
+        }
+      }
+    },
+    "Grayscale": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niveaux de gris"
           }
         }
       }
@@ -840,8 +1732,92 @@
         }
       }
     },
-    "Image Cache": {},
-    "Images cached %@": {},
+    "Hide": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masquer"
+          }
+        }
+      }
+    },
+    "History": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historique"
+          }
+        }
+      }
+    },
+    "Home": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accueil"
+          }
+        }
+      }
+    },
+    "Home Directory": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier personnel"
+          }
+        }
+      }
+    },
+    "Image Cache": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cache des images"
+          }
+        }
+      }
+    },
+    "Image URL": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL de l'image"
+          }
+        }
+      }
+    },
+    "Images": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Images"
+          }
+        }
+      }
+    },
+    "Images cached %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Images mises en cache %@"
+          }
+        }
+      }
+    },
     "Include downloaded files": {
       "localizations": {
         "fr": {
@@ -852,7 +1828,93 @@
         }
       }
     },
-    "interactive computing sessions on the CANFAR platform.": {},
+    "Include file copies": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclure une copie des fichiers"
+          }
+        }
+      }
+    },
+    "Include Notes": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclure les notes"
+          }
+        }
+      }
+    },
+    "Include Search History": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclure l'historique de recherche"
+          }
+        }
+      }
+    },
+    "Instrument": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instrument"
+          }
+        }
+      }
+    },
+    "Instruments": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instruments"
+          }
+        }
+      }
+    },
+    "Integration Time": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temps d'intégration"
+          }
+        }
+      }
+    },
+    "interactive computing sessions on the CANFAR platform.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "les sessions de calcul interactif sur la plate-forme CANFAR."
+          }
+        }
+      }
+    },
+    "Invalid credentials": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifiants invalides"
+          }
+        }
+      }
+    },
     "Invalid server response": {
       "extractionState": "stale",
       "localizations": {
@@ -886,6 +1948,50 @@
         }
       }
     },
+    "Inverted": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inversée"
+          }
+        }
+      }
+    },
+    "Jobs": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tâches"
+          }
+        }
+      }
+    },
+    "Keep editing": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuer à modifier"
+          }
+        }
+      }
+    },
+    "Kind": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type"
+          }
+        }
+      }
+    },
     "Landing": {
       "comment": "Main landing / home screen",
       "extractionState": "stale",
@@ -908,7 +2014,16 @@
         }
       }
     },
-    "Last updated: %@": {},
+    "Last updated: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dernière mise à jour : %@"
+          }
+        }
+      }
+    },
     "Launch (Custom Image)": {
       "localizations": {
         "fr": {
@@ -941,6 +2056,50 @@
         }
       }
     },
+    "License": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licence"
+          }
+        }
+      }
+    },
+    "Linear": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linéaire"
+          }
+        }
+      }
+    },
+    "Load Query": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Charger la requête"
+          }
+        }
+      }
+    },
+    "Loading": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement"
+          }
+        }
+      }
+    },
     "Loading…": {
       "extractionState": "stale",
       "localizations": {
@@ -948,6 +2107,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chargement…"
+          }
+        }
+      }
+    },
+    "Log": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log"
           }
         }
       }
@@ -964,12 +2134,11 @@
       }
     },
     "Login": {
-      "extractionState": "stale",
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connexion"
+            "value": "Se connecter"
           }
         }
       }
@@ -1005,7 +2174,16 @@
         }
       }
     },
-    "Logs": {},
+    "Logs": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Journaux"
+          }
+        }
+      }
+    },
     "macOS applies app-language overrides at launch. Changing this setting writes the preference; the next launch picks it up.": {
       "localizations": {
         "fr": {
@@ -1057,7 +2235,49 @@
         }
       }
     },
-    "Modules": {},
+    "Modified": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifié"
+          }
+        }
+      }
+    },
+    "Modules": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modules"
+          }
+        }
+      }
+    },
+    "Move": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacer"
+          }
+        }
+      }
+    },
+    "Name": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom"
+          }
+        }
+      }
+    },
     "Network Error: %@": {
       "comment": "Error category prefix; the trailing %@ is the raw server message and must not be translated.",
       "extractionState": "stale",
@@ -1066,6 +2286,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Erreur réseau : %@"
+          }
+        }
+      }
+    },
+    "Never": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jamais"
+          }
+        }
+      }
+    },
+    "New": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouveau"
           }
         }
       }
@@ -1080,7 +2322,49 @@
         }
       }
     },
-    "No %@ jobs": {},
+    "New tag…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelle étiquette…"
+          }
+        }
+      }
+    },
+    "Next": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivant"
+          }
+        }
+      }
+    },
+    "No": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non"
+          }
+        }
+      }
+    },
+    "No %@ jobs": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune tâche %@"
+          }
+        }
+      }
+    },
     "No active sessions": {
       "localizations": {
         "fr": {
@@ -1092,14 +2376,65 @@
       }
     },
     "No bookmarks": {},
-    "No cache on disk": {},
-    "No default": {},
+    "No cache on disk": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun cache sur le disque"
+          }
+        }
+      }
+    },
+    "No cached images yet": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune image en cache pour le moment"
+          }
+        }
+      }
+    },
+    "No default": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune valeur par défaut"
+          }
+        }
+      }
+    },
+    "No description": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune description"
+          }
+        }
+      }
+    },
     "No downloads yet": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Aucun téléchargement pour le moment"
+          }
+        }
+      }
+    },
+    "No files": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun fichier"
           }
         }
       }
@@ -1114,8 +2449,50 @@
         }
       }
     },
-    "No matches": {},
+    "No image selected": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune image sélectionnée"
+          }
+        }
+      }
+    },
+    "No matches": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun résultat"
+          }
+        }
+      }
+    },
     "No preview available": {},
+    "No results": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun résultat"
+          }
+        }
+      }
+    },
+    "No Results": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun résultat"
+          }
+        }
+      }
+    },
     "No saved queries": {
       "localizations": {
         "fr": {
@@ -1132,6 +2509,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aucun"
+          }
+        }
+      }
+    },
+    "North Up": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nord en haut"
           }
         }
       }
@@ -1153,6 +2541,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Notes"
+          }
+        }
+      }
+    },
+    "Now": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maintenant"
           }
         }
       }
@@ -1187,6 +2586,28 @@
         }
       }
     },
+    "Observation ID": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de l'observation"
+          }
+        }
+      }
+    },
+    "Observations": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Observations"
+          }
+        }
+      }
+    },
     "Observing conditions, calibration notes, reduction steps, reminders…": {
       "localizations": {
         "fr": {
@@ -1208,9 +2629,126 @@
         }
       }
     },
+    "Open": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir"
+          }
+        }
+      }
+    },
     "Open a FITS file or drag one here.": {},
-    "Open a FITS file to view astronomical images.": {},
-    "Options": {},
+    "Open a FITS file to view astronomical images.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez un fichier FITS pour voir des images astronomiques."
+          }
+        }
+      }
+    },
+    "Open File": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir le fichier"
+          }
+        }
+      }
+    },
+    "Open FITS File": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir un fichier FITS"
+          }
+        }
+      }
+    },
+    "Open FITS…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir FITS…"
+          }
+        }
+      }
+    },
+    "Open in browser": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir dans le navigateur"
+          }
+        }
+      }
+    },
+    "Open in FITS Viewer": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir dans la Visionneuse FITS"
+          }
+        }
+      }
+    },
+    "Optional": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optionnel"
+          }
+        }
+      }
+    },
+    "Options": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Options"
+          }
+        }
+      }
+    },
+    "Other": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autres"
+          }
+        }
+      }
+    },
+    "P.I. Name": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom du responsable"
+          }
+        }
+      }
+    },
     "Password": {
       "extractionState": "stale",
       "localizations": {
@@ -1218,6 +2756,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mot de passe"
+          }
+        }
+      }
+    },
+    "Paste": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coller"
+          }
+        }
+      }
+    },
+    "Path": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chemin"
+          }
+        }
+      }
+    },
+    "Pending": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente"
+          }
+        }
+      }
+    },
+    "Pixel Scale": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échelle des pixels"
           }
         }
       }
@@ -1244,12 +2826,67 @@
         }
       }
     },
+    "Position": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position"
+          }
+        }
+      }
+    },
+    "Power": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puissance"
+          }
+        }
+      }
+    },
     "Preview": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Aperçu"
+          }
+        }
+      }
+    },
+    "Previous": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Précédent"
+          }
+        }
+      }
+    },
+    "Project": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projet"
+          }
+        }
+      }
+    },
+    "Proposal ID": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de la proposition"
           }
         }
       }
@@ -1275,6 +2912,28 @@
         }
       }
     },
+    "Radius": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rayon"
+          }
+        }
+      }
+    },
+    "RAM": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mémoire"
+          }
+        }
+      }
+    },
     "RAM (GB):": {
       "localizations": {
         "fr": {
@@ -1285,12 +2944,56 @@
         }
       }
     },
+    "Rating": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note"
+          }
+        }
+      }
+    },
+    "Recent": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récents"
+          }
+        }
+      }
+    },
     "Recent Launches": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Lancements récents"
+          }
+        }
+      }
+    },
+    "Recent Searches": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherches récentes"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiser"
           }
         }
       }
@@ -1326,6 +3029,39 @@
         }
       }
     },
+    "Remove": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer"
+          }
+        }
+      }
+    },
+    "Removed": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retiré"
+          }
+        }
+      }
+    },
+    "Rename": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renommer"
+          }
+        }
+      }
+    },
     "Renewing session…": {
       "extractionState": "stale",
       "localizations": {
@@ -1333,6 +3069,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Renouvellement de la session…"
+          }
+        }
+      }
+    },
+    "Repository": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dépôt"
+          }
+        }
+      }
+    },
+    "Rerun": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relancer"
           }
         }
       }
@@ -1359,12 +3117,45 @@
         }
       }
     },
+    "Reset View": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialiser la vue"
+          }
+        }
+      }
+    },
     "Resource Defaults": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Valeurs par défaut des ressources"
+          }
+        }
+      }
+    },
+    "Resources": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ressources"
+          }
+        }
+      }
+    },
+    "Restart Now": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redémarrer maintenant"
           }
         }
       }
@@ -1379,6 +3170,17 @@
         }
       }
     },
+    "Results": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Résultats"
+          }
+        }
+      }
+    },
     "Retry": {
       "extractionState": "stale",
       "localizations": {
@@ -1386,6 +3188,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Réessayer"
+          }
+        }
+      }
+    },
+    "Reveal in Finder": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher dans le Finder"
+          }
+        }
+      }
+    },
+    "Revert": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rétablir"
+          }
+        }
+      }
+    },
+    "Rotate": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pivoter"
           }
         }
       }
@@ -1411,6 +3246,39 @@
         }
       }
     },
+    "Run Search": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancer la recherche"
+          }
+        }
+      }
+    },
+    "Running": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En cours"
+          }
+        }
+      }
+    },
+    "Runtime": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durée d'exécution"
+          }
+        }
+      }
+    },
     "Save": {
       "extractionState": "stale",
       "localizations": {
@@ -1418,6 +3286,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enregistrer"
+          }
+        }
+      }
+    },
+    "Save changes?": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer les modifications ?"
+          }
+        }
+      }
+    },
+    "Save Query": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer la requête"
+          }
+        }
+      }
+    },
+    "Saved": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré"
+          }
+        }
+      }
+    },
+    "Saved Queries": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requêtes enregistrées"
+          }
+        }
+      }
+    },
+    "Saved successfully": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré avec succès"
           }
         }
       }
@@ -1432,12 +3355,45 @@
         }
       }
     },
+    "Search at Position": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher à cette position"
+          }
+        }
+      }
+    },
     "Search CADC to find observations": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Recherchez dans le CADC pour trouver des observations"
+          }
+        }
+      }
+    },
+    "Searching…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche…"
+          }
+        }
+      }
+    },
+    "Select": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionner"
           }
         }
       }
@@ -1493,6 +3449,28 @@
         }
       }
     },
+    "Session Name": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom de la session"
+          }
+        }
+      }
+    },
+    "Sessions": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions"
+          }
+        }
+      }
+    },
     "Settings": {
       "extractionState": "stale",
       "localizations": {
@@ -1504,6 +3482,17 @@
         }
       }
     },
+    "Show": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher"
+          }
+        }
+      }
+    },
     "Sign In": {
       "extractionState": "stale",
       "localizations": {
@@ -1511,6 +3500,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Se connecter"
+          }
+        }
+      }
+    },
+    "Sign in required": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion requise"
           }
         }
       }
@@ -1580,9 +3580,95 @@
         }
       }
     },
+    "Signing in…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion…"
+          }
+        }
+      }
+    },
+    "Signing out…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déconnexion…"
+          }
+        }
+      }
+    },
+    "Size": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taille"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer"
+          }
+        }
+      }
+    },
+    "Source Code": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code source"
+          }
+        }
+      }
+    },
     "Spatial": {},
     "Spectral": {},
-    "Standard": {},
+    "Square Root": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Racine carrée"
+          }
+        }
+      }
+    },
+    "Standard": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        }
+      }
+    },
+    "Started": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancée"
+          }
+        }
+      }
+    },
     "Status": {
       "extractionState": "stale",
       "localizations": {
@@ -1590,6 +3676,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "État"
+          }
+        }
+      }
+    },
+    "Status:": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "État :"
+          }
+        }
+      }
+    },
+    "Stopped": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêtée"
           }
         }
       }
@@ -1605,12 +3713,45 @@
         }
       }
     },
+    "Storage Usage": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisation du stockage"
+          }
+        }
+      }
+    },
     "Stretch": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Étirement"
+          }
+        }
+      }
+    },
+    "Succeeded": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réussie"
+          }
+        }
+      }
+    },
+    "Switches the app language immediately. Some text may only update after the next launch.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change immédiatement la langue de l'app. Certains textes ne seront mis à jour qu'au prochain lancement."
           }
         }
       }
@@ -1636,9 +3777,95 @@
         }
       }
     },
+    "Target": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cible"
+          }
+        }
+      }
+    },
     "Target / Coordinates": {},
+    "Target Name": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom de la cible"
+          }
+        }
+      }
+    },
+    "Target name or coordinates": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom de la cible ou coordonnées"
+          }
+        }
+      }
+    },
+    "Targets": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cibles"
+          }
+        }
+      }
+    },
     "Temporal": {},
-    "This cannot be undone.": {},
+    "Terminate": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêter"
+          }
+        }
+      }
+    },
+    "Terminated": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminée"
+          }
+        }
+      }
+    },
+    "This action cannot be undone.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette action est irréversible."
+          }
+        }
+      }
+    },
+    "This cannot be undone.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Action irréversible."
+          }
+        }
+      }
+    },
     "This will remove the file from disk. This cannot be undone.": {},
     "Toggle file browser (Cmd+B)": {
       "extractionState": "stale",
@@ -1651,8 +3878,116 @@
         }
       }
     },
+    "Unknown": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inconnu"
+          }
+        }
+      }
+    },
+    "Unsaved changes": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifications non enregistrées"
+          }
+        }
+      }
+    },
+    "Untitled": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sans titre"
+          }
+        }
+      }
+    },
     "Updated %@ ago": {},
-    "Uploaded to VOSpace: %@": {},
+    "Upload complete": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléversement terminé"
+          }
+        }
+      }
+    },
+    "Upload File…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléverser un fichier…"
+          }
+        }
+      }
+    },
+    "Upload Files": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléverser des fichiers"
+          }
+        }
+      }
+    },
+    "Upload to VOSpace": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléverser dans VOSpace"
+          }
+        }
+      }
+    },
+    "Upload…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléverser…"
+          }
+        }
+      }
+    },
+    "Uploaded to VOSpace: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléversé dans VOSpace : %@"
+          }
+        }
+      }
+    },
+    "Uploading %@…": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléversement de %@…"
+          }
+        }
+      }
+    },
     "Uploading…": {
       "localizations": {
         "fr": {
@@ -1726,6 +4061,17 @@
         }
       }
     },
+    "Verbinal Login": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion à Verbinal"
+          }
+        }
+      }
+    },
     "Verbinal needs to restart to apply the new language.": {
       "localizations": {
         "fr": {
@@ -1736,7 +4082,16 @@
         }
       }
     },
-    "Verbinal provides a native interface for managing": {},
+    "Verbinal provides a native interface for managing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinal offre une interface native pour gérer"
+          }
+        }
+      }
+    },
     "Version %@": {
       "localizations": {
         "fr": {
@@ -1758,6 +4113,61 @@
         }
       }
     },
+    "View Events": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voir les événements"
+          }
+        }
+      }
+    },
+    "View Logs": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voir les journaux"
+          }
+        }
+      }
+    },
+    "Warning": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avertissement"
+          }
+        }
+      }
+    },
+    "Wavelength": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Longueur d'onde"
+          }
+        }
+      }
+    },
+    "Website": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Site web"
+          }
+        }
+      }
+    },
     "Welcome, %@": {
       "extractionState": "stale",
       "localizations": {
@@ -1770,6 +4180,28 @@
       }
     },
     "Window: %.1f": {},
+    "Write Notes": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écrire des notes"
+          }
+        }
+      }
+    },
+    "Yes": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui"
+          }
+        }
+      }
+    },
     "Your CADC account": {
       "extractionState": "stale",
       "localizations": {
@@ -1791,1037 +4223,19 @@
         }
       }
     },
-    "Sign in required": {
+    "Zoom 1:1": {
+      "extractionState": "stale",
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connexion requise"
-          }
-        }
-      }
-    },
-    "No results": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun résultat"
-          }
-        }
-      }
-    },
-    "No Results": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun résultat"
-          }
-        }
-      }
-    },
-    "Restart Now": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Redémarrer maintenant"
-          }
-        }
-      }
-    },
-    "Switches the app language immediately. Some text may only update after the next launch.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change immédiatement la langue de l'app. Certains textes ne seront mis à jour qu'au prochain lancement."
-          }
-        }
-      }
-    },
-    "Filter…": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Filtrer…"
-          }
-        }
-      }
-    },
-    "Filter": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Filtrer"
-          }
-        }
-      }
-    },
-    "Yes": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Oui"
-          }
-        }
-      }
-    },
-    "No": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Non"
-          }
-        }
-      }
-    },
-    "Collections": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Collections"
-          }
-        }
-      }
-    },
-    "Instruments": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Instruments"
-          }
-        }
-      }
-    },
-    "Targets": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cibles"
-          }
-        }
-      }
-    },
-    "Bands": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bandes"
-          }
-        }
-      }
-    },
-    "Pixel Scale": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Échelle des pixels"
-          }
-        }
-      }
-    },
-    "Integration Time": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Temps d'intégration"
-          }
-        }
-      }
-    },
-    "Observation ID": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ID de l'observation"
-          }
-        }
-      }
-    },
-    "P.I. Name": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nom du responsable"
-          }
-        }
-      }
-    },
-    "Target Name": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nom de la cible"
-          }
-        }
-      }
-    },
-    "Proposal ID": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ID de la proposition"
-          }
-        }
-      }
-    },
-    "Project": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Projet"
-          }
-        }
-      }
-    },
-    "Date Range": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plage de dates"
-          }
-        }
-      }
-    },
-    "Wavelength": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Longueur d'onde"
-          }
-        }
-      }
-    },
-    "Energy": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Énergie"
-          }
-        }
-      }
-    },
-    "Radius": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rayon"
-          }
-        }
-      }
-    },
-    "Position": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Position"
-          }
-        }
-      }
-    },
-    "Sessions": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sessions"
-          }
-        }
-      }
-    },
-    "Images": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Images"
-          }
-        }
-      }
-    },
-    "Jobs": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tâches"
-          }
-        }
-      }
-    },
-    "Dashboard": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tableau de bord"
-          }
-        }
-      }
-    },
-    "Recent": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Récents"
-          }
-        }
-      }
-    },
-    "Saved": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enregistré"
-          }
-        }
-      }
-    },
-    "History": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Historique"
-          }
-        }
-      }
-    },
-    "Favorites": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Favoris"
-          }
-        }
-      }
-    },
-    "Results": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Résultats"
-          }
-        }
-      }
-    },
-    "Details": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Détails"
-          }
-        }
-      }
-    },
-    "Don't have an account?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vous n'avez pas de compte ?"
-          }
-        }
-      }
-    },
-    "Forgot password?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mot de passe oublié ?"
-          }
-        }
-      }
-    },
-    "Signing in…": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connexion…"
-          }
-        }
-      }
-    },
-    "Signing out…": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Déconnexion…"
-          }
-        }
-      }
-    },
-    "Authentication failed": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Échec de l'authentification"
-          }
-        }
-      }
-    },
-    "Connection error": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erreur de connexion"
-          }
-        }
-      }
-    },
-    "Invalid credentials": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Identifiants invalides"
-          }
-        }
-      }
-    },
-    "Apply": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Appliquer"
-          }
-        }
-      }
-    },
-    "Refresh": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Actualiser"
-          }
-        }
-      }
-    },
-    "Copy": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copier"
-          }
-        }
-      }
-    },
-    "Paste": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coller"
-          }
-        }
-      }
-    },
-    "Duplicate": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dupliquer"
-          }
-        }
-      }
-    },
-    "Rename": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Renommer"
-          }
-        }
-      }
-    },
-    "Move": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Déplacer"
-          }
-        }
-      }
-    },
-    "Open": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvrir"
-          }
-        }
-      }
-    },
-    "Close Tab": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fermer l'onglet"
-          }
-        }
-      }
-    },
-    "Create": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Créer"
-          }
-        }
-      }
-    },
-    "New": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nouveau"
-          }
-        }
-      }
-    },
-    "Edit": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modifier"
-          }
-        }
-      }
-    },
-    "Remove": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retirer"
-          }
-        }
-      }
-    },
-    "Revert": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rétablir"
-          }
-        }
-      }
-    },
-    "Confirm": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Confirmer"
-          }
-        }
-      }
-    },
-    "Continue": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Continuer"
-          }
-        }
-      }
-    },
-    "Skip": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ignorer"
-          }
-        }
-      }
-    },
-    "Back": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retour"
-          }
-        }
-      }
-    },
-    "Next": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suivant"
-          }
-        }
-      }
-    },
-    "Previous": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Précédent"
-          }
-        }
-      }
-    },
-    "Select": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sélectionner"
-          }
-        }
-      }
-    },
-    "Show": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Afficher"
-          }
-        }
-      }
-    },
-    "Hide": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Masquer"
-          }
-        }
-      }
-    },
-    "Active Sessions": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sessions actives"
-          }
-        }
-      }
-    },
-    "Session Name": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nom de la session"
-          }
-        }
-      }
-    },
-    "Status:": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "État :"
-          }
-        }
-      }
-    },
-    "Started": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lancée"
-          }
-        }
-      }
-    },
-    "Runtime": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Durée d'exécution"
-          }
-        }
-      }
-    },
-    "Running": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En cours"
-          }
-        }
-      }
-    },
-    "Pending": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En attente"
-          }
-        }
-      }
-    },
-    "Failed": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Échec"
-          }
-        }
-      }
-    },
-    "Completed": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terminée"
-          }
-        }
-      }
-    },
-    "Succeeded": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réussie"
-          }
-        }
-      }
-    },
-    "Terminated": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terminée"
-          }
-        }
-      }
-    },
-    "Stopped": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arrêtée"
-          }
-        }
-      }
-    },
-    "Connect": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connecter"
-          }
-        }
-      }
-    },
-    "Disconnect": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Déconnecter"
-          }
-        }
-      }
-    },
-    "Terminate": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arrêter"
-          }
-        }
-      }
-    },
-    "Rerun": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Relancer"
-          }
-        }
-      }
-    },
-    "View Logs": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voir les journaux"
-          }
-        }
-      }
-    },
-    "View Events": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voir les événements"
-          }
-        }
-      }
-    },
-    "Connect to session": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se connecter à la session"
-          }
-        }
-      }
-    },
-    "Open in browser": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvrir dans le navigateur"
-          }
-        }
-      }
-    },
-    "Target": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cible"
-          }
-        }
-      }
-    },
-    "Target name or coordinates": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nom de la cible ou coordonnées"
-          }
-        }
-      }
-    },
-    "Instrument": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Instrument"
-          }
-        }
-      }
-    },
-    "Collection": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Collection"
-          }
-        }
-      }
-    },
-    "Filter/Band": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Filtre/Bande"
-          }
-        }
-      }
-    },
-    "Band": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bande"
-          }
-        }
-      }
-    },
-    "Run Search": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lancer la recherche"
-          }
-        }
-      }
-    },
-    "Clear": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Effacer"
-          }
-        }
-      }
-    },
-    "Clear All": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tout effacer"
-          }
-        }
-      }
-    },
-    "Save Query": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enregistrer la requête"
-          }
-        }
-      }
-    },
-    "Load Query": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Charger la requête"
-          }
-        }
-      }
-    },
-    "Saved Queries": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Requêtes enregistrées"
-          }
-        }
-      }
-    },
-    "Recent Searches": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recherches récentes"
-          }
-        }
-      }
-    },
-    "Searching…": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recherche…"
-          }
-        }
-      }
-    },
-    "Open FITS File": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvrir un fichier FITS"
-          }
-        }
-      }
-    },
-    "Open FITS…": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvrir FITS…"
-          }
-        }
-      }
-    },
-    "Reset View": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réinitialiser la vue"
-          }
-        }
-      }
-    },
-    "Fit to Window": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajuster à la fenêtre"
+            "value": "Zoom 1:1"
           }
         }
       }
     },
     "Zoom In": {
+      "extractionState": "stale",
       "localizations": {
         "fr": {
           "stringUnit": {
@@ -2832,6 +4246,7 @@
       }
     },
     "Zoom Out": {
+      "extractionState": "stale",
       "localizations": {
         "fr": {
           "stringUnit": {
@@ -2841,797 +4256,607 @@
         }
       }
     },
-    "Zoom 1:1": {
+    "Go Back": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zoom 1:1"
+            "value": "Retour"
           }
         }
       }
     },
-    "Center": {
+    "Open Settings (⌘,)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Centrer"
+            "value": "Ouvrir les Réglages (⌘,)"
           }
         }
       }
     },
-    "Linear": {
+    "Clear All Defaults": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Linéaire"
+            "value": "Effacer toutes les valeurs par défaut"
           }
         }
       }
     },
-    "Log": {
+    "Export complete": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Log"
+            "value": "Exportation terminée"
           }
         }
       }
     },
-    "Square Root": {
+    "Share…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Racine carrée"
+            "value": "Partager…"
           }
         }
       }
     },
-    "Asinh": {
+    "Export…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Asinh"
+            "value": "Exporter…"
           }
         }
       }
     },
-    "Power": {
+    "Verbinal Help": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Puissance"
+            "value": "Aide Verbinal"
           }
         }
       }
     },
-    "Auto-cuts": {
+    "Report an Issue…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coupes automatiques"
+            "value": "Signaler un problème…"
           }
         }
       }
     },
-    "Grayscale": {
+    "Replace": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Niveaux de gris"
+            "value": "Remplacer"
           }
         }
       }
     },
-    "Inverted": {
+    "Validating session...": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inversée"
+            "value": "Validation de la session…"
           }
         }
       }
     },
-    "North Up": {
+    "Renewing session...": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nord en haut"
+            "value": "Renouvellement de la session…"
           }
         }
       }
     },
-    "Flip X": {
+    "Verbinal provides a native interface for managing interactive computing sessions on the CANFAR platform.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retourner X"
+            "value": "Verbinal offre une interface native pour gérer les sessions de calcul interactif sur la plate-forme CANFAR."
           }
         }
       }
     },
-    "Flip Y": {
+    "Loading images...": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retourner Y"
+            "value": "Chargement des images…"
           }
         }
       }
     },
-    "Rotate": {
+    "Loading...": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pivoter"
+            "value": "Chargement…"
           }
         }
       }
     },
-    "Clear Crosshair": {
+    "Session Type": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Effacer le réticule"
+            "value": "Type de session"
           }
         }
       }
     },
-    "Copy RA/Dec": {
+    "Registry": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copier RA/Dec"
+            "value": "Registre"
           }
         }
       }
     },
-    "Copy Coordinates": {
+    "Container Image": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copier les coordonnées"
+            "value": "Image du conteneur"
           }
         }
       }
     },
-    "Search at Position": {
+    "Container Image URL": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rechercher à cette position"
+            "value": "URL de l'image du conteneur"
           }
         }
       }
     },
-    "Name": {
+    "Registry Authentication (optional)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nom"
+            "value": "Authentification du registre (facultatif)"
           }
         }
       }
     },
-    "Size": {
+    "Secret": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Taille"
+            "value": "Secret"
           }
         }
       }
     },
-    "Modified": {
+    "%lld images cached for %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modifié"
+            "value": "%1$lld images en cache pour %2$@"
           }
         }
       }
     },
-    "Kind": {
+    "Replace Recent Launch?": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Type"
+            "value": "Remplacer le lancement récent ?"
           }
         }
       }
     },
-    "Date": {
+    "Current default — tap to clear": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Date"
+            "value": "Valeur par défaut — cliquez pour effacer"
           }
         }
       }
     },
-    "Path": {
+    "Set as default session type": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chemin"
+            "value": "Définir comme type de session par défaut"
           }
         }
       }
     },
-    "Folder": {
+    "Set as default project": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dossier"
+            "value": "Définir comme projet par défaut"
           }
         }
       }
     },
-    "Files": {
+    "Set as default container image": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fichiers"
+            "value": "Définir comme image de conteneur par défaut"
           }
         }
       }
     },
-    "Open in FITS Viewer": {
+    "Set current resources as default": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir dans la Visionneuse FITS"
+            "value": "Définir les ressources actuelles par défaut"
           }
         }
       }
     },
-    "Reveal in Finder": {
+    "Active Sessions (%lld)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Afficher dans le Finder"
+            "value": "Sessions actives (%lld)"
           }
         }
       }
     },
-    "Copy Path": {
+    "Auto-refresh %llds": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copier le chemin"
+            "value": "Actualisation auto dans %lld s"
           }
         }
       }
     },
-    "No files": {
+    "Delete Session": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun fichier"
+            "value": "Supprimer la session"
           }
         }
       }
     },
-    "Home": {
+    "Deleting Session": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accueil"
+            "value": "Suppression de la session"
           }
         }
       }
     },
-    "Create Folder…": {
+    "Session '%@' deleted.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Créer un dossier…"
+            "value": "Session « %@ » supprimée."
           }
         }
       }
     },
-    "Upload…": {
+    "Renewing Session": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléverser…"
+            "value": "Renouvellement de la session"
           }
         }
       }
     },
-    "Upload File…": {
+    "Session '%@' renewed.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléverser un fichier…"
+            "value": "Session « %@ » renouvelée."
           }
         }
       }
     },
-    "Upload Files": {
+    "Renew": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléverser des fichiers"
+            "value": "Renouveler"
           }
         }
       }
     },
-    "Uploading %@…": {
+    "No events available": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléversement de %@…"
+            "value": "Aucun événement disponible"
           }
         }
       }
     },
-    "Downloading %@…": {
+    "No logs available": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléchargement de %@…"
+            "value": "Aucun journal disponible"
           }
         }
       }
     },
-    "Storage Usage": {
+    "CPU: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utilisation du stockage"
+            "value": "UC : %@"
           }
         }
       }
     },
-    "Home Directory": {
+    "RAM: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dossier personnel"
+            "value": "RAM : %@"
           }
         }
       }
     },
-    "Observations": {
+    "GPU: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Observations"
+            "value": "GPU : %@"
           }
         }
       }
     },
-    "Download All": {
+    "CPU: %lld | RAM: %lldG": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tout télécharger"
+            "value": "UC : %1$lld | RAM : %2$lld Go"
           }
         }
       }
     },
-    "Open File": {
+    "Filter...": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir le fichier"
+            "value": "Filtrer…"
           }
         }
       }
     },
-    "Rating": {
+    "No recent launches": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Note"
+            "value": "Aucun lancement récent"
           }
         }
       }
     },
-    "Add Tag": {
+    "Platform Load": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ajouter une étiquette"
+            "value": "Charge de la plate-forme"
           }
         }
       }
     },
-    "New tag…": {
+    "Available CPU Cores": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nouvelle étiquette…"
+            "value": "Cœurs CPU disponibles"
           }
         }
       }
     },
-    "Write Notes": {
+    "Available RAM": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Écrire des notes"
+            "value": "RAM disponible"
           }
         }
       }
     },
-    "Export Bundle": {
+    "Instances: %lld total (%lld sessions, %lld desktop, %lld headless)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paquet d'exportation"
+            "value": "Instances : %1$lld au total (%2$lld sessions, %3$lld bureau, %4$lld sans tête)"
           }
         }
       }
     },
-    "Export Research": {
+    "Storage nearly full!": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Exporter la recherche"
+            "value": "Espace de stockage presque plein !"
           }
         }
       }
     },
-    "Export Search": {
+    "No batch jobs": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Exporter les recherches"
+            "value": "Aucune tâche en lot"
           }
         }
       }
     },
-    "Include Notes": {
+    "View Events & Logs": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inclure les notes"
+            "value": "Afficher événements et journaux"
           }
         }
       }
     },
-    "Include Search History": {
+    "running": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inclure l'historique de recherche"
+            "value": "en cours"
           }
         }
       }
     },
-    "Include file copies": {
+    "pending": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inclure une copie des fichiers"
+            "value": "en attente"
           }
         }
       }
     },
-    "Choose destination": {
+    "done": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisir l'emplacement"
+            "value": "terminées"
           }
         }
       }
     },
-    "Choose Destination": {
+    "failed": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisir la destination"
+            "value": "échouées"
           }
         }
       }
     },
-    "Choose Location": {
+    "%lld total": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisir l'emplacement"
+            "value": "%lld au total"
           }
         }
       }
     },
-    "Upload to VOSpace": {
+    "%lld %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléverser dans VOSpace"
+            "value": "%1$lld %2$@"
           }
         }
       }
     },
-    "Copied to clipboard": {
+    "Log in to manage Portal defaults.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copié dans le presse-papiers"
+            "value": "Connectez-vous pour gérer les valeurs par défaut du Portail."
           }
         }
       }
     },
-    "Coordinates copied": {
+    "No cached images yet — open the Portal tab once to populate these options.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coordonnées copiées"
+            "value": "Aucune image en cache — ouvrez l'onglet Portail une fois pour remplir ces options."
           }
         }
       }
     },
-    "Bundle created": {
+    "Preset": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paquet créé"
+            "value": "Préréglage"
           }
         }
       }
     },
-    "Download complete": {
+    "RAM (GB)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Téléchargement terminé"
+            "value": "RAM (Go)"
           }
         }
       }
     },
-    "Upload complete": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Téléversement terminé"
-          }
-        }
-      }
-    },
-    "Saved successfully": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enregistré avec succès"
-          }
-        }
-      }
-    },
-    "Removed": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retiré"
-          }
-        }
-      }
-    },
-    "Deleted": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Supprimé"
-          }
-        }
-      }
-    },
-    "Are you sure?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Êtes-vous sûr ?"
-          }
-        }
-      }
-    },
-    "This action cannot be undone.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette action est irréversible."
-          }
-        }
-      }
-    },
-    "Unsaved changes": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modifications non enregistrées"
-          }
-        }
-      }
-    },
-    "Save changes?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enregistrer les modifications ?"
-          }
-        }
-      }
-    },
-    "Discard changes?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ignorer les modifications ?"
-          }
-        }
-      }
-    },
-    "Keep editing": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Continuer à modifier"
-          }
-        }
-      }
-    },
-    "Discard": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ignorer"
-          }
-        }
-      }
-    },
-    "Warning": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avertissement"
-          }
-        }
-      }
-    },
-    "Confirm Deletion": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Confirmer la suppression"
-          }
-        }
-      }
-    },
-    "Default Session Type": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Type de session par défaut"
-          }
-        }
-      }
-    },
-    "Default Project": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Projet par défaut"
-          }
-        }
-      }
-    },
-    "Default Image": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Image par défaut"
-          }
-        }
-      }
-    },
-    "Resources": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ressources"
-          }
-        }
-      }
-    },
-    "Cores": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cœurs"
-          }
-        }
-      }
-    },
-    "RAM": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mémoire"
-          }
-        }
-      }
-    },
-    "GPU": {
+    "GPUs": {
       "localizations": {
         "fr": {
           "stringUnit": {
@@ -3641,212 +4866,512 @@
         }
       }
     },
-    "No cached images yet": {
+    "Cached container image metadata makes the Portal tab feel instant. The cache refreshes automatically every 24 hours.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune image en cache pour le moment"
+            "value": "Les métadonnées d'images en cache rendent l'onglet Portail instantané. Le cache est actualisé automatiquement toutes les 24 heures."
           }
         }
       }
     },
-    "Custom Image": {
+    "Refresh Now": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Image personnalisée"
+            "value": "Actualiser maintenant"
           }
         }
       }
     },
-    "Repository": {
+    "Clear Cache": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dépôt"
+            "value": "Vider le cache"
           }
         }
       }
     },
-    "Image URL": {
+    "Session limit reached (%lld/%lld)": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "URL de l'image"
+            "value": "Limite de sessions atteinte (%1$lld/%2$lld)"
           }
         }
       }
     },
-    "No image selected": {
+    "Session name is required": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune image sélectionnée"
+            "value": "Le nom de la session est requis"
           }
         }
       }
     },
-    "Verbinal Login": {
+    "Custom image URL is required": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connexion à Verbinal"
+            "value": "L'URL de l'image personnalisée est requise"
           }
         }
       }
     },
-    "Website": {
+    "Custom image URL contains invalid characters": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Site web"
+            "value": "L'URL de l'image personnalisée contient des caractères invalides"
           }
         }
       }
     },
-    "Source Code": {
+    "Please select an image": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code source"
+            "value": "Veuillez sélectionner une image"
           }
         }
       }
     },
-    "License": {
+    "Launching session…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Licence"
+            "value": "Lancement de la session…"
           }
         }
       }
     },
-    "Credits": {
+    "Session launched! ID: %@": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crédits"
+            "value": "Session lancée ! ID : %@"
           }
         }
       }
     },
-    "Acknowledgements": {
+    "Launch failed": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remerciements"
+            "value": "Échec du lancement"
           }
         }
       }
     },
-    "Loading": {
+    "Relaunching session…": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chargement"
+            "value": "Relance de la session…"
           }
         }
       }
     },
-    "Now": {
+    "Session relaunched!": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Maintenant"
+            "value": "Session relancée !"
           }
         }
       }
     },
-    "Never": {
+    "Relaunch failed": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Jamais"
+            "value": "Échec de la relance"
           }
         }
       }
     },
-    "Unknown": {
+    "These selections are automatically applied whenever you open the Portal tab. They are stored per-user under Application Support.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inconnu"
+            "value": "Ces choix sont appliqués automatiquement à l'ouverture de l'onglet Portail. Ils sont enregistrés par utilisateur sous Application Support."
           }
         }
       }
     },
-    "Other": {
+    "Optional. When set, the launch form starts with these resource settings. CPU / RAM / GPU options are populated from the CANFAR context.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Autres"
+            "value": "Facultatif. Lorsqu'elles sont définies, ces ressources sont préchargées dans le formulaire de lancement. Les options CPU / RAM / GPU proviennent du contexte CANFAR."
           }
         }
       }
     },
-    "Default": {
+    "Tap to clear": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Par défaut"
+            "value": "Cliquez pour effacer"
           }
         }
       }
     },
-    "All files": {
+    "This folder and its contents will be permanently deleted.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tous les fichiers"
+            "value": "Ce dossier et son contenu seront supprimés définitivement."
           }
         }
       }
     },
-    "No description": {
+    "This file will be permanently deleted from VOSpace.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune description"
+            "value": "Ce fichier sera supprimé définitivement de VOSpace."
           }
         }
       }
     },
-    "Untitled": {
+    "Upload": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sans titre"
+            "value": "Téléverser"
           }
         }
       }
     },
-    "Optional": {
+    "Bandpass Width": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Optionnel"
+            "value": "Largeur de bande passante"
+          }
+        }
+      }
+    },
+    "Data Release": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version des données"
+          }
+        }
+      }
+    },
+    "Proposal Keywords": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mots-clés de la proposition"
+          }
+        }
+      }
+    },
+    "Proposal Title": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Titre de la proposition"
+          }
+        }
+      }
+    },
+    "Rest-frame Energy": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Énergie au repos"
+          }
+        }
+      }
+    },
+    "Spectral Coverage": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couverture spectrale"
+          }
+        }
+      }
+    },
+    "Spectral Sampling": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échantillonnage spectral"
+          }
+        }
+      }
+    },
+    "Resolving Power": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pouvoir de résolution"
+          }
+        }
+      }
+    },
+    "Downloaded": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléchargé"
+          }
+        }
+      }
+    },
+    "Exists": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Présent"
+          }
+        }
+      }
+    },
+    "Missing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manquant"
+          }
+        }
+      }
+    },
+    "Unusable": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inutilisable"
+          }
+        }
+      }
+    },
+    "Poor": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mauvaise"
+          }
+        }
+      }
+    },
+    "Fair": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moyenne"
+          }
+        }
+      }
+    },
+    "Good": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonne"
+          }
+        }
+      }
+    },
+    "Excellent": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Excellente"
+          }
+        }
+      }
+    },
+    "Dismiss": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer"
+          }
+        }
+      }
+    },
+    "Rate %lld star": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld étoile"
+          }
+        }
+      }
+    },
+    "Rate %lld stars": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld étoiles"
+          }
+        }
+      }
+    },
+    "Quality rating %lld of 5": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note de qualité %lld sur 5"
+          }
+        }
+      }
+    },
+    "canfar.net": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "canfar.net"
+          }
+        }
+      }
+    },
+    "Saved: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré : %@"
+          }
+        }
+      }
+    },
+    "Exported %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporté %@"
+          }
+        }
+      }
+    },
+    "Failed to save: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de l'enregistrement : %@"
+          }
+        }
+      }
+    },
+    "Bookmark saved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signet enregistré"
+          }
+        }
+      }
+    },
+    "Coordinates outside image bounds": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coordonnées hors des limites de l'image"
+          }
+        }
+      }
+    },
+    "Linked zoom clamped — images have very different pixel scales": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom lié ajusté — les images ont des échelles de pixels très différentes"
+          }
+        }
+      }
+    },
+    "No export URL available for this query.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune URL d'exportation disponible pour cette requête."
+          }
+        }
+      }
+    },
+    "Invalid server response.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réponse du serveur invalide."
+          }
+        }
+      }
+    },
+    "Export failed (HTTP %@).": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de l'exportation (HTTP %@)."
+          }
+        }
+      }
+    },
+    "Results (%@)": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Résultats (%@)"
           }
         }
       }

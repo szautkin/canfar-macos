@@ -103,7 +103,7 @@ final class ResearchModel {
             observation.fileSize = fileSize
 
             observationStore.save(observation)
-            lastSuccess = "Saved: \(suggestedFilename)"
+            lastSuccess = String(localized: "Saved: \(suggestedFilename)")
 
             // Clean up active download indicator
             scheduleStatusDismiss(after: 2) { [weak self] in
@@ -166,7 +166,7 @@ final class ResearchModel {
         )
         if let bundleURL = await exportService.exportAll(to: destination, modules: [exporter]) {
             let summary = exportSummary()
-            lastSuccess = "Exported \(summary)"
+            lastSuccess = String(localized: "Exported \(summary)")
             NSWorkspace.shared.selectFile(
                 bundleURL.path,
                 inFileViewerRootedAtPath: destination.path
@@ -177,7 +177,7 @@ final class ResearchModel {
             )
             scheduleStatusDismiss(after: 4) { [weak self] in self?.lastSuccess = nil }
         } else if let err = exportService.lastError {
-            lastError = "Export failed: \(err)"
+            lastError = String(localized: "Export failed: \(err)")
             scheduleStatusDismiss(after: 6) { [weak self] in self?.lastError = nil }
         }
     }
@@ -262,7 +262,7 @@ final class ResearchModel {
             try FileHelper.moveReplacing(from: tempURL, to: saveURL)
             return saveURL
         } catch {
-            lastError = "Failed to save: \(error.localizedDescription)"
+            lastError = String(localized: "Failed to save: \(error.localizedDescription)")
             return nil
         }
     }

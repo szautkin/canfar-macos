@@ -157,7 +157,7 @@ struct FITSRenderControlsView: View {
                         #if os(macOS)
                         Button("Copy") {
                             model.copyCoordsToClipboard()
-                            toast?.show("Coordinates copied")
+                            toast?.show(String(localized: "Coordinates copied"))
                         }
                         #endif
                         Button("Clear") { model.clearCrosshair() }
@@ -225,7 +225,7 @@ struct FITSRenderControlsView: View {
                                let dec = Double(goToDec.trimmingCharacters(in: .whitespaces)) {
                                 let inBounds = model.goToCoordinate(ra: ra, dec: dec)
                                 if !inBounds {
-                                    toast?.show("Coordinates outside image bounds", isError: true)
+                                    toast?.show(String(localized: "Coordinates outside image bounds"), isError: true)
                                 }
                             }
                         }
