@@ -7,18 +7,18 @@
 import Foundation
 import os.log
 
-final class AuthService: Sendable {
+public final class AuthService: Sendable {
     private let network: NetworkClient
     private let endpoints: APIEndpoints
     private let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Auth")
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
+    public init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
         self.network = network
         self.endpoints = endpoints
     }
 
     /// Logs in with username/password. Returns an AuthResult.
-    func login(username: String, password: String, rememberMe: Bool = true) async -> AuthResult {
+    public func login(username: String, password: String, rememberMe: Bool = true) async -> AuthResult {
         do {
             // POST form-urlencoded to /ac/login — response is plain text token
             let (data, _) = try await network.post(
@@ -71,7 +71,7 @@ final class AuthService: Sendable {
 
     /// Validates a stored token by calling /whoami.
     /// Returns `.valid(username)`, `.expired`, or `.networkError`.
-    func validateToken(_ token: String) async -> TokenValidation {
+    public func validateToken(_ token: String) async -> TokenValidation {
         await network.setToken(token)
         do {
             let username = try await network.getText(endpoints.whoAmIURL)
@@ -95,7 +95,7 @@ final class AuthService: Sendable {
     }
 
     /// Fetches user profile info from the CADC user service (XML response).
-    func getUserInfo(username: String) async -> UserInfo? {
+    public func getUserInfo(username: String) async -> UserInfo? {
         do {
             let (data, _) = try await network.get(endpoints.userURL(username), accept: "text/xml")
             guard let xmlString = String(data: data, encoding: .utf8) else { return nil }
@@ -127,21 +127,35 @@ final class AuthService: Sendable {
     }
 
     /// Clears auth state.
-    func logout() async {
+    public func logout() async {
         await network.setToken(nil)
         KeychainStorage.clearToken()
     }
 }
 
-struct AuthResult {
-    var success: Bool
-    var token: String?
-    var username: String?
-    var userInfo: UserInfo?
-    var errorMessage: String?
+public struct AuthResult: Sendable {
+    public var success: Bool
+    public var token: String?
+    public var username: String?
+    public var userInfo: UserInfo?
+    public var errorMessage: String?
+
+    public init(
+        success: Bool,
+        token: String? = nil,
+        username: String? = nil,
+        userInfo: UserInfo? = nil,
+        errorMessage: String? = nil
+    ) {
+        self.success = success
+        self.token = token
+        self.username = username
+        self.userInfo = userInfo
+        self.errorMessage = errorMessage
+    }
 }
 
-enum TokenValidation {
+public enum TokenValidation: Sendable {
     case valid(String)
     case expired
     case networkError(String)

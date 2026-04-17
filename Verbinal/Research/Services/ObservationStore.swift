@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 import os.log
+import VerbinalKit
 
 /// Persists metadata for downloaded observations.
 @Observable

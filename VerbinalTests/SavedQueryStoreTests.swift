@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
+import VerbinalKit
 @testable import Verbinal
 
 final class SavedQueryStoreTests: XCTestCase {

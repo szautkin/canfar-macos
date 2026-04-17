@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import VerbinalKit
 
 struct LoginSheet: View {
     @Environment(AppState.self) private var appState

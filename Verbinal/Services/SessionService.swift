@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// Decodes an element or silently returns nil on failure,
 /// allowing the rest of the array to decode successfully.

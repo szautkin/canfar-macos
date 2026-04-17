@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 import os.log
+import VerbinalKit
 
 /// Persists per-observation notes in Application Support, keyed by publisherID.
 /// Survives file deletion — notes are about the observation, not the local file copy.

@@ -6,26 +6,26 @@
 
 import Foundation
 
-actor NetworkClient {
+public actor NetworkClient {
     private let session: URLSession
-    private(set) var token: String?
+    public private(set) var token: String?
 
     private static let jsonDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
         return decoder
     }()
 
-    init(session: URLSession = .shared) {
+    public init(session: URLSession = .shared) {
         self.session = session
     }
 
-    func setToken(_ token: String?) {
+    public func setToken(_ token: String?) {
         self.token = token
     }
 
     // MARK: - HTTP Methods
 
-    func get(_ urlString: String, accept: String? = nil) async throws -> (Data, HTTPURLResponse) {
+    public func get(_ urlString: String, accept: String? = nil) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "GET")
         if let accept {
             request.setValue(accept, forHTTPHeaderField: "Accept")
@@ -33,17 +33,17 @@ actor NetworkClient {
         return try await execute(request)
     }
 
-    func getText(_ urlString: String) async throws -> String {
+    public func getText(_ urlString: String) async throws -> String {
         let (data, _) = try await get(urlString)
         return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
-    func getJSON<T: Decodable>(_ urlString: String, type: T.Type) async throws -> T {
+    public func getJSON<T: Decodable>(_ urlString: String, type: T.Type) async throws -> T {
         let (data, _) = try await get(urlString, accept: "application/json")
         return try Self.jsonDecoder.decode(T.self, from: data)
     }
 
-    func post(
+    public func post(
         _ urlString: String,
         formData: [String: String],
         headers: [String: String]? = nil,
@@ -70,13 +70,13 @@ actor NetworkClient {
         return try await execute(request)
     }
 
-    func delete(_ urlString: String) async throws -> HTTPURLResponse {
+    public func delete(_ urlString: String) async throws -> HTTPURLResponse {
         let request = try makeRequest(urlString, method: "DELETE")
         let (_, response) = try await execute(request)
         return response
     }
 
-    func put(
+    public func put(
         _ urlString: String,
         body: Data,
         contentType: String,
@@ -121,18 +121,18 @@ actor NetworkClient {
     }
 }
 
-enum NetworkError: LocalizedError {
+public enum NetworkError: LocalizedError, Sendable {
     case invalidURL(String)
     case invalidResponse
     case unauthorized
     case httpError(Int, String)
 
-    var isUnauthorized: Bool {
+    public var isUnauthorized: Bool {
         if case .unauthorized = self { return true }
         return false
     }
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .invalidURL(let url): return "Invalid URL: \(url)"
         case .invalidResponse: return "Invalid server response"

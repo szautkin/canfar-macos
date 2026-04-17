@@ -6,6 +6,7 @@
 
 import Foundation
 import os.log
+import VerbinalKit
 
 /// Actor for browsing and managing VOSpace files via the ARC REST API.
 actor VOSpaceBrowserService {

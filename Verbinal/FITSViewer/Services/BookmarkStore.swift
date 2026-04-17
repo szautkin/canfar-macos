@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 import os.log
+import VerbinalKit
 
 /// Persists coordinate bookmarks for the FITS viewer.
 @Observable

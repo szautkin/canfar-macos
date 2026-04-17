@@ -6,6 +6,7 @@
 
 import Foundation
 import Observation
+import VerbinalKit
 
 enum AppMode: Equatable {
     case landing

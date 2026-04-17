@@ -8,16 +8,16 @@ import Foundation
 
 /// Lightweight cross-platform XML text extractor.
 /// Uses XMLDocument (macOS) or XMLParser (iOS) under the hood.
-enum SimpleXML {
+public enum SimpleXML {
 
     /// Extracts text content of elements matching a local name (ignoring namespace).
     /// Returns the first match, or nil.
-    static func textOfFirst(localName: String, in xmlString: String) -> String? {
+    public static func textOfFirst(localName: String, in xmlString: String) -> String? {
         textsOf(localName: localName, in: xmlString).first
     }
 
     /// Extracts all elements matching a local name, returning (attributes, textContent) pairs.
-    static func elements(localName: String, in xmlString: String) -> [(attributes: [String: String], text: String)] {
+    public static func elements(localName: String, in xmlString: String) -> [(attributes: [String: String], text: String)] {
         guard let data = xmlString.data(using: .utf8) else { return [] }
 
         #if os(macOS)
@@ -28,7 +28,7 @@ enum SimpleXML {
     }
 
     /// Extracts text content of all elements matching a local name.
-    static func textsOf(localName: String, in xmlString: String) -> [String] {
+    public static func textsOf(localName: String, in xmlString: String) -> [String] {
         elements(localName: localName, in: xmlString).map(\.text)
     }
 
