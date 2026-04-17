@@ -83,9 +83,14 @@ struct LandingView: View {
                     appState.navigateTo(.fitsViewer)
                 }
 
-                // Notebook tile — addon. If Pi is installed, tile launches it
-                // via URL scheme; otherwise we suggest downloading Pi.
-                notebookTile
+                // Sixth slot is the addon slot.
+                //  - Installed first-party addons get their own tile (e.g.
+                //    Notebook when Verbinal Pi is present).
+                //  - With no addons installed, we show a single generic
+                //    "Addons" placeholder that sends the user to the App Store
+                //    catalog — avoids the graveyard-grid UX where every
+                //    unknown addon claims its own dim tile.
+                addonSlot
             }
 
             if !appState.statusMessage.isEmpty {
@@ -100,12 +105,13 @@ struct LandingView: View {
         .task { appState.refreshAddons() }
     }
 
-    // MARK: - Notebook tile (Verbinal Pi addon)
+    // MARK: - Addon slot (sixth landing tile)
 
     @ViewBuilder
-    private var notebookTile: some View {
+    private var addonSlot: some View {
         if let addon = appState.notebookAddon {
-            // Installed — launch via AddonRegistry URL activation.
+            // First-party addon installed → render its own tile.
+            // Future: loop over `installedAddons` once there is more than one.
             LandingTile(
                 icon: addon.manifest.systemIconName ?? "terminal",
                 fallbackIcon: "doc.text",
@@ -116,19 +122,20 @@ struct LandingView: View {
                 _ = appState.addonRegistry.activate(addon, context: .launchEmpty)
             }
         } else {
-            // Not installed — show a dim tile that links out to the
-            // distribution channel (App Store eventually; homepage for now).
+            // Nothing installed → generic placeholder pointing at the App
+            // Store. Dashed outline signals "empty slot, tap to add".
             LandingTile(
-                icon: "terminal",
-                fallbackIcon: "doc.text",
-                title: "Notebook",
-                subtitle: "Get Verbinal Pi",
-                installPrompt: true
+                icon: "puzzlepiece.extension",
+                fallbackIcon: "puzzlepiece.extension.fill",
+                title: "Addons",
+                subtitle: "Browse the App Store",
+                dashedBorder: true
             ) {
                 #if os(macOS)
-                // Placeholder: App Store product page URL wired in Phase 8
-                // of the plan. Today we open the project homepage.
-                if let url = URL(string: "https://github.com/szautkin/canfar-macos") {
+                // Placeholder destination: App Store search scoped to our
+                // developer name. When Pi is live on MAS, swap for its
+                // product page URL (itms-apps://apps.apple.com/app/id…).
+                if let url = URL(string: "macappstores://apps.apple.com/search?term=verbinal") {
                     NSWorkspace.shared.open(url)
                 }
                 #endif
@@ -156,7 +163,10 @@ private struct LandingTile: View {
     let title: String
     let subtitle: String
     var trustBadge: String? = nil
-    var installPrompt: Bool = false
+    /// Dashed border + slightly dimmed content — signals "empty slot that
+    /// the user can fill by installing something". Used for the generic
+    /// Addons placeholder; not a per-addon state.
+    var dashedBorder: Bool = false
     let action: () -> Void
 
     @State private var isHovering = false
@@ -177,15 +187,12 @@ private struct LandingTile: View {
                 }
             }
             .frame(width: 200, height: 180)
-            .opacity(installPrompt ? 0.65 : 1.0)
+            .opacity(dashedBorder ? 0.7 : 1.0)
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(isHovering ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear))
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(.quaternary, lineWidth: 1)
-            )
+            .overlay(borderShape)
             .overlay(alignment: .topTrailing) {
                 if let trustBadge {
                     Image(systemName: trustBadge)
@@ -193,7 +200,7 @@ private struct LandingTile: View {
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.tint)
                         .padding(8)
-                } else if installPrompt {
+                } else if dashedBorder {
                     Image(systemName: "arrow.down.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -207,6 +214,21 @@ private struct LandingTile: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
+        }
+    }
+
+    /// Solid 1pt for a regular tile, dashed for the addon placeholder.
+    @ViewBuilder
+    private var borderShape: some View {
+        if dashedBorder {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(
+                    .secondary,
+                    style: StrokeStyle(lineWidth: 1, dash: [6, 4])
+                )
+        } else {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(.quaternary, lineWidth: 1)
         }
     }
 
