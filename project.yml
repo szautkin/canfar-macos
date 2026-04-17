@@ -70,3 +70,15 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.VerbinalTests
         PRODUCT_NAME: VerbinalTests
         PRODUCT_MODULE_NAME: VerbinalTests
+# Explicitly declare schemes as shared so they appear in the aggregate
+# canfar-mac.xcworkspace scheme picker. Without this, xcodegen emits
+# per-user schemes only and the workspace displays just the Pi scheme.
+schemes:
+  Verbinal:
+    build:
+      targets:
+        Verbinal: all
+        VerbinalTests: [test]
+    test:
+      targets:
+        - VerbinalTests
