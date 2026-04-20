@@ -137,4 +137,122 @@ public enum KeychainStorage {
         let query = baseQuery(account: account)
         SecItemDelete(query as CFDictionary)
     }
+
+    // MARK: - Generic key/value access
+
+    /// Errors thrown by the generic `writeGeneric` / `readGeneric` /
+    /// `deleteGeneric` surface. OSStatus codes that are treated as non-errors
+    /// at the API boundary (`errSecItemNotFound` during a read or delete)
+    /// never materialize here.
+    public enum Error: Swift.Error, Equatable, LocalizedError {
+        /// A `SecItem…` call returned a non-success, non-ignored OSStatus.
+        case osStatus(OSStatus)
+        /// Value string could not be UTF-8-encoded for storage.
+        case invalidEncoding
+
+        public var errorDescription: String? {
+            switch self {
+            case .osStatus(let code):
+                return "Keychain operation failed (OSStatus \(code))."
+            case .invalidEncoding:
+                return "Keychain value could not be UTF-8 encoded."
+            }
+        }
+    }
+
+    /// Base query for generic read/write/delete — parameterized by `service`
+    /// and `account` instead of the hard-coded CADC slot names. Honors the
+    /// shared `accessGroup` set via `configure(accessGroup:)`.
+    private static func genericBaseQuery(service: String, account: String) -> [String: Any] {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        if let accessGroup {
+            query[kSecAttrAccessGroup as String] = accessGroup
+        }
+        return query
+    }
+
+    /// Write an arbitrary UTF-8 string under `(service, account)`. Overwrites
+    /// an existing item at the same key (delete-then-add, mirroring the CADC
+    /// `save` helper). Designed for addons storing their own credentials
+    /// outside the CADC token/username/password trio — e.g. the Thought
+    /// addon's OpenAI API key, or a future Anthropic/Ollama token.
+    ///
+    /// - Throws: `KeychainStorage.Error` on OSStatus failure or encoding issue.
+    public static func writeGeneric(
+        _ value: String,
+        service: String,
+        account: String
+    ) throws {
+        guard let dataBytes = value.data(using: .utf8) else {
+            throw Error.invalidEncoding
+        }
+
+        // Clear any existing item first so the add succeeds deterministically
+        // without needing to branch on errSecDuplicateItem.
+        let deleteQuery = genericBaseQuery(service: service, account: account)
+        let deleteStatus = SecItemDelete(deleteQuery as CFDictionary)
+        if deleteStatus != errSecSuccess && deleteStatus != errSecItemNotFound {
+            throw Error.osStatus(deleteStatus)
+        }
+
+        var addQuery = genericBaseQuery(service: service, account: account)
+        addQuery[kSecValueData as String] = dataBytes
+        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        guard addStatus == errSecSuccess else {
+            throw Error.osStatus(addStatus)
+        }
+    }
+
+    /// Read a UTF-8 string at `(service, account)`. Returns `nil` when no item
+    /// exists; throws for any other OSStatus failure.
+    ///
+    /// - Throws: `KeychainStorage.Error.osStatus` for any failure other than
+    ///   `errSecItemNotFound`.
+    public static func readGeneric(
+        service: String,
+        account: String
+    ) throws -> String? {
+        var query = genericBaseQuery(service: service, account: account)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        if status == errSecItemNotFound {
+            return nil
+        }
+        guard status == errSecSuccess else {
+            throw Error.osStatus(status)
+        }
+        guard let data = result as? Data,
+              let string = String(data: data, encoding: .utf8) else {
+            // Item exists but the stored bytes aren't valid UTF-8 — treat as
+            // an encoding error so the caller can distinguish from "missing".
+            throw Error.invalidEncoding
+        }
+        return string
+    }
+
+    /// Delete the item at `(service, account)`. Idempotent: a missing item is
+    /// a silent no-op rather than a thrown error.
+    ///
+    /// - Throws: `KeychainStorage.Error.osStatus` for any failure other than
+    ///   `errSecItemNotFound`.
+    public static func deleteGeneric(
+        service: String,
+        account: String
+    ) throws {
+        let query = genericBaseQuery(service: service, account: account)
+        let status = SecItemDelete(query as CFDictionary)
+        if status != errSecSuccess && status != errSecItemNotFound {
+            throw Error.osStatus(status)
+        }
+    }
 }

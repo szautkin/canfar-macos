@@ -28,8 +28,10 @@ public final class AddonRegistry {
     /// bundle-ID-prefix query on macOS, so we maintain this list explicitly.
     /// Append a line per new official addon as they ship. Nonisolated so the
     /// nonisolated `InstalledAddon.load` can reach it without a main hop.
+    /// Kept sorted alphabetically so the diff for each new addon is minimal.
     internal nonisolated static let officialCandidateBundleIDs: [String] = [
-        "com.codebg.Verbinal.addon.notebook"
+        "com.codebg.Verbinal.addon.notebook",
+        "com.codebg.Verbinal.addon.thought"
     ]
 
     public init() {}
