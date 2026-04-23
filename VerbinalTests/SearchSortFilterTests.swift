@@ -16,7 +16,7 @@ final class SearchSortFilterTests: XCTestCase {
     }
 
     private func makeModel() -> SearchResultsModel {
-        let model = SearchResultsModel()
+        let model = SearchResultsModel(unitStore: InMemoryColumnUnitStore())
         let headers = ["\"Collection\"", "\"Target Name\"", "\"Cal. Lev.\""]
         let rows = [
             ["JWST", "M31", "2"],
@@ -77,7 +77,7 @@ final class SearchSortFilterTests: XCTestCase {
     }
 
     func testNaNAndInfSortLast() {
-        let model = SearchResultsModel()
+        let model = SearchResultsModel(unitStore: InMemoryColumnUnitStore())
         let headers = ["\"Collection\"", "\"Value\""]
         let rows = [
             ["A", "10"],
@@ -143,7 +143,7 @@ final class SearchSortFilterTests: XCTestCase {
     // MARK: - Operator-aware numeric filters
 
     private func makeNumericModel() -> SearchResultsModel {
-        let model = SearchResultsModel()
+        let model = SearchResultsModel(unitStore: InMemoryColumnUnitStore())
         let headers = ["\"Collection\"", "\"Score\""]
         let rows = [
             ["A", "1"],
@@ -185,6 +185,51 @@ final class SearchSortFilterTests: XCTestCase {
         let model = makeNumericModel()
         model.setFilter("collection", text: "<10")
         XCTAssertEqual(model.filteredCount, 0)
+    }
+
+    // MARK: - Unit switching
+
+    func testRADefaultsToHMSUnitWhenLoaded() {
+        let model = SearchResultsModel(unitStore: InMemoryColumnUnitStore())
+        let headers = ["\"RA (J2000.0)\"", "\"Dec (J2000.0)\""]
+        let rows = [["229.638423456", "12.3456789"]]
+        model.loadResults(headers: headers, rows: rows, query: "Q", maxRec: 10)
+        XCTAssertEqual(model.selectedUnit(for: "ra(j20000)"), "hms")
+        XCTAssertEqual(model.selectedUnit(for: "dec(j20000)"), "dms")
+    }
+
+    func testSetUnitPersistsAndRebuildsSearchIndex() {
+        let store = InMemoryColumnUnitStore()
+        let model = SearchResultsModel(unitStore: store)
+        let headers = ["\"RA (J2000.0)\""]
+        let rows = [["229.638423456"]]
+        model.loadResults(headers: headers, rows: rows, query: "Q", maxRec: 10)
+
+        // Default unit HMS — substring "15:18" is present in the haystack
+        // (the `:` prevents FilterExpression from parsing it as numeric, so
+        // it routes through the substring path and matches the formatted form).
+        model.setFilter("ra(j20000)", text: "15:18")
+        XCTAssertEqual(model.filteredCount, 1)
+
+        // Switch to degrees — the searchIndex must be rebuilt with
+        // "229.638423" so the old HMS substring is gone.
+        model.setFilter("ra(j20000)", text: "")
+        model.setUnit(columnID: "ra(j20000)", unitID: "degrees")
+        XCTAssertEqual(store.selectedUnit(forColumnID: "ra(j20000)"), "degrees")
+
+        model.setFilter("ra(j20000)", text: "15:18")
+        XCTAssertEqual(model.filteredCount, 0, "HMS text must not match after switching to degrees")
+    }
+
+    func testSetUnitHonorsPersistenceAcrossLoad() {
+        let store = InMemoryColumnUnitStore()
+        store.setSelectedUnit("degrees", forColumnID: "ra(j20000)")
+
+        let model = SearchResultsModel(unitStore: store)
+        let headers = ["\"RA (J2000.0)\""]
+        let rows = [["229.638423456"]]
+        model.loadResults(headers: headers, rows: rows, query: "Q", maxRec: 10)
+        XCTAssertEqual(model.selectedUnit(for: "ra(j20000)"), "degrees")
     }
 
     // MARK: - Pagination

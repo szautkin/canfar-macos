@@ -33,6 +33,13 @@ final class SearchResultsModel {
     private(set) var results: [SearchResult] = []
     /// Column metadata — owns id→index lookup and visibility.
     var columns: SearchResultColumns = SearchResultColumns()
+    /// User-selected display unit per column (only meaningful for multi-unit
+    /// columns registered in ``CellFormatterRegistry/sets``). Absent entries
+    /// mean "use the formatter's default unit".
+    private(set) var selectedUnits: [String: String] = [:]
+    /// Persistence backend for unit selections. Extracted as a protocol so
+    /// tests inject an in-memory store instead of leaking to UserDefaults.
+    private let unitStore: any ColumnUnitStore
     /// Total number of rows loaded (= `results.count`; retained for test compat).
     private(set) var totalRows: Int = 0
     /// True when the server capped the response at `maxRec`.
@@ -96,6 +103,12 @@ final class SearchResultsModel {
 
     static let rowsPerPageOptions: [Int] = [50, 100, 500, 0]
 
+    // MARK: - Init
+
+    init(unitStore: any ColumnUnitStore = UserDefaultsColumnUnitStore()) {
+        self.unitStore = unitStore
+    }
+
     // MARK: - Compatibility accessors (transitional)
 
     /// Legacy alias for ``columns/visible`` used by older view code.
@@ -113,8 +126,24 @@ final class SearchResultsModel {
         columns = SearchResultColumns(headers: headers, sampleRows: rows)
         columns.applyPersistedVisibility()
 
+        // Hydrate per-column unit selections from persistence — only for the
+        // columns the current result set actually contains. Keeps `selectedUnits`
+        // from leaking stale entries across searches with different schemas.
+        selectedUnits = [:]
+        for col in columns.list {
+            if CellFormatterRegistry.availableUnits(for: col.id) == nil { continue }
+            if let stored = unitStore.selectedUnit(forColumnID: col.id) {
+                selectedUnits[col.id] = stored
+            }
+        }
+
         results = rows.enumerated().map { rowIndex, row in
-            Self.buildResult(row: row, columns: columns, rowIndex: rowIndex)
+            Self.buildResult(
+                row: row,
+                columns: columns,
+                selectedUnits: selectedUnits,
+                rowIndex: rowIndex
+            )
         }
 
         totalRows = results.count
@@ -128,6 +157,7 @@ final class SearchResultsModel {
     private static func buildResult(
         row: [String],
         columns: SearchResultColumns,
+        selectedUnits: [String: String],
         rowIndex: Int
     ) -> SearchResult {
         // rawValues is the positional row; pad shorter rows so indexing is safe.
@@ -142,12 +172,18 @@ final class SearchResultsModel {
         else if !pub.isEmpty { id = pub }
         else { id = "row_\(rowIndex)" }
 
-        // Per-column lowercased haystack (raw + formatted), built once.
+        // Per-column lowercased haystack (raw + formatted), built once using
+        // the column's currently-selected unit if any. Unit changes trigger
+        // a targeted index rebuild via `rebuildSearchIndex(for:)`.
         var searchIndex: [String] = []
         searchIndex.reserveCapacity(columns.count)
         for col in columns.list {
             let rawCell = raw[col.index]
-            let formatted = CellFormatters.format(key: col.id, raw: rawCell)
+            let formatted = CellFormatterRegistry.format(
+                id: col.id,
+                raw: rawCell,
+                unitID: selectedUnits[col.id]
+            )
             if rawCell == formatted {
                 searchIndex.append(rawCell.lowercased())
             } else {
@@ -185,6 +221,44 @@ final class SearchResultsModel {
         }
     }
 
+    /// Select a display unit for a multi-unit column. Rebuilds the column's
+    /// search haystack so filter matching stays consistent with what the
+    /// user sees, persists the selection, and re-runs the refresh pipeline.
+    func setUnit(columnID: String, unitID: String) {
+        guard CellFormatterRegistry.availableUnits(for: columnID) != nil else { return }
+        guard let col = columns.column(id: columnID) else { return }
+        selectedUnits[columnID] = unitID
+        unitStore.setSelectedUnit(unitID, forColumnID: columnID)
+        rebuildSearchIndex(for: col)
+        refresh(resettingPage: false)
+    }
+
+    /// The selected unit for a column, falling back to the formatter's
+    /// default if the user hasn't chosen one.
+    func selectedUnit(for columnID: String) -> String? {
+        selectedUnits[columnID] ?? CellFormatterRegistry.defaultUnitID(for: columnID)
+    }
+
+    /// Recompute `searchIndex[col.index]` for every row using the currently
+    /// selected unit. O(rows) in the single column — cheap for typical MAXREC
+    /// response sizes.
+    private func rebuildSearchIndex(for col: SearchResultColumn) {
+        let unit = selectedUnits[col.id]
+        results = results.map { row in
+            guard row.rawValues.indices.contains(col.index),
+                  row.searchIndex.indices.contains(col.index) else { return row }
+            let rawCell = row.rawValues[col.index]
+            let formatted = CellFormatterRegistry.format(id: col.id, raw: rawCell, unitID: unit)
+            var updated = row.searchIndex
+            if rawCell == formatted {
+                updated[col.index] = rawCell.lowercased()
+            } else {
+                updated[col.index] = rawCell.lowercased() + "\u{1F} " + formatted.lowercased()
+            }
+            return SearchResult(id: row.id, rawValues: row.rawValues, searchIndex: updated)
+        }
+    }
+
     /// Toggle visibility of a column by id. Persists across sessions.
     func toggleColumnVisibility(_ columnID: String) {
         columns.toggleVisibility(id: columnID)
@@ -215,6 +289,7 @@ final class SearchResultsModel {
         adqlQuery = ""
         sortColumnID = nil
         columnFilters = [:]
+        selectedUnits = [:]
         currentPage = 0
         displayedRows = []
         filteredCount = 0

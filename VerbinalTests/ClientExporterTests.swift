@@ -16,7 +16,7 @@ final class ClientExporterTests: XCTestCase {
 
     @MainActor
     private func fixtureModel() -> SearchResultsModel {
-        let model = SearchResultsModel()
+        let model = SearchResultsModel(unitStore: InMemoryColumnUnitStore())
         let headers = ["\"Collection\"", "\"Target Name\"", "\"Cal. Lev.\""]
         let rows = [
             ["JWST", "M31", "2"],
@@ -60,7 +60,7 @@ final class ClientExporterTests: XCTestCase {
 
     @MainActor
     func testWriteTSVStripsTabsFromValues() async throws {
-        let model = SearchResultsModel()
+        let model = SearchResultsModel(unitStore: InMemoryColumnUnitStore())
         let headers = ["\"A\"", "\"B\""]
         let rows = [["one\ttwo", "three"]]
         model.loadResults(headers: headers, rows: rows, query: "Q", maxRec: 10)

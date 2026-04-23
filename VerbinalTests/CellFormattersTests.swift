@@ -66,18 +66,69 @@ final class CellFormattersTests: XCTestCase {
 
     // MARK: - Coordinate Formatting
 
-    func testRAFormatting() {
-        // 6 decimals — matches CADC CCDA reference precision.
-        XCTAssertEqual(CellFormatters.format(key: "ra(j20000)", raw: "229.638423456"), "229.638423")
+    // MARK: - Coordinate default unit (HMS for RA, DMS for Dec)
+
+    func testRADefaultIsHMS() {
+        // 229.638423456° / 15 = 15h 18m 33.22s
+        XCTAssertEqual(CellFormatters.format(key: "ra(j20000)", raw: "229.638423456"), "15:18:33.22")
     }
 
-    func testDecFormattingShowsSignForPositives() {
-        // Dec uses signMode=.always (required by astronomers); 6 decimals.
-        XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "12.3456789"), "+12.345679")
+    func testDecDefaultIsDMS() {
+        // 12.3456789° → +12° 20′ 44.4″
+        XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "12.3456789"), "+12:20:44.4")
     }
 
-    func testDecFormattingNegative() {
-        XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "-12.3456789"), "-12.345679")
+    func testDecNegativeDMS() {
+        XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "-12.3456789"), "-12:20:44.4")
+    }
+
+    // MARK: - Coordinate explicit-unit (degrees)
+
+    func testRADegreesUnit() {
+        // When the caller asks for degrees, use 6 decimals.
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "ra(j20000)", raw: "229.638423456", unitID: "degrees"),
+            "229.638423"
+        )
+    }
+
+    func testDecDegreesUnitShowsSign() {
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "dec(j20000)", raw: "12.3456789", unitID: "degrees"),
+            "+12.345679"
+        )
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "dec(j20000)", raw: "-12.3456789", unitID: "degrees"),
+            "-12.345679"
+        )
+    }
+
+    // MARK: - HMS/DMS edge cases
+
+    func testHMSWraps360Degrees() {
+        // 360° = 24h → wraps back to 00:00:00.00
+        XCTAssertEqual(HMSFormatter().format("360"), "00:00:00.00")
+    }
+
+    func testHMSHandlesNegativeRA() {
+        // -15° should wrap into positive hours: -1h → 23h
+        XCTAssertEqual(HMSFormatter().format("-15"), "23:00:00.00")
+    }
+
+    func testDMSRejectsOutOfRangeDec() {
+        // Dec outside [-90, 90] is implausible — passthrough, don't fabricate.
+        XCTAssertEqual(DMSFormatter().format("95"), "95")
+        XCTAssertEqual(DMSFormatter().format("-100"), "-100")
+    }
+
+    func testDMSBoundary() {
+        XCTAssertEqual(DMSFormatter().format("90"), "+90:00:00.0")
+        XCTAssertEqual(DMSFormatter().format("-90"), "-90:00:00.0")
+    }
+
+    func testHMSAndDMSPassNonNumeric() {
+        XCTAssertEqual(HMSFormatter().format("N/A"), "N/A")
+        XCTAssertEqual(DMSFormatter().format("N/A"), "N/A")
     }
 
     func testCoordinateNonNumericPassthrough() {

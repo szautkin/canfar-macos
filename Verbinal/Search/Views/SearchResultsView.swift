@@ -247,26 +247,62 @@ struct SearchResultsView: View {
                 .accessibilityLabel(Text("Preview"))
 
             ForEach(columns) { col in
-                Button { resultsModel.toggleSort(col.id) } label: {
-                    HStack(spacing: 2) {
-                        Text(col.label)
-                            .font(.caption.bold())
-                        if resultsModel.sortColumnID == col.id {
-                            Image(systemName: resultsModel.sortAscending ? "chevron.up" : "chevron.down")
-                                .font(.caption2)
+                HStack(spacing: 4) {
+                    Button { resultsModel.toggleSort(col.id) } label: {
+                        HStack(spacing: 2) {
+                            Text(col.label)
+                                .font(.caption.bold())
+                            if resultsModel.sortColumnID == col.id {
+                                Image(systemName: resultsModel.sortAscending ? "chevron.up" : "chevron.down")
+                                    .font(.caption2)
+                            }
                         }
-                        Spacer(minLength: 0)
+                        .contentShape(Rectangle())
                     }
-                    .frame(width: col.idealWidth, alignment: .leading)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
-                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    .help(Text(col.label))
+
+                    unitMenu(for: col)
+
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.plain)
-                .help(Text(col.label))
+                .frame(width: col.idealWidth, alignment: .leading)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
             }
         }
         .background(.bar)
+    }
+
+    /// Unit-switch menu for columns with multiple display units. Renders as
+    /// a small slider glyph; opens a menu of choices on tap. Absent for
+    /// single-unit columns.
+    @ViewBuilder
+    private func unitMenu(for col: SearchResultColumn) -> some View {
+        if let choices = CellFormatterRegistry.availableUnits(for: col.id), choices.count > 1 {
+            let current = resultsModel.selectedUnit(for: col.id)
+            Menu {
+                ForEach(choices, id: \.unitID) { choice in
+                    Button {
+                        resultsModel.setUnit(columnID: col.id, unitID: choice.unitID)
+                    } label: {
+                        if choice.unitID == current {
+                            Label(choice.label, systemImage: "checkmark")
+                        } else {
+                            Text(choice.label)
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help(Text("Display unit"))
+        }
     }
 
     private func filterRow(columns: [SearchResultColumn]) -> some View {
@@ -305,7 +341,11 @@ struct SearchResultsView: View {
             HStack(spacing: 0) {
                 ForEach(columns) { col in
                     let raw = resultsModel.columns.value(in: result, forID: col.id)
-                    let formatted = CellFormatters.format(key: col.id, raw: raw)
+                    let formatted = CellFormatterRegistry.format(
+                        id: col.id,
+                        raw: raw,
+                        unitID: resultsModel.selectedUnit(for: col.id)
+                    )
                     Text(formatted)
                         .font(.caption)
                         .lineLimit(1)
@@ -344,9 +384,10 @@ struct SearchResultsView: View {
     private func copyRow(_ result: SearchResult, columns: [SearchResultColumn]) {
         let line = columns
             .map { col in
-                CellFormatters.format(
-                    key: col.id,
-                    raw: resultsModel.columns.value(in: result, forID: col.id)
+                CellFormatterRegistry.format(
+                    id: col.id,
+                    raw: resultsModel.columns.value(in: result, forID: col.id),
+                    unitID: resultsModel.selectedUnit(for: col.id)
                 )
             }
             .joined(separator: "\t")

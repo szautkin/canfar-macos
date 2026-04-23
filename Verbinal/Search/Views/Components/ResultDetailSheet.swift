@@ -236,7 +236,11 @@ struct ResultDetailSheet: View {
                             .font(.caption.bold())
                             .frame(width: 150, alignment: .trailing)
                             .foregroundStyle(.secondary)
-                        Text(CellFormatters.format(key: col.id, raw: raw))
+                        // The detail sheet uses each column's default unit.
+                        // Column-level unit preferences live on the table view
+                        // model and aren't threaded through here — the sheet
+                        // is a metadata dump, not a unit-switch surface.
+                        Text(CellFormatterRegistry.format(id: col.id, raw: raw))
                             .font(.caption)
                             .textSelection(.enabled)
                         Spacer()

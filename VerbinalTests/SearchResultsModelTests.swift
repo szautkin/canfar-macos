@@ -18,7 +18,9 @@ final class SearchResultsModelTests: XCTestCase {
     }
 
     private func makeModel() -> SearchResultsModel {
-        SearchResultsModel()
+        // Use an in-memory unit store so tests don't collide with each other
+        // or with the real app's UserDefaults.
+        SearchResultsModel(unitStore: InMemoryColumnUnitStore())
     }
 
     private let sampleHeaders = [
