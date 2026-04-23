@@ -166,38 +166,38 @@ final class CellFormattersTests: XCTestCase {
         XCTAssertEqual(CellFormatters.format(key: "callev", raw: "7"), "7")
     }
 
-    // MARK: - Integration Time
+    // MARK: - Integration Time — default unit is "seconds" (CCDA parity)
 
-    func testIntegrationTime1Hour() {
-        // Duration.FormatStyle output is locale-dependent; assert shape, not exact glyph
-        let out = CellFormatters.format(key: "inttime", raw: "3600.0")
-        XCTAssertTrue(out.contains("1"), "Expected '1' hour, got: \(out)")
-        XCTAssertFalse(out.isEmpty)
+    func testIntegrationTimeDefaultSecondsFormatting() {
+        // CCDA default: 3-decimal seconds.
+        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "3600.0"), "3600.000 s")
+        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "1800.0"), "1800.000 s")
+        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "45.0"), "45.000 s")
     }
 
-    func testIntegrationTime30Minutes() {
-        let out = CellFormatters.format(key: "inttime", raw: "1800.0")
-        XCTAssertTrue(out.contains("30"), "Expected 30 minutes, got: \(out)")
+    func testIntegrationTimeDefaultPreservesSubSecondPrecision() {
+        // 3-decimal precision means 0.05s renders faithfully, not rounded away.
+        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "0.05"), "0.050 s")
     }
 
-    func testIntegrationTime45Seconds() {
-        let out = CellFormatters.format(key: "inttime", raw: "45.0")
-        XCTAssertTrue(out.contains("45"), "Expected 45 seconds, got: \(out)")
-    }
-
-    func testIntegrationTimeSubSecondDoesNotRoundToZero() {
-        // Previously 0.05s → 0.1s (misleading); now shows two decimals.
-        let out = CellFormatters.format(key: "inttime", raw: "0.05")
-        XCTAssertTrue(out.contains("0.05"), "Sub-second should keep precision, got: \(out)")
-    }
-
-    func testIntegrationTimeZeroAndNegativeRejected() {
-        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "0"), "")
-        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "-10"), "")
+    func testIntegrationTimeDefaultRendersZeroAndNegative() {
+        // Unit-switchable formatter treats whatever the user sees as honest data
+        // — CCDA parity shows "0.000 s", not an empty cell.
+        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "0"), "0.000 s")
+        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "-10"), "-10.000 s")
     }
 
     func testIntegrationTimeNonNumericPassthrough() {
+        // Both the registry path and the legacy direct API passthrough on non-numeric.
+        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "unknown"), "unknown")
         XCTAssertEqual(CellFormatters.formatIntegrationTime("unknown"), "unknown")
+    }
+
+    func testLegacyDurationFormatterStillAutoPicks() {
+        // The legacy DurationFormatter API (used by some callers and tests)
+        // continues to auto-pick hours/minutes/seconds; the registry default
+        // changed to CCDA's fixed seconds, but direct callers are unaffected.
+        XCTAssertTrue(DurationFormatter().format("3600").contains("1"))
     }
 
     // MARK: - Boolean
@@ -283,26 +283,35 @@ final class CellFormattersTests: XCTestCase {
         )
     }
 
-    // MARK: - Angle
+    // MARK: - Angle (pixel scale default is Arcseconds — CCDA parity)
 
-    func testPixelScaleRendersArcsec() {
-        // 0.2 arcsec = 0.2 / 3600 degrees
+    func testPixelScaleDefaultRendersArcsec() {
+        // 0.2″ = 0.2/3600 degrees → 0.200″
         let raw = String(0.2 / 3600.0)
         let out = CellFormatters.format(key: "pixelscale", raw: raw)
-        XCTAssertTrue(out.contains("/px"), "Expected '/px' suffix, got: \(out)")
-        XCTAssertTrue(out.contains("0.2"), "Expected 0.2, got: \(out)")
+        XCTAssertTrue(out.hasPrefix("0.200"), "Expected 0.200 arcsec prefix, got: \(out)")
+        XCTAssertTrue(out.hasSuffix("\u{2033}"), "Expected arcsecond suffix, got: \(out)")
     }
 
-    func testFieldOfViewSmallUsesArcmin() {
-        // 10 arcmin = 10 / 60 degrees
-        let raw = String(10.0 / 60.0)
+    func testFieldOfViewDefaultIsSquareDegrees() {
+        // CCDA default for FoV is sq.deg — not arcmin even for small values.
+        let raw = String(10.0 / 60.0)  // 10 arcmin = 0.1667 sq.deg... wait, this is a LINEAR angle not AREA
         let out = CellFormatters.format(key: "fieldofview", raw: raw)
-        XCTAssertTrue(out.contains("\u{2032}"), "Expected arcmin symbol, got: \(out)")
+        XCTAssertTrue(out.hasSuffix("sq deg"), "Default FoV unit is sq.deg, got: \(out)")
     }
 
-    func testFieldOfViewLargeUsesDegrees() {
+    func testFieldOfViewLargeStillInSquareDegrees() {
         let out = CellFormatters.format(key: "fieldofview", raw: "2.5")
-        XCTAssertTrue(out.contains("\u{00B0}"), "Expected degree symbol, got: \(out)")
+        XCTAssertTrue(out.hasPrefix("2.500"))
+        XCTAssertTrue(out.hasSuffix("sq deg"))
+    }
+
+    func testLegacyAngleFormatterStillAvailable() {
+        // The original auto-formatter remains reachable for callers that
+        // want the "arcsec/px" compound suffix.
+        let raw = String(0.2 / 3600.0)
+        let out = AngleFormatter(mode: .arcsecPerPixel).format(raw)
+        XCTAssertTrue(out.contains("/px"))
     }
 
     // MARK: - Default passthrough

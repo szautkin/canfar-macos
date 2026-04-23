@@ -52,6 +52,7 @@ enum CellFormatterRegistry {
     /// If yes, add a ``ColumnFormatSet`` here; if no, add a single
     /// formatter to ``byID``.
     static let sets: [String: ColumnFormatSet] = [
+        // Coordinates
         "ra(j20000)": ColumnFormatSet(
             choices: [
                 ColumnFormatChoice(unitID: "hms", label: "H:M:S", formatter: HMSFormatter()),
@@ -68,12 +69,20 @@ enum CellFormatterRegistry {
             ],
             defaultUnitID: "dms"
         ),
-        // Spectral columns — TAP stores as metres. Cross-dimension switching
-        // (λ / ν / E) lives in SpectralConverter. The three columns share
-        // the same choice list — same ColumnFormatSet instance, by reference.
-        "minwavelength": Self.spectralSet,
-        "maxwavelength": Self.spectralSet,
+        // Spectral (wavelength / frequency / energy — 14 units, cross-dim convertible).
+        "minwavelength":  Self.spectralSet,
+        "maxwavelength":  Self.spectralSet,
         "restframeenergy": Self.spectralSet,
+        // Integration time (seconds base — CCDA default is Seconds).
+        "inttime":        Self.durationSet,
+        // Pixel scale and image quality (degrees base; CCDA default arcseconds).
+        "pixelscale":         Self.pixelScaleSet,
+        "positionresolution": Self.imageQualitySet,
+        // Field of view (square-degrees base; CCDA default Sq.deg).
+        "fieldofview":    Self.fieldOfViewSet,
+        // Observation date-range columns (MJD base; CCDA default Calendar).
+        "startdate":      Self.mjdDateSet,
+        "enddate":        Self.mjdDateSet,
     ]
 
     /// Shared spectral-unit set registered on all three wavelength/energy
@@ -87,6 +96,78 @@ enum CellFormatterRegistry {
         defaultUnitID: SpectralUnit.metres.id
     )
 
+    /// Duration unit set — CCDA-parity for the integration-time column.
+    /// Default matches CCDA's "Seconds" selection.
+    private static let durationSet: ColumnFormatSet = ColumnFormatSet(
+        choices: [
+            ColumnFormatChoice(unitID: "seconds", label: "Seconds",
+                               formatter: FixedDurationFormatter(unit: .seconds)),
+            ColumnFormatChoice(unitID: "minutes", label: "Minutes",
+                               formatter: FixedDurationFormatter(unit: .minutes)),
+            ColumnFormatChoice(unitID: "hours",   label: "Hours",
+                               formatter: FixedDurationFormatter(unit: .hours)),
+            ColumnFormatChoice(unitID: "days",    label: "Days",
+                               formatter: FixedDurationFormatter(unit: .days)),
+        ],
+        defaultUnitID: "seconds"
+    )
+
+    /// Pixel-scale angular unit set (degrees → mas / arcsec / arcmin / deg).
+    /// CCDA default is Arcseconds.
+    private static let pixelScaleSet: ColumnFormatSet = ColumnFormatSet(
+        choices: [
+            ColumnFormatChoice(unitID: "milliarcseconds", label: "Milliarcseconds",
+                               formatter: FixedAngleFormatter(unit: .milliarcseconds)),
+            ColumnFormatChoice(unitID: "arcseconds", label: "Arcseconds",
+                               formatter: FixedAngleFormatter(unit: .arcseconds)),
+            ColumnFormatChoice(unitID: "arcminutes", label: "Arcminutes",
+                               formatter: FixedAngleFormatter(unit: .arcminutes)),
+            ColumnFormatChoice(unitID: "degrees",    label: "Degrees",
+                               formatter: FixedAngleFormatter(unit: .degrees)),
+        ],
+        defaultUnitID: "arcseconds"
+    )
+
+    /// Image-quality set — mas / arcsec / arcmin (no Degrees option in CCDA
+    /// for this column; IQ is never usefully expressed in degrees).
+    private static let imageQualitySet: ColumnFormatSet = ColumnFormatSet(
+        choices: [
+            ColumnFormatChoice(unitID: "milliarcseconds", label: "Milliarcseconds",
+                               formatter: FixedAngleFormatter(unit: .milliarcseconds)),
+            ColumnFormatChoice(unitID: "arcseconds", label: "Arcseconds",
+                               formatter: FixedAngleFormatter(unit: .arcseconds)),
+            ColumnFormatChoice(unitID: "arcminutes", label: "Arcminutes",
+                               formatter: FixedAngleFormatter(unit: .arcminutes)),
+        ],
+        defaultUnitID: "arcseconds"
+    )
+
+    /// Field-of-view set — solid angle expressed as sq.arcsec / sq.arcmin /
+    /// sq.deg. Default matches CCDA (Sq. deg).
+    private static let fieldOfViewSet: ColumnFormatSet = ColumnFormatSet(
+        choices: [
+            ColumnFormatChoice(unitID: "sq_arcsec", label: "Sq. arcsec",
+                               formatter: FixedAreaFormatter(unit: .squareArcseconds)),
+            ColumnFormatChoice(unitID: "sq_arcmin", label: "Sq. arcmin",
+                               formatter: FixedAreaFormatter(unit: .squareArcminutes)),
+            ColumnFormatChoice(unitID: "sq_deg",    label: "Sq. deg",
+                               formatter: FixedAreaFormatter(unit: .squareDegrees)),
+        ],
+        defaultUnitID: "sq_deg"
+    )
+
+    /// Date set for observation start/end (MJD base). Default Calendar
+    /// matches CCDA; MJD alternative shows the raw numeric value.
+    private static let mjdDateSet: ColumnFormatSet = ColumnFormatSet(
+        choices: [
+            ColumnFormatChoice(unitID: "calendar", label: "Calendar",
+                               formatter: MJDFormatter(style: .dateAndTime)),
+            ColumnFormatChoice(unitID: "mjd",      label: "MJD",
+                               formatter: MJDRawFormatter()),
+        ],
+        defaultUnitID: "calendar"
+    )
+
     /// Single-formatter columns. Keys are cleaned column ids, matching
     /// ``SearchResultColumns`` / ``CSVParser/cleanHeader``.
     ///
@@ -95,24 +176,13 @@ enum CellFormatterRegistry {
     /// `0` dropped — the `.0` becomes nothing; the `2000` remains `20000`
     /// because `"J2000.0"` → `"J20000"` after dot-strip).
     static let byID: [String: any ColumnFormatter] = [
-        // Dates — always render time-of-day (HH:mm:ss) to match CADC CCDA's
-        // default. Observation timestamps carry meaningful sub-day precision.
-        "startdate": MJDFormatter(style: .dateAndTime),
-        "enddate": MJDFormatter(style: .dateAndTime),
+        // Single-format date / timestamp columns (no unit choice in CCDA).
         "provelastexecuted": ISOTimestampFormatter(),
-        "datarelease": ISOTimestampFormatter(),
-        // Duration
-        "inttime": DurationFormatter(),
-        // Labels
-        "callev": CalLevelFormatter(),
-        // Booleans
-        "download": BooleanFormatter(),
+        "datarelease":       ISOTimestampFormatter(),
+        // Labels and boolean glyphs — no unit-switch concept.
+        "callev":       CalLevelFormatter(),
+        "download":     BooleanFormatter(),
         "movingtarget": BooleanFormatter(),
-        // Angles (degrees → arcsec/arcmin/deg). Multi-unit angular columns
-        // will migrate to a ColumnFormatSet when pixel scale / FOV unit
-        // switching is wired up; staying single-formatter for now.
-        "pixelscale": AngleFormatter(mode: .arcsecPerPixel),
-        "fieldofview": AngleFormatter(mode: .arcminOrDegrees),
     ]
 
     /// Format a cell value by column id. Trims whitespace, short-circuits on empty,
@@ -341,6 +411,46 @@ struct DurationFormatter: ColumnFormatter {
     }
 }
 
+/// Fixed-unit duration formatter — CCDA parity for user-selectable units on
+/// the integration-time column. Input is seconds (the TAP native unit);
+/// output is `"%.3f <suffix>"` in the chosen unit, matching CCDA's
+/// `secondsUtility.ts` precision policy. Non-finite / non-numeric raws are
+/// passed through; negative values are also passed through rather than
+/// silently suppressed, since a user-chosen unit implies the user wants to
+/// *see* the value.
+struct FixedDurationFormatter: ColumnFormatter {
+    enum Unit: String, Sendable {
+        case seconds, minutes, hours, days
+
+        var label: String {
+            switch self {
+            case .seconds: return "s"
+            case .minutes: return "m"
+            case .hours:   return "h"
+            case .days:    return "d"
+            }
+        }
+
+        /// Factor converting this unit *into* seconds (the TAP base).
+        var factorToSeconds: Double {
+            switch self {
+            case .seconds: return 1
+            case .minutes: return 60
+            case .hours:   return 3600
+            case .days:    return 86_400
+            }
+        }
+    }
+
+    let unit: Unit
+
+    func format(_ raw: String) -> String {
+        guard let seconds = finiteDouble(raw) else { return raw }
+        let value = seconds / unit.factorToSeconds
+        return String(format: "%.3f %@", value, unit.label)
+    }
+}
+
 // MARK: - Calibration level
 
 /// Map CAOM2 calibration levels to localized labels (0=Raw … 4=Analysis).
@@ -417,7 +527,8 @@ struct WavelengthFormatter: ColumnFormatter {
 
 /// Angular values come from CADC in degrees. For pixel scale and field of
 /// view, degrees are the worst unit to show — convert to arcseconds or
-/// arcminutes based on the intended semantics.
+/// arcminutes based on the intended semantics. Retained as a single-formatter
+/// fallback; per-column unit switching is provided by ``FixedAngleFormatter``.
 struct AngleFormatter: ColumnFormatter {
     enum Mode {
         case arcsecPerPixel       // pixel scale: always arcseconds, "″/px"
@@ -447,6 +558,111 @@ struct AngleFormatter: ColumnFormatter {
             let arcsec = degrees * 3600.0
             return String(format: "%.1f\u{2033}", arcsec)
         }
+    }
+}
+
+/// Explicit angular-unit formatter used by the pixel-scale / position-
+/// resolution unit-switch menu. Input is degrees (CADC's native storage for
+/// these columns); output is `"%value <label>"` with CCDA's adaptive
+/// precision policy — 6 decimals when the magnitude drops below 0.001,
+/// 3 decimals otherwise. Non-finite / non-numeric raws pass through.
+struct FixedAngleFormatter: ColumnFormatter {
+    enum Unit: String, Sendable {
+        case milliarcseconds, arcseconds, arcminutes, degrees
+
+        var label: String {
+            switch self {
+            case .milliarcseconds: return "mas"
+            case .arcseconds:      return "\u{2033}"   // ″
+            case .arcminutes:      return "\u{2032}"   // ′
+            case .degrees:         return "\u{00B0}"   // °
+            }
+        }
+
+        /// Factor converting degrees into this unit.
+        var factorFromDegrees: Double {
+            switch self {
+            case .degrees:         return 1
+            case .arcminutes:      return 60
+            case .arcseconds:      return 3600
+            case .milliarcseconds: return 3_600_000
+            }
+        }
+    }
+
+    let unit: Unit
+
+    func format(_ raw: String) -> String {
+        guard let degrees = finiteDouble(raw) else { return raw }
+        let value = degrees * unit.factorFromDegrees
+        return "\(Self.formatNumber(value)) \(unit.label)"
+    }
+
+    /// Matches CCDA scaleUtility.ts: 6 decimals below 0.001, 3 otherwise.
+    private static func formatNumber(_ v: Double) -> String {
+        if abs(v) != 0 && abs(v) < 0.001 { return String(format: "%.6f", v) }
+        return String(format: "%.3f", v)
+    }
+}
+
+// MARK: - Area (sq.deg base)
+
+/// Solid-angle (area) formatter for CCDA parity on the field-of-view column.
+/// Input is square degrees (CADC's native); output is the value converted
+/// into the chosen square-angular unit. Matches CCDA areaUtility.ts's
+/// precision policy (6 decimals below 0.001, 3 otherwise).
+struct FixedAreaFormatter: ColumnFormatter {
+    enum Unit: String, Sendable {
+        case squareArcseconds, squareArcminutes, squareDegrees
+
+        var label: String {
+            switch self {
+            case .squareArcseconds: return "sq arcsec"
+            case .squareArcminutes: return "sq arcmin"
+            case .squareDegrees:    return "sq deg"
+            }
+        }
+
+        /// Factor converting sq.deg into this unit.
+        ///  • 1 sq.deg = 3600 sq.arcmin  (60² minutes per degree)
+        ///  • 1 sq.deg = 12 960 000 sq.arcsec (3600² seconds per degree)
+        var factorFromSquareDegrees: Double {
+            switch self {
+            case .squareDegrees:    return 1
+            case .squareArcminutes: return 3600
+            case .squareArcseconds: return 12_960_000
+            }
+        }
+    }
+
+    let unit: Unit
+
+    func format(_ raw: String) -> String {
+        guard let sqDeg = finiteDouble(raw) else { return raw }
+        let value = sqDeg * unit.factorFromSquareDegrees
+        return "\(Self.formatNumber(value)) \(unit.label)"
+    }
+
+    private static func formatNumber(_ v: Double) -> String {
+        if abs(v) != 0 && abs(v) < 0.001 { return String(format: "%.6f", v) }
+        return String(format: "%.3f", v)
+    }
+}
+
+// MARK: - Raw MJD
+
+/// Pure passthrough of an MJD numeric value. Exists as a named formatter so
+/// the unit-switch menu can offer "MJD" as a first-class choice against the
+/// calendar-formatted default on date columns.
+struct MJDRawFormatter: ColumnFormatter {
+    func format(_ raw: String) -> String {
+        guard let mjd = finiteDouble(raw) else { return raw }
+        // Preserve the input's precision without introducing float drift —
+        // we trust the server's representation of the MJD value.
+        if mjd == mjd.rounded(.towardZero) {
+            return String(format: "%.1f", mjd)
+        }
+        return String(mjd)
     }
 }
 
