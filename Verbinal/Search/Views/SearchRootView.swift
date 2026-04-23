@@ -84,7 +84,14 @@ struct SearchRootView: View {
         case .search:
             SearchFormView(searchModel: searchModel)
         case .results:
-            SearchResultsView(resultsModel: searchModel.resultsModel, tapClient: searchModel.tapClient, researchModel: researchModel)
+            SearchResultsView(
+                resultsModel: searchModel.resultsModel,
+                tapClient: searchModel.tapClient,
+                researchModel: researchModel,
+                onQuickSearch: { columnID, value in
+                    Task { await searchModel.quickSearch(columnID: columnID, rawValue: value) }
+                }
+            )
         case .adql:
             ADQLEditorView(searchModel: searchModel)
         }

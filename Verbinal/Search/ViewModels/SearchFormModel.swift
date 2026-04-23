@@ -143,6 +143,45 @@ final class SearchFormModel {
         isSearching = false
     }
 
+    // MARK: - Quick search
+
+    /// Columns that can be turned into one-click "narrow by this value"
+    /// quick-search links. Matches CADC CCDA's `formatQuickSearchLink`
+    /// treatment for PI / proposal / target / collection / instrument.
+    static let quickSearchableColumnIDs: Set<String> = [
+        "piname", "proposalid", "targetname", "collection", "instrument",
+    ]
+
+    /// Called when the user clicks a quick-search-linked cell. Maps the
+    /// column id to the corresponding form field, overwrites just that
+    /// field, and re-runs the search. Leaves unrelated form state alone so
+    /// the user drills into the current search rather than starting from
+    /// scratch.
+    func quickSearch(columnID: String, rawValue: String) async {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        switch columnID {
+        case "piname":
+            formState.piName = trimmed
+        case "proposalid":
+            formState.proposalID = trimmed
+        case "targetname":
+            // Replace target; keep the resolver active so coords can refine.
+            formState.target = trimmed
+            if formState.resolver == .none { formState.resolver = .all }
+        case "collection":
+            formState.selectedCollections = [trimmed]
+            formState.clearDataTrainCascade(after: 1)
+        case "instrument":
+            formState.selectedInstruments = [trimmed]
+            formState.clearDataTrainCascade(after: 2)
+        default:
+            return
+        }
+        await executeSearch()
+    }
+
     // MARK: - Execute Raw ADQL
 
     func executeRawQuery(_ adql: String) async {

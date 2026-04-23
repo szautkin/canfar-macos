@@ -40,6 +40,11 @@ struct SearchResultsView: View {
     var resultsModel: SearchResultsModel
     var tapClient: TAPClient
     var researchModel: ResearchModel?
+    /// Invoked when the user clicks a quick-search cell. Called on MainActor
+    /// with `(columnID, rawValue)`; wire through to
+    /// ``SearchFormModel/quickSearch(columnID:rawValue:)``.
+    var onQuickSearch: ((String, String) -> Void)? = nil
+
     @Environment(\.openURL) private var openURL
     @State private var selectedResult: SearchResult?
     @State private var selectedRowID: String?
@@ -340,18 +345,7 @@ struct SearchResultsView: View {
 
             HStack(spacing: 0) {
                 ForEach(columns) { col in
-                    let raw = resultsModel.columns.value(in: result, forID: col.id)
-                    let formatted = CellFormatterRegistry.format(
-                        id: col.id,
-                        raw: raw,
-                        unitID: resultsModel.selectedUnit(for: col.id)
-                    )
-                    Text(formatted)
-                        .font(.caption)
-                        .lineLimit(1)
-                        .frame(width: col.idealWidth, alignment: .leading)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
+                    cell(for: col, in: result)
                 }
             }
             .contentShape(Rectangle())
@@ -378,6 +372,45 @@ struct SearchResultsView: View {
             }
             Divider()
             Button("Copy Row") { copyRow(result, columns: columns) }
+        }
+    }
+
+    /// Render one cell. Quick-searchable columns become underlined buttons
+    /// that re-narrow the current search on click; everything else is plain
+    /// non-interactive text so the row-level tap gestures reach it.
+    @ViewBuilder
+    private func cell(for col: SearchResultColumn, in result: SearchResult) -> some View {
+        let raw = resultsModel.columns.value(in: result, forID: col.id)
+        let formatted = CellFormatterRegistry.format(
+            id: col.id,
+            raw: raw,
+            unitID: resultsModel.selectedUnit(for: col.id)
+        )
+
+        if let onQuickSearch,
+           SearchFormModel.quickSearchableColumnIDs.contains(col.id),
+           !raw.isEmpty {
+            Button {
+                onQuickSearch(col.id, raw)
+            } label: {
+                Text(formatted)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .underline(pattern: .solid)
+                    .foregroundStyle(Color.accentColor)
+            }
+            .buttonStyle(.plain)
+            .frame(width: col.idealWidth, alignment: .leading)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .help(Text("Narrow search to \(col.label) = \(raw)"))
+        } else {
+            Text(formatted)
+                .font(.caption)
+                .lineLimit(1)
+                .frame(width: col.idealWidth, alignment: .leading)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
         }
     }
 

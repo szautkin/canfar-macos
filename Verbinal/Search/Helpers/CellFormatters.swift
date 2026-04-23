@@ -68,7 +68,24 @@ enum CellFormatterRegistry {
             ],
             defaultUnitID: "dms"
         ),
+        // Spectral columns — TAP stores as metres. Cross-dimension switching
+        // (λ / ν / E) lives in SpectralConverter. The three columns share
+        // the same choice list — same ColumnFormatSet instance, by reference.
+        "minwavelength": Self.spectralSet,
+        "maxwavelength": Self.spectralSet,
+        "restframeenergy": Self.spectralSet,
     ]
+
+    /// Shared spectral-unit set registered on all three wavelength/energy
+    /// columns. Declared separately so future spectral columns only need a
+    /// one-line entry in `sets`.
+    private static let spectralSet: ColumnFormatSet = ColumnFormatSet(
+        choices: SpectralUnit.all.map { unit in
+            ColumnFormatChoice(unitID: unit.id, label: unit.label,
+                               formatter: SpectralFormatter(unit: unit))
+        },
+        defaultUnitID: SpectralUnit.metres.id
+    )
 
     /// Single-formatter columns. Keys are cleaned column ids, matching
     /// ``SearchResultColumns`` / ``CSVParser/cleanHeader``.
@@ -91,11 +108,9 @@ enum CellFormatterRegistry {
         // Booleans
         "download": BooleanFormatter(),
         "movingtarget": BooleanFormatter(),
-        // Spectral wavelengths (metres → nm/μm/mm)
-        "minwavelength": WavelengthFormatter(),
-        "maxwavelength": WavelengthFormatter(),
-        "restframeenergy": WavelengthFormatter(),
-        // Angles (degrees → arcsec/arcmin/deg)
+        // Angles (degrees → arcsec/arcmin/deg). Multi-unit angular columns
+        // will migrate to a ColumnFormatSet when pixel scale / FOV unit
+        // switching is wired up; staying single-formatter for now.
         "pixelscale": AngleFormatter(mode: .arcsecPerPixel),
         "fieldofview": AngleFormatter(mode: .arcminOrDegrees),
     ]

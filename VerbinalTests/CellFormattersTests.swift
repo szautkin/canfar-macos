@@ -237,22 +237,50 @@ final class CellFormattersTests: XCTestCase {
         XCTAssertEqual(CellFormatters.format(key: "movingtarget", raw: "true"), CellFormatters.checkmark)
     }
 
-    // MARK: - Wavelength (metres → human units)
+    // MARK: - Wavelength (metres base, user-switchable)
 
-    func testWavelengthOptical() {
-        // 5e-7 m = 500 nm
+    func testWavelengthDefaultRendersInMetres() {
+        // Default spectral unit is metres — matches CCDA.
         let out = CellFormatters.format(key: "minwavelength", raw: "5.0e-7")
-        XCTAssertTrue(out.contains("nm") && out.contains("500"), "Expected '500 nm'-ish, got: \(out)")
+        XCTAssertTrue(out.hasSuffix(" m"), "Expected metres unit, got: \(out)")
     }
 
-    func testWavelengthInfrared() {
-        // 2.2e-6 m = 2.2 μm
-        let out = CellFormatters.format(key: "minwavelength", raw: "2.2e-6")
-        XCTAssertTrue(out.contains("\u{03BC}m"), "Expected micrometre symbol, got: \(out)")
+    func testWavelengthOpticalAsNanometres() {
+        // 5e-7 m = 500 nm when the caller requests nm explicitly.
+        let out = CellFormatterRegistry.format(id: "minwavelength", raw: "5.0e-7", unitID: "nm")
+        XCTAssertEqual(out, "500.0 nm")
+    }
+
+    func testWavelengthInfraredAsMicrometres() {
+        let out = CellFormatterRegistry.format(id: "minwavelength", raw: "2.2e-6", unitID: "um")
+        XCTAssertEqual(out, "2.20 \u{03BC}m")
+    }
+
+    func testWavelengthAsFrequencyGHz() {
+        // 1 mm wavelength = 299.79 GHz.
+        let out = CellFormatterRegistry.format(id: "minwavelength", raw: "1e-3", unitID: "ghz")
+        XCTAssertTrue(out.contains("GHz"), "Expected GHz, got: \(out)")
+        XCTAssertTrue(out.contains("299"), "Expected ~299 GHz, got: \(out)")
+    }
+
+    func testWavelengthAsEnergyKeV() {
+        // X-ray wavelength 1 Å = 1e-10 m → ~12.4 keV.
+        let out = CellFormatterRegistry.format(id: "minwavelength", raw: "1e-10", unitID: "kev")
+        XCTAssertTrue(out.contains("keV"), "Expected keV, got: \(out)")
+        XCTAssertTrue(out.contains("12"), "Expected ~12.4 keV, got: \(out)")
     }
 
     func testWavelengthNaNPassesThrough() {
         XCTAssertEqual(CellFormatters.format(key: "minwavelength", raw: "NaN"), "NaN")
+    }
+
+    func testWavelengthZeroRejected() {
+        // Cross-dimension converters would divide by zero; the formatter
+        // returns the raw input so the user sees the server's value.
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "minwavelength", raw: "0", unitID: "nm"),
+            "0"
+        )
     }
 
     // MARK: - Angle
