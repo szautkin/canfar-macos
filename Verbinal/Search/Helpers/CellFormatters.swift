@@ -231,6 +231,18 @@ func finiteDouble(_ raw: String) -> Double? {
     return v
 }
 
+/// Adaptive-precision numeric rendering matching CCDA's `scaleUtility.ts`
+/// and `areaUtility.ts`: 6 decimals when the magnitude drops below 0.001 so
+/// sub-thousandth values aren't collapsed to `"0.000"`, 3 decimals otherwise.
+/// Exact zero gets the 3-decimal branch (renders `"0.000"`) rather than
+/// jumping to scientific notation for a meaningless "small magnitude".
+@inline(__always)
+func adaptivePrecisionString(_ v: Double) -> String {
+    let mag = abs(v)
+    if mag != 0 && mag < 0.001 { return String(format: "%.6f", v) }
+    return String(format: "%.3f", v)
+}
+
 // MARK: - MJD date
 
 /// Modified Julian Date → ISO date string.
@@ -595,13 +607,7 @@ struct FixedAngleFormatter: ColumnFormatter {
     func format(_ raw: String) -> String {
         guard let degrees = finiteDouble(raw) else { return raw }
         let value = degrees * unit.factorFromDegrees
-        return "\(Self.formatNumber(value)) \(unit.label)"
-    }
-
-    /// Matches CCDA scaleUtility.ts: 6 decimals below 0.001, 3 otherwise.
-    private static func formatNumber(_ v: Double) -> String {
-        if abs(v) != 0 && abs(v) < 0.001 { return String(format: "%.6f", v) }
-        return String(format: "%.3f", v)
+        return "\(adaptivePrecisionString(value)) \(unit.label)"
     }
 }
 
@@ -640,12 +646,7 @@ struct FixedAreaFormatter: ColumnFormatter {
     func format(_ raw: String) -> String {
         guard let sqDeg = finiteDouble(raw) else { return raw }
         let value = sqDeg * unit.factorFromSquareDegrees
-        return "\(Self.formatNumber(value)) \(unit.label)"
-    }
-
-    private static func formatNumber(_ v: Double) -> String {
-        if abs(v) != 0 && abs(v) < 0.001 { return String(format: "%.6f", v) }
-        return String(format: "%.3f", v)
+        return "\(adaptivePrecisionString(value)) \(unit.label)"
     }
 }
 

@@ -145,40 +145,46 @@ final class SearchFormModel {
 
     // MARK: - Quick search
 
-    /// Columns that can be turned into one-click "narrow by this value"
-    /// quick-search links. Matches CADC CCDA's `formatQuickSearchLink`
-    /// treatment for PI / proposal / target / collection / instrument.
-    static let quickSearchableColumnIDs: Set<String> = [
-        "piname", "proposalid", "targetname", "collection", "instrument",
+    /// Column id → form-mutation action. Single source of truth for both
+    /// which columns are quick-search-linkable *and* how their value maps
+    /// onto form state. Adding a new quick-search column is one entry here;
+    /// there is no second place to forget to update.
+    private static let quickSearchActions: [String: @MainActor (SearchFormState, String) -> Void] = [
+        "piname":     { state, value in state.piName = value },
+        "proposalid": { state, value in state.proposalID = value },
+        "targetname": { state, value in
+            state.target = value
+            // Keep the resolver active so coords can refine; if the user had
+            // disabled the resolver entirely, restore the default service.
+            if state.resolver == .none { state.resolver = .all }
+        },
+        "collection": { state, value in
+            state.selectedCollections = [value]
+            state.clearDataTrainCascade(after: 1)
+        },
+        "instrument": { state, value in
+            state.selectedInstruments = [value]
+            state.clearDataTrainCascade(after: 2)
+        },
     ]
 
+    /// Columns that can be turned into one-click "narrow by this value"
+    /// quick-search links. Derived from ``quickSearchActions`` so the two
+    /// can never drift out of sync.
+    static var quickSearchableColumnIDs: Set<String> {
+        Set(quickSearchActions.keys)
+    }
+
     /// Called when the user clicks a quick-search-linked cell. Maps the
-    /// column id to the corresponding form field, overwrites just that
-    /// field, and re-runs the search. Leaves unrelated form state alone so
-    /// the user drills into the current search rather than starting from
-    /// scratch.
+    /// column id to the corresponding form field via ``quickSearchActions``,
+    /// overwrites just that field, and re-runs the search. Leaves unrelated
+    /// form state alone so the user drills into the current search rather
+    /// than starting from scratch.
     func quickSearch(columnID: String, rawValue: String) async {
         let trimmed = rawValue.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-
-        switch columnID {
-        case "piname":
-            formState.piName = trimmed
-        case "proposalid":
-            formState.proposalID = trimmed
-        case "targetname":
-            // Replace target; keep the resolver active so coords can refine.
-            formState.target = trimmed
-            if formState.resolver == .none { formState.resolver = .all }
-        case "collection":
-            formState.selectedCollections = [trimmed]
-            formState.clearDataTrainCascade(after: 1)
-        case "instrument":
-            formState.selectedInstruments = [trimmed]
-            formState.clearDataTrainCascade(after: 2)
-        default:
-            return
-        }
+        guard let apply = Self.quickSearchActions[columnID] else { return }
+        apply(formState, trimmed)
         await executeSearch()
     }
 

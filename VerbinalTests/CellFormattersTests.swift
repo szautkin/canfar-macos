@@ -257,17 +257,19 @@ final class CellFormattersTests: XCTestCase {
     }
 
     func testWavelengthAsFrequencyGHz() {
-        // 1 mm wavelength = 299.79 GHz.
-        let out = CellFormatterRegistry.format(id: "minwavelength", raw: "1e-3", unitID: "ghz")
-        XCTAssertTrue(out.contains("GHz"), "Expected GHz, got: \(out)")
-        XCTAssertTrue(out.contains("299"), "Expected ~299 GHz, got: \(out)")
+        // 1 mm wavelength = c/λ = 2.997925e8 / 1e-3 = 2.997925e11 Hz → 299.7925 GHz
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "minwavelength", raw: "1e-3", unitID: "ghz"),
+            "299.8 GHz"
+        )
     }
 
     func testWavelengthAsEnergyKeV() {
-        // X-ray wavelength 1 Å = 1e-10 m → ~12.4 keV.
-        let out = CellFormatterRegistry.format(id: "minwavelength", raw: "1e-10", unitID: "kev")
-        XCTAssertTrue(out.contains("keV"), "Expected keV, got: \(out)")
-        XCTAssertTrue(out.contains("12"), "Expected ~12.4 keV, got: \(out)")
+        // X-ray wavelength 1 Å = 1e-10 m → ~12.3985 keV (hc/(eV·λ) with CGS constants)
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "minwavelength", raw: "1e-10", unitID: "kev"),
+            "12.40 keV"
+        )
     }
 
     func testWavelengthNaNPassesThrough() {

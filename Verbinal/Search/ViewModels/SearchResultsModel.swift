@@ -224,9 +224,22 @@ final class SearchResultsModel {
     /// Select a display unit for a multi-unit column. Rebuilds the column's
     /// search haystack so filter matching stays consistent with what the
     /// user sees, persists the selection, and re-runs the refresh pipeline.
+    ///
+    /// No-op (and logs) when:
+    ///  • the column doesn't exist in the current result set,
+    ///  • the column doesn't have a multi-unit `ColumnFormatSet`, or
+    ///  • `unitID` isn't one of the choices registered on that set.
+    /// This keeps stale or spoofed unit ids from landing in the persistence
+    /// store and from polluting the in-memory `selectedUnits` dictionary.
     func setUnit(columnID: String, unitID: String) {
-        guard CellFormatterRegistry.availableUnits(for: columnID) != nil else { return }
+        guard let availableUnits = CellFormatterRegistry.availableUnits(for: columnID) else {
+            return
+        }
+        guard availableUnits.contains(where: { $0.unitID == unitID }) else {
+            return
+        }
         guard let col = columns.column(id: columnID) else { return }
+
         selectedUnits[columnID] = unitID
         unitStore.setSelectedUnit(unitID, forColumnID: columnID)
         rebuildSearchIndex(for: col)

@@ -68,26 +68,28 @@ final class UnitSwitchingParityTests: XCTestCase {
     func testPixelScaleArcsecondsConversion() {
         // 0.2 arcsec = 0.2 / 3600 degrees
         let raw = String(0.2 / 3600.0)
-        let out = CellFormatterRegistry.format(id: "pixelscale", raw: raw, unitID: "arcseconds")
-        XCTAssertTrue(out.hasPrefix("0.200"), "Expected 0.200 arcsec, got \(out)")
-        XCTAssertTrue(out.hasSuffix("\u{2033}"), "Expected arcsecond symbol, got \(out)")
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "pixelscale", raw: raw, unitID: "arcseconds"),
+            "0.200 \u{2033}"
+        )
     }
 
     func testPixelScaleMilliarcsecondsConversion() {
         // Same 0.2″ input → 200 mas.
         let raw = String(0.2 / 3600.0)
-        let out = CellFormatterRegistry.format(id: "pixelscale", raw: raw, unitID: "milliarcseconds")
-        XCTAssertTrue(out.hasPrefix("200.000"), "Expected 200.000 mas, got \(out)")
-        XCTAssertTrue(out.hasSuffix("mas"))
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "pixelscale", raw: raw, unitID: "milliarcseconds"),
+            "200.000 mas"
+        )
     }
 
     func testPixelScaleDegreesUnit() {
-        let raw = String(0.2 / 3600.0)  // 0.2″ in degrees
-        let out = CellFormatterRegistry.format(id: "pixelscale", raw: raw, unitID: "degrees")
-        // 0.000055556° — magnitude < 0.001 so 6 decimals
-        XCTAssertTrue(out.contains("0.000056") || out.contains("0.000055"),
-                      "Expected 6-decimal degree, got \(out)")
-        XCTAssertTrue(out.hasSuffix("\u{00B0}"))
+        let raw = String(0.2 / 3600.0)  // 0.2″ in degrees = 5.5556e-5°
+        // Magnitude < 0.001 so adaptive precision picks 6 decimals.
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "pixelscale", raw: raw, unitID: "degrees"),
+            "0.000056 \u{00B0}"
+        )
     }
 
     // MARK: - Image quality (same angular base as pixelscale, no degrees)
@@ -110,20 +112,26 @@ final class UnitSwitchingParityTests: XCTestCase {
 
     func testFieldOfViewSquareArcminConversion() {
         // 1 sq.deg = 3600 sq.arcmin
-        let out = CellFormatterRegistry.format(id: "fieldofview", raw: "1", unitID: "sq_arcmin")
-        XCTAssertTrue(out.hasPrefix("3600.000"), "Expected 3600.000 sq arcmin, got \(out)")
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "fieldofview", raw: "1", unitID: "sq_arcmin"),
+            "3600.000 sq arcmin"
+        )
     }
 
     func testFieldOfViewSquareArcsecConversion() {
         // 1 sq.deg = 12,960,000 sq.arcsec
-        let out = CellFormatterRegistry.format(id: "fieldofview", raw: "1", unitID: "sq_arcsec")
-        XCTAssertTrue(out.hasPrefix("12960000"), "Expected 12960000-ish, got \(out)")
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "fieldofview", raw: "1", unitID: "sq_arcsec"),
+            "12960000.000 sq arcsec"
+        )
     }
 
     func testFieldOfViewSubThousandthPrecision() {
-        // A tiny FoV should render with 6 decimals (CCDA adaptive precision).
-        let out = CellFormatterRegistry.format(id: "fieldofview", raw: "0.0001", unitID: "sq_deg")
-        XCTAssertTrue(out.contains("0.000100"), "Expected 6-decimal rendering, got \(out)")
+        // Tiny FoV renders at 6 decimals (adaptive precision).
+        XCTAssertEqual(
+            CellFormatterRegistry.format(id: "fieldofview", raw: "0.0001", unitID: "sq_deg"),
+            "0.000100 sq deg"
+        )
     }
 
     // MARK: - Dates (Calendar default, MJD alternative)
