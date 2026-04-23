@@ -260,23 +260,61 @@ final class SearchResultsModel {
         displayedRows = paginate(sorted)
     }
 
+    /// A resolved filter predicate bound to a concrete column index.
+    ///
+    /// Numeric predicates compare the cell's raw value as a `Double` (finite
+    /// only); substring predicates match against the precomputed haystack in
+    /// `row.searchIndex[i]`.
+    private struct ResolvedPredicate {
+        let index: Int
+        let expression: FilterExpression
+    }
+
     private func applyFilter(_ rows: [SearchResult]) -> [SearchResult] {
         guard !columnFilters.isEmpty else { return rows }
 
-        // Resolve filters to `(columnIndex, lowercased query)` pairs once.
-        let predicates: [(Int, String)] = columnFilters.compactMap { id, query in
+        // Resolve each filter once before the hot loop.
+        let predicates: [ResolvedPredicate] = columnFilters.compactMap { id, query in
             guard let col = columns.column(id: id) else { return nil }
-            let q = query.lowercased()
-            return q.isEmpty ? nil : (col.index, q)
+            let numericEligible = Self.isNumericKind(col.kind)
+            guard let expr = FilterExpression.parse(query, numericEligible: numericEligible) else {
+                return nil
+            }
+            return ResolvedPredicate(index: col.index, expression: expr)
         }
         guard !predicates.isEmpty else { return rows }
 
         return rows.filter { row in
-            for (i, q) in predicates {
-                guard row.searchIndex.indices.contains(i) else { return false }
-                if !row.searchIndex[i].contains(q) { return false }
+            for p in predicates {
+                if !Self.matches(row: row, predicate: p) { return false }
             }
             return true
+        }
+    }
+
+    /// Evaluate a resolved predicate against a row.
+    private static func matches(row: SearchResult, predicate: ResolvedPredicate) -> Bool {
+        switch predicate.expression {
+        case .numeric(let op, let threshold):
+            guard row.rawValues.indices.contains(predicate.index),
+                  let value = finiteDouble(row.rawValues[predicate.index]) else {
+                return false
+            }
+            return op.matches(value, against: threshold)
+        case .substring(let needle):
+            guard row.searchIndex.indices.contains(predicate.index) else { return false }
+            return row.searchIndex[predicate.index].contains(needle)
+        }
+    }
+
+    /// Whether operator-based numeric filtering is valid for the kind. Date
+    /// columns use MJD under the hood (numeric) but as-typed user input
+    /// should substring-match the *formatted* text, so they route through
+    /// the substring path.
+    private static func isNumericKind(_ kind: ColumnKind) -> Bool {
+        switch kind {
+        case .number, .integer: return true
+        case .text, .mjdDate, .isoDate, .boolean: return false
         }
     }
 

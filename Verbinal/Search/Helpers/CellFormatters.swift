@@ -52,14 +52,15 @@ enum CellFormatterRegistry {
     /// `0` dropped — the `.0` becomes nothing; the `2000` remains `20000`
     /// because `"J2000.0"` → `"J20000"` after dot-strip).
     static let byID: [String: any ColumnFormatter] = [
-        // Dates
-        "startdate": MJDFormatter(includeTimeIfNonzero: true),
-        "enddate": MJDFormatter(includeTimeIfNonzero: true),
+        // Dates — always render time-of-day (HH:mm:ss) to match CADC CCDA's
+        // default. Observation timestamps carry meaningful sub-day precision.
+        "startdate": MJDFormatter(style: .dateAndTime),
+        "enddate": MJDFormatter(style: .dateAndTime),
         "provelastexecuted": ISOTimestampFormatter(),   // was incorrectly MJD
         "datarelease": ISOTimestampFormatter(),
-        // Coordinates
-        "ra(j20000)": CoordinateFormatter(decimals: 5, signMode: .negativeOnly),
-        "dec(j20000)": CoordinateFormatter(decimals: 5, signMode: .always),
+        // Coordinates — 6 decimals matches CADC CCDA reference (decimal-degree precision ~0.004″).
+        "ra(j20000)": CoordinateFormatter(decimals: 6, signMode: .negativeOnly),
+        "dec(j20000)": CoordinateFormatter(decimals: 6, signMode: .always),
         // Duration
         "inttime": DurationFormatter(),
         // Labels
@@ -108,13 +109,22 @@ func finiteDouble(_ raw: String) -> Double? {
 ///
 /// MJD 0 = 1858-11-17, MJD 40587 = 1970-01-01 (Unix epoch).
 ///
-/// If `includeTimeIfNonzero` is true and the MJD has a fractional part,
-/// renders as `yyyy-MM-dd HH:mm`; otherwise `yyyy-MM-dd`. Both in UTC.
+/// Three render styles:
+///  • `.dateOnly` — `yyyy-MM-dd`
+///  • `.dateAndTime` — `yyyy-MM-dd HH:mm:ss` (matches CADC CCDA default)
+///  • `.auto` — date-only when the MJD is integer-aligned, date+time otherwise
+/// All timestamps are rendered in UTC.
 struct MJDFormatter: ColumnFormatter {
-    let includeTimeIfNonzero: Bool
+    enum Style: Sendable {
+        case dateOnly
+        case dateAndTime
+        case auto
+    }
 
-    init(includeTimeIfNonzero: Bool = false) {
-        self.includeTimeIfNonzero = includeTimeIfNonzero
+    let style: Style
+
+    init(style: Style = .dateAndTime) {
+        self.style = style
     }
 
     func format(_ raw: String) -> String {
@@ -122,9 +132,15 @@ struct MJDFormatter: ColumnFormatter {
         let unixSeconds = (mjd - 40_587.0) * 86_400.0
         let date = Date(timeIntervalSince1970: unixSeconds)
 
-        let fractional = mjd - mjd.rounded(.towardZero)
-        let hasTime = abs(fractional) > 1e-6 && includeTimeIfNonzero
-        return (hasTime ? Self.dateTimeFormatter : Self.dateOnlyFormatter).string(from: date)
+        let includeTime: Bool
+        switch style {
+        case .dateOnly:    includeTime = false
+        case .dateAndTime: includeTime = true
+        case .auto:
+            let fractional = mjd - mjd.rounded(.towardZero)
+            includeTime = abs(fractional) > 1e-6
+        }
+        return (includeTime ? Self.dateTimeFormatter : Self.dateOnlyFormatter).string(from: date)
     }
 
     private static let dateOnlyFormatter: DateFormatter = {
@@ -136,7 +152,7 @@ struct MJDFormatter: ColumnFormatter {
 
     private static let dateTimeFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd HH:mm"
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
         f.timeZone = TimeZone(identifier: "UTC")
         return f
     }()

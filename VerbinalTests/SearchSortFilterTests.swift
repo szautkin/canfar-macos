@@ -140,6 +140,53 @@ final class SearchSortFilterTests: XCTestCase {
         XCTAssertEqual(model.columns.value(in: model.displayedRows[0], forID: "callev"), "1")
     }
 
+    // MARK: - Operator-aware numeric filters
+
+    private func makeNumericModel() -> SearchResultsModel {
+        let model = SearchResultsModel()
+        let headers = ["\"Collection\"", "\"Score\""]
+        let rows = [
+            ["A", "1"],
+            ["B", "5"],
+            ["C", "10"],
+            ["D", "15"],
+        ]
+        model.loadResults(headers: headers, rows: rows, query: "Q", maxRec: 100)
+        return model
+    }
+
+    func testNumericFilterLessThan() {
+        let model = makeNumericModel()
+        model.setFilter("score", text: "<10")
+        XCTAssertEqual(model.filteredCount, 2)
+    }
+
+    func testNumericFilterGreaterOrEqual() {
+        let model = makeNumericModel()
+        model.setFilter("score", text: ">=10")
+        XCTAssertEqual(model.filteredCount, 2)
+    }
+
+    func testNumericFilterEquality() {
+        let model = makeNumericModel()
+        model.setFilter("score", text: "=5")
+        XCTAssertEqual(model.filteredCount, 1)
+    }
+
+    func testNumericFilterPlainNumberIsEquality() {
+        let model = makeNumericModel()
+        model.setFilter("score", text: "15")
+        XCTAssertEqual(model.filteredCount, 1)
+    }
+
+    func testTextColumnIgnoresOperatorSyntax() {
+        // "collection" is text — a <5-style filter should NOT do a numeric
+        // comparison; it falls back to substring matching (no match).
+        let model = makeNumericModel()
+        model.setFilter("collection", text: "<10")
+        XCTAssertEqual(model.filteredCount, 0)
+    }
+
     // MARK: - Pagination
 
     func testPaginationDefault() {

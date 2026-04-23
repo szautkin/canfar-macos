@@ -12,13 +12,13 @@ final class CellFormattersTests: XCTestCase {
     // MARK: - MJD Date Formatting
 
     func testMJDToDateFormatting() {
-        // MJD 59000.0 = 2020-05-31 in UTC
-        XCTAssertEqual(CellFormatters.format(key: "startdate", raw: "59000.0"), "2020-05-31")
+        // MJD 59000.0 = 2020-05-31 UTC; default style includes time (matches CADC CCDA).
+        XCTAssertEqual(CellFormatters.format(key: "startdate", raw: "59000.0"), "2020-05-31 00:00:00")
     }
 
     func testMJDKnownDate() {
-        // MJD 51544.0 = 2000-01-01 (J2000 epoch)
-        XCTAssertEqual(CellFormatters.formatMJDDate("51544.0"), "2000-01-01")
+        // Legacy wrapper — default MJDFormatter style is dateAndTime now.
+        XCTAssertEqual(CellFormatters.formatMJDDate("51544.0"), "2000-01-01 00:00:00")
     }
 
     func testMJDEmptyReturnsEmpty() {
@@ -30,13 +30,13 @@ final class CellFormattersTests: XCTestCase {
     }
 
     func testEndDateAlsoFormats() {
-        XCTAssertEqual(CellFormatters.format(key: "enddate", raw: "59000.0"), "2020-05-31")
+        XCTAssertEqual(CellFormatters.format(key: "enddate", raw: "59000.0"), "2020-05-31 00:00:00")
     }
 
     func testMJDWithFractionalIncludesTime() {
-        // MJD 59000.5 = 2020-05-31 12:00 UTC
+        // MJD 59000.5 = 2020-05-31 12:00:00 UTC
         let out = CellFormatters.format(key: "startdate", raw: "59000.5")
-        XCTAssertTrue(out.hasPrefix("2020-05-31 "), "Expected time component, got: \(out)")
+        XCTAssertEqual(out, "2020-05-31 12:00:00")
     }
 
     func testMJDInfRejected() {
@@ -67,16 +67,17 @@ final class CellFormattersTests: XCTestCase {
     // MARK: - Coordinate Formatting
 
     func testRAFormatting() {
-        XCTAssertEqual(CellFormatters.format(key: "ra(j20000)", raw: "229.638423456"), "229.63842")
+        // 6 decimals — matches CADC CCDA reference precision.
+        XCTAssertEqual(CellFormatters.format(key: "ra(j20000)", raw: "229.638423456"), "229.638423")
     }
 
     func testDecFormattingShowsSignForPositives() {
-        // Dec uses signMode=.always (required by astronomers)
-        XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "12.3456789"), "+12.34568")
+        // Dec uses signMode=.always (required by astronomers); 6 decimals.
+        XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "12.3456789"), "+12.345679")
     }
 
     func testDecFormattingNegative() {
-        XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "-12.3456789"), "-12.34568")
+        XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "-12.3456789"), "-12.345679")
     }
 
     func testCoordinateNonNumericPassthrough() {
