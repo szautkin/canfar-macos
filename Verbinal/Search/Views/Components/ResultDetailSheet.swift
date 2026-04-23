@@ -8,7 +8,7 @@ import SwiftUI
 
 struct ResultDetailSheet: View {
     let result: SearchResult
-    let columns: [SearchResultColumn]
+    let columns: SearchResultColumns
     let tapClient: TAPClient
     var researchModel: ResearchModel?
     @Environment(\.dismiss) private var dismiss
@@ -16,6 +16,14 @@ struct ResultDetailSheet: View {
     @State private var dataLink: DataLinkResult?
     @State private var isLoadingImages = false
     @State private var isDownloading = false
+    // Local download feedback — scoped to this sheet instance so another view's
+    // download status cannot bleed in via the shared ResearchModel properties.
+    @State private var downloadMessage: String?
+    @State private var downloadIsError = false
+
+    private var publisherID: String { columns.value(in: result, forID: "publisherid") }
+    private var collection: String { columns.value(in: result, forID: "collection") }
+    private var observationID: String { columns.value(in: result, forID: "obsid") }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,8 +60,8 @@ struct ResultDetailSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Observation Detail")
                     .font(.headline)
-                if !result.collection.isEmpty || !result.observationID.isEmpty {
-                    Text([result.collection, result.observationID].filter { !$0.isEmpty }.joined(separator: " \u{2014} "))
+                if !collection.isEmpty || !observationID.isEmpty {
+                    Text([collection, observationID].filter { !$0.isEmpty }.joined(separator: " \u{2014} "))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -140,14 +148,27 @@ struct ResultDetailSheet: View {
     private var actionButtons: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                if !result.publisherID.isEmpty {
+                if !publisherID.isEmpty {
                     if let research = researchModel {
-                        let alreadyDownloaded = research.isDownloaded(publisherID: result.publisherID)
+                        let alreadyDownloaded = research.isDownloaded(publisherID: publisherID)
                         Button {
                             isDownloading = true
+                            downloadMessage = nil
                             Task {
-                                await research.downloadObservation(from: result, dataLink: dataLink)
+                                await research.downloadObservation(
+                                    from: result,
+                                    columns: columns,
+                                    dataLink: dataLink
+                                )
                                 isDownloading = false
+                                // Pick up status at completion only — scoped to this sheet
+                                if let success = research.lastSuccess {
+                                    downloadMessage = success
+                                    downloadIsError = false
+                                } else if let error = research.lastError {
+                                    downloadMessage = error
+                                    downloadIsError = true
+                                }
                             }
                         } label: {
                             HStack(spacing: 4) {
@@ -163,7 +184,7 @@ struct ResultDetailSheet: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .disabled(isDownloading)
-                    } else if let url = TAPClient.downloadURL(publisherID: result.publisherID) {
+                    } else if let url = TAPClient.downloadURL(publisherID: publisherID) {
                         Button {
                             openURL(url)
                         } label: {
@@ -173,7 +194,7 @@ struct ResultDetailSheet: View {
                         .controlSize(.small)
                     }
 
-                    if let url = TAPClient.detailURL(publisherID: result.publisherID) {
+                    if let url = TAPClient.detailURL(publisherID: publisherID) {
                         Button {
                             openURL(url)
                         } label: {
@@ -187,16 +208,14 @@ struct ResultDetailSheet: View {
                 Spacer()
             }
 
-            // Download feedback
-            if let success = researchModel?.lastSuccess {
-                Label(success, systemImage: "checkmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            }
-            if let error = researchModel?.lastError {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.red)
+            // Download feedback — local state, does not bleed across sheets.
+            if let downloadMessage {
+                Label(
+                    downloadMessage,
+                    systemImage: downloadIsError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(downloadIsError ? .red : .green)
             }
         }
     }
@@ -209,8 +228,8 @@ struct ResultDetailSheet: View {
                 .font(.subheadline.bold())
                 .padding(.bottom, 4)
 
-            ForEach(columns) { col in
-                let raw = result.values[col.id] ?? ""
+            ForEach(columns.list) { col in
+                let raw = columns.value(in: result, forID: col.id)
                 if !raw.isEmpty && col.id != "download" && col.id != "preview" {
                     HStack(alignment: .top) {
                         Text(col.label)
@@ -231,12 +250,11 @@ struct ResultDetailSheet: View {
     // MARK: - Data Loading
 
     private func loadDataLinks() async {
-        let pid = result.publisherID
-        guard !pid.isEmpty else { return }
+        guard !publisherID.isEmpty else { return }
 
         isLoadingImages = true
         do {
-            dataLink = try await tapClient.fetchDataLinks(publisherID: pid)
+            dataLink = try await tapClient.fetchDataLinks(publisherID: publisherID)
         } catch {
             dataLink = DataLinkResult(thumbnails: [], previews: [], directFiles: [])
         }

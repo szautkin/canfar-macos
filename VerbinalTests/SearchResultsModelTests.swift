@@ -10,6 +10,13 @@ import XCTest
 @MainActor
 final class SearchResultsModelTests: XCTestCase {
 
+    override func setUp() {
+        super.setUp()
+        // Reset persisted column-visibility overrides so tests don't leak state
+        // between runs or from user defaults.
+        SearchResultColumns.clearPersistedVisibility()
+    }
+
     private func makeModel() -> SearchResultsModel {
         SearchResultsModel()
     }
@@ -30,20 +37,20 @@ final class SearchResultsModelTests: XCTestCase {
         model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
 
         XCTAssertEqual(model.columns.count, 4)
-        XCTAssertEqual(model.columns[0].label, "Collection")
-        XCTAssertEqual(model.columns[1].label, "Target Name")
-        XCTAssertEqual(model.columns[2].label, "RA (J2000.0)")
-        XCTAssertEqual(model.columns[3].label, "Cal. Lev.")
+        XCTAssertEqual(model.columns.list[0].label, "Collection")
+        XCTAssertEqual(model.columns.list[1].label, "Target Name")
+        XCTAssertEqual(model.columns.list[2].label, "RA (J2000.0)")
+        XCTAssertEqual(model.columns.list[3].label, "Cal. Lev.")
     }
 
     func testLoadResultsColumnIdsAreCleaned() {
         let model = makeModel()
         model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
 
-        XCTAssertEqual(model.columns[0].id, "collection")
-        XCTAssertEqual(model.columns[1].id, "targetname")
-        XCTAssertEqual(model.columns[2].id, "ra(j20000)")
-        XCTAssertEqual(model.columns[3].id, "callev")
+        XCTAssertEqual(model.columns.list[0].id, "collection")
+        XCTAssertEqual(model.columns.list[1].id, "targetname")
+        XCTAssertEqual(model.columns.list[2].id, "ra(j20000)")
+        XCTAssertEqual(model.columns.list[3].id, "callev")
     }
 
     func testLoadResultsPopulatesRows() {
@@ -51,10 +58,11 @@ final class SearchResultsModelTests: XCTestCase {
         model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
 
         XCTAssertEqual(model.results.count, 2)
-        XCTAssertEqual(model.results[0].values["collection"], "JWST")
-        XCTAssertEqual(model.results[0].values["targetname"], "M31")
-        XCTAssertEqual(model.results[0].values["ra(j20000)"], "10.68471")
-        XCTAssertEqual(model.results[1].values["collection"], "HST")
+        let cols = model.columns
+        XCTAssertEqual(cols.value(in: model.results[0], forID: "collection"), "JWST")
+        XCTAssertEqual(cols.value(in: model.results[0], forID: "targetname"), "M31")
+        XCTAssertEqual(cols.value(in: model.results[0], forID: "ra(j20000)"), "10.68471")
+        XCTAssertEqual(cols.value(in: model.results[1], forID: "collection"), "HST")
     }
 
     func testTotalRowsMatchesCount() {
@@ -64,11 +72,41 @@ final class SearchResultsModelTests: XCTestCase {
         XCTAssertEqual(model.totalRows, 2)
     }
 
+    // MARK: - Stable row id
+
+    func testResultIDPrefersObsId() {
+        let model = makeModel()
+        let headers = ["\"Collection\"", "\"obsID\"", "\"Target Name\""]
+        let rows = [["JWST", "obs-123", "M31"]]
+        model.loadResults(headers: headers, rows: rows, query: "Q", maxRec: 1)
+        XCTAssertEqual(model.results[0].id, "obs-123")
+    }
+
+    func testResultIDFallsBackToSyntheticWhenNoObsId() {
+        let model = makeModel()
+        let headers = ["\"Collection\"", "\"Target Name\""]
+        let rows = [["JWST", "M31"]]
+        model.loadResults(headers: headers, rows: rows, query: "Q", maxRec: 1)
+        XCTAssertTrue(model.results[0].id.hasPrefix("row_"))
+    }
+
+    // MARK: - Duplicate header disambiguation
+
+    func testDuplicateCleanedHeadersAreDisambiguated() {
+        let model = makeModel()
+        // "Time (s)" and "Time.s" both normalize to "times"
+        let headers = ["\"Time (s)\"", "\"Time.s\""]
+        let rows = [["10", "20"]]
+        model.loadResults(headers: headers, rows: rows, query: "Q", maxRec: 1)
+        let ids = model.columns.list.map(\.id)
+        XCTAssertEqual(ids.count, 2)
+        XCTAssertEqual(Set(ids).count, 2, "Duplicate cleaned ids should be disambiguated")
+    }
+
     // MARK: - Max Record Reached
 
     func testMaxRecordReachedTrue() {
         let model = makeModel()
-        // Create exactly maxRec rows
         let rows = (0..<5).map { _ in ["JWST", "M31", "10.68", "2"] }
         model.loadResults(headers: sampleHeaders, rows: rows, query: "SELECT *", maxRec: 5)
 
@@ -88,33 +126,39 @@ final class SearchResultsModelTests: XCTestCase {
         let model = makeModel()
         model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
 
-        let collectionCol = model.columns.first { $0.id == "collection" }
-        XCTAssertNotNil(collectionCol)
-        XCTAssertTrue(collectionCol!.visible)
-
-        let calLevCol = model.columns.first { $0.id == "callev" }
-        XCTAssertNotNil(calLevCol)
-        XCTAssertTrue(calLevCol!.visible)
+        XCTAssertTrue(model.columns.column(id: "collection")?.visible == true)
+        XCTAssertTrue(model.columns.column(id: "callev")?.visible == true)
     }
 
     func testColumnVisibilityToggle() {
         let model = makeModel()
         model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
 
-        let colId = model.columns[0].id
-        let wasVisible = model.columns[0].visible
-        model.toggleColumnVisibility(colId)
-        XCTAssertEqual(model.columns[0].visible, !wasVisible)
+        let id = model.columns.list[0].id
+        let wasVisible = model.columns.list[0].visible
+        model.toggleColumnVisibility(id)
+        XCTAssertEqual(model.columns.list[0].visible, !wasVisible)
     }
 
     func testVisibleColumnsFiltersCorrectly() {
         let model = makeModel()
         model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
 
-        // All 4 sample columns are in the default visible set
-        let visibleBefore = model.visibleColumns.count
+        let before = model.columns.visible.count
         model.toggleColumnVisibility("collection")
-        XCTAssertEqual(model.visibleColumns.count, visibleBefore - 1)
+        XCTAssertEqual(model.columns.visible.count, before - 1)
+    }
+
+    func testResetColumnVisibility() {
+        let model = makeModel()
+        model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
+
+        model.toggleColumnVisibility("collection")
+        model.toggleColumnVisibility("targetname")
+        model.resetColumnVisibility()
+
+        XCTAssertTrue(model.columns.column(id: "collection")?.visible == true)
+        XCTAssertTrue(model.columns.column(id: "targetname")?.visible == true)
     }
 
     // MARK: - Export URL
@@ -126,14 +170,22 @@ final class SearchResultsModelTests: XCTestCase {
         let csvURL = model.exportURL(format: "csv")
         XCTAssertNotNil(csvURL)
         let urlString = csvURL!.absoluteString
-        XCTAssertTrue(urlString.contains("FORMAT=csv"), "URL should contain FORMAT=csv")
-        XCTAssertTrue(urlString.contains("LANG=ADQL"), "URL should contain LANG=ADQL")
-        XCTAssertTrue(urlString.contains("argus/sync"), "URL should point to argus/sync")
+        XCTAssertTrue(urlString.contains("FORMAT=csv"))
+        XCTAssertTrue(urlString.contains("LANG=ADQL"))
+        XCTAssertTrue(urlString.contains("argus/sync"))
     }
 
     func testExportURLNilWhenNoQuery() {
         let model = makeModel()
         XCTAssertNil(model.exportURL(format: "csv"))
+    }
+
+    func testHasClientSideAdjustmentsWhenFilterActive() {
+        let model = makeModel()
+        model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "Q", maxRec: 30000)
+        XCTAssertFalse(model.hasClientSideAdjustments)
+        model.setFilter("collection", text: "JWST")
+        XCTAssertTrue(model.hasClientSideAdjustments)
     }
 
     // MARK: - Clear
@@ -149,6 +201,7 @@ final class SearchResultsModelTests: XCTestCase {
         XCTAssertEqual(model.totalRows, 0)
         XCTAssertFalse(model.maxRecordReached)
         XCTAssertEqual(model.adqlQuery, "")
+        XCTAssertEqual(model.displayedRows.count, 0)
     }
 
     // MARK: - ADQL Query Storage

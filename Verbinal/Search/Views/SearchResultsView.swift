@@ -5,15 +5,36 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
+// Architecture note — why a hand-rolled `ScrollView` + `LazyVStack` and not
+// SwiftUI `Table`:
+//  • Our column set is dynamic (built from CSV headers at runtime), so the
+//    native `Table` sort pathway that requires compile-time `KeyPath<Row, V>`
+//    values doesn't apply without `AnyKeyPath` gymnastics.
+//  • The per-column filter row interleaves with the header in this design;
+//    moving to `Table` would require a synchronized external filter bar
+//    with column-width coordination, which is non-trivial because users
+//    can resize `Table` columns.
+// This view gives us full control over those concerns while still
+// virtualizing rows via `LazyVStack`. If we ever need multi-select,
+// native column resize / reorder, or VoiceOver-grade accessibility out of
+// the box, a `Table` migration is a discrete follow-up — the model layer
+// (SearchResultsModel, SearchResultColumns, ColumnKind-aware sort) stays put.
 struct SearchResultsView: View {
     var resultsModel: SearchResultsModel
     var tapClient: TAPClient
     var researchModel: ResearchModel?
     @Environment(\.openURL) private var openURL
     @State private var selectedResult: SearchResult?
+    @State private var selectedRowID: String?
     @State private var isExporting = false
     @State private var exportErrorMessage: String?
+    @State private var showExportError = false
+    @State private var showColumnsPicker = false
+    @FocusState private var focusedFilter: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,10 +61,13 @@ struct SearchResultsView: View {
                 researchModel: researchModel
             )
         }
-        .alert("Export failed", isPresented: .constant(exportErrorMessage != nil), presenting: exportErrorMessage) { _ in
+        .alert("Export failed", isPresented: $showExportError, presenting: exportErrorMessage) { _ in
             Button("OK", role: .cancel) { exportErrorMessage = nil }
         } message: { msg in
             Text(msg)
+        }
+        .onChange(of: exportErrorMessage) { _, new in
+            showExportError = (new != nil)
         }
     }
 
@@ -68,6 +92,9 @@ struct SearchResultsView: View {
                     )
                     .font(.caption)
                     .foregroundStyle(.orange)
+                    .accessibilityLabel(Text(
+                        "\(String(resultsModel.totalRows)) rows loaded — server record limit reached, more rows may exist"
+                    ))
                 } else {
                     Text("\(String(resultsModel.totalRows)) results")
                         .font(.caption)
@@ -77,79 +104,105 @@ struct SearchResultsView: View {
 
             Spacer()
 
-            // Pagination
+            // Pagination — show page controls only when needed; always expose
+            // the page-size picker so the user can change it even on page 1 of 1.
             if resultsModel.totalPages > 1 {
                 HStack(spacing: 4) {
-                    Button { resultsModel.currentPage = max(0, resultsModel.currentPage - 1) } label: {
+                    Button {
+                        resultsModel.currentPage = max(0, resultsModel.currentPage - 1)
+                    } label: {
                         Image(systemName: "chevron.left")
                             .font(.caption2)
                     }
                     .buttonStyle(.borderless)
                     .disabled(resultsModel.currentPage == 0)
+                    .keyboardShortcut("[", modifiers: [.command])
+                    .help(Text("Previous page"))
 
                     Text("\(resultsModel.currentPage + 1)/\(resultsModel.totalPages)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(minWidth: 40)
 
-                    Button { resultsModel.currentPage = min(resultsModel.totalPages - 1, resultsModel.currentPage + 1) } label: {
+                    Button {
+                        resultsModel.currentPage = min(resultsModel.totalPages - 1, resultsModel.currentPage + 1)
+                    } label: {
                         Image(systemName: "chevron.right")
                             .font(.caption2)
                     }
                     .buttonStyle(.borderless)
                     .disabled(resultsModel.currentPage >= resultsModel.totalPages - 1)
+                    .keyboardShortcut("]", modifiers: [.command])
+                    .help(Text("Next page"))
                 }
+            }
 
+            if !resultsModel.results.isEmpty {
                 Picker("", selection: Bindable(resultsModel).rowsPerPage) {
                     Text("50").tag(50)
                     Text("100").tag(100)
                     Text("500").tag(500)
-                    Text("All").tag(0)
+                    Text("All (≤\(SearchResultsModel.maxRowsForAll))").tag(0)
                 }
                 .pickerStyle(.menu)
-                .frame(width: 70)
+                .frame(width: 130)
+                .help(Text("Rows per page"))
             }
 
-            Menu {
-                Button("Export CSV") { Task { await exportResults(format: "csv", ext: "csv") } }
-                Button("Export TSV") { Task { await exportResults(format: "tsv", ext: "tsv") } }
-                Button("Export VOTable") { Task { await exportResults(format: "votable", ext: "xml") } }
-            } label: {
-                HStack(spacing: 4) {
-                    if isExporting { ProgressView().scaleEffect(0.6) }
-                    Label("Export", systemImage: "square.and.arrow.up")
-                        .font(.caption)
-                }
-            }
-            .disabled(resultsModel.results.isEmpty || isExporting)
-
-            Menu {
-                ForEach(resultsModel.columns) { col in
-                    Toggle(col.label, isOn: Binding(
-                        get: { col.visible },
-                        set: { _ in resultsModel.toggleColumnVisibility(col.id) }
-                    ))
-                }
-            } label: {
-                Label("Columns", systemImage: "tablecells")
-                    .font(.caption)
-            }
+            exportMenu
+            columnsMenu
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
     }
 
+    private var exportMenu: some View {
+        Menu {
+            Section("Current View") {
+                Button("CSV (filtered)") { Task { await exportClientSide(format: .csv) } }
+                Button("TSV (filtered)") { Task { await exportClientSide(format: .tsv) } }
+            }
+            Section("Full Query (server)") {
+                Button("CSV") { Task { await exportServerSide(format: "csv", ext: "csv") } }
+                Button("TSV") { Task { await exportServerSide(format: "tsv", ext: "tsv") } }
+                Button("VOTable") { Task { await exportServerSide(format: "votable", ext: "xml") } }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                if isExporting { ProgressView().scaleEffect(0.6) }
+                Label("Export", systemImage: "square.and.arrow.up")
+                    .font(.caption)
+            }
+        }
+        .disabled(resultsModel.results.isEmpty || isExporting)
+        .keyboardShortcut("e", modifiers: [.command, .shift])
+    }
+
+    private var columnsMenu: some View {
+        Button {
+            showColumnsPicker.toggle()
+        } label: {
+            Label("Columns", systemImage: "tablecells")
+                .font(.caption)
+        }
+        .buttonStyle(.borderless)
+        .help(Text("Choose visible columns"))
+        .popover(isPresented: $showColumnsPicker, arrowEdge: .top) {
+            ColumnsPickerPopover(model: resultsModel)
+        }
+    }
+
     // MARK: - Results Table
 
     private var resultsTable: some View {
-        let visibleCols = resultsModel.visibleColumns
+        let visibleCols = resultsModel.columns.visible
 
         return GeometryReader { geo in
             ScrollView([.horizontal, .vertical]) {
                 VStack(spacing: 0) {
                     LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                         Section {
-                            ForEach(resultsModel.paginatedResults) { result in
+                            ForEach(resultsModel.displayedRows) { result in
                                 resultRow(result, columns: visibleCols)
                             }
                         } header: {
@@ -165,28 +218,39 @@ struct SearchResultsView: View {
                 .frame(minHeight: geo.size.height)
             }
         }
+        .background(
+            // Hidden shortcut — focuses first visible filter field.
+            Button("") { focusedFilter = visibleCols.first?.id }
+                .keyboardShortcut("f", modifiers: [.command])
+                .opacity(0)
+                .frame(width: 0, height: 0)
+        )
     }
 
     private func sortableHeaderRow(columns: [SearchResultColumn]) -> some View {
         HStack(spacing: 0) {
             Text("")
                 .frame(width: 30)
+                .accessibilityLabel(Text("Preview"))
 
             ForEach(columns) { col in
                 Button { resultsModel.toggleSort(col.id) } label: {
                     HStack(spacing: 2) {
                         Text(col.label)
                             .font(.caption.bold())
-                        if resultsModel.sortColumnId == col.id {
+                        if resultsModel.sortColumnID == col.id {
                             Image(systemName: resultsModel.sortAscending ? "chevron.up" : "chevron.down")
                                 .font(.caption2)
                         }
+                        Spacer(minLength: 0)
                     }
                     .frame(width: columnWidth(col.id), alignment: .leading)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .help(Text(col.label))
             }
         }
         .background(.bar)
@@ -198,12 +262,12 @@ struct SearchResultsView: View {
                 .frame(width: 30)
 
             ForEach(columns) { col in
-                TextField("", text: Binding(
-                    get: { resultsModel.columnFilters[col.id] ?? "" },
-                    set: { resultsModel.setFilter(col.id, text: $0) }
-                ))
-                .textFieldStyle(.plain)
-                .font(.caption2)
+                DebouncedFilterField(
+                    columnID: col.id,
+                    currentValue: resultsModel.columnFilters[col.id] ?? "",
+                    onCommit: { text in resultsModel.setFilter(col.id, text: text) }
+                )
+                .focused($focusedFilter, equals: col.id)
                 .frame(width: columnWidth(col.id))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
@@ -213,31 +277,71 @@ struct SearchResultsView: View {
     }
 
     private func resultRow(_ result: SearchResult, columns: [SearchResultColumn]) -> some View {
-        HStack(spacing: 0) {
-            PreviewThumbnailCell(result: result, tapClient: tapClient) {
+        let isSelected = selectedRowID == result.id
+
+        return HStack(spacing: 0) {
+            PreviewThumbnailCell(
+                publisherID: resultsModel.columns.value(in: result, forID: "publisherid"),
+                tapClient: tapClient
+            ) {
+                selectedRowID = result.id
                 selectedResult = result
             }
             .frame(width: 30)
 
-            Button {
-                selectedResult = result
-            } label: {
-                HStack(spacing: 0) {
-                    ForEach(columns) { col in
-                        let raw = result.values[col.id] ?? ""
-                        let formatted = CellFormatters.format(key: col.id, raw: raw)
-                        Text(formatted)
-                            .font(.caption)
-                            .lineLimit(1)
-                            .frame(width: columnWidth(col.id), alignment: .leading)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                    }
+            HStack(spacing: 0) {
+                ForEach(columns) { col in
+                    let raw = resultsModel.columns.value(in: result, forID: col.id)
+                    let formatted = CellFormatters.format(key: col.id, raw: raw)
+                    Text(formatted)
+                        .font(.caption)
+                        .lineLimit(1)
+                        .frame(width: columnWidth(col.id), alignment: .leading)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
                 }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) {
+                selectedRowID = result.id
+                selectedResult = result
+            }
+            .onTapGesture(count: 1) {
+                selectedRowID = result.id
+            }
         }
+        .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+        .contextMenu {
+            Button("Open Detail") {
+                selectedRowID = result.id
+                selectedResult = result
+            }
+            let pid = resultsModel.columns.value(in: result, forID: "publisherid")
+            if !pid.isEmpty, let url = TAPClient.detailURL(publisherID: pid) {
+                Button("Open on CADC…") { openURL(url) }
+            }
+            if !pid.isEmpty, let url = TAPClient.downloadURL(publisherID: pid) {
+                Button("Download File…") { openURL(url) }
+            }
+            Divider()
+            Button("Copy Row") { copyRow(result, columns: columns) }
+        }
+    }
+
+    private func copyRow(_ result: SearchResult, columns: [SearchResultColumn]) {
+        let line = columns
+            .map { col in
+                CellFormatters.format(
+                    key: col.id,
+                    raw: resultsModel.columns.value(in: result, forID: col.id)
+                )
+            }
+            .joined(separator: "\t")
+        #if os(macOS)
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(line, forType: .string)
+        #endif
     }
 
     private func columnWidth(_ key: String) -> CGFloat {
@@ -259,9 +363,9 @@ struct SearchResultsView: View {
 
     // MARK: - Export
 
-    private func exportResults(format: String, ext: String) async {
+    private func exportServerSide(format: String, ext: String) async {
         guard let url = resultsModel.exportURL(format: format) else {
-            exportErrorMessage = "No export URL available for this query."
+            exportErrorMessage = String(localized: "No export URL available for this query.")
             return
         }
         isExporting = true
@@ -270,11 +374,11 @@ struct SearchResultsView: View {
         do {
             let (tempURL, response) = try await URLSession.shared.download(for: URLRequest(url: url))
             guard let http = response as? HTTPURLResponse else {
-                exportErrorMessage = "Invalid server response."
+                exportErrorMessage = String(localized: "Invalid server response.")
                 return
             }
             guard http.statusCode == 200 else {
-                exportErrorMessage = "Export failed (HTTP \(http.statusCode))."
+                exportErrorMessage = String(localized: "Export failed (HTTP \(http.statusCode)).")
                 try? FileManager.default.removeItem(at: tempURL)
                 return
             }
@@ -288,6 +392,36 @@ struct SearchResultsView: View {
 
             #if os(macOS)
             await presentExportSavePanel(filename: filename, tempURL: stableTemp)
+            #endif
+        } catch {
+            exportErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func exportClientSide(format: ClientExporter.Format) async {
+        let rows = resultsModel.fullFilteredSortedResults
+        guard !rows.isEmpty else {
+            exportErrorMessage = String(localized: "No rows to export.")
+            return
+        }
+        isExporting = true
+        defer { isExporting = false }
+
+        let filename = "results.\(format.pathExtension)"
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+
+        do {
+            if FileManager.default.fileExists(atPath: tempURL.path) {
+                try FileManager.default.removeItem(at: tempURL)
+            }
+            try ClientExporter.write(
+                rows: rows,
+                columns: resultsModel.columns,
+                format: format,
+                to: tempURL
+            )
+            #if os(macOS)
+            await presentExportSavePanel(filename: filename, tempURL: tempURL)
             #endif
         } catch {
             exportErrorMessage = error.localizedDescription
@@ -315,3 +449,6 @@ struct SearchResultsView: View {
     #endif
 }
 
+// DebouncedFilterField and ColumnsPickerPopover live in
+// Views/Components/ for reuse and to keep this file focused on the
+// results-table composition.

@@ -33,18 +33,58 @@ final class CellFormattersTests: XCTestCase {
         XCTAssertEqual(CellFormatters.format(key: "enddate", raw: "59000.0"), "2020-05-31")
     }
 
+    func testMJDWithFractionalIncludesTime() {
+        // MJD 59000.5 = 2020-05-31 12:00 UTC
+        let out = CellFormatters.format(key: "startdate", raw: "59000.5")
+        XCTAssertTrue(out.hasPrefix("2020-05-31 "), "Expected time component, got: \(out)")
+    }
+
+    func testMJDInfRejected() {
+        // Non-finite values pass through raw, not rendered as "inf-ish date"
+        XCTAssertEqual(CellFormatters.format(key: "startdate", raw: "Infinity"), "Infinity")
+        XCTAssertEqual(CellFormatters.format(key: "startdate", raw: "NaN"), "NaN")
+    }
+
+    // MARK: - ISO Timestamp
+
+    func testProveLastExecutedUsesTimestampFormatter() {
+        // Was incorrectly routed through MJD parser before the refactor.
+        let out = CellFormatters.format(key: "provelastexecuted", raw: "2024-03-15T10:30:45.123Z")
+        XCTAssertEqual(out, "2024-03-15 10:30:45")
+    }
+
+    func testDataReleaseISO() {
+        XCTAssertEqual(
+            CellFormatters.format(key: "datarelease", raw: "2025-06-30T00:00:00Z"),
+            "2025-06-30 00:00:00"
+        )
+    }
+
+    func testTimestampShortInputIsSafe() {
+        XCTAssertEqual(CellFormatters.formatTimestamp("short"), "short")
+    }
+
     // MARK: - Coordinate Formatting
 
     func testRAFormatting() {
         XCTAssertEqual(CellFormatters.format(key: "ra(j20000)", raw: "229.638423456"), "229.63842")
     }
 
-    func testDecFormatting() {
+    func testDecFormattingShowsSignForPositives() {
+        // Dec uses signMode=.always (required by astronomers)
+        XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "12.3456789"), "+12.34568")
+    }
+
+    func testDecFormattingNegative() {
         XCTAssertEqual(CellFormatters.format(key: "dec(j20000)", raw: "-12.3456789"), "-12.34568")
     }
 
     func testCoordinateNonNumericPassthrough() {
         XCTAssertEqual(CellFormatters.formatCoordinate("abc", decimalPlaces: 5), "abc")
+    }
+
+    func testCoordinateNaNPassesThrough() {
+        XCTAssertEqual(CellFormatters.format(key: "ra(j20000)", raw: "NaN"), "NaN")
     }
 
     // MARK: - Calibration Level
@@ -65,30 +105,43 @@ final class CellFormattersTests: XCTestCase {
         XCTAssertEqual(CellFormatters.format(key: "callev", raw: "3"), "Composite")
     }
 
+    func testCalLevelAnalysis() {
+        // CAOM2 level 4 — added in refactor
+        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "4"), "Analysis")
+    }
+
     func testCalLevelUnknownPassthrough() {
-        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "5"), "5")
+        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "7"), "7")
     }
 
     // MARK: - Integration Time
 
-    func testIntegrationTime30Minutes() {
-        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "1800.0"), "30m")
-    }
-
-    func testIntegrationTime1Minute() {
-        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "60.0"), "1m")
-    }
-
     func testIntegrationTime1Hour() {
-        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "3600.0"), "1h")
+        // Duration.FormatStyle output is locale-dependent; assert shape, not exact glyph
+        let out = CellFormatters.format(key: "inttime", raw: "3600.0")
+        XCTAssertTrue(out.contains("1"), "Expected '1' hour, got: \(out)")
+        XCTAssertFalse(out.isEmpty)
+    }
+
+    func testIntegrationTime30Minutes() {
+        let out = CellFormatters.format(key: "inttime", raw: "1800.0")
+        XCTAssertTrue(out.contains("30"), "Expected 30 minutes, got: \(out)")
     }
 
     func testIntegrationTime45Seconds() {
-        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "45.0"), "45s")
+        let out = CellFormatters.format(key: "inttime", raw: "45.0")
+        XCTAssertTrue(out.contains("45"), "Expected 45 seconds, got: \(out)")
     }
 
-    func testIntegrationTimeFractionalMinutes() {
-        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "90.0"), "1.5m")
+    func testIntegrationTimeSubSecondDoesNotRoundToZero() {
+        // Previously 0.05s → 0.1s (misleading); now shows two decimals.
+        let out = CellFormatters.format(key: "inttime", raw: "0.05")
+        XCTAssertTrue(out.contains("0.05"), "Sub-second should keep precision, got: \(out)")
+    }
+
+    func testIntegrationTimeZeroAndNegativeRejected() {
+        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "0"), "")
+        XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "-10"), "")
     }
 
     func testIntegrationTimeNonNumericPassthrough() {
@@ -105,33 +158,71 @@ final class CellFormattersTests: XCTestCase {
         XCTAssertEqual(CellFormatters.format(key: "download", raw: "1"), CellFormatters.checkmark)
     }
 
-    func testBooleanFalse() {
-        XCTAssertEqual(CellFormatters.format(key: "download", raw: "false"), "")
+    func testBooleanFalseRendersAsEmDash() {
+        // Previously empty — now explicit em-dash for accessibility.
+        XCTAssertEqual(CellFormatters.format(key: "download", raw: "false"), "\u{2014}")
     }
 
-    func testBooleanZero() {
-        XCTAssertEqual(CellFormatters.format(key: "download", raw: "0"), "")
+    func testBooleanZeroRendersAsEmDash() {
+        XCTAssertEqual(CellFormatters.format(key: "download", raw: "0"), "\u{2014}")
     }
 
     func testBooleanEmpty() {
         XCTAssertEqual(CellFormatters.format(key: "download", raw: ""), "")
     }
 
+    func testBooleanYesNoAccepted() {
+        XCTAssertEqual(CellFormatters.format(key: "download", raw: "yes"), CellFormatters.checkmark)
+        XCTAssertEqual(CellFormatters.format(key: "download", raw: "no"), "\u{2014}")
+    }
+
+    func testBooleanTFAccepted() {
+        XCTAssertEqual(CellFormatters.format(key: "download", raw: "T"), CellFormatters.checkmark)
+        XCTAssertEqual(CellFormatters.format(key: "download", raw: "F"), "\u{2014}")
+    }
+
     func testMovingTargetBoolean() {
         XCTAssertEqual(CellFormatters.format(key: "movingtarget", raw: "true"), CellFormatters.checkmark)
     }
 
-    // MARK: - Wavelength
+    // MARK: - Wavelength (metres → human units)
 
-    func testWavelengthSmallValue() {
-        let result = CellFormatters.format(key: "minwavelength", raw: "0.0000005")
-        XCTAssertTrue(result.contains("E"), "Small wavelength should use scientific notation, got: \(result)")
-        XCTAssertTrue(result.contains("5.000"), "Should contain 5.000, got: \(result)")
+    func testWavelengthOptical() {
+        // 5e-7 m = 500 nm
+        let out = CellFormatters.format(key: "minwavelength", raw: "5.0e-7")
+        XCTAssertTrue(out.contains("nm") && out.contains("500"), "Expected '500 nm'-ish, got: \(out)")
     }
 
-    func testWavelengthNormalValue() {
-        let result = CellFormatters.formatWavelength("0.5")
-        XCTAssertEqual(result, "0.5")
+    func testWavelengthInfrared() {
+        // 2.2e-6 m = 2.2 μm
+        let out = CellFormatters.format(key: "minwavelength", raw: "2.2e-6")
+        XCTAssertTrue(out.contains("\u{03BC}m"), "Expected micrometre symbol, got: \(out)")
+    }
+
+    func testWavelengthNaNPassesThrough() {
+        XCTAssertEqual(CellFormatters.format(key: "minwavelength", raw: "NaN"), "NaN")
+    }
+
+    // MARK: - Angle
+
+    func testPixelScaleRendersArcsec() {
+        // 0.2 arcsec = 0.2 / 3600 degrees
+        let raw = String(0.2 / 3600.0)
+        let out = CellFormatters.format(key: "pixelscale", raw: raw)
+        XCTAssertTrue(out.contains("/px"), "Expected '/px' suffix, got: \(out)")
+        XCTAssertTrue(out.contains("0.2"), "Expected 0.2, got: \(out)")
+    }
+
+    func testFieldOfViewSmallUsesArcmin() {
+        // 10 arcmin = 10 / 60 degrees
+        let raw = String(10.0 / 60.0)
+        let out = CellFormatters.format(key: "fieldofview", raw: raw)
+        XCTAssertTrue(out.contains("\u{2032}"), "Expected arcmin symbol, got: \(out)")
+    }
+
+    func testFieldOfViewLargeUsesDegrees() {
+        let out = CellFormatters.format(key: "fieldofview", raw: "2.5")
+        XCTAssertTrue(out.contains("\u{00B0}"), "Expected degree symbol, got: \(out)")
     }
 
     // MARK: - Default passthrough

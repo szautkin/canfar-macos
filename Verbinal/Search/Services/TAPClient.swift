@@ -99,12 +99,25 @@ actor TAPClient {
 
     // MARK: - DataLink
 
+    /// LRU cap for the in-memory DataLink cache. Browsing 10 000 results
+    /// should not bloat memory unboundedly; once we pass this many distinct
+    /// publisher IDs, the least-recently-inserted entries are evicted.
+    private static let datalinkCacheCapacity = 200
+
     /// In-memory cache for DataLink results keyed by publisherID.
+    /// Access-order is maintained by `datalinkCacheOrder` — on hit we re-append
+    /// the key to the end; on miss we append and trim from the front.
     private var datalinkCache: [String: DataLinkResult] = [:]
+    private var datalinkCacheOrder: [String] = []
 
     /// Fetch thumbnail and preview image URLs for an observation via DataLink.
     func fetchDataLinks(publisherID: String) async throws -> DataLinkResult {
         if let cached = datalinkCache[publisherID] {
+            // Promote to most-recently-used.
+            if let idx = datalinkCacheOrder.firstIndex(of: publisherID) {
+                datalinkCacheOrder.remove(at: idx)
+            }
+            datalinkCacheOrder.append(publisherID)
             return cached
         }
 
@@ -132,8 +145,18 @@ actor TAPClient {
 
         let xml = String(data: data, encoding: .utf8) ?? ""
         let result = DataLinkResult.fromVOTable(xml)
-        datalinkCache[publisherID] = result
+        insertIntoCache(publisherID: publisherID, result: result)
         return result
+    }
+
+    /// Insert into the DataLink cache, evicting oldest entries past the cap.
+    private func insertIntoCache(publisherID: String, result: DataLinkResult) {
+        datalinkCache[publisherID] = result
+        datalinkCacheOrder.append(publisherID)
+        while datalinkCacheOrder.count > Self.datalinkCacheCapacity {
+            let oldest = datalinkCacheOrder.removeFirst()
+            datalinkCache.removeValue(forKey: oldest)
+        }
     }
 
     // MARK: - URL Builders

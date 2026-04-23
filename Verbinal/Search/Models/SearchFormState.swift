@@ -64,6 +64,24 @@ final class SearchFormState {
         !selectedObsTypes.isEmpty
     }
 
+    /// Clear all data-train selections strictly *after* the given column index.
+    /// Changing an upstream data-train column invalidates downstream options,
+    /// so each upstream change resets everything below it. Consolidated here
+    /// so callers do one mutation call instead of looping with N per-field writes.
+    ///
+    /// Column indices follow ``DataTrainModel``'s cascade order:
+    /// 0=bands, 1=collections, 2=instruments, 3=filters, 4=calLevels,
+    /// 5=dataTypes, 6=obsTypes.
+    func clearDataTrainCascade(after columnIndex: Int) {
+        if columnIndex < 0 { selectedBands = [] }
+        if columnIndex < 1 { selectedCollections = [] }
+        if columnIndex < 2 { selectedInstruments = [] }
+        if columnIndex < 3 { selectedFilters = [] }
+        if columnIndex < 4 { selectedCalLevels = [] }
+        if columnIndex < 5 { selectedDataTypes = [] }
+        if columnIndex < 6 { selectedObsTypes = [] }
+    }
+
     func reset() {
         observationID = ""
         piName = ""

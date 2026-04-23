@@ -64,9 +64,14 @@ final class ResearchModel {
     // MARK: - Download
 
     /// Download an observation: fetch to temp, let user choose save location, store metadata.
-    func downloadObservation(from result: SearchResult, dataLink: DataLinkResult?) async {
+    func downloadObservation(
+        from result: SearchResult,
+        columns: SearchResultColumns,
+        dataLink: DataLinkResult?
+    ) async {
+        let publisherID = columns.value(in: result, forID: "publisherid")
         let downloadID = UUID()
-        let placeholder = DownloadedObservation.from(result: result, localPath: "", dataLink: dataLink)
+        let placeholder = DownloadedObservation.from(result: result, columns: columns, localPath: "", dataLink: dataLink)
         activeDownloads[downloadID] = DownloadProgress(id: downloadID, observation: placeholder)
         lastError = nil
         lastSuccess = nil
@@ -74,7 +79,7 @@ final class ResearchModel {
         do {
             // Step 1: Download to temp
             let (tempURL, suggestedFilename) = try await downloadService.downloadToTemp(
-                publisherID: result.publisherID
+                publisherID: publisherID
             )
 
             activeDownloads[downloadID]?.state = .completed
@@ -97,6 +102,7 @@ final class ResearchModel {
             let fileSize = await downloadService.fileSize(at: finalURL)
             var observation = DownloadedObservation.from(
                 result: result,
+                columns: columns,
                 localPath: finalURL.path,
                 dataLink: dataLink
             )

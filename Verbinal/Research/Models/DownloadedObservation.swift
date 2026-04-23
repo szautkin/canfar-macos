@@ -25,19 +25,24 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     var thumbnailURL: String?
     var previewURL: String?
 
-    /// Create from a SearchResult row.
-    static func from(result: SearchResult, localPath: String, dataLink: DataLinkResult? = nil) -> DownloadedObservation {
+    /// Create from a SearchResult row using its column metadata.
+    static func from(
+        result: SearchResult,
+        columns: SearchResultColumns,
+        localPath: String,
+        dataLink: DataLinkResult? = nil
+    ) -> DownloadedObservation {
         DownloadedObservation(
-            publisherID: result.publisherID,
-            collection: result.collection,
-            observationID: result.observationID,
-            targetName: result.targetName,
-            instrument: result.instrument,
-            filter: result.filter,
-            ra: result.ra,
-            dec: result.dec,
-            startDate: result.startDate,
-            calLevel: result.calLevel,
+            publisherID: columns.value(in: result, forID: "publisherid"),
+            collection: columns.value(in: result, forID: "collection"),
+            observationID: columns.value(in: result, forID: "obsid"),
+            targetName: columns.value(in: result, forID: "targetname"),
+            instrument: columns.value(in: result, forID: "instrument"),
+            filter: columns.value(in: result, forID: "filter"),
+            ra: columns.value(in: result, forID: "ra(j20000)"),
+            dec: columns.value(in: result, forID: "dec(j20000)"),
+            startDate: columns.value(in: result, forID: "startdate"),
+            calLevel: columns.value(in: result, forID: "callev"),
             localPath: localPath,
             thumbnailURL: dataLink?.firstThumbnail?.absoluteString,
             previewURL: dataLink?.firstPreview?.absoluteString

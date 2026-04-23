@@ -7,14 +7,18 @@
 import SwiftUI
 
 /// Shows a small camera icon per row. On hover, fetches and shows thumbnail popover.
+///
+/// Depends only on `publisherID` — the cell is column-agnostic. Callers that hold
+/// a `SearchResult` + `SearchResultColumns` resolve the id at the call site.
 struct PreviewThumbnailCell: View {
-    let result: SearchResult
+    let publisherID: String
     let tapClient: TAPClient
     let onTap: () -> Void
 
     @State private var isHovering = false
     @State private var thumbnailURL: URL?
     @State private var didFetch = false
+    @State private var hoverTask: Task<Void, Never>?
 
     var body: some View {
         Button(action: onTap) {
@@ -23,6 +27,7 @@ struct PreviewThumbnailCell: View {
                 .foregroundColor(thumbnailURL != nil ? .accentColor : .secondary)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text("Preview"))
         .popover(isPresented: $isHovering) {
             if let url = thumbnailURL {
                 AsyncImage(url: url) { phase in
@@ -53,27 +58,33 @@ struct PreviewThumbnailCell: View {
             }
         }
         .onHover { hovering in
-            if hovering && !didFetch {
+            // Cancel any pending delayed-open so a quick hover-out doesn't flash
+            // the popover after the cursor has already left.
+            hoverTask?.cancel()
+
+            guard hovering else {
+                isHovering = false
+                return
+            }
+
+            if !didFetch {
                 didFetch = true
                 Task { await fetchThumbnail() }
             }
-            if hovering {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    if thumbnailURL != nil || didFetch {
-                        isHovering = true
-                    }
+            hoverTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
+                if thumbnailURL != nil || didFetch {
+                    isHovering = true
                 }
-            } else {
-                isHovering = false
             }
         }
     }
 
     private func fetchThumbnail() async {
-        let pid = result.publisherID
-        guard !pid.isEmpty else { return }
+        guard !publisherID.isEmpty else { return }
         do {
-            let dataLink = try await tapClient.fetchDataLinks(publisherID: pid)
+            let dataLink = try await tapClient.fetchDataLinks(publisherID: publisherID)
             thumbnailURL = dataLink.firstThumbnail ?? dataLink.firstPreview
         } catch {
             // Silently fail — just no thumbnail
