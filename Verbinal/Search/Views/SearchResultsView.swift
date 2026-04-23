@@ -11,18 +11,31 @@ import AppKit
 
 // Architecture note — why a hand-rolled `ScrollView` + `LazyVStack` and not
 // SwiftUI `Table`:
-//  • Our column set is dynamic (built from CSV headers at runtime), so the
-//    native `Table` sort pathway that requires compile-time `KeyPath<Row, V>`
-//    values doesn't apply without `AnyKeyPath` gymnastics.
-//  • The per-column filter row interleaves with the header in this design;
-//    moving to `Table` would require a synchronized external filter bar
-//    with column-width coordination, which is non-trivial because users
-//    can resize `Table` columns.
-// This view gives us full control over those concerns while still
-// virtualizing rows via `LazyVStack`. If we ever need multi-select,
-// native column resize / reorder, or VoiceOver-grade accessibility out of
-// the box, a `Table` migration is a discrete follow-up — the model layer
-// (SearchResultsModel, SearchResultColumns, ColumnKind-aware sort) stays put.
+//
+// Dynamic columns CAN work with native `Table` — the recipe is:
+//   • make `SearchResult: Comparable` (trivial id-based),
+//   • write a `SortComparator` whose `Compared == SearchResult` and dispatches
+//     to `SearchResultsModel.compare` using the column's kind + index,
+//   • use `TableColumn(label, value: \SearchResult.self, comparator: ...)`
+//     inside `TableColumnForEach`, and bind
+//     `sortOrder: Binding<[KeyPathComparator<SearchResult>]>`.
+// With that, click-to-sort and `TableColumn.width(min:ideal:max:)` work.
+//
+// The remaining blocker is the filter row. This design interleaves a
+// per-column filter `TextField` row under the header. Native `Table` owns
+// its header and doesn't expose custom header content on macOS 14, so a
+// migration must lift the filter row above the table as a separate bar.
+// Once users can resize `Table` columns, keeping that external bar aligned
+// requires a `PreferenceKey` width-sync system — ~250–400 LOC of layout
+// plumbing to replace features we already have working. The current
+// `LazyVStack` gives us integrated filter row, single/double-click selection,
+// context menu, and debounced filters for far less code.
+//
+// When the cost of migration is worth it (user-requested multi-select,
+// drag-resize, native VoiceOver table nav), the model layer
+// (`SearchResultsModel`, `SearchResultColumns`, `ColumnKind`-aware sort,
+// `col.idealWidth`) is shaped correctly for a drop-in. Until then, this
+// hand-rolled approach is the pragmatic choice, not a limitation.
 struct SearchResultsView: View {
     var resultsModel: SearchResultsModel
     var tapClient: TAPClient
@@ -244,7 +257,7 @@ struct SearchResultsView: View {
                         }
                         Spacer(minLength: 0)
                     }
-                    .frame(width: columnWidth(col.id), alignment: .leading)
+                    .frame(width: col.idealWidth, alignment: .leading)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
                     .contentShape(Rectangle())
@@ -268,7 +281,7 @@ struct SearchResultsView: View {
                     onCommit: { text in resultsModel.setFilter(col.id, text: text) }
                 )
                 .focused($focusedFilter, equals: col.id)
-                .frame(width: columnWidth(col.id))
+                .frame(width: col.idealWidth)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
             }
@@ -296,7 +309,7 @@ struct SearchResultsView: View {
                     Text(formatted)
                         .font(.caption)
                         .lineLimit(1)
-                        .frame(width: columnWidth(col.id), alignment: .leading)
+                        .frame(width: col.idealWidth, alignment: .leading)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
                 }
@@ -342,23 +355,6 @@ struct SearchResultsView: View {
         pb.clearContents()
         pb.setString(line, forType: .string)
         #endif
-    }
-
-    private func columnWidth(_ key: String) -> CGFloat {
-        switch key {
-        case "collection": return 80
-        case "targetname": return 110
-        case "ra(j20000)", "dec(j20000)": return 90
-        case "startdate", "enddate": return 90
-        case "instrument": return 90
-        case "filter", "callev": return 60
-        case "obstype", "datatype": return 70
-        case "proposalid", "piname": return 100
-        case "obsid": return 120
-        case "inttime": return 60
-        case "band": return 60
-        default: return 100
-        }
     }
 
     // MARK: - Export

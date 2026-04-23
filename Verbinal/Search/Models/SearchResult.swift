@@ -58,6 +58,11 @@ struct SearchResultColumn: Identifiable, Equatable {
     var kind: ColumnKind
     /// Whether the column is shown in the table.
     var visible: Bool
+    /// Ideal render width in points. Id-specific overrides win; otherwise a
+    /// sensible default is chosen per ``ColumnKind`` (coordinates are narrower
+    /// than free-text; booleans narrower still). Views should treat this as
+    /// an *ideal* hint and allow the column to grow if layout permits.
+    let idealWidth: CGFloat
 
     static let defaultVisibleKeys: Set<String> = [
         "collection", "targetname", "ra(j20000)", "dec(j20000)",
@@ -107,13 +112,15 @@ struct SearchResultColumns {
                 .trimmingCharacters(in: .whitespaces)
 
             let kind = Self.inferKind(id: id, columnIndex: i, sampleRows: sampleRows)
+            let idealWidth = Self.idealWidth(forID: id, kind: kind)
 
             list.append(SearchResultColumn(
                 id: id,
                 label: label,
                 index: i,
                 kind: kind,
-                visible: SearchResultColumn.defaultVisibleKeys.contains(id)
+                visible: SearchResultColumn.defaultVisibleKeys.contains(id),
+                idealWidth: idealWidth
             ))
             indexByID[id] = i
         }
@@ -198,7 +205,13 @@ struct SearchResultColumns {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "SearchResultColumns")
 
     /// Known-kind overrides — take precedence over sample-based inference.
-    /// Keys here are the *cleaned* column ids.
+    ///
+    /// **Extension point**: new schema-specific columns should be registered
+    /// here rather than relying on inference. Inference is a best-effort
+    /// fallback for unknown/user-defined columns. We deliberately don't
+    /// abstract this into a strategy-pattern protocol — the switch / map
+    /// grows one line per column and keeps all schema knowledge in one
+    /// legible place.
     private static let kindOverrides: [String: ColumnKind] = [
         "startdate": .mjdDate,
         "enddate": .mjdDate,
@@ -219,56 +232,95 @@ struct SearchResultColumns {
 
     private static let sampleLimit = 25
 
+    /// Predicates used to decide whether a sample "looks like" a given kind.
+    /// Evaluated in ``priorityOrder`` — first kind where *every* non-empty
+    /// sample matches wins. Adding a kind is one entry here + one in the
+    /// priority list + the new `ColumnKind` case.
+    ///
+    /// Integer ⊂ Number and Boolean ⊂ Integer (for "0"/"1"), so priority
+    /// decides which win when samples are ambiguous — narrower / semantically
+    /// richer kinds come first.
+    private static let kindPredicates: [ColumnKind: (String) -> Bool] = [
+        .isoDate: looksLikeISO8601,
+        .boolean: BooleanValue.looksBoolean,
+        .integer: { Int($0) != nil },
+        .number: { Double($0) != nil },   // NaN/Inf pass here — comparator rejects at sort time
+    ]
+
+    /// Inference order — most-specific kinds first so `[1,1,1]` becomes
+    /// `.boolean` (narrowest) rather than `.integer`.
+    private static let inferencePriority: [ColumnKind] = [.isoDate, .boolean, .integer, .number]
+
     /// Infer column kind by sampling up to `sampleLimit` non-empty cells.
     /// Mixed-kind columns fall through to `.text`.
     private static func inferKind(id: String, columnIndex: Int, sampleRows: [[String]]) -> ColumnKind {
         if let forced = kindOverrides[id] { return forced }
 
-        var nonEmpty = 0
-        var numberHits = 0
-        var integerHits = 0
-        var booleanHits = 0
-        var isoHits = 0
-
+        var samples: [String] = []
         for row in sampleRows.prefix(sampleLimit) {
             guard row.indices.contains(columnIndex) else { continue }
             let raw = row[columnIndex].trimmingCharacters(in: .whitespaces)
-            guard !raw.isEmpty else { continue }
-            nonEmpty += 1
-
-            if BooleanValue.looksBoolean(raw) {
-                booleanHits += 1
-            }
-            if Int(raw) != nil {
-                integerHits += 1
-                numberHits += 1
-            } else if Double(raw) != nil {
-                // Accept NaN / Infinity as "looks numeric" so a column with
-                // one sentinel value in a sea of doubles is still classified
-                // .number — the comparator handles non-finite at sort time.
-                numberHits += 1
-            }
-            if looksLikeISO8601(raw) {
-                isoHits += 1
-            }
+            if !raw.isEmpty { samples.append(raw) }
         }
+        guard !samples.isEmpty else { return .text }
 
-        guard nonEmpty > 0 else { return .text }
-
-        if isoHits == nonEmpty { return .isoDate }
-        if booleanHits == nonEmpty { return .boolean }
-        if integerHits == nonEmpty { return .integer }
-        if numberHits == nonEmpty { return .number }
+        for kind in inferencePriority {
+            guard let predicate = kindPredicates[kind] else { continue }
+            if samples.allSatisfy(predicate) { return kind }
+        }
         return .text
     }
 
+    /// Minimal ISO-8601 "looks like a date" check — YYYY-MM-DD prefix.
+    /// Strict parsing happens later, only if the column actually sorts; this
+    /// is just classification.
     private static func looksLikeISO8601(_ s: String) -> Bool {
-        // YYYY-MM-DD at minimum, with optional T/space time and Z
         guard s.count >= 10 else { return false }
         let chars = Array(s)
         return chars[0].isNumber && chars[1].isNumber && chars[2].isNumber
             && chars[3].isNumber && chars[4] == "-"
             && chars[5].isNumber && chars[6].isNumber && chars[7] == "-"
             && chars[8].isNumber && chars[9].isNumber
+    }
+
+    // MARK: - Ideal width
+
+    /// Id-specific ideal render widths (points). These were tuned against the
+    /// CAOM2 schema's typical cell contents; new overrides register here.
+    private static let idealWidthByID: [String: CGFloat] = [
+        "collection": 80,
+        "targetname": 110,
+        "ra(j20000)": 90,
+        "dec(j20000)": 90,
+        "startdate": 90,
+        "enddate": 90,
+        "instrument": 90,
+        "filter": 60,
+        "callev": 60,
+        "obstype": 70,
+        "datatype": 70,
+        "proposalid": 100,
+        "piname": 100,
+        "obsid": 120,
+        "inttime": 60,
+        "band": 60,
+    ]
+
+    /// Per-``ColumnKind`` fallback widths when no id-specific override exists.
+    /// Kind-defaults are deliberately generous — readability over density.
+    private static let idealWidthByKind: [ColumnKind: CGFloat] = [
+        .boolean: 50,
+        .integer: 70,
+        .number: 80,
+        .mjdDate: 90,
+        .isoDate: 140,
+        .text: 110,
+    ]
+
+    /// Resolve the ideal width for a column: id override → kind default → 100.
+    static func idealWidth(forID id: String, kind: ColumnKind) -> CGFloat {
+        if let w = idealWidthByID[id] { return w }
+        if let w = idealWidthByKind[kind] { return w }
+        return 100
     }
 }
