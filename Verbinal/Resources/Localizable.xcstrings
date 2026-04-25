@@ -1670,6 +1670,9 @@
         }
       }
     },
+    "Display unit" : {
+
+    },
     "Don't have an account?" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3491,6 +3494,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nom"
+          }
+        }
+      }
+    },
+    "Narrow search to %@ = %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Narrow search to %1$@ = %2$@"
           }
         }
       }

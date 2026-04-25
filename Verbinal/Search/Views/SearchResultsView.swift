@@ -333,6 +333,14 @@ struct SearchResultsView: View {
     private func resultRow(_ result: SearchResult, columns: [SearchResultColumn]) -> some View {
         let isSelected = selectedRowID == result.id
 
+        // Row interaction discipline:
+        //   • Every cell is itself a `Button` (see `cell(for:in:)`). Plain
+        //     cells select the row; quick-search cells run the narrow.
+        //   • Double-click anywhere is a *simultaneous* gesture so the
+        //     buttons get their single-tap reliably; the old design used
+        //     `.onTapGesture(count: 1) + .onTapGesture(count: 2)` on the
+        //     parent which forced SwiftUI to wait ~300 ms to resolve every
+        //     tap and effectively swallowed the nested Button presses.
         return HStack(spacing: 0) {
             PreviewThumbnailCell(
                 publisherID: resultsModel.columns.value(in: result, forID: "publisherid"),
@@ -348,16 +356,15 @@ struct SearchResultsView: View {
                     cell(for: col, in: result)
                 }
             }
-            .contentShape(Rectangle())
-            .onTapGesture(count: 2) {
+        }
+        .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            TapGesture(count: 2).onEnded {
                 selectedRowID = result.id
                 selectedResult = result
             }
-            .onTapGesture(count: 1) {
-                selectedRowID = result.id
-            }
-        }
-        .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+        )
         .contextMenu {
             Button("Open Detail") {
                 selectedRowID = result.id
@@ -375,9 +382,10 @@ struct SearchResultsView: View {
         }
     }
 
-    /// Render one cell. Quick-searchable columns become underlined buttons
-    /// that re-narrow the current search on click; everything else is plain
-    /// non-interactive text so the row-level tap gestures reach it.
+    /// Render one cell. Every cell is a `Button` so single-clicks fire
+    /// without competing with row-level tap gestures (see ``resultRow``).
+    /// Quick-search-eligible cells run the narrow-by-this-value action and
+    /// render with link styling; all other cells just select the row.
     @ViewBuilder
     private func cell(for col: SearchResultColumn, in result: SearchResult) -> some View {
         let raw = resultsModel.columns.value(in: result, forID: col.id)
@@ -386,32 +394,29 @@ struct SearchResultsView: View {
             raw: raw,
             unitID: resultsModel.selectedUnit(for: col.id)
         )
+        let isLink = onQuickSearch != nil
+            && SearchFormModel.quickSearchableColumnIDs.contains(col.id)
+            && !raw.isEmpty
 
-        if let onQuickSearch,
-           SearchFormModel.quickSearchableColumnIDs.contains(col.id),
-           !raw.isEmpty {
-            Button {
-                onQuickSearch(col.id, raw)
-            } label: {
-                Text(formatted)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .underline(pattern: .solid)
-                    .foregroundStyle(Color.accentColor)
+        Button {
+            if isLink {
+                onQuickSearch?(col.id, raw)
+            } else {
+                selectedRowID = result.id
             }
-            .buttonStyle(.plain)
-            .frame(width: col.idealWidth, alignment: .leading)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .help(Text("Narrow search to \(col.label) = \(raw)"))
-        } else {
+        } label: {
             Text(formatted)
                 .font(.caption)
                 .lineLimit(1)
+                .underline(isLink, pattern: .solid)
+                .foregroundStyle(isLink ? Color.accentColor : Color.primary)
                 .frame(width: col.idealWidth, alignment: .leading)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .help(isLink ? Text("Narrow search to \(col.label) = \(raw)") : Text(""))
     }
 
     private func copyRow(_ result: SearchResult, columns: [SearchResultColumn]) {
