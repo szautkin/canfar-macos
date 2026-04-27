@@ -9,18 +9,52 @@ import Foundation
 public actor NetworkClient {
     private let session: URLSession
     public private(set) var token: String?
+    /// Hosts the bearer token may be attached to. Token is *not* sent to any
+    /// other host — important defense against forwarding the user's CADC
+    /// credential to a third-party `accessURL` returned by DataLink or VOSpace.
+    /// Hostnames are matched suffix-style (so `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca`
+    /// matches the catch-all `cadc-ccda.hia-iha.nrc-cnrc.gc.ca`); empty list
+    /// means "send to nothing", which is the safe default for clients that
+    /// haven't configured an allow-list.
+    public private(set) var trustedAuthHostSuffixes: [String]
 
     private static let jsonDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
         return decoder
     }()
 
-    public init(session: URLSession = .shared) {
+    public init(
+        session: URLSession = .shared,
+        trustedAuthHostSuffixes: [String] = NetworkClient.defaultCADCHosts
+    ) {
         self.session = session
+        self.trustedAuthHostSuffixes = trustedAuthHostSuffixes
     }
+
+    /// Default allow-list — the CADC + CANFAR domain families. Anything else
+    /// (including DataLink redirects to partner archives) is treated as
+    /// untrusted: requests still execute, but without our token.
+    public static let defaultCADCHosts: [String] = [
+        "cadc-ccda.hia-iha.nrc-cnrc.gc.ca",
+        "canfar.net",
+    ]
 
     public func setToken(_ token: String?) {
         self.token = token
+    }
+
+    public func setTrustedAuthHostSuffixes(_ hosts: [String]) {
+        self.trustedAuthHostSuffixes = hosts
+    }
+
+    /// Whether the bearer token would be attached to a request to `host`.
+    /// Exposed for callers that need to decide whether to even make a call
+    /// (e.g., authenticated endpoints).
+    public func isTrustedAuthHost(_ host: String?) -> Bool {
+        guard let host = host?.lowercased() else { return false }
+        return trustedAuthHostSuffixes.contains { suffix in
+            host == suffix || host.hasSuffix("." + suffix)
+        }
     }
 
     // MARK: - HTTP Methods
@@ -88,6 +122,33 @@ public actor NetworkClient {
         return try await execute(request)
     }
 
+    /// Stream a file from disk via `PUT`. Uses `URLSession.upload(for:fromFile:)`
+    /// so the body is read incrementally instead of being materialised into
+    /// memory — the right path for FITS-sized uploads where the in-memory
+    /// `put(_:body:)` would peak at the file size.
+    public func putFile(
+        _ urlString: String,
+        fileURL: URL,
+        contentType: String,
+        timeout: TimeInterval = 300
+    ) async throws -> (Data, HTTPURLResponse) {
+        var request = try makeRequest(urlString, method: "PUT", timeout: timeout)
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await session.upload(for: request, fromFile: fileURL)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        if httpResponse.statusCode == 401 {
+            throw NetworkError.unauthorized
+        }
+        if httpResponse.statusCode >= 400 {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw NetworkError.httpError(httpResponse.statusCode, body)
+        }
+        return (data, httpResponse)
+    }
+
     // MARK: - Private
 
     private func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = 30) throws -> URLRequest {
@@ -98,7 +159,11 @@ public actor NetworkClient {
         request.httpMethod = method
         request.timeoutInterval = timeout
 
-        if let token, !token.isEmpty {
+        // Attach the bearer token *only* to hosts in the trusted allow-list.
+        // DataLink/VOSpace responses can redirect to partner archives whose
+        // hostnames we didn't pre-approve; sending CADC credentials there
+        // would leak the user's token cross-origin.
+        if let token, !token.isEmpty, isTrustedAuthHost(url.host) {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 

@@ -84,7 +84,16 @@ extension DataLinkResult {
             guard accessUrlIdx < cells.count, semanticsIdx < cells.count else { continue }
             let accessUrl = cells[accessUrlIdx]
             let semantics = cells[semanticsIdx]
-            guard !accessUrl.isEmpty, let url = URL(string: accessUrl) else { continue }
+            guard !accessUrl.isEmpty,
+                  let url = URL(string: accessUrl),
+                  let scheme = url.scheme?.lowercased(),
+                  scheme == "https" else {
+                // Reject http://, file://, ftp:// — protects against SSRF /
+                // plaintext downgrade if a DataLink response is malformed
+                // or intercepted. The CADC services we care about are all
+                // HTTPS; anything else is suspicious.
+                continue
+            }
 
             let contentType: String
             if let ctIdx = contentTypeIdx, ctIdx < cells.count {

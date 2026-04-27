@@ -339,27 +339,32 @@ final class AppState {
         }
     }
 
-    /// Attempts to re-authenticate using stored Keychain credentials.
-    /// Returns true on success.
+    /// Attempts to re-validate a stored token. Returns true if the existing
+    /// Keychain token still authenticates against `/whoami`.
+    ///
+    /// We deliberately don't re-login with a stored password here: the
+    /// password isn't persisted (security policy — see
+    /// `KeychainStorage.saveCredentials`). When the token actually expires
+    /// the user must re-enter their credentials. In practice CADC tokens
+    /// are long-lived, so this prompt is rare.
     private func silentReauth() async -> Bool {
-        let (storedUsername, storedPassword) = KeychainStorage.loadCredentials()
-        guard let user = storedUsername, let pass = storedPassword else { return false }
+        let (storedToken, storedUsername) = KeychainStorage.loadToken()
+        guard let token = storedToken, storedUsername != nil else { return false }
 
         statusMessage = "Renewing session..."
         isLoading = true
 
-        let result = await authService.login(username: user, password: pass, rememberMe: true)
-
-        if result.success {
-            updateAuthState(
-                username: result.username ?? user,
-                userInfo: result.userInfo
-            )
+        let validation = await authService.validateToken(token)
+        switch validation {
+        case .valid(let canonicalUsername):
+            updateAuthState(username: canonicalUsername, userInfo: nil)
             isLoading = false
             return true
+        case .expired, .networkError:
+            break
         }
 
-        // Credentials no longer valid — clear them
+        // Token no longer valid — clear them
         KeychainStorage.clearToken()
         username = ""
         userInfo = nil

@@ -54,10 +54,15 @@ public enum KeychainStorage {
         if let accessGroup { Self.accessGroup = accessGroup }
     }
 
-    public static func saveCredentials(token: String, username: String, password: String) {
+    /// Save a token + canonical username to the Keychain.
+    ///
+    /// Defensive: also wipes any pre-existing password account so an upgrade
+    /// from a build that used to store passwords doesn't leave stale
+    /// cleartext credentials on disk.
+    public static func saveCredentials(token: String, username: String) {
         save(account: tokenAccount, data: token)
         save(account: usernameAccount, data: username)
-        save(account: passwordAccount, data: password)
+        delete(account: passwordAccount)
     }
 
     public static func saveToken(_ token: String, username: String) {

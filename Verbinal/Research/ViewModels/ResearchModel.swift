@@ -233,10 +233,10 @@ final class ResearchModel {
     }
 
     func openFile(_ observation: DownloadedObservation) {
-        // Prefer the security-scoped bookmark — that's the only path that
-        // works for files outside ~/Downloads after app restart. Fall back
-        // to the path-only URL for legacy rows; if that fails the
-        // permission probe, route through the re-grant flow.
+        // Prefer the security-scoped bookmark — the only path that works for
+        // files outside ~/Downloads after app restart. Fall back to a
+        // path-only URL for legacy rows; if that fails the permission probe,
+        // route through the re-grant flow.
         let resolved = resolvedURL(for: observation)
         let candidate = resolved ?? URL(fileURLWithPath: observation.localPath)
 
@@ -252,9 +252,17 @@ final class ResearchModel {
         }
 
         if FileHelper.isFITS(ext) {
+            // FITSViewerModel.open / .selectHDU each call
+            // `start/stopAccessingSecurityScopedResource()` around their own
+            // `Data(contentsOf:)` reads — they manage their own scope window.
             onOpenFile?(candidate)
         } else {
+            // For external apps via NSWorkspace, hold scope around the
+            // launch call so the kernel grant is active when AppKit hands
+            // the URL to the other process.
+            let didStart = candidate.startAccessingSecurityScopedResource()
             NSWorkspace.shared.open(candidate)
+            if didStart { candidate.stopAccessingSecurityScopedResource() }
         }
     }
 
@@ -265,6 +273,17 @@ final class ResearchModel {
     ///  • the system refuses to start the security scope.
     /// Stale bookmarks are silently re-created so the next save persists
     /// the refreshed token.
+    ///
+    /// **Important — scope handoff contract:**
+    /// This function returns the resolved URL *without* an active scope.
+    /// Callers must call `startAccessingSecurityScopedResource()` (paired
+    /// with stop) around any actual file read. The internal scope pair here
+    /// is a *liveness probe* only: it confirms the bookmark resolves and
+    /// the kernel will accept a future start; it doesn't keep the URL
+    /// readable across the function boundary. Holding scope until the
+    /// async caller finishes would require a closure or a `ScopedAccess`
+    /// reference type — instead we let the FITS viewer / NSWorkspace
+    /// callers manage scope explicitly (see ``openFile``).
     private func resolvedURL(for observation: DownloadedObservation) -> URL? {
         guard let data = observation.bookmarkData else { return nil }
         var stale = false
@@ -274,13 +293,13 @@ final class ResearchModel {
             relativeTo: nil,
             bookmarkDataIsStale: &stale
         ) else { return nil }
+
+        // Liveness probe: if start fails, the bookmark is unusable (volume
+        // missing, file removed, sandbox revoked the grant). Treat as no
+        // bookmark and let the legacy / re-grant fallback take over.
         guard url.startAccessingSecurityScopedResource() else { return nil }
-        // Caller is the FITS viewer / NSWorkspace — they finish reading
-        // synchronously (FITSViewerModel.open uses Data(contentsOf:) once)
-        // and won't call back, so we balance the access here. The viewer
-        // wraps subsequent reads in its own scope-pair (see
-        // FITSViewerModel.open / .selectHDU).
-        url.stopAccessingSecurityScopedResource()
+        defer { url.stopAccessingSecurityScopedResource() }
+
         if stale {
             // Re-mint the bookmark off the resolved URL so persistence stays
             // valid; no UI prompt — the user already granted access once.

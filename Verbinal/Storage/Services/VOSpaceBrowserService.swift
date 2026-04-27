@@ -64,9 +64,24 @@ actor VOSpaceBrowserService {
 
     func uploadFile(username: String, remotePath: String, fileURL: URL) async throws {
         let urlString = "\(Self.filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(remotePath))"
-        let fileData = try Data(contentsOf: fileURL)
+
+        // Sandbox: the source file came from an NSOpenPanel pick by the user,
+        // possibly in an earlier transaction. Re-grant access for the read
+        // window. The pair is a no-op for files the sandbox already trusts
+        // (e.g., temp dir), so it's safe to apply universally.
+        let didStart = fileURL.startAccessingSecurityScopedResource()
+        defer { if didStart { fileURL.stopAccessingSecurityScopedResource() } }
+
+        // Stream the file from disk rather than buffering the whole payload
+        // in memory — important for FITS / data-cube uploads that easily
+        // exceed available RAM.
         do {
-            _ = try await network.put(urlString, body: fileData, contentType: "application/octet-stream", timeout: 300)
+            _ = try await network.putFile(
+                urlString,
+                fileURL: fileURL,
+                contentType: "application/octet-stream",
+                timeout: 300
+            )
         } catch {
             throw VOSpaceError.operationFailed("Upload failed: \(error.localizedDescription)")
         }

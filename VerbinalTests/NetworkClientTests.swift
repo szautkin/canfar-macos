@@ -42,7 +42,9 @@ final class NetworkClientTests: XCTestCase {
 
     // MARK: - Auth Header
 
-    func testGetRequestIncludesBearerToken() async throws {
+    func testGetRequestIncludesBearerTokenForTrustedHost() async throws {
+        // The default trusted host list includes CADC + CANFAR. Issue the
+        // request to a CADC host so the token attaches.
         let client = makeClient()
         await client.setToken("test-token-123")
 
@@ -54,7 +56,7 @@ final class NetworkClientTests: XCTestCase {
             return self.okResponse(data: Data("ok".utf8))
         }
 
-        _ = try await client.get("https://example.com/test")
+        _ = try await client.get("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus/sync")
     }
 
     func testGetRequestWithoutTokenHasNoAuthHeader() async throws {
@@ -65,7 +67,39 @@ final class NetworkClientTests: XCTestCase {
             return self.okResponse(data: Data("ok".utf8))
         }
 
-        _ = try await client.get("https://example.com/test")
+        _ = try await client.get("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus/sync")
+    }
+
+    func testGetRequestWithdrawsTokenFromUntrustedHost() async throws {
+        // Critical security behaviour: a CADC token MUST NOT travel to a
+        // third-party host (e.g., a DataLink response that points to a
+        // partner archive).
+        let client = makeClient()
+        await client.setToken("test-token-123")
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertNil(
+                request.value(forHTTPHeaderField: "Authorization"),
+                "Bearer token leaked to non-CADC host"
+            )
+            return self.okResponse(data: Data("ok".utf8))
+        }
+
+        _ = try await client.get("https://example.com/somewhere")
+    }
+
+    func testIsTrustedAuthHostMatchesSubdomains() async {
+        let client = makeClient()
+        let trusted1 = await client.isTrustedAuthHost("ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca")
+        let trusted2 = await client.isTrustedAuthHost("ws-uv.canfar.net")
+        let untrusted = await client.isTrustedAuthHost("example.com")
+        let untrusted2 = await client.isTrustedAuthHost("evil-cadc-ccda.hia-iha.nrc-cnrc.gc.ca")
+        let nilHost = await client.isTrustedAuthHost(nil)
+        XCTAssertTrue(trusted1)
+        XCTAssertTrue(trusted2)
+        XCTAssertFalse(untrusted)
+        XCTAssertFalse(untrusted2, "Suffix matching must require dot boundary")
+        XCTAssertFalse(nilHost)
     }
 
     // MARK: - Error Handling

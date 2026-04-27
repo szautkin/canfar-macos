@@ -45,9 +45,14 @@ public final class AuthService: Sendable {
                 canonicalUsername = username.lowercased()
             }
 
-            // Persist to Keychain if requested
+            // Persist token + username to Keychain if requested.
+            //
+            // The password is *not* persisted: once we have a token,
+            // re-authentication uses the token (or re-prompts the user) —
+            // there is no flow that needs the original password later.
+            // Storing it would only enlarge the Keychain blast radius.
             if rememberMe {
-                KeychainStorage.saveCredentials(token: token, username: canonicalUsername, password: password)
+                KeychainStorage.saveCredentials(token: token, username: canonicalUsername)
             }
 
             // Fetch user info

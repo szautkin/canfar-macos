@@ -23,7 +23,14 @@ final class FITSViewerModel: Identifiable {
     var renderParams = FITSRenderParams()
     var viewport = FITSViewport()
     var renderedImage: CGImage?
-    var pixels: [Float] = [] { didSet { updatePixelRange() } }
+    /// Pixel data for the currently selected image HDU.
+    ///
+    /// Note: this is intentionally *not* a `didSet`-observed property. The
+    /// previous design ran `updatePixelRange()` on every assignment from
+    /// the `@MainActor`, which scans every pixel — multi-second pause for
+    /// large images. The min/max scan now happens inside the detached load
+    /// task and `pixelMin`/`pixelMax` are assigned alongside `pixels`.
+    var pixels: [Float] = []
 
     /// Cached min/max of finite pixel values (for slider range).
     var pixelMin: Float = 0
@@ -86,7 +93,7 @@ final class FITSViewerModel: Identifiable {
         defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
 
         do {
-            let (fitsFile, extractedPixels, cuts) = try await Task.detached {
+            let (fitsFile, extractedPixels, cuts, range) = try await Task.detached {
                 let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
                 guard fileSize <= FITSViewerConstants.maxFileSize else {
                     throw FITSError.invalidFile("File too large: \(fileSize) bytes exceeds 4 GB limit")
@@ -98,7 +105,8 @@ final class FITSViewerModel: Identifiable {
                 }
                 let pixels = try FITSParser.extractPixels(from: data, hdu: imageHDU)
                 let cuts = FITSParser.autoCut(pixels: pixels)
-                return (fitsFile, pixels, cuts)
+                let range = Self.scanPixelRange(pixels)
+                return (fitsFile, pixels, cuts, range)
             }.value
 
             guard let firstImageHDU = fitsFile.firstImageHDU else {
@@ -107,6 +115,8 @@ final class FITSViewerModel: Identifiable {
             file = fitsFile
             selectedHDUIndex = firstImageHDU.id
             pixels = extractedPixels
+            pixelMin = range.min
+            pixelMax = range.max
             renderParams.minCut = cuts.min
             renderParams.maxCut = cuts.max
             Self.logger.info("Loaded \(extractedPixels.count) pixels, cuts=[\(cuts.min), \(cuts.max)], HDUs=\(fitsFile.hdus.count), WCS=\(fitsFile.firstImageHDU?.wcs != nil)")
@@ -134,7 +144,7 @@ final class FITSViewerModel: Identifiable {
         defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
 
         do {
-            let (extractedPixels, cuts) = try await Task.detached {
+            let (extractedPixels, cuts, range) = try await Task.detached {
                 let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
                 guard fileSize <= FITSViewerConstants.maxFileSize else {
                     throw FITSError.invalidFile("File too large: \(fileSize) bytes exceeds 4 GB limit")
@@ -142,9 +152,12 @@ final class FITSViewerModel: Identifiable {
                 let data = try Data(contentsOf: url, options: .mappedIfSafe)
                 let pixels = try FITSParser.extractPixels(from: data, hdu: hdu)
                 let cuts = FITSParser.autoCut(pixels: pixels)
-                return (pixels, cuts)
+                let range = Self.scanPixelRange(pixels)
+                return (pixels, cuts, range)
             }.value
             pixels = extractedPixels
+            pixelMin = range.min
+            pixelMax = range.max
             renderParams.minCut = cuts.min
             renderParams.maxCut = cuts.max
             renderImage()
@@ -499,16 +512,20 @@ final class FITSViewerModel: Identifiable {
         }
     }
 
-    private func updatePixelRange() {
-        guard !pixels.isEmpty else { pixelMin = 0; pixelMax = 1; return }
+    /// Single-pass min/max scan over the pixel buffer, finite-only.
+    /// Static + non-isolated so callers can run it from `Task.detached` —
+    /// the previous instance method lived on `@MainActor` and ran the loop
+    /// every time `pixels` was assigned, blocking the UI on large images.
+    nonisolated static func scanPixelRange(_ pixels: [Float]) -> (min: Float, max: Float) {
+        guard !pixels.isEmpty else { return (0, 1) }
         var lo: Float = .greatestFiniteMagnitude
         var hi: Float = -.greatestFiniteMagnitude
         for p in pixels where p.isFinite {
             if p < lo { lo = p }
             if p > hi { hi = p }
         }
-        pixelMin = lo < hi ? lo : 0
-        pixelMax = lo < hi ? hi : 1
+        if lo < hi { return (lo, hi) }
+        return (0, 1)
     }
 
     #if os(macOS)

@@ -449,7 +449,19 @@ struct SearchResultsView: View {
         defer { isExporting = false }
 
         do {
-            let (tempURL, response) = try await URLSession.shared.download(for: URLRequest(url: url))
+            // Build a URLRequest with explicit timeout — the default 60s is
+            // too tight for large VOTable exports of 10k+ rows. Use a
+            // dedicated session with both per-request and per-resource
+            // timeouts so a stalled transfer eventually fails instead of
+            // hanging the UI's "Export…" indicator forever.
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 300
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 300
+            config.timeoutIntervalForResource = 600
+            let session = URLSession(configuration: config)
+            defer { session.invalidateAndCancel() }
+            let (tempURL, response) = try await session.download(for: request)
             guard let http = response as? HTTPURLResponse else {
                 exportErrorMessage = String(localized: "Invalid server response.")
                 return
