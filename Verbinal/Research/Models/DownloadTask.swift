@@ -28,9 +28,9 @@ struct DownloadProgress: Identifiable {
     }
 
     var formattedProgress: String {
-        let received = ByteCountFormatter.string(fromByteCount: bytesReceived, countStyle: .file)
+        let received = SharedFormatters.bytes(bytesReceived)
         if let total = totalBytes {
-            let totalStr = ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
+            let totalStr = SharedFormatters.bytes(total)
             return "\(received) / \(totalStr)"
         }
         return received

@@ -13,12 +13,20 @@ actor VOSpaceBrowserService {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "VOSpace")
     private let network: NetworkClient
 
-    private static let nodesBase = "https://ws-uv.canfar.net/arc/nodes/home"
-    private static let filesBase = "https://ws-uv.canfar.net/arc/files/home"
+    /// VOSpace base URLs. Defaults match `APIEndpoints.storageBaseURL` (the
+    /// `nodes/home` form) plus the parallel `files/home` form for binary
+    /// transfer. Both share the same canfar.net host the rest of the app
+    /// uses; if `APIEndpoints` ever moves to a different host the storage
+    /// URLs follow because they're derived from `nodesBase` not hand-typed.
+    private let nodesBase: String
+    private let filesBase: String
     private static let vosPrefix = "vos://cadc.nrc.ca~arc/home"
 
-    init(network: NetworkClient) {
+    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
         self.network = network
+        self.nodesBase = endpoints.storageBaseURL
+        // Derive the files base from the nodes base — they're symmetric paths.
+        self.filesBase = endpoints.storageBaseURL.replacingOccurrences(of: "/nodes/home", with: "/files/home")
     }
 
     /// Percent-encode a single path segment (slashes are preserved in input by the caller
@@ -38,7 +46,7 @@ actor VOSpaceBrowserService {
 
     func listNodes(username: String, path: String = "", limit: Int = 500) async throws -> [VOSpaceNode] {
         let basePath = path.isEmpty ? Self.encodeSegment(username) : "\(Self.encodeSegment(username))/\(Self.encodePath(path))"
-        let urlString = "\(Self.nodesBase)/\(basePath)?limit=\(limit)"
+        let urlString = "\(nodesBase)/\(basePath)?limit=\(limit)"
         let (data, _) = try await network.get(urlString, accept: "text/xml")
         guard let xml = String(data: data, encoding: .utf8) else {
             throw VOSpaceError.invalidResponse
@@ -49,7 +57,7 @@ actor VOSpaceBrowserService {
     // MARK: - Download
 
     func downloadFile(username: String, path: String) async throws -> (tempURL: URL, filename: String) {
-        let urlString = "\(Self.filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
+        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
         let (data, _) = try await network.get(urlString)
         let filename = URL(fileURLWithPath: (path as NSString).lastPathComponent).lastPathComponent
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
@@ -63,7 +71,7 @@ actor VOSpaceBrowserService {
     // MARK: - Upload
 
     func uploadFile(username: String, remotePath: String, fileURL: URL) async throws {
-        let urlString = "\(Self.filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(remotePath))"
+        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(remotePath))"
 
         // Sandbox: the source file came from an NSOpenPanel pick by the user,
         // possibly in an earlier transaction. Re-grant access for the read
@@ -94,7 +102,7 @@ actor VOSpaceBrowserService {
         let nodeURI = "\(Self.vosPrefix)/\(fullPath)"
         let xml = VOSpaceXMLParser.buildContainerNodeXml(nodeURI: nodeURI)
 
-        let urlString = "\(Self.nodesBase)/\(Self.encodePath(fullPath))"
+        let urlString = "\(nodesBase)/\(Self.encodePath(fullPath))"
         guard let body = xml.data(using: .utf8) else {
             throw VOSpaceError.operationFailed("Could not encode folder XML")
         }
@@ -108,7 +116,7 @@ actor VOSpaceBrowserService {
     // MARK: - Delete
 
     func deleteNode(username: String, path: String) async throws {
-        let urlString = "\(Self.nodesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
+        let urlString = "\(nodesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
         let response = try await network.delete(urlString)
         guard (200...299).contains(response.statusCode) else {
             throw VOSpaceError.operationFailed("Delete failed (HTTP \(response.statusCode))")

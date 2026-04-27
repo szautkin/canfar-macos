@@ -295,7 +295,7 @@ struct DownloadedFilesView: View {
             Spacer()
 
             if let size = obs.fileSize {
-                Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+                Text(SharedFormatters.bytes(size))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }

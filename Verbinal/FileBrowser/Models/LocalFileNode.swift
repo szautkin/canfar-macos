@@ -32,7 +32,7 @@ struct LocalFileNode: Identifiable, Equatable {
 
     var formattedSize: String {
         guard let size = fileSize else { return "" }
-        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+        return SharedFormatters.bytes(size)
     }
 
     /// Supported file types for the file browser filter.

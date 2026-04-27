@@ -34,7 +34,7 @@ struct VOSpaceNode: Identifiable, Equatable {
 
     var formattedSize: String {
         guard let size = sizeBytes else { return "" }
-        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+        return SharedFormatters.bytes(size)
     }
 
     var formattedDate: String {

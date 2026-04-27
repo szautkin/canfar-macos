@@ -6,15 +6,18 @@
 
 import Foundation
 import os.log
+import VerbinalKit
 
 /// Downloads observation files from CADC.
 /// Uses URLSession.download to fetch to a temp file, then moves to user-chosen location.
 actor DownloadService {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Downloads")
     private let session: URLSession
+    private let endpoints: APIEndpoints
 
-    init(session: URLSession = .shared) {
+    init(session: URLSession = .shared, endpoints: APIEndpoints = APIEndpoints()) {
         self.session = session
+        self.endpoints = endpoints
     }
 
     /// Download an observation file to a temporary location.
@@ -29,7 +32,7 @@ actor DownloadService {
             Self.logger.info("Using DataLink direct URL: \(directURL.lastPathComponent)")
             url = directURL
         } else {
-            guard var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.downloadPath)") else {
+            guard var components = URLComponents(string: endpoints.caom2PkgURL) else {
                 throw SearchError.networkError("Invalid download URL")
             }
             components.queryItems = [URLQueryItem(name: "ID", value: publisherID)]
@@ -80,7 +83,7 @@ actor DownloadService {
     /// Resolve DataLink to find direct FITS file URL (#this semantic).
     /// Returns nil if DataLink fails or has no direct files.
     private func resolveDirectFileURL(publisherID: String) async -> URL? {
-        guard var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.datalinkPath)") else { return nil }
+        guard var components = URLComponents(string: endpoints.datalinkURL) else { return nil }
         components.queryItems = [
             URLQueryItem(name: "id", value: publisherID),
             URLQueryItem(name: "request", value: "downloads-only"),

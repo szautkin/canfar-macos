@@ -5,24 +5,34 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 // MARK: - TAP Configuration
 
+/// CADC archive endpoints used by the Search module.
+///
+/// **DRY policy**: the canonical home for these URLs is
+/// ``APIEndpoints`` in `VerbinalKit`. This enum is a thin namespaced
+/// re-export so existing call sites in Search/ can keep their short
+/// forms without each one having to construct an `APIEndpoints` instance.
+/// New callers in other modules should depend on `APIEndpoints` directly.
 enum TAPConfig {
-    static let baseURL = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca"
-    static let syncPath = "/argus/sync"
-    static let resolverPath = "/cadc-target-resolver/find"
-    static let datalinkPath = "/caom2ops/datalink"
-    static let downloadPath = "/caom2ops/pkg"
-    /// Per-observation CAOM2 metadata document. Accepts `caom:{collection}/{obsID}`.
-    static let metaPath = "/caom2ops/meta"
-    static let maxRecords = 30000
+    /// Shared instance — single source of truth for archive URLs.
+    static let endpoints = APIEndpoints()
+
+    static var baseURL: String { endpoints.archiveBaseURL }
+    static var syncPath: String { "/argus/sync" }
+    static var resolverPath: String { "/cadc-target-resolver/find" }
+    static var datalinkPath: String { "/caom2ops/datalink" }
+    static var downloadPath: String { "/caom2ops/pkg" }
+    static var metaPath: String { "/caom2ops/meta" }
+    static var maxRecords: Int { endpoints.tapMaxRecords }
     static let format = "csv"
 }
 
 enum CADCExternalURLs {
-    static let caom2uiView = "https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ui/view"
-    static let downloadManager = "https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/downloadManager/download"
+    static var caom2uiView: String { TAPConfig.endpoints.caom2UIViewURL }
+    static var downloadManager: String { TAPConfig.endpoints.downloadManagerURL }
 }
 
 // MARK: - ADQL Constants

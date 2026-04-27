@@ -131,7 +131,7 @@ struct ObservationDetailView: View {
 
                     metadataRow("Path", observation.localURL.path)
                     if let size = observation.fileSize {
-                        metadataRow("Size", ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+                        metadataRow("Size", SharedFormatters.bytes(size))
                     }
                     metadataRow("Downloaded", formatDate(observation.downloadedAt))
                     metadataRow("Exists", observation.fileExists ? "Yes" : "Missing")
