@@ -14,27 +14,20 @@ struct FITSViewerRootView: View {
     var body: some View {
         Group {
             if tabHost.tabs.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "star.circle")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.secondary)
-                    Text("FITS Viewer")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
+                ContentUnavailableView {
+                    Label("FITS Viewer", systemImage: "star.circle")
+                } description: {
                     Text("Open a FITS file to view astronomical images.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                } actions: {
                     #if os(macOS)
                     Button("Open FITS File") {
                         let model = tabHost.addTab()
                         Task { await model.openWithPicker() }
                     }
                     .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .accessibilityLabel("Open a FITS file")
+                    .accessibilityLabel(Text("Open a FITS file"))
                     #endif
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 FITSTabView(tabHost: tabHost)
             }

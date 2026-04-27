@@ -250,9 +250,14 @@ private struct CrosshairCanvasOverlay: View {
             vPath.move(to: CGPoint(x: position.x, y: 0))
             vPath.addLine(to: CGPoint(x: position.x, y: size.height))
 
-            // Dark outline for contrast against bright backgrounds
-            context.stroke(hPath, with: .color(.black.opacity(0.5)), lineWidth: 3)
-            context.stroke(vPath, with: .color(.black.opacity(0.5)), lineWidth: 3)
+            // Two-pass outline so the crosshair is visible against both
+            // bright and dark backgrounds. Pure-black outline alone vanished
+            // on dark star fields in dark mode — pair it with a translucent
+            // white halo for legibility regardless of the underlying pixel.
+            context.stroke(hPath, with: .color(.white.opacity(0.45)), lineWidth: 4)
+            context.stroke(vPath, with: .color(.white.opacity(0.45)), lineWidth: 4)
+            context.stroke(hPath, with: .color(.black.opacity(0.55)), lineWidth: 3)
+            context.stroke(vPath, with: .color(.black.opacity(0.55)), lineWidth: 3)
 
             if isLinked {
                 let style = StrokeStyle(lineWidth: 1.5, dash: [6, 4])

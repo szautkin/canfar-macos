@@ -37,7 +37,9 @@ extension ContentView {
                 Image(systemName: "sidebar.left")
             }
             .buttonStyle(.borderless)
-            .help("Toggle file browser (Cmd+B)")
+            .keyboardShortcut("b", modifiers: [.command])
+            .help("Toggle file browser (⌘B)")
+            .accessibilityLabel(Text(showFileBrowser ? "Hide file browser" : "Show file browser"))
 
             // Settings — SettingsLink (macOS 14+) opens the Settings scene.
             SettingsLink {

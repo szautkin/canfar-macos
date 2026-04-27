@@ -31,7 +31,7 @@ struct FITSTabView: View {
                             tabButton(index: index, tab: tab)
                         }
 
-                        // New tab button
+                        // New tab button (⌘T — standard macOS new-tab shortcut)
                         Button {
                             _ = tabHost.addTab()
                         } label: {
@@ -41,11 +41,27 @@ struct FITSTabView: View {
                                 .padding(.vertical, 4)
                         }
                         .buttonStyle(.plain)
+                        .keyboardShortcut("t", modifiers: [.command])
+                        .help(Text("New tab (⌘T)"))
+                        .accessibilityLabel(Text("New tab"))
                     }
                     .padding(.horizontal, 4)
                 }
                 .frame(height: 28)
                 .background(.bar)
+                .background(
+                    // Hidden close-active-tab shortcut (⌘W).
+                    // Disabled when there are no tabs to avoid swallowing
+                    // ⌘W from other parts of the window.
+                    Button("") {
+                        if tabHost.tabCount > 0 { tabHost.closeActiveTab() }
+                    }
+                    .keyboardShortcut("w", modifiers: [.command])
+                    .opacity(0)
+                    .frame(width: 0, height: 0)
+                    .disabled(tabHost.tabCount == 0)
+                    .accessibilityHidden(true)
+                )
 
                 // Linked controls — always visible, disabled when < 2 tabs
                 HStack(spacing: 8) {
@@ -275,11 +291,12 @@ struct FITSTabView: View {
     // MARK: - Tab Button
 
     private func tabButton(index: Int, tab: FITSViewerModel) -> some View {
-        HStack(spacing: 4) {
+        let title = tab.fileURL?.lastPathComponent ?? String(localized: "Untitled")
+        return HStack(spacing: 4) {
             Button {
                 tabHost.activeTabIndex = index
             } label: {
-                Text(tab.fileURL?.lastPathComponent ?? "Untitled")
+                Text(title)
                     .font(.caption)
                     .lineLimit(1)
                     .padding(.horizontal, 8)
@@ -288,6 +305,8 @@ struct FITSTabView: View {
             .buttonStyle(.plain)
             .background(index == tabHost.activeTabIndex ? Color.accentColor.opacity(0.15) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 4))
+            .accessibilityLabel(Text(title))
+            .accessibilityHint(Text("Switch to this FITS tab"))
 
             if tabHost.hasMultipleTabs {
                 Button {
@@ -297,6 +316,8 @@ struct FITSTabView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
+                .accessibilityLabel(Text("Close tab"))
+                .accessibilityHint(Text("Close \(title)"))
             }
         }
         .padding(.horizontal, 2)
@@ -361,11 +382,10 @@ struct FITSTabView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "star.circle").font(.system(size: 48)).foregroundStyle(.secondary)
-            Text("No FITS file open").font(.title3).foregroundStyle(.secondary)
-            Text("Open a FITS file or drag one here.").font(.caption).foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ContentUnavailableView(
+            "No FITS file open",
+            systemImage: "star.circle",
+            description: Text("Open a FITS file or drag one here.")
+        )
     }
 }
