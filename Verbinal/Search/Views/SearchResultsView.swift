@@ -72,9 +72,11 @@ struct SearchResultsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .sheet(item: $selectedResult) { result in
-            ResultDetailSheet(
-                result: result,
-                columns: resultsModel.columns,
+            ObservationDetailViewer(
+                model: ObservationDetailModel(
+                    result: result,
+                    columns: resultsModel.columns
+                ),
                 tapClient: tapClient,
                 researchModel: researchModel
             )

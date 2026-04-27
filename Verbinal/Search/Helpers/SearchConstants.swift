@@ -14,6 +14,8 @@ enum TAPConfig {
     static let resolverPath = "/cadc-target-resolver/find"
     static let datalinkPath = "/caom2ops/datalink"
     static let downloadPath = "/caom2ops/pkg"
+    /// Per-observation CAOM2 metadata document. Accepts `caom:{collection}/{obsID}`.
+    static let metaPath = "/caom2ops/meta"
     static let maxRecords = 30000
     static let format = "csv"
 }
