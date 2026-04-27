@@ -117,12 +117,19 @@ final class AppState {
         let endpoints = APIEndpoints()
         self.network = network
         self.endpoints = endpoints
-        self.authService = AuthService(network: network, endpoints: endpoints)
+        let authService = AuthService(network: network, endpoints: endpoints)
+        self.authService = authService
         self.sessionService = SessionService(network: network, endpoints: endpoints)
         self.imageService = ImageService(network: network, endpoints: endpoints)
         self.platformService = PlatformService(network: network, endpoints: endpoints)
         self.storageService = StorageService(network: network, endpoints: endpoints)
         self.headlessService = HeadlessService(network: network, endpoints: endpoints)
+
+        // Auth lifecycle owns the auth-only state; AppState orchestrates the
+        // cross-module reactions (headless monitor, portal-cache prewarm,
+        // navigation, sheet routing) via the controller's callbacks.
+        let auth = AuthLifecycleController(authService: authService)
+        self.auth = auth
 
         // Route Keychain through the shared addon-family access group so every
         // first-party addon can read the CADC token without re-authing. Default
@@ -134,6 +141,14 @@ final class AppState {
         // declaring class's own init), so no spurious "restart required".
         if let stored = UserDefaults.standard.string(forKey: Self.preferredLocaleKey) {
             self.preferredLocaleIdentifier = stored
+        }
+
+        // Wire controller callbacks now that `self` is fully initialised.
+        auth.onAuthenticated = { [weak self] in
+            self?.afterAuthenticated()
+        }
+        auth.onSessionExpired = { [weak self] in
+            self?.showLoginSheet = true
         }
 
         // Begin watching for network-path changes (Wi-Fi → Ethernet, VPN flip,
@@ -155,26 +170,10 @@ final class AppState {
 
     /// Called by NetworkClient when an authenticated request returned 401.
     /// Returns true if a retry of the original request is worth attempting.
+    /// Forwards to the controller, which knows how to validate and tear
+    /// down the session if needed.
     private func handleNetworkUnauthorized() async -> Bool {
-        // If the stored Keychain token still validates against /whoami,
-        // the 401 was a transient server hiccup — retry. Otherwise mark
-        // the session expired and surface the login flow.
-        let (storedToken, _) = KeychainStorage.loadToken()
-        guard let token = storedToken else {
-            await MainActor.run { self.handleTokenExpired() }
-            return false
-        }
-        switch await authService.validateToken(token) {
-        case .valid:
-            return true
-        case .expired:
-            await MainActor.run { self.handleTokenExpired() }
-            return false
-        case .networkError:
-            // Don't tear down the session on a network blip — let the
-            // original request fail and the user retry.
-            return false
-        }
+        await auth.handleNetworkUnauthorized()
     }
 
     /// Re-scan installed addons. Call at app launch and whenever the user
@@ -234,12 +233,23 @@ final class AppState {
         }
     }
 
-    // Auth state
-    var isAuthenticated = false
-    var isLoading = false
-    var username = ""
-    var statusMessage = ""
-    var userInfo: UserInfo?
+    // Auth state — owned by AuthLifecycleController. AppState forwards for
+    // call sites that read `appState.isAuthenticated` etc. directly. New
+    // code should prefer reading off `auth.*` to keep the controller's
+    // role explicit.
+    let auth: AuthLifecycleController
+
+    var isAuthenticated: Bool { auth.isAuthenticated }
+    var isLoading: Bool {
+        get { auth.isLoading }
+        set { auth.isLoading = newValue }
+    }
+    var username: String { auth.username }
+    var statusMessage: String {
+        get { auth.statusMessage }
+        set { auth.statusMessage = newValue }
+    }
+    var userInfo: UserInfo? { auth.userInfo }
 
     // UI state
 
@@ -266,65 +276,37 @@ final class AppState {
         }
     }
 
-    /// Called on app launch — checks Keychain for a stored token.
+    /// Called on app launch — delegates to the controller.
     func initialize() async {
-        let (storedToken, storedUsername) = KeychainStorage.loadToken()
-
-        guard let token = storedToken, !token.isEmpty else {
-            statusMessage = "Please log in"
-            return
-        }
-
-        isLoading = true
-        statusMessage = "Validating session..."
-
-        switch await authService.validateToken(token) {
-        case .valid(let validatedUsername):
-            let name = storedUsername ?? validatedUsername
-            let info = await authService.getUserInfo(username: name)
-            updateAuthState(username: name, userInfo: info)
-        case .expired:
-            // Try silent re-auth with stored password before prompting
-            if await silentReauth() {
-                isLoading = false
-                return
-            }
-            statusMessage = "Session expired. Please log in again."
-        case .networkError(let message):
-            // Keep the token — just can't reach the server right now
-            statusMessage = "Cannot connect: \(message). Please try again."
-        }
-
-        isLoading = false
+        await auth.validateStoredToken()
     }
 
+    /// Pass-through used by `LoginSheet` after a successful login. Forwards
+    /// to the controller, which fires `onAuthenticated` to wire up
+    /// navigation / headless monitor / portal-cache prewarm here.
     func updateAuthState(username: String, userInfo: UserInfo?) {
-        self.username = username
-        self.userInfo = userInfo
-        self.isAuthenticated = true
-        let displayName = [userInfo?.firstName, userInfo?.lastName]
-            .compactMap { $0 }
-            .joined(separator: " ")
-        self.statusMessage = "Welcome, \(displayName.isEmpty ? username : displayName)"
+        auth.apply(username: username, userInfo: userInfo)
+    }
 
-        // Navigate to pending mode after login (e.g. Portal, Storage)
+    /// Hook fired by `AuthLifecycleController.onAuthenticated`. AppState
+    /// owns the cross-module orchestration that follows a successful login:
+    /// jump to a pending navigation target, start the headless-job monitor,
+    /// prewarm the Portal image cache.
+    private func afterAuthenticated() {
         if let pending = pendingModeAfterLogin {
             navigateTo(pending)
             pendingModeAfterLogin = nil
         }
 
-        // Start headless job monitoring
         let monitor = HeadlessMonitorModel(headlessService: headlessService)
         monitor.onAuthFailure = { [weak self] in
             Task { @MainActor in
-                self?.handleTokenExpired()
+                self?.auth.handleTokenExpired()
             }
         }
         headlessMonitor = monitor
         monitor.startMonitoring()
 
-        // Warm the Portal image cache in the background so the Portal tab feels instant
-        // on first navigation. If the cache is already fresh, this is a no-op.
         prewarmPortalCache()
     }
 
@@ -358,63 +340,15 @@ final class AppState {
         }
     }
 
-    /// Active token-expiry handler. Guarded so two simultaneous 401s don't
-    /// race two concurrent re-auth attempts and double-fire updateAuthState.
-    private var tokenExpiryTask: Task<Void, Never>?
-
-    /// Called when any service detects a 401 — token has expired mid-session.
-    /// Tries silent re-auth if credentials are stored, otherwise shows login sheet.
+    /// Pass-through to the controller for callers that detected a 401
+    /// directly (e.g., `HeadlessMonitorModel.onAuthFailure`). The controller
+    /// owns the coalescing + reauth attempt; we tear down the headless
+    /// monitor here because that's an AppState-owned dependency.
     func handleTokenExpired() {
-        guard isAuthenticated else { return }
-        // Coalesce concurrent 401s: if a reauth task is already running, keep it.
-        if let task = tokenExpiryTask, !task.isCancelled {
-            return
-        }
+        guard auth.isAuthenticated else { return }
         headlessMonitor?.stopMonitoring()
         headlessMonitor = nil
-        isAuthenticated = false
-
-        tokenExpiryTask = Task { [weak self] in
-            guard let self else { return }
-            defer { self.tokenExpiryTask = nil }
-            if await self.silentReauth() { return }
-            // Silent re-auth failed — prompt user
-            self.statusMessage = "Session expired. Please log in again."
-            self.showLoginSheet = true
-        }
-    }
-
-    /// Attempts to re-validate a stored token. Returns true if the existing
-    /// Keychain token still authenticates against `/whoami`.
-    ///
-    /// We deliberately don't re-login with a stored password here: the
-    /// password isn't persisted (security policy — see
-    /// `KeychainStorage.saveCredentials`). When the token actually expires
-    /// the user must re-enter their credentials. In practice CADC tokens
-    /// are long-lived, so this prompt is rare.
-    private func silentReauth() async -> Bool {
-        let (storedToken, storedUsername) = KeychainStorage.loadToken()
-        guard let token = storedToken, storedUsername != nil else { return false }
-
-        statusMessage = "Renewing session..."
-        isLoading = true
-
-        let validation = await authService.validateToken(token)
-        switch validation {
-        case .valid(let canonicalUsername):
-            updateAuthState(username: canonicalUsername, userInfo: nil)
-            isLoading = false
-            return true
-        case .expired, .networkError:
-            break
-        }
-
-        // Token no longer valid — clear them
-        KeychainStorage.clearToken()
-        username = ""
-        userInfo = nil
-        isLoading = false
-        return false
+        auth.handleTokenExpired()
     }
 
     func logout() async {
@@ -425,17 +359,12 @@ final class AppState {
         prewarmTask?.cancel()
         prewarmTask = nil
 
-        // Cancel any pending re-auth so it cannot surface a stale login prompt after logout.
-        tokenExpiryTask?.cancel()
-        tokenExpiryTask = nil
-
         // Drop user-scoped cached data — settings are per-user and survive logout/login.
         portalImageCacheService.clear()
 
-        await authService.logout()
-        isAuthenticated = false
-        username = ""
-        userInfo = nil
+        // Tear down auth state via the controller (also cancels any
+        // in-flight reauth and asks AuthService to clear the token).
+        await auth.clear()
         statusMessage = "Logged out"
     }
 }
