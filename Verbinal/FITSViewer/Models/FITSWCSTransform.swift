@@ -48,15 +48,47 @@ struct FITSWCSTransform: Sendable {
         return sqrt(sx * sy) * 3600.0
     }
 
-    /// True when both CTYPE axes specify the TAN (gnomonic) projection.
-    private var isTAN: Bool {
-        ctype1.contains("TAN") && ctype2.contains("TAN")
+    /// Projection algorithm parsed from `CTYPE1`/`CTYPE2`. Beyond these four
+    /// zenithal projections we fall back to a linear interpolation that
+    /// is *only* approximately correct near the reference pixel — the
+    /// `isApproximate` flag warns the UI not to trust off-centre pixels.
+    enum Projection: Sendable, Equatable {
+        case tan        // gnomonic — most common for narrow-field optical/IR
+        case sin        // slant orthographic — radio interferometry
+        case stg        // stereographic — preserves angles, used for wide fields
+        case zea        // zenithal equal-area — preserves areas
+        case linear     // unknown / unrecognised — degrees-per-pixel fallback
+    }
+
+    /// Resolved projection. Both axes must agree on the projection code,
+    /// otherwise we fall back to linear.
+    var projection: Projection {
+        let p1 = Self.projectionCode(from: ctype1)
+        let p2 = Self.projectionCode(from: ctype2)
+        guard p1 == p2 else { return .linear }
+        switch p1 {
+        case "TAN": return .tan
+        case "SIN": return .sin
+        case "STG": return .stg
+        case "ZEA": return .zea
+        default:    return .linear
+        }
+    }
+
+    /// Extract the trailing 3-character projection code from a CTYPE
+    /// string (e.g. `"RA---TAN"` → `"TAN"`, `"DEC--SIN"` → `"SIN"`).
+    private static func projectionCode(from ctype: String) -> String {
+        // CTYPE format: "{coord}---{proj}" or "{coord}--{proj}" — split on
+        // dashes and take the last non-empty segment.
+        let parts = ctype.split(separator: "-", omittingEmptySubsequences: true)
+        return parts.last.map(String.init) ?? ""
     }
 
     /// Pixel (0-based) → World (RA, Dec) in degrees.
     ///
-    /// For TAN-projected images this performs the full gnomonic deprojection.
-    /// For other projections (or missing CTYPE) it falls back to linear interpolation.
+    /// Dispatches on `projection`: zenithal codes (TAN/SIN/STG/ZEA) get a
+    /// rigorous spherical deprojection; anything else (or missing CTYPE)
+    /// falls back to linear interpolation around the reference pixel.
     func pixelToWorld(x: Double, y: Double) -> (ra: Double, dec: Double) {
         let dx = x - crpix1
         let dy = y - crpix2
@@ -66,66 +98,174 @@ struct FITSWCSTransform: Sendable {
         let xi  = inter.x
         let eta = inter.y
 
-        guard isTAN else {
-            // Linear fallback for non-TAN projections.
-            return (ra: crval1 + xi, dec: crval2 + eta)
+        if let world = Self.deproject(xi: xi, eta: eta,
+                                      crval1: crval1, crval2: crval2,
+                                      projection: projection) {
+            return world
         }
-
-        // TAN (gnomonic) deprojection.
-        let xiRad  = xi  * (.pi / 180.0)
-        let etaRad = eta * (.pi / 180.0)
-        let ra0    = crval1 * (.pi / 180.0)
-        let dec0   = crval2 * (.pi / 180.0)
-
-        let denom = cos(dec0) - etaRad * sin(dec0)
-        guard denom != 0 else {
-            return (ra: crval1, dec: crval2)
-        }
-        let raRad  = ra0 + atan2(xiRad, denom)
-        let decRad = atan2(
-            (etaRad * cos(dec0) + sin(dec0)) * cos(raRad - ra0),
-            denom
-        )
-
-        // Normalise RA to [0, 360).
-        let decDeg = decRad * (180.0 / .pi)
-        var raDeg = raRad * (180.0 / .pi)
-        raDeg = raDeg.truncatingRemainder(dividingBy: 360.0)
-        if raDeg < 0 { raDeg += 360.0 }
-        return (ra: raDeg, dec: decDeg)
+        // Either an unknown projection or an out-of-domain plane point —
+        // surface the linear interpolation rather than nil so the UI can
+        // still display something near the reference pixel.
+        return (ra: crval1 + xi, dec: crval2 + eta)
     }
 
     /// World (RA, Dec) in degrees → Pixel (0-based). Returns nil if singular.
-    ///
-    /// For TAN-projected images this performs the full gnomonic projection.
-    /// For other projections (or missing CTYPE) it falls back to linear interpolation.
     func worldToPixel(ra: Double, dec: Double) -> (x: Double, y: Double)? {
         let det = simd_determinant(cd)
         guard abs(det) > 1e-30 else { return nil }
 
-        guard isTAN else {
-            // Linear fallback for non-TAN projections.
-            let dworld = simd_double2(ra - crval1, dec - crval2)
-            let pixel  = cdInv * dworld
-            return (x: crpix1 + pixel.x, y: crpix2 + pixel.y)
+        let inter: simd_double2
+        if let plane = Self.project(ra: ra, dec: dec,
+                                    crval1: crval1, crval2: crval2,
+                                    projection: projection) {
+            inter = simd_double2(plane.xi, plane.eta)
+        } else if projection == .linear {
+            inter = simd_double2(ra - crval1, dec - crval2)
+        } else {
+            return nil
         }
 
-        // TAN (gnomonic) forward projection: sky → intermediate world coords.
-        let raRad  = ra   * (.pi / 180.0)
-        let decRad = dec  * (.pi / 180.0)
-        let ra0    = crval1 * (.pi / 180.0)
-        let dec0   = crval2 * (.pi / 180.0)
-
-        let denom = sin(decRad) * sin(dec0) + cos(decRad) * cos(dec0) * cos(raRad - ra0)
-        guard abs(denom) > 1e-30 else { return nil }
-
-        let xi  = cos(decRad) * sin(raRad - ra0) / denom * (180.0 / .pi)
-        let eta = (sin(decRad) * cos(dec0) - cos(decRad) * sin(dec0) * cos(raRad - ra0)) / denom * (180.0 / .pi)
-
-        // Apply inverse CD matrix to get pixel offsets.
-        let inter  = simd_double2(xi, eta)
         let dpixel = cdInv * inter
         return (x: crpix1 + dpixel.x, y: crpix2 + dpixel.y)
+    }
+
+    // MARK: - Spherical projection math (zenithal family)
+    //
+    // For all zenithal projections the math factors as:
+    //   1. Compute angular distance ψ between target and reference, plus
+    //      position angle B (north-from-reference, east-positive).
+    //   2. Map ψ → ρ via a projection-specific radial law:
+    //        TAN: ρ = tan(ψ)
+    //        SIN: ρ = sin(ψ)
+    //        STG: ρ = 2·tan(ψ/2)
+    //        ZEA: ρ = 2·sin(ψ/2)
+    //   3. ξ = ρ · sin(B), η = ρ · cos(B).
+    // Inverse just runs the chain backwards. References:
+    //   • Calabretta & Greisen, A&A 395, 1077 (2002), "Representations of
+    //     celestial coordinates in FITS", Paper II.
+
+    /// Forward project (RA, Dec) → intermediate world (ξ, η) in degrees.
+    /// Returns nil for projection-domain violations (e.g. SIN beyond the
+    /// hemisphere) or a degenerate `linear` request that the caller should
+    /// handle separately.
+    static func project(
+        ra: Double,
+        dec: Double,
+        crval1: Double,
+        crval2: Double,
+        projection: Projection
+    ) -> (xi: Double, eta: Double)? {
+        guard projection != .linear else { return nil }
+
+        let raRad = ra * .pi / 180.0
+        let decRad = dec * .pi / 180.0
+        let ra0 = crval1 * .pi / 180.0
+        let dec0 = crval2 * .pi / 180.0
+
+        let cosPsi = sin(decRad) * sin(dec0) + cos(decRad) * cos(dec0) * cos(raRad - ra0)
+        let xNum = cos(decRad) * sin(raRad - ra0)
+        let yNum = sin(decRad) * cos(dec0) - cos(decRad) * sin(dec0) * cos(raRad - ra0)
+
+        let xi: Double
+        let eta: Double
+        switch projection {
+        case .tan:
+            // Forward hemisphere only.
+            guard cosPsi > 1e-12 else { return nil }
+            xi = xNum / cosPsi * (180.0 / .pi)
+            eta = yNum / cosPsi * (180.0 / .pi)
+        case .sin:
+            // SIN is well-defined throughout the forward hemisphere.
+            xi = xNum * (180.0 / .pi)
+            eta = yNum * (180.0 / .pi)
+        case .stg:
+            // Defined everywhere except the antipode.
+            let denom = 1 + cosPsi
+            guard denom > 1e-12 else { return nil }
+            xi = 2 * xNum / denom * (180.0 / .pi)
+            eta = 2 * yNum / denom * (180.0 / .pi)
+        case .zea:
+            // Defined everywhere except the antipode; equal-area.
+            guard cosPsi > -1 + 1e-12 else { return nil }
+            let factor = sqrt(2 / (1 + cosPsi))
+            xi = xNum * factor * (180.0 / .pi)
+            eta = yNum * factor * (180.0 / .pi)
+        case .linear:
+            return nil
+        }
+        return (xi: xi, eta: eta)
+    }
+
+    /// Inverse project intermediate world (ξ, η) in degrees → (RA, Dec).
+    /// Returns nil only when the input is outside the projection's domain
+    /// (SIN/ZEA past their respective radii). RA is normalised to [0, 360).
+    static func deproject(
+        xi: Double,
+        eta: Double,
+        crval1: Double,
+        crval2: Double,
+        projection: Projection
+    ) -> (ra: Double, dec: Double)? {
+        guard projection != .linear else { return nil }
+
+        let xiRad = xi * .pi / 180.0
+        let etaRad = eta * .pi / 180.0
+        let rho = sqrt(xiRad * xiRad + etaRad * etaRad)
+        let ra0 = crval1 * .pi / 180.0
+        let dec0 = crval2 * .pi / 180.0
+
+        // At the reference pixel, all projections collapse to the centre.
+        if rho < 1e-12 {
+            return (ra: crval1, dec: crval2)
+        }
+
+        let cosPsi: Double
+        let sinPsi: Double
+        switch projection {
+        case .tan:
+            // ψ = atan(ρ).  cos(ψ) = 1/√(1+ρ²), sin(ψ) = ρ/√(1+ρ²)
+            let denom = sqrt(1 + rho * rho)
+            cosPsi = 1 / denom
+            sinPsi = rho / denom
+        case .sin:
+            // ψ = asin(ρ).  Domain: ρ ≤ 1 (i.e., visible hemisphere).
+            guard rho <= 1.0 else { return nil }
+            sinPsi = rho
+            cosPsi = sqrt(max(0, 1 - rho * rho))
+        case .stg:
+            // ψ = 2·atan(ρ/2)
+            let halfPsi = atan(rho / 2)
+            cosPsi = cos(2 * halfPsi)
+            sinPsi = sin(2 * halfPsi)
+        case .zea:
+            // ψ = 2·asin(ρ/2).  Domain: ρ ≤ 2.
+            guard rho <= 2.0 else { return nil }
+            let halfPsi = asin(rho / 2)
+            cosPsi = cos(2 * halfPsi)
+            sinPsi = sin(2 * halfPsi)
+        case .linear:
+            return nil
+        }
+
+        // Position angle B: sin(B) = ξ/ρ, cos(B) = η/ρ. Convention: B
+        // measured from celestial north, east-positive.
+        let sinB = xiRad / rho
+        let cosB = etaRad / rho
+
+        // Inverse spherical formulas for any zenithal projection:
+        //   sin(δ) = cos(ψ)·sin(δ₀) + sin(ψ)·cos(B)·cos(δ₀)
+        //   tan(α-α₀) = sin(ψ)·sin(B) / (cos(ψ)·cos(δ₀) - sin(ψ)·cos(B)·sin(δ₀))
+        let sinDec = cosPsi * sin(dec0) + sinPsi * cosB * cos(dec0)
+        let decRad = asin(min(1, max(-1, sinDec)))
+
+        let yArg = sinPsi * sinB
+        let xArg = cosPsi * cos(dec0) - sinPsi * cosB * sin(dec0)
+        let raRad = ra0 + atan2(yArg, xArg)
+
+        var raDeg = raRad * (180.0 / .pi)
+        raDeg = raDeg.truncatingRemainder(dividingBy: 360.0)
+        if raDeg < 0 { raDeg += 360.0 }
+        return (ra: raDeg, dec: decRad * (180.0 / .pi))
     }
 
     /// Extract WCS from a parsed FITS header.
