@@ -37,6 +37,11 @@ final class AppState {
     let portalSettingsService = PortalSettingsService()
     let portalImageCacheService = PortalImageCacheService()
 
+    /// Live network connectivity monitor. UI subscribes via `@Bindable` to
+    /// surface "network changed; retrying…" hints when in-flight CADC
+    /// requests get cut by Wi-Fi → Ethernet transitions or VPN flips.
+    let networkPath = NetworkPathMonitor()
+
     // Headless job monitor (created on auth, destroyed on logout)
     private(set) var headlessMonitor: HeadlessMonitorModel?
 
@@ -129,6 +134,46 @@ final class AppState {
         // declaring class's own init), so no spurious "restart required".
         if let stored = UserDefaults.standard.string(forKey: Self.preferredLocaleKey) {
             self.preferredLocaleIdentifier = stored
+        }
+
+        // Begin watching for network-path changes (Wi-Fi → Ethernet, VPN flip,
+        // disconnects). UI binds to this for connectivity hints.
+        networkPath.start()
+
+        // Wire NetworkClient's 401-retry interceptor: on an `unauthorized`
+        // response the client invokes this handler; if it returns true the
+        // client retries the original request once with the freshly-set
+        // token. We do a token re-validation rather than full re-login so
+        // the user isn't prompted unless the token has actually expired.
+        Task { [weak self, network] in
+            await network.setUnauthorizedHandler { [weak self] in
+                guard let self else { return false }
+                return await self.handleNetworkUnauthorized()
+            }
+        }
+    }
+
+    /// Called by NetworkClient when an authenticated request returned 401.
+    /// Returns true if a retry of the original request is worth attempting.
+    private func handleNetworkUnauthorized() async -> Bool {
+        // If the stored Keychain token still validates against /whoami,
+        // the 401 was a transient server hiccup — retry. Otherwise mark
+        // the session expired and surface the login flow.
+        let (storedToken, _) = KeychainStorage.loadToken()
+        guard let token = storedToken else {
+            await MainActor.run { self.handleTokenExpired() }
+            return false
+        }
+        switch await authService.validateToken(token) {
+        case .valid:
+            return true
+        case .expired:
+            await MainActor.run { self.handleTokenExpired() }
+            return false
+        case .networkError:
+            // Don't tear down the session on a network blip — let the
+            // original request fail and the user retry.
+            return false
         }
     }
 
