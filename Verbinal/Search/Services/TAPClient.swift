@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// Actor-based HTTP client for public CADC TAP and resolver services.
 /// Does NOT use authentication — all endpoints are public.
@@ -19,44 +20,56 @@ actor TAPClient {
 
     /// Execute a synchronous TAP query against CADC's Argus service.
     /// Returns the raw CSV response text.
+    ///
+    /// Wrapped in `retrying(.default)`: 5xx, network drops, and DNS hiccups
+    /// get one or two automatic retries with exponential backoff before
+    /// surfacing the failure. 4xx (bad ADQL etc.) is *not* retried.
     func tapQuery(adql: String, maxRec: Int = TAPConfig.maxRecords) async throws -> String {
         guard let url = URL(string: "\(TAPConfig.baseURL)\(TAPConfig.syncPath)") else {
             throw SearchError.networkError("Invalid TAP URL")
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 120
+        return try await retrying(.default) {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 120
 
-        let params = [
-            "LANG": "ADQL",
-            "FORMAT": TAPConfig.format,
-            "QUERY": adql,
-            "MAXREC": String(maxRec),
-        ]
+            let params = [
+                "LANG": "ADQL",
+                "FORMAT": TAPConfig.format,
+                "QUERY": adql,
+                "MAXREC": String(maxRec),
+            ]
 
-        request.httpBody = params
-            .map { key, value in
-                let encodedKey = Self.formEncode(key)
-                let encodedValue = Self.formEncode(value)
-                return "\(encodedKey)=\(encodedValue)"
+            request.httpBody = params
+                .map { key, value in
+                    let encodedKey = Self.formEncode(key)
+                    let encodedValue = Self.formEncode(value)
+                    return "\(encodedKey)=\(encodedValue)"
+                }
+                .joined(separator: "&")
+                .data(using: .utf8)
+
+            let (data, response) = try await session.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NetworkError.invalidResponse
             }
-            .joined(separator: "&")
-            .data(using: .utf8)
 
-        let (data, response) = try await session.data(for: request)
+            // Surface 5xx as `NetworkError.httpError` so the retry helper
+            // can recognise it; map back to SearchError after the retry
+            // loop gives up.
+            guard httpResponse.statusCode == 200 else {
+                let body = String(data: data, encoding: .utf8) ?? ""
+                if httpResponse.statusCode >= 500 {
+                    throw NetworkError.httpError(httpResponse.statusCode, body)
+                }
+                throw SearchError.networkError("TAP query failed (HTTP \(httpResponse.statusCode)): \(body)")
+            }
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw SearchError.networkError("Invalid response")
+            return String(data: data, encoding: .utf8) ?? ""
         }
-
-        guard httpResponse.statusCode == 200 else {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw SearchError.networkError("TAP query failed (HTTP \(httpResponse.statusCode)): \(body)")
-        }
-
-        return String(data: data, encoding: .utf8) ?? ""
     }
 
     /// Execute a TAP query and parse results into rows.

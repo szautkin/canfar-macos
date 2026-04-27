@@ -23,12 +23,23 @@ public actor NetworkClient {
         return decoder
     }()
 
+    /// Optional callback invoked when a request returns 401 — the host
+    /// surface (`AppState`) plugs in a token refresh / re-prompt here.
+    /// Returns `true` if the client should retry the original request once;
+    /// `false` if the 401 should propagate as `NetworkError.unauthorized`.
+    public typealias UnauthorizedHandler = @Sendable () async -> Bool
+    private var onUnauthorized: UnauthorizedHandler?
+
     public init(
         session: URLSession = .shared,
         trustedAuthHostSuffixes: [String] = NetworkClient.defaultCADCHosts
     ) {
         self.session = session
         self.trustedAuthHostSuffixes = trustedAuthHostSuffixes
+    }
+
+    public func setUnauthorizedHandler(_ handler: UnauthorizedHandler?) {
+        self.onUnauthorized = handler
     }
 
     /// Default allow-list — the CADC + CANFAR domain families. Anything else
@@ -170,12 +181,28 @@ public actor NetworkClient {
         return request
     }
 
-    private func execute(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    private func execute(_ request: URLRequest, allowAuthRetry: Bool = true) async throws -> (Data, HTTPURLResponse) {
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
         if httpResponse.statusCode == 401 {
+            // Give the auth-lifecycle host one chance to refresh the token
+            // (or surface a re-login UI) before we propagate the failure.
+            // The handler returns true if a retry is worth attempting.
+            if allowAuthRetry, let handler = onUnauthorized, await handler() {
+                // Re-stamp the Authorization header off the freshly-set token
+                // and retry once. `allowAuthRetry: false` prevents an
+                // infinite loop if the refresh itself somehow yields 401.
+                var retried = request
+                if let url = retried.url, isTrustedAuthHost(url.host),
+                   let token, !token.isEmpty {
+                    retried.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                } else {
+                    retried.setValue(nil, forHTTPHeaderField: "Authorization")
+                }
+                return try await execute(retried, allowAuthRetry: false)
+            }
             throw NetworkError.unauthorized
         }
         if httpResponse.statusCode >= 400 {
