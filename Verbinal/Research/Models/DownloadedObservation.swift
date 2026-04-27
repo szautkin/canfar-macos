@@ -24,12 +24,19 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     var downloadedAt: Date = Date()
     var thumbnailURL: String?
     var previewURL: String?
+    /// Security-scoped bookmark for `localPath`. Captured at save time from
+    /// the user-picked `NSSavePanel` URL so the sandbox can re-grant read
+    /// access on subsequent launches; without this, the path string alone
+    /// resolves to a URL the sandbox refuses to open. `nil` for legacy rows
+    /// downloaded before this field existed — those use the re-grant path.
+    var bookmarkData: Data? = nil
 
     /// Create from a SearchResult row using its column metadata.
     static func from(
         result: SearchResult,
         columns: SearchResultColumns,
         localPath: String,
+        bookmarkData: Data? = nil,
         dataLink: DataLinkResult? = nil
     ) -> DownloadedObservation {
         DownloadedObservation(
@@ -45,7 +52,8 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
             calLevel: columns.value(in: result, forID: "callev"),
             localPath: localPath,
             thumbnailURL: dataLink?.firstThumbnail?.absoluteString,
-            previewURL: dataLink?.firstPreview?.absoluteString
+            previewURL: dataLink?.firstPreview?.absoluteString,
+            bookmarkData: bookmarkData
         )
     }
 

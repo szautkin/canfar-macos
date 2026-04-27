@@ -86,24 +86,27 @@ final class ResearchModel {
 
             // Step 2: Let user choose save location
             #if os(macOS)
-            let savedURL = await presentSavePanel(suggestedFilename: suggestedFilename, tempURL: tempURL)
+            let saveResult = await presentSavePanel(suggestedFilename: suggestedFilename, tempURL: tempURL)
             #else
-            let savedURL: URL? = nil
+            let saveResult: SaveResult? = nil
             #endif
 
-            guard let finalURL = savedURL else {
+            guard let saveResult else {
                 // User cancelled — clean up temp
                 try? await downloadService.deleteFile(at: tempURL)
                 activeDownloads.removeValue(forKey: downloadID)
                 return
             }
+            let finalURL = saveResult.url
 
-            // Step 3: Get file size and store metadata
+            // Step 3: Get file size and store metadata (with the security-
+            // scoped bookmark we captured during the save panel session).
             let fileSize = await downloadService.fileSize(at: finalURL)
             var observation = DownloadedObservation.from(
                 result: result,
                 columns: columns,
                 localPath: finalURL.path,
+                bookmarkData: saveResult.bookmarkData,
                 dataLink: dataLink
             )
             observation.fileSize = fileSize
@@ -223,27 +226,133 @@ final class ResearchModel {
 
     #if os(macOS)
     func revealInFinder(_ observation: DownloadedObservation) {
-        let url = URL(fileURLWithPath: observation.localPath)
+        let url = resolvedURL(for: observation) ?? URL(fileURLWithPath: observation.localPath)
+        // NSWorkspace runs in Finder's process and has its own grant — no
+        // start/stopAccessingSecurityScopedResource needed here.
         NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
     }
 
     func openFile(_ observation: DownloadedObservation) {
-        let url = URL(fileURLWithPath: observation.localPath)
-        guard observation.fileExists else { return }
-        let ext = url.pathExtension.lowercased()
+        // Prefer the security-scoped bookmark — that's the only path that
+        // works for files outside ~/Downloads after app restart. Fall back
+        // to the path-only URL for legacy rows; if that fails the
+        // permission probe, route through the re-grant flow.
+        let resolved = resolvedURL(for: observation)
+        let candidate = resolved ?? URL(fileURLWithPath: observation.localPath)
+
+        guard FileManager.default.fileExists(atPath: candidate.path) else { return }
+
+        let ext = candidate.pathExtension.lowercased()
+
+        // Path-only URL + sandbox refuses the read → ask the user to
+        // re-grant access via NSOpenPanel pre-targeted to the file.
+        if resolved == nil && !FileManager.default.isReadableFile(atPath: candidate.path) {
+            requestAccessRegrant(for: observation)
+            return
+        }
+
         if FileHelper.isFITS(ext) {
-            onOpenFile?(url)
+            onOpenFile?(candidate)
         } else {
-            NSWorkspace.shared.open(url)
+            NSWorkspace.shared.open(candidate)
+        }
+    }
+
+    /// Resolve `observation.bookmarkData` to a fresh security-scoped URL.
+    /// Returns `nil` when:
+    ///  • the observation has no bookmark (legacy save), or
+    ///  • the bookmark was created on a different volume / removed file, or
+    ///  • the system refuses to start the security scope.
+    /// Stale bookmarks are silently re-created so the next save persists
+    /// the refreshed token.
+    private func resolvedURL(for observation: DownloadedObservation) -> URL? {
+        guard let data = observation.bookmarkData else { return nil }
+        var stale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: data,
+            options: [.withSecurityScope],
+            relativeTo: nil,
+            bookmarkDataIsStale: &stale
+        ) else { return nil }
+        guard url.startAccessingSecurityScopedResource() else { return nil }
+        // Caller is the FITS viewer / NSWorkspace — they finish reading
+        // synchronously (FITSViewerModel.open uses Data(contentsOf:) once)
+        // and won't call back, so we balance the access here. The viewer
+        // wraps subsequent reads in its own scope-pair (see
+        // FITSViewerModel.open / .selectHDU).
+        url.stopAccessingSecurityScopedResource()
+        if stale {
+            // Re-mint the bookmark off the resolved URL so persistence stays
+            // valid; no UI prompt — the user already granted access once.
+            if let fresh = try? url.bookmarkData(
+                options: .withSecurityScope,
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            ) {
+                var updated = observation
+                updated.bookmarkData = fresh
+                observationStore.save(updated)
+            }
+        }
+        return url
+    }
+
+    /// User-facing re-grant prompt for legacy observations whose bookmark
+    /// is missing. Pre-targets `NSOpenPanel` at the saved file so the user
+    /// sees the file pre-selected — they just confirm.
+    private func requestAccessRegrant(for observation: DownloadedObservation) {
+        let panel = NSOpenPanel()
+        panel.title = String(localized: "Re-grant Access")
+        let filename = observation.filename
+        panel.message = String(
+            localized: "Verbinal needs your permission to re-open \(filename). Click Open to confirm."
+        )
+        panel.prompt = String(localized: "Open")
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        let url = URL(fileURLWithPath: observation.localPath)
+        panel.directoryURL = url.deletingLastPathComponent()
+        panel.nameFieldStringValue = url.lastPathComponent
+
+        guard panel.runModal() == .OK, let pickedURL = panel.url else { return }
+
+        // Persist the freshly-granted bookmark so the next open works
+        // without prompting.
+        if let bookmark = try? pickedURL.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        ) {
+            var updated = observation
+            updated.bookmarkData = bookmark
+            updated.localPath = pickedURL.path
+            observationStore.save(updated)
+        }
+
+        let ext = pickedURL.pathExtension.lowercased()
+        if FileHelper.isFITS(ext) {
+            onOpenFile?(pickedURL)
+        } else {
+            NSWorkspace.shared.open(pickedURL)
         }
     }
     #endif
 
     // MARK: - Save Panel
 
+    /// Result of a successful save: the on-disk URL plus a security-scoped
+    /// bookmark so the sandbox can re-grant access on future launches.
+    /// `bookmarkData` is `nil` only when bookmark capture itself failed —
+    /// the file is saved, the open path will fall back to the re-grant flow.
+    struct SaveResult {
+        let url: URL
+        let bookmarkData: Data?
+    }
+
     #if os(macOS)
     @MainActor
-    private func presentSavePanel(suggestedFilename: String, tempURL: URL) async -> URL? {
+    private func presentSavePanel(suggestedFilename: String, tempURL: URL) async -> SaveResult? {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = suggestedFilename
         panel.canCreateDirectories = true
@@ -263,10 +372,22 @@ final class ResearchModel {
         return moveToFinal(from: tempURL, to: saveURL)
     }
 
-    private func moveToFinal(from tempURL: URL, to saveURL: URL) -> URL? {
+    /// Move the downloaded temp file into the user-picked location and
+    /// capture a security-scoped bookmark while we still hold the
+    /// `NSSavePanel`-issued grant. The bookmark is what lets `openFile`
+    /// read the file in subsequent launches without prompting again.
+    private func moveToFinal(from tempURL: URL, to saveURL: URL) -> SaveResult? {
         do {
             try FileHelper.moveReplacing(from: tempURL, to: saveURL)
-            return saveURL
+            // Capture the bookmark *after* the move so the URL points at a
+            // file that exists; capture failure is non-fatal — we still
+            // keep the saved file and surface a re-grant prompt later.
+            let bookmark = try? saveURL.bookmarkData(
+                options: .withSecurityScope,
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            return SaveResult(url: saveURL, bookmarkData: bookmark)
         } catch {
             lastError = String(localized: "Failed to save: \(error.localizedDescription)")
             return nil

@@ -77,6 +77,14 @@ final class FITSViewerModel: Identifiable {
         loadError = nil
         fileURL = url
 
+        // For files saved via NSSavePanel and resolved from a security-scoped
+        // bookmark (Research downloads), the sandbox requires
+        // start/stopAccessingSecurityScopedResource() around the read. The
+        // call is a safe no-op for non-scoped URLs (NSOpenPanel-picked
+        // files already have process-scoped grants), so we always pair it.
+        let didStartScope = url.startAccessingSecurityScopedResource()
+        defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
+
         do {
             let (fitsFile, extractedPixels, cuts) = try await Task.detached {
                 let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
@@ -119,6 +127,12 @@ final class FITSViewerModel: Identifiable {
 
         guard let url = fileURL else { return }
         let hdu = file.hdus[index]
+
+        // Same scope discipline as `open(url:)` — the file may live in a
+        // sandbox-restricted location that requires explicit access.
+        let didStartScope = url.startAccessingSecurityScopedResource()
+        defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
+
         do {
             let (extractedPixels, cuts) = try await Task.detached {
                 let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
