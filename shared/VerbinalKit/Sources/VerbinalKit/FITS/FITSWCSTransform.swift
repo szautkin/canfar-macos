@@ -8,41 +8,63 @@ import Foundation
 import simd
 
 /// World Coordinate System transform: pixel ↔ world (RA/Dec).
-struct FITSWCSTransform: Sendable {
-    let crpix1: Double
-    let crpix2: Double
-    let crval1: Double
-    let crval2: Double
-    let cd: simd_double2x2
-    let cdInv: simd_double2x2
-    let ctype1: String
-    let ctype2: String
+public struct FITSWCSTransform: Sendable {
+    public let crpix1: Double
+    public let crpix2: Double
+    public let crval1: Double
+    public let crval2: Double
+    public let cd: simd_double2x2
+    public let cdInv: simd_double2x2
+    public let ctype1: String
+    public let ctype2: String
     /// True when the WCS was constructed from legacy header keywords (RA/DEC strings)
     /// rather than standard WCS keywords. Coordinates are approximate — no CD matrix,
     /// pixel scale is guessed, no rotation. The user should be warned that spatial
     /// operations (crosshair, Go To, Search Here) may be imprecise.
-    var isApproximate: Bool = false
+    public var isApproximate: Bool = false
+
+    public init(
+        crpix1: Double,
+        crpix2: Double,
+        crval1: Double,
+        crval2: Double,
+        cd: simd_double2x2,
+        cdInv: simd_double2x2,
+        ctype1: String,
+        ctype2: String,
+        isApproximate: Bool = false
+    ) {
+        self.crpix1 = crpix1
+        self.crpix2 = crpix2
+        self.crval1 = crval1
+        self.crval2 = crval2
+        self.cd = cd
+        self.cdInv = cdInv
+        self.ctype1 = ctype1
+        self.ctype2 = ctype2
+        self.isApproximate = isApproximate
+    }
 
     /// Valid only when BOTH diagonal CD elements are non-zero — a half-zero
     /// matrix (e.g. CDELT1=0, CDELT2≠0) is degenerate and produces unreliable
     /// pixel↔world transforms.
-    var isValid: Bool { cd[0][0] != 0 && cd[1][1] != 0 }
+    public var isValid: Bool { cd[0][0] != 0 && cd[1][1] != 0 }
 
     /// North angle in degrees (rotation from celestial North).
     /// North angle in degrees. CD matrix is column-major:
     /// cd[0] = (CD1_1, CD2_1), cd[1] = (CD1_2, CD2_2)
     /// Formula: atan2(-CD1_2, CD2_2) = atan2(-cd[1][0], cd[1][1])
-    var northAngle: Double {
+    public var northAngle: Double {
         atan2(-cd[1][0], cd[1][1]) * 180.0 / .pi
     }
 
     /// True if image has parity flip (det(CD) > 0).
-    var hasParityFlip: Bool {
+    public var hasParityFlip: Bool {
         simd_determinant(cd) > 0
     }
 
     /// Pixel scale in arcseconds per pixel (geometric mean).
-    var pixelScaleArcsec: Double {
+    public var pixelScaleArcsec: Double {
         let sx = sqrt(cd[0][0] * cd[0][0] + cd[1][0] * cd[1][0])
         let sy = sqrt(cd[0][1] * cd[0][1] + cd[1][1] * cd[1][1])
         return sqrt(sx * sy) * 3600.0
@@ -52,7 +74,7 @@ struct FITSWCSTransform: Sendable {
     /// zenithal projections we fall back to a linear interpolation that
     /// is *only* approximately correct near the reference pixel — the
     /// `isApproximate` flag warns the UI not to trust off-centre pixels.
-    enum Projection: Sendable, Equatable {
+    public enum Projection: Sendable, Equatable {
         case tan        // gnomonic — most common for narrow-field optical/IR
         case sin        // slant orthographic — radio interferometry
         case stg        // stereographic — preserves angles, used for wide fields
@@ -62,7 +84,7 @@ struct FITSWCSTransform: Sendable {
 
     /// Resolved projection. Both axes must agree on the projection code,
     /// otherwise we fall back to linear.
-    var projection: Projection {
+    public var projection: Projection {
         let p1 = Self.projectionCode(from: ctype1)
         let p2 = Self.projectionCode(from: ctype2)
         guard p1 == p2 else { return .linear }
@@ -89,7 +111,7 @@ struct FITSWCSTransform: Sendable {
     /// Dispatches on `projection`: zenithal codes (TAN/SIN/STG/ZEA) get a
     /// rigorous spherical deprojection; anything else (or missing CTYPE)
     /// falls back to linear interpolation around the reference pixel.
-    func pixelToWorld(x: Double, y: Double) -> (ra: Double, dec: Double) {
+    public func pixelToWorld(x: Double, y: Double) -> (ra: Double, dec: Double) {
         let dx = x - crpix1
         let dy = y - crpix2
         let pixel = simd_double2(dx, dy)
@@ -110,7 +132,7 @@ struct FITSWCSTransform: Sendable {
     }
 
     /// World (RA, Dec) in degrees → Pixel (0-based). Returns nil if singular.
-    func worldToPixel(ra: Double, dec: Double) -> (x: Double, y: Double)? {
+    public func worldToPixel(ra: Double, dec: Double) -> (x: Double, y: Double)? {
         let det = simd_determinant(cd)
         guard abs(det) > 1e-30 else { return nil }
 
@@ -148,7 +170,7 @@ struct FITSWCSTransform: Sendable {
     /// Returns nil for projection-domain violations (e.g. SIN beyond the
     /// hemisphere) or a degenerate `linear` request that the caller should
     /// handle separately.
-    static func project(
+    public static func project(
         ra: Double,
         dec: Double,
         crval1: Double,
@@ -199,7 +221,7 @@ struct FITSWCSTransform: Sendable {
     /// Inverse project intermediate world (ξ, η) in degrees → (RA, Dec).
     /// Returns nil only when the input is outside the projection's domain
     /// (SIN/ZEA past their respective radii). RA is normalised to [0, 360).
-    static func deproject(
+    public static func deproject(
         xi: Double,
         eta: Double,
         crval1: Double,
@@ -269,7 +291,7 @@ struct FITSWCSTransform: Sendable {
     }
 
     /// Extract WCS from a parsed FITS header.
-    static func fromHeader(_ header: FITSHeader) -> FITSWCSTransform? {
+    public static func fromHeader(_ header: FITSHeader) -> FITSWCSTransform? {
         let crpix1 = header.double("CRPIX1")
         let crpix2 = header.double("CRPIX2")
         let crval1 = header.double("CRVAL1")
@@ -358,7 +380,7 @@ struct FITSWCSTransform: Sendable {
     /// Parse sexagesimal RA (HH:MM:SS.SS or HH MM SS.SS) to degrees.
     ///
     /// Validates: h in [0, 24), m in [0, 60), s in [0, 60).
-    static func parseRA(_ str: String) -> Double? {
+    public static func parseRA(_ str: String) -> Double? {
         let parts = str.trimmingCharacters(in: .whitespaces)
             .components(separatedBy: CharacterSet(charactersIn: ": "))
             .filter { !$0.isEmpty }
@@ -373,7 +395,7 @@ struct FITSWCSTransform: Sendable {
     /// Parse sexagesimal Dec (±DD:MM:SS.S or ±DD MM SS.S) to degrees.
     ///
     /// Validates: d in [0, 90], m in [0, 60), s in [0, 60).
-    static func parseDec(_ str: String) -> Double? {
+    public static func parseDec(_ str: String) -> Double? {
         let trimmed = str.trimmingCharacters(in: .whitespaces)
         let sign: Double = trimmed.hasPrefix("-") ? -1 : 1
         let cleaned = trimmed.replacingOccurrences(of: "+", with: "").replacingOccurrences(of: "-", with: "")
@@ -390,7 +412,7 @@ struct FITSWCSTransform: Sendable {
     // MARK: - Formatting
 
     /// Format RA in degrees to sexagesimal (HHhMMmSS.SSs).
-    static func formatRA(_ raDeg: Double) -> String {
+    public static func formatRA(_ raDeg: Double) -> String {
         guard raDeg.isFinite else { return "--h--m--.--s" }
         var ra = raDeg / 15.0
         if ra < 0 { ra += 24 }
@@ -401,7 +423,7 @@ struct FITSWCSTransform: Sendable {
     }
 
     /// Format Dec in degrees to sexagesimal (+DD°MM'SS.S").
-    static func formatDec(_ decDeg: Double) -> String {
+    public static func formatDec(_ decDeg: Double) -> String {
         guard decDeg.isFinite else { return "--\u{00b0}--'--.--\"" }
         let sign = decDeg >= 0 ? "+" : "-"
         let dec = abs(decDeg)

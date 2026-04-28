@@ -6,6 +6,7 @@
 
 import XCTest
 @testable import Verbinal
+import VerbinalKit
 
 final class CAOM2ParserTests: XCTestCase {
 

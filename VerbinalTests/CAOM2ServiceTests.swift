@@ -6,6 +6,7 @@
 
 import XCTest
 @testable import Verbinal
+import VerbinalKit
 
 /// Service-layer behaviours for ``CAOM2Service`` — verifies the request
 /// shape (correct URL + ID param), HTTP-status branching (401/403→authRequired,

@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// Failure modes for ``CAOM2Service.fetch(publisherID:)``.
 enum CAOM2ServiceError: Error, LocalizedError {

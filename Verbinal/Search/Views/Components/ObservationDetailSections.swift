@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import VerbinalKit
 
 // Per-tab section views for ObservationDetailViewer. Each is a self-
 // contained block of metadata cards. The sections render whatever data

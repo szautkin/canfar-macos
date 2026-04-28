@@ -7,6 +7,7 @@
 import XCTest
 import simd
 @testable import Verbinal
+import VerbinalKit
 
 /// Tests for BlinkAligner, mirroring Windows BlinkAlignerTests.cs.
 final class BlinkAlignerTests: XCTestCase {

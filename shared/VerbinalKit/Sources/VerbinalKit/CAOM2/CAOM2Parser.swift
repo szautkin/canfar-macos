@@ -6,12 +6,12 @@
 
 import Foundation
 
-enum CAOM2ParserError: Error, LocalizedError {
+public enum CAOM2ParserError: Error, LocalizedError {
     case malformedXML(underlying: Error)
     case missingRoot
     case missingRequiredField(String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .malformedXML(let e): return "Malformed CAOM2 XML: \(e.localizedDescription)"
         case .missingRoot: return "CAOM2 document has no root element"
@@ -28,9 +28,9 @@ enum CAOM2ParserError: Error, LocalizedError {
 /// so version drift doesn't break us. Unknown elements are skipped, not
 /// errored — we don't want a future schema additive change to make every
 /// observation unviewable.
-enum CAOM2Parser {
+public enum CAOM2Parser {
 
-    static func parse(data: Data) throws -> CAOM2Observation {
+    public static func parse(data: Data) throws -> CAOM2Observation {
         let doc: XMLDocument
         do {
             doc = try XMLDocument(data: data)

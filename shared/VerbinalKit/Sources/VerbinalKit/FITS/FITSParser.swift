@@ -8,19 +8,19 @@ import Foundation
 import Accelerate
 
 /// Stream-based FITS file parser. Block-aligned (2880 bytes per FITS spec).
-enum FITSParser {
+public enum FITSParser {
     private static let blockSize = 2880
     private static let cardSize = 80
     private static let cardsPerBlock = blockSize / cardSize // 36
 
     /// Parse a FITS file into HDUs from a URL.
-    static func parse(url: URL) throws -> FITSFile {
+    public static func parse(url: URL) throws -> FITSFile {
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
         return try parse(from: data, url: url)
     }
 
     /// Parse FITS from pre-loaded data (avoids double file load).
-    static func parse(from data: Data, url: URL? = nil) throws -> FITSFile {
+    public static func parse(from data: Data, url: URL? = nil) throws -> FITSFile {
         let fileURL = url ?? URL(fileURLWithPath: "/unknown.fits")
         var offset = 0
         var hdus: [FITSHDUnit] = []
@@ -197,7 +197,7 @@ enum FITSParser {
     // MARK: - Pixel Data Extraction
 
     /// Extract pixel data from a FITS HDU as Float32 array with BSCALE/BZERO applied.
-    static func extractPixels(from data: Data, hdu: FITSHDUnit) throws -> [Float] {
+    public static func extractPixels(from data: Data, hdu: FITSHDUnit) throws -> [Float] {
         let header = hdu.header
 
         // fpack-compressed: delegate to the Rice decompressor
@@ -210,7 +210,7 @@ enum FITSParser {
             throw FITSError.invalidFile("Image dimensions overflow: \(header.naxis1) × \(header.naxis2)")
         }
         guard count > 0 else { throw FITSError.invalidFile("Empty image") }
-        guard count <= FITSViewerConstants.maxPixels else {
+        guard count <= FITSLimits.maxPixels else {
             throw FITSError.invalidFile("Image too large: \(count) pixels exceeds 500 Mpx cap")
         }
 
@@ -288,7 +288,7 @@ enum FITSParser {
 
     /// Compute auto-cut using median + sigma clipping (matches DS9/SAOImage behavior).
     /// Falls back to tighter percentiles (1%/99%) if sigma clipping produces a degenerate range.
-    static func autoCut(pixels: [Float], lowPercentile: Float = 0.01, highPercentile: Float = 0.99) -> (min: Float, max: Float) {
+    public static func autoCut(pixels: [Float], lowPercentile: Float = 0.01, highPercentile: Float = 0.99) -> (min: Float, max: Float) {
         let maxSamples = 100_000
         let step = max(1, pixels.count / maxSamples)
         var samples: [Float] = []

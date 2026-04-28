@@ -8,6 +8,7 @@ import Foundation
 import CoreGraphics
 import Observation
 import os.log
+import VerbinalKit
 
 /// Manages multiple FITS viewer tabs with linked crosshair and blink comparison.
 ///

@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import VerbinalKit
 
 /// Displays all FITS header cards for the selected HDU with search filtering.
 struct FITSHeaderPanel: View {

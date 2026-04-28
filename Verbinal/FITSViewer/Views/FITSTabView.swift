@@ -8,6 +8,7 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 #endif
+import VerbinalKit
 
 /// Multi-tab container for FITS viewer instances.
 struct FITSTabView: View {

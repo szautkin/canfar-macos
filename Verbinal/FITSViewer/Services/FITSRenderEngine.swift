@@ -7,6 +7,7 @@
 import Foundation
 import CoreGraphics
 import Accelerate
+import VerbinalKit
 
 /// CPU-based FITS rendering engine.
 /// Uses vDSP for vectorized stretch and colormap application.

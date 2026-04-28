@@ -7,6 +7,7 @@
 import XCTest
 import simd
 @testable import Verbinal
+import VerbinalKit
 
 /// Tests for the FITS linked store pattern (pull-on-activation).
 ///

@@ -11,6 +11,7 @@ import os.log
 #if os(macOS)
 import AppKit
 #endif
+import VerbinalKit
 
 /// Per-file FITS viewer state.
 @Observable

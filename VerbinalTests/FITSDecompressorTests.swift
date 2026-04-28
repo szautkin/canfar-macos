@@ -6,6 +6,7 @@
 
 import XCTest
 @testable import Verbinal
+@testable import VerbinalKit
 
 // MARK: - Rice Unfold Mapping Tests
 

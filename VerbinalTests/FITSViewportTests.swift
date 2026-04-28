@@ -6,6 +6,7 @@
 
 import XCTest
 @testable import Verbinal
+import VerbinalKit
 
 /// Exhaustive proof that the crosshair stays visible (at the expected screen position)
 /// across every zoom method: setZoom, fitToWindow, scroll-wheel zoom, and round-trip transforms.

@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// Transform parameters for overlaying image B on top of image A during blink comparison.
 ///

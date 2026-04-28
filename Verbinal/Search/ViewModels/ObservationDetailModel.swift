@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 import os.log
+import VerbinalKit
 
 /// View model for ``ObservationDetailViewer``.
 ///

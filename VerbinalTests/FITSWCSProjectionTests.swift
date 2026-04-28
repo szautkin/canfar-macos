@@ -13,6 +13,7 @@
 import XCTest
 import simd
 @testable import Verbinal
+import VerbinalKit
 
 final class FITSWCSProjectionTests: XCTestCase {
 

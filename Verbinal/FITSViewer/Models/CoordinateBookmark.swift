@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// A saved RA/Dec position for quick navigation in the FITS viewer.
 struct CoordinateBookmark: Codable, Identifiable, Equatable {

@@ -15,18 +15,18 @@ import Accelerate
 /// Each table row contains a variable-length byte array with one Rice-compressed
 /// image tile. This type reads the binary table heap, extracts per-tile compressed
 /// bytes, and decodes them using the Rice adaptive entropy coding algorithm.
-enum FITSDecompressor {
+public enum FITSDecompressor {
 
     // MARK: Errors
 
-    enum Error: LocalizedError {
+    public enum Error: LocalizedError {
         case unsupportedCompression(String)
         case malformedDescriptor(row: Int)
         case truncatedHeap(row: Int, needed: Int, available: Int)
         case unsupportedBitpix(Int)
         case decodingFailed(row: Int, message: String)
 
-        var errorDescription: String? {
+        public var errorDescription: String? {
             switch self {
             case .unsupportedCompression(let type):
                 return "Unsupported FITS compression type: \(type). Only RICE_1 is supported."
@@ -52,7 +52,7 @@ enum FITSDecompressor {
     ///           `_TNAXIS1`, `_TNAXIS2`, `_PCOUNT`, and all ZNAXIS/ZTILE/ZVAL keywords.
     /// - Returns: Decompressed pixels as Float32, in row-major order, BSCALE/BZERO applied.
     /// - Throws:  `FITSDecompressor.Error` or `FITSError` on malformed data.
-    static func decompress(from data: Data, hdu: FITSHDUnit) throws -> [Float] {
+    public static func decompress(from data: Data, hdu: FITSHDUnit) throws -> [Float] {
         let h = hdu.header
 
         // Validate compression type
@@ -103,7 +103,7 @@ enum FITSDecompressor {
         guard !totalPixelsOverflow else {
             throw FITSError.invalidFile("Compressed FITS: image dimensions overflow (\(imageWidth)×\(imageHeight))")
         }
-        guard totalPixels <= FITSViewerConstants.maxPixels else {
+        guard totalPixels <= FITSLimits.maxPixels else {
             throw FITSError.invalidFile("Compressed FITS: image too large (\(totalPixels) pixels exceeds 500 Mpx cap)")
         }
         var rawPixels = [Int32](repeating: 0, count: totalPixels)
@@ -136,7 +136,7 @@ enum FITSDecompressor {
             guard nelem >= 0, offset >= 0 else {
                 throw Error.malformedDescriptor(row: tileIdx)
             }
-            guard nelem <= FITSViewerConstants.maxTileBytes else {
+            guard nelem <= FITSLimits.maxTileBytes else {
                 throw Error.decodingFailed(row: tileIdx, message: "nelem \(nelem) exceeds 64 MB per tile cap")
             }
 

@@ -7,6 +7,7 @@
 import XCTest
 import simd
 @testable import Verbinal
+import VerbinalKit
 
 // MARK: - DataTrainModel Tests
 
