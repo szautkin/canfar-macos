@@ -11,8 +11,9 @@ import VerbinalKit
 final class ObservationStoreTests: XCTestCase {
 
     private func makeStore() -> ObservationStore {
+        // Disable Spotlight so the test suite never touches the real index.
         let fileName = "test_observations_\(UUID().uuidString).json"
-        return ObservationStore(fileName: fileName)
+        return ObservationStore(fileName: fileName, spotlight: nil)
     }
 
     private func makeObservation(

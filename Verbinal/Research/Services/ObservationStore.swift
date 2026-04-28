@@ -14,6 +14,10 @@ import VerbinalKit
 final class ObservationStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ObservationStore")
     private let persistence: DiskPersistence<[DownloadedObservation]>
+    /// Spotlight indexer — every save/remove fans out so the user can find
+    /// their downloaded observations from the macOS Spotlight bar by target
+    /// name, collection, instrument, etc. Optional so unit tests can opt out.
+    private let spotlight: ObservationSpotlightIndexer?
     private(set) var observations: [DownloadedObservation] = []
 
     /// Observations grouped by collection.
@@ -21,15 +25,24 @@ final class ObservationStore {
         Dictionary(grouping: observations, by: \.collection)
     }
 
-    init(fileName: String = "downloaded_observations.json") {
+    init(
+        fileName: String = "downloaded_observations.json",
+        spotlight: ObservationSpotlightIndexer? = ObservationSpotlightIndexer()
+    ) {
         self.persistence = DiskPersistence(
             subdirectory: "Verbinal",
             fileName: fileName,
             logger: Self.logger
         )
+        self.spotlight = spotlight
         // File existence is surfaced via DownloadedObservation.fileExists — do not prune on load.
         // Pruning on launch would silently destroy metadata for files on remounted/offline volumes.
         self.observations = persistence.read() ?? []
+        // Refresh the Spotlight index off-disk on launch so coverage stays
+        // current across schema changes / out-of-process index loss.
+        if !observations.isEmpty {
+            spotlight?.reindexAll(observations)
+        }
     }
 
     func save(_ observation: DownloadedObservation) {
@@ -40,16 +53,19 @@ final class ObservationStore {
             observations.insert(observation, at: 0)
         }
         persistence.write(observations)
+        spotlight?.index(observation)
     }
 
     func remove(_ observation: DownloadedObservation) {
         observations.removeAll { $0.id == observation.id }
         persistence.write(observations)
+        spotlight?.deindex(observation)
     }
 
     func clear() {
         observations.removeAll()
         persistence.write(observations)
+        spotlight?.deindexAll()
     }
 
     func contains(publisherID: String) -> Bool {
