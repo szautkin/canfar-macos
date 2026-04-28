@@ -7,15 +7,14 @@
 import Foundation
 import CoreGraphics
 import Accelerate
-import VerbinalKit
 
 /// CPU-based FITS rendering engine.
 /// Uses vDSP for vectorized stretch and colormap application.
 /// Supports render cancellation for responsive slider interaction.
-enum FITSRenderEngine {
+public enum FITSRenderEngine {
 
     /// Render pixel data to a CGImage with the given parameters.
-    static func render(
+    public static func render(
         pixels: [Float],
         width: Int,
         height: Int,
