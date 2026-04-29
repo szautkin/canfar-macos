@@ -18,16 +18,22 @@ public struct AIToolContext: Sendable {
     public let proposals: any ProposalStore
     /// Budget gate; the router consults this — tools usually don't.
     public let budget: ProposalBudget
+    /// Append-only event log used by `list_events`. Optional because not
+    /// every test stub wires it — tools that need it should fail
+    /// gracefully when absent.
+    public let eventLog: EventLog?
 
     public init(
         origin: OperationOrigin,
         requestID: UUID = UUID(),
         proposals: any ProposalStore,
-        budget: ProposalBudget
+        budget: ProposalBudget,
+        eventLog: EventLog? = nil
     ) {
         self.origin = origin
         self.requestID = requestID
         self.proposals = proposals
         self.budget = budget
+        self.eventLog = eventLog
     }
 }

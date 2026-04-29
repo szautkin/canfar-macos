@@ -106,7 +106,7 @@ public actor AIToolRouter {
         switch result {
         case .data:
             emitAudit(name: name, args: rawArguments, context: context,
-                      outcome: .ok, verbClass: meta.verbClass, durationMS: durationMS)
+                      outcome: .data, verbClass: meta.verbClass, durationMS: durationMS)
             return result
 
         case .proposed(let proposal):
@@ -117,18 +117,20 @@ public actor AIToolRouter {
                 // Doesn't apply — return as-is (these aren't supposed to
                 // produce proposals, but if they do we don't gate them).
                 emitAudit(name: name, args: rawArguments, context: context,
-                          outcome: .proposed, verbClass: meta.verbClass,
+                          outcome: .proposed(proposal.id),
+                          verbClass: meta.verbClass,
                           durationMS: durationMS)
                 return result
             case .semanticWrite, .destructive:
                 let accepted = await context.budget.tryAccept(origin: context.origin)
                 if accepted {
                     emitAudit(name: name, args: rawArguments, context: context,
-                              outcome: .proposed, verbClass: meta.verbClass,
+                              outcome: .proposed(proposal.id),
+                              verbClass: meta.verbClass,
                               durationMS: durationMS)
                     return result
                 } else {
-                    await context.proposals.withdraw(proposal.id)
+                    _ = await context.proposals.withdraw(proposal.id)
                     emitAudit(name: name, args: rawArguments, context: context,
                               outcome: .failed(tag: "perTurnProposalCapExceeded"),
                               verbClass: meta.verbClass, durationMS: durationMS)
@@ -161,7 +163,7 @@ public actor AIToolRouter {
             verbClass: verbClass,
             outcome: outcome,
             durationMS: durationMS,
-            payloadHashPrefix: AuditEntry.payloadHashPrefix(of: args)
+            payloadHash: AuditEntry.payloadHash(of: args)
         )
         auditSink.record(entry)
     }

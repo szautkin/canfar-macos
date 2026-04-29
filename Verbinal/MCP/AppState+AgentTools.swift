@@ -88,6 +88,7 @@ extension AppState {
         tools.append(ListPendingProposalsTool())
         tools.append(GetProposalStateTool())
         tools.append(WithdrawProposalTool())
+        tools.append(ListEventsTool())
 
         registerWriteAppliers(savedQueryStore: savedStore,
                               noteStore: noteStore,

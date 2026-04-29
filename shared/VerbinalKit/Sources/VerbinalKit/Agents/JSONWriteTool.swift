@@ -75,7 +75,8 @@ extension JSONWriteTool {
             kind: plan.kind,
             summary: plan.summary,
             payload: plan.payload,
-            origin: context.origin
+            origin: context.origin,
+            requestID: context.requestID
         )
         let queued = await context.proposals.enqueue(proposal)
         return .proposed(queued)

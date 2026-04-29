@@ -170,8 +170,9 @@ final class AIToolRouterTests: XCTestCase {
         let entry = entries[0]
         XCTAssertEqual(entry.toolName, "echo")
         XCTAssertEqual(entry.verbClass, .read)
-        XCTAssertEqual(entry.outcome, .ok)
-        XCTAssertNotEqual(entry.payloadHashPrefix, "empty")
+        XCTAssertEqual(entry.outcome, .data)
+        XCTAssertNotEqual(entry.payloadHash, "empty")
+        XCTAssertEqual(entry.payloadHash.count, 64) // full SHA-256 hex
     }
 
     func testAuditOriginFingerprintsExternal() {

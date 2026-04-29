@@ -563,7 +563,7 @@ private struct AgentsSettingsTab: View {
 
     private func icon(for entry: AuditEntry) -> String {
         switch entry.outcome {
-        case .ok: return "checkmark.circle"
+        case .ok, .data: return "checkmark.circle"
         case .proposed: return "tray.and.arrow.down"
         case .failed: return "exclamationmark.triangle"
         }
@@ -571,7 +571,7 @@ private struct AgentsSettingsTab: View {
 
     private func color(for entry: AuditEntry) -> Color {
         switch entry.outcome {
-        case .ok: return .green
+        case .ok, .data: return .green
         case .proposed: return .blue
         case .failed: return .orange
         }

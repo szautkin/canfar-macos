@@ -60,6 +60,10 @@ final class AgentsService {
     private let identity: MCPBridgeService.ServerIdentity
     private let auditSink: CapturingAuditSink
     private let proposals: any ProposalStore
+    /// Single event log shared across all connections — agents call
+    /// `list_events` to observe proposal lifecycle transitions without
+    /// per-proposal polling.
+    let eventLog: EventLog
     private let logger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "service")
 
     /// Tools registered with the router. Mutate before the first
@@ -85,12 +89,15 @@ final class AgentsService {
             name: "Verbinal",
             version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
             instructions: "Use describe_app for an overview of available tools and the proposal model."
-        ),
-        proposals: any ProposalStore = InMemoryProposalStore()
+        )
     ) {
         self.identity = identity
         self.auditSink = CapturingAuditSink()
-        self.proposals = proposals
+        // Build the event log first so the proposal store can fan-out
+        // arrivals/applications/rejections/withdrawals to it.
+        let log = EventLog()
+        self.eventLog = log
+        self.proposals = InMemoryProposalStore(eventLog: log)
         self.isEnabled = UserDefaults.standard.bool(forKey: Self.userDefaultsKey)
     }
 
@@ -252,7 +259,8 @@ final class AgentsService {
         )
         await bridge.configure(services: .init(
             proposals: proposals,
-            budget: ProposalBudget()
+            budget: ProposalBudget(),
+            eventLog: eventLog
         ))
 
         // Background poller: refresh the strip's @Observable snapshot

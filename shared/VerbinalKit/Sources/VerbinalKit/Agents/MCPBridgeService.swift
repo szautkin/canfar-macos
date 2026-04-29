@@ -214,7 +214,8 @@ public actor MCPBridgeService {
             origin: .external(clientID: cid),
             requestID: UUID(),
             proposals: services.proposals,
-            budget: services.budget
+            budget: services.budget,
+            eventLog: services.eventLog
         )
 
         let result = await router.dispatch(
@@ -266,10 +267,14 @@ public actor MCPBridgeService {
     public struct PerConnectionServices: Sendable {
         public let proposals: any ProposalStore
         public let budget: ProposalBudget
+        public let eventLog: EventLog?
 
-        public init(proposals: any ProposalStore, budget: ProposalBudget) {
+        public init(proposals: any ProposalStore,
+                    budget: ProposalBudget,
+                    eventLog: EventLog? = nil) {
             self.proposals = proposals
             self.budget = budget
+            self.eventLog = eventLog
         }
     }
 

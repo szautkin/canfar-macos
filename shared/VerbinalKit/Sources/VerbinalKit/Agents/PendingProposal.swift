@@ -29,6 +29,13 @@ public struct PendingProposal: Sendable, Identifiable, Equatable {
     public let payload: Data
     public let createdAt: Date
     public let origin: OperationOrigin
+    /// `AIToolContext.requestID` from the dispatch that produced this
+    /// proposal. `nil` for proposals created outside an AI tool context
+    /// (tests, internal user-facing paths). Lets audit and proposal
+    /// records cross-reference: the audit's `.proposed(UUID)` outcome
+    /// records the proposal id; this field records the request id, so
+    /// joining audit ↔ proposal lifecycle is a one-step lookup.
+    public let requestID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -37,7 +44,8 @@ public struct PendingProposal: Sendable, Identifiable, Equatable {
         summary: String,
         payload: Data,
         createdAt: Date = Date(),
-        origin: OperationOrigin
+        origin: OperationOrigin,
+        requestID: UUID? = nil
     ) {
         self.id = id
         self.toolName = toolName
@@ -46,6 +54,7 @@ public struct PendingProposal: Sendable, Identifiable, Equatable {
         self.payload = payload
         self.createdAt = createdAt
         self.origin = origin
+        self.requestID = requestID
     }
 }
 
