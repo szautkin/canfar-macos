@@ -64,9 +64,14 @@ extension AppState {
         tools.append(DeleteSavedQueryTool())
         tools.append(UpdateObservationNoteTool())
 
-        // Stash the per-domain stores on `self` if not already so the
-        // appliers can be registered against the same instance.
-        registerWriteAppliers(savedQueryStore: savedStore, noteStore: noteStore)
+        // Write tools — downloads
+        tools.append(DownloadObservationTool())
+        tools.append(DownloadObservationsBulkTool())
+        tools.append(DeleteDownloadedObservationTool())
+
+        registerWriteAppliers(savedQueryStore: savedStore,
+                              noteStore: noteStore,
+                              observationStore: observationStore)
 
         return tools
     }
@@ -75,12 +80,20 @@ extension AppState {
     /// to. Stores are passed in so the same instance the read tools see
     /// is what the appliers mutate.
     private func registerWriteAppliers(savedQueryStore: SavedQueryStore,
-                                       noteStore: ObservationNoteStore) {
+                                       noteStore: ObservationNoteStore,
+                                       observationStore: ObservationStore) {
+        let downloader = DownloadService(endpoints: endpoints)
         let appliers: [any ProposalApplier] = [
             SaveQueryApplier(store: savedQueryStore),
             UpdateSavedQueryApplier(store: savedQueryStore),
             DeleteSavedQueryApplier(store: savedQueryStore),
             UpdateObservationNoteApplier(store: noteStore),
+            DownloadObservationApplier(downloadService: downloader,
+                                       observationStore: observationStore),
+            DownloadObservationsBulkApplier(downloadService: downloader,
+                                            observationStore: observationStore),
+            DeleteDownloadedObservationApplier(store: observationStore,
+                                               downloadService: downloader),
         ]
         agentsService.register(appliers: appliers)
     }
