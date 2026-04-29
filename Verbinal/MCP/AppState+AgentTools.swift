@@ -35,7 +35,60 @@ extension AppState {
         tools.append(makeListSavedQueriesTool(store: savedStore))
         tools.append(makeGetSavedQueryTool(store: savedStore))
 
+        // Research domain
+        let observationStore = ObservationStore(spotlight: nil)  // tools don't drive Spotlight
+        let noteStore = ObservationNoteStore()
+        tools.append(makeListDownloadedObservationsTool(store: observationStore))
+        tools.append(makeGetDownloadedObservationTool(store: observationStore))
+        tools.append(makeGetObservationNotesTool(store: noteStore))
+
         return tools
+    }
+
+    // MARK: - Research domain
+
+    private func makeListDownloadedObservationsTool(store: ObservationStore) -> ListDownloadedObservationsTool {
+        ListDownloadedObservationsTool(snapshot: { @MainActor in
+            store.observations.map { Self.flatten($0) }
+        })
+    }
+
+    private func makeGetDownloadedObservationTool(store: ObservationStore) -> GetDownloadedObservationTool {
+        GetDownloadedObservationTool(lookup: { @MainActor id in
+            store.observations.first(where: { $0.id == id }).map { Self.flatten($0) }
+        })
+    }
+
+    private func makeGetObservationNotesTool(store: ObservationNoteStore) -> GetObservationNotesTool {
+        GetObservationNotesTool(lookup: { @MainActor pid in
+            guard let note = store.note(for: pid) else { return nil }
+            return ObservationNoteOut(
+                publisherID: note.publisherID,
+                text: note.text,
+                rating: note.rating,
+                tags: note.tags,
+                createdAt: note.createdAt,
+                modifiedAt: note.modifiedAt,
+                isEmpty: note.isEmpty
+            )
+        })
+    }
+
+    private static func flatten(_ obs: DownloadedObservation) -> DownloadedObservationOut {
+        DownloadedObservationOut(
+            id: obs.id.uuidString,
+            publisherID: obs.publisherID,
+            collection: obs.collection,
+            observationID: obs.observationID,
+            targetName: obs.targetName,
+            instrument: obs.instrument,
+            filter: obs.filter,
+            calLevel: obs.calLevel,
+            localPath: obs.localPath,
+            fileExists: obs.fileExists,
+            fileSize: obs.fileSize,
+            downloadedAt: obs.downloadedAt
+        )
     }
 
     // MARK: - Foundational
