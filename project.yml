@@ -52,11 +52,32 @@ targets:
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit
+      - target: CanfarMCP
+        embed: true
+        codeSign: true
     settings:
       base:
         INFOPLIST_FILE: Verbinal/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
         CODE_SIGN_ENTITLEMENTS: Verbinal/Verbinal.entitlements
+  CanfarMCP:
+    type: tool
+    platform: macOS
+    sources:
+      - path: helpers/canfar-mcp
+    dependencies:
+      - package: VerbinalKit
+        product: MCPCore
+    settings:
+      base:
+        PRODUCT_NAME: canfar-mcp
+        PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal.canfar-mcp
+        # The helper runs as a subprocess of an MCP client (Claude Desktop
+        # etc.) outside the host app's sandbox. It needs read+write to the
+        # app's App Support container (resolved via SocketSidecar) to find
+        # the running app's socket — that's a regular user-space file path,
+        # so no special entitlements required.
+        SKIP_INSTALL: NO
   VerbinalTests:
     type: bundle.unit-test
     platform: macOS

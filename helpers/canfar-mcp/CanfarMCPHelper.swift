@@ -1,0 +1,124 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (C) 2025-2026 Serhii Zautkin
+//
+// canfar-mcp — stateless transport adapter between an MCP client (e.g.
+// Claude Desktop, which spawns this process and pipes JSON-RPC over
+// stdio) and the running Verbinal app (which listens on a Unix socket
+// whose path is published in a sidecar file under App Support).
+//
+// Lifecycle:
+//   1. Read the sidecar file. If absent or unreadable, drain stdin and
+//      respond -32000 to every request — the app isn't running, but a
+//      well-behaved client will still see well-formed JSON-RPC errors.
+//   2. Connect to the socket. If the connect fails, same fallback.
+//   3. Splice stdin↔socket bidirectionally. Exit when either side ends.
+//
+// No state. No retries (Claude Desktop will respawn us if it cares).
+// All durable state lives on the app side.
+
+import Foundation
+import MCPCore
+
+@main
+struct CanfarMCPHelper {
+    static func main() async {
+        await Forwarder().run()
+        exit(0)
+    }
+}
+
+/// Encapsulates the helper's three states (connecting, forwarding,
+/// failing). Pulled into a separate type so the lifecycle is readable.
+private actor Forwarder {
+
+    func run() async {
+        let stdio = StdioTransport()
+
+        let socketPath: String
+        do {
+            socketPath = try SocketSidecar.read()
+        } catch {
+            FileHandle.standardError.write(
+                Data("canfar-mcp: sidecar missing — \(error)\n".utf8)
+            )
+            await drainAndFail(
+                stdio: stdio,
+                code: JSONRPCErrorCode.serviceUnavailable,
+                message: "Verbinal app is not running."
+            )
+            return
+        }
+
+        let socket = SocketTransport.client(socketPath: socketPath)
+        do {
+            try await socket.start()
+        } catch {
+            FileHandle.standardError.write(
+                Data("canfar-mcp: connect failed — \(error)\n".utf8)
+            )
+            await drainAndFail(
+                stdio: stdio,
+                code: JSONRPCErrorCode.serviceUnavailable,
+                message: "Could not connect to Verbinal app."
+            )
+            return
+        }
+
+        await splice(stdio: stdio, socket: socket)
+        await stdio.close()
+        await socket.close()
+    }
+
+    /// Bidirectional stdin↔socket bridge. Returns when either side closes.
+    private func splice(stdio: StdioTransport, socket: SocketTransport) async {
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                await Self.copy(from: stdio, to: socket, label: "stdio→socket")
+            }
+            group.addTask {
+                await Self.copy(from: socket, to: stdio, label: "socket→stdio")
+            }
+            // First one finished implies the link is broken; abandon the other.
+            _ = await group.next()
+            group.cancelAll()
+        }
+    }
+
+    private static func copy(from src: any MCPTransport,
+                             to dst: any MCPTransport,
+                             label: String) async {
+        do {
+            for try await frame in src.incoming {
+                try await dst.send(frame)
+            }
+        } catch {
+            FileHandle.standardError.write(
+                Data("canfar-mcp: \(label) ended — \(error)\n".utf8)
+            )
+        }
+    }
+
+    /// Read every incoming request and respond with the same error so the
+    /// client gets well-formed JSON-RPC instead of mysterious silence.
+    private func drainAndFail(stdio: StdioTransport, code: Int, message: String) async {
+        let decoder = JSONDecoder()
+        let encoder = JSONEncoder()
+        do {
+            for try await frame in stdio.incoming {
+                guard let request = try? decoder.decode(JSONRPCRequest.self, from: frame) else {
+                    continue // skip notifications and malformed bodies
+                }
+                let payload = JSONRPCErrorPayload(code: code, message: message)
+                let response = JSONRPCResponse.failure(id: request.id, error: payload)
+                if let bytes = try? encoder.encode(response) {
+                    try? await stdio.send(bytes)
+                }
+            }
+        } catch {
+            // EOF or framing failure — peer hung up; we're done.
+        }
+    }
+}
