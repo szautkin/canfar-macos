@@ -69,9 +69,16 @@ extension AppState {
         tools.append(DownloadObservationsBulkTool())
         tools.append(DeleteDownloadedObservationTool())
 
+        // Write tools — VOSpace
+        tools.append(UploadToVOSpaceTool())
+        tools.append(DownloadFromVOSpaceTool())
+        tools.append(VOSpaceMkdirTool())
+        tools.append(DeleteVOSpaceNodeTool())
+
         registerWriteAppliers(savedQueryStore: savedStore,
                               noteStore: noteStore,
-                              observationStore: observationStore)
+                              observationStore: observationStore,
+                              vospace: vospace)
 
         return tools
     }
@@ -81,9 +88,10 @@ extension AppState {
     /// is what the appliers mutate.
     private func registerWriteAppliers(savedQueryStore: SavedQueryStore,
                                        noteStore: ObservationNoteStore,
-                                       observationStore: ObservationStore) {
+                                       observationStore: ObservationStore,
+                                       vospace: VOSpaceBrowserService) {
         let downloader = DownloadService(endpoints: endpoints)
-        let appliers: [any ProposalApplier] = [
+        var appliers: [any ProposalApplier] = [
             SaveQueryApplier(store: savedQueryStore),
             UpdateSavedQueryApplier(store: savedQueryStore),
             DeleteSavedQueryApplier(store: savedQueryStore),
@@ -95,6 +103,11 @@ extension AppState {
             DeleteDownloadedObservationApplier(store: observationStore,
                                                downloadService: downloader),
         ]
+        appliers.append(contentsOf: makeVOSpaceAppliers(
+            service: vospace,
+            observationStore: observationStore,
+            appState: self
+        ))
         agentsService.register(appliers: appliers)
     }
 
