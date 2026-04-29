@@ -42,7 +42,46 @@ extension AppState {
         tools.append(makeGetDownloadedObservationTool(store: observationStore))
         tools.append(makeGetObservationNotesTool(store: noteStore))
 
+        // VOSpace domain
+        let vospace = VOSpaceBrowserService(network: network, endpoints: endpoints)
+        tools.append(makeListVOSpacePathTool(service: vospace))
+        tools.append(makeGetVOSpaceNodeTool(service: vospace))
+
         return tools
+    }
+
+    // MARK: - VOSpace domain
+
+    private func makeListVOSpacePathTool(service: VOSpaceBrowserService) -> ListVOSpacePathTool {
+        ListVOSpacePathTool(listNodes: { [weak self] path, limit in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let username = await MainActor.run { self.username }
+            guard !username.isEmpty else { throw ToolFailureReason.authRequired }
+            let nodes = try await service.listNodes(username: username, path: path, limit: limit)
+            return nodes.map(Self.flatten)
+        })
+    }
+
+    private func makeGetVOSpaceNodeTool(service: VOSpaceBrowserService) -> GetVOSpaceNodeTool {
+        GetVOSpaceNodeTool(listNodes: { [weak self] path, limit in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let username = await MainActor.run { self.username }
+            guard !username.isEmpty else { throw ToolFailureReason.authRequired }
+            let nodes = try await service.listNodes(username: username, path: path, limit: limit)
+            return nodes.map(Self.flatten)
+        })
+    }
+
+    private static func flatten(_ node: VOSpaceNode) -> VOSpaceNodeOut {
+        VOSpaceNodeOut(
+            name: node.name,
+            path: node.path,
+            type: node.type.rawValue,
+            sizeBytes: node.sizeBytes,
+            contentType: node.contentType,
+            lastModified: node.lastModified,
+            isPublic: node.isPublic
+        )
     }
 
     // MARK: - Research domain
