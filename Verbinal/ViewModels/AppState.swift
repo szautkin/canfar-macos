@@ -160,9 +160,12 @@ final class AppState {
         // disconnects). UI binds to this for connectivity hints.
         networkPath.start()
 
+        // Register the MCP tool surface. Order matters: tools must be
+        // registered *before* bootstrap, since the listener captures the
+        // router's tool table when it starts.
+        agentsService.register(tools: makeAgentTools())
+
         // Bring up the MCP server only if the user has previously opted in.
-        // Tool registration happens in dedicated phases — until then the
-        // bridge serves an empty manifest, which is harmless.
         agentsService.bootstrap()
 
         // Wire NetworkClient's 401-retry interceptor: on an `unauthorized`
