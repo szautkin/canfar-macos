@@ -106,13 +106,79 @@ The path printed should be a `.sock` file that exists and is readable.
 
 ## Watching live activity
 
+There are three independent log streams; each gives you a different
+view of the same request flowing through.
+
+### 1. Cowork-side (full JSON, slow refresh)
+
 ```sh
-log show --predicate 'subsystem == "com.codebg.Verbinal.agent"' --last 5m
+tail -F ~/Library/Logs/Claude/mcp-server-verbinal-canfar.log
 ```
 
-Each tool call emits one `audit` entry with the request id, origin, tool
-name, verb class, outcome, duration, and a SHA-256 hash of the args (bodies
-are never logged).
+This is what Claude Cowork itself records. Every JSON-RPC message in
+both directions is dumped verbatim, plus stderr from the helper. Use
+this when you need to see raw payloads — e.g. a tool's full response
+content or schema validation errors from the client side.
+
+### 2. Helper-side (concise per-frame trace)
+
+The helper's stderr is folded into the same Cowork log (look for
+`[canfar-mcp]` lines), but the *content* is one line per frame:
+
+```
+2026-04-29T... [canfar-mcp] [info] startup pid=12345
+2026-04-29T... [canfar-mcp] [info] sidecar resolved -> /Users/.../mcp-12345.sock
+2026-04-29T... [canfar-mcp] [info] socket connected
+2026-04-29T... [canfar-mcp] [info] entering forward loop
+2026-04-29T... [canfar-mcp] [debug] stdio→socket 312B method=initialize id=0
+2026-04-29T... [canfar-mcp] [debug] socket→stdio 478B response result id=0
+2026-04-29T... [canfar-mcp] [debug] stdio→socket 56B method=notifications/initialized id=-
+2026-04-29T... [canfar-mcp] [debug] stdio→socket 49B method=tools/list id=1
+2026-04-29T... [canfar-mcp] [debug] socket→stdio 12347B response result id=1
+```
+
+Filter just the helper's own lines:
+
+```sh
+grep '\[canfar-mcp\]' ~/Library/Logs/Claude/mcp-server-verbinal-canfar.log | tail -F
+```
+
+### 3. App-side (live `os.log` stream)
+
+The bridge service emits structured logs via Apple's unified logging.
+Stream them in real time:
+
+```sh
+log stream --level debug \
+  --predicate 'subsystem == "com.codebg.Verbinal.agent"'
+```
+
+You'll see lines from three categories:
+
+- **`bridge`** — connection lifecycle, every `recv`/`send` frame, every
+  method dispatch. `recv tools/call id=3 (124 bytes)` →
+  `tools/call search_observations (124 bytes args)` →
+  `tools/call search_observations -> data (4280 bytes)` →
+  `send tools/call id=3 (4296 bytes, ok)`.
+- **`audit`** — one line per dispatch: `request_id=… origin=… tool=… class=… outcome=… ms=… hash=…`.
+- **`service`** — `AgentsService` lifecycle (listener start/stop, sidecar path).
+
+Combine streams in one terminal:
+
+```sh
+log stream --level debug --predicate 'subsystem == "com.codebg.Verbinal.agent"' &
+tail -F ~/Library/Logs/Claude/mcp-server-verbinal-canfar.log &
+```
+
+### What to look for when something's off
+
+| Symptom                                  | Where to check                                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Cowork says "tools not visible"          | `bridge` log: did `tools/list` even arrive? If not, helper didn't connect.                                        |
+| `notifications/initialized` errors       | `bridge` log should say `ignoring notification … (no id)`. If it shows `method not found`, you're on an old build. |
+| Listener fails to start                  | Settings ▸ Agents row shows the real reason (now that `MCPTransportError` conforms to `LocalizedError`).            |
+| Helper can't connect to socket           | `mcp-server-verbinal-canfar.log`: `[canfar-mcp] [error] connect failed —`                                          |
+| Specific tool call fails                 | `bridge`: `tools/call <name> -> failed (<tag>)`. `audit`: same row with the failure tag.                           |
 
 ## Notes for MAS submission
 

@@ -79,6 +79,8 @@ public actor MCPBridgeService {
 
     /// Drive the connection. Returns when the transport closes.
     public func serve(on transport: any MCPTransport) async {
+        logger.info("connection opened")
+        defer { logger.info("connection closed") }
         do {
             for try await frame in transport.incoming {
                 if frame.isEmpty { continue } // skip ndjson keep-alives
@@ -98,21 +100,24 @@ public actor MCPBridgeService {
         // missing `id` to `.null`, which the MCP schema validators
         // (Zod-based on the Cowork side) then reject — id can be string
         // or number, but never null. So peek at the parsed object first
-        // and bail silently on notifications. The most common one is
-        // `notifications/initialized`, which Claude sends after we
-        // reply to `initialize`.
-        let isNotification: Bool = {
-            guard let obj = try? JSONSerialization.jsonObject(with: frame) as? [String: Any] else {
-                return false
+        // and bail silently on notifications.
+        let parsed = (try? JSONSerialization.jsonObject(with: frame)) as? [String: Any]
+        let methodForLog = (parsed?["method"] as? String) ?? "<unknown>"
+        let idForLog: String = {
+            switch parsed?["id"] {
+            case let n as Int:    return String(n)
+            case let n as Int64:  return String(n)
+            case let s as String: return "\"\(s)\""
+            case is NSNull:       return "null"
+            default:              return "<absent>"
             }
-            return obj["id"] == nil
         }()
+        let isNotification = parsed?["id"] == nil
+
+        logger.debug("recv \(methodForLog, privacy: .public) id=\(idForLog, privacy: .public) (\(frame.count) bytes)")
+
         if isNotification {
-            // Optional: log the method name at debug for observability.
-            if let obj = try? JSONSerialization.jsonObject(with: frame) as? [String: Any],
-               let method = obj["method"] as? String {
-                logger.debug("ignoring notification: \(method, privacy: .public)")
-            }
+            logger.debug("ignoring notification \(methodForLog, privacy: .public) (no id)")
             return
         }
 
@@ -135,6 +140,7 @@ public actor MCPBridgeService {
         case "tools/call":
             response = await handleToolsCall(request)
         default:
+            logger.notice("method not found: \(request.method, privacy: .public)")
             response = .failure(
                 id: request.id,
                 error: JSONRPCErrorPayload(
@@ -147,6 +153,8 @@ public actor MCPBridgeService {
         do {
             let bytes = try JSONEncoder().encode(response)
             try await transport.send(bytes)
+            let outcome = response.error != nil ? "error" : "ok"
+            logger.debug("send \(methodForLog, privacy: .public) id=\(idForLog, privacy: .public) (\(bytes.count) bytes, \(outcome, privacy: .public))")
         } catch {
             logger.error("send failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -168,8 +176,10 @@ public actor MCPBridgeService {
         // Stable per-connection client identifier. Falls back to a UUID
         // if the client didn't volunteer a name (rare).
         let cid = params.clientInfo.map { "\($0.name)/\($0.version)" } ?? UUID().uuidString
+        logger.info("initialize from \(cid, privacy: .public) protocolVersion=\(params.protocolVersion, privacy: .public)")
         let permitted = await approval.permit(cid, params.clientInfo)
         guard permitted else {
+            logger.notice("initialize denied for \(cid, privacy: .public)")
             return .failure(
                 id: request.id,
                 error: JSONRPCErrorPayload(
@@ -181,6 +191,7 @@ public actor MCPBridgeService {
 
         self.clientID = cid
         self.initialized = true
+        logger.info("initialized client=\(cid, privacy: .public)")
 
         let result = InitializeResult(
             protocolVersion: params.protocolVersion,
@@ -199,6 +210,7 @@ public actor MCPBridgeService {
         guard initialized else { return notInitialized(id: request.id) }
         let manifest = await router.externalManifestList()
         let tools = manifest.map { $0.wire }
+        logger.info("tools/list -> \(tools.count) tool\(tools.count == 1 ? "" : "s")")
         return successResponse(id: request.id, body: ListToolsResult(tools: tools))
     }
 
@@ -240,11 +252,20 @@ public actor MCPBridgeService {
             eventLog: services.eventLog
         )
 
+        logger.info("tools/call \(params.name, privacy: .public) (\(argBytes.count) bytes args)")
         let result = await router.dispatch(
             name: params.name,
             rawArguments: argBytes,
             context: context
         )
+        switch result {
+        case .data(let bytes):
+            logger.info("tools/call \(params.name, privacy: .public) -> data (\(bytes.count) bytes)")
+        case .proposed(let proposal):
+            logger.info("tools/call \(params.name, privacy: .public) -> proposed kind=\(proposal.kind, privacy: .public) id=\(proposal.id.uuidString, privacy: .public)")
+        case .failed(let reason):
+            logger.notice("tools/call \(params.name, privacy: .public) -> failed (\(reason.auditTag, privacy: .public))")
+        }
         return mapToolResult(id: request.id, result: result)
     }
 

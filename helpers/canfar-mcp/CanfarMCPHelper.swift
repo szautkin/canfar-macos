@@ -128,11 +128,40 @@ private actor Forwarder {
                              label: String) async {
         do {
             for try await frame in src.incoming {
+                let trace = Self.trace(of: frame)
+                HelperLog.debug("\(label) \(frame.count)B \(trace)")
                 try await dst.send(frame)
             }
         } catch {
             HelperLog.info("\(label) ended — \(error)")
         }
+    }
+
+    /// Best-effort one-line trace of a JSON-RPC frame. Parses just enough
+    /// JSON to surface method + id; never decodes params/results so the
+    /// log volume stays bounded even with 12 KB tools/list responses.
+    private static func trace(of frame: Data) -> String {
+        guard let obj = try? JSONSerialization.jsonObject(with: frame) as? [String: Any] else {
+            return "<non-json>"
+        }
+        let id: String
+        switch obj["id"] {
+        case let n as Int:    id = String(n)
+        case let n as Int64:  id = String(n)
+        case let s as String: id = "\"\(s)\""
+        case is NSNull:       id = "null"
+        default:              id = "-"
+        }
+        if let method = obj["method"] as? String {
+            return "method=\(method) id=\(id)"
+        }
+        if obj["result"] != nil {
+            return "response result id=\(id)"
+        }
+        if obj["error"] != nil {
+            return "response error id=\(id)"
+        }
+        return "id=\(id)"
     }
 
     /// Read every incoming request and respond with the same error so the
