@@ -173,6 +173,9 @@
         }
       }
     },
+    "%@ ms" : {
+
+    },
     "%@ of %@ results" : {
       "localizations" : {
         "en" : {
@@ -198,6 +201,9 @@
           }
         }
       }
+    },
+    "%@ pending" : {
+
     },
     "%@ results" : {
       "localizations" : {
@@ -504,6 +510,9 @@
         }
       }
     },
+    "Agent Proposals" : {
+
+    },
     "All" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -550,6 +559,9 @@
           }
         }
       }
+    },
+    "Apply runs the underlying operation; Reject discards." : {
+
     },
     "Are you sure you want to delete '%@'? This action cannot be undone." : {
       "localizations" : {
@@ -1033,6 +1045,12 @@
           }
         }
       }
+    },
+    "Close %@" : {
+
+    },
+    "Close tab" : {
+
     },
     "Close Tab" : {
       "extractionState" : "stale",
@@ -1626,6 +1644,9 @@
         }
       }
     },
+    "Diagnostics" : {
+
+    },
     "Discard" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1707,7 +1728,6 @@
       }
     },
     "Download" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2421,6 +2441,7 @@
       }
     },
     "FITS Viewer" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2644,6 +2665,9 @@
           }
         }
       }
+    },
+    "Hashes and outcomes only — call arguments are never logged." : {
+
     },
     "HDUs" : {
       "localizations" : {
@@ -3253,6 +3277,9 @@
         }
       }
     },
+    "Loading observation detail…" : {
+
+    },
     "Loading preview..." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3424,6 +3451,9 @@
         }
       }
     },
+    "MCP Server" : {
+
+    },
     "Metadata" : {
       "localizations" : {
         "fr" : {
@@ -3552,6 +3582,12 @@
         }
       }
     },
+    "New tab" : {
+
+    },
+    "New tab (⌘T)" : {
+
+    },
     "New tag…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3607,6 +3643,9 @@
           }
         }
       }
+    },
+    "No agent calls yet." : {
+
     },
     "No batch jobs" : {
       "extractionState" : "stale",
@@ -3737,6 +3776,7 @@
       }
     },
     "No FITS file open" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3777,6 +3817,9 @@
           }
         }
       }
+    },
+    "No pending proposals." : {
+
     },
     "No preview available" : {
       "localizations" : {
@@ -4011,6 +4054,9 @@
           }
         }
       }
+    },
+    "Open a FITS file" : {
+
     },
     "Open a FITS file or drag one here." : {
       "localizations" : {
@@ -4590,6 +4636,9 @@
         }
       }
     },
+    "Recent Activity" : {
+
+    },
     "Recent Launches" : {
       "localizations" : {
         "fr" : {
@@ -4610,6 +4659,9 @@
           }
         }
       }
+    },
+    "Reference" : {
+
     },
     "Refresh" : {
       "extractionState" : "stale",
@@ -5046,6 +5098,9 @@
           }
         }
       }
+    },
+    "Review and apply changes proposed by AI agents." : {
+
     },
     "Rotate" : {
       "extractionState" : "stale",
@@ -5972,6 +6027,9 @@
           }
         }
       }
+    },
+    "Switch to this FITS tab" : {
+
     },
     "Switches the app language immediately. Some text may only update after the next launch." : {
       "extractionState" : "stale",

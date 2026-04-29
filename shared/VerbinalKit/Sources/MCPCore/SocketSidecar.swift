@@ -91,10 +91,11 @@ public enum SocketSidecar {
 
     // MARK: - Read / write
 
-    /// Read the socket path the host app last wrote. Probes the candidate
-    /// directories in order; first hit wins.
-    public static func read() throws -> String {
-        for dir in candidateDirectories() {
+    /// Read the socket path the host app last wrote. Probes `directories`
+    /// in order; first hit wins. Tests pass a non-default list so a
+    /// real running app's sidecar can't shadow the test's own writes.
+    public static func read(directories: [URL] = SocketSidecar.candidateDirectories()) throws -> String {
+        for dir in directories {
             let url = dir.appendingPathComponent(fileName)
             if let data = try? Data(contentsOf: url),
                let line = String(data: data, encoding: .utf8) {

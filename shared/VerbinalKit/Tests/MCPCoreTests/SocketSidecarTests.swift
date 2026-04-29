@@ -15,22 +15,28 @@ final class SocketSidecarTests: XCTestCase {
     }
 
     func testWriteThenReadRoundTrip() throws {
-        // Don't write into the user's real Application Support during tests —
-        // skip the round-trip if running under CI without that location, but
-        // do exercise the path machinery.
+        // Scope the read to a temp dir so a real running app's sidecar
+        // (which lives in ~/Library/Containers/<bundle>/...) can't shadow
+        // the test's own writes during local development.
         let socketPath = "/tmp/canfar-mac-mcp-test-\(UUID().uuidString).sock"
         defer { SocketSidecar.clear() }
 
         let written = try SocketSidecar.write(socketPath: socketPath)
         XCTAssertTrue(FileManager.default.fileExists(atPath: written.path))
 
-        let read = try SocketSidecar.read()
+        let parentDir = written.deletingLastPathComponent()
+        let read = try SocketSidecar.read(directories: [parentDir])
         XCTAssertEqual(read, socketPath)
     }
 
     func testReadWithoutSidecarThrows() throws {
-        SocketSidecar.clear()
-        XCTAssertThrowsError(try SocketSidecar.read()) { err in
+        // Use an isolated temp dir that's guaranteed to be empty so the
+        // production app (if running) doesn't pollute the result.
+        let isolatedDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("canfar-mac-empty-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: isolatedDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: isolatedDir) }
+        XCTAssertThrowsError(try SocketSidecar.read(directories: [isolatedDir])) { err in
             XCTAssertEqual(err as? SocketSidecar.Error, .sidecarMissing)
         }
     }
