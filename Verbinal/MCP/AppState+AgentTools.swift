@@ -84,6 +84,11 @@ extension AppState {
         tools.append(makeOpenFITSFileTool(store: observationStore))
         tools.append(makeSetSearchFocusTool())
 
+        // Proposal-lifecycle tools — operate on the queue itself.
+        tools.append(ListPendingProposalsTool())
+        tools.append(GetProposalStateTool())
+        tools.append(WithdrawProposalTool())
+
         registerWriteAppliers(savedQueryStore: savedStore,
                               noteStore: noteStore,
                               observationStore: observationStore,
