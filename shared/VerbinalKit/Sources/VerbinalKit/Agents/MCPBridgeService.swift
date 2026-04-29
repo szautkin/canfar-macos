@@ -1,0 +1,324 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (C) 2025-2026 Serhii Zautkin
+
+import Foundation
+import MCPCore
+import os
+
+/// Connects an `MCPTransport` to an `AIToolRouter`.
+///
+/// Owns one transport (typically the server-accepted side of a unix
+/// socket; the helper holds the client side). Reads JSON-RPC requests off
+/// the transport, dispatches to the router, marshals the result back to
+/// JSON-RPC, sends it.
+///
+/// Lifecycle:
+///   * Start with `serve(on:transport:approval:)`. Returns when the
+///     transport's incoming stream finishes (EOF or error).
+///   * Each connection is its own bridge instance; the app owns the
+///     listener and creates a fresh service per accepted transport.
+///
+/// This service implements only the methods needed for a useful agent
+/// loop: `initialize`, `tools/list`, `tools/call`. Anything else returns
+/// `methodNotFound` per JSON-RPC 2.0.
+public actor MCPBridgeService {
+    public struct ServerIdentity: Sendable {
+        public let name: String
+        public let version: String
+        public let instructions: String?
+
+        public init(name: String, version: String, instructions: String? = nil) {
+            self.name = name
+            self.version = version
+            self.instructions = instructions
+        }
+    }
+
+    public enum BridgeError: Error, Equatable {
+        case notInitialized
+        case transportClosed
+    }
+
+    /// Pluggable approval gate. Returns `true` if the connecting client
+    /// is permitted to proceed beyond `initialize`. Default
+    /// implementations: `.allowAll` (dev), `.deny` (Settings off),
+    /// `.userApproval` (sheet — wired in Phase 3).
+    public struct ApprovalGate: Sendable {
+        public let permit: @Sendable (_ clientID: String, _ clientInfo: ClientInfo?) async -> Bool
+
+        public init(permit: @escaping @Sendable (_ clientID: String, _ clientInfo: ClientInfo?) async -> Bool) {
+            self.permit = permit
+        }
+
+        public static let allowAll = ApprovalGate { _, _ in true }
+        public static let deny = ApprovalGate { _, _ in false }
+    }
+
+    private let router: AIToolRouter
+    private let identity: ServerIdentity
+    private let approval: ApprovalGate
+    private let logger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "bridge")
+
+    /// Per-connection state. Initialized lazily on the first `initialize`
+    /// request — anything before that returns `serverNotInitialized`.
+    private var clientID: String?
+    private var initialized: Bool = false
+
+    public init(
+        router: AIToolRouter,
+        identity: ServerIdentity,
+        approval: ApprovalGate = .allowAll
+    ) {
+        self.router = router
+        self.identity = identity
+        self.approval = approval
+    }
+
+    /// Drive the connection. Returns when the transport closes.
+    public func serve(on transport: any MCPTransport) async {
+        do {
+            for try await frame in transport.incoming {
+                if frame.isEmpty { continue } // skip ndjson keep-alives
+                await handleIncoming(frame: frame, transport: transport)
+            }
+        } catch {
+            logger.notice("transport ended: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    // MARK: - Dispatch
+
+    private func handleIncoming(frame: Data, transport: any MCPTransport) async {
+        let decoder = JSONDecoder()
+        let request: JSONRPCRequest
+        do {
+            request = try decoder.decode(JSONRPCRequest.self, from: frame)
+        } catch {
+            // We can't reply with an id we don't have; drop malformed
+            // frames per JSON-RPC convention. (A "notification with id
+            // null" reply is also acceptable but rarely useful.)
+            logger.notice("dropped malformed frame: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+
+        let response: JSONRPCResponse
+        switch request.method {
+        case "initialize":
+            response = await handleInitialize(request)
+        case "tools/list":
+            response = await handleToolsList(request)
+        case "tools/call":
+            response = await handleToolsCall(request)
+        default:
+            response = .failure(
+                id: request.id,
+                error: JSONRPCErrorPayload(
+                    code: JSONRPCErrorCode.methodNotFound,
+                    message: "method not found: \(request.method)"
+                )
+            )
+        }
+
+        do {
+            let bytes = try JSONEncoder().encode(response)
+            try await transport.send(bytes)
+        } catch {
+            logger.error("send failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    // MARK: - initialize
+
+    private func handleInitialize(_ request: JSONRPCRequest) async -> JSONRPCResponse {
+        guard let raw = request.params else {
+            return .failure(id: request.id, error: invalidParams("missing params"))
+        }
+        let params: InitializeParams
+        do {
+            params = try JSONDecoder().decode(InitializeParams.self, from: raw)
+        } catch {
+            return .failure(id: request.id, error: invalidParams("\(error)"))
+        }
+
+        // Stable per-connection client identifier. Falls back to a UUID
+        // if the client didn't volunteer a name (rare).
+        let cid = params.clientInfo.map { "\($0.name)/\($0.version)" } ?? UUID().uuidString
+        let permitted = await approval.permit(cid, params.clientInfo)
+        guard permitted else {
+            return .failure(
+                id: request.id,
+                error: JSONRPCErrorPayload(
+                    code: JSONRPCErrorCode.sessionNotApproved,
+                    message: "Client not approved by user."
+                )
+            )
+        }
+
+        self.clientID = cid
+        self.initialized = true
+
+        let result = InitializeResult(
+            protocolVersion: params.protocolVersion,
+            capabilities: ServerCapabilities(
+                tools: .init(listChanged: false)
+            ),
+            serverInfo: ServerInfo(name: identity.name, version: identity.version),
+            instructions: identity.instructions
+        )
+        return successResponse(id: request.id, body: result)
+    }
+
+    // MARK: - tools/list
+
+    private func handleToolsList(_ request: JSONRPCRequest) async -> JSONRPCResponse {
+        guard initialized else { return notInitialized(id: request.id) }
+        let manifest = await router.externalManifestList()
+        let tools = manifest.map { $0.wire }
+        return successResponse(id: request.id, body: ListToolsResult(tools: tools))
+    }
+
+    // MARK: - tools/call
+
+    private func handleToolsCall(_ request: JSONRPCRequest) async -> JSONRPCResponse {
+        guard initialized, let cid = clientID else {
+            return notInitialized(id: request.id)
+        }
+        guard let raw = request.params else {
+            return .failure(id: request.id, error: invalidParams("missing params"))
+        }
+        let params: CallToolParams
+        do {
+            params = try JSONDecoder().decode(CallToolParams.self, from: raw)
+        } catch {
+            return .failure(id: request.id, error: invalidParams("\(error)"))
+        }
+
+        // The router takes raw JSON args (Data). Re-encode the typed
+        // arguments. Absent arguments encode as a JSON `null`.
+        let argBytes: Data
+        if let args = params.arguments {
+            do {
+                argBytes = try JSONEncoder().encode(args)
+            } catch {
+                return .failure(id: request.id, error: invalidParams("\(error)"))
+            }
+        } else {
+            argBytes = Data("null".utf8)
+        }
+
+        // Build the per-call context. Each call gets a fresh requestID.
+        let context = AIToolContext(
+            origin: .external(clientID: cid),
+            requestID: UUID(),
+            proposals: services.proposals,
+            budget: services.budget
+        )
+
+        let result = await router.dispatch(
+            name: params.name,
+            rawArguments: argBytes,
+            context: context
+        )
+        return mapToolResult(id: request.id, result: result)
+    }
+
+    // MARK: - Result mapping
+
+    private func mapToolResult(id: JSONRPCID, result: ToolResult) -> JSONRPCResponse {
+        switch result {
+        case .data(let bytes):
+            // Wrap raw JSON in a single text content block. Agents that
+            // want structured content can parse the JSON.
+            let text = String(data: bytes, encoding: .utf8) ?? ""
+            let payload = CallToolResult(content: [.text(text)], isError: false)
+            return successResponse(id: id, body: payload)
+
+        case .proposed(let proposal):
+            // Tell the agent what was queued. They can poll
+            // get_proposal_state by id.
+            let summary = """
+            {
+              "proposalId": "\(proposal.id.uuidString)",
+              "kind": "\(proposal.kind)",
+              "summary": \(escapeJSON(proposal.summary))
+            }
+            """
+            let payload = CallToolResult(content: [.text(summary)], isError: false)
+            return successResponse(id: id, body: payload)
+
+        case .failed(let reason):
+            let payload = CallToolResult(
+                content: [.text(reason.description)],
+                isError: true
+            )
+            return successResponse(id: id, body: payload)
+        }
+    }
+
+    // MARK: - Per-connection capability bag
+
+    /// The bridge needs concrete proposal/budget instances per connection.
+    /// Subclassing the actor for tests would be awkward; instead, the
+    /// caller injects them by setting `services` before `serve(on:)`.
+    public struct PerConnectionServices: Sendable {
+        public let proposals: any ProposalStore
+        public let budget: ProposalBudget
+
+        public init(proposals: any ProposalStore, budget: ProposalBudget) {
+            self.proposals = proposals
+            self.budget = budget
+        }
+    }
+
+    private var _services: PerConnectionServices?
+    private var services: PerConnectionServices {
+        guard let s = _services else {
+            preconditionFailure("MCPBridgeService: services were not configured before serve(on:)")
+        }
+        return s
+    }
+
+    public func configure(services: PerConnectionServices) {
+        _services = services
+    }
+
+    // MARK: - Helpers
+
+    private func successResponse<T: Encodable>(id: JSONRPCID, body: T) -> JSONRPCResponse {
+        do {
+            let bytes = try JSONEncoder().encode(body)
+            return .success(id: id, result: bytes)
+        } catch {
+            return .failure(
+                id: id,
+                error: JSONRPCErrorPayload(
+                    code: JSONRPCErrorCode.internalError,
+                    message: "encode failed: \(error)"
+                )
+            )
+        }
+    }
+
+    private func notInitialized(id: JSONRPCID) -> JSONRPCResponse {
+        .failure(id: id, error: JSONRPCErrorPayload(
+            code: JSONRPCErrorCode.serverNotInitialized,
+            message: "Server has not been initialized."
+        ))
+    }
+
+    private func invalidParams(_ msg: String) -> JSONRPCErrorPayload {
+        JSONRPCErrorPayload(code: JSONRPCErrorCode.invalidParams, message: msg)
+    }
+
+    private func escapeJSON(_ s: String) -> String {
+        // Thin convenience for the inline summary string above.
+        guard let bytes = try? JSONEncoder().encode(s),
+              let str = String(data: bytes, encoding: .utf8) else {
+            return "\"\""
+        }
+        return str
+    }
+}
