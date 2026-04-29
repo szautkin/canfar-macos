@@ -80,12 +80,60 @@ extension AppState {
         tools.append(DeleteSessionTool())
         tools.append(ClearResearchArchiveTool())
 
+        // View-state tools — live-applied, no proposal.
+        tools.append(makeOpenFITSFileTool(store: observationStore))
+        tools.append(makeSetSearchFocusTool())
+
         registerWriteAppliers(savedQueryStore: savedStore,
                               noteStore: noteStore,
                               observationStore: observationStore,
                               vospace: vospace)
 
         return tools
+    }
+
+    // MARK: - View-state factories
+
+    private func makeOpenFITSFileTool(store: ObservationStore) -> OpenFITSFileTool {
+        OpenFITSFileTool(openFITS: { [weak self] id in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let obs = await MainActor.run { store.observations.first(where: { $0.id == id }) }
+            guard let obs else {
+                throw ToolFailureReason.unknownTarget("downloaded_observation \(id)")
+            }
+            guard obs.fileExists else {
+                throw ToolFailureReason.backendError("local file missing: \(obs.localPath)")
+            }
+            // Resolve via security-scoped bookmark when present, then
+            // publish onto AppState — `open(fitsURL:)` already exists
+            // and routes the URL into the FITS viewer tab host.
+            let url: URL
+            if let bookmark = obs.bookmarkData {
+                var stale = false
+                do {
+                    url = try URL(resolvingBookmarkData: bookmark,
+                                  options: .withSecurityScope,
+                                  bookmarkDataIsStale: &stale)
+                } catch {
+                    throw ToolFailureReason.backendError("bookmark: \(error.localizedDescription)")
+                }
+            } else {
+                url = obs.localURL
+            }
+            await MainActor.run {
+                self.pendingFITSURL = url
+            }
+            return (observationID: obs.observationID, localPath: obs.localPath)
+        })
+    }
+
+    private func makeSetSearchFocusTool() -> SetSearchFocusTool {
+        SetSearchFocusTool(apply: { [weak self] ra, dec in
+            guard let self else { return }
+            await MainActor.run {
+                self.pendingSearchCoordinate = AppState.PendingCoordinate(ra: ra, dec: dec)
+            }
+        })
     }
 
     /// Build and register the appliers that the proposal strip dispatches
