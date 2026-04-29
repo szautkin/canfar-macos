@@ -264,6 +264,12 @@ struct ContentView: View {
             makeModeToolbar(title: "FITS Viewer", showAbout: $showAbout)
             Divider()
             FITSViewerRootView()
+                // Empty-state ContentUnavailableView reports its natural
+                // content size (~200pt). Without this, the parent HStack's
+                // default vAlignment centres the whole VStack vertically,
+                // leaving the toolbar floating mid-window. Forcing the
+                // body to fill keeps the toolbar pinned to the top.
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         #else
         FITSViewerRootView()
