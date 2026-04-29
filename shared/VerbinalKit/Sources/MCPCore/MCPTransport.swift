@@ -36,7 +36,7 @@ public protocol MCPTransport: AnyObject, Sendable {
 
 /// Surface error type for transports. Bridges between `Errno`/POSIX and
 /// the higher-level "the link broke" outcome consumers care about.
-public enum MCPTransportError: Error, Sendable, Equatable {
+public enum MCPTransportError: Error, Sendable, Equatable, LocalizedError {
     /// Local end was already closed when the operation was attempted.
     case closed
     /// Peer closed the connection (clean EOF / FIN).
@@ -52,6 +52,19 @@ public enum MCPTransportError: Error, Sendable, Equatable {
         case (.io(let l, _), .io(let r, _)): return l == r
         case (.framing(let l), .framing(let r)): return l == r
         default: return false
+        }
+    }
+
+    /// Human-readable description used by `Error.localizedDescription`
+    /// — so SwiftUI surfaces ("Listener start failed: …") show the real
+    /// failure reason, not the bare type name.
+    public var errorDescription: String? {
+        switch self {
+        case .closed:           return "Transport is closed."
+        case .peerClosed:       return "Peer closed the connection."
+        case .io(let code, let msg):
+            return "I/O error (errno \(code)): \(msg)"
+        case .framing(let msg): return "Framing error: \(msg)"
         }
     }
 }

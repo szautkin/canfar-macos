@@ -134,13 +134,27 @@ public enum SocketSidecar {
         }
     }
 
-    /// Build a fresh socket path under the app's Application Support
-    /// directory. Includes the process ID so concurrent dev builds don't
-    /// collide. Note: the path's containing directory must exist; the
-    /// caller is expected to invoke `appWriteDirectory()` first if not.
+    /// Build a fresh socket path. Uses the *short* `tmp` directory
+    /// inside the container rather than the (much longer) Application
+    /// Support path because POSIX `sockaddr_un.sun_path` on Darwin is
+    /// capped at 104 bytes — App Support paths under
+    /// `~/Library/Containers/<bundle>/Data/Library/Application Support/<bundle>/`
+    /// alone consume ~100 chars, and `bind()` rejects with ENAMETOOLONG.
+    /// Sandboxed apps land at `~/Library/Containers/<bundle>/Data/tmp/`,
+    /// unsandboxed dev builds at `/var/folders/.../T/`. Both fit, both
+    /// are owned by the user (so the helper, running as the same user,
+    /// can `connect()` even though it's outside the container).
+    /// Includes the PID so concurrent dev runs don't collide.
     public static func suggestedSocketPath() -> String {
-        let dir = (try? appWriteDirectory()) ?? FileManager.default.temporaryDirectory
         let pid = ProcessInfo.processInfo.processIdentifier
-        return dir.appendingPathComponent("mcp-\(pid).sock").path
+        let tmp = FileManager.default.temporaryDirectory
+        let candidate = tmp.appendingPathComponent("mcp-\(pid).sock").path
+        if candidate.utf8.count <= 100 { return candidate }
+        // Fallback for environments with absurdly long temp paths
+        // (e.g., custom $TMPDIR): drop into /tmp directly even if the
+        // sandbox doesn't normally let us write there. POSIX bind will
+        // surface a clear error, which the user will see verbatim now
+        // that MCPTransportError conforms to LocalizedError.
+        return "/tmp/canfar-mcp-\(pid).sock"
     }
 }
