@@ -92,14 +92,36 @@ public actor MCPBridgeService {
     // MARK: - Dispatch
 
     private func handleIncoming(frame: Data, transport: any MCPTransport) async {
+        // Distinguish notifications from requests *before* typed decoding.
+        // JSON-RPC notifications omit `id` entirely; per the spec, the
+        // server MUST NOT reply to them. Our typed decoder defaults a
+        // missing `id` to `.null`, which the MCP schema validators
+        // (Zod-based on the Cowork side) then reject — id can be string
+        // or number, but never null. So peek at the parsed object first
+        // and bail silently on notifications. The most common one is
+        // `notifications/initialized`, which Claude sends after we
+        // reply to `initialize`.
+        let isNotification: Bool = {
+            guard let obj = try? JSONSerialization.jsonObject(with: frame) as? [String: Any] else {
+                return false
+            }
+            return obj["id"] == nil
+        }()
+        if isNotification {
+            // Optional: log the method name at debug for observability.
+            if let obj = try? JSONSerialization.jsonObject(with: frame) as? [String: Any],
+               let method = obj["method"] as? String {
+                logger.debug("ignoring notification: \(method, privacy: .public)")
+            }
+            return
+        }
+
         let decoder = JSONDecoder()
         let request: JSONRPCRequest
         do {
             request = try decoder.decode(JSONRPCRequest.self, from: frame)
         } catch {
-            // We can't reply with an id we don't have; drop malformed
-            // frames per JSON-RPC convention. (A "notification with id
-            // null" reply is also acceptable but rarely useful.)
+            // Malformed request with an id we couldn't parse — drop.
             logger.notice("dropped malformed frame: \(error.localizedDescription, privacy: .public)")
             return
         }
