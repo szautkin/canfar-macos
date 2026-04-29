@@ -75,6 +75,11 @@ extension AppState {
         tools.append(VOSpaceMkdirTool())
         tools.append(DeleteVOSpaceNodeTool())
 
+        // Write tools — Sessions + archive maintenance
+        tools.append(LaunchSessionTool())
+        tools.append(DeleteSessionTool())
+        tools.append(ClearResearchArchiveTool())
+
         registerWriteAppliers(savedQueryStore: savedStore,
                               noteStore: noteStore,
                               observationStore: observationStore,
@@ -108,6 +113,12 @@ extension AppState {
             observationStore: observationStore,
             appState: self
         ))
+        let sessionAppliers: [any ProposalApplier] = [
+            LaunchSessionApplier(service: sessionService),
+            DeleteSessionApplier(service: sessionService),
+            ClearResearchArchiveApplier(store: observationStore),
+        ]
+        appliers.append(contentsOf: sessionAppliers)
         agentsService.register(appliers: appliers)
     }
 
