@@ -16,10 +16,32 @@ extension AppState {
     func makeAgentTools() -> [any AITool] {
         var tools: [any AITool] = []
 
+        // Foundational
         tools.append(DescribeAppTool())
+        tools.append(makeGetAuthStateTool())
 
-        tools.append(GetAuthStateTool(snapshot: { [weak self] in
-            // Snapshot from the main actor each time — auth state can change.
+        // Search domain
+        let tap = TAPClient()
+        let resolver = TargetResolverService(tapClient: tap)
+        let caom2 = CAOM2Service()
+        let recentStore = RecentSearchStore()
+        let savedStore = SavedQueryStore()
+
+        tools.append(makeSearchObservationsTool(tap: tap, resolver: resolver))
+        tools.append(makeResolveTargetTool(resolver: resolver))
+        tools.append(makeGetObservationCAOM2Tool(caom2: caom2))
+        tools.append(makeGetDataLinksTool(tap: tap))
+        tools.append(makeListRecentSearchesTool(store: recentStore))
+        tools.append(makeListSavedQueriesTool(store: savedStore))
+        tools.append(makeGetSavedQueryTool(store: savedStore))
+
+        return tools
+    }
+
+    // MARK: - Foundational
+
+    private func makeGetAuthStateTool() -> GetAuthStateTool {
+        GetAuthStateTool(snapshot: { [weak self] in
             await MainActor.run {
                 let s = self
                 let info = s?.userInfo
@@ -35,8 +57,78 @@ extension AppState {
                     displayName: display
                 )
             }
-        }))
+        })
+    }
 
-        return tools
+    // MARK: - Search domain
+
+    private func makeSearchObservationsTool(tap: TAPClient,
+                                            resolver: TargetResolverService) -> SearchObservationsTool {
+        SearchObservationsTool(
+            runQuery: { adql, maxRec in
+                try await tap.tapQueryRows(adql: adql, maxRec: maxRec)
+            },
+            resolveTarget: { name in
+                let result = try await resolver.resolve(target: name, service: .all)
+                guard let ra = Double(result.coordsRA), let dec = Double(result.coordsDec) else {
+                    throw ToolFailureReason.unknownTarget(name)
+                }
+                return (ra: ra, dec: dec)
+            }
+        )
+    }
+
+    private func makeResolveTargetTool(resolver: TargetResolverService) -> ResolveTargetTool {
+        ResolveTargetTool(resolve: { name, service in
+            let svc = ResolverValue(rawValue: service) ?? .all
+            let r = try await resolver.resolve(target: name, service: svc)
+            return ResolveTargetTool.Output(
+                target: r.target,
+                service: r.service,
+                raDeg: Double(r.coordsRA),
+                decDeg: Double(r.coordsDec),
+                raString: r.coordsRA,
+                decString: r.coordsDec,
+                coordsys: r.coordsys,
+                objectType: r.objectType,
+                morphologyType: r.morphologyType
+            )
+        })
+    }
+
+    private func makeGetObservationCAOM2Tool(caom2: CAOM2Service) -> GetObservationCAOM2Tool {
+        GetObservationCAOM2Tool(fetch: { id in
+            try await caom2.fetch(publisherID: id)
+        })
+    }
+
+    private func makeGetDataLinksTool(tap: TAPClient) -> GetDataLinksTool {
+        GetDataLinksTool(fetch: { id in
+            let r = try await tap.fetchDataLinks(publisherID: id)
+            let files = r.directFiles.map {
+                (url: $0.url, contentType: $0.contentType, filename: $0.filename,
+                 isUncompressedFITS: $0.isUncompressedFITS)
+            }
+            return (thumbnails: r.thumbnails, previews: r.previews, files: files)
+        })
+    }
+
+    private func makeListRecentSearchesTool(store: RecentSearchStore) -> ListRecentSearchesTool {
+        ListRecentSearchesTool(snapshot: { @MainActor in
+            store.searches.map { ($0.id, $0.name, $0.savedAt) }
+        })
+    }
+
+    private func makeListSavedQueriesTool(store: SavedQueryStore) -> ListSavedQueriesTool {
+        ListSavedQueriesTool(snapshot: { @MainActor in
+            store.queries.map { ($0.id, $0.name, $0.adql, $0.savedAt) }
+        })
+    }
+
+    private func makeGetSavedQueryTool(store: SavedQueryStore) -> GetSavedQueryTool {
+        GetSavedQueryTool(lookup: { @MainActor id in
+            guard let q = store.queries.first(where: { $0.id == id }) else { return nil }
+            return (id: q.id, name: q.name, adql: q.adql, savedAt: q.savedAt)
+        })
     }
 }
