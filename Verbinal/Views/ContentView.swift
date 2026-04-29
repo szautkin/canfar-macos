@@ -90,6 +90,13 @@ struct ContentView: View {
                 #else
                 EmptyView()
                 #endif
+            case .agentProposals:
+                #if os(macOS)
+                ProposalStripSheet()
+                    .environment(appState)
+                #else
+                EmptyView()
+                #endif
             }
         }
         .task {

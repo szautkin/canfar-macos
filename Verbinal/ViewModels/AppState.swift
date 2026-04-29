@@ -271,7 +271,7 @@ final class AppState {
     /// enum prevents silent sheet drops when two triggers fire in the same tick
     /// (e.g. token-expiry login prompt while export is open).
     enum ActiveSheet: String, Identifiable {
-        case login, about, export
+        case login, about, export, agentProposals
         var id: String { rawValue }
     }
     var activeSheet: ActiveSheet?

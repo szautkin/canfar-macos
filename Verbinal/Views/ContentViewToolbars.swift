@@ -123,6 +123,8 @@ extension ContentView {
 
             Spacer()
 
+            agentProposalsToolbarItem
+
             Button {
                 showFileBrowser.toggle()
             } label: {
@@ -140,6 +142,35 @@ extension ContentView {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(.bar)
+    }
+
+    /// Toolbar shortcut to the agent-proposal strip. Visible only when
+    /// the user has enabled external agents in Settings. A small badge
+    /// shows the pending count when non-zero.
+    @ViewBuilder
+    private var agentProposalsToolbarItem: some View {
+        if appState.agentsService.isEnabled {
+            Button {
+                appState.activeSheet = .agentProposals
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "wand.and.rays")
+                    let count = appState.agentsService.pendingProposals.count
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.system(size: 9, weight: .bold))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.red, in: Capsule())
+                            .foregroundStyle(.white)
+                            .offset(x: 8, y: -6)
+                    }
+                }
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Agent proposals")
+            .help("Review pending agent proposals")
+        }
     }
 
     func makePortalToolbar(showAbout: Binding<Bool>) -> some View {

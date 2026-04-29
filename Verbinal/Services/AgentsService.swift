@@ -47,6 +47,9 @@ final class AgentsService {
     private(set) var isRunning: Bool = false
     private(set) var connectionCount: Int = 0
     private(set) var lastError: String?
+    /// Snapshot of pending proposals for SwiftUI binding. Refreshed
+    /// after each enqueue/apply/reject so the strip stays current.
+    private(set) var pendingProposals: [PendingProposal] = []
 
     /// Path published to the sidecar; nil when not running. Surfaced for
     /// diagnostics in Settings.
@@ -63,8 +66,14 @@ final class AgentsService {
     /// `start()` — once the listener is up, the router is captured.
     private(set) var tools: [any AITool] = []
 
+    /// Appliers map proposal `kind` → handler invoked when the user
+    /// clicks Apply in the strip. Register before tools start producing
+    /// proposals; safe to register at any time.
+    let applierRegistry = ProposalApplierRegistry()
+
     private var server: SocketServer?
     private var serverLoopTask: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
     private var router: AIToolRouter?
 
     // MARK: - Init
@@ -98,6 +107,48 @@ final class AgentsService {
             byName[tool.name] = tool
         }
         self.tools = byName.values.sorted(by: { $0.name < $1.name })
+    }
+
+    /// Register one or more proposal appliers. Safe at any time.
+    func register(appliers: [any ProposalApplier]) {
+        Task { await applierRegistry.register(appliers) }
+    }
+
+    // MARK: - Proposal lifecycle (driven by the strip UI)
+
+    /// Apply a pending proposal. Looks up the applier, invokes it, then
+    /// marks the proposal applied on success. Surfaces typed errors.
+    func applyProposal(_ id: UUID) async throws {
+        let pending = await proposals.list(origin: nil)
+        guard let proposal = pending.first(where: { $0.id == id }) else {
+            throw ProposalApplyError.backendError("proposal not pending: \(id)")
+        }
+        guard let applier = await applierRegistry.applier(for: proposal.kind) else {
+            throw ProposalApplyError.noApplierForKind(proposal.kind)
+        }
+        do {
+            try await applier.apply(proposal)
+        } catch let pa as ProposalApplyError {
+            throw pa
+        } catch {
+            throw ProposalApplyError.backendError("\(error)")
+        }
+        _ = await proposals.markApplied(id)
+        await refreshPending()
+    }
+
+    /// Reject a pending proposal — sets the tombstone and removes it
+    /// from the queue. Idempotent; safe to call after apply.
+    func rejectProposal(_ id: UUID) async {
+        _ = await proposals.markRejected(id)
+        await refreshPending()
+    }
+
+    /// Refresh the @Observable `pendingProposals` snapshot from the
+    /// store. Called after lifecycle transitions; the strip rebinds.
+    func refreshPending() async {
+        let snapshot = await proposals.list(origin: nil)
+        pendingProposals = snapshot
     }
 
     // MARK: - Audit
@@ -203,8 +254,22 @@ final class AgentsService {
             proposals: proposals,
             budget: ProposalBudget()
         ))
+
+        // Background poller: refresh the strip's @Observable snapshot
+        // periodically while the connection is active. This is coarse
+        // (1s) but trivial and keeps the strip current without adding
+        // a notification stream to the proposal store.
+        let pollerTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await self?.refreshPending()
+            }
+        }
+        defer { pollerTask.cancel() }
+
         await bridge.serve(on: transport)
         await transport.close()
+        await refreshPending()
     }
 }
 
