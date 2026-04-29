@@ -47,7 +47,110 @@ extension AppState {
         tools.append(makeListVOSpacePathTool(service: vospace))
         tools.append(makeGetVOSpaceNodeTool(service: vospace))
 
+        // Sessions domain
+        let recentLaunchStore = RecentLaunchStore()
+        tools.append(makeListSessionsTool())
+        tools.append(makeGetSessionTool())
+        tools.append(ListSessionTypesTool())
+        tools.append(makeListRecentLaunchesTool(store: recentLaunchStore))
+
+        // FITS domain — uses the already-instantiated observationStore
+        tools.append(makeGetFITSHeaderTool(store: observationStore))
+        tools.append(makeGetFITSWCSTool(store: observationStore))
+
         return tools
+    }
+
+    // MARK: - Sessions domain
+
+    private func makeListSessionsTool() -> ListSessionsTool {
+        ListSessionsTool(fetchAll: { [weak self] in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let raw = try await self.sessionService.getSessions()
+            return raw.map(Self.flatten)
+        })
+    }
+
+    private func makeGetSessionTool() -> GetSessionTool {
+        GetSessionTool(fetchAll: { [weak self] in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let raw = try await self.sessionService.getSessions()
+            return raw.map(Self.flatten)
+        })
+    }
+
+    private func makeListRecentLaunchesTool(store: RecentLaunchStore) -> ListRecentLaunchesTool {
+        ListRecentLaunchesTool(snapshot: { @MainActor in
+            store.launches.map {
+                RecentLaunchOut(
+                    id: $0.id.uuidString, name: $0.name, type: $0.type,
+                    image: $0.image, project: $0.project,
+                    resourceType: $0.resourceType,
+                    cores: $0.cores, ram: $0.ram, gpus: $0.gpus,
+                    launchedAt: $0.launchedAt
+                )
+            }
+        })
+    }
+
+    private static func flatten(_ s: Session) -> SessionOut {
+        SessionOut(
+            id: s.id, name: s.sessionName, type: s.sessionType,
+            status: s.status, image: s.containerImage,
+            connectURL: s.connectUrl,
+            startedTime: s.startedTime, expiresTime: s.expiresTime,
+            memoryAllocated: s.memoryAllocated, memoryUsage: s.memoryUsage,
+            cpuAllocated: s.cpuAllocated, cpuUsage: s.cpuUsage,
+            gpuAllocated: s.gpuAllocated
+        )
+    }
+
+    // MARK: - FITS domain
+
+    private func makeGetFITSHeaderTool(store: ObservationStore) -> GetFITSHeaderTool {
+        GetFITSHeaderTool(resolve: { id in
+            try await Self.resolveFITS(id: id, store: store)
+        })
+    }
+
+    private func makeGetFITSWCSTool(store: ObservationStore) -> GetFITSWCSTool {
+        GetFITSWCSTool(resolve: { id in
+            try await Self.resolveFITS(id: id, store: store)
+        })
+    }
+
+    /// Open the local FITS file for a downloaded observation, parse it,
+    /// and return the snapshot. Honours the security-scoped bookmark if
+    /// present so a sandboxed app can read user-selected paths.
+    private static func resolveFITS(id: UUID, store: ObservationStore) async throws -> ResolvedFITS? {
+        guard let obs = await MainActor.run(body: { store.observations.first(where: { $0.id == id }) }) else {
+            return nil
+        }
+        guard obs.fileExists else {
+            throw ToolFailureReason.backendError("local file missing: \(obs.localPath)")
+        }
+        let url: URL
+        var didStart = false
+        if let bookmark = obs.bookmarkData {
+            var stale = false
+            do {
+                url = try URL(resolvingBookmarkData: bookmark, options: .withSecurityScope, bookmarkDataIsStale: &stale)
+                didStart = url.startAccessingSecurityScopedResource()
+            } catch {
+                throw ToolFailureReason.backendError("bookmark resolution: \(error.localizedDescription)")
+            }
+        } else {
+            url = obs.localURL
+        }
+        defer {
+            if didStart { url.stopAccessingSecurityScopedResource() }
+        }
+        do {
+            let file = try FITSParser.parse(url: url)
+            return ResolvedFITS(observationID: obs.observationID, file: file)
+        } catch {
+            throw ToolFailureReason.backendError("FITS parse: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - VOSpace domain
