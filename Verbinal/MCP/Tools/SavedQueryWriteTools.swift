@@ -1,0 +1,199 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (C) 2025-2026 Serhii Zautkin
+
+import Foundation
+import VerbinalKit
+
+// MARK: - save_query
+
+/// Save a new ADQL query under a friendly name.
+struct SaveQueryTool: JSONWriteTool {
+    static let verbClass: VerbClass = .semanticWrite
+
+    struct Args: Decodable, Sendable {
+        let name: String
+        let adql: String
+    }
+
+    /// Encoded as the proposal payload; the applier reads it back.
+    struct Payload: Codable, Sendable {
+        let name: String
+        let adql: String
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "save_query",
+        description: "Save an ADQL query under a name. The user reviews and clicks Apply in the strip before it's persisted.",
+        schema: #"""
+        {
+          "type": "object",
+          "required": ["name", "adql"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "adql": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
+        guard !args.name.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw ToolFailureReason.invalidArgument("name is empty")
+        }
+        guard !args.adql.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw ToolFailureReason.invalidArgument("adql is empty")
+        }
+        return try ProposalPlan.encoding(
+            kind: "save_query",
+            summary: "Save query: \(args.name)",
+            payload: Payload(name: args.name, adql: args.adql)
+        )
+    }
+}
+
+// MARK: - update_saved_query
+
+/// Update an existing saved query's name and/or ADQL.
+struct UpdateSavedQueryTool: JSONWriteTool {
+    static let verbClass: VerbClass = .semanticWrite
+
+    struct Args: Decodable, Sendable {
+        let id: String
+        var name: String?
+        var adql: String?
+    }
+
+    struct Payload: Codable, Sendable {
+        let id: String
+        let name: String?
+        let adql: String?
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "update_saved_query",
+        description: "Update an existing saved query (by id). At least one of `name` or `adql` must be provided.",
+        schema: #"""
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id":   { "type": "string" },
+            "name": { "type": "string" },
+            "adql": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
+        if (args.name?.isEmpty ?? true) && (args.adql?.isEmpty ?? true) {
+            throw ToolFailureReason.invalidArgument("provide name or adql")
+        }
+        guard UUID(uuidString: args.id) != nil else {
+            throw ToolFailureReason.invalidArgument("id is not a UUID")
+        }
+        return try ProposalPlan.encoding(
+            kind: "update_saved_query",
+            summary: "Update saved query \(args.id)",
+            payload: Payload(id: args.id, name: args.name, adql: args.adql)
+        )
+    }
+}
+
+// MARK: - delete_saved_query (destructive)
+
+struct DeleteSavedQueryTool: JSONWriteTool {
+    static let verbClass: VerbClass = .destructive
+
+    struct Args: Decodable, Sendable {
+        let id: String
+    }
+
+    struct Payload: Codable, Sendable {
+        let id: String
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "delete_saved_query",
+        description: "Permanently delete a saved query by id. Destructive — the user must explicitly confirm in the strip.",
+        schema: #"""
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": { "id": { "type": "string" } },
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
+        guard UUID(uuidString: args.id) != nil else {
+            throw ToolFailureReason.invalidArgument("id is not a UUID")
+        }
+        return try ProposalPlan.encoding(
+            kind: "delete_saved_query",
+            summary: "Delete saved query \(args.id)",
+            payload: Payload(id: args.id)
+        )
+    }
+}
+
+// MARK: - Appliers
+
+/// Concrete handler that runs when the user clicks Apply on a
+/// `save_query` proposal in the strip.
+struct SaveQueryApplier: ProposalApplier {
+    let kind = "save_query"
+    let store: SavedQueryStore
+
+    func apply(_ proposal: PendingProposal) async throws {
+        let payload = try JSONDecoder().decode(SaveQueryTool.Payload.self, from: proposal.payload)
+        let query = SavedQuery(name: payload.name, adql: payload.adql)
+        await MainActor.run {
+            store.save(query)
+        }
+    }
+}
+
+struct UpdateSavedQueryApplier: ProposalApplier {
+    let kind = "update_saved_query"
+    let store: SavedQueryStore
+
+    func apply(_ proposal: PendingProposal) async throws {
+        let payload = try JSONDecoder().decode(UpdateSavedQueryTool.Payload.self, from: proposal.payload)
+        guard let id = UUID(uuidString: payload.id) else {
+            throw ProposalApplyError.backendError("invalid id")
+        }
+        try await MainActor.run {
+            guard var existing = store.queries.first(where: { $0.id == id }) else {
+                throw ProposalApplyError.backendError("saved query not found: \(id)")
+            }
+            if let name = payload.name { existing.name = name }
+            if let adql = payload.adql { existing.adql = adql }
+            store.save(existing)
+        }
+    }
+}
+
+struct DeleteSavedQueryApplier: ProposalApplier {
+    let kind = "delete_saved_query"
+    let store: SavedQueryStore
+
+    func apply(_ proposal: PendingProposal) async throws {
+        let payload = try JSONDecoder().decode(DeleteSavedQueryTool.Payload.self, from: proposal.payload)
+        guard let id = UUID(uuidString: payload.id) else {
+            throw ProposalApplyError.backendError("invalid id")
+        }
+        try await MainActor.run {
+            guard let existing = store.queries.first(where: { $0.id == id }) else {
+                throw ProposalApplyError.backendError("saved query not found: \(id)")
+            }
+            store.remove(existing)
+        }
+    }
+}

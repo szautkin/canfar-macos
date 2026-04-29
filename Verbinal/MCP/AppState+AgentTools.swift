@@ -58,7 +58,31 @@ extension AppState {
         tools.append(makeGetFITSHeaderTool(store: observationStore))
         tools.append(makeGetFITSWCSTool(store: observationStore))
 
+        // Write tools — saved queries + observation notes
+        tools.append(SaveQueryTool())
+        tools.append(UpdateSavedQueryTool())
+        tools.append(DeleteSavedQueryTool())
+        tools.append(UpdateObservationNoteTool())
+
+        // Stash the per-domain stores on `self` if not already so the
+        // appliers can be registered against the same instance.
+        registerWriteAppliers(savedQueryStore: savedStore, noteStore: noteStore)
+
         return tools
+    }
+
+    /// Build and register the appliers that the proposal strip dispatches
+    /// to. Stores are passed in so the same instance the read tools see
+    /// is what the appliers mutate.
+    private func registerWriteAppliers(savedQueryStore: SavedQueryStore,
+                                       noteStore: ObservationNoteStore) {
+        let appliers: [any ProposalApplier] = [
+            SaveQueryApplier(store: savedQueryStore),
+            UpdateSavedQueryApplier(store: savedQueryStore),
+            DeleteSavedQueryApplier(store: savedQueryStore),
+            UpdateObservationNoteApplier(store: noteStore),
+        ]
+        agentsService.register(appliers: appliers)
     }
 
     // MARK: - Sessions domain
