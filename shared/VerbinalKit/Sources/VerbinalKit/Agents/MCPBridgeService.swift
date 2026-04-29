@@ -139,6 +139,16 @@ public actor MCPBridgeService {
             response = await handleToolsList(request)
         case "tools/call":
             response = await handleToolsCall(request)
+        case "resources/list":
+            response = handleResourcesList(request)
+        case "resources/read":
+            response = handleResourcesRead(request)
+        case "logging/setLevel":
+            // Acknowledge but do nothing — our os.log subsystem is the
+            // authoritative log surface, and Cowork doesn't drive it.
+            response = successResponse(id: request.id, body: EmptyObject())
+        case "ping":
+            response = successResponse(id: request.id, body: EmptyObject())
         default:
             logger.notice("method not found: \(request.method, privacy: .public)")
             response = .failure(
@@ -196,12 +206,34 @@ public actor MCPBridgeService {
         let result = InitializeResult(
             protocolVersion: params.protocolVersion,
             capabilities: ServerCapabilities(
-                tools: .init(listChanged: false)
+                tools: .init(listChanged: false),
+                resources: .init(subscribe: false, listChanged: false),
+                logging: .object([:])
             ),
             serverInfo: ServerInfo(name: identity.name, version: identity.version),
             instructions: identity.instructions
         )
         return successResponse(id: request.id, body: result)
+    }
+
+    // MARK: - resources/list, resources/read
+
+    /// canfar-mac doesn't expose any MCP resources today (the read tools
+    /// already cover the surface). Returning an empty list satisfies
+    /// clients that gate registration on a successful `resources/list`
+    /// after they see `resources` in the capabilities advertisement.
+    private func handleResourcesList(_ request: JSONRPCRequest) -> JSONRPCResponse {
+        guard initialized else { return notInitialized(id: request.id) }
+        return successResponse(id: request.id, body: ListResourcesResult(resources: []))
+    }
+
+    private func handleResourcesRead(_ request: JSONRPCRequest) -> JSONRPCResponse {
+        guard initialized else { return notInitialized(id: request.id) }
+        // No URI is registered, so any read is invalid.
+        return .failure(id: request.id, error: JSONRPCErrorPayload(
+            code: JSONRPCErrorCode.invalidParams,
+            message: "No resources are exposed by this server."
+        ))
     }
 
     // MARK: - tools/list
@@ -360,6 +392,10 @@ public actor MCPBridgeService {
     private func invalidParams(_ msg: String) -> JSONRPCErrorPayload {
         JSONRPCErrorPayload(code: JSONRPCErrorCode.invalidParams, message: msg)
     }
+
+    /// Marker used as the `result` body for methods that succeed but
+    /// have nothing to report (`logging/setLevel`, `ping`).
+    private struct EmptyObject: Encodable, Sendable {}
 
     private func escapeJSON(_ s: String) -> String {
         // Thin convenience for the inline summary string above.

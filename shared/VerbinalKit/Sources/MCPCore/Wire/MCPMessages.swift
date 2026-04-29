@@ -38,11 +38,14 @@ public struct ServerInfo: Codable, Sendable, Equatable {
 public struct ServerCapabilities: Codable, Sendable, Equatable {
     public let tools: ToolsCapability?
     public let resources: ResourcesCapability?
-    public let logging: LoggingCapability?
+    /// Logging capability is encoded as an open-ended JSON object —
+    /// MCP spec allows servers to advertise log-level support; current
+    /// shape is `{}` (no fields) but future extensions append here.
+    public let logging: JSONValue?
 
     public init(tools: ToolsCapability? = nil,
                 resources: ResourcesCapability? = nil,
-                logging: LoggingCapability? = nil) {
+                logging: JSONValue? = nil) {
         self.tools = tools
         self.resources = resources
         self.logging = logging
@@ -59,9 +62,6 @@ public struct ServerCapabilities: Codable, Sendable, Equatable {
             self.subscribe = subscribe
             self.listChanged = listChanged
         }
-    }
-    public struct LoggingCapability: Codable, Sendable, Equatable {
-        public init() {}
     }
 }
 
@@ -118,6 +118,56 @@ public struct ListToolsResult: Codable, Sendable, Equatable {
         self.tools = tools
         self.nextCursor = nextCursor
     }
+}
+
+// MARK: - resources/list
+
+public struct ResourceWire: Codable, Sendable, Equatable {
+    public let uri: String
+    public let name: String
+    public let description: String?
+    public let mimeType: String?
+
+    public init(uri: String, name: String, description: String? = nil, mimeType: String? = nil) {
+        self.uri = uri
+        self.name = name
+        self.description = description
+        self.mimeType = mimeType
+    }
+}
+
+public struct ListResourcesResult: Codable, Sendable, Equatable {
+    public let resources: [ResourceWire]
+    public let nextCursor: String?
+
+    public init(resources: [ResourceWire], nextCursor: String? = nil) {
+        self.resources = resources
+        self.nextCursor = nextCursor
+    }
+}
+
+// MARK: - resources/read
+
+public struct ReadResourceParams: Codable, Sendable, Equatable {
+    public let uri: String
+    public init(uri: String) { self.uri = uri }
+}
+
+public struct ResourceContents: Codable, Sendable, Equatable {
+    public let uri: String
+    public let mimeType: String?
+    public let text: String?
+
+    public init(uri: String, mimeType: String? = nil, text: String? = nil) {
+        self.uri = uri
+        self.mimeType = mimeType
+        self.text = text
+    }
+}
+
+public struct ReadResourceResult: Codable, Sendable, Equatable {
+    public let contents: [ResourceContents]
+    public init(contents: [ResourceContents]) { self.contents = contents }
 }
 
 // MARK: - tools/call
