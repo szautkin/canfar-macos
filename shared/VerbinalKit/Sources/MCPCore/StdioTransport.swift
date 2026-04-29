@@ -5,25 +5,38 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import Darwin
 
 /// MCP transport over standard input / standard output, ndjson framing.
 ///
 /// Used by the `canfar-mcp` helper executable when spawned as a subprocess
-/// by an MCP client (Claude Desktop, etc.). Writes are serialised against
-/// an internal lock so concurrent senders never interleave bytes mid-frame;
-/// reads are driven from `FileHandle.readabilityHandler` on a background
-/// queue and pushed into an `AsyncThrowingStream`.
+/// by an MCP client (Claude Desktop, etc.).
 ///
-/// The transport finishes its `incoming` stream when stdin reports EOF —
-/// that's the host's signal that the client disconnected. After that all
-/// `send` calls throw `.closed`.
+/// **Read path:** direct `Darwin.read(fd:buf:len:)` on a detached worker.
+/// We do **not** use `FileHandle.readabilityHandler` / `availableData`
+/// because, against a parent-inherited pipe (what Claude Desktop hands us
+/// as stdin), those don't reliably wake up on data arrival — short
+/// messages like MCP `initialize` are buffered until the client times out
+/// and closes stdin (the verbinal-thought project caught this as a
+/// 60-second stall in real usage). The fix is to call `read(2)` directly
+/// from a `Task.detached(priority: .utility)` so the cooperative thread
+/// pool isn't pinned by a blocking syscall and the kernel wakes us as
+/// soon as bytes arrive.
+///
+/// **Write path:** linearised by an `NSLock` so concurrent senders never
+/// interleave bytes within a frame. Closes are idempotent.
+///
+/// **EOF handling:** stream finishes cleanly on `read` returning 0
+/// (writer end of the pipe closed) — that's the conventional "client
+/// disconnected" signal. After that all `send` calls throw `.closed`.
 public final class StdioTransport: MCPTransport, @unchecked Sendable {
-    private let stdin: FileHandle
+    private let stdinFD: Int32
     private let stdout: FileHandle
     private let decoder: FrameCodec.Decoder
     private let writeLock = NSLock()
     private let stateLock = NSLock()
     private var closed: Bool = false
+    private var readTask: Task<Void, Never>?
 
     public let incoming: AsyncThrowingStream<Data, Error>
     private let continuation: AsyncThrowingStream<Data, Error>.Continuation
@@ -34,7 +47,7 @@ public final class StdioTransport: MCPTransport, @unchecked Sendable {
         stdin: FileHandle = .standardInput,
         stdout: FileHandle = .standardOutput
     ) {
-        self.stdin = stdin
+        self.stdinFD = stdin.fileDescriptor
         self.stdout = stdout
         self.decoder = FrameCodec.Decoder(mode: .ndjson)
 
@@ -42,60 +55,66 @@ public final class StdioTransport: MCPTransport, @unchecked Sendable {
         self.incoming = AsyncThrowingStream { c = $0 }
         self.continuation = c
 
-        startReading()
+        continuation.onTermination = { [weak self] _ in
+            self?.tearDown()
+        }
+
+        beginReceive()
     }
 
-    private func startReading() {
-        // FileHandle.readabilityHandler runs the closure on a private
-        // dispatch queue — chunks may arrive concurrently with sends.
-        // The decoder is mutable state; serialise via the state lock.
-        stdin.readabilityHandler = { [weak self] handle in
-            guard let self = self else { return }
-            let chunk = handle.availableData
-            if chunk.isEmpty {
-                self.finishStream(with: nil) // clean EOF
+    // MARK: - Read loop
+
+    private func beginReceive() {
+        readTask = Task.detached(priority: .utility) { [weak self] in
+            self?.readLoop()
+        }
+    }
+
+    /// Direct-syscall read loop. Runs on a detached worker thread so the
+    /// blocking read never starves the cooperative pool.
+    private func readLoop() {
+        let chunkSize = 4096
+        var buf = [UInt8](repeating: 0, count: chunkSize)
+        while true {
+            stateLock.lock()
+            let isClosed = closed
+            stateLock.unlock()
+            if isClosed { return }
+
+            let n: Int = buf.withUnsafeMutableBufferPointer { ptr -> Int in
+                Darwin.read(stdinFD, ptr.baseAddress, ptr.count)
+            }
+            if n == 0 {
+                finishStream(with: nil) // EOF — clean disconnect
                 return
             }
-            self.stateLock.lock()
-            let alreadyClosed = self.closed
-            self.stateLock.unlock()
-            if alreadyClosed { return }
+            if n < 0 {
+                let err = errno
+                if err == EINTR { continue }
+                finishStream(with: MCPTransportError.io(err, String(cString: strerror(err))))
+                return
+            }
 
+            let chunk = Data(bytes: buf, count: n)
             do {
-                self.stateLock.lock()
-                let frames = try self.decoder.feed(chunk)
-                self.stateLock.unlock()
+                let frames = try feedDecoder(chunk)
                 for frame in frames {
-                    self.continuation.yield(frame)
+                    continuation.yield(frame)
                 }
             } catch {
-                self.stateLock.unlock()
-                self.finishStream(with: MCPTransportError.framing("\(error)"))
+                finishStream(with: MCPTransportError.framing("\(error)"))
+                return
             }
         }
-
-        continuation.onTermination = { [weak self] _ in
-            self?.detachReader()
-        }
     }
 
-    private func detachReader() {
-        // Drop the readabilityHandler so the FileHandle stops feeding data.
-        stdin.readabilityHandler = nil
-    }
-
-    private func finishStream(with error: Error?) {
+    private func feedDecoder(_ chunk: Data) throws -> [Data] {
         stateLock.lock()
-        guard !closed else { stateLock.unlock(); return }
-        closed = true
-        stateLock.unlock()
-        if let error = error {
-            continuation.finish(throwing: error)
-        } else {
-            continuation.finish()
-        }
-        detachReader()
+        defer { stateLock.unlock() }
+        return try decoder.feed(chunk)
     }
+
+    // MARK: - Send / close
 
     public func send(_ payload: Data) async throws {
         try checkOpen()
@@ -104,7 +123,7 @@ public final class StdioTransport: MCPTransport, @unchecked Sendable {
     }
 
     public func close() async {
-        finishStream(with: nil)
+        tearDown()
     }
 
     // MARK: - Sync helpers (locks confined here so they're never held
@@ -125,5 +144,29 @@ public final class StdioTransport: MCPTransport, @unchecked Sendable {
         stateLock.lock()
         defer { stateLock.unlock() }
         if closed { throw MCPTransportError.closed }
+    }
+
+    private func tearDown() {
+        stateLock.lock()
+        guard !closed else { stateLock.unlock(); return }
+        closed = true
+        stateLock.unlock()
+        readTask?.cancel()
+        readTask = nil
+        continuation.finish()
+    }
+
+    private func finishStream(with error: Error?) {
+        stateLock.lock()
+        guard !closed else { stateLock.unlock(); return }
+        closed = true
+        stateLock.unlock()
+        readTask?.cancel()
+        readTask = nil
+        if let error = error {
+            continuation.finish(throwing: error)
+        } else {
+            continuation.finish()
+        }
     }
 }

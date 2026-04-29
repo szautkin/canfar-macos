@@ -20,13 +20,49 @@
 // All durable state lives on the app side.
 
 import Foundation
+import Darwin
 import MCPCore
 
 @main
 struct CanfarMCPHelper {
     static func main() async {
+        // Ignore SIGPIPE process-wide. MCP clients (Claude Desktop in
+        // particular) can close stdout while a write is in flight; the
+        // default SIGPIPE handler would kill us mid-frame. Letting
+        // `write(2)` return EPIPE instead lets the regular error path
+        // run cleanly. Must happen before any I/O.
+        signal(SIGPIPE, SIG_IGN)
+
+        HelperLog.info("startup pid=\(getpid())")
         await Forwarder().run()
+        HelperLog.info("shutting down")
         exit(0)
+    }
+}
+
+// MARK: - stderr logger
+//
+// Claude Desktop captures the helper's stderr into
+// `~/Library/Logs/Claude/mcp-server-verbinal-canfar.log`. Anything we
+// write here becomes diagnostic evidence the user (or another Claude
+// session) can grep without opening Console.app.
+
+enum HelperLog {
+    static func debug(_ message: @autoclosure () -> String) { emit("debug", message()) }
+    static func info(_ message: @autoclosure () -> String)  { emit("info",  message()) }
+    static func error(_ message: @autoclosure () -> String) { emit("error", message()) }
+
+    nonisolated(unsafe) private static let formatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static func emit(_ level: String, _ message: String) {
+        let line = "\(formatter.string(from: Date())) [canfar-mcp] [\(level)] \(message)\n"
+        if let data = line.data(using: .utf8) {
+            try? FileHandle.standardError.write(contentsOf: data)
+        }
     }
 }
 
@@ -40,10 +76,9 @@ private actor Forwarder {
         let socketPath: String
         do {
             socketPath = try SocketSidecar.read()
+            HelperLog.info("sidecar resolved -> \(socketPath)")
         } catch {
-            FileHandle.standardError.write(
-                Data("canfar-mcp: sidecar missing — \(error)\n".utf8)
-            )
+            HelperLog.error("sidecar missing — \(error)")
             await drainAndFail(
                 stdio: stdio,
                 code: JSONRPCErrorCode.serviceUnavailable,
@@ -55,10 +90,9 @@ private actor Forwarder {
         let socket = SocketTransport.client(socketPath: socketPath)
         do {
             try await socket.start()
+            HelperLog.info("socket connected")
         } catch {
-            FileHandle.standardError.write(
-                Data("canfar-mcp: connect failed — \(error)\n".utf8)
-            )
+            HelperLog.error("connect failed — \(error)")
             await drainAndFail(
                 stdio: stdio,
                 code: JSONRPCErrorCode.serviceUnavailable,
@@ -67,7 +101,9 @@ private actor Forwarder {
             return
         }
 
+        HelperLog.info("entering forward loop")
         await splice(stdio: stdio, socket: socket)
+        HelperLog.info("forward loop exited")
         await stdio.close()
         await socket.close()
     }
@@ -95,9 +131,7 @@ private actor Forwarder {
                 try await dst.send(frame)
             }
         } catch {
-            FileHandle.standardError.write(
-                Data("canfar-mcp: \(label) ended — \(error)\n".utf8)
-            )
+            HelperLog.info("\(label) ended — \(error)")
         }
     }
 
