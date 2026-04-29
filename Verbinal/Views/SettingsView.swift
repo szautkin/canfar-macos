@@ -6,6 +6,7 @@
 
 #if os(macOS)
 import SwiftUI
+import VerbinalKit
 
 /// Top-level Preferences window (⌘,). Tabbed layout following the macOS HIG for
 /// System Settings-style apps (Mail, Xcode, Music).
@@ -21,6 +22,10 @@ struct SettingsView: View {
             PortalSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Portal", systemImage: "play.circle") }
+
+            AgentsSettingsTab()
+                .environment(appState)
+                .tabItem { Label("Agents", systemImage: "wand.and.rays") }
 
             AboutSettingsTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
@@ -431,6 +436,146 @@ private struct PortalSettingsTab: View {
         f.unitsStyle = .full
         return f
     }()
+}
+
+// MARK: - Agents tab
+
+private struct AgentsSettingsTab: View {
+    @Environment(AppState.self) private var appState
+
+    private var allowExternalAgents: Binding<Bool> {
+        Binding(
+            get: { appState.agentsService.isEnabled },
+            set: { appState.agentsService.isEnabled = $0 }
+        )
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Allow external AI agents", isOn: allowExternalAgents)
+                    .toggleStyle(.switch)
+                statusRow
+            } header: {
+                Text("MCP Server")
+            } footer: {
+                Text("When enabled, MCP-compatible AI clients (Claude Desktop, etc.) " +
+                     "can call into Verbinal via the bundled `canfar-mcp` helper. " +
+                     "Read tools run directly; writes are queued as proposals you " +
+                     "review in the strip before they apply.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            if appState.agentsService.isRunning {
+                Section {
+                    diagnosticsRow
+                } header: {
+                    Text("Diagnostics")
+                } footer: {
+                    Text("View live activity in Console.app via " +
+                         "`log show --predicate 'subsystem == \"com.codebg.Verbinal.agent\"'`.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                Section {
+                    auditList
+                } header: {
+                    Text("Recent Activity")
+                } footer: {
+                    Text("Hashes and outcomes only — call arguments are never logged.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var statusRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: appState.agentsService.isRunning ? "checkmark.circle.fill" : "moon.zzz.fill")
+                .foregroundStyle(appState.agentsService.isRunning ? Color.green : Color.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(appState.agentsService.isRunning ? "Listening" : "Stopped")
+                    .font(.callout)
+                if let path = appState.agentsService.socketPath {
+                    Text(path)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .truncationMode(.middle)
+                        .lineLimit(1)
+                }
+                if let lastError = appState.agentsService.lastError {
+                    Text(lastError)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            Spacer()
+        }
+    }
+
+    private var diagnosticsRow: some View {
+        HStack {
+            Label("\(appState.agentsService.connectionCount) active",
+                  systemImage: "personalhotspot")
+            Spacer()
+            Label("\(appState.agentsService.tools.count) tool\(appState.agentsService.tools.count == 1 ? "" : "s") registered",
+                  systemImage: "wrench.and.screwdriver")
+        }
+        .font(.callout)
+    }
+
+    private var auditList: some View {
+        let entries = appState.agentsService.recentAuditEntries(limit: 20)
+        return Group {
+            if entries.isEmpty {
+                Text("No agent calls yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView(.vertical) {
+                    LazyVStack(alignment: .leading, spacing: 4) {
+                        ForEach(entries.reversed(), id: \.requestID) { entry in
+                            HStack(spacing: 8) {
+                                Image(systemName: icon(for: entry))
+                                    .foregroundStyle(color(for: entry))
+                                Text(entry.toolName)
+                                    .font(.caption.monospaced())
+                                Text(entry.outcome.tag)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(entry.durationMS) ms")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .frame(maxHeight: 160)
+            }
+        }
+    }
+
+    private func icon(for entry: AuditEntry) -> String {
+        switch entry.outcome {
+        case .ok: return "checkmark.circle"
+        case .proposed: return "tray.and.arrow.down"
+        case .failed: return "exclamationmark.triangle"
+        }
+    }
+
+    private func color(for entry: AuditEntry) -> Color {
+        switch entry.outcome {
+        case .ok: return .green
+        case .proposed: return .blue
+        case .failed: return .orange
+        }
+    }
 }
 
 // MARK: - About tab

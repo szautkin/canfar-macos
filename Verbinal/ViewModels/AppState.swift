@@ -42,6 +42,11 @@ final class AppState {
     /// requests get cut by Wi-Fi → Ethernet transitions or VPN flips.
     let networkPath = NetworkPathMonitor()
 
+    /// MCP server lifecycle. Off by default — the user opts in via
+    /// Settings ▸ Agents. Read tools land in P4; until then the bridge
+    /// answers tools/list with an empty manifest.
+    let agentsService = AgentsService()
+
     // Headless job monitor (created on auth, destroyed on logout)
     private(set) var headlessMonitor: HeadlessMonitorModel?
 
@@ -154,6 +159,11 @@ final class AppState {
         // Begin watching for network-path changes (Wi-Fi → Ethernet, VPN flip,
         // disconnects). UI binds to this for connectivity hints.
         networkPath.start()
+
+        // Bring up the MCP server only if the user has previously opted in.
+        // Tool registration happens in dedicated phases — until then the
+        // bridge serves an empty manifest, which is harmless.
+        agentsService.bootstrap()
 
         // Wire NetworkClient's 401-retry interceptor: on an `unauthorized`
         // response the client invokes this handler; if it returns true the
