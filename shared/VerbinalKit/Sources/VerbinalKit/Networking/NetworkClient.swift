@@ -94,14 +94,32 @@ public actor NetworkClient {
         headers: [String: String]? = nil,
         timeout: TimeInterval = 30
     ) async throws -> (Data, HTTPURLResponse) {
+        try await post(
+            urlString,
+            formPairs: formData.map { ($0.key, $0.value) },
+            headers: headers,
+            timeout: timeout
+        )
+    }
+
+    /// POST with ordered `(key, value)` pairs — duplicate keys allowed.
+    /// Skaha headless launches require multi-value form fields (e.g.
+    /// `env=KEY1=VAL1` repeated per environment variable, matching the
+    /// canonical Python `canfar` client). The dictionary variant above
+    /// can't express that; this one is the single source of truth and
+    /// the dictionary form delegates to it.
+    public func post(
+        _ urlString: String,
+        formPairs: [(String, String)],
+        headers: [String: String]? = nil,
+        timeout: TimeInterval = 30
+    ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "POST", timeout: timeout)
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
-        let body = formData
+        let body = formPairs
             .map { key, value in
-                let encodedKey = key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? key
-                let encodedValue = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value
-                return "\(encodedKey)=\(encodedValue)"
+                "\(Self.formEncode(key))=\(Self.formEncode(value))"
             }
             .joined(separator: "&")
         request.httpBody = body.data(using: .utf8)
@@ -113,6 +131,20 @@ public actor NetworkClient {
         }
 
         return try await execute(request)
+    }
+
+    /// Stricter than `.urlQueryAllowed`: also encodes `&`, `=`, `+`, `?`
+    /// so they survive transit through a form-encoded body. Without this
+    /// an env value like `FOO=bar&baz` would get parsed by the server as
+    /// two separate fields.
+    private static let formAllowed: CharacterSet = {
+        var set = CharacterSet.urlQueryAllowed
+        set.subtract(CharacterSet(charactersIn: "&=+?"))
+        return set
+    }()
+
+    private static func formEncode(_ s: String) -> String {
+        s.addingPercentEncoding(withAllowedCharacters: formAllowed) ?? s
     }
 
     public func delete(_ urlString: String) async throws -> HTTPURLResponse {

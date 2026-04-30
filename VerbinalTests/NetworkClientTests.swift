@@ -216,6 +216,59 @@ final class NetworkClientTests: XCTestCase {
         )
     }
 
+    func testPostFormPairsPreservesDuplicateKeysAndOrder() async throws {
+        // Skaha headless launch needs `env=KEY=VAL` repeated per environment
+        // variable. The dict-keyed `formData:` API can't express duplicates;
+        // this test pins the ordered-pair API the headless service uses.
+        let client = makeClient()
+
+        MockURLProtocol.requestHandler = { request in
+            let body = String(data: request.httpBody ?? Data(), encoding: .utf8) ?? ""
+            // Order must be preserved exactly as supplied — header-line tools,
+            // matchers, and even some servers depend on stable form ordering.
+            XCTAssertEqual(
+                body,
+                "type=headless&env=FOO%3Dbar&env=BAZ%3Dqux&name=job-1"
+            )
+            return self.okResponse(data: Data("session-id\n".utf8))
+        }
+
+        _ = try await client.post(
+            "https://example.com/skaha/v1/session",
+            formPairs: [
+                ("type", "headless"),
+                ("env", "FOO=bar"),
+                ("env", "BAZ=qux"),
+                ("name", "job-1")
+            ]
+        )
+    }
+
+    func testPostFormPairsEncodesSpecialCharsInValues() async throws {
+        let client = makeClient()
+
+        MockURLProtocol.requestHandler = { request in
+            let body = String(data: request.httpBody ?? Data(), encoding: .utf8) ?? ""
+            // `=`, `&`, `+`, `?` in values must not corrupt the wire form
+            // (they're the only chars beyond `.urlQueryAllowed` that we
+            // strip — single-quote and parens stay literal because no
+            // form parser splits on them). Space → %20.
+            XCTAssertTrue(body.contains("cmd=python%20-c%20'print(1%2B2)'"),
+                         "got body: \(body)")
+            XCTAssertTrue(body.contains("env=A%3Db%26c"),
+                         "got body: \(body)")
+            return self.okResponse()
+        }
+
+        _ = try await client.post(
+            "https://example.com/skaha/v1/session",
+            formPairs: [
+                ("cmd", "python -c 'print(1+2)'"),
+                ("env", "A=b&c")
+            ]
+        )
+    }
+
     func testPostIncludesCustomHeaders() async throws {
         let client = makeClient()
 
