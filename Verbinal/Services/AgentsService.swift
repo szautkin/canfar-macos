@@ -225,7 +225,7 @@ final class AgentsService {
         case "upload_to_vospace", "download_from_vospace",
              "vospace_mkdir", "delete_vospace_node":
             return .storage
-        case "launch_session", "delete_session":
+        case "launch_session", "delete_session", "launch_headless_job":
             return .portal
         default:
             return nil

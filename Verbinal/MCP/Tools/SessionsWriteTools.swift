@@ -132,7 +132,7 @@ struct DeleteSessionTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_session",
-        description: "Terminate a running Skaha session. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
+        description: "Terminate a running Skaha session by id (interactive OR headless — same endpoint covers both). Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
         schema: #"""
         {
           "type": "object",

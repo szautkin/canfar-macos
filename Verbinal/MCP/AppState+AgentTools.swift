@@ -56,6 +56,13 @@ extension AppState {
         tools.append(makeListSessionImagesTool())
         tools.append(makeListRecentLaunchesTool(store: recentLaunchStore))
 
+        // Headless / batch domain — read + write
+        tools.append(makeListHeadlessJobsTool())
+        tools.append(makeGetHeadlessJobTool())
+        tools.append(makeGetHeadlessJobLogsTool())
+        tools.append(makeGetHeadlessJobEventsTool())
+        tools.append(LaunchHeadlessJobTool())
+
         // FITS domain — uses the already-instantiated observationStore
         tools.append(makeGetFITSHeaderTool(store: observationStore))
         tools.append(makeGetFITSWCSTool(store: observationStore))
@@ -228,6 +235,9 @@ extension AppState {
                                   activity: activity),
             DeleteSessionApplier(service: sessionService, activity: activity),
             ClearResearchArchiveApplier(store: observationStore, activity: activity),
+            LaunchHeadlessJobApplier(service: headlessService,
+                                      recentLaunchStore: recentLaunchStore,
+                                      activity: activity),
         ]
         appliers.append(contentsOf: sessionAppliers)
         agentsService.register(appliers: appliers)
@@ -260,6 +270,36 @@ extension AppState {
         return ListSessionImagesTool(fetch: {
             let raw = try await service.getImages()
             return raw.map { (id: $0.id, types: $0.types) }
+        })
+    }
+
+    // MARK: - Headless / batch domain factories
+
+    private func makeListHeadlessJobsTool() -> ListHeadlessJobsTool {
+        let service = self.headlessService
+        return ListHeadlessJobsTool(fetch: {
+            try await service.getHeadlessJobs()
+        })
+    }
+
+    private func makeGetHeadlessJobTool() -> GetHeadlessJobTool {
+        let service = self.headlessService
+        return GetHeadlessJobTool(fetch: {
+            try await service.getHeadlessJobs()
+        })
+    }
+
+    private func makeGetHeadlessJobLogsTool() -> GetHeadlessJobLogsTool {
+        let service = self.headlessService
+        return GetHeadlessJobLogsTool(fetch: { id in
+            try await service.getLogs(id: id)
+        })
+    }
+
+    private func makeGetHeadlessJobEventsTool() -> GetHeadlessJobEventsTool {
+        let service = self.headlessService
+        return GetHeadlessJobEventsTool(fetch: { id in
+            try await service.getEvents(id: id)
         })
     }
 
