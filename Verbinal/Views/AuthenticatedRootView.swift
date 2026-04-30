@@ -13,6 +13,7 @@ struct AuthenticatedRootView: View {
 
     @State private var sessionListModel: SessionListModel?
     @State private var sessionLaunchModel: SessionLaunchModel?
+    @State private var headlessLaunchModel: HeadlessLaunchModel?
     @State private var platformLoadModel: PlatformLoadModel?
     @State private var storageModel: StorageModel?
 
@@ -26,6 +27,7 @@ struct AuthenticatedRootView: View {
                 DashboardView(
                     sessionListModel: slm,
                     sessionLaunchModel: launch,
+                    headlessLaunchModel: headlessLaunchModel,
                     platformLoadModel: plm,
                     storageModel: sm
                 )
@@ -78,6 +80,13 @@ struct AuthenticatedRootView: View {
 
         sessionListModel = slm
         sessionLaunchModel = launch
+        // The headless launch model only needs HeadlessService +
+        // RecentLaunchStore; the image catalogue is borrowed read-only
+        // from `launch` at render time, so no separate fetch.
+        headlessLaunchModel = HeadlessLaunchModel(
+            headlessService: appState.headlessService,
+            recentLaunchStore: appState.recentLaunchStore
+        )
         platformLoadModel = plm
         storageModel = sm
 

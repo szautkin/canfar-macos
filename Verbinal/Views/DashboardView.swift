@@ -11,6 +11,7 @@ struct DashboardView: View {
 
     var sessionListModel: SessionListModel
     var sessionLaunchModel: SessionLaunchModel
+    var headlessLaunchModel: HeadlessLaunchModel?
     var platformLoadModel: PlatformLoadModel
     var storageModel: StorageModel
 
@@ -34,8 +35,10 @@ struct DashboardView: View {
                 HStack(alignment: .top, spacing: 16) {
                     LaunchFormView(
                         model: sessionLaunchModel,
+                        headlessModel: headlessLaunchModel,
                         onLaunched: {
                             Task { await sessionListModel.loadSessions() }
+                            Task { await appState.headlessMonitor?.loadJobs() }
                         }
                     )
                     .frame(maxWidth: .infinity)

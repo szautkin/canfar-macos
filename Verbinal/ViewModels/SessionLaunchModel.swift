@@ -20,6 +20,15 @@ final class SessionLaunchModel {
     private var imagesByTypeAndProject: [String: [String: [ParsedImage]]] = [:]
     private var cachedImages: [RawImage] = []
 
+    /// Shared accessor for the parsed image catalogue, keyed by session
+    /// type. Non-headless tabs already drive their own picker via
+    /// `images` / `projects` after `selectedType` changes; this lets
+    /// the parallel Headless launch tab read its slice without
+    /// re-fetching the catalogue.
+    func images(forType type: String) -> [String: [ParsedImage]] {
+        imagesByTypeAndProject[type] ?? [:]
+    }
+
     // Default images per session type
     private static let defaultImageNames: [String: String] = [
         "notebook": "astroml:latest",

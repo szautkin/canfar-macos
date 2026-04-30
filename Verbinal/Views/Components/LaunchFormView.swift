@@ -8,8 +8,13 @@ import SwiftUI
 
 struct LaunchFormView: View {
     @Bindable var model: SessionLaunchModel
+    /// Optional headless model — when provided, a third "Headless"
+    /// tab appears. `nil` keeps the form to its prior shape, used by
+    /// surfaces that don't load a HeadlessService (e.g. tests / iOS).
+    var headlessModel: HeadlessLaunchModel?
     var onLaunched: (() -> Void)?
     @State private var showLaunchProgress = false
+    @State private var showHeadlessLaunchProgress = false
     @State private var selectedTab = 0
 
     var body: some View {
@@ -39,14 +44,19 @@ struct LaunchFormView: View {
                     Picker("", selection: $selectedTab) {
                         Text("Standard").tag(0)
                         Text("Advanced").tag(1)
+                        if headlessModel != nil {
+                            Text("Headless").tag(2)
+                        }
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 200)
+                    .frame(width: headlessModel != nil ? 280 : 200)
 
                     if selectedTab == 0 {
                         standardForm
-                    } else {
+                    } else if selectedTab == 1 {
                         advancedForm
+                    } else if selectedTab == 2, let hm = headlessModel {
+                        headlessForm(hm)
                     }
                 }
 
@@ -75,6 +85,37 @@ struct LaunchFormView: View {
             Button("Skip", role: .cancel) { model.skipRecentLaunchSave() }
         } message: {
             Text("'\(model.pendingRecentLaunch?.name ?? "")' already exists in recent launches. Replace it?")
+        }
+    }
+
+    // MARK: - Headless Form (the third tab)
+
+    @ViewBuilder
+    private func headlessForm(_ hm: HeadlessLaunchModel) -> some View {
+        HeadlessLaunchTabView(
+            model: hm,
+            imagesByProject: model.images(forType: "headless"),
+            coreOptions: model.coreOptions,
+            ramOptions: model.ramOptions,
+            gpuOptions: model.gpuOptions,
+            onLaunch: {
+                Task {
+                    await hm.launch()
+                    if hm.launchSuccess {
+                        onLaunched?()
+                    }
+                }
+            }
+        )
+        if hm.hasError {
+            Label(hm.errorMessage, systemImage: "xmark.circle")
+                .font(.caption)
+                .foregroundStyle(.red)
+        }
+        if hm.launchSuccess, !hm.lastLaunchedJobIDs.isEmpty {
+            Label(hm.launchStatus, systemImage: "checkmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.green)
         }
     }
 
