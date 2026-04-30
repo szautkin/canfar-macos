@@ -278,9 +278,14 @@ struct DownloadedFilesView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(obs.targetName.isEmpty ? obs.observationID : obs.targetName)
-                    .font(.caption)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(obs.targetName.isEmpty ? obs.observationID : obs.targetName)
+                        .font(.caption)
+                        .lineLimit(1)
+                    if let attribution = obs.agentAttribution {
+                        AgentAttributionBadge(attribution: attribution)
+                    }
+                }
                 HStack(spacing: 4) {
                     Text(obs.instrument)
                     if !obs.filter.isEmpty {

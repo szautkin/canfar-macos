@@ -22,19 +22,71 @@ struct ProposalStripSheet: View {
         appState.agentsService.pendingProposals
     }
 
+    @State private var selectedTab: Tab = .pending
+
+    private enum Tab: String, Hashable {
+        case pending, history
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
+            tabPicker
             Divider()
-            content
+            switch selectedTab {
+            case .pending: content
+            case .history: historyContent
+            }
             Divider()
             footer
         }
         .frame(minWidth: 540, idealWidth: 600, minHeight: 360, idealHeight: 480)
         .task {
-            // Pull a fresh snapshot when the sheet opens.
+            // Pull a fresh snapshot when the sheet opens. If nothing's
+            // pending, default the user to the History tab so they
+            // see what the agent has done recently.
             await appState.agentsService.refreshPending()
+            if proposals.isEmpty,
+               !appState.agentsService.activityStore.entries.isEmpty {
+                selectedTab = .history
+            }
         }
+    }
+
+    private var tabPicker: some View {
+        HStack(spacing: 0) {
+            tabButton("Pending", count: proposals.count, tab: .pending)
+            tabButton("History", count: appState.agentsService.activityStore.entries.count, tab: .history)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
+    private func tabButton(_ label: String, count: Int, tab: Tab) -> some View {
+        Button {
+            selectedTab = tab
+        } label: {
+            HStack(spacing: 6) {
+                Text(label)
+                    .font(.callout.weight(selectedTab == tab ? .semibold : .regular))
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.caption2.monospacedDigit())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(.secondary.opacity(0.15), in: Capsule())
+                }
+            }
+            .foregroundStyle(selectedTab == tab ? Color.primary : .secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(selectedTab == tab ? Color.accentColor.opacity(0.15) : .clear)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var header: some View {
@@ -54,6 +106,79 @@ struct ProposalStripSheet: View {
                 .keyboardShortcut(.cancelAction)
         }
         .padding(16)
+    }
+
+    @ViewBuilder
+    private var historyContent: some View {
+        let entries = appState.agentsService.activityStore.entries
+        if entries.isEmpty {
+            VStack(spacing: 8) {
+                Image(systemName: "clock")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.tertiary)
+                Text("No agent activity yet.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Text("Applied proposals, rejections, and live UI ops the\nagent has performed will appear here.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            List {
+                ForEach(entries) { entry in
+                    historyRow(entry)
+                }
+            }
+            .listStyle(.inset)
+        }
+    }
+
+    private func historyRow(_ entry: AgentActivityEntry) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: outcomeIcon(entry.outcome))
+                .foregroundStyle(outcomeColor(entry.outcome))
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.summary)
+                    .font(.callout)
+                    .lineLimit(2)
+                HStack(spacing: 8) {
+                    Label(entry.kind, systemImage: "function")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Label(entry.originLabel, systemImage: "personalhotspot")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Label(Self.relativeTime.localizedString(for: entry.timestamp,
+                                                             relativeTo: Date()),
+                          systemImage: "clock")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func outcomeIcon(_ o: AgentActivityEntry.Outcome) -> String {
+        switch o {
+        case .applied:    return "checkmark.circle.fill"
+        case .rejected:   return "xmark.circle.fill"
+        case .withdrawn:  return "arrow.uturn.backward.circle.fill"
+        case .live:       return "wand.and.rays"
+        }
+    }
+
+    private func outcomeColor(_ o: AgentActivityEntry.Outcome) -> Color {
+        switch o {
+        case .applied:    return .green
+        case .rejected:   return .orange
+        case .withdrawn:  return .secondary
+        case .live:       return .accentColor
+        }
     }
 
     @ViewBuilder

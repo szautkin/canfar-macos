@@ -480,6 +480,28 @@ private struct AgentsSettingsTab: View {
                 }
 
                 Section {
+                    HStack {
+                        Label("\(appState.agentsService.activityStore.entries.count) entries",
+                              systemImage: "clock.arrow.circlepath")
+                            .font(.callout)
+                        Spacer()
+                        Button("Clear", role: .destructive) {
+                            appState.agentsService.activityStore.clear()
+                        }
+                        .controlSize(.small)
+                        .disabled(appState.agentsService.activityStore.entries.isEmpty)
+                    }
+                } header: {
+                    Text("Activity History")
+                } footer: {
+                    Text("Persistent breadcrumb of agent applies, rejections, and " +
+                         "live UI ops. Bodies / payloads are never stored — only " +
+                         "the same compact summary that showed in the proposal strip.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                Section {
                     auditList
                 } header: {
                     Text("Recent Activity")
