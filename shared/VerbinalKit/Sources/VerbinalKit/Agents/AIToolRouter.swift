@@ -30,10 +30,16 @@ public actor AIToolRouter {
     private let manifest: [AIToolDefinition]
     private let externalManifest: [AIToolDefinition]
     private let auditSink: any AuditSink
+    /// Optional hook installed by the host. When set, the router
+    /// consults it for write proposals — `true` means the tool call
+    /// returns a synchronous applied result, not a queued proposal.
+    /// `nil` preserves the strict proposal-strip flow.
+    private let autoApplyHook: AutoApplyHook?
 
     public init(
         tools: [any AITool],
-        auditSink: any AuditSink = LoggingAuditSink()
+        auditSink: any AuditSink = LoggingAuditSink(),
+        autoApplyHook: AutoApplyHook? = nil
     ) {
         var table: [String: any AITool] = [:]
         var metadata: [String: ToolMetadata] = [:]
@@ -56,6 +62,7 @@ public actor AIToolRouter {
         self.manifest = manifest
         self.externalManifest = externalManifest
         self.auditSink = auditSink
+        self.autoApplyHook = autoApplyHook
     }
 
     /// Manifest as seen by an external (MCP) client. Filters out tools
@@ -122,6 +129,35 @@ public actor AIToolRouter {
                           durationMS: durationMS)
                 return result
             case .semanticWrite, .destructive:
+                // Auto-apply path: if the host opts this proposal in,
+                // run the apply synchronously and return success. The
+                // budget gate is bypassed by design — auto-applied
+                // writes don't pile up in the strip, so the original
+                // "cap pending strip items" rationale doesn't apply.
+                if let hook = autoApplyHook,
+                   await hook.shouldAutoApply(meta.verbClass, proposal) {
+                    do {
+                        try await hook.apply(proposal.id)
+                        emitAudit(name: name, args: rawArguments, context: context,
+                                  outcome: .applied(proposal.id),
+                                  verbClass: meta.verbClass,
+                                  durationMS: msSince(started))
+                        let ack = AutoAppliedAck(proposal: proposal)
+                        let body = (try? JSONEncoder().encode(ack)) ?? Data()
+                        return .data(body)
+                    } catch {
+                        // The applier threw — leave the proposal in the
+                        // queue so the strip can show it; the user
+                        // decides whether to retry or reject. Audit
+                        // records the failure.
+                        emitAudit(name: name, args: rawArguments, context: context,
+                                  outcome: .failed(tag: "autoApplyFailed"),
+                                  verbClass: meta.verbClass,
+                                  durationMS: msSince(started))
+                        return .failed(.backendError("auto-apply failed: \(error)"))
+                    }
+                }
+
                 let accepted = await context.budget.tryAccept(origin: context.origin)
                 if accepted {
                     emitAudit(name: name, args: rawArguments, context: context,

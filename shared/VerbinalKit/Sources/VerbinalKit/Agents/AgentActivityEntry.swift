@@ -33,6 +33,13 @@ public struct AgentActivityEntry: Codable, Sendable, Equatable, Identifiable {
     /// Final outcome — drives the icon in the activity feed:
     /// `applied` / `rejected` / `withdrawn` / `live`.
     public let outcome: Outcome
+    /// `true` when the apply ran via the auto-apply hook (autonomous
+    /// trusted-client path) instead of the user clicking Apply in the
+    /// strip. Always `false` for `rejected` / `withdrawn` / `live`
+    /// outcomes. Drives a subtly different badge in the wand popover
+    /// so the user can tell autonomous applies apart from confirmed
+    /// applies after the fact.
+    public let autoApplied: Bool
 
     public enum Outcome: String, Codable, Sendable, Equatable {
         /// Write proposal, user clicked Apply, applier succeeded.
@@ -54,7 +61,8 @@ public struct AgentActivityEntry: Codable, Sendable, Equatable, Identifiable {
         originFingerprint: String,
         originLabel: String,
         proposalID: UUID? = nil,
-        outcome: Outcome
+        outcome: Outcome,
+        autoApplied: Bool = false
     ) {
         self.id = id
         self.timestamp = timestamp
@@ -64,20 +72,50 @@ public struct AgentActivityEntry: Codable, Sendable, Equatable, Identifiable {
         self.originLabel = originLabel
         self.proposalID = proposalID
         self.outcome = outcome
+        self.autoApplied = autoApplied
+    }
+
+    // MARK: - Codable (back-compat)
+
+    private enum CodingKeys: String, CodingKey {
+        case id, timestamp, kind, summary, originFingerprint, originLabel,
+             proposalID, outcome, autoApplied
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.timestamp = try c.decode(Date.self, forKey: .timestamp)
+        self.kind = try c.decode(String.self, forKey: .kind)
+        self.summary = try c.decode(String.self, forKey: .summary)
+        self.originFingerprint = try c.decode(String.self, forKey: .originFingerprint)
+        self.originLabel = try c.decode(String.self, forKey: .originLabel)
+        self.proposalID = try c.decodeIfPresent(UUID.self, forKey: .proposalID)
+        self.outcome = try c.decode(Outcome.self, forKey: .outcome)
+        // Pre-autonomy entries on disk lack this field; treat as
+        // strip-confirmed (the only path that existed before).
+        self.autoApplied = try c.decodeIfPresent(Bool.self, forKey: .autoApplied) ?? false
     }
 
     // MARK: - Factories
 
     /// Build an `applied` entry from the proposal that just landed.
     /// Convenience for appliers — they all need this exact shape.
-    public static func applied(proposal: PendingProposal, kind: String) -> AgentActivityEntry {
+    /// `autoApplied` is `false` by default (strip click); the
+    /// auto-apply path patches the entry after the applier returns.
+    public static func applied(
+        proposal: PendingProposal,
+        kind: String,
+        autoApplied: Bool = false
+    ) -> AgentActivityEntry {
         AgentActivityEntry(
             kind: kind,
             summary: proposal.summary,
             originFingerprint: AuditOrigin.from(proposal.origin).fingerprintString,
             originLabel: proposal.origin.label,
             proposalID: proposal.id,
-            outcome: .applied
+            outcome: .applied,
+            autoApplied: autoApplied
         )
     }
 

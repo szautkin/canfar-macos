@@ -159,6 +159,129 @@ final class AIToolRouterTests: XCTestCase {
         XCTAssertEqual(pending.count, 2, "withdrawn proposal must not remain in queue")
     }
 
+    // MARK: - Auto-apply hook
+
+    private actor ApplyCallCounter {
+        var count = 0
+        var lastID: UUID?
+        var shouldThrow = false
+
+        func setShouldThrow(_ v: Bool) { shouldThrow = v }
+
+        func bumpAndRecord(_ id: UUID) throws {
+            count += 1
+            lastID = id
+            if shouldThrow {
+                throw ProposalApplyError.backendError("boom")
+            }
+        }
+    }
+
+    func testAutoApplyHookConvertsProposalToData() async throws {
+        let counter = ApplyCallCounter()
+        let store = InMemoryProposalStore()
+        let hook = AutoApplyHook(
+            shouldAutoApply: { _, _ in true },
+            apply: { id in
+                try await counter.bumpAndRecord(id)
+                _ = await store.markApplied(id)
+            }
+        )
+        let router = AIToolRouter(
+            tools: [WriteSentinelTool()],
+            auditSink: CapturingAuditSink(),
+            autoApplyHook: hook
+        )
+        let context = ctx(.external(clientID: "trusted"),
+                          proposals: store,
+                          budget: ProposalBudget(limit: 8))
+
+        let result = await router.dispatch(name: "write_sentinel",
+                                           rawArguments: Data("{}".utf8),
+                                           context: context)
+
+        guard case .data(let bytes) = result else {
+            return XCTFail("expected .data, got \(result)")
+        }
+        let ack = try JSONDecoder().decode(AutoAppliedAck.self, from: bytes)
+        XCTAssertTrue(ack.applied)
+        XCTAssertEqual(ack.kind, "sentinel")
+
+        let calls = await counter.count
+        XCTAssertEqual(calls, 1)
+
+        // Auto-apply path should NOT consume budget — verify the next
+        // call still goes through (with limit=1 we'd otherwise be
+        // capped if budget had been touched).
+        let budget = ProposalBudget(limit: 1)
+        let context2 = ctx(.external(clientID: "trusted-2"),
+                           proposals: InMemoryProposalStore(),
+                           budget: budget)
+        for _ in 0..<3 {
+            let r = await router.dispatch(name: "write_sentinel",
+                                          rawArguments: Data("{}".utf8),
+                                          context: context2)
+            guard case .data = r else {
+                return XCTFail("auto-apply should bypass budget; got \(r)")
+            }
+        }
+    }
+
+    func testAutoApplyHookFalsePreservesStripPath() async {
+        let store = InMemoryProposalStore()
+        let counter = ApplyCallCounter()
+        let hook = AutoApplyHook(
+            shouldAutoApply: { _, _ in false },
+            apply: { id in try await counter.bumpAndRecord(id) }
+        )
+        let router = AIToolRouter(
+            tools: [WriteSentinelTool()],
+            auditSink: CapturingAuditSink(),
+            autoApplyHook: hook
+        )
+        let context = ctx(.external(clientID: "untrusted"),
+                          proposals: store,
+                          budget: ProposalBudget(limit: 8))
+
+        let result = await router.dispatch(name: "write_sentinel",
+                                           rawArguments: Data("{}".utf8),
+                                           context: context)
+
+        guard case .proposed = result else {
+            return XCTFail("expected .proposed when hook says no, got \(result)")
+        }
+        let calls = await counter.count
+        XCTAssertEqual(calls, 0, "apply must not run when hook says no")
+    }
+
+    func testAutoApplyHookFailureLeavesProposalInQueue() async {
+        let store = InMemoryProposalStore()
+        let counter = ApplyCallCounter()
+        await counter.setShouldThrow(true)
+        let hook = AutoApplyHook(
+            shouldAutoApply: { _, _ in true },
+            apply: { id in try await counter.bumpAndRecord(id) }
+        )
+        let router = AIToolRouter(
+            tools: [WriteSentinelTool()],
+            auditSink: CapturingAuditSink(),
+            autoApplyHook: hook
+        )
+        let context = ctx(.external(clientID: "trusted"),
+                          proposals: store,
+                          budget: ProposalBudget(limit: 8))
+
+        let result = await router.dispatch(name: "write_sentinel",
+                                           rawArguments: Data("{}".utf8),
+                                           context: context)
+
+        guard case .failed(.backendError) = result else {
+            return XCTFail("expected backendError on apply throw, got \(result)")
+        }
+        let pending = await store.list(origin: nil)
+        XCTAssertEqual(pending.count, 1, "failed auto-apply must leave proposal in queue for manual review")
+    }
+
     func testAuditSinkRecordsEachCall() async {
         let sink = CapturingAuditSink()
         let router = makeRouter([EchoReadTool()], sink: sink)

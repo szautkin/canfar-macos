@@ -44,6 +44,19 @@ final class AgentsService {
         }
     }
 
+    /// When `true`, write proposals from connected agents auto-apply
+    /// without requiring a strip click — the agent gets a synchronous
+    /// success result instead of a "queued" placeholder. Defaults to
+    /// `true` once `isEnabled` is on, on the philosophy that opting in
+    /// to MCP at all is the trust signal; the user can dial it back
+    /// here if they want strip-confirmed writes again. Persisted.
+    var autoApplyWrites: Bool {
+        didSet {
+            guard oldValue != autoApplyWrites else { return }
+            UserDefaults.standard.set(autoApplyWrites, forKey: Self.autoApplyKey)
+        }
+    }
+
     private(set) var isRunning: Bool = false
     private(set) var connectionCount: Int = 0
     private(set) var lastError: String?
@@ -88,6 +101,7 @@ final class AgentsService {
     // MARK: - Init
 
     private static let userDefaultsKey = "com.codebg.Verbinal.agents.allowExternalAgents"
+    private static let autoApplyKey = "com.codebg.Verbinal.agents.autoApplyWrites"
 
     init(
         identity: MCPBridgeService.ServerIdentity = MCPBridgeService.ServerIdentity(
@@ -104,6 +118,11 @@ final class AgentsService {
         self.eventLog = log
         self.proposals = InMemoryProposalStore(eventLog: log)
         self.isEnabled = UserDefaults.standard.bool(forKey: Self.userDefaultsKey)
+        // First-launch default for the autonomy toggle: ON. Subsequent
+        // launches honour whatever the user last set. UserDefaults
+        // returns false for missing bools, so we register a default.
+        UserDefaults.standard.register(defaults: [Self.autoApplyKey: true])
+        self.autoApplyWrites = UserDefaults.standard.bool(forKey: Self.autoApplyKey)
     }
 
     // MARK: - Tool registration
@@ -130,7 +149,10 @@ final class AgentsService {
 
     /// Apply a pending proposal. Looks up the applier, invokes it, then
     /// marks the proposal applied on success. Surfaces typed errors.
-    func applyProposal(_ id: UUID) async throws {
+    /// `autoApplied` is set by the trusted-client auto-apply hook so
+    /// the activity feed entry can be tagged for the wand badge — the
+    /// applier itself is unchanged.
+    func applyProposal(_ id: UUID, autoApplied: Bool = false) async throws {
         let pending = await proposals.list(origin: nil)
         guard let proposal = pending.first(where: { $0.id == id }) else {
             throw ProposalApplyError.backendError("proposal not pending: \(id)")
@@ -146,6 +168,11 @@ final class AgentsService {
             throw ProposalApplyError.backendError("\(error)")
         }
         _ = await proposals.markApplied(id)
+        if autoApplied {
+            // Patch the activity entry the applier just appended — the
+            // applier doesn't have visibility into how it was invoked.
+            activityStore.markAutoApplied(forProposal: id)
+        }
         await refreshPending()
     }
 
@@ -201,7 +228,19 @@ final class AgentsService {
         // captured). Audit entries fan out to our capturing sink AND
         // the os.log sink for system-wide visibility.
         let multiSink = MultiplexAuditSink(sinks: [auditSink, LoggingAuditSink()])
-        let router = AIToolRouter(tools: tools, auditSink: multiSink)
+        let hook = AutoApplyHook(
+            shouldAutoApply: { [weak self] _, _ in
+                guard let self else { return false }
+                return await MainActor.run { self.autoApplyWrites }
+            },
+            apply: { [weak self] id in
+                guard let self else {
+                    throw ProposalApplyError.backendError("AgentsService deallocated")
+                }
+                try await self.applyProposal(id, autoApplied: true)
+            }
+        )
+        let router = AIToolRouter(tools: tools, auditSink: multiSink, autoApplyHook: hook)
         self.router = router
 
         // Compute a fresh socket path for this app instance. Including

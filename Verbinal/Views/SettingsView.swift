@@ -450,6 +450,13 @@ private struct AgentsSettingsTab: View {
         )
     }
 
+    private var autoApplyWrites: Binding<Bool> {
+        Binding(
+            get: { appState.agentsService.autoApplyWrites },
+            set: { appState.agentsService.autoApplyWrites = $0 }
+        )
+    }
+
     var body: some View {
         Form {
             Section {
@@ -461,10 +468,27 @@ private struct AgentsSettingsTab: View {
             } footer: {
                 Text("When enabled, MCP-compatible AI clients (Claude Desktop, etc.) " +
                      "can call into Verbinal via the bundled `canfar-mcp` helper. " +
-                     "Read tools run directly; writes are queued as proposals you " +
-                     "review in the strip before they apply.")
+                     "Read tools run directly; writes are subject to the autonomy " +
+                     "setting below.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+            }
+
+            if appState.agentsService.isEnabled {
+                Section {
+                    Toggle("Auto-apply agent writes", isOn: autoApplyWrites)
+                        .toggleStyle(.switch)
+                } header: {
+                    Text("Autonomy")
+                } footer: {
+                    Text("On: connected agents apply their writes immediately " +
+                         "(saved queries, notes, downloads, sessions, VOSpace edits, " +
+                         "deletions). Off: every write queues to the proposal strip " +
+                         "and waits for your Apply click. View-state changes " +
+                         "(navigation, search focus) and reads always run live.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             if appState.agentsService.isRunning {
@@ -593,6 +617,7 @@ private struct AgentsSettingsTab: View {
         switch entry.outcome {
         case .ok, .data: return "checkmark.circle"
         case .proposed: return "tray.and.arrow.down"
+        case .applied: return "wand.and.stars"
         case .failed: return "exclamationmark.triangle"
         }
     }
@@ -601,6 +626,7 @@ private struct AgentsSettingsTab: View {
         switch entry.outcome {
         case .ok, .data: return .green
         case .proposed: return .blue
+        case .applied: return .purple
         case .failed: return .orange
         }
     }

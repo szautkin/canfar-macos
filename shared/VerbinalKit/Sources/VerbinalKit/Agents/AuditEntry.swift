@@ -112,6 +112,11 @@ public enum AuditOutcome: Codable, Sendable, Equatable {
     /// emitted later when the user applies/rejects (ADR pattern from
     /// VT: `agent_audit.payload_hash` ↔ `proposals.request_id`).
     case proposed(UUID)
+    /// Proposal enqueued *and* auto-applied in the same dispatch. Used
+    /// by the autonomous-trusted-client path. Carries the proposal id
+    /// so audit rows can be joined back to the same proposal record
+    /// the activity store and event log reference.
+    case applied(UUID)
     case failed(tag: String)
 
     public var tag: String {
@@ -119,6 +124,7 @@ public enum AuditOutcome: Codable, Sendable, Equatable {
         case .ok: return "ok"
         case .data: return "data"
         case .proposed(let id): return "proposed(\(id.uuidString))"
+        case .applied(let id): return "applied(\(id.uuidString))"
         case .failed(let t): return "failed(\(t))"
         }
     }
