@@ -37,7 +37,7 @@ struct LaunchSessionTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "launch_session",
-        description: "Launch a new Skaha science-platform session. Type ∈ {notebook, desktop, firefly, carta, contributed}. cores/ram/gpus default to 2/8/0 if omitted.",
+        description: "Launch a new Skaha science-platform session. Type ∈ {notebook, desktop, firefly, carta, contributed}. The `image` MUST be a value returned by `list_session_images` for this user — hand-typed strings (e.g. 'images.canfar.net/skaha/notebook:latest') WILL fail with HTTP 400 'unknown or private image'. cores/ram/gpus default to 2/8/0 if omitted; pass cores=0 (or omit and rely on the default after rejection retry) to request the shared/flexible resource pool.",
         schema: #"""
         {
           "type": "object",

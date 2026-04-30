@@ -107,7 +107,7 @@ struct BulkUpdateObservationNotesTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "bulk_update_observation_notes",
-        description: "Update notes on up to 50 observations as ONE proposal. Same per-item shape as `update_observation_note`. Use whenever annotating a sibling group (e.g. all 5 epochs of a time series) — costs one budget slot, lands all atomically.",
+        description: "Update notes on up to 50 observations as ONE proposal envelope. Same per-item shape as `update_observation_note`. Use whenever annotating a sibling group (e.g. all 5 epochs of a time series) — lands atomically (all-or-nothing) and counts as a single proposal in strip-confirm mode.",
         schema: #"""
         {
           "type": "object",

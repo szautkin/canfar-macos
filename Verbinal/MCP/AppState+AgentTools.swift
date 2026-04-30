@@ -53,6 +53,7 @@ extension AppState {
         tools.append(makeListSessionsTool())
         tools.append(makeGetSessionTool())
         tools.append(ListSessionTypesTool())
+        tools.append(makeListSessionImagesTool())
         tools.append(makeListRecentLaunchesTool(store: recentLaunchStore))
 
         // FITS domain — uses the already-instantiated observationStore
@@ -231,6 +232,18 @@ extension AppState {
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
             let raw = try await self.sessionService.getSessions()
             return raw.map(Self.flatten)
+        })
+    }
+
+    private func makeListSessionImagesTool() -> ListSessionImagesTool {
+        // Capture the existing ImageService — it already targets the
+        // user-scoped Skaha catalogue and reuses the auth-aware
+        // NetworkClient. Returning the raw (id, types) tuples keeps
+        // the tool's Output struct decoupled from the model layer.
+        let service = self.imageService
+        return ListSessionImagesTool(fetch: {
+            let raw = try await service.getImages()
+            return raw.map { (id: $0.id, types: $0.types) }
         })
     }
 

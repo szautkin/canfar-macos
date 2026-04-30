@@ -127,7 +127,7 @@ struct DownloadObservationsBulkTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_observations_bulk",
-        description: "Download up to 50 observations as one proposal. The applier downloads each in sequence; first failure aborts the rest.",
+        description: "Download up to 50 observations as one proposal envelope. The applier downloads each in sequence; first failure aborts the rest. Note: total in-flight time can exceed the MCP request timeout for large batches — prefer staging in groups of ~10 if the items are big FITS files.",
         schema: #"""
         {
           "type": "object",

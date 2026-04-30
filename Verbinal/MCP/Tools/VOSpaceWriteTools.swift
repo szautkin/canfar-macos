@@ -28,7 +28,7 @@ struct UploadToVOSpaceTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "upload_to_vospace",
-        description: "Upload a downloaded observation's local file to a VOSpace path.",
+        description: "Upload a downloaded observation's local file to a VOSpace path. Synchronous: a large FITS (≳ 100 MB) can exceed the MCP request timeout — the transfer often continues app-side after the timeout, so on `Request timed out` re-poll `list_vospace_path` after 30-60s before retrying.",
         schema: #"""
         {
           "type": "object",
@@ -76,7 +76,7 @@ struct DownloadFromVOSpaceTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_from_vospace",
-        description: "Download a VOSpace file to the user's Downloads folder.",
+        description: "Download a VOSpace file to the user's Downloads folder. Synchronous: large files (≳ 100 MB) can exceed the MCP request timeout — on `Request timed out` re-check the Downloads folder before retrying, the bytes are often there.",
         schema: #"""
         {
           "type": "object",

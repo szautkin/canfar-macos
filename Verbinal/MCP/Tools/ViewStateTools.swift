@@ -35,7 +35,7 @@ struct OpenFITSFileTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "open_fits_file",
-        description: "Open a downloaded observation's FITS file in the in-app viewer. Live-applied (no proposal); the viewer tab opens immediately.",
+        description: "Open a downloaded observation's FITS file in the in-app viewer AND navigate the user's window to the FITS Viewer mode (so they actually see what you opened). Live-applied; no proposal. Argument is the downloaded-observation UUID returned by `list_downloaded_observations`, not a publisher_id.",
         schema: #"""
         {
           "type": "object",

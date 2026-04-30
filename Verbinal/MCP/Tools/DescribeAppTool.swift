@@ -85,6 +85,7 @@ struct DescribeAppTool: JSONReadTool {
         `get_observation_notes`.
       * `list_vospace_path`, `get_vospace_node`, `get_vospace_quota`.
       * `list_sessions`, `get_session`, `list_session_types`,
+        `list_session_images` (call before `launch_session`!),
         `list_recent_launches`.
       * `get_fits_header`, `get_fits_wcs` — local-file FITS introspection.
       * `list_pending_proposals`, `get_proposal_state`, `list_events` —
@@ -135,14 +136,29 @@ struct DescribeAppTool: JSONReadTool {
 
     ### Live ops (always run, no proposal either way)
 
-      * `set_search_focus`, `open_fits_file` — view-state nudges.
+      * `set_search_focus` — pre-positions the search form on RA/Dec.
+        Visible the next time the user opens Search; doesn't yank
+        them out of their current screen.
+      * `open_fits_file` — opens a downloaded observation's FITS in
+        the in-app viewer AND navigates the user's window to the
+        viewer mode immediately (so they actually see what you
+        opened — no silent action).
 
     ## Anti-features
 
       * No multi-window control (you talk to "the app", not a specific
         window).
       * No streaming progress in v1 — long ops complete synchronously
-        (cap your batches: bulk download is limited to 10 files).
+        within the MCP request window. Concrete caps: bulk download
+        and bulk-note are 50 items each; single-file upload/download
+        of large files (≳ 100 MB) can exceed the MCP transport timeout
+        and return `Request timed out` even though the transfer is
+        still progressing app-side. Prefer many small operations to
+        one giant one until streaming progress lands.
+      * No registry credentials over MCP — if you need a private
+        image, ask the user to launch it once via the in-app form
+        (which has the credential UI) and then re-use that image
+        from `list_session_images` going forward.
 
     ## Workflow shape
 
@@ -150,5 +166,10 @@ struct DescribeAppTool: JSONReadTool {
     mode. Re-read `get_current_view` if you're uncertain about the mode.
     Don't pile up writes that depend on each other faster than the
     backend can land them; reads are cheap, writes commit real state.
+
+    Specifically: before `launch_session`, ALWAYS call
+    `list_session_images` (optionally with `type` filter) and pick a
+    real `id` from the result. Hand-typing image strings is the single
+    most common cause of avoidable launch failures.
     """
 }
