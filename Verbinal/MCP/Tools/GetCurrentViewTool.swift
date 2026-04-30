@@ -45,15 +45,24 @@ struct GetCurrentViewTool: JSONReadTool {
 
         /// Live count of pending agent proposals in the strip — useful
         /// so an agent doesn't fire writes that will instantly trip
-        /// the per-turn cap.
+        /// the per-turn cap. In auto-apply mode this is normally zero
+        /// (auto-applied writes never queue); a non-zero value means
+        /// either the user has toggled auto-apply off or some prior
+        /// auto-apply failed and left a residual.
         let pendingProposalsCount: Int
         /// True when the user has enabled the MCP listener.
         let agentsEnabled: Bool
+        /// True when write proposals auto-apply (default). False when
+        /// the user has switched to strip-confirm mode — your writes
+        /// will queue and wait for an Apply click. Re-read this if
+        /// you've been running for a while; the user can flip it
+        /// between turns.
+        let autoApplyEnabled: Bool
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_current_view",
-        description: "Return what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer), auth state, search-form focus when in Search, open FITS files when in FITS Viewer, plus pending-proposal count so you can pace writes.",
+        description: "Return what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer), auth state, search-form focus when in Search, open FITS files when in FITS Viewer, pending-proposal count, and `autoApplyEnabled` (autonomy toggle — drives whether your write tool calls return applied results or queue for strip review).",
         schema: #"""
         {
           "type": "object",

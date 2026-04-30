@@ -159,7 +159,7 @@ struct DeleteVOSpaceNodeTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_vospace_node",
-        description: "Permanently delete a VOSpace node (file or folder). Destructive — user must confirm in strip.",
+        description: "Permanently delete a VOSpace node (file or folder). Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
         schema: #"""
         {
           "type": "object",

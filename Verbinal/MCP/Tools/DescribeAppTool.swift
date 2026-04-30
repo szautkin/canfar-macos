@@ -47,7 +47,7 @@ struct DescribeAppTool: JSONReadTool {
     the Canadian Astronomy Data Centre (CADC). It exposes its features over
     MCP so an AI agent can search the archive, inspect observation metadata,
     arrange downloads, and prepare science-platform sessions on the user's
-    behalf — under user-confirmed control.
+    behalf.
 
     ## Primitives
 
@@ -60,14 +60,18 @@ struct DescribeAppTool: JSONReadTool {
         (science / weight / preview / aux).
       * **Session** — a Skaha science-platform container (notebook /
         desktop / firefly / carta). Has a type, container image, and
-        compute resources (cores / RAM / GPU). User-launched.
+        compute resources (cores / RAM / GPU).
       * **VOSpace node** — a file or directory in the user's CADC
         VOSpace storage.
 
-    ## Read surface (call freely, no proposal needed)
+    ## Read surface (call freely)
 
       * `describe_app` — this brief.
       * `get_auth_state` — is the user logged in? what's their displayName?
+      * `get_current_view` — what mode the user is in, what's open, AND
+        the current autonomy mode (`autoApplyEnabled`). Call this once
+        at the start of a session to ground yourself, and re-call if
+        you suspect the user has changed settings.
       * `search_observations` — TAP/ADQL query against CADC's archive.
         Accepts target name (resolved server-side), RA/Dec + radius, or
         free-form ADQL. Always cap maxRec sensibly.
@@ -83,26 +87,58 @@ struct DescribeAppTool: JSONReadTool {
       * `list_sessions`, `get_session`, `list_session_types`,
         `list_recent_launches`.
       * `get_fits_header`, `get_fits_wcs` — local-file FITS introspection.
+      * `list_pending_proposals`, `get_proposal_state`, `list_events` —
+        introspect the proposal lifecycle when in strip-confirm mode.
 
-    ## Write surface (proposal-gated)
+    ## Write surface — TWO MODES, set by user toggle
 
-    Every state-changing tool **enqueues a proposal**. The user reviews it
-    in the strip and clicks **Apply** or **Reject**. You receive back the
-    proposal id and can poll `get_proposal_state`. There's a per-session
-    cap of 8 outstanding proposals — exceed it and your tool call fails
-    with `perTurnProposalCapExceeded`.
+    The user owns a single Settings switch ("Auto-apply agent writes"),
+    default ON once MCP itself is enabled. Read the current value via
+    `get_current_view.autoApplyEnabled`.
+
+    ### Auto-apply mode (default) — autonomous
+
+    Your write tool call runs the apply synchronously and returns
+    `{ applied: true, proposalID, kind, summary }`. The mutation has
+    already happened. Confirm the outcome to the user in past tense
+    ("Saved your query.", "Notes updated on 5 epochs.", "Launched
+    notebook session, id=…"). Do NOT say "I queued a proposal", "waiting
+    for your approval", or "review and Apply" — the strip is empty
+    because there is nothing to review. Per-turn budget does NOT apply
+    (auto-applied writes don't pile up in the strip), so you can pace at
+    the speed the user can read.
+
+    ### Strip-confirm mode — user explicitly opted into review
+
+    Your write tool call returns `{ proposalID, kind, summary }` and the
+    proposal lands in the strip. Tell the user it's awaiting their Apply
+    click. Optionally poll `get_proposal_state(id)` if you need the
+    outcome before continuing. Per-turn cap is 8 outstanding proposals;
+    exceed it and you get `perTurnProposalCapExceeded` with the offending
+    proposal already withdrawn (no partial pile-up).
+
+    ### Tools (same set, both modes)
 
       * `save_query`, `update_saved_query`, `delete_saved_query`.
       * `download_observation` (single), `download_observations_bulk`
-        (many → ONE proposal).
-      * `update_observation_note`.
+        (many → one proposal envelope).
+      * `update_observation_note`, `bulk_update_observation_notes`
+        (up to 50 → one envelope).
       * `upload_to_vospace`, `download_from_vospace`, `vospace_mkdir`,
         `delete_vospace_node`.
-      * `launch_session`, `delete_session`.
+      * `launch_session`, `delete_session`, `clear_research_archive`.
+
+    Destructive tools (`delete_*`, `clear_*`) follow the same toggle as
+    semantic writes — there is no separate confirm step for destructive
+    operations when auto-apply is on. Be deliberate; the user is trusting
+    you with their data.
+
+    ### Live ops (always run, no proposal either way)
+
+      * `set_search_focus`, `open_fits_file` — view-state nudges.
 
     ## Anti-features
 
-      * No autonomous downloads / launches — every write is user-gated.
       * No multi-window control (you talk to "the app", not a specific
         window).
       * No streaming progress in v1 — long ops complete synchronously
@@ -110,8 +146,9 @@ struct DescribeAppTool: JSONReadTool {
 
     ## Workflow shape
 
-    Read first → propose write → wait for the user → continue. Don't loop
-    on a write without checking `get_proposal_state`. Don't pile up
-    proposals; the cap is there to keep the user's strip readable.
+    Read first → write → confirm outcome in the language that matches the
+    mode. Re-read `get_current_view` if you're uncertain about the mode.
+    Don't pile up writes that depend on each other faster than the
+    backend can land them; reads are cheap, writes commit real state.
     """
 }

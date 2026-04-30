@@ -333,7 +333,7 @@ struct DeleteDownloadedObservationTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_downloaded_observation",
-        description: "Remove a downloaded observation's metadata, optionally deleting the local file. Destructive — user must confirm in strip.",
+        description: "Remove a downloaded observation's metadata, optionally deleting the local file. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
         schema: #"""
         {
           "type": "object",

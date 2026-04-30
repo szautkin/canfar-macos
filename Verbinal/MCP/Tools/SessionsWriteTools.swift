@@ -132,7 +132,7 @@ struct DeleteSessionTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_session",
-        description: "Terminate a running Skaha session. Destructive — user must confirm in strip.",
+        description: "Terminate a running Skaha session. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
         schema: #"""
         {
           "type": "object",
@@ -187,7 +187,7 @@ struct ClearResearchArchiveTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "clear_research_archive",
-        description: "Remove ALL downloaded-observation metadata records. Does not touch local files. Destructive — user confirms in strip.",
+        description: "Remove ALL downloaded-observation metadata records. Does not touch local files. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
         schema: #"""
         {
           "type": "object",

@@ -107,7 +107,7 @@ final class AgentsService {
         identity: MCPBridgeService.ServerIdentity = MCPBridgeService.ServerIdentity(
             name: "Verbinal",
             version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
-            instructions: "Use describe_app for an overview of available tools and the proposal model."
+            instructions: "Call `describe_app` for the tool surface and the autonomy model. Call `get_current_view` to see the user's current screen and `autoApplyEnabled` — it tells you whether your writes apply immediately or queue for the user to review in the strip."
         )
     ) {
         self.identity = identity

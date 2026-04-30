@@ -400,7 +400,8 @@ extension AppState {
                         searchFocusRA: nil, searchFocusDec: nil,
                         openFITSPaths: [],
                         pendingProposalsCount: 0,
-                        agentsEnabled: false
+                        agentsEnabled: false,
+                        autoApplyEnabled: false
                     )
                 }
                 let mode = Self.modeKey(s.currentMode)
@@ -413,7 +414,8 @@ extension AppState {
                     searchFocusDec: s.pendingSearchCoordinate?.dec,
                     openFITSPaths: s.pendingFITSURL.map { [$0.path] } ?? [],
                     pendingProposalsCount: s.agentsService.pendingProposals.count,
-                    agentsEnabled: s.agentsService.isEnabled
+                    agentsEnabled: s.agentsService.isEnabled,
+                    autoApplyEnabled: s.agentsService.autoApplyWrites
                 )
             }
         })
