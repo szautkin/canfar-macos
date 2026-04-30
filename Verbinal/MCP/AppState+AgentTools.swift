@@ -86,6 +86,7 @@ extension AppState {
         // View-state tools — live-applied, no proposal.
         tools.append(makeOpenFITSFileTool(store: observationStore))
         tools.append(makeSetSearchFocusTool())
+        tools.append(makeNavigateToTool())
 
         // Proposal-lifecycle tools — operate on the queue itself.
         tools.append(ListPendingProposalsTool())
@@ -169,6 +170,21 @@ extension AppState {
                     kind: "set_search_focus",
                     summary: String(format: "Focused search on (%.4f°, %+0.4f°)", ra, dec),
                     origin: .external(clientID: "set_search_focus")
+                ))
+            }
+        })
+    }
+
+    private func makeNavigateToTool() -> NavigateToTool {
+        let activity = agentsService.activityStore
+        return NavigateToTool(navigate: { [weak self] mode in
+            guard let self else { return }
+            await MainActor.run {
+                self.navigateTo(mode)
+                activity.append(.live(
+                    kind: "navigate_to",
+                    summary: "Navigated to \(AppState.modeTitle(mode))",
+                    origin: .external(clientID: "navigate_to")
                 ))
             }
         })
@@ -445,7 +461,7 @@ extension AppState {
         }
     }
 
-    private static func modeTitle(_ mode: AppMode) -> String {
+    static func modeTitle(_ mode: AppMode) -> String {
         switch mode {
         case .landing:    return "Landing"
         case .search:     return "Search"

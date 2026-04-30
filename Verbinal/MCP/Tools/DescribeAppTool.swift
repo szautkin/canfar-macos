@@ -136,13 +136,30 @@ struct DescribeAppTool: JSONReadTool {
 
     ### Live ops (always run, no proposal either way)
 
+      * `navigate_to` — switch the user's window to a specific section
+        (landing/search/research/portal/storage/fitsViewer). Use this
+        deliberately to keep the user oriented: "I'll show you the
+        search form now" → call `navigate_to(mode: 'search')` →
+        actually do the next thing. Independent of the
+        "Follow agent activity" toggle; always works.
       * `set_search_focus` — pre-positions the search form on RA/Dec.
-        Visible the next time the user opens Search; doesn't yank
-        them out of their current screen.
+        Visible the next time the user opens Search (or right now if
+        you `navigate_to('search')` afterwards); doesn't yank them
+        out of their current screen on its own.
       * `open_fits_file` — opens a downloaded observation's FITS in
         the in-app viewer AND navigates the user's window to the
         viewer mode immediately (so they actually see what you
         opened — no silent action).
+
+    ### Follow-on navigation (passive, user-controlled)
+
+    Independent of the explicit tools above: when an auto-applied
+    write commits, the app navigates the user's window to the section
+    where the change is visible (Saved queries → Search, observation
+    notes / downloads → Research, VOSpace edits → Storage, sessions →
+    Portal). Default ON; the user can disable in Settings ▸ Agents ▸
+    Autonomy ▸ "Follow agent activity". You can read the live state
+    via the existing `get_current_view.mode` after any write.
 
     ## Anti-features
 

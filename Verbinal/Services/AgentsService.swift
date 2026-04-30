@@ -57,6 +57,25 @@ final class AgentsService {
         }
     }
 
+    /// When `true`, after an auto-applied write the app navigates the
+    /// user's window to the section where the change is visible (saved
+    /// queries → Search, observation notes / downloads → Research,
+    /// VOSpace edits → Storage, sessions → Portal). Default ON so the
+    /// user always sees motion when the agent does work; turn off to
+    /// stay focused. Independent of the agent's explicit
+    /// `navigate_to` tool, which always works.
+    var followAgentActivity: Bool {
+        didSet {
+            guard oldValue != followAgentActivity else { return }
+            UserDefaults.standard.set(followAgentActivity, forKey: Self.followActivityKey)
+        }
+    }
+
+    /// Closure the host wires so the auto-apply path can drive
+    /// navigation. Optional because pre-bootstrap (and in tests) there
+    /// may be no UI to drive. Set by AppState during initialize().
+    var navigator: (@Sendable (AppMode) async -> Void)?
+
     private(set) var isRunning: Bool = false
     private(set) var connectionCount: Int = 0
     private(set) var lastError: String?
@@ -102,6 +121,7 @@ final class AgentsService {
 
     private static let userDefaultsKey = "com.codebg.Verbinal.agents.allowExternalAgents"
     private static let autoApplyKey = "com.codebg.Verbinal.agents.autoApplyWrites"
+    private static let followActivityKey = "com.codebg.Verbinal.agents.followAgentActivity"
 
     init(
         identity: MCPBridgeService.ServerIdentity = MCPBridgeService.ServerIdentity(
@@ -121,8 +141,12 @@ final class AgentsService {
         // First-launch default for the autonomy toggle: ON. Subsequent
         // launches honour whatever the user last set. UserDefaults
         // returns false for missing bools, so we register a default.
-        UserDefaults.standard.register(defaults: [Self.autoApplyKey: true])
+        UserDefaults.standard.register(defaults: [
+            Self.autoApplyKey: true,
+            Self.followActivityKey: true
+        ])
         self.autoApplyWrites = UserDefaults.standard.bool(forKey: Self.autoApplyKey)
+        self.followAgentActivity = UserDefaults.standard.bool(forKey: Self.followActivityKey)
     }
 
     // MARK: - Tool registration
@@ -172,8 +196,40 @@ final class AgentsService {
             // Patch the activity entry the applier just appended — the
             // applier doesn't have visibility into how it was invoked.
             activityStore.markAutoApplied(forProposal: id)
+            // Follow-on navigation: jump the user to the section where
+            // the just-applied change is visible. Gated by the
+            // followAgentActivity toggle so power users can stay
+            // focused. Skipped when the host hasn't wired a navigator
+            // (pre-bootstrap, tests).
+            if followAgentActivity,
+               let target = Self.navigationTarget(forKind: proposal.kind),
+               let nav = navigator {
+                await nav(target)
+            }
         }
         await refreshPending()
+    }
+
+    /// Map a proposal `kind` to the AppMode whose view will reflect the
+    /// change. Centralizing the table keeps it reviewable; new kinds
+    /// either add an entry here or fall through to `nil` (no
+    /// follow-on navigation).
+    static func navigationTarget(forKind kind: String) -> AppMode? {
+        switch kind {
+        case "save_query", "update_saved_query", "delete_saved_query":
+            return .search
+        case "update_observation_note", "bulk_update_observation_notes",
+             "download_observation", "download_observations_bulk",
+             "delete_downloaded_observation", "clear_research_archive":
+            return .research
+        case "upload_to_vospace", "download_from_vospace",
+             "vospace_mkdir", "delete_vospace_node":
+            return .storage
+        case "launch_session", "delete_session":
+            return .portal
+        default:
+            return nil
+        }
     }
 
     /// Reject a pending proposal — sets the tombstone and removes it

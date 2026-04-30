@@ -457,6 +457,13 @@ private struct AgentsSettingsTab: View {
         )
     }
 
+    private var followAgentActivity: Binding<Bool> {
+        Binding(
+            get: { appState.agentsService.followAgentActivity },
+            set: { appState.agentsService.followAgentActivity = $0 }
+        )
+    }
+
     var body: some View {
         Form {
             Section {
@@ -478,14 +485,20 @@ private struct AgentsSettingsTab: View {
                 Section {
                     Toggle("Auto-apply agent writes", isOn: autoApplyWrites)
                         .toggleStyle(.switch)
+                    Toggle("Follow agent activity", isOn: followAgentActivity)
+                        .toggleStyle(.switch)
                 } header: {
                     Text("Autonomy")
                 } footer: {
-                    Text("On: connected agents apply their writes immediately " +
+                    Text("Auto-apply on: connected agents apply their writes immediately " +
                          "(saved queries, notes, downloads, sessions, VOSpace edits, " +
                          "deletions). Off: every write queues to the proposal strip " +
-                         "and waits for your Apply click. View-state changes " +
-                         "(navigation, search focus) and reads always run live.")
+                         "and waits for your Apply click.\n\n" +
+                         "Follow agent activity on: after an auto-applied write the window " +
+                         "jumps to the section where the change is visible (Search for " +
+                         "queries, Research for observations, Storage for VOSpace, Portal " +
+                         "for sessions) so you always see motion. The agent's explicit " +
+                         "`navigate_to` tool ignores this toggle — it always works.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }

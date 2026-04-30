@@ -165,6 +165,16 @@ final class AppState {
         // router's tool table when it starts.
         agentsService.register(tools: makeAgentTools())
 
+        // Wire the navigator closure the auto-apply path uses to drive
+        // follow-on navigation. The closure captures `self` weakly —
+        // AppState owns the agentsService, so there's no retain cycle,
+        // but a weak capture is the right shape for a callback that
+        // outlives the registration moment.
+        agentsService.navigator = { [weak self] mode in
+            guard let self else { return }
+            await MainActor.run { self.navigateTo(mode) }
+        }
+
         // Bring up the MCP server only if the user has previously opted in.
         agentsService.bootstrap()
 
