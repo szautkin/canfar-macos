@@ -16,24 +16,30 @@ struct SaveQueryTool: JSONWriteTool {
     struct Args: Decodable, Sendable {
         let name: String
         let adql: String
+        var description: String?
+        var tags: [String]?
     }
 
     /// Encoded as the proposal payload; the applier reads it back.
     struct Payload: Codable, Sendable {
         let name: String
         let adql: String
+        let description: String
+        let tags: [String]
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "save_query",
-        description: "Save an ADQL query under a name. The user reviews and clicks Apply in the strip before it's persisted.",
+        description: "Save an ADQL query under a name. Strongly encouraged: include a `description` explaining why the query matters and tags grouping it with related work — six months from now you'll thank yourself. The user reviews and clicks Apply in the strip before it's persisted.",
         schema: #"""
         {
           "type": "object",
           "required": ["name", "adql"],
           "properties": {
-            "name": { "type": "string", "minLength": 1 },
-            "adql": { "type": "string", "minLength": 1 }
+            "name":        { "type": "string", "minLength": 1 },
+            "adql":        { "type": "string", "minLength": 1 },
+            "description": { "type": "string", "description": "Free-form rationale: why this query matters." },
+            "tags":        { "type": "array", "items": { "type": "string" } }
           },
           "additionalProperties": false
         }
@@ -50,7 +56,12 @@ struct SaveQueryTool: JSONWriteTool {
         return try ProposalPlan.encoding(
             kind: "save_query",
             summary: "Save query: \(args.name)",
-            payload: Payload(name: args.name, adql: args.adql)
+            payload: Payload(
+                name: args.name,
+                adql: args.adql,
+                description: args.description ?? "",
+                tags: args.tags ?? []
+            )
         )
     }
 }
@@ -65,25 +76,31 @@ struct UpdateSavedQueryTool: JSONWriteTool {
         let id: String
         var name: String?
         var adql: String?
+        var description: String?
+        var tags: [String]?
     }
 
     struct Payload: Codable, Sendable {
         let id: String
         let name: String?
         let adql: String?
+        let description: String?
+        let tags: [String]?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "update_saved_query",
-        description: "Update an existing saved query (by id). At least one of `name` or `adql` must be provided.",
+        description: "Update an existing saved query (by id). Any of `name`, `adql`, `description`, `tags` may be provided; at least one must be present. Omitted fields are left unchanged.",
         schema: #"""
         {
           "type": "object",
           "required": ["id"],
           "properties": {
-            "id":   { "type": "string" },
-            "name": { "type": "string" },
-            "adql": { "type": "string" }
+            "id":          { "type": "string" },
+            "name":        { "type": "string" },
+            "adql":        { "type": "string" },
+            "description": { "type": "string" },
+            "tags":        { "type": "array", "items": { "type": "string" } }
           },
           "additionalProperties": false
         }
@@ -91,8 +108,12 @@ struct UpdateSavedQueryTool: JSONWriteTool {
     )
 
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
-        if (args.name?.isEmpty ?? true) && (args.adql?.isEmpty ?? true) {
-            throw ToolFailureReason.invalidArgument("provide name or adql")
+        let hasAny = !(args.name?.isEmpty ?? true)
+            || !(args.adql?.isEmpty ?? true)
+            || args.description != nil
+            || args.tags != nil
+        if !hasAny {
+            throw ToolFailureReason.invalidArgument("provide at least one of: name, adql, description, tags")
         }
         guard UUID(uuidString: args.id) != nil else {
             throw ToolFailureReason.invalidArgument("id is not a UUID")
@@ -100,7 +121,13 @@ struct UpdateSavedQueryTool: JSONWriteTool {
         return try ProposalPlan.encoding(
             kind: "update_saved_query",
             summary: "Update saved query \(args.id)",
-            payload: Payload(id: args.id, name: args.name, adql: args.adql)
+            payload: Payload(
+                id: args.id,
+                name: args.name,
+                adql: args.adql,
+                description: args.description,
+                tags: args.tags
+            )
         )
     }
 }
@@ -158,6 +185,8 @@ struct SaveQueryApplier: ProposalApplier {
         let query = SavedQuery(
             name: payload.name,
             adql: payload.adql,
+            description: payload.description,
+            tags: payload.tags,
             agentAttribution: attribution
         )
         await MainActor.run {
@@ -183,6 +212,8 @@ struct UpdateSavedQueryApplier: ProposalApplier {
             }
             if let name = payload.name { existing.name = name }
             if let adql = payload.adql { existing.adql = adql }
+            if let description = payload.description { existing.description = description }
+            if let tags = payload.tags { existing.tags = tags }
             existing.agentAttribution = AgentAttribution.from(proposal: proposal)
             store.save(existing)
             activity.append(.applied(proposal: proposal, kind: kind))

@@ -407,8 +407,25 @@ extension AppState {
             },
             resolveTarget: { name in
                 let result = try await resolver.resolve(target: name, service: .all)
-                guard let ra = Double(result.coordsRA), let dec = Double(result.coordsDec) else {
-                    throw ToolFailureReason.unknownTarget(name)
+                // CADC's resolver returns RA/Dec as strings — usually
+                // decimal degrees but some shapes ship sexagesimal.
+                // Try Double() first; fall back to the sexagesimal
+                // parsers from FITSWCSTransform. Trailing CR/LF is
+                // already stripped by the resolver parser (F-12 fix in
+                // TAPClient.parseResolverResponse), so a clean
+                // numeric string here means we genuinely failed to
+                // resolve. (Closes F-9 of the platform review.)
+                let ra: Double
+                let dec: Double
+                if let r = Double(result.coordsRA), let d = Double(result.coordsDec) {
+                    ra = r
+                    dec = d
+                } else if let r = FITSWCSTransform.parseRA(result.coordsRA),
+                          let d = FITSWCSTransform.parseDec(result.coordsDec) {
+                    ra = r
+                    dec = d
+                } else {
+                    throw ToolFailureReason.targetNotResolved(name)
                 }
                 return (ra: ra, dec: dec)
             }
@@ -458,14 +475,24 @@ extension AppState {
 
     private func makeListSavedQueriesTool(store: SavedQueryStore) -> ListSavedQueriesTool {
         ListSavedQueriesTool(snapshot: { @MainActor in
-            store.queries.map { ($0.id, $0.name, $0.adql, $0.savedAt) }
+            store.queries.map {
+                SavedQueryRow(
+                    id: $0.id, name: $0.name, adql: $0.adql,
+                    savedAt: $0.savedAt,
+                    description: $0.description, tags: $0.tags
+                )
+            }
         })
     }
 
     private func makeGetSavedQueryTool(store: SavedQueryStore) -> GetSavedQueryTool {
         GetSavedQueryTool(lookup: { @MainActor id in
             guard let q = store.queries.first(where: { $0.id == id }) else { return nil }
-            return (id: q.id, name: q.name, adql: q.adql, savedAt: q.savedAt)
+            return SavedQueryRow(
+                id: q.id, name: q.name, adql: q.adql,
+                savedAt: q.savedAt,
+                description: q.description, tags: q.tags
+            )
         })
     }
 }

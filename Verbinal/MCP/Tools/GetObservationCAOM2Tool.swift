@@ -107,11 +107,21 @@ struct GetObservationCAOM2Tool: JSONReadTool {
     let fetch: @Sendable (_ publisherID: String) async throws -> CAOM2Observation
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
+        // Sanity-check the publisher_id shape *before* hitting the
+        // network so the agent gets a precise typed error rather than
+        // a generic backend wrap. (F-8 from the platform review.)
+        let trimmed = args.publisher_id.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.lowercased().hasPrefix("ivo://") {
+            throw ToolFailureReason.unsupportedIdScheme(args.publisher_id)
+        }
+        if CAOM2Observation.observationURI(fromPublisherID: trimmed) == nil {
+            throw ToolFailureReason.planePublisherIdNotSupported(args.publisher_id)
+        }
+
         do {
-            let obs = try await fetch(args.publisher_id)
+            let obs = try await fetch(trimmed)
             return Self.flatten(obs)
         } catch {
-            // Map known failures into typed reasons.
             let message = "\(error)"
             if message.contains("authenticationRequired") { throw ToolFailureReason.authRequired }
             if message.contains("observationNotFound") {

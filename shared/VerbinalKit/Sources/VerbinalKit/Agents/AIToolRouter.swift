@@ -159,6 +159,7 @@ public actor AIToolRouter {
         let entry = AuditEntry(
             requestID: context.requestID,
             origin: AuditOrigin.from(context.origin),
+            originLabel: context.origin.label,
             toolName: name,
             verbClass: verbClass,
             outcome: outcome,

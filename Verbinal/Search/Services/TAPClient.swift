@@ -202,8 +202,14 @@ actor TAPClient {
         var dict: [String: String] = [:]
         for line in text.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\n") {
             guard let eqIdx = line.firstIndex(of: "=") else { continue }
-            var key = String(line[line.startIndex..<eqIdx]).trimmingCharacters(in: .whitespaces)
-            let value = String(line[line.index(after: eqIdx)...]).trimmingCharacters(in: .whitespaces)
+            // Trim newlines as well as whitespace — CADC resolver lines
+            // are CRLF-terminated, and a trailing \r in `coordsRA`
+            // makes `Double(coordsRA)` return nil downstream, which
+            // surfaces as a spurious `unknownTarget` error in
+            // `search_observations(target:)`. (Closes F-9 and F-12 from
+            // the 2026-04-29 platform review.)
+            var key = String(line[line.startIndex..<eqIdx]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let value = String(line[line.index(after: eqIdx)...]).trimmingCharacters(in: .whitespacesAndNewlines)
             if key == "time(ms)" { key = "time" }
             dict[key] = value
         }

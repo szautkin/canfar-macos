@@ -14,6 +14,12 @@ public struct AuditEntry: Sendable, Codable, Equatable {
     public let requestID: UUID
     public let timestamp: Date
     public let origin: AuditOrigin
+    /// Friendly self-reported client name (e.g. `claude-ai/0.1.0`).
+    /// `origin` carries the stable hex fingerprint for dedupe; this
+    /// field carries the human-readable counterpart so audit surfaces
+    /// can show "claude-ai/0.1.0 (915ada)" rather than just the hex.
+    /// (F-4 of the 2026-04-29 platform review.)
+    public let originLabel: String
     public let toolName: String
     public let verbClass: VerbClass
     public let outcome: AuditOutcome
@@ -28,6 +34,7 @@ public struct AuditEntry: Sendable, Codable, Equatable {
         requestID: UUID,
         timestamp: Date = Date(),
         origin: AuditOrigin,
+        originLabel: String = "",
         toolName: String,
         verbClass: VerbClass,
         outcome: AuditOutcome,
@@ -37,6 +44,7 @@ public struct AuditEntry: Sendable, Codable, Equatable {
         self.requestID = requestID
         self.timestamp = timestamp
         self.origin = origin
+        self.originLabel = originLabel
         self.toolName = toolName
         self.verbClass = verbClass
         self.outcome = outcome

@@ -107,7 +107,26 @@ public enum ToolResult: Sendable {
 /// their string forms stable so audit logs over time stay comparable.
 public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
     case invalidArgument(String)
+    /// Generic "the thing you asked about isn't here". Prefer the more
+    /// specific cases below when the failure mode is known —
+    /// `unknownTarget` stays for callers that legitimately don't know
+    /// which sub-mode applies.
     case unknownTarget(String)
+    /// Name resolver couldn't translate the target string to coords
+    /// (e.g., a typo, or an object SIMBAD/NED don't index).
+    /// Distinct from `unknownTarget` so the agent can tell whether to
+    /// fix the spelling vs. fall back to RA/Dec input. (Platform
+    /// review F-8.)
+    case targetNotResolved(String)
+    /// The publisher_id supplied uses a scheme or shape we don't
+    /// support (e.g., a non-`ivo://` URI). Hint should explain.
+    case unsupportedIdScheme(String)
+    /// The caller passed a Plane-form publisher_id where an
+    /// Observation-form one was expected, AND we couldn't normalise
+    /// it. (Most cases are now normalised automatically — this
+    /// surfaces when the input is malformed even after stripping the
+    /// productID tail and `/mirror` segment.)
+    case planePublisherIdNotSupported(String)
     case authRequired
     case perTurnProposalCapExceeded(limit: Int)
     case backendError(String)
@@ -117,6 +136,12 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         switch self {
         case .invalidArgument(let msg): return "invalidArgument: \(msg)"
         case .unknownTarget(let what): return "unknownTarget: \(what)"
+        case .targetNotResolved(let name):
+            return "targetNotResolved: '\(name)' did not resolve via SIMBAD/NED. Try a different spelling, or pass `ra`+`dec` directly."
+        case .unsupportedIdScheme(let id):
+            return "unsupportedIdScheme: '\(id)' must use the ivo:// scheme."
+        case .planePublisherIdNotSupported(let id):
+            return "planePublisherIdNotSupported: '\(id)' looks like a Plane publisher_id; couldn't reduce to an Observation URI."
         case .authRequired: return "authRequired"
         case .perTurnProposalCapExceeded(let limit): return "perTurnProposalCapExceeded(\(limit))"
         case .backendError(let msg): return "backendError: \(msg)"
@@ -129,6 +154,9 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         switch self {
         case .invalidArgument: return "invalidArgument"
         case .unknownTarget: return "unknownTarget"
+        case .targetNotResolved: return "targetNotResolved"
+        case .unsupportedIdScheme: return "unsupportedIdScheme"
+        case .planePublisherIdNotSupported: return "planePublisherIdNotSupported"
         case .authRequired: return "authRequired"
         case .perTurnProposalCapExceeded: return "perTurnProposalCapExceeded"
         case .backendError: return "backendError"

@@ -84,8 +84,13 @@ struct SearchObservationsTool: JSONReadTool {
                 let coords = try await resolveTarget(target)
                 ra = coords.ra
                 dec = coords.dec
+            } catch let f as ToolFailureReason {
+                // Preserve typed reason from the resolver (e.g.,
+                // targetNotResolved) instead of collapsing to a
+                // generic unknownTarget.
+                throw f
             } catch {
-                throw ToolFailureReason.unknownTarget(target)
+                throw ToolFailureReason.targetNotResolved(target)
             }
         } else {
             throw ToolFailureReason.invalidArgument("Provide one of: adql, target, or (ra+dec).")

@@ -569,6 +569,12 @@ private struct AgentsSettingsTab: View {
                                 Text(entry.outcome.tag)
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
+                                if !entry.originLabel.isEmpty, entry.originLabel != "user" {
+                                    Text(entry.originLabel)
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                        .help("client \(entry.origin.tag)")
+                                }
                                 Spacer()
                                 Text("\(entry.durationMS) ms")
                                     .font(.caption2)

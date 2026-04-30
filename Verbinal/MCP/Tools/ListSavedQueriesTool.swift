@@ -19,12 +19,16 @@ struct ListSavedQueriesTool: JSONReadTool {
             let savedAtISO: String
             /// First line of the ADQL for preview.
             let preview: String
+            /// Free-form rationale (may be empty for hand-saved queries
+            /// from before F-6 shipped).
+            let description: String
+            let tags: [String]
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_saved_queries",
-        description: "List saved ADQL queries (id, name, first-line preview, savedAt).",
+        description: "List saved ADQL queries (id, name, first-line preview, savedAt, description, tags).",
         schema: #"""
         {
           "type": "object",
@@ -34,7 +38,7 @@ struct ListSavedQueriesTool: JSONReadTool {
         """#
     )
 
-    let snapshot: @Sendable () async -> [(id: UUID, name: String, adql: String, savedAt: Date)]
+    let snapshot: @Sendable () async -> [SavedQueryRow]
 
     func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
         let iso = ISO8601DateFormatter()
@@ -44,14 +48,27 @@ struct ListSavedQueriesTool: JSONReadTool {
                 id: $0.id.uuidString,
                 name: $0.name,
                 savedAtISO: iso.string(from: $0.savedAt),
-                preview: String($0.adql.split(separator: "\n", maxSplits: 1).first ?? "")
+                preview: String($0.adql.split(separator: "\n", maxSplits: 1).first ?? ""),
+                description: $0.description,
+                tags: $0.tags
             )
         }
         return Output(entries: entries)
     }
 }
 
-/// Get the full ADQL of one saved query by id.
+/// Flat row used by both list_saved_queries and get_saved_query so the
+/// AppState wiring constructs one shape and both tools consume it.
+struct SavedQueryRow: Sendable {
+    let id: UUID
+    let name: String
+    let adql: String
+    let savedAt: Date
+    let description: String
+    let tags: [String]
+}
+
+/// Get the full record of one saved query by id.
 struct GetSavedQueryTool: JSONReadTool {
     struct Args: Decodable, Sendable {
         let id: String
@@ -62,11 +79,13 @@ struct GetSavedQueryTool: JSONReadTool {
         let name: String
         let adql: String
         let savedAtISO: String
+        let description: String
+        let tags: [String]
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_saved_query",
-        description: "Fetch the full ADQL of one saved query by id.",
+        description: "Fetch the full record of one saved query by id (ADQL + description + tags).",
         schema: #"""
         {
           "type": "object",
@@ -79,7 +98,7 @@ struct GetSavedQueryTool: JSONReadTool {
         """#
     )
 
-    let lookup: @Sendable (_ id: UUID) async -> (id: UUID, name: String, adql: String, savedAt: Date)?
+    let lookup: @Sendable (_ id: UUID) async -> SavedQueryRow?
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         guard let uuid = UUID(uuidString: args.id) else {
@@ -94,7 +113,9 @@ struct GetSavedQueryTool: JSONReadTool {
             id: row.id.uuidString,
             name: row.name,
             adql: row.adql,
-            savedAtISO: iso.string(from: row.savedAt)
+            savedAtISO: iso.string(from: row.savedAt),
+            description: row.description,
+            tags: row.tags
         )
     }
 }

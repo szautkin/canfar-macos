@@ -107,12 +107,15 @@ struct DownloadObservationTool: JSONWriteTool {
 
 // MARK: - download_observations_bulk (one proposal, N children)
 
-/// Propose downloading up to 10 observations in a single user click.
-/// Hard-cap matches the proposal-budget guidance — agents shouldn't
-/// pile dozens of unattended downloads on the user.
+/// Propose downloading up to 50 observations in a single user click.
+/// Raised from the original 10-file cap (2026-04-29 platform review,
+/// F-10): typical SNLS / time-series workflows want full-season cadence
+/// per filter, which routinely exceeds 10 files. 50 keeps the disk-cost
+/// reasonable per click (~16 GB at ~320 MB/file) while not forcing
+/// agents to chunk a single scientific intent into multiple proposals.
 struct DownloadObservationsBulkTool: JSONWriteTool {
     static let verbClass: VerbClass = .semanticWrite
-    static let maxBatchSize = 10
+    static let maxBatchSize = 50
 
     struct Args: Decodable, Sendable {
         let items: [DownloadObservationTool.Args]
@@ -124,7 +127,7 @@ struct DownloadObservationsBulkTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_observations_bulk",
-        description: "Download up to 10 observations as one proposal. The applier downloads each in sequence; first failure aborts the rest.",
+        description: "Download up to 50 observations as one proposal. The applier downloads each in sequence; first failure aborts the rest.",
         schema: #"""
         {
           "type": "object",
@@ -133,7 +136,7 @@ struct DownloadObservationsBulkTool: JSONWriteTool {
             "items": {
               "type": "array",
               "minItems": 1,
-              "maxItems": 10,
+              "maxItems": 50,
               "items": { "type": "object" }
             }
           },
@@ -148,7 +151,7 @@ struct DownloadObservationsBulkTool: JSONWriteTool {
         }
         guard args.items.count <= Self.maxBatchSize else {
             throw ToolFailureReason.invalidArgument(
-                "max \(Self.maxBatchSize) items per bulk download"
+                "max \(Self.maxBatchSize) items per bulk download (raised from 10 to 50 per platform review F-10)"
             )
         }
         // Reuse the single-download payload encoder for each child.

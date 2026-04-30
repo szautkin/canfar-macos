@@ -334,22 +334,35 @@ extension CAOM2Observation {
 // MARK: - URI helpers
 
 extension CAOM2Observation {
-    /// Convert a publisher URI (`ivo://cadc.nrc.ca/{collection}?{observationID}`)
-    /// to the CAOM2 observation URI form (`caom:{collection}/{observationID}`)
-    /// expected by the metadata service.
+    /// Convert a publisher URI to the CAOM2 observation URI form
+    /// (`caom:{collection}/{observationID}`) expected by the metadata
+    /// service. Accepts every shape we've seen TAP return, including:
     ///
+    ///   * Plain Observation form: `ivo://cadc.nrc.ca/JWST?jw01147`
+    ///   * Plane form (with trailing productID):
+    ///     `ivo://cadc.nrc.ca/CFHT?729989/729989p`
+    ///   * Mirror collections (HST/JWST in CADC's mirror layer):
+    ///     `ivo://cadc.nrc.ca/JWST/mirror?jw01147`
+    ///
+    /// All three are normalised to the same `caom:JWST/jw01147` form.
     /// Returns `nil` if the input doesn't look like a publisher URI.
+    /// (Closes F-7 from the 2026-04-29 platform review — agents
+    /// pipelining `search_observations` rows into `get_observation_caom2`
+    /// shouldn't trip on the Plane / mirror id shape.)
     public static func observationURI(fromPublisherID publisherID: String) -> String? {
-        // Form: ivo://<authority>/<collection>?<observationID>[/<productID>]
         guard let url = URL(string: publisherID),
               let scheme = url.scheme?.lowercased(), scheme == "ivo" else { return nil }
-        let path = url.path
-        let pieces = path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+        // Path may carry a `/mirror` segment for HST / JWST mirror
+        // entries — strip it so the collection comes out right.
+        let pieces = url.path
+            .split(separator: "/", omittingEmptySubsequences: true)
+            .map(String.init)
+            .filter { $0.lowercased() != "mirror" }
         guard let collection = pieces.first, !collection.isEmpty else { return nil }
 
-        // observationID is the URL "query" part of the publisher URI; productID
-        // (if present) follows a `/` after it. Strip the productID for an
-        // observation-level URI.
+        // observationID is the URL "query" part of the publisher URI;
+        // productID (if present) follows a `/` after it. Strip the
+        // productID for an observation-level URI.
         let queryPart = url.query ?? ""
         let observationID = queryPart.split(separator: "/", maxSplits: 1).first.map(String.init) ?? queryPart
         guard !observationID.isEmpty else { return nil }
