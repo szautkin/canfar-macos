@@ -19,6 +19,7 @@ extension AppState {
         // Foundational
         tools.append(DescribeAppTool())
         tools.append(makeGetAuthStateTool())
+        tools.append(makeGetCurrentViewTool())
 
         // Search domain
         let tap = TAPClient()
@@ -63,6 +64,7 @@ extension AppState {
         tools.append(UpdateSavedQueryTool())
         tools.append(DeleteSavedQueryTool())
         tools.append(UpdateObservationNoteTool())
+        tools.append(BulkUpdateObservationNotesTool())
 
         // Write tools — downloads
         tools.append(DownloadObservationTool())
@@ -135,6 +137,16 @@ extension AppState {
             // proposal was queued.
             let origin: OperationOrigin = .external(clientID: "open_fits_file")
             await MainActor.run {
+                // Bug from the 2026-04-30 astronomer workflow review:
+                // setting `pendingFITSURL` alone wasn't enough — the
+                // task that consumes it only fires while the FITS
+                // viewer is mounted, so a user on Landing/Search never
+                // saw the file appear. Navigate explicitly so the
+                // agent's "open this file" intent is honoured even
+                // when the user is on a different mode.
+                if self.currentMode != .fitsViewer {
+                    self.navigateTo(.fitsViewer)
+                }
                 self.pendingFITSURL = url
                 activity.append(.live(
                     kind: "open_fits_file",
@@ -176,6 +188,7 @@ extension AppState {
             UpdateSavedQueryApplier(store: savedQueryStore, activity: activity),
             DeleteSavedQueryApplier(store: savedQueryStore, activity: activity),
             UpdateObservationNoteApplier(store: noteStore, activity: activity),
+            BulkUpdateObservationNotesApplier(store: noteStore, activity: activity),
             DownloadObservationApplier(downloadService: downloader,
                                        observationStore: observationStore,
                                        activity: activity),
@@ -376,6 +389,57 @@ extension AppState {
     }
 
     // MARK: - Foundational
+
+    private func makeGetCurrentViewTool() -> GetCurrentViewTool {
+        GetCurrentViewTool(snapshot: { [weak self] in
+            await MainActor.run {
+                guard let s = self else {
+                    return GetCurrentViewTool.Output(
+                        mode: "unknown", modeTitle: "Unknown",
+                        isAuthenticated: false, username: "",
+                        searchFocusRA: nil, searchFocusDec: nil,
+                        openFITSPaths: [],
+                        pendingProposalsCount: 0,
+                        agentsEnabled: false
+                    )
+                }
+                let mode = Self.modeKey(s.currentMode)
+                return GetCurrentViewTool.Output(
+                    mode: mode,
+                    modeTitle: Self.modeTitle(s.currentMode),
+                    isAuthenticated: s.isAuthenticated,
+                    username: s.username,
+                    searchFocusRA: s.pendingSearchCoordinate?.ra,
+                    searchFocusDec: s.pendingSearchCoordinate?.dec,
+                    openFITSPaths: s.pendingFITSURL.map { [$0.path] } ?? [],
+                    pendingProposalsCount: s.agentsService.pendingProposals.count,
+                    agentsEnabled: s.agentsService.isEnabled
+                )
+            }
+        })
+    }
+
+    private static func modeKey(_ mode: AppMode) -> String {
+        switch mode {
+        case .landing:    return "landing"
+        case .search:     return "search"
+        case .research:   return "research"
+        case .portal:     return "portal"
+        case .storage:    return "storage"
+        case .fitsViewer: return "fitsViewer"
+        }
+    }
+
+    private static func modeTitle(_ mode: AppMode) -> String {
+        switch mode {
+        case .landing:    return "Landing"
+        case .search:     return "Search"
+        case .research:   return "Research"
+        case .portal:     return "Portal"
+        case .storage:    return "Storage"
+        case .fitsViewer: return "FITS Viewer"
+        }
+    }
 
     private func makeGetAuthStateTool() -> GetAuthStateTool {
         GetAuthStateTool(snapshot: { [weak self] in

@@ -468,6 +468,9 @@
         }
       }
     },
+    "Activity History" : {
+
+    },
     "Add Tag" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -548,6 +551,9 @@
           }
         }
       }
+    },
+    "Applied proposals, rejections, and live UI ops the\nagent has performed will appear here." : {
+
     },
     "Apply" : {
       "extractionState" : "stale",
@@ -1383,6 +1389,9 @@
           }
         }
       }
+    },
+    "Created by AI agent" : {
+
     },
     "Credits" : {
       "extractionState" : "stale",
@@ -3643,6 +3652,9 @@
           }
         }
       }
+    },
+    "No agent activity yet." : {
+
     },
     "No agent calls yet." : {
 
@@ -6027,6 +6039,9 @@
           }
         }
       }
+    },
+    "Summary" : {
+
     },
     "Switch to this FITS tab" : {
 
