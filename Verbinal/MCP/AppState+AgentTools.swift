@@ -430,7 +430,8 @@ extension AppState {
                         openFITSPaths: [],
                         pendingProposalsCount: 0,
                         agentsEnabled: false,
-                        autoApplyEnabled: false
+                        autoApplyEnabled: false,
+                        followAgentActivityEnabled: false
                     )
                 }
                 let mode = Self.modeKey(s.currentMode)
@@ -444,7 +445,8 @@ extension AppState {
                     openFITSPaths: s.pendingFITSURL.map { [$0.path] } ?? [],
                     pendingProposalsCount: s.agentsService.pendingProposals.count,
                     agentsEnabled: s.agentsService.isEnabled,
-                    autoApplyEnabled: s.agentsService.autoApplyWrites
+                    autoApplyEnabled: s.agentsService.autoApplyWrites,
+                    followAgentActivityEnabled: s.agentsService.followAgentActivity
                 )
             }
         })

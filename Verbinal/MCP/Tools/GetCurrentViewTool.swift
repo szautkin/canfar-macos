@@ -58,11 +58,19 @@ struct GetCurrentViewTool: JSONReadTool {
         /// you've been running for a while; the user can flip it
         /// between turns.
         let autoApplyEnabled: Bool
+        /// True when the app navigates the user to the relevant view
+        /// after each auto-applied write (saved-query → Search,
+        /// observation/note → Research, VOSpace → Storage, session →
+        /// Portal). When this is on you don't need a redundant
+        /// `navigate_to` call after a write — the app already
+        /// followed. When off, the user stays put after writes;
+        /// `navigate_to` is your only way to keep them oriented.
+        let followAgentActivityEnabled: Bool
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_current_view",
-        description: "Return what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer), auth state, search-form focus when in Search, open FITS files when in FITS Viewer, pending-proposal count, and `autoApplyEnabled` (autonomy toggle — drives whether your write tool calls return applied results or queue for strip review).",
+        description: "Return what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer), auth state, search-form focus when in Search, open FITS files when in FITS Viewer, pending-proposal count, plus the two autonomy toggles: `autoApplyEnabled` (do writes return applied results, or queue for strip review?) and `followAgentActivityEnabled` (does the app auto-navigate to the relevant view after a write, so you don't need a redundant `navigate_to`?).",
         schema: #"""
         {
           "type": "object",
