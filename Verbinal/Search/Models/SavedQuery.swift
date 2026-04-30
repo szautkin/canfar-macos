@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// A saved ADQL query for re-use.
 struct SavedQuery: Codable, Identifiable, Equatable {
@@ -12,4 +13,8 @@ struct SavedQuery: Codable, Identifiable, Equatable {
     var name: String
     var adql: String
     var savedAt: Date = Date()
+    /// Provenance stamp when an MCP-connected agent created this entry
+    /// via the proposal flow. `nil` for entries the user authored
+    /// directly. Drives the wand badge in the saved-queries list.
+    var agentAttribution: AgentAttribution?
 }

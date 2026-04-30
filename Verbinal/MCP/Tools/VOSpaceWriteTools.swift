@@ -191,6 +191,7 @@ private struct VOSpaceAppliers {
     let username: @Sendable () async -> String
     let observationStore: ObservationStore
     let downloadsDirectory: @Sendable () -> URL
+    let activity: AgentActivityStore
 }
 
 struct UploadToVOSpaceApplier: ProposalApplier {
@@ -227,6 +228,9 @@ struct UploadToVOSpaceApplier: ProposalApplier {
         } catch {
             throw ProposalApplyError.backendError("upload failed: \(error.localizedDescription)")
         }
+        await MainActor.run {
+            context.activity.append(.applied(proposal: proposal, kind: kind))
+        }
     }
 }
 
@@ -256,6 +260,9 @@ struct DownloadFromVOSpaceApplier: ProposalApplier {
             try? FileManager.default.removeItem(at: result.tempURL)
             throw ProposalApplyError.backendError("move into Downloads: \(error.localizedDescription)")
         }
+        await MainActor.run {
+            context.activity.append(.applied(proposal: proposal, kind: kind))
+        }
     }
 }
 
@@ -276,6 +283,9 @@ struct VOSpaceMkdirApplier: ProposalApplier {
         } catch {
             throw ProposalApplyError.backendError("mkdir failed: \(error.localizedDescription)")
         }
+        await MainActor.run {
+            context.activity.append(.applied(proposal: proposal, kind: kind))
+        }
     }
 }
 
@@ -292,6 +302,9 @@ struct DeleteVOSpaceNodeApplier: ProposalApplier {
         } catch {
             throw ProposalApplyError.backendError("delete failed: \(error.localizedDescription)")
         }
+        await MainActor.run {
+            context.activity.append(.applied(proposal: proposal, kind: kind))
+        }
     }
 }
 
@@ -301,7 +314,8 @@ struct DeleteVOSpaceNodeApplier: ProposalApplier {
 func makeVOSpaceAppliers(
     service: VOSpaceBrowserService,
     observationStore: ObservationStore,
-    appState: AppState
+    appState: AppState,
+    activity: AgentActivityStore
 ) -> [any ProposalApplier] {
     let context = VOSpaceAppliers(
         service: service,
@@ -312,7 +326,8 @@ func makeVOSpaceAppliers(
                 for: .downloadsDirectory, in: .userDomainMask,
                 appropriateFor: nil, create: true
             )) ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
-        }
+        },
+        activity: activity
     )
     return [
         UploadToVOSpaceApplier(context: context),

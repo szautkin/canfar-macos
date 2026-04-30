@@ -62,8 +62,13 @@ final class AgentsService {
     private let proposals: any ProposalStore
     /// Single event log shared across all connections — agents call
     /// `list_events` to observe proposal lifecycle transitions without
-    /// per-proposal polling.
+    /// per-proposal polling. In-memory; not for the user-facing UI.
     let eventLog: EventLog
+    /// User-facing persistent breadcrumb of agent activity. Distinct
+    /// from `eventLog`: this survives app restarts and is what the
+    /// toolbar wand popover, per-row badges, and "what did the agent
+    /// do recently" surfaces all read from.
+    let activityStore = AgentActivityStore()
     private let logger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "service")
 
     /// Tools registered with the router. Mutate before the first
@@ -147,7 +152,14 @@ final class AgentsService {
     /// Reject a pending proposal — sets the tombstone and removes it
     /// from the queue. Idempotent; safe to call after apply.
     func rejectProposal(_ id: UUID) async {
+        // Snapshot the proposal *before* we mark it rejected so the
+        // activity feed entry carries the kind/summary/origin that the
+        // tombstoned proposal would otherwise drop.
+        let snapshot = await proposals.list(origin: nil).first(where: { $0.id == id })
         _ = await proposals.markRejected(id)
+        if let snapshot {
+            activityStore.append(.rejected(proposal: snapshot))
+        }
         await refreshPending()
     }
 

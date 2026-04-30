@@ -216,14 +216,25 @@ struct DownloadObservationApplier: ProposalApplier {
     let kind = "download_observation"
     let downloadService: DownloadService
     let observationStore: ObservationStore
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(DownloadObservationTool.Payload.self, from: proposal.payload)
-        try await Self.runOne(payload, downloadService: downloadService, observationStore: observationStore)
+        let attribution = AgentAttribution.from(proposal: proposal)
+        try await Self.runOne(
+            payload,
+            attribution: attribution,
+            downloadService: downloadService,
+            observationStore: observationStore
+        )
+        await MainActor.run {
+            activity.append(.applied(proposal: proposal, kind: kind))
+        }
     }
 
     static func runOne(
         _ payload: DownloadObservationTool.Payload,
+        attribution: AgentAttribution?,
         downloadService: DownloadService,
         observationStore: ObservationStore
     ) async throws {
@@ -267,7 +278,8 @@ struct DownloadObservationApplier: ProposalApplier {
             fileSize: size,
             thumbnailURL: payload.thumbnailURL,
             previewURL: payload.previewURL,
-            bookmarkData: bookmark
+            bookmarkData: bookmark,
+            agentAttribution: attribution
         )
         await MainActor.run {
             observationStore.save(observation)
@@ -282,13 +294,21 @@ struct DownloadObservationsBulkApplier: ProposalApplier {
     let kind = "download_observations_bulk"
     let downloadService: DownloadService
     let observationStore: ObservationStore
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(DownloadObservationsBulkTool.Payload.self, from: proposal.payload)
+        let attribution = AgentAttribution.from(proposal: proposal)
         for item in payload.items {
             try await DownloadObservationApplier.runOne(
-                item, downloadService: downloadService, observationStore: observationStore
+                item,
+                attribution: attribution,
+                downloadService: downloadService,
+                observationStore: observationStore
             )
+        }
+        await MainActor.run {
+            activity.append(.applied(proposal: proposal, kind: kind))
         }
     }
 }
@@ -344,6 +364,7 @@ struct DeleteDownloadedObservationApplier: ProposalApplier {
     let kind = "delete_downloaded_observation"
     let store: ObservationStore
     let downloadService: DownloadService
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(DeleteDownloadedObservationTool.Payload.self, from: proposal.payload)
@@ -361,6 +382,9 @@ struct DeleteDownloadedObservationApplier: ProposalApplier {
                 throw ProposalApplyError.backendError("file delete failed: \(error.localizedDescription)")
             }
         }
-        await MainActor.run { store.remove(observation) }
+        await MainActor.run {
+            store.remove(observation)
+            activity.append(.applied(proposal: proposal, kind: kind))
+        }
     }
 }

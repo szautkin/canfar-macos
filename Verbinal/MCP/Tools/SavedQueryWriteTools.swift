@@ -150,12 +150,19 @@ struct DeleteSavedQueryTool: JSONWriteTool {
 struct SaveQueryApplier: ProposalApplier {
     let kind = "save_query"
     let store: SavedQueryStore
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(SaveQueryTool.Payload.self, from: proposal.payload)
-        let query = SavedQuery(name: payload.name, adql: payload.adql)
+        let attribution = AgentAttribution.from(proposal: proposal)
+        let query = SavedQuery(
+            name: payload.name,
+            adql: payload.adql,
+            agentAttribution: attribution
+        )
         await MainActor.run {
             store.save(query)
+            activity.append(.applied(proposal: proposal, kind: kind))
         }
     }
 }
@@ -163,6 +170,7 @@ struct SaveQueryApplier: ProposalApplier {
 struct UpdateSavedQueryApplier: ProposalApplier {
     let kind = "update_saved_query"
     let store: SavedQueryStore
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(UpdateSavedQueryTool.Payload.self, from: proposal.payload)
@@ -175,7 +183,9 @@ struct UpdateSavedQueryApplier: ProposalApplier {
             }
             if let name = payload.name { existing.name = name }
             if let adql = payload.adql { existing.adql = adql }
+            existing.agentAttribution = AgentAttribution.from(proposal: proposal)
             store.save(existing)
+            activity.append(.applied(proposal: proposal, kind: kind))
         }
     }
 }
@@ -183,6 +193,7 @@ struct UpdateSavedQueryApplier: ProposalApplier {
 struct DeleteSavedQueryApplier: ProposalApplier {
     let kind = "delete_saved_query"
     let store: SavedQueryStore
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(DeleteSavedQueryTool.Payload.self, from: proposal.payload)
@@ -194,6 +205,7 @@ struct DeleteSavedQueryApplier: ProposalApplier {
                 throw ProposalApplyError.backendError("saved query not found: \(id)")
             }
             store.remove(existing)
+            activity.append(.applied(proposal: proposal, kind: kind))
         }
     }
 }

@@ -77,6 +77,8 @@ struct LaunchSessionTool: JSONWriteTool {
 struct LaunchSessionApplier: ProposalApplier {
     let kind = "launch_session"
     let service: SessionService
+    let recentLaunchStore: RecentLaunchStore
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(LaunchSessionTool.Payload.self, from: proposal.payload)
@@ -89,6 +91,28 @@ struct LaunchSessionApplier: ProposalApplier {
             _ = try await service.launchSession(params)
         } catch {
             throw ProposalApplyError.backendError("launch failed: \(error.localizedDescription)")
+        }
+        // Stash a RecentLaunch entry so the user sees this agent
+        // launch alongside their own recents (with the wand badge in
+        // commit 2). Without this the launch only appears in the live
+        // session list and disappears after the session ends.
+        let attribution = AgentAttribution.from(proposal: proposal)
+        let launch = RecentLaunch(
+            name: payload.name,
+            type: payload.type,
+            image: payload.image,
+            imageLabel: payload.image,
+            project: "",
+            resourceType: "fixed",
+            cores: payload.cores,
+            ram: payload.ram,
+            gpus: payload.gpus,
+            launchedAt: Date(),
+            agentAttribution: attribution
+        )
+        await MainActor.run {
+            recentLaunchStore.save(launch)
+            activity.append(.applied(proposal: proposal, kind: kind))
         }
     }
 }
@@ -134,6 +158,7 @@ struct DeleteSessionTool: JSONWriteTool {
 struct DeleteSessionApplier: ProposalApplier {
     let kind = "delete_session"
     let service: SessionService
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(DeleteSessionTool.Payload.self, from: proposal.payload)
@@ -141,6 +166,9 @@ struct DeleteSessionApplier: ProposalApplier {
             try await service.deleteSession(id: payload.id)
         } catch {
             throw ProposalApplyError.backendError("delete failed: \(error.localizedDescription)")
+        }
+        await MainActor.run {
+            activity.append(.applied(proposal: proposal, kind: kind))
         }
     }
 }
@@ -181,8 +209,12 @@ struct ClearResearchArchiveTool: JSONWriteTool {
 struct ClearResearchArchiveApplier: ProposalApplier {
     let kind = "clear_research_archive"
     let store: ObservationStore
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
-        await MainActor.run { store.clear() }
+        await MainActor.run {
+            store.clear()
+            activity.append(.applied(proposal: proposal, kind: kind))
+        }
     }
 }

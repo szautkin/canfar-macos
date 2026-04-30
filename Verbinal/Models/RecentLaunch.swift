@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 struct RecentLaunch: Codable, Identifiable, Equatable {
     var id: UUID = UUID()
@@ -18,4 +19,8 @@ struct RecentLaunch: Codable, Identifiable, Equatable {
     var ram: Int = 0
     var gpus: Int = 0
     var launchedAt: Date = Date()
+    /// Stamp set when an MCP-connected agent proposed the launch and
+    /// the user applied it. `nil` for user-initiated launches via the
+    /// in-app UI.
+    var agentAttribution: AgentAttribution?
 }

@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// Metadata for a downloaded observation file stored locally.
 struct DownloadedObservation: Codable, Identifiable, Equatable {
@@ -30,6 +31,11 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// resolves to a URL the sandbox refuses to open. `nil` for legacy rows
     /// downloaded before this field existed — those use the re-grant path.
     var bookmarkData: Data? = nil
+    /// Provenance stamp when an MCP-connected agent staged the
+    /// download via a proposal. `nil` when the user initiated the
+    /// download themselves through the in-app UI. Drives the wand
+    /// badge in research observation rows.
+    var agentAttribution: AgentAttribution? = nil
 
     /// Create from a SearchResult row using its column metadata.
     static func from(

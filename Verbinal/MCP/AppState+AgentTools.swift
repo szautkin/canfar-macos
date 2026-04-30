@@ -101,7 +101,8 @@ extension AppState {
     // MARK: - View-state factories
 
     private func makeOpenFITSFileTool(store: ObservationStore) -> OpenFITSFileTool {
-        OpenFITSFileTool(openFITS: { [weak self] id in
+        let activity = agentsService.activityStore
+        return OpenFITSFileTool(openFITS: { [weak self] id in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
             let obs = await MainActor.run { store.observations.first(where: { $0.id == id }) }
             guard let obs else {
@@ -126,18 +127,36 @@ extension AppState {
             } else {
                 url = obs.localURL
             }
+            // View-state ops don't run through the proposal flow, so
+            // we don't have an `OperationOrigin` from a context. Fall
+            // back to a synthetic external origin tagged with the
+            // tool name — the activity feed surfaces it as a "live"
+            // entry so the user sees the breadcrumb even though no
+            // proposal was queued.
+            let origin: OperationOrigin = .external(clientID: "open_fits_file")
             await MainActor.run {
                 self.pendingFITSURL = url
+                activity.append(.live(
+                    kind: "open_fits_file",
+                    summary: "Opened FITS file: \(obs.observationID) (\(obs.collection))",
+                    origin: origin
+                ))
             }
             return (observationID: obs.observationID, localPath: obs.localPath)
         })
     }
 
     private func makeSetSearchFocusTool() -> SetSearchFocusTool {
-        SetSearchFocusTool(apply: { [weak self] ra, dec in
+        let activity = agentsService.activityStore
+        return SetSearchFocusTool(apply: { [weak self] ra, dec in
             guard let self else { return }
             await MainActor.run {
                 self.pendingSearchCoordinate = AppState.PendingCoordinate(ra: ra, dec: dec)
+                activity.append(.live(
+                    kind: "set_search_focus",
+                    summary: String(format: "Focused search on (%.4f°, %+0.4f°)", ra, dec),
+                    origin: .external(clientID: "set_search_focus")
+                ))
             }
         })
     }
@@ -150,27 +169,35 @@ extension AppState {
                                        observationStore: ObservationStore,
                                        vospace: VOSpaceBrowserService) {
         let downloader = DownloadService(endpoints: endpoints)
+        let activity = agentsService.activityStore
+        let recentLaunchStore = RecentLaunchStore()
         var appliers: [any ProposalApplier] = [
-            SaveQueryApplier(store: savedQueryStore),
-            UpdateSavedQueryApplier(store: savedQueryStore),
-            DeleteSavedQueryApplier(store: savedQueryStore),
-            UpdateObservationNoteApplier(store: noteStore),
+            SaveQueryApplier(store: savedQueryStore, activity: activity),
+            UpdateSavedQueryApplier(store: savedQueryStore, activity: activity),
+            DeleteSavedQueryApplier(store: savedQueryStore, activity: activity),
+            UpdateObservationNoteApplier(store: noteStore, activity: activity),
             DownloadObservationApplier(downloadService: downloader,
-                                       observationStore: observationStore),
+                                       observationStore: observationStore,
+                                       activity: activity),
             DownloadObservationsBulkApplier(downloadService: downloader,
-                                            observationStore: observationStore),
+                                            observationStore: observationStore,
+                                            activity: activity),
             DeleteDownloadedObservationApplier(store: observationStore,
-                                               downloadService: downloader),
+                                               downloadService: downloader,
+                                               activity: activity),
         ]
         appliers.append(contentsOf: makeVOSpaceAppliers(
             service: vospace,
             observationStore: observationStore,
-            appState: self
+            appState: self,
+            activity: activity
         ))
         let sessionAppliers: [any ProposalApplier] = [
-            LaunchSessionApplier(service: sessionService),
-            DeleteSessionApplier(service: sessionService),
-            ClearResearchArchiveApplier(store: observationStore),
+            LaunchSessionApplier(service: sessionService,
+                                  recentLaunchStore: recentLaunchStore,
+                                  activity: activity),
+            DeleteSessionApplier(service: sessionService, activity: activity),
+            ClearResearchArchiveApplier(store: observationStore, activity: activity),
         ]
         appliers.append(contentsOf: sessionAppliers)
         agentsService.register(appliers: appliers)

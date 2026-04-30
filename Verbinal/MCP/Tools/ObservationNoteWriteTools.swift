@@ -70,6 +70,7 @@ struct UpdateObservationNoteTool: JSONWriteTool {
 struct UpdateObservationNoteApplier: ProposalApplier {
     let kind = "update_observation_note"
     let store: ObservationNoteStore
+    let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(UpdateObservationNoteTool.Payload.self, from: proposal.payload)
@@ -82,9 +83,11 @@ struct UpdateObservationNoteApplier: ProposalApplier {
                 rating: payload.rating ?? existing?.rating ?? 0,
                 tags: payload.tags ?? existing?.tags ?? [],
                 createdAt: existing?.createdAt ?? now,
-                modifiedAt: now
+                modifiedAt: now,
+                agentAttribution: AgentAttribution.from(proposal: proposal)
             )
             store.save(merged)
+            activity.append(.applied(proposal: proposal, kind: kind))
         }
     }
 }
