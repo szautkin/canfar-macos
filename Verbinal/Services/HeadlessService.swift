@@ -41,4 +41,97 @@ final class HeadlessService: Sendable {
     func deleteJob(id: String) async throws {
         _ = try await network.delete(endpoints.sessionURL(id))
     }
+
+    /// Launch one or more replicas of a headless Skaha job. Returns
+    /// the session ids in launch order.
+    ///
+    /// Wire shape mirrors the canonical Python `canfar` client:
+    /// each replica is its own POST to `/skaha/v1/session` with form
+    /// body containing `type=headless`, `name`, `image`, optional
+    /// `cmd` / `args`, optional `cores` / `ram` / `gpus`, and a
+    /// repeated `env=KEY=VAL` field per environment variable plus
+    /// auto-injected `REPLICA_ID` / `REPLICA_COUNT` for each replica
+    /// in the loop. The `replicas` form field itself is included for
+    /// parity with the Python client even though Skaha ignores it
+    /// server-side.
+    ///
+    /// Failure semantics: best-effort partial success. If replica N
+    /// fails, this method throws
+    /// `HeadlessLaunchError.partialReplicaFailure` with the ids of
+    /// replicas 0..<N that DID launch — the caller decides whether
+    /// to roll back via `deleteJob`. Replicas N+1.. are not attempted.
+    /// A failure on the very first replica throws the underlying
+    /// network error directly (no partial state).
+    func launchHeadlessJob(_ params: HeadlessLaunchParams) async throws -> [String] {
+        let count = max(1, params.replicas)
+        var jobIDs: [String] = []
+
+        for replica in 0..<count {
+            let replicaName = count == 1 ? params.name : "\(params.name)-\(replica + 1)"
+
+            var pairs: [(String, String)] = [
+                ("type", "headless"),
+                ("name", replicaName),
+                ("image", params.image)
+            ]
+            if let cmd = params.cmd, !cmd.isEmpty {
+                pairs.append(("cmd", cmd))
+            }
+            if let args = params.args, !args.isEmpty {
+                pairs.append(("args", args))
+            }
+            if let cores = params.cores, cores > 0 {
+                pairs.append(("cores", String(cores)))
+            }
+            if let ram = params.ram, ram > 0 {
+                pairs.append(("ram", String(ram)))
+            }
+            if let gpus = params.gpus, gpus > 0 {
+                pairs.append(("gpus", String(gpus)))
+            }
+            for (key, value) in params.env {
+                pairs.append(("env", "\(key)=\(value)"))
+            }
+            // Auto-inject Python-client parity env vars.
+            pairs.append(("env", "REPLICA_ID=\(replica + 1)"))
+            pairs.append(("env", "REPLICA_COUNT=\(count)"))
+            if count > 1 {
+                pairs.append(("replicas", String(count)))
+            }
+
+            do {
+                let (data, _) = try await network.post(
+                    endpoints.sessionsURL,
+                    formPairs: pairs,
+                    timeout: 120
+                )
+                let id = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard !id.isEmpty else {
+                    if jobIDs.isEmpty {
+                        throw HeadlessLaunchError.emptyResponse
+                    }
+                    throw HeadlessLaunchError.partialReplicaFailure(
+                        launchedIDs: jobIDs,
+                        failedAtIndex: replica,
+                        underlyingMessage: "Skaha returned empty response"
+                    )
+                }
+                jobIDs.append(id)
+            } catch let partial as HeadlessLaunchError {
+                throw partial
+            } catch {
+                if jobIDs.isEmpty {
+                    throw error
+                }
+                throw HeadlessLaunchError.partialReplicaFailure(
+                    launchedIDs: jobIDs,
+                    failedAtIndex: replica,
+                    underlyingMessage: error.localizedDescription
+                )
+            }
+        }
+
+        return jobIDs
+    }
 }
