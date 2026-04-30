@@ -85,8 +85,11 @@ struct DescribeAppTool: JSONReadTool {
         `get_observation_notes`.
       * `list_vospace_path`, `get_vospace_node`, `get_vospace_quota`.
       * `list_sessions`, `get_session`, `list_session_types`,
-        `list_session_images` (call before `launch_session`!),
-        `list_recent_launches`.
+        `list_session_images` (call before `launch_session` AND
+        `launch_headless_job`!), `list_recent_launches`.
+      * `list_headless_jobs`, `get_headless_job`,
+        `get_headless_job_logs`, `get_headless_job_events` —
+        background batch jobs (see "Background jobs" below).
       * `get_fits_header`, `get_fits_wcs` — local-file FITS introspection.
       * `list_pending_proposals`, `get_proposal_state`, `list_events` —
         introspect the proposal lifecycle when in strip-confirm mode.
@@ -127,7 +130,8 @@ struct DescribeAppTool: JSONReadTool {
         (up to 50 → one envelope).
       * `upload_to_vospace`, `download_from_vospace`, `vospace_mkdir`,
         `delete_vospace_node`.
-      * `launch_session`, `delete_session`, `clear_research_archive`.
+      * `launch_session`, `delete_session`, `clear_research_archive`,
+        `launch_headless_job` (see "Background jobs" below).
 
     Destructive tools (`delete_*`, `clear_*`) follow the same toggle as
     semantic writes — there is no separate confirm step for destructive
@@ -160,6 +164,51 @@ struct DescribeAppTool: JSONReadTool {
     Portal). Default ON; the user can disable in Settings ▸ Agents ▸
     Autonomy ▸ "Follow agent activity". You can read the live state
     via the existing `get_current_view.mode` after any write.
+
+    ## Background jobs (headless)
+
+    Headless Skaha sessions are batch jobs — a container runs a single
+    command, exits, and you collect logs after. Distinct from
+    interactive sessions (notebook / desktop / firefly / carta /
+    contributed) which the user clicks into via a browser.
+
+    Use headless when the workflow has a deterministic compute step
+    that doesn't need human interaction (image stacks, photometry
+    pipelines, batch DataLink fetches, FITS-cube reductions). Use a
+    notebook when the user needs to explore interactively.
+
+    Lifecycle: `Pending` → `Running` → terminal (`Completed` /
+    `Succeeded` for success, `Failed` / `Error` for failure,
+    `Terminating` while shutting down). Skaha drops terminated jobs
+    from `list_headless_jobs` after a retention window — fetch logs
+    promptly if you need them.
+
+    Tools:
+      * `launch_headless_job` — write. Required: `name`, `image` (must
+        be from `list_session_images` filtered to `type: "headless"`).
+        Optional: `cmd` (the command to run), `args` (single
+        space-separated string), `env` (array of {key, value} pairs;
+        `REPLICA_ID` and `REPLICA_COUNT` are auto-injected per
+        replica), `cores` / `ram` / `gpus`, `replicas` (1–50).
+        Returns the launched job id(s); ≥ 2 replicas spawn parallel
+        containers with names suffixed `-1, -2, …`. Partial-replica
+        failure: the applier persists the replicas that DID land and
+        the call fails with `backendError` describing which replica
+        failed and how many already running.
+      * `list_headless_jobs` — read. Snapshot of all current jobs
+        with status / phase / image / resources.
+      * `get_headless_job` — read. Single by id.
+      * `get_headless_job_logs` — read. Container stdout/stderr at
+        request time (snapshot, not a live tail).
+      * `get_headless_job_events` — read. Kubernetes-level events
+        (scheduling, image pulls, OOM kills). Useful when a job sits
+        in `Pending` or `Failed` for unobvious reasons.
+      * `delete_session` — destructive. Same id space; works for
+        headless and interactive both.
+
+    Polling pattern: 2–5 s while `Pending`/`Running`, backing off after
+    a few minutes. Don't poll `get_headless_job_logs` in a tight loop;
+    fetch when the user asks or when status changes.
 
     ## Anti-features
 
