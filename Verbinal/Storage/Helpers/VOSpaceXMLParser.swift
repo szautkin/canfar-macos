@@ -10,12 +10,34 @@ import VerbinalKit
 /// Parses VOSpace XML responses into VOSpaceNode objects.
 enum VOSpaceXMLParser {
 
+    private static let isoDateFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let fallbackDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        f.timeZone = TimeZone(identifier: "UTC")
+        return f
+    }()
+
     /// Parse a VOSpace container listing XML into child nodes.
     static func parseNodeList(_ xml: String) -> [VOSpaceNode] {
-        let nodeElements = SimpleXML.elements(localName: "node", in: xml)
+        // Scope `<vos:property>` lookups to each `<vos:node>` subtree —
+        // a flat `elements(localName: "property", …)` over the whole
+        // document made every node share the LAST property of each
+        // kind (so size always read 5772, etc.).
+        let scoped = SimpleXML.nestedElements(
+            parentLocalName: "node",
+            childLocalName: "property",
+            in: xml
+        )
 
-        return nodeElements.compactMap { element -> VOSpaceNode? in
-            guard let uri = element.attributes["uri"], !uri.isEmpty else { return nil }
+        return scoped.compactMap { entry -> VOSpaceNode? in
+            let attributes = entry.parentAttributes
+            guard let uri = attributes["uri"], !uri.isEmpty else { return nil }
 
             let name: String
             if let lastSlash = uri.lastIndex(of: "/") {
@@ -25,7 +47,7 @@ enum VOSpaceXMLParser {
             }
             let path = extractPath(uri)
 
-            let xsiType = element.attributes["xsi:type"] ?? element.attributes["type"] ?? ""
+            let xsiType = attributes["xsi:type"] ?? attributes["type"] ?? ""
             let type: VOSpaceNodeType
             if xsiType.contains("ContainerNode") {
                 type = .container
@@ -36,12 +58,7 @@ enum VOSpaceXMLParser {
             }
 
             var node = VOSpaceNode(name: name, path: path, type: type)
-
-            // Properties are nested — we need to parse the full XML for this node's properties
-            // SimpleXML gives us the text content which includes all nested elements
-            // Use a targeted approach: find properties by URI suffix in the full XML
-            parseProperties(for: &node, in: xml, nodeURI: uri)
-
+            applyProperties(to: &node, properties: entry.children)
             return node
         }
     }
@@ -80,10 +97,10 @@ enum VOSpaceXMLParser {
 
     // MARK: - Private
 
-    private static func parseProperties(for node: inout VOSpaceNode, in xml: String, nodeURI: String) {
-        let properties = SimpleXML.elements(localName: "property", in: xml)
-
-        // Filter properties that belong to this node (heuristic: they appear after this node's URI in the XML)
+    private static func applyProperties(
+        to node: inout VOSpaceNode,
+        properties: [(attributes: [String: String], text: String)]
+    ) {
         for prop in properties {
             guard let propURI = prop.attributes["uri"] else { continue }
             let value = prop.text
@@ -91,17 +108,8 @@ enum VOSpaceXMLParser {
             if propURI.hasSuffix("#length"), let size = Int64(value) {
                 node.sizeBytes = size
             } else if propURI.hasSuffix("#date") {
-                let formatter = ISO8601DateFormatter()
-                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                if let date = formatter.date(from: value) {
-                    node.lastModified = date
-                } else {
-                    // Try simpler format
-                    let df = DateFormatter()
-                    df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-                    df.timeZone = TimeZone(identifier: "UTC")
-                    node.lastModified = df.date(from: value)
-                }
+                node.lastModified = isoDateFormatter.date(from: value)
+                    ?? fallbackDateFormatter.date(from: value)
             } else if propURI.hasSuffix("#type") {
                 node.contentType = value
             } else if propURI.hasSuffix("#ispublic") {

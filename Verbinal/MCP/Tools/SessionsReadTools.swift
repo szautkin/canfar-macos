@@ -156,9 +156,13 @@ struct ListRecentLaunchesTool: JSONReadTool {
             let image: String
             let project: String
             let resourceType: String
-            let cores: Int
-            let ram: Int
-            let gpus: Int
+            /// Omitted when `resourceType == "flexible"` — those launches
+            /// don't pin specific values, and the persisted `0/0/0`
+            /// sentinels were misleading agents into reading them as
+            /// "user wanted zero cores".
+            let cores: Int?
+            let ram: Int?
+            let gpus: Int?
             let launchedAtISO: String
         }
     }
@@ -180,12 +184,16 @@ struct ListRecentLaunchesTool: JSONReadTool {
     func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime]
-        let entries = await snapshot().map {
-            Output.Entry(
-                id: $0.id, name: $0.name, type: $0.type, image: $0.image,
-                project: $0.project, resourceType: $0.resourceType,
-                cores: $0.cores, ram: $0.ram, gpus: $0.gpus,
-                launchedAtISO: iso.string(from: $0.launchedAt)
+        let entries = await snapshot().map { launch -> Output.Entry in
+            let isFixed = launch.resourceType == "fixed"
+            return Output.Entry(
+                id: launch.id, name: launch.name, type: launch.type,
+                image: launch.image, project: launch.project,
+                resourceType: launch.resourceType,
+                cores: isFixed ? launch.cores : nil,
+                ram:   isFixed ? launch.ram   : nil,
+                gpus:  isFixed ? launch.gpus  : nil,
+                launchedAtISO: iso.string(from: launch.launchedAt)
             )
         }
         return Output(entries: entries)
