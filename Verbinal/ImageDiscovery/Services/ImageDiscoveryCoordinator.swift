@@ -342,6 +342,15 @@ actor ImageDiscoveryCoordinator {
             let err = ImageDiscoveryError.jobSubmitFailed(message: msg)
             try? await persistFailure(imageID: imageID, error: err, jobID: nil)
             throw err
+        } catch let typed as ImageDiscoveryError {
+            // The retry helper already produces `ImageDiscoveryError`
+            // for known patterns (e.g. the friendly Skaha-refused
+            // message after both attempts hit the race). Pass it
+            // through untouched — wrapping it again would erase
+            // the typed message and surface Cocoa's "error 0"
+            // fallback in its place.
+            try? await persistFailure(imageID: imageID, error: typed, jobID: nil)
+            throw typed
         } catch {
             let err = ImageDiscoveryError.jobSubmitFailed(message: error.localizedDescription)
             try? await persistFailure(imageID: imageID, error: err, jobID: nil)

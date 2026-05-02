@@ -10,7 +10,7 @@ import Foundation
 /// these; the cache stores a downcast `LastOutcome.FailureCategory`
 /// + message because the typed associated values don't all Codable
 /// trivially and the cache only needs enough to render a UI status.
-enum ImageDiscoveryError: Error, Equatable, Sendable {
+enum ImageDiscoveryError: Error, Equatable, Sendable, LocalizedError {
     /// Couldn't enqueue the headless probe job. Usually a Skaha
     /// 4xx/5xx (private image, registry-auth missing, quota).
     case jobSubmitFailed(message: String)
@@ -39,6 +39,16 @@ enum ImageDiscoveryError: Error, Equatable, Sendable {
         case .unknown(let m): return m
         }
     }
+
+    /// `LocalizedError` conformance. Without this, callers that
+    /// catch as untyped `Error` and read `.localizedDescription`
+    /// got Cocoa's auto-fallback (`The operation couldn't be
+    /// completed. (Verbinal.ImageDiscoveryError error 0.)`), which
+    /// the coordinator then re-wrapped into another
+    /// `jobSubmitFailed`, producing nonsense messages in the UI.
+    /// Pointing `.errorDescription` at our typed `displayMessage`
+    /// makes the two views of the error agree.
+    var errorDescription: String? { displayMessage }
 
     /// Project this error to the cache's stable string category.
     var cacheCategory: LastOutcome.FailureCategory {

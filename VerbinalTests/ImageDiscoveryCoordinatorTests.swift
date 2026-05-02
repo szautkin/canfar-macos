@@ -811,6 +811,44 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
                        "inspector launch must retry once on the K8s race; got \(h.launchCalls.count)")
     }
 
+    func testFriendlyRaceErrorSurvivesOuterCatchAfterRetryExhaust() async throws {
+        // Both the original launch AND the 2.5s retry hit the race
+        // pattern → retryingOnSkahaRace rewraps as
+        // ImageDiscoveryError.jobSubmitFailed("Skaha refused…").
+        // The OUTER catch in runDiscovery used to take
+        // .localizedDescription on this typed error which fell
+        // through to Cocoa's "(Verbinal.ImageDiscoveryError
+        // error 0.)" because we didn't conform to LocalizedError,
+        // and re-wrapped, producing a nonsense message in the UI.
+        // Pin the contract: the friendly message must round-trip
+        // unchanged through the outer catch.
+        let store = makeStore()
+        let h = MockHeadless()
+        h.launchErrorSequence = [
+            NSError(domain: "Skaha", code: 500,
+                    userInfo: [NSLocalizedDescriptionKey: "HTTP 500: jobs.batch \"x\" not found"]),
+            NSError(domain: "Skaha", code: 500,
+                    userInfo: [NSLocalizedDescriptionKey: "HTTP 500: jobs.batch \"x\" not found"])
+        ]
+        let v = MockVOSpace()
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+
+        do {
+            _ = try await coord.discover("test:race-exhausted")
+            XCTFail("expected throw after both retries hit the race")
+        } catch let err as ImageDiscoveryError {
+            // Must NOT be the Cocoa "error 0" fallback wrapped.
+            XCTAssertFalse(err.displayMessage.contains("error 0"),
+                           "raw Error.localizedDescription leaked into the typed error; got: \(err.displayMessage)")
+            XCTAssertTrue(err.displayMessage.contains("Skaha refused"),
+                          "friendly message must survive outer catch; got: \(err.displayMessage)")
+            // LocalizedError conformance — .localizedDescription
+            // must return the same friendly text.
+            XCTAssertEqual(err.localizedDescription, err.displayMessage)
+        }
+    }
+
     func testProbeDoesNotRetryOnUnrelated500() async throws {
         let store = makeStore()
         let h = MockHeadless()
