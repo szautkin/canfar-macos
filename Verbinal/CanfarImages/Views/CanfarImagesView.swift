@@ -64,16 +64,26 @@ struct CanfarImagesView: View {
 
     // MARK: - Tabs
 
+    /// Eight tabs don't fit comfortably in a 280pt column as a
+    /// segmented control. Render as a popup-button dropdown
+    /// instead — compact, native macOS, scales to any number of
+    /// type filters we add later.
     @ViewBuilder
     private var tabBar: some View {
-        Picker("", selection: $model.selectedTab) {
-            ForEach(CanfarImagesTab.allCases) { tab in
-                Text(tab.title).tag(tab)
+        HStack(spacing: 8) {
+            Text("Show")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Picker("", selection: $model.selectedTab) {
+                ForEach(CanfarImagesTab.allCases) { tab in
+                    Text("\(tab.title) (\(model.count(for: tab)))").tag(tab)
+                }
             }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .controlSize(.small)
+            Spacer()
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .controlSize(.small)
     }
 
     // MARK: - Search
