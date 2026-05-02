@@ -360,11 +360,22 @@ final class AppState {
         // monitor (set up here, torn down on logout).
         let cacheDir = JSONManifestStore.defaultDirectory()
         let store = JSONManifestStore(directory: cacheDir)
+        // Types lookup so the coordinator can pick in-target vs
+        // inspector strategy per image. Best-effort: a transient
+        // catalogue fetch failure means we fall back to in-target,
+        // which is the prior single-strategy behaviour.
+        let imageSvc = imageService
+        let typesLookup: @Sendable (String) async -> [String]? = { id in
+            guard let raws = try? await imageSvc.getImages() else { return nil }
+            return raws.first(where: { $0.id == id })?.types
+        }
+
         let coord = ImageDiscoveryCoordinator(
             store: store,
             headless: headlessService,
             vospace: VOSpaceBrowserService(network: network),
-            username: username
+            username: username,
+            imageTypesLookup: typesLookup
         )
         imageDiscoveryCoordinator = coord
         imageDiscoveryModel = ImageDiscoveryModel(coordinator: coord)

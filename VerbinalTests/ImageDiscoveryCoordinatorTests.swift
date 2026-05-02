@@ -529,6 +529,121 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(cat, .manifestFetchFailed)
     }
 
+    // MARK: - Probe strategy router
+
+    func testStrategyChoiceFromTypes() {
+        // headless-capable image → in-target probe
+        XCTAssertEqual(
+            ImageDiscoveryCoordinator.strategy(forTypes: ["headless"]),
+            .inTarget
+        )
+        XCTAssertEqual(
+            ImageDiscoveryCoordinator.strategy(forTypes: ["notebook", "headless"]),
+            .inTarget
+        )
+        // No headless type → inspector
+        XCTAssertEqual(
+            ImageDiscoveryCoordinator.strategy(forTypes: ["notebook"]),
+            .inspector
+        )
+        XCTAssertEqual(
+            ImageDiscoveryCoordinator.strategy(forTypes: ["carta"]),
+            .inspector
+        )
+        XCTAssertEqual(
+            ImageDiscoveryCoordinator.strategy(forTypes: []),
+            .inspector
+        )
+        // Unknown types (lookup returned nil) → in-target fallback
+        XCTAssertEqual(
+            ImageDiscoveryCoordinator.strategy(forTypes: nil),
+            .inTarget
+        )
+    }
+
+    func testInspectorPathLaunchesKnownGoodImageWithTargetEnv() async throws {
+        // Non-headless target → coordinator picks inspector strategy.
+        // Pin the wire shape: cmd is "bash", args points at the
+        // *inspector* script (not probe-*.sh), image is the
+        // *inspector* image (not the target), env carries
+        // TARGET_IMAGE=<the original target>.
+        let store = makeStore()
+        let h = MockHeadless()
+        let v = MockVOSpace()
+
+        // Inspector path writes the manifest at the path for the
+        // TARGET image (carried via TARGET_IMAGE env), NOT the
+        // inspector container image.
+        h.onLaunchSimulate = { [weak v] params in
+            guard let target = params.env.first(where: { $0.0 == "TARGET_IMAGE" })?.1 else { return }
+            let safe = ImageManifest.sanitize(imageID: target)
+            let path = "\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"
+            v?.fileContents[path] = self.sampleManifestJSON(imageID: target)
+        }
+
+        let nonHeadlessImage = "images.canfar.net/skaha/notebook:24.07"
+        let coord = ImageDiscoveryCoordinator(
+            store: store,
+            headless: h,
+            vospace: v,
+            username: "testuser",
+            probeJobTimeout: 5.0,
+            pollInterval: 0.01,
+            maxConcurrentProbes: 3,
+            imageTypesLookup: { id in
+                id == nonHeadlessImage ? ["notebook"] : nil
+            }
+        )
+
+        _ = try await coord.discover(nonHeadlessImage)
+
+        XCTAssertEqual(h.launchCalls.count, 1)
+        let call = h.launchCalls[0]
+        XCTAssertEqual(call.image, InspectorScript.builtinInspectorImageID,
+                       "inspector path must launch the known-good headless image, NOT the target")
+        XCTAssertEqual(call.cmd, "bash")
+        XCTAssertTrue(call.args?.contains(InspectorScript.uploadFilename) ?? false,
+                      "args must point at the inspector script; got \(call.args ?? "nil")")
+        XCTAssertEqual(call.env.first(where: { $0.0 == "TARGET_IMAGE" })?.1, nonHeadlessImage,
+                       "target image id must be passed via TARGET_IMAGE env")
+    }
+
+    func testHeadlessImageStillUsesInTargetPath() async throws {
+        let store = makeStore()
+        let h = MockHeadless()
+        let v = MockVOSpace()
+        wireLaunchToWriteManifest(v, h)
+
+        let headlessImage = "images.canfar.net/skaha/terminal:1.1.2"
+        let coord = ImageDiscoveryCoordinator(
+            store: store, headless: h, vospace: v, username: "testuser",
+            probeJobTimeout: 5.0, pollInterval: 0.01, maxConcurrentProbes: 3,
+            imageTypesLookup: { _ in ["headless"] }
+        )
+
+        _ = try await coord.discover(headlessImage)
+
+        XCTAssertEqual(h.launchCalls.count, 1)
+        let call = h.launchCalls[0]
+        XCTAssertEqual(call.image, headlessImage,
+                       "in-target path launches the target image as the probe host")
+        XCTAssertTrue(call.args?.contains(ProbeScript.uploadFilename) ?? false,
+                      "in-target path uses probe.sh, not inspector.sh")
+    }
+
+    func testInspectorScriptInvariants() {
+        // Pin the contract: schemaVersion matches the parser's max,
+        // body references the env var the coordinator sets, and the
+        // upload filename is hash-derived (so bumping the body busts
+        // the prior upload automatically).
+        XCTAssertEqual(InspectorScript.schemaVersion, ManifestParser.maxSupportedSchemaVersion)
+        XCTAssertTrue(InspectorScript.body.contains("TARGET_IMAGE"))
+        XCTAssertTrue(InspectorScript.body.contains(".verbinal/manifests"))
+        XCTAssertTrue(InspectorScript.body.contains("syft"))
+        XCTAssertEqual(InspectorScript.uploadFilename, "inspector-\(InspectorScript.scriptHash).sh")
+        XCTAssertEqual(InspectorScript.scriptHash.count, 12)
+    }
+
     // MARK: - VOSpace manifest recovery
 
     func testDiscoverShortCircuitsIfManifestAlreadyInVOSpace() async throws {

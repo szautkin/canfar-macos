@@ -66,6 +66,21 @@ actor ImageDiscoveryCoordinator {
     private let vospace: any VOSpaceFileTransfer
     private let username: String
 
+    /// Optional lookup so the coordinator can ask "what types does
+    /// image X support?" at probe time. The answer drives strategy:
+    /// types-include-headless → in-target probe (current path);
+    /// otherwise → inspector probe (a known headless image
+    /// introspects the target via static layer scan). Nil lookup
+    /// or nil result falls back to in-target (matches the prior
+    /// single-strategy world).
+    private let imageTypesLookup: (@Sendable (String) async -> [String]?)?
+
+    /// Strategy choice per image — pure function of types.
+    enum ProbeStrategy: Sendable, Equatable {
+        case inTarget    // run probe.sh inside the target image
+        case inspector   // launch a known-good headless image to inspect target
+    }
+
     /// Hard timeout for a single probe job. Default 5 minutes; tests
     /// override much lower.
     private let probeJobTimeout: TimeInterval
@@ -84,6 +99,12 @@ actor ImageDiscoveryCoordinator {
     /// upload. Cleared by `setProbeScriptNotUploaded()` for tests.
     private var probeScriptUploaded: Bool = false
 
+    /// Same as `probeScriptUploaded` but for the inspector path.
+    /// Inspector script is independently versioned (different hash
+    /// → different uploaded filename) so the two scripts can coexist
+    /// in `.verbinal/` without overlap.
+    private var inspectorScriptUploaded: Bool = false
+
     init(
         store: any ManifestStore,
         headless: any HeadlessProbeLauncher,
@@ -91,7 +112,8 @@ actor ImageDiscoveryCoordinator {
         username: String,
         probeJobTimeout: TimeInterval = 300,
         pollInterval: TimeInterval = 3,
-        maxConcurrentProbes: Int = 5
+        maxConcurrentProbes: Int = 5,
+        imageTypesLookup: (@Sendable (String) async -> [String]?)? = nil
     ) {
         self.store = store
         self.headless = headless
@@ -100,6 +122,7 @@ actor ImageDiscoveryCoordinator {
         self.probeJobTimeout = probeJobTimeout
         self.pollInterval = pollInterval
         self.maxConcurrentProbes = max(1, maxConcurrentProbes)
+        self.imageTypesLookup = imageTypesLookup
     }
 
     // MARK: - Cache pass-through
@@ -278,27 +301,30 @@ actor ImageDiscoveryCoordinator {
     // MARK: - Discovery pipeline
 
     private func runDiscovery(for imageID: String, force: Bool = false) async throws -> ImageManifest {
-        // Probe script + parent dir setup is idempotent; cheap to
-        // re-run, and even a force=true rediscover needs the upload
-        // to be present.
+        let strategy = await strategy(for: imageID)
+
+        // Upload whichever script(s) the strategy requires. Both
+        // share the same `.verbinal/` parent dir; ensure-* is
+        // idempotent so this is cheap on repeat calls.
         do {
-            try await ensureProbeScript()
+            switch strategy {
+            case .inTarget:  try await ensureProbeScript()
+            case .inspector: try await ensureInspectorScript()
+            }
         } catch {
             try? await persistFailure(
                 imageID: imageID,
-                error: .jobSubmitFailed(message: "probe script upload: \(error.localizedDescription)"),
+                error: .jobSubmitFailed(message: "script upload: \(error.localizedDescription)"),
                 jobID: nil
             )
             throw ImageDiscoveryError.jobSubmitFailed(message: error.localizedDescription)
         }
 
-        // Recovery short-circuit: a previous probe may have completed
-        // and written the manifest to VOSpace, but our poll loop
-        // timed out before catching its terminal state. The manifest
-        // is sitting at the expected path, so fetching it costs one
-        // round-trip and saves an entire fresh probe job. Skipped
-        // when the caller forced a rediscover (they explicitly want
-        // a fresh probe).
+        // Recovery short-circuit: a previous probe (either strategy)
+        // may have completed and written the manifest to VOSpace,
+        // but our poll loop timed out before catching its terminal
+        // state. The manifest is sitting at the expected path —
+        // strategy-agnostic, so the recovery just works for both.
         if !force, let manifest = try? await fetchManifestIfPresent(for: imageID) {
             try await store.setManifest(manifest)
             return manifest
@@ -306,7 +332,12 @@ actor ImageDiscoveryCoordinator {
 
         let jobID: String
         do {
-            jobID = try await launchProbeJobWithRetry(for: imageID)
+            switch strategy {
+            case .inTarget:
+                jobID = try await launchProbeJobWithRetry(for: imageID)
+            case .inspector:
+                jobID = try await launchInspectorJob(for: imageID)
+            }
         } catch let HeadlessLaunchError.partialReplicaFailure(_, _, msg) {
             let err = ImageDiscoveryError.jobSubmitFailed(message: msg)
             try? await persistFailure(imageID: imageID, error: err, jobID: nil)
@@ -412,6 +443,21 @@ actor ImageDiscoveryCoordinator {
         try await headless.getEvents(id: jobID)
     }
 
+    /// Pure decision: which strategy applies to this image's types.
+    /// Headless-capable → in-target probe. Anything else → inspector.
+    static func strategy(forTypes types: [String]?) -> ProbeStrategy {
+        guard let types else { return .inTarget }    // unknown: best-effort
+        return types.contains("headless") ? .inTarget : .inspector
+    }
+
+    /// Resolves strategy by consulting the injected types lookup;
+    /// inFlight + recovery paths use this so the choice is consistent
+    /// across retries.
+    private func strategy(for imageID: String) async -> ProbeStrategy {
+        let types = await imageTypesLookup?(imageID)
+        return Self.strategy(forTypes: types)
+    }
+
     private func ensureProbeScript() async throws {
         if probeScriptUploaded { return }
 
@@ -444,6 +490,33 @@ actor ImageDiscoveryCoordinator {
         Self.logger.info("uploaded probe script to \(remote, privacy: .public)")
     }
 
+    /// Sister of `ensureProbeScript` for the inspector path.
+    /// Independent flag because the two scripts have different hashes
+    /// and live as different files; a session might use both depending
+    /// on which targets the user inspects.
+    private func ensureInspectorScript() async throws {
+        if inspectorScriptUploaded { return }
+
+        try? await vospace.createFolder(
+            username: username,
+            parentPath: "",
+            folderName: ProbeScript.homeSubdirectory   // shared parent dir
+        )
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("verbinal-inspector-upload-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let local = tempDir.appendingPathComponent(InspectorScript.uploadFilename)
+        try InspectorScript.body.write(to: local, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let remote = "\(ProbeScript.homeSubdirectory)/\(InspectorScript.uploadFilename)"
+        try await vospace.uploadFile(username: username, remotePath: remote, fileURL: local)
+
+        inspectorScriptUploaded = true
+        Self.logger.info("uploaded inspector script to \(remote, privacy: .public)")
+    }
+
     /// Submit the probe job, retrying once on Skaha's known
     /// eventual-consistency race where the POST succeeds in
     /// creating the K8s `jobs.batch` resource but Skaha's
@@ -469,6 +542,43 @@ actor ImageDiscoveryCoordinator {
     static func isSkahaJobNotFoundRace(_ error: Error) -> Bool {
         let msg = error.localizedDescription.lowercased()
         return msg.contains("jobs.batch") && msg.contains("not found")
+    }
+
+    /// Inspector-mode launch. The container image is a *known-good
+    /// headless image* (default `terminal:1.1.2`, override via
+    /// UserDefaults `InspectorScript.inspectorImageDefaultsKey`),
+    /// the cmd is `bash` + the inspector script's absolute path, and
+    /// the target image being probed is passed via `TARGET_IMAGE`
+    /// env var. The inspector script runs syft against the registry
+    /// URL of the target and writes a manifest at the same path the
+    /// in-target probe writes — coordinator's recovery + cache
+    /// layers don't care which strategy produced the file.
+    private func launchInspectorJob(for targetImageID: String) async throws -> String {
+        let safeTarget = ImageManifest.sanitize(imageID: targetImageID).lowercased()
+        let trimmed = String(safeTarget.prefix(40))
+        let shortUUID = String(UUID().uuidString.prefix(8)).lowercased()
+        let jobName = "verbinal-inspect-\(trimmed)-\(shortUUID)"
+            .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: ".", with: "-")
+
+        let scriptPath = "/arc/home/\(username)/\(ProbeScript.homeSubdirectory)/\(InspectorScript.uploadFilename)"
+        let inspectorImage = InspectorScript.resolvedInspectorImageID()
+        let params = HeadlessLaunchParams(
+            name: jobName,
+            image: inspectorImage,           // known-good headless host
+            cmd: "bash",
+            args: scriptPath,
+            env: [("TARGET_IMAGE", targetImageID)],
+            cores: 1,
+            ram: 4,                          // syft + image pull may want more headroom
+            gpus: 0,
+            replicas: 1
+        )
+        let ids = try await headless.launchHeadlessJob(params)
+        guard let first = ids.first else {
+            throw ImageDiscoveryError.jobSubmitFailed(message: "Skaha returned no job id")
+        }
+        return first
     }
 
     private func launchProbeJob(for imageID: String) async throws -> String {
