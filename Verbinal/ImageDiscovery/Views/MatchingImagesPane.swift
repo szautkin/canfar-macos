@@ -55,9 +55,58 @@ struct MatchingImagesPane: View {
                 detailLine(image: image, state: state)
             }
             Spacer()
+            staleBadge(state: state)
             statusIndicator(state: state)
+            rediscoverButton(imageID: image.id, state: state)
         }
         .padding(.vertical, 2)
+    }
+
+    /// Stale-tag indicator — only rendered for rolling-tag images
+    /// whose manifest is older than the freshness window.
+    @ViewBuilder
+    private func staleBadge(state: ImageDiscoveryModel.RowState) -> some View {
+        if case .discovered(let manifest) = state,
+           let label = RollingTagPolicy.staleAgeLabel(for: manifest) {
+            Image(systemName: "clock.badge.exclamationmark")
+                .foregroundStyle(.orange)
+                .help(label)
+        }
+    }
+
+    /// Per-image Rediscover button. Drops the cached manifest and
+    /// re-runs the probe through the coordinator. Hidden while the
+    /// image is currently being probed.
+    @ViewBuilder
+    private func rediscoverButton(
+        imageID: String,
+        state: ImageDiscoveryModel.RowState
+    ) -> some View {
+        switch state {
+        case .running:
+            EmptyView()
+        case .neverDiscovered:
+            // Manual kick: useful when the user wants to be sure
+            // discovery actually fires for this image without waiting
+            // for the background sweep.
+            Button {
+                Task { await model.rediscover(imageID) }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .help("Discover packages for this image")
+        case .discovered, .failed:
+            Button {
+                Task { await model.rediscover(imageID) }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .help("Re-run discovery for this image")
+        }
     }
 
     @ViewBuilder

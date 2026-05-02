@@ -538,6 +538,22 @@ private struct AgentsSettingsTab: View {
                         .foregroundStyle(.tertiary)
                 }
 
+                if let coord = appState.imageDiscoveryCoordinator {
+                    Section {
+                        ImageDiscoveryCacheRow(coordinator: coord)
+                    } header: {
+                        Text("Image Discovery Cache")
+                    } footer: {
+                        Text("Per-image package manifests learned by running " +
+                             "small probe jobs inside Skaha containers. Stored at " +
+                             "Application Support/Verbinal/ImageDiscovery/manifests/. " +
+                             "Clearing wipes the local cache; in-flight probes will " +
+                             "repopulate when they complete.")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+
                 Section {
                     auditList
                 } header: {
@@ -622,6 +638,48 @@ private struct AgentsSettingsTab: View {
                     .padding(.vertical, 4)
                 }
                 .frame(maxHeight: 160)
+            }
+        }
+    }
+
+    /// Displayed inside the Settings ▸ Agents pane when a discovery
+    /// coordinator is alive. Shows the live cache count and a
+    /// destructive Clear button. Loading state surfaces on the
+    /// initial fetch of `cacheCount()` so the user doesn't see "0
+    /// entries" while the actor is hydrating.
+    fileprivate struct ImageDiscoveryCacheRow: View {
+        let coordinator: ImageDiscoveryCoordinator
+        @State private var count: Int? = nil
+        @State private var clearing: Bool = false
+
+        var body: some View {
+            HStack {
+                Label(label, systemImage: "shippingbox")
+                    .font(.callout)
+                Spacer()
+                Button("Clear", role: .destructive) {
+                    Task {
+                        clearing = true
+                        try? await coordinator.clearCache()
+                        count = await coordinator.cacheCount()
+                        clearing = false
+                    }
+                }
+                .controlSize(.small)
+                .disabled(clearing || (count ?? 0) == 0)
+            }
+            .task {
+                if count == nil {
+                    count = await coordinator.cacheCount()
+                }
+            }
+        }
+
+        private var label: String {
+            switch count {
+            case nil: return "Loading…"
+            case .some(let n) where n == 1: return "1 entry"
+            case .some(let n): return "\(n) entries"
             }
         }
     }

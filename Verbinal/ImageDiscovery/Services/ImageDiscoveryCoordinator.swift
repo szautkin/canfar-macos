@@ -113,6 +113,20 @@ actor ImageDiscoveryCoordinator {
         await store.search(query)
     }
 
+    /// Wipe every cached manifest and failure record. Surfaced via
+    /// Settings ▸ "Clear discovery cache". Doesn't cancel any
+    /// in-flight probe jobs — they'll repopulate the cache when
+    /// they complete.
+    func clearCache() async throws {
+        try await store.clear()
+    }
+
+    /// Number of cached records — used by Settings to render the
+    /// "Clear cache (N entries)" label.
+    func cacheCount() async -> Int {
+        await store.count()
+    }
+
     // MARK: - Single-image discovery
 
     /// Discover packages for one image. Returns the cached manifest
