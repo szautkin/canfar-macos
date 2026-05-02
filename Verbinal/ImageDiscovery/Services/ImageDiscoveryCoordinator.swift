@@ -525,8 +525,15 @@ actor ImageDiscoveryCoordinator {
     /// rare on the typical case but reproducible on small/fast-
     /// scheduling images. Single retry after 2.5s lets the K8s
     /// API server's read replica catch up.
+    ///
+    /// Wrapped in the launch-slot semaphore so a flurry of probe
+    /// requests doesn't burst against Skaha's per-namespace rate
+    /// limit (which it reports as the same misleading
+    /// jobs.batch-not-found error).
     private func launchProbeJobWithRetry(for imageID: String) async throws -> String {
-        try await retryingOnSkahaRace(label: "probe", imageID: imageID) {
+        await acquireLaunchSlot()
+        defer { releaseLaunchSlot() }
+        return try await retryingOnSkahaRace(label: "probe", imageID: imageID) {
             try await self.launchProbeJob(for: imageID)
         }
     }
@@ -535,8 +542,11 @@ actor ImageDiscoveryCoordinator {
     /// race is at submission time (Skaha + K8s API server), not
     /// strategy-specific — both probe and inspector launches go
     /// through the same Skaha endpoint and hit the same race.
+    /// Same launch-slot semaphore as the in-target path.
     private func launchInspectorJobWithRetry(for targetImageID: String) async throws -> String {
-        try await retryingOnSkahaRace(label: "inspector", imageID: targetImageID) {
+        await acquireLaunchSlot()
+        defer { releaseLaunchSlot() }
+        return try await retryingOnSkahaRace(label: "inspector", imageID: targetImageID) {
             try await self.launchInspectorJob(for: targetImageID)
         }
     }
@@ -545,6 +555,11 @@ actor ImageDiscoveryCoordinator {
     /// the race detection + backoff in one place so future
     /// adjustments (e.g. a second retry, exponential backoff)
     /// only need editing here.
+    ///
+    /// On retry exhaustion: rewrap the error as a friendlier
+    /// `.jobSubmitFailed(message:)` explaining the most-likely
+    /// cause (quota / backend), so the cache stores something the
+    /// user can act on instead of the raw HTTP 500 / K8s 404 dump.
     private func retryingOnSkahaRace<T: Sendable>(
         label: String,
         imageID: String,
@@ -556,7 +571,52 @@ actor ImageDiscoveryCoordinator {
             guard Self.isSkahaJobNotFoundRace(error) else { throw error }
             Self.logger.notice("\(label, privacy: .public) submit hit jobs.batch not-found race for \(imageID, privacy: .public); retrying after 2.5s")
             try? await Task.sleep(nanoseconds: 2_500_000_000)
-            return try await work()
+            do {
+                return try await work()
+            } catch where Self.isSkahaJobNotFoundRace(error) {
+                throw ImageDiscoveryError.jobSubmitFailed(
+                    message: "Skaha refused to schedule the probe job — likely quota exhausted or backend instability. Close some active sessions and try again, or contact CADC if this persists."
+                )
+            }
+        }
+    }
+
+    // MARK: - Concurrency throttle
+
+    /// Hard cap on how many launch operations can be in flight at
+    /// once across the *entire* coordinator. Prevents bursty user
+    /// behaviour (rapid-fire Inspect clicks across many rows) from
+    /// tripping Skaha's per-namespace rate limit, which Skaha
+    /// reports back as the misleading "jobs.batch not found"
+    /// error pattern.
+    ///
+    /// Modeled as a counting semaphore implemented inside the
+    /// actor — each launch acquires before its work, releases
+    /// when the launch returns (success OR failure). Bypassed for
+    /// the post-launch poll loop because polling doesn't pressure
+    /// Skaha's create path.
+    private static let maxConcurrentLaunches: Int = 2
+    private var inFlightLaunches: Int = 0
+    private var launchWaiters: [CheckedContinuation<Void, Never>] = []
+
+    private func acquireLaunchSlot() async {
+        if inFlightLaunches < Self.maxConcurrentLaunches {
+            inFlightLaunches += 1
+            return
+        }
+        await withCheckedContinuation { continuation in
+            launchWaiters.append(continuation)
+        }
+        // Resumed by `releaseLaunchSlot` which has already
+        // decremented its own count and incremented ours.
+        inFlightLaunches += 1
+    }
+
+    private func releaseLaunchSlot() {
+        inFlightLaunches -= 1
+        if let next = launchWaiters.first {
+            launchWaiters.removeFirst()
+            next.resume()
         }
     }
 
