@@ -231,11 +231,16 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(manifest.imageID, imageID)
         XCTAssertEqual(Set(manifest.pythonPackages.map(\.name)), ["astropy", "numpy"])
 
-        // Probe was launched once; image, cmd, env all set correctly.
+        // Probe was launched once; image, cmd/args, env all set correctly.
+        // The cmd is just "bash" and the script path lives in args
+        // (Skaha hands cmd to OCI verbatim and would fail to find a
+        // binary named "bash /path/script.sh" with the space).
         XCTAssertEqual(h.launchCalls.count, 1)
         let call = h.launchCalls[0]
         XCTAssertEqual(call.image, imageID)
-        XCTAssertTrue(call.cmd?.contains(ProbeScript.uploadFilename) ?? false)
+        XCTAssertEqual(call.cmd, "bash")
+        XCTAssertTrue(call.args?.contains(ProbeScript.uploadFilename) ?? false,
+                      "script path must live in args, not cmd; got args: \(call.args ?? "nil")")
         XCTAssertEqual(call.env.first(where: { $0.0 == "IMAGE_ID" })?.1, imageID)
 
         // Probe script was uploaded.
@@ -287,17 +292,23 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(v.foldersCreated[0].parentPath, "")
     }
 
-    func testProbeJobCmdContainsNoShellExpansion() async throws {
-        // Skaha's server-side runs `cmd` through a regex replacer
-        // that treats `$X` as a regex group backreference. Any `$`
-        // in cmd causes HTTP 400 "Illegal group reference" before
-        // the container even starts. Pin the rule: cmd must be a
-        // pre-resolved absolute path with no `$` characters at all.
+    func testProbeJobCmdAndArgsAreSplitCorrectly() async throws {
+        // Skaha passes `cmd` to OCI as the binary name verbatim —
+        // no shell parsing. Joining "bash" + path into one cmd
+        // string makes containerd look for an executable literally
+        // named "bash /path/script.sh" (including the space) and
+        // fail with `exec: ... no such file or directory`. The
+        // probe must split cmd ("bash") and args (the script path).
+        // Pin the rule so this can't regress.
+        //
+        // Also: cmd must contain no `$` because Skaha runs cmd
+        // through a Java regex replacer that treats `$X` as a
+        // group backreference (the prior $HOME bug).
         let store = makeStore()
         let h = MockHeadless()
         let v = MockVOSpace()
 
-        let imageID = "test:no-shell-expansion"
+        let imageID = "test:cmd-args-split"
         let safe = ImageManifest.sanitize(imageID: imageID)
         v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
             sampleManifestJSON(imageID: imageID)
@@ -307,11 +318,21 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(h.launchCalls.count, 1)
         let cmd = h.launchCalls[0].cmd ?? ""
+        let args = h.launchCalls[0].args ?? ""
+
+        XCTAssertEqual(cmd, "bash",
+                       "cmd must be just the binary name; got: \(cmd)")
+        XCTAssertFalse(cmd.contains(" "),
+                       "cmd must not contain spaces (OCI parses it as a single binary path)")
         XCTAssertFalse(cmd.contains("$"),
-                       "cmd must not contain `$` (Skaha treats it as a regex group ref); got: \(cmd)")
-        XCTAssertTrue(cmd.hasPrefix("bash /arc/home/"),
-                      "cmd must use absolute /arc/home path; got: \(cmd)")
-        XCTAssertTrue(cmd.contains(ProbeScript.uploadFilename))
+                       "cmd must not contain `$` (Skaha regex-replacer treats it as a backreference)")
+
+        XCTAssertTrue(args.hasPrefix("/arc/home/"),
+                      "args must be the absolute script path; got: \(args)")
+        XCTAssertTrue(args.contains(ProbeScript.uploadFilename))
+        XCTAssertFalse(args.contains(" "),
+                       "args must be a single space-free token (Skaha tokenises args by whitespace)")
+        XCTAssertFalse(args.contains("$"))
     }
 
     func testProbeScriptUploadSwallowsAlreadyExistsMkdirError() async throws {
