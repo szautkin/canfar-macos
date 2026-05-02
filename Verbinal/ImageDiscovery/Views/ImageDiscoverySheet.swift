@@ -59,6 +59,14 @@ struct ImageDiscoverySheet: View {
             await model.onAppear(catalogue: catalogue)
         }
         .onDisappear { model.onDisappear() }
+        .sheet(isPresented: Binding(
+            get: { model.jobIDForLogsSheet != nil },
+            set: { if !$0 { model.jobIDForLogsSheet = nil } }
+        )) {
+            if let jobID = model.jobIDForLogsSheet {
+                ProbeLogsSheet(model: model, jobID: jobID)
+            }
+        }
     }
 
     // MARK: - Header

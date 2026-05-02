@@ -30,8 +30,10 @@ final class ImageDiscoveryModel {
         case running
         /// Cached success — manifest available.
         case discovered(ImageManifest)
-        /// Cached failure with display message + when.
-        case failed(message: String, attemptedAt: Date)
+        /// Cached failure with display message + when. `jobID` is
+        /// the Skaha session id of the probe that failed (when
+        /// applicable) so the UI can offer "View logs".
+        case failed(message: String, attemptedAt: Date, jobID: String?)
     }
 
     // MARK: - Inputs
@@ -68,18 +70,27 @@ final class ImageDiscoveryModel {
     /// retry / close.
     var bannerMessage: String?
 
+    /// When non-nil, the discovery sheet presents the probe-logs
+    /// sheet for this Skaha session id. Setter triggered by the
+    /// "View logs" button on a failed row.
+    var jobIDForLogsSheet: String?
+
     init(coordinator: ImageDiscoveryCoordinator) {
         self.coordinator = coordinator
     }
 
     // MARK: - Open / close lifecycle
 
-    /// Sheet just appeared: load the catalogue, hydrate row states
-    /// from cache, kick off discovery for everything not yet cached.
+    /// Sheet just appeared: load the catalogue and hydrate row
+    /// states from cache. **Does NOT auto-start discovery** — the
+    /// user triggers each probe explicitly via the per-row Discover
+    /// button. Auto-running was reverted because (a) it commits real
+    /// Skaha resources without explicit consent, and (b) failures
+    /// across the catalogue cluster up faster than the user can
+    /// triage.
     func onAppear(catalogue: [ParsedImage]) async {
         allKnownImages = catalogue
         await refreshFromCache()
-        await runDiscovery()
     }
 
     /// Sheet about to dismiss. The coordinator's polling continues
@@ -132,7 +143,27 @@ final class ImageDiscoveryModel {
             // in as discoveries complete, not just at the end.
             mergeIntoAllPackages(manifest)
         case .failed(let id, let err):
-            rowStates[id] = .failed(message: err.displayMessage, attemptedAt: Date())
+            // The coordinator persisted the cached failure already;
+            // re-read so we get the jobID it captured (we don't
+            // have direct access to the jobID from the streaming
+            // event, but the cache does).
+            Task { [weak self] in
+                guard let self else { return }
+                let outcome = await self.coordinator.outcome(for: id)
+                if case .failure(_, _, _, let when, let jobID) = outcome {
+                    self.rowStates[id] = .failed(
+                        message: err.displayMessage,
+                        attemptedAt: when,
+                        jobID: jobID
+                    )
+                } else {
+                    self.rowStates[id] = .failed(
+                        message: err.displayMessage,
+                        attemptedAt: Date(),
+                        jobID: nil
+                    )
+                }
+            }
         }
     }
 
@@ -152,10 +183,26 @@ final class ImageDiscoveryModel {
 
     // MARK: - Per-image actions
 
-    /// Drop and re-run discovery for a single image. The user
-    /// triggers this from the row's "Rediscover" affordance
-    /// (Phase 5 wires the icon, the path is here today so the
-    /// coordinator path is exercised).
+    /// User-triggered probe for one image. If the image already has
+    /// a cached manifest this short-circuits and just re-reads it
+    /// (matches `coordinator.discover` semantics — `force: false`).
+    /// Use `rediscover(_:)` to force a fresh probe regardless of
+    /// cache.
+    func discover(_ imageID: String) async {
+        rowStates[imageID] = .running
+        do {
+            let manifest = try await coordinator.discover(imageID)
+            rowStates[imageID] = .discovered(manifest)
+            mergeIntoAllPackages(manifest)
+        } catch let err as ImageDiscoveryError {
+            await refreshFailureRow(imageID: imageID, message: err.displayMessage)
+        } catch {
+            await refreshFailureRow(imageID: imageID, message: error.localizedDescription)
+        }
+    }
+
+    /// Force-rediscover: drops the cached entry and runs a fresh
+    /// probe even if the image already has a manifest.
     func rediscover(_ imageID: String) async {
         rowStates[imageID] = .running
         do {
@@ -163,11 +210,36 @@ final class ImageDiscoveryModel {
             rowStates[imageID] = .discovered(manifest)
             mergeIntoAllPackages(manifest)
         } catch let err as ImageDiscoveryError {
-            rowStates[imageID] = .failed(message: err.displayMessage, attemptedAt: Date())
+            await refreshFailureRow(imageID: imageID, message: err.displayMessage)
             bannerMessage = "Rediscover \(imageID): \(err.displayMessage)"
         } catch {
-            rowStates[imageID] = .failed(message: error.localizedDescription, attemptedAt: Date())
+            await refreshFailureRow(imageID: imageID, message: error.localizedDescription)
         }
+    }
+
+    /// Pull the cached failure outcome for `imageID` and update
+    /// `rowStates` with the captured jobID so "View logs" works.
+    private func refreshFailureRow(imageID: String, message: String) async {
+        let outcome = await coordinator.outcome(for: imageID)
+        if case .failure(_, _, _, let when, let jobID) = outcome {
+            rowStates[imageID] = .failed(message: message, attemptedAt: when, jobID: jobID)
+        } else {
+            rowStates[imageID] = .failed(message: message, attemptedAt: Date(), jobID: nil)
+        }
+    }
+
+    // MARK: - Diagnostics for failed rows
+
+    /// Fetch the container stdout/stderr for a probe job. UI calls
+    /// this when the user clicks "View logs" on a failed row.
+    func fetchLogs(jobID: String) async throws -> String {
+        try await coordinator.fetchLogs(jobID: jobID)
+    }
+
+    /// Fetch the Kubernetes-level events for a probe job. Useful
+    /// when a job sat in Pending forever or hit an ImagePullBackOff.
+    func fetchEvents(jobID: String) async throws -> String {
+        try await coordinator.fetchEvents(jobID: jobID)
     }
 
     // MARK: - Filtering
@@ -213,8 +285,8 @@ final class ImageDiscoveryModel {
         switch outcome {
         case .none: return .neverDiscovered
         case .success(let m)?: return .discovered(m)
-        case .failure(_, _, let msg, let when)?:
-            return .failed(message: msg, attemptedAt: when)
+        case .failure(_, _, let msg, let when, let jobID)?:
+            return .failed(message: msg, attemptedAt: when, jobID: jobID)
         }
     }
 }

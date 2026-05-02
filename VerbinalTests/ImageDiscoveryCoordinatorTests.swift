@@ -75,6 +75,21 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             return jobs
         }
 
+        var stubbedLogs: [String: String] = [:]
+        var stubbedEvents: [String: String] = [:]
+
+        func getLogs(id: String) async throws -> String {
+            lock.lock()
+            defer { lock.unlock() }
+            return stubbedLogs[id] ?? ""
+        }
+
+        func getEvents(id: String) async throws -> String {
+            lock.lock()
+            defer { lock.unlock() }
+            return stubbedEvents[id] ?? ""
+        }
+
         private func makeJob(id: String, status: String) -> HeadlessJob {
             let raw = SkahaHeadlessResponse(
                 id: id, userid: "test", image: "x", type: "headless",
@@ -444,7 +459,7 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
 
         // Cache should now hold a .failure for this image.
         let outcome = await store.outcome(for: "private:1")
-        guard case .failure(_, let cat, _, _) = outcome else {
+        guard case .failure(_, let cat, _, _, _) = outcome else {
             return XCTFail("expected .failure outcome")
         }
         XCTAssertEqual(cat, .jobSubmitFailed)
@@ -468,10 +483,51 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         }
 
         let outcome = await store.outcome(for: "missing:1")
-        guard case .failure(_, let cat, _, _) = outcome else {
+        guard case .failure(_, let cat, _, _, _) = outcome else {
             return XCTFail("expected .failure outcome")
         }
         XCTAssertEqual(cat, .manifestFetchFailed)
+    }
+
+    // MARK: - Failure jobID capture + log fetch
+
+    func testJobFailureCapturesJobIDInCacheForDiagnostics() async throws {
+        let store = makeStore()
+        let h = MockHeadless()
+        h.failJobs = true   // every launched job ends Failed
+        let v = MockVOSpace()
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+
+        do {
+            _ = try await coord.discover("test:badimage")
+            XCTFail("expected throw")
+        } catch is ImageDiscoveryError {
+            // expected
+        }
+
+        let outcome = await store.outcome(for: "test:badimage")
+        guard case .failure(_, _, _, _, let jobID) = outcome else {
+            return XCTFail("expected .failure outcome")
+        }
+        XCTAssertNotNil(jobID, "jobID must be captured for post-launch failures so the user can fetch logs")
+        XCTAssertTrue(jobID?.hasPrefix("job-") ?? false)
+    }
+
+    func testFetchLogsAndEventsRouteThroughHeadless() async throws {
+        let store = makeStore()
+        let h = MockHeadless()
+        h.stubbedLogs["session-42"] = "Traceback (most recent call last):\n  ImportError: ..."
+        h.stubbedEvents["session-42"] = "Successfully pulled image\nContainer started"
+        let v = MockVOSpace()
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+
+        let logs = try await coord.fetchLogs(jobID: "session-42")
+        XCTAssertTrue(logs.contains("Traceback"))
+
+        let events = try await coord.fetchEvents(jobID: "session-42")
+        XCTAssertTrue(events.contains("Container started"))
     }
 
     // MARK: - Rediscover invalidates first
@@ -518,7 +574,7 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         }
 
         let outcome = await store.outcome(for: "test:slow")
-        guard case .failure(_, let cat, _, _) = outcome else {
+        guard case .failure(_, let cat, _, _, _) = outcome else {
             return XCTFail("expected .failure outcome")
         }
         XCTAssertEqual(cat, .jobTimedOut)

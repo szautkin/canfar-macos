@@ -17,6 +17,8 @@ import VerbinalKit
 protocol HeadlessProbeLauncher: Sendable {
     func launchHeadlessJob(_ params: HeadlessLaunchParams) async throws -> [String]
     func getHeadlessJobs() async throws -> [HeadlessJob]
+    func getLogs(id: String) async throws -> String
+    func getEvents(id: String) async throws -> String
 }
 
 /// Just the VOSpace operations the coordinator needs:
@@ -260,8 +262,11 @@ actor ImageDiscoveryCoordinator {
         do {
             try await ensureProbeScript()
         } catch {
-            try? await persistFailure(imageID: imageID,
-                                      error: .jobSubmitFailed(message: "probe script upload: \(error.localizedDescription)"))
+            try? await persistFailure(
+                imageID: imageID,
+                error: .jobSubmitFailed(message: "probe script upload: \(error.localizedDescription)"),
+                jobID: nil
+            )
             throw ImageDiscoveryError.jobSubmitFailed(message: error.localizedDescription)
         }
 
@@ -270,11 +275,11 @@ actor ImageDiscoveryCoordinator {
             jobID = try await launchProbeJob(for: imageID)
         } catch let HeadlessLaunchError.partialReplicaFailure(_, _, msg) {
             let err = ImageDiscoveryError.jobSubmitFailed(message: msg)
-            try? await persistFailure(imageID: imageID, error: err)
+            try? await persistFailure(imageID: imageID, error: err, jobID: nil)
             throw err
         } catch {
             let err = ImageDiscoveryError.jobSubmitFailed(message: error.localizedDescription)
-            try? await persistFailure(imageID: imageID, error: err)
+            try? await persistFailure(imageID: imageID, error: err, jobID: nil)
             throw err
         }
 
@@ -287,7 +292,7 @@ actor ImageDiscoveryCoordinator {
             } else {
                 err = .unknown(message: error.localizedDescription)
             }
-            try? await persistFailure(imageID: imageID, error: err)
+            try? await persistFailure(imageID: imageID, error: err, jobID: jobID)
             throw err
         }
 
@@ -296,7 +301,7 @@ actor ImageDiscoveryCoordinator {
             data = try await fetchManifestData(for: imageID)
         } catch {
             let err = ImageDiscoveryError.manifestFetchFailed(message: error.localizedDescription)
-            try? await persistFailure(imageID: imageID, error: err)
+            try? await persistFailure(imageID: imageID, error: err, jobID: jobID)
             throw err
         }
 
@@ -311,16 +316,30 @@ actor ImageDiscoveryCoordinator {
             case .unknownSchema(let v): detail = "unknownSchema(\(v))"
             }
             let err = ImageDiscoveryError.manifestParseFailed(detail: detail)
-            try? await persistFailure(imageID: imageID, error: err)
+            try? await persistFailure(imageID: imageID, error: err, jobID: jobID)
             throw err
         } catch {
             let err = ImageDiscoveryError.manifestParseFailed(detail: error.localizedDescription)
-            try? await persistFailure(imageID: imageID, error: err)
+            try? await persistFailure(imageID: imageID, error: err, jobID: jobID)
             throw err
         }
 
         try await store.setManifest(manifest)
         return manifest
+    }
+
+    /// Fetch the container stdout/stderr for a probe's Skaha session.
+    /// Used by the discovery sheet's "View logs" action on a failed
+    /// row so the user can read the underlying error.
+    func fetchLogs(jobID: String) async throws -> String {
+        try await headless.getLogs(id: jobID)
+    }
+
+    /// Fetch the Kubernetes-level events for a probe's Skaha session
+    /// (scheduling, image pulls, OOM kills). Often the only signal
+    /// for a job stuck in Pending or one that ImagePullBackOff'd.
+    func fetchEvents(jobID: String) async throws -> String {
+        try await headless.getEvents(id: jobID)
     }
 
     private func ensureProbeScript() async throws {
@@ -427,12 +446,17 @@ actor ImageDiscoveryCoordinator {
         return try Data(contentsOf: tempURL)
     }
 
-    private func persistFailure(imageID: String, error: ImageDiscoveryError) async throws {
+    private func persistFailure(
+        imageID: String,
+        error: ImageDiscoveryError,
+        jobID: String?
+    ) async throws {
         try await store.setFailure(
             imageID: imageID,
             category: error.cacheCategory,
             message: error.displayMessage,
-            attemptedAt: Date()
+            attemptedAt: Date(),
+            jobID: jobID
         )
     }
 

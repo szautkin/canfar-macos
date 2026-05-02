@@ -27,12 +27,15 @@ protocol ManifestStore: Sendable {
     func setManifest(_ manifest: ImageManifest) async throws
 
     /// Persist a failure outcome with the timestamp of the attempt.
-    /// Replaces any prior outcome.
+    /// Replaces any prior outcome. `jobID` is the Skaha session id
+    /// of the probe job that failed, when applicable — `nil` for
+    /// failures that happened before launch (probe upload, mkdir).
     func setFailure(
         imageID: String,
         category: LastOutcome.FailureCategory,
         message: String,
-        attemptedAt: Date
+        attemptedAt: Date,
+        jobID: String?
     ) async throws
 
     /// Drop a single image's record. Used by per-image "Rediscover"

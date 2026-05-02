@@ -53,13 +53,28 @@ struct MatchingImagesPane: View {
                     .font(.body)
                     .lineLimit(1)
                 detailLine(image: image, state: state)
+                jobIDLine(state: state)
             }
             Spacer()
             staleBadge(state: state)
             statusIndicator(state: state)
-            rediscoverButton(imageID: image.id, state: state)
+            viewLogsButton(state: state)
+            discoverButton(imageID: image.id, state: state)
         }
         .padding(.vertical, 2)
+    }
+
+    /// Displays the failed probe's Skaha session id so the user can
+    /// correlate to the Background Jobs panel and know which job to
+    /// inspect. Only shown for failed rows that have a captured id.
+    @ViewBuilder
+    private func jobIDLine(state: ImageDiscoveryModel.RowState) -> some View {
+        if case .failed(_, _, let jobID?) = state {
+            Text("Job \(jobID)")
+                .font(.caption2.monospaced())
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+        }
     }
 
     /// Stale-tag indicator — only rendered for rolling-tag images
@@ -74,11 +89,13 @@ struct MatchingImagesPane: View {
         }
     }
 
-    /// Per-image Rediscover button. Drops the cached manifest and
-    /// re-runs the probe through the coordinator. Hidden while the
-    /// image is currently being probed.
+    /// User-driven Discover/Re-run button. With auto-discovery
+    /// disabled, this is the *only* way a probe gets launched —
+    /// every row starts in `.neverDiscovered` until the user opts
+    /// in. Hidden while a probe is in flight (the spinner replaces
+    /// it).
     @ViewBuilder
-    private func rediscoverButton(
+    private func discoverButton(
         imageID: String,
         state: ImageDiscoveryModel.RowState
     ) -> some View {
@@ -86,13 +103,10 @@ struct MatchingImagesPane: View {
         case .running:
             EmptyView()
         case .neverDiscovered:
-            // Manual kick: useful when the user wants to be sure
-            // discovery actually fires for this image without waiting
-            // for the background sweep.
             Button {
-                Task { await model.rediscover(imageID) }
+                Task { await model.discover(imageID) }
             } label: {
-                Image(systemName: "arrow.clockwise")
+                Image(systemName: "magnifyingglass.circle")
                     .font(.caption)
             }
             .buttonStyle(.borderless)
@@ -106,6 +120,25 @@ struct MatchingImagesPane: View {
             }
             .buttonStyle(.borderless)
             .help("Re-run discovery for this image")
+        }
+    }
+
+    /// "View logs" affordance — visible only on failed rows whose
+    /// captured `jobID` lets us pull container logs/events from
+    /// Skaha. Opens a small sheet showing both. State carried via
+    /// the parent sheet's `@Bindable` model so the sheet can hand
+    /// the user the same connection / cache.
+    @ViewBuilder
+    private func viewLogsButton(state: ImageDiscoveryModel.RowState) -> some View {
+        if case .failed(_, _, let jobID?) = state {
+            Button {
+                model.jobIDForLogsSheet = jobID
+            } label: {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .help("View container logs for the failed probe job")
         }
     }
 
@@ -135,7 +168,7 @@ struct MatchingImagesPane: View {
                     .foregroundStyle(.secondary)
             }
             .lineLimit(1)
-        case .failed(let msg, _):
+        case .failed(let msg, _, _):
             Text(msg)
                 .font(.caption2)
                 .foregroundStyle(.orange)
@@ -156,7 +189,7 @@ struct MatchingImagesPane: View {
                 .controlSize(.small)
         case .discovered:
             EmptyView()
-        case .failed(let msg, _):
+        case .failed(let msg, _, _):
             Image(systemName: "exclamationmark.circle")
                 .foregroundStyle(.orange)
                 .help(msg)

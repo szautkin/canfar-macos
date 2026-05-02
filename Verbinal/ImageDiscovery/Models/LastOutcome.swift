@@ -21,7 +21,19 @@ import Foundation
 /// status row).
 enum LastOutcome: Codable, Equatable, Sendable {
     case success(ImageManifest)
-    case failure(imageID: String, category: FailureCategory, message: String, attemptedAt: Date)
+    case failure(
+        imageID: String,
+        category: FailureCategory,
+        message: String,
+        attemptedAt: Date,
+        /// Skaha session id of the probe job that failed, when the
+        /// failure happened *after* a job was successfully launched.
+        /// `nil` for failures earlier in the pipeline (probe-script
+        /// upload, mkdir). Lets the UI offer "View logs" /
+        /// "View events" so the user can diagnose the underlying
+        /// container error.
+        jobID: String?
+    )
 
     /// Stable string identifiers so the JSON on disk doesn't depend on
     /// Swift enum case ordering.
@@ -46,14 +58,14 @@ enum LastOutcome: Codable, Equatable, Sendable {
     var imageID: String {
         switch self {
         case .success(let m): return m.imageID
-        case .failure(let id, _, _, _): return id
+        case .failure(let id, _, _, _, _): return id
         }
     }
 
     var attemptedAt: Date {
         switch self {
         case .success(let m): return m.capturedAt
-        case .failure(_, _, _, let date): return date
+        case .failure(_, _, _, let date, _): return date
         }
     }
 

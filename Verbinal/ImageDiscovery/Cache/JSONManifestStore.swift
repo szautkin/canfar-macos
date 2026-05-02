@@ -125,14 +125,16 @@ actor JSONManifestStore: ManifestStore {
         imageID: String,
         category: LastOutcome.FailureCategory,
         message: String,
-        attemptedAt: Date
+        attemptedAt: Date,
+        jobID: String?
     ) throws {
         ensureHydrated()
         let outcome = LastOutcome.failure(
             imageID: imageID,
             category: category,
             message: message,
-            attemptedAt: attemptedAt
+            attemptedAt: attemptedAt,
+            jobID: jobID
         )
         try persist(outcome: outcome, imageID: imageID)
         loaded[imageID] = outcome

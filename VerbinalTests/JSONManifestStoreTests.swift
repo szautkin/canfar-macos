@@ -76,15 +76,17 @@ final class JSONManifestStoreTests: XCTestCase {
             imageID: "images.canfar.net/skaha/broken:1",
             category: .jobSubmitFailed,
             message: "Skaha 400: unknown image",
-            attemptedAt: when
+            attemptedAt: when,
+            jobID: nil
         )
         let loaded = await store.outcome(for: "images.canfar.net/skaha/broken:1")
-        guard case .failure(let id, let cat, let msg, let date) = loaded else {
+        guard case .failure(let id, let cat, let msg, let date, let jobID) = loaded else {
             return XCTFail("expected .failure, got \(String(describing: loaded))")
         }
         XCTAssertEqual(id, "images.canfar.net/skaha/broken:1")
         XCTAssertEqual(cat, .jobSubmitFailed)
         XCTAssertEqual(msg, "Skaha 400: unknown image")
+        XCTAssertNil(jobID, "jobID must round-trip nil for pre-launch failures")
         // ISO-8601 second precision drops sub-second; compare to second
         XCTAssertEqual(Int(date.timeIntervalSince1970), Int(when.timeIntervalSince1970))
     }
@@ -96,7 +98,8 @@ final class JSONManifestStoreTests: XCTestCase {
         try await storeA.setManifest(manifest(id: "test:1", python: ["astropy"]))
         try await storeA.setManifest(manifest(id: "test:2", python: ["numpy"]))
         try await storeA.setFailure(imageID: "test:3", category: .unknown,
-                                    message: "x", attemptedAt: Date())
+                                    message: "x", attemptedAt: Date(),
+                                    jobID: "session-7")
 
         // Fresh store on the same directory: must see all three.
         let storeB = JSONManifestStore(directory: tempDir)
@@ -108,11 +111,12 @@ final class JSONManifestStoreTests: XCTestCase {
         XCTAssertTrue(outcome1?.isSuccess ?? false)
 
         let outcome3 = await storeB.outcome(for: "test:3")
-        guard case .failure(let id, let cat, _, _) = outcome3 else {
+        guard case .failure(let id, let cat, _, _, let jobID) = outcome3 else {
             return XCTFail("expected .failure for test:3")
         }
         XCTAssertEqual(id, "test:3")
         XCTAssertEqual(cat, .unknown)
+        XCTAssertEqual(jobID, "session-7", "jobID must round-trip after relaunch")
     }
 
     // MARK: - Search
@@ -122,7 +126,7 @@ final class JSONManifestStoreTests: XCTestCase {
         try await store.setManifest(manifest(id: "a:1", python: ["astropy"]))
         try await store.setManifest(manifest(id: "b:1", python: ["scipy"]))
         try await store.setFailure(imageID: "c:1", category: .jobTimedOut,
-                                   message: "x", attemptedAt: Date())
+                                   message: "x", attemptedAt: Date(), jobID: nil)
 
         let results = await store.search(PackageQuery())
         // Failure entries are NOT in search results — they have no manifest.
@@ -192,7 +196,7 @@ final class JSONManifestStoreTests: XCTestCase {
         try await store.setManifest(manifest(id: "a:1", osFamily: "almalinux", osVersion: "9",
                                               dpkg: [], python: ["astropy"]))
         try await store.setFailure(imageID: "f:1", category: .unknown,
-                                   message: "x", attemptedAt: Date())
+                                   message: "x", attemptedAt: Date(), jobID: nil)
 
         let all = await store.allPackages()
         XCTAssertEqual(all.osFamilies, ["ubuntu", "almalinux"])
@@ -228,7 +232,7 @@ final class JSONManifestStoreTests: XCTestCase {
         try await store.setManifest(manifest(id: "a:1"))
         try await store.setManifest(manifest(id: "b:1"))
         try await store.setFailure(imageID: "c:1", category: .unknown,
-                                   message: "x", attemptedAt: Date())
+                                   message: "x", attemptedAt: Date(), jobID: nil)
 
         try await store.clear()
         let zeroCount = await store.count()
