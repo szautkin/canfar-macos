@@ -366,7 +366,14 @@ actor ImageDiscoveryCoordinator {
             .replacingOccurrences(of: "_", with: "-")
             .replacingOccurrences(of: ".", with: "-")
 
-        let cmd = "bash $HOME/\(ProbeScript.homeSubdirectory)/\(ProbeScript.uploadFilename)"
+        // Skaha's server-side runs `cmd` through a regex replacer that
+        // treats `$X` as a backreference — `$HOME` parses as illegal-
+        // group-ref `$H` and the launch fails with HTTP 400 "Illegal
+        // group reference". Build an absolute path with the resolved
+        // username instead. The container still mounts the user's
+        // VOSpace home at /arc/home/<username>, so this is what the
+        // probe script needs anyway.
+        let cmd = "bash /arc/home/\(username)/\(ProbeScript.homeSubdirectory)/\(ProbeScript.uploadFilename)"
         let params = HeadlessLaunchParams(
             name: jobName,
             image: imageID,

@@ -272,6 +272,33 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(v.foldersCreated[0].parentPath, "")
     }
 
+    func testProbeJobCmdContainsNoShellExpansion() async throws {
+        // Skaha's server-side runs `cmd` through a regex replacer
+        // that treats `$X` as a regex group backreference. Any `$`
+        // in cmd causes HTTP 400 "Illegal group reference" before
+        // the container even starts. Pin the rule: cmd must be a
+        // pre-resolved absolute path with no `$` characters at all.
+        let store = makeStore()
+        let h = MockHeadless()
+        let v = MockVOSpace()
+
+        let imageID = "test:no-shell-expansion"
+        let safe = ImageManifest.sanitize(imageID: imageID)
+        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
+            sampleManifestJSON(imageID: imageID)
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+        _ = try await coord.discover(imageID)
+
+        XCTAssertEqual(h.launchCalls.count, 1)
+        let cmd = h.launchCalls[0].cmd ?? ""
+        XCTAssertFalse(cmd.contains("$"),
+                       "cmd must not contain `$` (Skaha treats it as a regex group ref); got: \(cmd)")
+        XCTAssertTrue(cmd.hasPrefix("bash /arc/home/"),
+                      "cmd must use absolute /arc/home path; got: \(cmd)")
+        XCTAssertTrue(cmd.contains(ProbeScript.uploadFilename))
+    }
+
     func testProbeScriptUploadSwallowsAlreadyExistsMkdirError() async throws {
         // After the first session, .verbinal already exists. createFolder
         // returns an error (409 / "already exists"). The coordinator
