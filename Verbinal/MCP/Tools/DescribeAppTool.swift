@@ -90,6 +90,9 @@ struct DescribeAppTool: JSONReadTool {
       * `list_headless_jobs`, `get_headless_job`,
         `get_headless_job_logs`, `get_headless_job_events` —
         background batch jobs (see "Background jobs" below).
+      * `find_images_with_packages` — query the local image-content
+        cache (see "Image content discovery" below). Pure read; no
+        Skaha cost.
       * `get_fits_header`, `get_fits_wcs` — local-file FITS introspection.
       * `list_pending_proposals`, `get_proposal_state`, `list_events` —
         introspect the proposal lifecycle when in strip-confirm mode.
@@ -132,6 +135,9 @@ struct DescribeAppTool: JSONReadTool {
         `delete_vospace_node`.
       * `launch_session`, `delete_session`, `clear_research_archive`,
         `launch_headless_job` (see "Background jobs" below).
+      * `discover_image_packages` (see "Image content discovery"
+        below) — schedules a probe job inside the named image to
+        enumerate its packages.
 
     Destructive tools (`delete_*`, `clear_*`) follow the same toggle as
     semantic writes — there is no separate confirm step for destructive
@@ -209,6 +215,43 @@ struct DescribeAppTool: JSONReadTool {
     Polling pattern: 2–5 s while `Pending`/`Running`, backing off after
     a few minutes. Don't poll `get_headless_job_logs` in a tight loop;
     fetch when the user asks or when status changes.
+
+    ## Image content discovery
+
+    Skaha images are opaque from outside — the agent can't tell what
+    Python / R / system packages an image has installed without
+    running something inside it. Verbinal solves this by running a
+    small probe job inside each image (a headless `bash` script that
+    dumps `dpkg -l`, `pip list`, `conda list --export`, `Rscript
+    installed.packages()`, etc., to the user's VOSpace), parsing the
+    JSON output, and caching the result locally on the user's Mac.
+
+    Tools:
+      * `find_images_with_packages` — read. Cache lookup, free.
+        Returns image ids that contain ALL listed packages
+        (intersection across `dpkg`/`rpm`/`apk`/`python`/`r`/
+        `osFamily`/`osVersion` constraints). Use BEFORE picking an
+        image for `launch_session` / `launch_headless_job` when the
+        user has specific tooling needs ("astropy 6 + tensorflow").
+      * `discover_image_packages` — write (semanticWrite, autonomy-
+        toggle gated). Schedules a probe job for one image. Cache-
+        hit short-circuits with no Skaha cost. Cache-miss runs a
+        small headless job (visible in Background Jobs panel; cancel
+        with `delete_session`). Pass `force: true` to re-probe after
+        an image rebuild. Blocks until the manifest is cached and
+        queryable.
+
+    Cache lives at `<App Support>/Verbinal/ImageDiscovery/manifests/`
+    on the user's Mac, keyed by image id. Contents persist across app
+    relaunches; the in-app discovery sheet (Settings ▸ launch form
+    ▸ magnifying-glass next to Container Image) lets the user see
+    and re-run discoveries interactively.
+
+    Workflow: `find_images_with_packages` first → if no match,
+    `discover_image_packages` for likely candidates → re-query →
+    pick → `launch_session` / `launch_headless_job`. Don't probe
+    every image speculatively; each costs a real (small) headless
+    job.
 
     ## Anti-features
 

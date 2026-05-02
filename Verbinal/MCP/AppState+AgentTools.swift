@@ -63,6 +63,10 @@ extension AppState {
         tools.append(makeGetHeadlessJobEventsTool())
         tools.append(LaunchHeadlessJobTool())
 
+        // Image discovery — local cache search + on-demand probing
+        tools.append(makeFindImagesWithPackagesTool())
+        tools.append(DiscoverImagePackagesTool())
+
         // FITS domain — uses the already-instantiated observationStore
         tools.append(makeGetFITSHeaderTool(store: observationStore))
         tools.append(makeGetFITSWCSTool(store: observationStore))
@@ -240,6 +244,20 @@ extension AppState {
                                       activity: activity),
         ]
         appliers.append(contentsOf: sessionAppliers)
+
+        // Image-discovery applier: routes to whatever
+        // ImageDiscoveryCoordinator is current at apply time. The
+        // coordinator is auth-scoped (created in
+        // `afterAuthenticated`, nil before login); the resolver
+        // captures `self` weakly so unauthenticated apply attempts
+        // surface a clean error.
+        let imageDiscoveryApplier = DiscoverImagePackagesApplier(
+            resolveCoordinator: { [weak self] in
+                await MainActor.run { self?.imageDiscoveryCoordinator }
+            },
+            activity: activity
+        )
+        appliers.append(imageDiscoveryApplier)
         agentsService.register(appliers: appliers)
     }
 
@@ -300,6 +318,17 @@ extension AppState {
         let service = self.headlessService
         return GetHeadlessJobEventsTool(fetch: { id in
             try await service.getEvents(id: id)
+        })
+    }
+
+    // MARK: - Image-discovery factories
+
+    private func makeFindImagesWithPackagesTool() -> FindImagesWithPackagesTool {
+        // Coordinator is auth-scoped; pre-auth queries return [].
+        return FindImagesWithPackagesTool(search: { [weak self] query in
+            let coord = await MainActor.run { self?.imageDiscoveryCoordinator }
+            guard let coord else { return [] }
+            return await coord.search(query)
         })
     }
 
