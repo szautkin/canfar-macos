@@ -50,6 +50,15 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         /// If true, every launched job ends in Failed instead of Completed.
         var failJobs: Bool = false
 
+        /// Called inside `launchHeadlessJob` after a successful
+        /// launch — lets a test mirror real probe behaviour by
+        /// simulating the manifest-write side-effect (the actual
+        /// Skaha probe writes a JSON manifest to VOSpace as its
+        /// last step). Without this, tests that pre-seed the
+        /// VOSpace mock would now hit the coordinator's recovery
+        /// short-circuit and skip launching at all.
+        var onLaunchSimulate: (@Sendable (HeadlessLaunchParams) -> Void)?
+
         func launchHeadlessJob(_ params: HeadlessLaunchParams) async throws -> [String] {
             lock.lock()
             defer { lock.unlock() }
@@ -64,6 +73,10 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             let job = makeJob(id: id, status: completeAfterPolls > 0 ? "Pending" : (failJobs ? "Failed" : "Completed"))
             jobs.append(job)
             pollCounts[id] = 0
+            // Side-effect: simulate the probe writing its manifest.
+            // Tests can populate VOSpace via this hook so the
+            // coordinator's post-poll fetch finds something.
+            onLaunchSimulate?(params)
             return [id]
         }
 
@@ -177,6 +190,27 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         )
     }
 
+    /// Wire the mock pair so that any launch produces a manifest
+    /// at the expected VOSpace path for the launched image — the
+    /// realistic probe behaviour. Tests verifying the launch path
+    /// call this once at setup; tests verifying the recovery path
+    /// (manifest already in VOSpace) skip it and pre-seed
+    /// `vospace.fileContents` directly instead.
+    private func wireLaunchToWriteManifest(
+        _ vospace: MockVOSpace,
+        _ headless: MockHeadless,
+        packages: [String] = ["astropy"]
+    ) {
+        let json: @Sendable (String) -> Data = { imageID in
+            self.sampleManifestJSON(imageID: imageID, packages: packages)
+        }
+        headless.onLaunchSimulate = { [weak vospace] params in
+            let safe = ImageManifest.sanitize(imageID: params.image)
+            let path = "\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"
+            vospace?.fileContents[path] = json(params.image)
+        }
+    }
+
     private func sampleManifestJSON(imageID: String, packages: [String] = ["astropy"]) -> Data {
         let body: [String: Any] = [
             "schemaVersion": 1,
@@ -229,11 +263,10 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         let h = MockHeadless()
         let v = MockVOSpace()
 
-        // Wire the manifest the probe will "produce".
+        // Probe job side-effect: writes the manifest to the
+        // expected VOSpace path. Mirrors real Skaha behaviour.
         let imageID = "images.canfar.net/skaha/astroml:24.07"
-        let safe = ImageManifest.sanitize(imageID: imageID)
-        let path = "\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"
-        v.fileContents[path] = sampleManifestJSON(imageID: imageID, packages: ["astropy", "numpy"])
+        wireLaunchToWriteManifest(v, h, packages: ["astropy", "numpy"])
 
         let coord = makeCoord(store: store, headless: h, vospace: v)
 
@@ -267,12 +300,9 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         let h = MockHeadless()
         h.completeAfterPolls = 3   // 3 polls then flip to Completed
         let v = MockVOSpace()
+        wireLaunchToWriteManifest(v, h)
 
         let imageID = "test:slow"
-        let safe = ImageManifest.sanitize(imageID: imageID)
-        let path = "\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"
-        v.fileContents[path] = sampleManifestJSON(imageID: imageID)
-
         let coord = makeCoord(store: store, headless: h, vospace: v, timeout: 5.0)
 
         let manifest = try await coord.discover(imageID)
@@ -288,14 +318,10 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         let store = makeStore()
         let h = MockHeadless()
         let v = MockVOSpace()
-
-        let imageID = "test:dir-setup"
-        let safe = ImageManifest.sanitize(imageID: imageID)
-        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
-            sampleManifestJSON(imageID: imageID)
+        wireLaunchToWriteManifest(v, h)
 
         let coord = makeCoord(store: store, headless: h, vospace: v)
-        _ = try await coord.discover(imageID)
+        _ = try await coord.discover("test:dir-setup")
 
         XCTAssertEqual(v.foldersCreated.count, 1, "must mkdir exactly once per session")
         XCTAssertEqual(v.foldersCreated[0].folderName, ProbeScript.homeSubdirectory)
@@ -317,12 +343,9 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         let store = makeStore()
         let h = MockHeadless()
         let v = MockVOSpace()
+        wireLaunchToWriteManifest(v, h)
 
         let imageID = "test:cmd-args-split"
-        let safe = ImageManifest.sanitize(imageID: imageID)
-        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
-            sampleManifestJSON(imageID: imageID)
-
         let coord = makeCoord(store: store, headless: h, vospace: v)
         _ = try await coord.discover(imageID)
 
@@ -355,12 +378,9 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         let v = MockVOSpace()
         v.createFolderError = NSError(domain: "VOSpace", code: 409,
                                        userInfo: [NSLocalizedDescriptionKey: "already exists"])
+        wireLaunchToWriteManifest(v, h)
 
         let imageID = "test:second-session"
-        let safe = ImageManifest.sanitize(imageID: imageID)
-        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
-            sampleManifestJSON(imageID: imageID)
-
         let coord = makeCoord(store: store, headless: h, vospace: v)
         let manifest = try await coord.discover(imageID)
         XCTAssertEqual(manifest.imageID, imageID)
@@ -373,17 +393,11 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         let store = makeStore()
         let h = MockHeadless()
         let v = MockVOSpace()
+        wireLaunchToWriteManifest(v, h)
 
         // Five different images all need probing.
         let ids = (1...5).map { "test:img\($0)" }
-        for id in ids {
-            let safe = ImageManifest.sanitize(imageID: id)
-            v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
-                sampleManifestJSON(imageID: id)
-        }
-
         let coord = makeCoord(store: store, headless: h, vospace: v)
-
         for id in ids {
             _ = try await coord.discover(id)
         }
@@ -399,12 +413,9 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         let h = MockHeadless()
         h.completeAfterPolls = 5   // give us time for coalescing to bite
         let v = MockVOSpace()
+        wireLaunchToWriteManifest(v, h)
 
         let imageID = "test:coalesce"
-        let safe = ImageManifest.sanitize(imageID: imageID)
-        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
-            sampleManifestJSON(imageID: imageID)
-
         let coord = makeCoord(store: store, headless: h, vospace: v)
 
         // Five concurrent callers asking for the same image.
@@ -438,10 +449,8 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
 
         let h = MockHeadless()
         let v = MockVOSpace()
-        // Pre-seed manifest data for the uncached one.
-        let safeC = ImageManifest.sanitize(imageID: "c:1")
-        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safeC).json"] =
-            sampleManifestJSON(imageID: "c:1")
+        // Probe writes the manifest for the uncached image c:1.
+        wireLaunchToWriteManifest(v, h)
 
         let coord = makeCoord(store: store, headless: h, vospace: v)
 
@@ -520,6 +529,87 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(cat, .manifestFetchFailed)
     }
 
+    // MARK: - VOSpace manifest recovery
+
+    func testDiscoverShortCircuitsIfManifestAlreadyInVOSpace() async throws {
+        // Real-world bug surface: a previous probe completed and
+        // wrote its manifest to VOSpace, but our poll loop timed
+        // out before catching its terminal state. The cache holds
+        // no record. On a subsequent discover() call we should
+        // *not* re-launch a probe — the manifest is sitting at
+        // the expected path, fetch it directly.
+        let store = makeStore()
+        let h = MockHeadless()
+        let v = MockVOSpace()
+
+        let imageID = "test:already-probed"
+        let safe = ImageManifest.sanitize(imageID: imageID)
+        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
+            sampleManifestJSON(imageID: imageID, packages: ["recovered"])
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+
+        let manifest = try await coord.discover(imageID)
+
+        XCTAssertEqual(manifest.imageID, imageID)
+        XCTAssertEqual(manifest.pythonPackages.first?.name, "recovered")
+        XCTAssertEqual(h.launchCalls.count, 0,
+                       "must not launch a fresh probe when VOSpace already has the manifest")
+    }
+
+    func testRediscoverIgnoresPreExistingManifestAndForcesProbe() async throws {
+        // Force-rediscover means the user explicitly wants a fresh
+        // probe even if a manifest sits in VOSpace. Otherwise the
+        // recovery short-circuit would defeat the user's intent.
+        let store = makeStore()
+        let h = MockHeadless()
+        let v = MockVOSpace()
+
+        let imageID = "test:force-rediscover"
+        let safe = ImageManifest.sanitize(imageID: imageID)
+        let path = "\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"
+        // Pre-existing stale manifest from a previous probe:
+        v.fileContents[path] = sampleManifestJSON(imageID: imageID, packages: ["stale"])
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+
+        // First discover() picks up the pre-existing manifest (recovery
+        // short-circuit; no probe launched).
+        let m1 = try await coord.discover(imageID)
+        XCTAssertEqual(m1.pythonPackages.first?.name, "stale")
+        XCTAssertEqual(h.launchCalls.count, 0)
+
+        // Now the probe will produce an updated manifest:
+        v.fileContents[path] = sampleManifestJSON(imageID: imageID, packages: ["fresh"])
+
+        // rediscover bypasses BOTH cache and VOSpace pre-check:
+        let m2 = try await coord.rediscover(imageID)
+        XCTAssertEqual(m2.pythonPackages.first?.name, "fresh")
+        XCTAssertEqual(h.launchCalls.count, 1, "rediscover must actually launch a fresh probe")
+    }
+
+    func testTimeoutFallsThroughToManifestFetchIfFileLanded() async throws {
+        // The poll loop hits its deadline, but the probe job
+        // *did* finish and wrote the manifest. Fetching it before
+        // surfacing the timeout error saves the user from manually
+        // re-running.
+        let store = makeStore()
+        let h = MockHeadless()
+        h.completeAfterPolls = 9999     // never reaches terminal in poll loop
+        let v = MockVOSpace()
+
+        let imageID = "test:landed-after-timeout"
+        let safe = ImageManifest.sanitize(imageID: imageID)
+        // Manifest IS in VOSpace by the time poll times out:
+        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
+            sampleManifestJSON(imageID: imageID, packages: ["completed-late"])
+
+        let coord = makeCoord(store: store, headless: h, vospace: v, timeout: 0.05)
+
+        let manifest = try await coord.discover(imageID)
+        XCTAssertEqual(manifest.pythonPackages.first?.name, "completed-late")
+    }
+
     // MARK: - Skaha race retry (F-31)
 
     func testIsSkahaJobNotFoundRaceMatchesActualErrorBody() {
@@ -563,12 +653,9 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             )
         ]
         let v = MockVOSpace()
+        wireLaunchToWriteManifest(v, h)
 
         let imageID = "test:race-survives"
-        let safe = ImageManifest.sanitize(imageID: imageID)
-        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
-            sampleManifestJSON(imageID: imageID)
-
         let coord = makeCoord(store: store, headless: h, vospace: v)
         let manifest = try await coord.discover(imageID)
         XCTAssertEqual(manifest.imageID, imageID)
@@ -647,16 +734,25 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         let id = "test:rediscover"
         let safe = ImageManifest.sanitize(imageID: id)
         let path = "\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"
-        v.fileContents[path] = sampleManifestJSON(imageID: id, packages: ["v1"])
+
+        // First call uses the launch path: the probe writes "v1" to
+        // VOSpace and the coordinator picks it up post-poll.
+        h.onLaunchSimulate = { [weak v] _ in
+            v?.fileContents[path] = self.sampleManifestJSON(imageID: id, packages: ["v1"])
+        }
 
         let coord = makeCoord(store: store, headless: h, vospace: v)
-
         let m1 = try await coord.discover(id)
         XCTAssertEqual(m1.pythonPackages.first?.name, "v1")
         XCTAssertEqual(h.launchCalls.count, 1)
 
-        // Update what the "next" probe will produce.
-        v.fileContents[path] = sampleManifestJSON(imageID: id, packages: ["v2"])
+        // Now: rediscover invalidates cache AND bypasses the
+        // VOSpace-recovery short-circuit, so it must launch a
+        // fresh probe even though the manifest sits in VOSpace.
+        // Wire the next probe to write "v2" to VOSpace.
+        h.onLaunchSimulate = { [weak v] _ in
+            v?.fileContents[path] = self.sampleManifestJSON(imageID: id, packages: ["v2"])
+        }
 
         let m2 = try await coord.rediscover(id)
         XCTAssertEqual(m2.pythonPackages.first?.name, "v2")

@@ -174,7 +174,7 @@ actor ImageDiscoveryCoordinator {
         // doesn't kill it. Other joiners wait on the same Task.
         let task = Task.detached { [weak self] () async throws -> ImageManifest in
             guard let self else { throw ImageDiscoveryError.cancelled }
-            return try await self.runDiscovery(for: imageID)
+            return try await self.runDiscovery(for: imageID, force: force)
         }
         inFlight[imageID] = task
 
@@ -277,7 +277,10 @@ actor ImageDiscoveryCoordinator {
 
     // MARK: - Discovery pipeline
 
-    private func runDiscovery(for imageID: String) async throws -> ImageManifest {
+    private func runDiscovery(for imageID: String, force: Bool = false) async throws -> ImageManifest {
+        // Probe script + parent dir setup is idempotent; cheap to
+        // re-run, and even a force=true rediscover needs the upload
+        // to be present.
         do {
             try await ensureProbeScript()
         } catch {
@@ -287,6 +290,18 @@ actor ImageDiscoveryCoordinator {
                 jobID: nil
             )
             throw ImageDiscoveryError.jobSubmitFailed(message: error.localizedDescription)
+        }
+
+        // Recovery short-circuit: a previous probe may have completed
+        // and written the manifest to VOSpace, but our poll loop
+        // timed out before catching its terminal state. The manifest
+        // is sitting at the expected path, so fetching it costs one
+        // round-trip and saves an entire fresh probe job. Skipped
+        // when the caller forced a rediscover (they explicitly want
+        // a fresh probe).
+        if !force, let manifest = try? await fetchManifestIfPresent(for: imageID) {
+            try await store.setManifest(manifest)
+            return manifest
         }
 
         let jobID: String
@@ -305,6 +320,15 @@ actor ImageDiscoveryCoordinator {
         do {
             try await pollUntilTerminal(jobID: jobID)
         } catch {
+            // Poll-timeout fallthrough: the probe job may have
+            // *completed* and written the manifest after our last
+            // poll tick. Try a fetch before giving up — saves the
+            // user from re-running a probe that already produced
+            // its output.
+            if let manifest = try? await fetchManifestIfPresent(for: imageID) {
+                try await store.setManifest(manifest)
+                return manifest
+            }
             let err: ImageDiscoveryError
             if let typed = error as? ImageDiscoveryError {
                 err = typed
@@ -344,6 +368,33 @@ actor ImageDiscoveryCoordinator {
         }
 
         try await store.setManifest(manifest)
+        return manifest
+    }
+
+    /// Try to read the manifest from VOSpace and parse it. Returns
+    /// `nil` (not throws) when the file is missing OR can't be
+    /// parsed — both are valid "no usable manifest yet" states the
+    /// caller wants to treat as recoverable. A caller fetching
+    /// explicitly after a successful probe goes through
+    /// `fetchManifestData` instead and gets typed errors.
+    private func fetchManifestIfPresent(for imageID: String) async throws -> ImageManifest? {
+        let data: Data
+        do {
+            data = try await fetchManifestData(for: imageID)
+        } catch {
+            return nil
+        }
+        let manifest: ImageManifest
+        do {
+            manifest = try ManifestParser.parse(data)
+        } catch {
+            return nil
+        }
+        // Sanity: the manifest at the expected path must be FOR
+        // this image. Defends against probe-collision where two
+        // launches with mismatched IMAGE_ID env vars wrote to the
+        // same path (pathological, but cheap to verify).
+        guard manifest.imageID == imageID else { return nil }
         return manifest
     }
 
