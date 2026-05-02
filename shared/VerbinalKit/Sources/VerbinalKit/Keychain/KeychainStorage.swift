@@ -54,15 +54,33 @@ public enum KeychainStorage {
         if let accessGroup { Self.accessGroup = accessGroup }
     }
 
-    /// Save a token + canonical username to the Keychain.
-    ///
-    /// Defensive: also wipes any pre-existing password account so an upgrade
-    /// from a build that used to store passwords doesn't leave stale
-    /// cleartext credentials on disk.
+    /// Save token + canonical username to the Keychain. Use this
+    /// variant when the user has NOT opted into password persistence
+    /// (Remember-me unchecked) — it defensively wipes any pre-existing
+    /// password account so we don't keep stale credentials around
+    /// after the user explicitly opted out.
     public static func saveCredentials(token: String, username: String) {
         save(account: tokenAccount, data: token)
         save(account: usernameAccount, data: username)
         delete(account: passwordAccount)
+    }
+
+    /// Save token + username + password. Used when Remember-me is on
+    /// and the user wants the app to silently re-login across token
+    /// expiry (and across app rebuilds in dev). The password is
+    /// stored under `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`,
+    /// so it's only readable by the same Keychain access group on
+    /// the same device while the device is unlocked. Pass `nil` or
+    /// empty to wipe an existing password without touching the
+    /// token/username pair.
+    public static func saveCredentials(token: String, username: String, password: String?) {
+        save(account: tokenAccount, data: token)
+        save(account: usernameAccount, data: username)
+        if let password, !password.isEmpty {
+            save(account: passwordAccount, data: password)
+        } else {
+            delete(account: passwordAccount)
+        }
     }
 
     public static func saveToken(_ token: String, username: String) {

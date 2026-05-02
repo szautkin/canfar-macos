@@ -45,14 +45,31 @@ public final class AuthService: Sendable {
                 canonicalUsername = username.lowercased()
             }
 
-            // Persist token + username to Keychain if requested.
+            // Persist token + username (+ optionally password) to Keychain.
             //
-            // The password is *not* persisted: once we have a token,
-            // re-authentication uses the token (or re-prompts the user) —
-            // there is no flow that needs the original password later.
-            // Storing it would only enlarge the Keychain blast radius.
+            // Remember-me ON → also save the password so silentReauth
+            // can re-login when the CADC token expires *or* when the
+            // app is rebuilt in dev (a frequent symptom: token TTL
+            // shorter than the developer's iteration cycle, or
+            // signing-config drift invalidating the previously stored
+            // token). Off → token + username only; the older
+            // saveCredentials variant defensively wipes any
+            // previously stored password.
+            //
+            // Stored under kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            // so the password is readable only by this app's Keychain
+            // access group on this device, while unlocked.
             if rememberMe {
-                KeychainStorage.saveCredentials(token: token, username: canonicalUsername)
+                KeychainStorage.saveCredentials(
+                    token: token,
+                    username: canonicalUsername,
+                    password: password
+                )
+            } else {
+                KeychainStorage.saveCredentials(
+                    token: token,
+                    username: canonicalUsername
+                )
             }
 
             // Fetch user info

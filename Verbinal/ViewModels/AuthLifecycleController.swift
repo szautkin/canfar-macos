@@ -137,28 +137,66 @@ final class AuthLifecycleController {
         }
     }
 
-    /// Try to renew the session using a stored Keychain token. We do *not*
-    /// re-login with a stored password — the password isn't persisted by
-    /// policy (see `KeychainStorage.saveCredentials`). When the token is
-    /// truly expired the user must re-enter credentials.
+    /// Try to renew the session without prompting the user.
+    ///
+    /// Two-stage: first the stored token (cheap — one /whoami call).
+    /// If that comes back expired AND the user opted into Remember-me
+    /// (so we have a password in the Keychain), retry with a full
+    /// login(username, password) — that also writes a fresh token
+    /// back to the Keychain on success, so subsequent launches are
+    /// fast again.
+    ///
+    /// Falls through to the strict failure path (clear Keychain,
+    /// surface "session expired") only when we have neither a valid
+    /// token NOR usable stored credentials.
     private func silentReauth() async -> Bool {
         let (storedToken, storedUsername) = KeychainStorage.loadToken()
-        guard let token = storedToken, storedUsername != nil else { return false }
+        guard let token = storedToken, let storedUser = storedUsername else { return false }
 
         statusMessage = "Renewing session..."
         isLoading = true
 
-        let validation = await authService.validateToken(token)
-        switch validation {
+        // Stage 1: try the stored token.
+        switch await authService.validateToken(token) {
         case .valid(let canonical):
             apply(username: canonical, userInfo: nil)
             isLoading = false
             return true
-        case .expired, .networkError:
+        case .networkError:
+            // Don't burn the password on a transient network blip —
+            // bail out, user retries when connectivity returns.
+            isLoading = false
+            return false
+        case .expired:
             break
         }
 
-        KeychainStorage.clearToken()
+        // Stage 2: token's gone. If the user said Remember-me, the
+        // password is in the Keychain; try a fresh login.
+        let (_, storedPassword) = KeychainStorage.loadCredentials()
+        if let password = storedPassword, !password.isEmpty {
+            statusMessage = "Re-authenticating…"
+            let result = await authService.login(
+                username: storedUser,
+                password: password,
+                rememberMe: true
+            )
+            if result.success {
+                apply(
+                    username: result.username ?? storedUser,
+                    userInfo: result.userInfo
+                )
+                isLoading = false
+                return true
+            }
+            // Password rejected by CADC — likely user changed it.
+            // Clear it so we don't keep retrying with a known-bad
+            // password every launch.
+            KeychainStorage.clearToken()
+        } else {
+            KeychainStorage.clearToken()
+        }
+
         username = ""
         userInfo = nil
         isAuthenticated = false
