@@ -1,0 +1,163 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (C) 2025-2026 Serhii Zautkin
+
+import SwiftUI
+
+/// Dashboard widget that surfaces the Skaha image catalogue with
+/// per-image discovery status, segmented by session type. Sits
+/// above `RecentLaunchesView` in the dashboard's right column.
+///
+/// Reuses the existing `GroupBox` + Label header rhythm from
+/// `RecentLaunchesView` and `HeadlessJobsView` so the dashboard
+/// reads as a unified set of panels rather than this one being a
+/// special case.
+///
+/// The widget is read-only — it doesn't probe images itself.
+/// Per-row "Inspect" and footer "More inspection…" both open the
+/// existing `ImageDiscoverySheet` which owns the actual probe
+/// flow. After the sheet dismisses, the widget refreshes its row
+/// states from the coordinator's cache so freshly-discovered
+/// rows render correctly.
+struct CanfarImagesView: View {
+    @Bindable var model: CanfarImagesModel
+    /// Toggled by the parent (DashboardView via AppState) to
+    /// present the existing image-discovery sheet.
+    @Binding var showDiscoverySheet: Bool
+    /// Optional pre-selected image for the sheet's "Use this image"
+    /// button to default to. Set when the user clicks Inspect on a
+    /// specific row.
+    @Binding var preselectedImageID: String?
+
+    var body: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                header
+                tabBar
+                searchField
+                content
+                footer
+            }
+        }
+        .task { if model.totalCatalogueCount == 0 { await model.reload() } }
+    }
+
+    // MARK: - Header
+
+    @ViewBuilder
+    private var header: some View {
+        HStack {
+            Label("Canfar Images", systemImage: "shippingbox")
+                .font(.headline)
+            Spacer()
+            if model.isLoading {
+                ProgressView().controlSize(.small)
+            } else {
+                Text("\(model.discoveredCount) of \(model.totalCatalogueCount) discovered")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Tabs
+
+    @ViewBuilder
+    private var tabBar: some View {
+        Picker("", selection: $model.selectedTab) {
+            ForEach(CanfarImagesTab.allCases) { tab in
+                Text(tab.title).tag(tab)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .controlSize(.small)
+    }
+
+    // MARK: - Search
+
+    @ViewBuilder
+    private var searchField: some View {
+        TextField("Filter…", text: $model.searchText)
+            .textFieldStyle(.roundedBorder)
+            .font(.caption)
+    }
+
+    // MARK: - Rows
+
+    @ViewBuilder
+    private var content: some View {
+        let rows = model.filteredRows
+        if rows.isEmpty {
+            emptyState
+        } else {
+            ScrollView {
+                VStack(spacing: 6) {
+                    ForEach(rows) { row in
+                        CanfarImageRowCard(row: row) {
+                            preselectedImageID = row.image.id
+                            showDiscoverySheet = true
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .frame(maxHeight: 220)
+        }
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "shippingbox")
+                .font(.title3)
+                .foregroundStyle(.tertiary)
+            Text(emptyMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 18)
+    }
+
+    private var emptyMessage: String {
+        if !model.searchText.isEmpty {
+            return "No images match the current filter."
+        }
+        switch model.selectedTab {
+        case .default:
+            return "No default images marked yet. Use the star button on the launch form to set one."
+        case .popular:
+            return "No recent launches yet."
+        default:
+            return "No images of this type are available for your account."
+        }
+    }
+
+    // MARK: - Footer
+
+    @ViewBuilder
+    private var footer: some View {
+        HStack {
+            if let banner = model.bannerMessage {
+                Label(banner, systemImage: "exclamationmark.triangle")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer()
+            Button {
+                preselectedImageID = nil
+                showDiscoverySheet = true
+            } label: {
+                Label("More inspection…", systemImage: "magnifyingglass")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+}

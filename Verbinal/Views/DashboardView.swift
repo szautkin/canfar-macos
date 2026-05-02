@@ -45,6 +45,14 @@ struct DashboardView: View {
                     .frame(maxWidth: .infinity)
 
                     VStack(spacing: 16) {
+                        if let cim = appState.canfarImagesModel {
+                            CanfarImagesView(
+                                model: cim,
+                                showDiscoverySheet: Bindable(appState).showImageDiscoverySheet,
+                                preselectedImageID: Bindable(appState).preselectedDiscoveryImageID
+                            )
+                        }
+
                         RecentLaunchesView(
                             store: appState.recentLaunchStore,
                             launchModel: sessionLaunchModel,
@@ -59,6 +67,37 @@ struct DashboardView: View {
                 }
             }
             .padding(20)
+        }
+        .sheet(isPresented: Bindable(appState).showImageDiscoverySheet) {
+            if let idm = appState.imageDiscoveryModel,
+               let cim = appState.canfarImagesModel {
+                ImageDiscoverySheet(
+                    model: idm,
+                    onPick: { imageID in
+                        // Sheet's "Use this image" feeds back into
+                        // the launch form's selection so the picker
+                        // reflects the choice on dismiss.
+                        let pool = sessionLaunchModel.images(forType: sessionLaunchModel.selectedType)
+                            .values.flatMap { $0 }
+                        if let match = pool.first(where: { $0.id == imageID }) {
+                            sessionLaunchModel.selectedImage = match
+                        }
+                    },
+                    catalogue: cim.allImages
+                )
+                .task(id: appState.preselectedDiscoveryImageID) {
+                    // Pre-select the row the user clicked Inspect
+                    // on. Sheet's "Use this image" button binds to
+                    // selectedImageID and updates accordingly.
+                    if let pre = appState.preselectedDiscoveryImageID {
+                        idm.selectedImageID = pre
+                    }
+                }
+                .onDisappear {
+                    appState.preselectedDiscoveryImageID = nil
+                    Task { await cim.refreshFromCache() }
+                }
+            }
         }
     }
 }

@@ -57,6 +57,23 @@ final class AppState {
     private(set) var imageDiscoveryCoordinator: ImageDiscoveryCoordinator?
     private(set) var imageDiscoveryModel: ImageDiscoveryModel?
 
+    /// Dashboard widget model for the Canfar Images panel. Owned
+    /// alongside the discovery coordinator so logout drops both
+    /// together (catalogue + manifests are per-user).
+    private(set) var canfarImagesModel: CanfarImagesModel?
+
+    /// Drives presentation of the existing ImageDiscoverySheet
+    /// from anywhere in the dashboard. The launch-form magnifier
+    /// also writes to this binding so a single sheet instance
+    /// serves both surfaces.
+    var showImageDiscoverySheet: Bool = false
+
+    /// Pre-selected image id for the sheet — set by the Canfar
+    /// Images widget when the user clicks Inspect on a specific
+    /// row. The sheet honors this via its existing
+    /// `selectedImageID` binding.
+    var preselectedDiscoveryImageID: String?
+
     // Addon system
     let addonRegistry = AddonRegistry()
     /// Addons discovered at launch (or whenever `refreshAddons()` is called).
@@ -351,6 +368,13 @@ final class AppState {
         )
         imageDiscoveryCoordinator = coord
         imageDiscoveryModel = ImageDiscoveryModel(coordinator: coord)
+        canfarImagesModel = CanfarImagesModel(
+            imageService: imageService,
+            coordinator: coord,
+            recentLaunchStore: recentLaunchStore,
+            portalSettingsService: portalSettingsService,
+            username: username
+        )
 
         prewarmPortalCache()
     }
@@ -395,6 +419,7 @@ final class AppState {
         headlessMonitor = nil
         imageDiscoveryCoordinator = nil
         imageDiscoveryModel = nil
+        canfarImagesModel = nil
         auth.handleTokenExpired()
     }
 
@@ -403,6 +428,7 @@ final class AppState {
         headlessMonitor = nil
         imageDiscoveryCoordinator = nil
         imageDiscoveryModel = nil
+        canfarImagesModel = nil
 
         // Cancel any in-flight prewarm so it cannot repopulate the cache after clear().
         prewarmTask?.cancel()
