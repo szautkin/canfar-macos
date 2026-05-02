@@ -272,7 +272,7 @@ actor ImageDiscoveryCoordinator {
 
         let jobID: String
         do {
-            jobID = try await launchProbeJob(for: imageID)
+            jobID = try await launchProbeJobWithRetry(for: imageID)
         } catch let HeadlessLaunchError.partialReplicaFailure(_, _, msg) {
             let err = ImageDiscoveryError.jobSubmitFailed(message: msg)
             try? await persistFailure(imageID: imageID, error: err, jobID: nil)
@@ -372,6 +372,33 @@ actor ImageDiscoveryCoordinator {
 
         probeScriptUploaded = true
         Self.logger.info("uploaded probe script to \(remote, privacy: .public)")
+    }
+
+    /// Submit the probe job, retrying once on Skaha's known
+    /// eventual-consistency race where the POST succeeds in
+    /// creating the K8s `jobs.batch` resource but Skaha's
+    /// immediate follow-up GET returns `404 jobs.batch ... not
+    /// found` (surfaced to the caller as HTTP 500). The race is
+    /// rare on the typical case but reproducible on small/fast-
+    /// scheduling images. Single retry after 2.5s lets the K8s
+    /// API server's read replica catch up.
+    private func launchProbeJobWithRetry(for imageID: String) async throws -> String {
+        do {
+            return try await launchProbeJob(for: imageID)
+        } catch {
+            guard Self.isSkahaJobNotFoundRace(error) else { throw error }
+            Self.logger.notice("probe submit hit jobs.batch not-found race for \(imageID, privacy: .public); retrying after 2.5s")
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            return try await launchProbeJob(for: imageID)
+        }
+    }
+
+    /// Pattern-match the very specific error body Skaha returns
+    /// during the race. Other HTTP 500s (real backend faults,
+    /// quota exceeded, etc.) shouldn't trigger a retry.
+    static func isSkahaJobNotFoundRace(_ error: Error) -> Bool {
+        let msg = error.localizedDescription.lowercased()
+        return msg.contains("jobs.batch") && msg.contains("not found")
     }
 
     private func launchProbeJob(for imageID: String) async throws -> String {

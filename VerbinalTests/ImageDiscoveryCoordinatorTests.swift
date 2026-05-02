@@ -35,6 +35,12 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         private(set) var launchCalls: [HeadlessLaunchParams] = []
         private(set) var jobs: [HeadlessJob] = []
         var launchError: Error?
+        /// Errors to throw on consecutive launch calls — first call
+        /// dequeues errorSequence[0], second call errorSequence[1],
+        /// etc. Empty queue falls back to launchError or success.
+        /// Lets retry-path tests assert the exact pattern (e.g.
+        /// "first launch fails with race error, second succeeds").
+        var launchErrorSequence: [Error] = []
 
         /// Auto-complete launched jobs after this many polls.
         /// Default 0 = complete immediately.
@@ -48,6 +54,10 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             lock.lock()
             defer { lock.unlock() }
             launchCalls.append(params)
+            if !launchErrorSequence.isEmpty {
+                let err = launchErrorSequence.removeFirst()
+                throw err
+            }
             if let err = launchError { throw err }
             nextID += 1
             let id = "job-\(nextID)"
@@ -508,6 +518,82 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             return XCTFail("expected .failure outcome")
         }
         XCTAssertEqual(cat, .manifestFetchFailed)
+    }
+
+    // MARK: - Skaha race retry (F-31)
+
+    func testIsSkahaJobNotFoundRaceMatchesActualErrorBody() {
+        // Pin the pattern detector against the actual body Skaha
+        // returned in the field. Bigger letters / different
+        // wording must NOT match (we only retry on the exact race).
+        let raceErr = NSError(
+            domain: "Skaha", code: 500,
+            userInfo: [NSLocalizedDescriptionKey: """
+                HTTP 500: unexpected exception: java.lang.RuntimeException: \
+                io.kubernetes.client.openapi.ApiException: Message: \
+                HTTP response code: 404 \
+                HTTP response body: {"kind":"Status","apiVersion":"v1","metadata":{},\
+                "status":"Failure","message":"jobs.batch \\"skaha-headless-szautkin-nie3d4qu\\" not found",\
+                "reason":"NotFound","details":{"name":"skaha-headless-szautkin-nie3d4qu","group":"batch","kind":"jobs"},"code":404}
+                """]
+        )
+        XCTAssertTrue(ImageDiscoveryCoordinator.isSkahaJobNotFoundRace(raceErr))
+
+        let unrelated500 = NSError(
+            domain: "Skaha", code: 500,
+            userInfo: [NSLocalizedDescriptionKey: "HTTP 500: image pull failed"]
+        )
+        XCTAssertFalse(ImageDiscoveryCoordinator.isSkahaJobNotFoundRace(unrelated500))
+
+        let real404 = NSError(
+            domain: "Skaha", code: 404,
+            userInfo: [NSLocalizedDescriptionKey: "HTTP 404: image not found"]
+        )
+        XCTAssertFalse(ImageDiscoveryCoordinator.isSkahaJobNotFoundRace(real404))
+    }
+
+    func testProbeRetriesOnceOnSkahaJobNotFoundRace() async throws {
+        let store = makeStore()
+        let h = MockHeadless()
+        // Fail the FIRST launch with the race error; succeed on retry.
+        h.launchErrorSequence = [
+            NSError(
+                domain: "Skaha", code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "HTTP 500: jobs.batch \"x-y\" not found"]
+            )
+        ]
+        let v = MockVOSpace()
+
+        let imageID = "test:race-survives"
+        let safe = ImageManifest.sanitize(imageID: imageID)
+        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
+            sampleManifestJSON(imageID: imageID)
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+        let manifest = try await coord.discover(imageID)
+        XCTAssertEqual(manifest.imageID, imageID)
+        XCTAssertEqual(h.launchCalls.count, 2,
+                       "launch must be retried once after the race-pattern error; got \(h.launchCalls.count) calls")
+    }
+
+    func testProbeDoesNotRetryOnUnrelated500() async throws {
+        let store = makeStore()
+        let h = MockHeadless()
+        h.launchErrorSequence = [
+            NSError(domain: "Skaha", code: 500,
+                    userInfo: [NSLocalizedDescriptionKey: "HTTP 500: image pull backoff"])
+        ]
+        let v = MockVOSpace()
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+        do {
+            _ = try await coord.discover("test:no-retry")
+            XCTFail("expected throw on first launch")
+        } catch is ImageDiscoveryError {
+            // expected
+        }
+        XCTAssertEqual(h.launchCalls.count, 1,
+                       "non-race errors must not retry; got \(h.launchCalls.count)")
     }
 
     // MARK: - Failure jobID capture + log fetch
