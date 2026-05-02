@@ -778,6 +778,39 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
                        "launch must be retried once after the race-pattern error; got \(h.launchCalls.count) calls")
     }
 
+    func testInspectorPathAlsoRetriesOnSkahaJobNotFoundRace() async throws {
+        // The K8s race fires at job-submission time inside Skaha,
+        // not specific to the strategy. The inspector path must
+        // wear the same retry harness as the in-target path.
+        let store = makeStore()
+        let h = MockHeadless()
+        h.launchErrorSequence = [
+            NSError(
+                domain: "Skaha", code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "HTTP 500: jobs.batch \"x\" not found"]
+            )
+        ]
+        let v = MockVOSpace()
+        h.onLaunchSimulate = { [weak v] params in
+            // Inspector path: write at TARGET_IMAGE's path.
+            guard let target = params.env.first(where: { $0.0 == "TARGET_IMAGE" })?.1 else { return }
+            let safe = ImageManifest.sanitize(imageID: target)
+            let path = "\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"
+            v?.fileContents[path] = self.sampleManifestJSON(imageID: target)
+        }
+
+        let coord = ImageDiscoveryCoordinator(
+            store: store, headless: h, vospace: v, username: "testuser",
+            probeJobTimeout: 5.0, pollInterval: 0.01, maxConcurrentProbes: 3,
+            imageTypesLookup: { _ in ["notebook"] }     // forces inspector strategy
+        )
+
+        _ = try await coord.discover("images.canfar.net/cirada/notebook:1")
+
+        XCTAssertEqual(h.launchCalls.count, 2,
+                       "inspector launch must retry once on the K8s race; got \(h.launchCalls.count)")
+    }
+
     func testProbeDoesNotRetryOnUnrelated500() async throws {
         let store = makeStore()
         let h = MockHeadless()

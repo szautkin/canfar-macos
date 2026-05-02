@@ -336,7 +336,7 @@ actor ImageDiscoveryCoordinator {
             case .inTarget:
                 jobID = try await launchProbeJobWithRetry(for: imageID)
             case .inspector:
-                jobID = try await launchInspectorJob(for: imageID)
+                jobID = try await launchInspectorJobWithRetry(for: imageID)
             }
         } catch let HeadlessLaunchError.partialReplicaFailure(_, _, msg) {
             let err = ImageDiscoveryError.jobSubmitFailed(message: msg)
@@ -526,13 +526,37 @@ actor ImageDiscoveryCoordinator {
     /// scheduling images. Single retry after 2.5s lets the K8s
     /// API server's read replica catch up.
     private func launchProbeJobWithRetry(for imageID: String) async throws -> String {
+        try await retryingOnSkahaRace(label: "probe", imageID: imageID) {
+            try await self.launchProbeJob(for: imageID)
+        }
+    }
+
+    /// Same retry envelope around the inspector launch path. The
+    /// race is at submission time (Skaha + K8s API server), not
+    /// strategy-specific — both probe and inspector launches go
+    /// through the same Skaha endpoint and hit the same race.
+    private func launchInspectorJobWithRetry(for targetImageID: String) async throws -> String {
+        try await retryingOnSkahaRace(label: "inspector", imageID: targetImageID) {
+            try await self.launchInspectorJob(for: targetImageID)
+        }
+    }
+
+    /// Single shared retry harness used by both strategies. Keeps
+    /// the race detection + backoff in one place so future
+    /// adjustments (e.g. a second retry, exponential backoff)
+    /// only need editing here.
+    private func retryingOnSkahaRace<T: Sendable>(
+        label: String,
+        imageID: String,
+        _ work: @Sendable () async throws -> T
+    ) async throws -> T {
         do {
-            return try await launchProbeJob(for: imageID)
+            return try await work()
         } catch {
             guard Self.isSkahaJobNotFoundRace(error) else { throw error }
-            Self.logger.notice("probe submit hit jobs.batch not-found race for \(imageID, privacy: .public); retrying after 2.5s")
+            Self.logger.notice("\(label, privacy: .public) submit hit jobs.batch not-found race for \(imageID, privacy: .public); retrying after 2.5s")
             try? await Task.sleep(nanoseconds: 2_500_000_000)
-            return try await launchProbeJob(for: imageID)
+            return try await work()
         }
     }
 
