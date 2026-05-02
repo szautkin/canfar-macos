@@ -50,6 +50,13 @@ final class AppState {
     // Headless job monitor (created on auth, destroyed on logout)
     private(set) var headlessMonitor: HeadlessMonitorModel?
 
+    /// Image content discovery — manifest cache + probe orchestrator.
+    /// Created on auth so it has a username to drive VOSpace I/O;
+    /// destroyed on logout because both the cache file and the probe
+    /// jobs are user-scoped.
+    private(set) var imageDiscoveryCoordinator: ImageDiscoveryCoordinator?
+    private(set) var imageDiscoveryModel: ImageDiscoveryModel?
+
     // Addon system
     let addonRegistry = AddonRegistry()
     /// Addons discovered at launch (or whenever `refreshAddons()` is called).
@@ -330,6 +337,21 @@ final class AppState {
         headlessMonitor = monitor
         monitor.startMonitoring()
 
+        // Image discovery — manifest cache + probe orchestration.
+        // Created lazily here because the coordinator needs a real
+        // username for VOSpace IO. Same lifetime as the headless
+        // monitor (set up here, torn down on logout).
+        let cacheDir = JSONManifestStore.defaultDirectory()
+        let store = JSONManifestStore(directory: cacheDir)
+        let coord = ImageDiscoveryCoordinator(
+            store: store,
+            headless: headlessService,
+            vospace: VOSpaceBrowserService(network: network),
+            username: username
+        )
+        imageDiscoveryCoordinator = coord
+        imageDiscoveryModel = ImageDiscoveryModel(coordinator: coord)
+
         prewarmPortalCache()
     }
 
@@ -371,12 +393,16 @@ final class AppState {
         guard auth.isAuthenticated else { return }
         headlessMonitor?.stopMonitoring()
         headlessMonitor = nil
+        imageDiscoveryCoordinator = nil
+        imageDiscoveryModel = nil
         auth.handleTokenExpired()
     }
 
     func logout() async {
         headlessMonitor?.stopMonitoring()
         headlessMonitor = nil
+        imageDiscoveryCoordinator = nil
+        imageDiscoveryModel = nil
 
         // Cancel any in-flight prewarm so it cannot repopulate the cache after clear().
         prewarmTask?.cancel()

@@ -12,9 +12,15 @@ struct LaunchFormView: View {
     /// tab appears. `nil` keeps the form to its prior shape, used by
     /// surfaces that don't load a HeadlessService (e.g. tests / iOS).
     var headlessModel: HeadlessLaunchModel?
+    /// Optional image-discovery model — when provided, a magnifier
+    /// icon next to the image picker opens a sheet that lets the
+    /// user search images by installed packages. `nil` hides the
+    /// affordance.
+    var imageDiscoveryModel: ImageDiscoveryModel?
     var onLaunched: (() -> Void)?
     @State private var showLaunchProgress = false
     @State private var showHeadlessLaunchProgress = false
+    @State private var showImageDiscovery = false
     @State private var selectedTab = 0
 
     var body: some View {
@@ -86,6 +92,33 @@ struct LaunchFormView: View {
         } message: {
             Text("'\(model.pendingRecentLaunch?.name ?? "")' already exists in recent launches. Replace it?")
         }
+        .sheet(isPresented: $showImageDiscovery) {
+            if let idm = imageDiscoveryModel {
+                ImageDiscoverySheet(
+                    model: idm,
+                    onPick: { imageID in
+                        // Map the picked id back into the launch
+                        // model: find it in the current type's
+                        // catalogue and assign so the picker rebinds.
+                        let pool = model.images(forType: model.selectedType)
+                            .values.flatMap { $0 }
+                        if let match = pool.first(where: { $0.id == imageID }) {
+                            model.selectedImage = match
+                        }
+                    },
+                    catalogue: catalogueForCurrentTab
+                )
+            }
+        }
+    }
+
+    /// Flatten the launch-model's per-project catalogue for the
+    /// current Standard/Advanced tab's session type. The discovery
+    /// sheet shows everything the user can launch *of this type*.
+    private var catalogueForCurrentTab: [ParsedImage] {
+        model.images(forType: model.selectedType)
+            .values.flatMap { $0 }
+            .sorted { $0.label < $1.label }
     }
 
     // MARK: - Headless Form (the third tab)
@@ -181,6 +214,16 @@ struct LaunchFormView: View {
                         model.toggleDefaultImage()
                     }
                     .disabled(model.selectedImage == nil)
+                    if imageDiscoveryModel != nil {
+                        Button {
+                            showImageDiscovery = true
+                        } label: {
+                            Image(systemName: "magnifyingglass.circle")
+                                .font(.callout)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Discover images by installed packages")
+                    }
                 }
             }
 

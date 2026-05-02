@@ -36,6 +36,7 @@ struct DashboardView: View {
                     LaunchFormView(
                         model: sessionLaunchModel,
                         headlessModel: headlessLaunchModel,
+                        imageDiscoveryModel: appState.imageDiscoveryModel,
                         onLaunched: {
                             Task { await sessionListModel.loadSessions() }
                             Task { await appState.headlessMonitor?.loadJobs() }
