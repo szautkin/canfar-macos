@@ -59,6 +59,7 @@ struct MatchingImagesPane: View {
             staleBadge(state: state)
             statusIndicator(state: state)
             viewLogsButton(state: state)
+            dismissErrorButton(imageID: image.id, state: state)
             discoverButton(imageID: image.id, state: state)
         }
         .padding(.vertical, 2)
@@ -139,6 +140,29 @@ struct MatchingImagesPane: View {
             }
             .buttonStyle(.borderless)
             .help("View container logs for the failed probe job")
+        }
+    }
+
+    /// "Dismiss error" affordance — visible only on failed rows.
+    /// Drops the cached failure and resets the row to never-
+    /// discovered, *without* launching a fresh probe (rediscover
+    /// is the button next door for that). Useful when the user
+    /// already knows why a probe failed and wants the row out of
+    /// their visual triage queue.
+    @ViewBuilder
+    private func dismissErrorButton(
+        imageID: String,
+        state: ImageDiscoveryModel.RowState
+    ) -> some View {
+        if case .failed = state {
+            Button {
+                Task { await model.clearFailure(imageID) }
+            } label: {
+                Image(systemName: "xmark.circle")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .help("Dismiss this error (does not re-run the probe)")
         }
     }
 

@@ -128,6 +128,25 @@ actor ImageDiscoveryCoordinator {
         try await store.clear()
     }
 
+    /// Drop a single image's cached outcome (success OR failure).
+    /// The discovery sheet calls this from the per-row "Dismiss
+    /// error" button to take a failed row back to never-discovered
+    /// state without launching a fresh probe.
+    func invalidate(imageID: String) async throws {
+        try await store.invalidate(imageID: imageID)
+    }
+
+    /// Drop every cached *failure* — leave successful manifests
+    /// intact. Surfaced as the "Clear all errors" button in the
+    /// sheet header when failed rows exist.
+    func clearFailures() async throws {
+        for id in await store.knownImages() {
+            if case .failure = await store.outcome(for: id) {
+                try await store.invalidate(imageID: id)
+            }
+        }
+    }
+
     /// Number of cached records — used by Settings to render the
     /// "Clear cache (N entries)" label.
     func cacheCount() async -> Int {

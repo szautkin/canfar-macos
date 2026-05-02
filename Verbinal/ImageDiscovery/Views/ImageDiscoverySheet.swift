@@ -84,6 +84,18 @@ struct ImageDiscoverySheet: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if model.failedCount > 0 {
+                Button {
+                    Task { await model.clearAllFailures() }
+                } label: {
+                    Label("Clear \(model.failedCount) error\(model.failedCount == 1 ? "" : "s")",
+                          systemImage: "xmark.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Drop every cached failure outcome (does not re-run probes)")
+            }
             if model.isDiscoveryRunning {
                 HStack(spacing: 4) {
                     ProgressView().controlSize(.small)

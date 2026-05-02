@@ -228,6 +228,46 @@ final class ImageDiscoveryModel {
         }
     }
 
+    // MARK: - Clearing failures
+
+    /// Number of rows currently in the failed state. Drives the
+    /// "Clear all errors (N)" button visibility / label in the
+    /// sheet header.
+    var failedCount: Int {
+        rowStates.values.reduce(into: 0) { acc, state in
+            if case .failed = state { acc += 1 }
+        }
+    }
+
+    /// Drop the cached failure for `imageID` and reset the row to
+    /// never-discovered. Doesn't re-probe — the user explicitly
+    /// chose to dismiss without retrying.
+    func clearFailure(_ imageID: String) async {
+        do {
+            try await coordinator.invalidate(imageID: imageID)
+            rowStates[imageID] = .neverDiscovered
+        } catch {
+            bannerMessage = "Couldn't clear \(imageID): \(error.localizedDescription)"
+        }
+    }
+
+    /// Drop every cached failure outcome in one shot. Successful
+    /// manifests are kept. Used by the sheet header's "Clear all
+    /// errors" button when the user wants to wipe the slate after
+    /// a bad batch (e.g. before retrying a different image set).
+    func clearAllFailures() async {
+        do {
+            try await coordinator.clearFailures()
+            for (id, state) in rowStates {
+                if case .failed = state {
+                    rowStates[id] = .neverDiscovered
+                }
+            }
+        } catch {
+            bannerMessage = "Couldn't clear failures: \(error.localizedDescription)"
+        }
+    }
+
     // MARK: - Diagnostics for failed rows
 
     /// Fetch the container stdout/stderr for a probe job. UI calls
