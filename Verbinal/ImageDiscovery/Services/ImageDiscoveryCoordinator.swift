@@ -20,10 +20,15 @@ protocol HeadlessProbeLauncher: Sendable {
 }
 
 /// Just the VOSpace operations the coordinator needs:
-/// upload (for the probe script) and download (for the manifest).
+/// upload (for the probe script), download (for the manifest), and
+/// idempotent folder create (because VOSpace doesn't auto-create
+/// parents on upload — `.verbinal/` has to exist BEFORE we PUT
+/// `.verbinal/probe-<hash>.sh` or the server returns HTTP 404
+/// "parent container not found").
 protocol VOSpaceFileTransfer: Sendable {
     func uploadFile(username: String, remotePath: String, fileURL: URL) async throws
     func downloadFile(username: String, path: String) async throws -> (tempURL: URL, filename: String)
+    func createFolder(username: String, parentPath: String, folderName: String) async throws
 }
 
 // HeadlessService and VOSpaceBrowserService get these conformances
@@ -320,6 +325,20 @@ actor ImageDiscoveryCoordinator {
 
     private func ensureProbeScript() async throws {
         if probeScriptUploaded { return }
+
+        // VOSpace doesn't auto-create parent folders on PUT.
+        // Idempotent mkdir — already-exists errors are swallowed
+        // because the only way to *know* the folder exists is to
+        // ask, which costs a round-trip we'd otherwise repeat
+        // every session. The probe script's internal `mkdir -p`
+        // handles `.verbinal/manifests` from inside the container,
+        // but the script upload itself happens FROM the Mac and
+        // needs `.verbinal/` to be there beforehand.
+        try? await vospace.createFolder(
+            username: username,
+            parentPath: "",
+            folderName: ProbeScript.homeSubdirectory
+        )
 
         // Write the embedded script body to a tempfile.
         let tempDir = FileManager.default.temporaryDirectory

@@ -93,9 +93,11 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
     final class MockVOSpace: VOSpaceFileTransfer, @unchecked Sendable {
         private let lock = NSLock()
         private(set) var uploads: [(remotePath: String, content: Data)] = []
+        private(set) var foldersCreated: [(parentPath: String, folderName: String)] = []
         var fileContents: [String: Data] = [:]
         var downloadError: Error?
         var uploadError: Error?
+        var createFolderError: Error?
 
         func uploadFile(username: String, remotePath: String, fileURL: URL) async throws {
             lock.lock()
@@ -117,6 +119,13 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
                 .appendingPathComponent("mock-download-\(UUID().uuidString)")
             try data.write(to: tempURL)
             return (tempURL, (path as NSString).lastPathComponent)
+        }
+
+        func createFolder(username: String, parentPath: String, folderName: String) async throws {
+            lock.lock()
+            defer { lock.unlock() }
+            if let err = createFolderError { throw err }
+            foldersCreated.append((parentPath: parentPath, folderName: folderName))
         }
     }
 
@@ -238,6 +247,51 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
 
         let manifest = try await coord.discover(imageID)
         XCTAssertEqual(manifest.imageID, imageID)
+    }
+
+    // MARK: - VOSpace dir setup
+
+    func testProbeScriptUploadCreatesParentDirFirst() async throws {
+        // Real-world bug: VOSpace returns HTTP 404 on PUT to a path
+        // whose parent doesn't exist. The coordinator must mkdir
+        // .verbinal BEFORE uploading probe-<hash>.sh.
+        let store = makeStore()
+        let h = MockHeadless()
+        let v = MockVOSpace()
+
+        let imageID = "test:dir-setup"
+        let safe = ImageManifest.sanitize(imageID: imageID)
+        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
+            sampleManifestJSON(imageID: imageID)
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+        _ = try await coord.discover(imageID)
+
+        XCTAssertEqual(v.foldersCreated.count, 1, "must mkdir exactly once per session")
+        XCTAssertEqual(v.foldersCreated[0].folderName, ProbeScript.homeSubdirectory)
+        XCTAssertEqual(v.foldersCreated[0].parentPath, "")
+    }
+
+    func testProbeScriptUploadSwallowsAlreadyExistsMkdirError() async throws {
+        // After the first session, .verbinal already exists. createFolder
+        // returns an error (409 / "already exists"). The coordinator
+        // must swallow it and proceed to the upload, otherwise every
+        // post-first-launch discovery breaks.
+        let store = makeStore()
+        let h = MockHeadless()
+        let v = MockVOSpace()
+        v.createFolderError = NSError(domain: "VOSpace", code: 409,
+                                       userInfo: [NSLocalizedDescriptionKey: "already exists"])
+
+        let imageID = "test:second-session"
+        let safe = ImageManifest.sanitize(imageID: imageID)
+        v.fileContents["\(ProbeScript.homeSubdirectory)/manifests/\(safe).json"] =
+            sampleManifestJSON(imageID: imageID)
+
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+        let manifest = try await coord.discover(imageID)
+        XCTAssertEqual(manifest.imageID, imageID)
+        XCTAssertEqual(v.uploads.count, 1, "upload must proceed after swallowed mkdir error")
     }
 
     // MARK: - Probe script upload-once
