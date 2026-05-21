@@ -20,6 +20,8 @@ struct FileBrowserPanel: View {
                 }
                 .buttonStyle(.borderless)
                 .disabled(!model.canGoUp)
+                .accessibilityLabel("Go to parent folder")
+                .help("Parent folder")
 
                 Text(model.breadcrumbName)
                     .font(.caption.bold())

@@ -51,7 +51,10 @@ struct ExportOptions {
 /// Shared JSON/ISO8601 configuration used by every module's exporter so all
 /// bundle files share a single schema (pretty-printed, sorted keys, ISO-8601 dates).
 enum ExportEncoding {
-    static let iso8601: ISO8601DateFormatter = {
+    // ISO8601DateFormatter is documented thread-safe; mark
+    // `nonisolated(unsafe)` so the strict-concurrency check
+    // doesn't flag this read-only static across actor boundaries.
+    nonisolated(unsafe) static let iso8601: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
         return f

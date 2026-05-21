@@ -39,12 +39,17 @@ final class SearchFormModel {
     // Debounce task for target resolution
     private var resolveTask: Task<Void, Never>?
 
+    // Stores are constructed inside the @MainActor init body so the
+    // strict-concurrency check doesn't reject parameter defaults
+    // evaluated in the caller's isolation context (the SwiftUI
+    // @State property-wrapper init position isn't always inferred
+    // MainActor at the syntactic call site).
     init(tapClient: TAPClient = TAPClient(),
          recentSearchStore: RecentSearchStore = RecentSearchStore(),
-         savedQueryStore: SavedQueryStore = SavedQueryStore()) {
+         savedQueryStore: SavedQueryStore? = nil) {
         self.tapClient = tapClient
         self.recentSearchStore = recentSearchStore
-        self.savedQueryStore = savedQueryStore
+        self.savedQueryStore = savedQueryStore ?? SavedQueryStore()
         self.resolverService = TargetResolverService(tapClient: tapClient)
         self.dataTrainModel = DataTrainModel(
             dataTrainService: DataTrainService(tapClient: tapClient)

@@ -36,6 +36,7 @@ struct AgentAttributionBadge: View {
         }
         .buttonStyle(.plain)
         .help("Created by \(attribution.originLabel)")
+        .accessibilityLabel("Created by \(attribution.originLabel)")
         .onHover { isHovering = $0 }
         .popover(isPresented: $isPresented, arrowEdge: .top) {
             AgentAttributionPopover(attribution: attribution)

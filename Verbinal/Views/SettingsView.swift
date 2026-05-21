@@ -23,6 +23,10 @@ struct SettingsView: View {
                 .environment(appState)
                 .tabItem { Label("Portal", systemImage: "play.circle") }
 
+            ImageDiscoverySettingsTab()
+                .environment(appState)
+                .tabItem { Label("Discovery", systemImage: "shippingbox.and.arrow.backward") }
+
             AgentsSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Agents", systemImage: "wand.and.rays") }
@@ -79,6 +83,7 @@ private struct GeneralSettingsTab: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
+                        .help("Quit and relaunch Verbinal to apply the new language")
                     }
                     .padding(.vertical, 4)
                 }
@@ -274,6 +279,7 @@ private struct PortalSettingsTab: View {
             Button("Clear All Defaults", role: .destructive) {
                 clearDefaults()
             }
+            .help("Drop the saved Portal defaults for this account")
             .disabled(settings?.isEmpty ?? true)
         }
     }
@@ -356,11 +362,13 @@ private struct PortalSettingsTab: View {
                 }
             }
             .disabled(appState.username.isEmpty || isRefreshing)
+            .help("Re-fetch the Skaha image catalogue now")
 
             Button("Clear Cache", role: .destructive) {
                 appState.portalImageCacheService.clear()
             }
             .disabled(cache == nil)
+            .help("Delete the cached image list; next open will re-fetch")
         }
     }
 
@@ -527,6 +535,7 @@ private struct AgentsSettingsTab: View {
                         }
                         .controlSize(.small)
                         .disabled(appState.agentsService.activityStore.entries.isEmpty)
+                        .help("Erase the agent-activity breadcrumb log")
                     }
                 } header: {
                     Text("Activity History")
@@ -666,6 +675,7 @@ private struct AgentsSettingsTab: View {
                     }
                 }
                 .controlSize(.small)
+                .help("Drop every cached image manifest; in-flight probes keep running")
                 .disabled(clearing || (count ?? 0) == 0)
             }
             .task {

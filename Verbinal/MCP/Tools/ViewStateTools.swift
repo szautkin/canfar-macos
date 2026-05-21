@@ -95,7 +95,7 @@ struct SetSearchFocusTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "set_search_focus",
-        description: "Pre-position the search form on (RA, Dec) in degrees. Live-applied; visible the next time the user opens Search.",
+        description: "Pre-position the search form on (RA, Dec) in degrees. Live-applied; visible the next time the user opens Search. Does NOT auto-navigate — chain `navigate_to(mode: \"search\")` after this if you want the user to see it immediately. Existing radius/collection filters in the form are preserved.",
         schema: #"""
         {
           "type": "object",

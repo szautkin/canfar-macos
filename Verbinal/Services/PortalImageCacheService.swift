@@ -107,7 +107,9 @@ final class PortalImageCacheService {
             )
             self.cache = newCache
             self.persistence.write(newCache)
-            Self.logger.info("Fetched \(rawImages.count) images for \(username, privacy: .public)")
+            // Username is institutional PII — keep redacted in logs.
+            // Image count is safe to surface for diagnostics.
+            Self.logger.info("Fetched \(rawImages.count) images for \(username, privacy: .private)")
             return newCache
         }
         activeFetchTask = task

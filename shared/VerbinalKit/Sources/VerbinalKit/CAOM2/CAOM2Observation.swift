@@ -350,7 +350,25 @@ extension CAOM2Observation {
     /// pipelining `search_observations` rows into `get_observation_caom2`
     /// shouldn't trip on the Plane / mirror id shape.)
     public static func observationURI(fromPublisherID publisherID: String) -> String? {
-        guard let url = URL(string: publisherID),
+        let trimmed = publisherID.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Already-canonical `caom:Collection/ObservationID` form. Some
+        // TAP query rows (PublisherID column on the older endpoints)
+        // and `search_observations` return this directly, so accept
+        // it as a fast path and validate shape.
+        if trimmed.lowercased().hasPrefix("caom:") {
+            let body = String(trimmed.dropFirst("caom:".count))
+            let parts = body.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: true).map(String.init)
+            guard parts.count == 2,
+                  !parts[0].isEmpty,
+                  !parts[1].isEmpty else { return nil }
+            // Strip a trailing /productID if the caller pasted the
+            // plane-level form, the same way the ivo:// branch does.
+            let observationID = parts[1].split(separator: "/", maxSplits: 1).first.map(String.init) ?? parts[1]
+            return "caom:\(parts[0])/\(observationID)"
+        }
+
+        guard let url = URL(string: trimmed),
               let scheme = url.scheme?.lowercased(), scheme == "ivo" else { return nil }
         // Path may carry a `/mirror` segment for HST / JWST mirror
         // entries — strip it so the collection comes out right.

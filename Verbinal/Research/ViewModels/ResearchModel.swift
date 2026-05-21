@@ -34,12 +34,20 @@ final class ResearchModel {
     /// Called when the user opens a file; routes FITS/notebook files to in-app viewers.
     var onOpenFile: ((URL) -> Void)?
 
-    init(observationStore: ObservationStore = ObservationStore(),
+    // Defaults are constructed inline at the @MainActor init site
+    // rather than as parameter defaults — parameter defaults are
+    // evaluated in the caller's isolation context, and `@State
+    // var researchModel = ResearchModel()` in a SwiftUI view
+    // doesn't always inherit MainActor at the syntactic position
+    // where defaults run, so the compiler refuses to call the
+    // MainActor-isolated `ObservationStore.init`. Putting the
+    // construction inside the body forces it onto the actor.
+    init(observationStore: ObservationStore? = nil,
          downloadService: DownloadService = DownloadService(),
-         noteStore: ObservationNoteStore = ObservationNoteStore()) {
-        self.observationStore = observationStore
+         noteStore: ObservationNoteStore? = nil) {
+        self.observationStore = observationStore ?? ObservationStore()
         self.downloadService = downloadService
-        self.noteStore = noteStore
+        self.noteStore = noteStore ?? ObservationNoteStore()
     }
 
     var filteredObservations: [DownloadedObservation] {

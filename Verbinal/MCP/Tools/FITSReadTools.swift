@@ -31,7 +31,7 @@ struct GetFITSHeaderTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_fits_header",
-        description: "Return FITS header cards for one HDU of a downloaded observation. Defaults to the first image HDU.",
+        description: "Return FITS header cards for one HDU of a previously-downloaded observation. Argument is the `downloaded_observation_id` (UUID from `list_downloaded_observations`), NOT a `publisher_id` — the file must already be on disk. Call `download_observation` first if you don't have a local copy. Defaults to the first image HDU.",
         schema: #"""
         {
           "type": "object",
@@ -113,7 +113,7 @@ struct GetFITSWCSTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_fits_wcs",
-        description: "Return parsed WCS (CRPIX/CRVAL, projection, pixel scale, north angle, parity flip) for one HDU of a downloaded observation.",
+        description: "Return parsed WCS (CRPIX/CRVAL, projection, pixel scale, north angle, parity flip) for one HDU of a previously-downloaded observation. Argument is the `downloaded_observation_id` UUID, not a `publisher_id` — file must already be on disk.",
         schema: #"""
         {
           "type": "object",

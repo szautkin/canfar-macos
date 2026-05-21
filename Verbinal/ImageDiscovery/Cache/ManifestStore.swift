@@ -14,6 +14,20 @@ import Foundation
 /// All methods are async — the v1 conformance is an actor and
 /// serializes filesystem IO behind it. The protocol documents the
 /// contract; `JSONManifestStore` is the conformance.
+/// One row of partial-match scoring output. `imageID` names the
+/// image, `score` is the fraction of constraints satisfied
+/// (0.0–1.0), `missing` lists the constraint identifiers the
+/// manifest didn't satisfy (e.g. `"python:fitsio"`,
+/// `"capability:gpu"`). Used by the partial-match query path on
+/// `find_images_with_packages` — agents that asked for six
+/// packages and got zero strict matches see this ranked
+/// near-miss list instead of an unhelpful empty response.
+struct PartialMatch: Sendable, Equatable {
+    let imageID: String
+    let score: Double
+    let missing: [String]
+}
+
 protocol ManifestStore: Sendable {
 
     /// What does the cache currently know about this image? `nil`
@@ -52,6 +66,22 @@ protocol ManifestStore: Sendable {
     ///
     /// Result order is sorted by image id for stable UI rendering.
     func search(_ query: PackageQuery) async -> [String]
+
+    /// Score every successful manifest against `query` and return
+    /// the top matches. Entries with `score < minScore` are
+    /// dropped; the rest are sorted by score desc (ties broken
+    /// alphabetically by image id for stable ordering), then
+    /// truncated to `limit`.
+    ///
+    /// Powers the partial-match field on
+    /// `find_images_with_packages` — when the strict AND-match is
+    /// empty, the agent gets a ranked shortlist of near-misses
+    /// instead of an unhelpful "no results."
+    func searchPartial(
+        _ query: PackageQuery,
+        minScore: Double,
+        limit: Int
+    ) async -> [PartialMatch]
 
     /// Every image id the cache has any record of (success or
     /// failure). The UI uses this to render rows for known images

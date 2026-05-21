@@ -88,7 +88,7 @@ struct GetObservationCAOM2Tool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_observation_caom2",
-        description: "Fetch full CAOM-2 metadata for a CADC observation by publisher_id (e.g. 'ivo://cadc.nrc.ca/JWST?jw01147'). Cached for ~5 minutes.",
+        description: "Fetch full CAOM-2 metadata for a CADC observation by publisher_id. Accepts either the publisher form ('ivo://cadc.nrc.ca/JWST?jw01147') or the canonical CAOM form returned by `search_observations` ('caom:JWST/jw01147'). Cached for ~5 minutes.",
         schema: #"""
         {
           "type": "object",
@@ -110,8 +110,13 @@ struct GetObservationCAOM2Tool: JSONReadTool {
         // Sanity-check the publisher_id shape *before* hitting the
         // network so the agent gets a precise typed error rather than
         // a generic backend wrap. (F-8 from the platform review.)
+        // Accept both publisher (`ivo://`) and canonical CAOM
+        // (`caom:`) forms — `search_observations` returns the latter,
+        // so requiring `ivo://` here forced agents to round-trip
+        // through a translator that doesn't always exist.
         let trimmed = args.publisher_id.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.lowercased().hasPrefix("ivo://") {
+        let lower = trimmed.lowercased()
+        if !lower.hasPrefix("ivo://") && !lower.hasPrefix("caom:") {
             throw ToolFailureReason.unsupportedIdScheme(args.publisher_id)
         }
         if CAOM2Observation.observationURI(fromPublisherID: trimmed) == nil {

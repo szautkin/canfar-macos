@@ -29,9 +29,10 @@ extension AppState {
         let savedStore = SavedQueryStore()
 
         tools.append(makeSearchObservationsTool(tap: tap, resolver: resolver))
+        tools.append(makeVizierConeSearchTool(tap: tap))
         tools.append(makeResolveTargetTool(resolver: resolver))
         tools.append(makeGetObservationCAOM2Tool(caom2: caom2))
-        tools.append(makeGetDataLinksTool(tap: tap))
+        tools.append(makeGetDataLinksTool(tap: tap, caom2: caom2))
         tools.append(makeListRecentSearchesTool(store: recentStore))
         tools.append(makeListSavedQueriesTool(store: savedStore))
         tools.append(makeGetSavedQueryTool(store: savedStore))
@@ -47,6 +48,13 @@ extension AppState {
         let vospace = VOSpaceBrowserService(network: network, endpoints: endpoints)
         tools.append(makeListVOSpacePathTool(service: vospace))
         tools.append(makeGetVOSpaceNodeTool(service: vospace))
+        tools.append(makeReadVOSpaceFileTool(service: vospace))
+
+        // Service health — no auth needed; probes upstream
+        // reachability for CADC/VOSpace/Skaha/VizieR.
+        tools.append(GetServiceHealthTool(probe: {
+            await GetServiceHealthTool.runCanonicalProbes()
+        }))
 
         // Sessions domain
         let recentLaunchStore = RecentLaunchStore()
@@ -85,6 +93,8 @@ extension AppState {
 
         // Write tools — VOSpace
         tools.append(UploadToVOSpaceTool())
+        tools.append(UploadTextToVOSpaceTool())
+        tools.append(ClearUserSiteTool())
         tools.append(DownloadFromVOSpaceTool())
         tools.append(VOSpaceMkdirTool())
         tools.append(DeleteVOSpaceNodeTool())
@@ -92,6 +102,7 @@ extension AppState {
         // Write tools — Sessions + archive maintenance
         tools.append(LaunchSessionTool())
         tools.append(DeleteSessionTool())
+        tools.append(DeleteSessionsBulkTool())
         tools.append(ClearResearchArchiveTool())
 
         // View-state tools — live-applied, no proposal.
@@ -238,10 +249,23 @@ extension AppState {
                                   recentLaunchStore: recentLaunchStore,
                                   activity: activity),
             DeleteSessionApplier(service: sessionService, activity: activity),
+            DeleteSessionsBulkApplier(service: sessionService, activity: activity),
             ClearResearchArchiveApplier(store: observationStore, activity: activity),
-            LaunchHeadlessJobApplier(service: headlessService,
-                                      recentLaunchStore: recentLaunchStore,
-                                      activity: activity),
+            LaunchHeadlessJobApplier(
+                service: headlessService,
+                recentLaunchStore: recentLaunchStore,
+                activity: activity,
+                // Auto-stage long inline scripts to VOSpace under
+                // `~/.verbinal-scripts/`. Injected here because
+                // the auth-scoped vospace + username live in
+                // `AppState`; the applier struct itself stays
+                // Sendable + pure-by-construction.
+                vospace: vospace,
+                username: { [weak self] in
+                    guard let self else { return "" }
+                    return await self.username
+                }
+            ),
         ]
         appliers.append(contentsOf: sessionAppliers)
 
@@ -251,9 +275,13 @@ extension AppState {
         // `afterAuthenticated`, nil before login); the resolver
         // captures `self` weakly so unauthenticated apply attempts
         // surface a clean error.
+        // `AppState` is @MainActor, so reading `imageDiscoveryCoordinator`
+        // from this non-MainActor closure already implies an actor hop —
+        // the explicit `MainActor.run { self?... }` was redundant and
+        // tripped the "self captured twice in concurrent code" warning.
         let imageDiscoveryApplier = DiscoverImagePackagesApplier(
             resolveCoordinator: { [weak self] in
-                await MainActor.run { self?.imageDiscoveryCoordinator }
+                await self?.imageDiscoveryCoordinator
             },
             activity: activity
         )
@@ -324,12 +352,42 @@ extension AppState {
     // MARK: - Image-discovery factories
 
     private func makeFindImagesWithPackagesTool() -> FindImagesWithPackagesTool {
-        // Coordinator is auth-scoped; pre-auth queries return [].
-        return FindImagesWithPackagesTool(search: { [weak self] query in
-            let coord = await MainActor.run { self?.imageDiscoveryCoordinator }
-            guard let coord else { return [] }
-            return await coord.search(query)
-        })
+        // Three closures because the tool needs three orthogonal
+        // signals from app state: query the cache, snapshot the
+        // live catalogue (id + types for filtering), enumerate
+        // what's been probed. All auth-scoped; pre-auth returns
+        // empty for everything, which keeps the response shape
+        // stable for the agent.
+        return FindImagesWithPackagesTool(
+            search: { [weak self] query in
+                guard let coord = await self?.imageDiscoveryCoordinator else { return [] }
+                return await coord.search(query)
+            },
+            catalogue: { [weak self] in
+                guard let self else { return [] }
+                do {
+                    let raw = try await self.imageService.getImages()
+                    return raw.map { (id: $0.id, types: $0.types) }
+                } catch {
+                    // Catalogue endpoint flaky: derive a
+                    // synthetic catalogue from the cached
+                    // manifests. Loses the `types` info (we
+                    // don't store image type per manifest), so
+                    // type-filtered queries silently match
+                    // nothing — acceptable degraded mode, the
+                    // alternative is failing the whole call.
+                    let ids = await self.imageDiscoveryCoordinator?.knownImages() ?? []
+                    return ids.map { (id: $0, types: []) }
+                }
+            },
+            discoveredIDs: { [weak self] in
+                await self?.imageDiscoveryCoordinator?.knownImages() ?? []
+            },
+            searchPartial: { [weak self] query, minScore, limit in
+                guard let coord = await self?.imageDiscoveryCoordinator else { return [] }
+                return await coord.searchPartial(query, minScore: minScore, limit: limit)
+            }
+        )
     }
 
     private func makeListRecentLaunchesTool(store: RecentLaunchStore) -> ListRecentLaunchesTool {
@@ -346,7 +404,11 @@ extension AppState {
         })
     }
 
-    private static func flatten(_ s: Session) -> SessionOut {
+    // Pure data-shape transform — no actor state. `nonisolated`
+    // lets it be passed to `map` from any context, closing the
+    // "@MainActor function value losing global actor" warnings
+    // at every map call site that used to require a MainActor hop.
+    private nonisolated static func flatten(_ s: Session) -> SessionOut {
         SessionOut(
             id: s.id, name: s.sessionName, type: s.sessionType,
             status: s.status, image: s.containerImage,
@@ -411,7 +473,11 @@ extension AppState {
     private func makeListVOSpacePathTool(service: VOSpaceBrowserService) -> ListVOSpacePathTool {
         ListVOSpacePathTool(listNodes: { [weak self] path, limit in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
-            let username = await MainActor.run { self.username }
+            // `self.username` is a @MainActor property; direct
+            // `await` does the actor hop without the redundant
+            // `MainActor.run { self.username }` wrapper that
+            // tripped the strict-concurrency check.
+            let username = await self.username
             guard !username.isEmpty else { throw ToolFailureReason.authRequired }
             let nodes = try await service.listNodes(username: username, path: path, limit: limit)
             return nodes.map(Self.flatten)
@@ -421,14 +487,33 @@ extension AppState {
     private func makeGetVOSpaceNodeTool(service: VOSpaceBrowserService) -> GetVOSpaceNodeTool {
         GetVOSpaceNodeTool(listNodes: { [weak self] path, limit in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
-            let username = await MainActor.run { self.username }
+            // `self.username` is a @MainActor property; direct
+            // `await` does the actor hop without the redundant
+            // `MainActor.run { self.username }` wrapper that
+            // tripped the strict-concurrency check.
+            let username = await self.username
             guard !username.isEmpty else { throw ToolFailureReason.authRequired }
             let nodes = try await service.listNodes(username: username, path: path, limit: limit)
             return nodes.map(Self.flatten)
         })
     }
 
-    private static func flatten(_ node: VOSpaceNode) -> VOSpaceNodeOut {
+    private func makeReadVOSpaceFileTool(service: VOSpaceBrowserService) -> ReadVOSpaceFileTool {
+        ReadVOSpaceFileTool(fetch: { [weak self] path, offset, maxBytes in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let username = await self.username
+            guard !username.isEmpty else { throw ToolFailureReason.authRequired }
+            let result = try await service.fetchBytes(
+                username: username,
+                path: path,
+                offset: offset,
+                maxBytes: maxBytes
+            )
+            return ReadVOSpaceFetchResult(data: result.data, totalBytes: result.totalBytes)
+        })
+    }
+
+    private nonisolated static func flatten(_ node: VOSpaceNode) -> VOSpaceNodeOut {
         VOSpaceNodeOut(
             name: node.name,
             path: node.path,
@@ -469,7 +554,7 @@ extension AppState {
         })
     }
 
-    private static func flatten(_ obs: DownloadedObservation) -> DownloadedObservationOut {
+    private nonisolated static func flatten(_ obs: DownloadedObservation) -> DownloadedObservationOut {
         DownloadedObservationOut(
             id: obs.id.uuidString,
             publisherID: obs.publisherID,
@@ -489,37 +574,47 @@ extension AppState {
     // MARK: - Foundational
 
     private func makeGetCurrentViewTool() -> GetCurrentViewTool {
-        GetCurrentViewTool(snapshot: { [weak self] in
-            await MainActor.run {
-                guard let s = self else {
-                    return GetCurrentViewTool.Output(
-                        mode: "unknown", modeTitle: "Unknown",
-                        isAuthenticated: false, username: "",
-                        searchFocusRA: nil, searchFocusDec: nil,
-                        openFITSPaths: [],
-                        pendingProposalsCount: 0,
-                        agentsEnabled: false,
-                        autoApplyEnabled: false,
-                        followAgentActivityEnabled: false
-                    )
-                }
-                let mode = Self.modeKey(s.currentMode)
-                return GetCurrentViewTool.Output(
-                    mode: mode,
-                    modeTitle: Self.modeTitle(s.currentMode),
-                    isAuthenticated: s.isAuthenticated,
-                    username: s.username,
-                    searchFocusRA: s.pendingSearchCoordinate?.ra,
-                    searchFocusDec: s.pendingSearchCoordinate?.dec,
-                    openFITSPaths: s.pendingFITSURL.map { [$0.path] } ?? [],
-                    pendingProposalsCount: s.agentsService.pendingProposals.count,
-                    agentsEnabled: s.agentsService.isEnabled,
-                    autoApplyEnabled: s.agentsService.autoApplyWrites,
-                    followAgentActivityEnabled: s.agentsService.followAgentActivity
-                )
-            }
+        // Body extracted to an instance @MainActor method below.
+        // Closure captures `self` weakly; if `self` is gone the
+        // snapshot falls back to a "no app" default. Reads better
+        // than nesting two `[weak self]` MainActor.run blocks and
+        // closes the strict-concurrency warning about `self` being
+        // captured twice across actor hops.
+        return GetCurrentViewTool(snapshot: { [weak self] in
+            await self?.snapshotCurrentView() ?? Self.unknownCurrentViewOutput
         })
     }
+
+    @MainActor
+    fileprivate func snapshotCurrentView() -> GetCurrentViewTool.Output {
+        GetCurrentViewTool.Output(
+            mode: Self.modeKey(currentMode),
+            modeTitle: Self.modeTitle(currentMode),
+            isAuthenticated: isAuthenticated,
+            username: username,
+            searchFocusRA: pendingSearchCoordinate?.ra,
+            searchFocusDec: pendingSearchCoordinate?.dec,
+            openFITSPaths: pendingFITSURL.map { [$0.path] } ?? [],
+            pendingProposalsCount: agentsService.pendingProposals.count,
+            agentsEnabled: agentsService.isEnabled,
+            autoApplyEnabled: agentsService.autoApplyWrites,
+            followAgentActivityEnabled: agentsService.followAgentActivity
+        )
+    }
+
+    // Immutable defaults; `nonisolated` so the snapshot closure
+    // can read them without an actor hop on the "self is gone"
+    // fallback path.
+    nonisolated fileprivate static let unknownCurrentViewOutput = GetCurrentViewTool.Output(
+        mode: "unknown", modeTitle: "Unknown",
+        isAuthenticated: false, username: "",
+        searchFocusRA: nil, searchFocusDec: nil,
+        openFITSPaths: [],
+        pendingProposalsCount: 0,
+        agentsEnabled: false,
+        autoApplyEnabled: false,
+        followAgentActivityEnabled: false
+    )
 
     private static func modeKey(_ mode: AppMode) -> String {
         switch mode {
@@ -544,24 +639,33 @@ extension AppState {
     }
 
     private func makeGetAuthStateTool() -> GetAuthStateTool {
-        GetAuthStateTool(snapshot: { [weak self] in
-            await MainActor.run {
-                let s = self
-                let info = s?.userInfo
-                let display: String? = {
-                    guard let info else { return nil }
-                    let parts = [info.firstName, info.lastName].compactMap { $0 }
-                    let combined = parts.joined(separator: " ").trimmingCharacters(in: .whitespaces)
-                    return combined.isEmpty ? nil : combined
-                }()
-                return GetAuthStateTool.Output(
-                    isAuthenticated: s?.isAuthenticated ?? false,
-                    username: s?.username ?? "",
-                    displayName: display
-                )
-            }
+        // Same extract-to-method pattern as `makeGetCurrentViewTool`.
+        return GetAuthStateTool(snapshot: { [weak self] in
+            await self?.snapshotAuthState() ?? Self.unknownAuthStateOutput
         })
     }
+
+    @MainActor
+    fileprivate func snapshotAuthState() -> GetAuthStateTool.Output {
+        let info = userInfo
+        let display: String? = {
+            guard let info else { return nil }
+            let parts = [info.firstName, info.lastName].compactMap { $0 }
+            let combined = parts.joined(separator: " ").trimmingCharacters(in: .whitespaces)
+            return combined.isEmpty ? nil : combined
+        }()
+        return GetAuthStateTool.Output(
+            isAuthenticated: isAuthenticated,
+            username: username,
+            displayName: display
+        )
+    }
+
+    nonisolated fileprivate static let unknownAuthStateOutput = GetAuthStateTool.Output(
+        isAuthenticated: false,
+        username: "",
+        displayName: nil
+    )
 
     // MARK: - Search domain
 
@@ -598,15 +702,51 @@ extension AppState {
         )
     }
 
+    private func makeVizierConeSearchTool(tap: TAPClient) -> VizierConeSearchTool {
+        VizierConeSearchTool(search: { catalogue, ra, dec, radius, raCol, decCol, max in
+            try await tap.vizierConeSearch(
+                catalogue: catalogue,
+                raDeg: ra, decDeg: dec, radiusDeg: radius,
+                raColumn: raCol, decColumn: decCol,
+                maxRec: max
+            )
+        })
+    }
+
     private func makeResolveTargetTool(resolver: TargetResolverService) -> ResolveTargetTool {
         ResolveTargetTool(resolve: { name, service in
             let svc = ResolverValue(rawValue: service) ?? .all
-            let r = try await resolver.resolve(target: name, service: svc)
+            let r: ResolverResult
+            do {
+                r = try await resolver.resolve(target: name, service: svc)
+            } catch {
+                // CADC's resolver returns non-200 for unknown names
+                // and moving solar-system bodies (Europa, Io, …),
+                // which `TAPClient.resolveTarget` surfaces as
+                // `SearchError.networkError`. Re-tag that as
+                // `targetNotResolved` so agents can distinguish
+                // "name not in resolver" from "the network is down"
+                // — which is exactly what the verbinal-canfar QA
+                // pass flagged.
+                if case SearchError.networkError = error {
+                    throw ToolFailureReason.targetNotResolved(name)
+                }
+                throw error
+            }
+            // Resolver-said-OK-but-no-coords. Coordinates may arrive
+            // either as plain decimal degrees or sexagesimal strings;
+            // try both. If neither parses we treat the target as
+            // unresolved, mirroring the SearchObservationsTool path.
+            let raDeg = Double(r.coordsRA) ?? FITSWCSTransform.parseRA(r.coordsRA)
+            let decDeg = Double(r.coordsDec) ?? FITSWCSTransform.parseDec(r.coordsDec)
+            if raDeg == nil || decDeg == nil {
+                throw ToolFailureReason.targetNotResolved(name)
+            }
             return ResolveTargetTool.Output(
                 target: r.target,
                 service: r.service,
-                raDeg: Double(r.coordsRA),
-                decDeg: Double(r.coordsDec),
+                raDeg: raDeg,
+                decDeg: decDeg,
                 raString: r.coordsRA,
                 decString: r.coordsDec,
                 coordsys: r.coordsys,
@@ -622,14 +762,62 @@ extension AppState {
         })
     }
 
-    private func makeGetDataLinksTool(tap: TAPClient) -> GetDataLinksTool {
+    private func makeGetDataLinksTool(tap: TAPClient, caom2: CAOM2Service) -> GetDataLinksTool {
         GetDataLinksTool(fetch: { id in
-            let r = try await tap.fetchDataLinks(publisherID: id)
+            // 30-second wall-clock deadline on the DataLink fetch.
+            // The QA review of 2026-05-14 documented a 4-minute
+            // silent hang here — same failure class as the upload
+            // applier F-2026-05-13-A: the network call neither
+            // returns nor throws, so the caller can't distinguish
+            // "still working" from "stuck forever". Watchdog
+            // converts that to a typed timeout error the agent
+            // can react to (fall back to caom2.fetch directly,
+            // or use the per-artefact downloadURL pattern).
+            let r = try await withApplierTimeout(seconds: 30, label: "get_data_links") {
+                try await tap.fetchDataLinks(publisherID: id)
+            }
             let files = r.directFiles.map {
                 (url: $0.url, contentType: $0.contentType, filename: $0.filename,
                  isUncompressedFITS: $0.isUncompressedFITS)
             }
-            return (thumbnails: r.thumbnails, previews: r.previews, files: files)
+
+            // Always consult CAOM-2 for the full inventory. The
+            // original design only filled `artifacts` when DataLink
+            // was empty (fallback-only), but DataLink's `#this`
+            // rows are a SUBSET of CAOM-2 — they're the directly-
+            // downloadable URLs. The full record also lists
+            // weight maps, previews, auxiliary products, and
+            // provenance artefacts that DataLink suppresses. An
+            // agent that already has `files` still benefits from
+            // knowing what else the observation owns. Caching in
+            // `CAOM2Service` (5-min LRU) makes the extra fetch
+            // free on the second call. Failure-to-fetch is
+            // tolerated: agents still get the DataLink URLs.
+            var artifacts: [(uri: String, productType: String?, contentType: String?,
+                             contentLength: Int64?, filename: String, downloadURL: URL?)] = []
+            let endpoints = self.endpoints
+            if let obs = try? await caom2.fetch(publisherID: id) {
+                for plane in obs.planes {
+                    for a in plane.artifacts {
+                        let filename = (a.uri as NSString).lastPathComponent
+                        artifacts.append((
+                            uri: a.uri,
+                            productType: a.productType,
+                            contentType: a.contentType,
+                            contentLength: a.contentLength,
+                            filename: filename,
+                            downloadURL: endpoints.dataPubURL(forArtifactURI: a.uri)
+                        ))
+                    }
+                }
+            }
+            return (
+                thumbnails: r.thumbnails,
+                previews: r.previews,
+                files: files,
+                artifacts: artifacts,
+                packageDownloadURL: TAPClient.downloadURL(publisherID: id)
+            )
         })
     }
 

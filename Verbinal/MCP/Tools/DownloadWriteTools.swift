@@ -50,7 +50,7 @@ struct DownloadObservationTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_observation",
-        description: "Download a single observation FITS to the user's Downloads folder. Uses DataLink #this when available; falls back to /pkg.",
+        description: "Download a single observation FITS to the user's Downloads folder. Uses DataLink #this when available; falls back to `/caom2ops/pkg`. Requires CADC sign-in for proprietary collections (NEOSSAT, embargoed JWST, …). Synchronous with a 10-min applier deadline. Returns the new `downloaded_observation_id` (UUID) you pass to `get_fits_header`/`get_fits_wcs`/`open_fits_file`/`upload_to_vospace`/`delete_downloaded_observation`.",
         schema: #"""
         {
           "type": "object",
@@ -243,7 +243,19 @@ struct DownloadObservationApplier: ProposalApplier {
     ) async throws {
         let result: (tempURL: URL, suggestedFilename: String)
         do {
-            result = try await downloadService.downloadToTemp(publisherID: payload.publisherID)
+            // 10-minute wall-clock deadline. A genuinely large FITS
+            // can take longer over slow links, but bounding the
+            // worst-case hang (URLSession stuck without a server
+            // response) matters more than rare legitimate
+            // long-tail completes — the applier always emits a
+            // terminal lifecycle event. Same rationale as the
+            // VOSpace upload watchdog, per F-2026-05-13-A.
+            let publisherID = payload.publisherID
+            result = try await withApplierTimeout(seconds: 600, label: "download_observation") {
+                try await downloadService.downloadToTemp(publisherID: publisherID)
+            }
+        } catch let pa as ProposalApplyError {
+            throw pa
         } catch {
             throw ProposalApplyError.backendError("download failed: \(error.localizedDescription)")
         }

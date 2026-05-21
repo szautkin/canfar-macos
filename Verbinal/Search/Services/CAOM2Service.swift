@@ -84,7 +84,9 @@ actor CAOM2Service {
         }
 
         var request = URLRequest(url: url)
-        request.timeoutInterval = 30
+        // CADC's caom2ops/meta endpoint can take 30–50s under load.
+        // 60s gives it room without making a hung server feel local.
+        request.timeoutInterval = 60
         request.setValue("application/xml,text/xml", forHTTPHeaderField: "Accept")
 
         let data: Data

@@ -80,4 +80,39 @@ final class APIEndpointsTests: XCTestCase {
             "https://ws-uv.canfar.net/arc/nodes/home/alice?limit=0"
         )
     }
+
+    // MARK: - dataPubURL
+
+    /// The artefact-URI → direct-download-URL builder is what spares
+    /// agents from hand-deriving the CADC data-pub host pattern.
+    /// Pinning the wire shape because every change here is a
+    /// contract change for `get_data_links` callers.
+    func testDataPubURLForJCMTArtifact() {
+        XCTAssertEqual(
+            endpoints.dataPubURL(forArtifactURI: "cadc:JCMT/scuba2_foo.fits.gz")?.absoluteString,
+            "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data/pub/JCMT/scuba2_foo.fits.gz"
+        )
+    }
+
+    func testDataPubURLForNestedPath() {
+        XCTAssertEqual(
+            endpoints.dataPubURL(forArtifactURI: "cadc:CFHT/sub/dir/729989p.fits.fz")?.absoluteString,
+            "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data/pub/CFHT/sub/dir/729989p.fits.fz"
+        )
+    }
+
+    func testDataPubURLPercentEncodesUnsafeChars() {
+        // VOSpace / CADC filenames may legally contain `#` and spaces;
+        // they must survive transit through URLSession unchanged.
+        let url = endpoints.dataPubURL(forArtifactURI: "cadc:JCMT/odd name#1.fits")?.absoluteString
+        XCTAssertEqual(url, "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data/pub/JCMT/odd%20name%231.fits")
+    }
+
+    func testDataPubURLRejectsMissingScheme() {
+        XCTAssertNil(endpoints.dataPubURL(forArtifactURI: "no-colon-here"))
+    }
+
+    func testDataPubURLRejectsEmptyTail() {
+        XCTAssertNil(endpoints.dataPubURL(forArtifactURI: "cadc:"))
+    }
 }

@@ -95,17 +95,56 @@ struct SessionCardView: View {
 
             Divider()
 
-            // Actions
-            HStack(spacing: 6) {
-                Button("Open") { onOpen() }
-                    .disabled(!session.isRunning)
-                Button("Renew") { onRenew() }
-                    .disabled(!session.isRunning)
-                Button("Events") { onEvents() }
+            // Actions — mirrors the CANFAR Science Portal's
+            // session-card affordances: clock = renew (extend
+            // lifetime), doc = events (K8s view), flag-style
+            // open = "go to this session", trash = delete. SF
+            // Symbol equivalents in macOS-native flavour, but
+            // the visual treatment (circular accent-tint
+            // background, filled white icon) intentionally
+            // matches the portal so users coming from the web
+            // UI recognise the language. Reordered to lead
+            // with Open (the most-clicked action on a running
+            // session) instead of the portal's clock-first
+            // order — the portal puts Renew first because
+            // session-extension is a chore the user must opt
+            // into; in our app a session is more often opened
+            // than renewed.
+            HStack(spacing: 10) {
                 Spacer()
-                Button("Delete", role: .destructive) { onDelete() }
+                cardActionButton(
+                    label: "Open",
+                    systemImage: "arrow.up.forward.square.fill",
+                    role: nil,
+                    enabled: session.isRunning,
+                    help: "Open this session in your browser",
+                    action: onOpen
+                )
+                cardActionButton(
+                    label: "Renew",
+                    systemImage: "clock.arrow.circlepath",
+                    role: nil,
+                    enabled: session.isRunning,
+                    help: "Extend this session's lifetime",
+                    action: onRenew
+                )
+                cardActionButton(
+                    label: "Events",
+                    systemImage: "doc.text.fill",
+                    role: nil,
+                    enabled: true,
+                    help: "View Kubernetes events and container logs",
+                    action: onEvents
+                )
+                cardActionButton(
+                    label: "Delete",
+                    systemImage: "trash.fill",
+                    role: .destructive,
+                    enabled: true,
+                    help: "Stop and delete this session",
+                    action: onDelete
+                )
             }
-            .buttonStyle(.borderless)
             .font(.caption)
         }
         .padding(12)
@@ -125,4 +164,43 @@ struct SessionCardView: View {
     private var typeImageAsset: String? { SessionDisplay.typeImageAsset(session.sessionType) }
     private var typeIcon: String { SessionDisplay.typeIcon(session.sessionType) }
     private func formatTime(_ s: String) -> String { SessionDisplay.formatTime(s) }
+
+    /// Circular icon-on-tint action button matching the original
+    /// CANFAR Science Portal's session-card affordance style.
+    /// Filled SF Symbol on a 28pt circular `accent` (or `red`
+    /// for destructive) background, with the action label kept
+    /// underneath in caption2 — gives users coming from the web
+    /// UI the recognisable visual language plus the discoverable
+    /// macOS-native text label below.
+    @ViewBuilder
+    private func cardActionButton(
+        label: LocalizedStringKey,
+        systemImage: String,
+        role: ButtonRole?,
+        enabled: Bool,
+        help: LocalizedStringKey,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            VStack(spacing: 3) {
+                ZStack {
+                    Circle()
+                        .fill(role == .destructive ? Color.red : Color.accentColor)
+                        .frame(width: 26, height: 26)
+                    Image(systemName: systemImage)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+            .opacity(enabled ? 1.0 : 0.4)
+        }
+        .buttonStyle(.borderless)
+        .disabled(!enabled)
+        .help(help)
+        .accessibilityLabel(label)
+    }
 }

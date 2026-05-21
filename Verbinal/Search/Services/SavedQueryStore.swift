@@ -9,7 +9,11 @@ import Observation
 import os.log
 import VerbinalKit
 
+// `@MainActor` so the @Sendable MCP applier structs holding this
+// store no longer trip strict-concurrency warnings, and the SwiftUI
+// bindings reading `queries` get the actor isolation they expect.
 @Observable
+@MainActor
 final class SavedQueryStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "SavedQueries")
     private let maxEntries = 20

@@ -176,6 +176,40 @@ actor JSONManifestStore: ManifestStore {
         return ids.sorted()
     }
 
+    func searchPartial(
+        _ query: PackageQuery,
+        minScore: Double,
+        limit: Int
+    ) -> [PartialMatch] {
+        ensureHydrated()
+        // Empty query is degenerate — every manifest scores 1.0
+        // with no missing constraints, which would defeat the
+        // purpose. Returning [] here matches the convention that
+        // partial-match results are only meaningful when the
+        // strict match is empty AND the user supplied filters.
+        if query.isEmpty { return [] }
+        var results: [PartialMatch] = []
+        for (id, outcome) in loaded {
+            guard case .success(let manifest) = outcome else { continue }
+            let (score, missing) = query.score(manifest)
+            if score >= minScore {
+                results.append(PartialMatch(imageID: id, score: score, missing: missing))
+            }
+        }
+        // Sort by score desc, then alphabetically by id for stable
+        // ordering across calls — agents comparing responses
+        // shouldn't see a permuted top-N just because two scores
+        // tied.
+        results.sort { lhs, rhs in
+            if lhs.score != rhs.score { return lhs.score > rhs.score }
+            return lhs.imageID < rhs.imageID
+        }
+        if results.count > limit {
+            results = Array(results.prefix(limit))
+        }
+        return results
+    }
+
     func knownImages() -> [String] {
         ensureHydrated()
         return loaded.keys.sorted()

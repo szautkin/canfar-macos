@@ -114,7 +114,6 @@ final class AgentsService {
 
     private var server: SocketServer?
     private var serverLoopTask: Task<Void, Never>?
-    private var refreshTask: Task<Void, Never>?
     private var router: AIToolRouter?
 
     // MARK: - Init

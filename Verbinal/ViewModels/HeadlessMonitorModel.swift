@@ -26,6 +26,16 @@ final class HeadlessMonitorModel {
     var hasError = false
     var errorMessage = ""
 
+    /// Job ids the user has clicked Delete on but the service
+    /// hasn't yet acknowledged. Rows in the detail sheet read
+    /// this to swap the trash icon for an in-flight indicator
+    /// while the request is round-tripping to Skaha. 2026-05-19
+    /// addition: closes the "no clear icon to delete a job"
+    /// UX gap — the trash icon needs an in-flight state so the
+    /// user doesn't double-click while the first delete is in
+    /// flight.
+    var deletingJobIDs: Set<String> = []
+
     private var pollTask: Task<Void, Never>?
     private let pollInterval = 45
     private var previousStateMap: [String: String] = [:]
@@ -110,8 +120,19 @@ final class HeadlessMonitorModel {
     // MARK: - Job Actions
 
     func deleteJob(id: String) async {
+        // Mark in-flight so the UI swaps the trash icon for the
+        // pulsing in-flight indicator and disables further taps
+        // on this row until the round-trip completes.
+        deletingJobIDs.insert(id)
+        defer { deletingJobIDs.remove(id) }
         do {
             try await headlessService.deleteJob(id: id)
+            // Skaha returns from DELETE before the underlying K8s
+            // pod is fully gone. The 3s pause matches the average
+            // Skaha→K8s propagation delay; without it, the
+            // immediate `loadJobs()` would still show the job in
+            // the list and the user perceives the delete as
+            // not-working.
             try? await Task.sleep(for: .seconds(3))
             await loadJobs()
         } catch {

@@ -28,6 +28,8 @@ struct PlatformLoadView: View {
                         Image(systemName: "arrow.clockwise")
                     }
                     .buttonStyle(.borderless)
+                    .help("Refresh cluster load statistics")
+                    .accessibilityLabel("Refresh platform stats")
                 }
 
                 MetricBarView(

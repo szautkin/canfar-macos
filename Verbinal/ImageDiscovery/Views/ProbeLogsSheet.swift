@@ -133,12 +133,14 @@ struct ProbeLogsSheet: View {
             }
             .keyboardShortcut("r", modifiers: .command)
             .disabled(isLoading)
+            .help("Re-fetch the current tab from Skaha (⌘R)")
 
             Spacer()
 
             Button("Close") { dismiss() }
                 .keyboardShortcut(.cancelAction)
                 .buttonStyle(.borderedProminent)
+                .help("Close this dialog (⎋)")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

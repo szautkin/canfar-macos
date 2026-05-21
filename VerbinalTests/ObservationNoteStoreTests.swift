@@ -7,6 +7,7 @@
 import XCTest
 @testable import Verbinal
 
+@MainActor
 final class ObservationNoteStoreTests: XCTestCase {
 
     private func makeStore() -> ObservationNoteStore {

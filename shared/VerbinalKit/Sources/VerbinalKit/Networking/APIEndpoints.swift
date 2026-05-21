@@ -72,4 +72,33 @@ public struct APIEndpoints: Sendable {
     public var caom2UIViewURL: String { "\(externalBaseURL)/caom2ui/view" }
     /// Legacy in-browser download manager.
     public var downloadManagerURL: String { "\(externalBaseURL)/downloadManager/download" }
+
+    /// Direct download URL for a single CAOM-2 artefact URI of the
+    /// form `<scheme>:<collection>/<path>` (e.g.
+    /// `cadc:JCMT/scuba2_foo.fits.gz`). Returns `nil` for inputs
+    /// that don't carry a `<scheme>:` prefix.
+    ///
+    /// The host is the same archive base every other CADC service
+    /// lives on; the path is `/data/pub/` + everything after the
+    /// scheme's colon. Lives here so any caller can convert an
+    /// artefact URI without re-typing the host pattern — the URL
+    /// shape was previously a manual derivation step the 2026-05-13
+    /// QA pass had to perform by hand.
+    public func dataPubURL(forArtifactURI uri: String) -> URL? {
+        guard let colon = uri.firstIndex(of: ":") else { return nil }
+        let rest = uri[uri.index(after: colon)...]
+        guard !rest.isEmpty else { return nil }
+        // Percent-encode each path segment so filenames containing
+        // `#`, `?`, `%`, spaces, etc. round-trip cleanly through
+        // URLSession. Slashes between collection and filename are
+        // preserved.
+        let encodedRest = rest
+            .split(separator: "/", omittingEmptySubsequences: false)
+            .map { segment -> String in
+                let allowed = CharacterSet.urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))
+                return String(segment).addingPercentEncoding(withAllowedCharacters: allowed) ?? String(segment)
+            }
+            .joined(separator: "/")
+        return URL(string: "\(archiveBaseURL)/data/pub/\(encodedRest)")
+    }
 }

@@ -9,7 +9,13 @@ import Observation
 import os.log
 import VerbinalKit
 
+// `@Observable` SwiftUI source-of-truth + `@MainActor` so it's
+// implicitly `Sendable` under Swift 6 (every mutator runs on the
+// main actor anyway because views bind to it). Closes the
+// "non-Sendable in @Sendable struct" warnings from the MCP
+// applier types that hold a reference.
 @Observable
+@MainActor
 final class RecentLaunchStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "RecentLaunches")
     private let maxEntries = 10

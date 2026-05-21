@@ -10,7 +10,13 @@ import os.log
 /// Passes the crosshair's actual screen position from the image transform chain
 /// up to the canvas overlay, so H/V lines are always at the correct position.
 private struct CrosshairScreenPosKey: PreferenceKey {
-    static var defaultValue: CGPoint? = nil
+    // `defaultValue` is read on the main actor by SwiftUI; the
+    // immutable `nil` literal is trivially safe across actors,
+    // but the strict-concurrency check still flags `static var`.
+    // `static let` for true immutability isn't allowed by the
+    // PreferenceKey protocol (it requires `var`), so we mark
+    // unsafe-nonisolated and rely on SwiftUI's actor semantics.
+    nonisolated(unsafe) static var defaultValue: CGPoint? = nil
     static func reduce(value: inout CGPoint?, nextValue: () -> CGPoint?) {
         value = value ?? nextValue()
     }

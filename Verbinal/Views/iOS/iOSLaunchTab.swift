@@ -329,11 +329,5 @@ private struct iOSLaunchFormView: View {
             if success { onLaunched?() }
         }
     }
-
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter.string(from: date)
-    }
 }
 #endif

@@ -15,6 +15,18 @@ struct HeadlessJobsDetailSheet: View {
     @State private var eventsText = ""
     @State private var logsText = ""
 
+    /// Job currently anchoring the info popover. Per-row `@State`
+    /// bools would force a popover modifier on each row, which
+    /// SwiftUI handles poorly inside a `List`. Single optional at
+    /// the parent level + per-row identity check keeps the
+    /// hierarchy clean.
+    @State private var infoPopoverJobID: String?
+
+    /// Job awaiting the running-only delete confirmation dialog.
+    /// Terminated jobs bypass this — they delete on click since
+    /// they're metadata-only removal (no live container to stop).
+    @State private var deleteConfirmJob: HeadlessJob?
+
     private var tabs: [(id: String, label: String, count: Int, color: Color)] {
         [
             ("running", "Running", model.runningCount, .green),
@@ -47,8 +59,29 @@ struct HeadlessJobsDetailSheet: View {
                     .font(.title3)
                     .foregroundStyle(.secondary)
                 Spacer()
+                // 2026-05-21 add: manual refresh next to Close.
+                // The polling cadence (45s) is slow when the user
+                // just touched a job and wants to confirm Skaha's
+                // state. Spinner replaces the icon during in-flight
+                // refresh; ⌘R keyboard shortcut for power users.
+                Button {
+                    Task { await model.loadJobs() }
+                } label: {
+                    if model.isLoading {
+                        HStack(spacing: 4) {
+                            ProgressView().controlSize(.small)
+                            Text("Refreshing…")
+                        }
+                    } else {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                }
+                .keyboardShortcut("r", modifiers: .command)
+                .disabled(model.isLoading)
+                .help("Refresh batch jobs from Skaha now (auto-refresh fires every 45s)")
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.cancelAction)
+                    .help("Close this dialog (⎋)")
             }
             .padding(20)
 
@@ -100,6 +133,33 @@ struct HeadlessJobsDetailSheet: View {
                 logs: logsText
             )
         }
+        // Single confirmation dialog at sheet level — only
+        // running / pending jobs trip this (terminated ones
+        // delete on click since they're metadata-only).
+        // `confirmationDialog` is the macOS-native pattern for
+        // destructive-with-explanation per the 2026-05-19 UX
+        // consult; Alert would also work but
+        // confirmationDialog reads as more action-focused.
+        .confirmationDialog(
+            "Stop and delete this running job?",
+            isPresented: Binding(
+                get: { deleteConfirmJob != nil },
+                set: { if !$0 { deleteConfirmJob = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: deleteConfirmJob
+        ) { job in
+            Button("Stop and Delete", role: .destructive) {
+                let id = job.id
+                deleteConfirmJob = nil
+                Task { await model.deleteJob(id: id) }
+            }
+            Button("Cancel", role: .cancel) {
+                deleteConfirmJob = nil
+            }
+        } message: { job in
+            Text("The container for \"\(job.name)\" will be killed immediately and any unsaved work inside it will be lost.")
+        }
     }
 
     // MARK: - Job Row
@@ -122,7 +182,12 @@ struct HeadlessJobsDetailSheet: View {
                     .foregroundStyle(.tertiary)
             }
             if !job.memoryAllocated.isEmpty {
-                Text(job.memoryAllocated)
+                // Route through the popover's formatter so the
+                // row reads "1Gi" instead of Skaha's noisy
+                // "1.07Gi" round-trip (1 GiB binary ≈ 1.073 GB
+                // decimal). Single source of truth between the
+                // row and the popover's Resources section.
+                Text(HeadlessJobInfoPopover.formatMemory(job.memoryAllocated))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -141,19 +206,125 @@ struct HeadlessJobsDetailSheet: View {
                 .background(statusColor(for: job).opacity(0.15))
                 .foregroundStyle(statusColor(for: job))
                 .clipShape(Capsule())
+
+            // Trailing icon strip: info + delete. Always visible
+            // (not hover-revealed) per the 2026-05-19 UX consult —
+            // hover-reveal is invisible to first-time users at
+            // this row density (40pt) and has no keyboard path.
+            // Mirrors Finder's Tags column / Notes' attachment-row
+            // affordances.
+            infoIconButton(for: job)
+            deleteIconButton(for: job)
         }
         .contextMenu {
+            // Keep the context menu too — power users who already
+            // learned the right-click flow shouldn't lose it.
+            // The icons just make the actions discoverable for
+            // everyone else.
             Button("View Events & Logs") {
                 Task { await showEvents(for: job) }
             }
-            if job.isTerminal {
-                Divider()
-                Button("Delete", role: .destructive) {
+            Divider()
+            Button(job.isTerminal ? "Delete" : "Stop and Delete",
+                   role: .destructive) {
+                if job.isTerminal {
                     Task { await model.deleteJob(id: job.id) }
+                } else {
+                    deleteConfirmJob = job
+                }
+            }
+        }
+        // Single popover per parent View, anchored to the row
+        // currently held in `infoPopoverJobID`. Per-row
+        // `.popover(isPresented:)` modifiers inside a `List`
+        // misbehave in SwiftUI (popover anchor shifts to the
+        // first row on scroll). This pattern keeps the anchor
+        // stable.
+        .popover(
+            isPresented: Binding(
+                get: { infoPopoverJobID == job.id },
+                set: { if !$0 { infoPopoverJobID = nil } }
+            ),
+            arrowEdge: .trailing
+        ) {
+            HeadlessJobInfoPopover(job: job)
+        }
+        // Group children for VoiceOver so a 15-row list is 15
+        // focusable elements, not 45 (one row + 2 icons each).
+        // Custom actions expose the icon behaviours to assistive
+        // tech without bloating the focus chain — pattern from
+        // Mail / Reminders per HIG's "Actions in Lists" guidance.
+        .accessibilityElement(children: .contain)
+        .accessibilityActions {
+            // Per the 2026-05-19 UX consult: keep the row a
+            // single focusable element while still exposing
+            // both icon behaviours to assistive tech via the
+            // rotor. Mirrors Mail / Reminders.
+            Button("Show details") { infoPopoverJobID = job.id }
+            if !model.deletingJobIDs.contains(job.id) {
+                Button(job.isTerminal ? "Delete job" : "Stop and delete job") {
+                    if job.isTerminal {
+                        Task { await model.deleteJob(id: job.id) }
+                    } else {
+                        deleteConfirmJob = job
+                    }
                 }
             }
         }
     }
+
+    // MARK: - Icon buttons
+
+    private func infoIconButton(for job: HeadlessJob) -> some View {
+        Button {
+            infoPopoverJobID = job.id
+        } label: {
+            Image(systemName: "info.circle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.borderless)
+        .controlSize(.small)
+        .help("Show job details")
+        .accessibilityLabel("Job details")
+        .accessibilityHint("Opens a popover with the job's id, image, resources, and timing.")
+    }
+
+    @ViewBuilder
+    private func deleteIconButton(for job: HeadlessJob) -> some View {
+        if model.deletingJobIDs.contains(job.id) {
+            // In-flight: pulsing hourglass while the round-trip
+            // completes. Replaces the trash entirely so the user
+            // can't double-click during the in-flight window.
+            Image(systemName: "hourglass")
+                .font(.callout)
+                .foregroundStyle(.tertiary)
+                .symbolEffect(.pulse, options: .repeating)
+                .accessibilityLabel("Delete in progress")
+        } else {
+            Button(role: .destructive) {
+                if job.isTerminal {
+                    // Metadata-only removal — single tap.
+                    Task { await model.deleteJob(id: job.id) }
+                } else {
+                    // Live container — destructive confirm first.
+                    deleteConfirmJob = job
+                }
+            } label: {
+                Image(systemName: "trash")
+                    .font(.callout)
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+            .foregroundStyle(.secondary)
+            .help(job.isTerminal ? "Delete job" : "Stop and delete this running job")
+            .accessibilityLabel(job.isTerminal ? "Delete job" : "Stop and delete job")
+            .accessibilityHint(job.isTerminal
+                               ? "Removes the job from the list. Cannot be undone."
+                               : "Stops the running container immediately. Requires confirmation.")
+        }
+    }
+
 
     // MARK: - Helpers
 

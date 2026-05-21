@@ -79,7 +79,7 @@ public func isTransient(_ error: Error) -> Bool {
 /// throw `CancellationError` immediately rather than waiting out the backoff.
 public func retrying<T: Sendable>(
     _ policy: RetryPolicy = .default,
-    operation: () async throws -> T
+    operation: @Sendable () async throws -> T
 ) async throws -> T {
     var attempt = 0
     var delay = policy.initialDelay

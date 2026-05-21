@@ -50,6 +50,8 @@ struct ToastOverlay: ViewModifier {
                             .font(.caption2)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss notification")
+                    .help("Dismiss")
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)

@@ -18,10 +18,22 @@ struct LaunchFormView: View {
     /// affordance.
     var imageDiscoveryModel: ImageDiscoveryModel?
     var onLaunched: (() -> Void)?
+    @Environment(AppState.self) private var appState
     @State private var showLaunchProgress = false
     @State private var showHeadlessLaunchProgress = false
     @State private var showImageDiscovery = false
-    @State private var selectedTab = 0
+
+    /// Bridge AppState's `launchFormTab` enum to the integer the
+    /// segmented Picker expects. Keeping the picker's tag scheme
+    /// (0/1/2) avoids touching the rest of the view; the binding
+    /// just adapts the storage.
+    private var selectedTabBinding: Binding<Int> {
+        Binding(
+            get: { appState.launchFormTab.rawValue },
+            set: { appState.launchFormTab = AppState.LaunchFormTab(rawValue: $0) ?? .standard }
+        )
+    }
+    private var selectedTab: Int { appState.launchFormTab.rawValue }
 
     var body: some View {
         GroupBox {
@@ -47,7 +59,7 @@ struct LaunchFormView: View {
                     }
                     .padding()
                 } else {
-                    Picker("", selection: $selectedTab) {
+                    Picker("", selection: selectedTabBinding) {
                         Text("Standard").tag(0)
                         Text("Advanced").tag(1)
                         if headlessModel != nil {
@@ -119,6 +131,26 @@ struct LaunchFormView: View {
         model.images(forType: model.selectedType)
             .values.flatMap { $0 }
             .sorted { $0.label < $1.label }
+    }
+
+    /// Tooltip for the magnifier icon. Static when no probes are
+    /// running; adds a "(N in progress…)" suffix otherwise so the
+    /// user can hover-confirm the badge count without opening the
+    /// sheet.
+    private func magnifierHelp(probesRunning: Int) -> String {
+        if probesRunning == 0 {
+            return "Discover images by installed packages"
+        }
+        return "Discover images by installed packages (\(probesRunning) probe\(probesRunning == 1 ? "" : "s") running in background)"
+    }
+
+    /// VoiceOver label. Same content as `magnifierHelp` but phrased
+    /// for a screen-reader cadence (units explicit, no parens).
+    private func magnifierAccessibilityLabel(probesRunning: Int) -> String {
+        if probesRunning == 0 {
+            return "Discover images by installed packages"
+        }
+        return "Discover images by installed packages. \(probesRunning) probe\(probesRunning == 1 ? "" : "s") running in background."
     }
 
     // MARK: - Headless Form (the third tab)
@@ -214,15 +246,37 @@ struct LaunchFormView: View {
                         model.toggleDefaultImage()
                     }
                     .disabled(model.selectedImage == nil)
-                    if imageDiscoveryModel != nil {
+                    if let discoveryModel = imageDiscoveryModel {
                         Button {
                             showImageDiscovery = true
                         } label: {
-                            Image(systemName: "magnifyingglass.circle")
-                                .font(.callout)
+                            // ZStack badge pattern mirrors
+                            // ContentViewToolbars.agentProposalsToolbarItem —
+                            // small numeric pill in the top-right
+                            // corner when a count is present.
+                            // 2026-05-19 addition: surfaces the
+                            // in-flight probe count even when the
+                            // discovery sheet is closed, so the
+                            // user retains awareness of work
+                            // continuing in the background.
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "magnifyingglass.circle")
+                                    .font(.callout)
+                                let runningCount = discoveryModel.inFlightProbeCount
+                                if runningCount > 0 {
+                                    Text("\(runningCount)")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Color.accentColor, in: Capsule())
+                                        .foregroundStyle(.white)
+                                        .offset(x: 8, y: -6)
+                                }
+                            }
                         }
                         .buttonStyle(.borderless)
-                        .help("Discover images by installed packages")
+                        .help(magnifierHelp(probesRunning: discoveryModel.inFlightProbeCount))
+                        .accessibilityLabel(magnifierAccessibilityLabel(probesRunning: discoveryModel.inFlightProbeCount))
                     }
                 }
             }
@@ -235,6 +289,8 @@ struct LaunchFormView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel("Generate a new session name")
+                .help("Suggest a fresh name")
             }
 
             LabeledContent("Resources") {
@@ -378,6 +434,8 @@ struct LaunchFormView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel("Generate a new session name")
+                .help("Suggest a fresh name")
             }
 
             Picker("Resources", selection: $model.resourceType) {

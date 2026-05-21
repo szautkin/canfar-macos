@@ -30,6 +30,11 @@ struct CanfarImagesView: View {
     /// button to default to. Set when the user clicks Inspect on a
     /// specific row.
     @Binding var preselectedImageID: String?
+    /// Routes a row's image into the dashboard's launch form. The
+    /// dashboard owns both launch models, so it provides the
+    /// concrete implementation; the widget just calls back when
+    /// the user clicks the "use this image" button on a row.
+    var onUseInLaunchForm: ((ParsedImage) -> Void)?
 
     var body: some View {
         GroupBox {
@@ -48,18 +53,34 @@ struct CanfarImagesView: View {
 
     @ViewBuilder
     private var header: some View {
-        HStack {
-            Label("Canfar Images", systemImage: "shippingbox")
-                .font(.headline)
-            Spacer()
-            if model.isLoading {
-                ProgressView().controlSize(.small)
-            } else {
-                Text("\(model.discoveredCount) of \(model.totalCatalogueCount) discovered")
-                    .font(.caption2)
+        // Whole header is a button so the user can open the modal
+        // by clicking anywhere on the title row, not just on the
+        // distant "More inspection…" footer button. The discovered-
+        // count gets a magnifying-glass icon as a clickability cue.
+        Button {
+            preselectedImageID = nil
+            showDiscoverySheet = true
+        } label: {
+            HStack {
+                Label("Canfar Images", systemImage: "shippingbox")
+                    .font(.headline)
+                Spacer()
+                if model.isLoading {
+                    ProgressView().controlSize(.small)
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.caption2)
+                        Text("\(model.discoveredCount) of \(model.totalCatalogueCount) discovered")
+                            .font(.caption2)
+                    }
                     .foregroundStyle(.secondary)
+                }
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .help("Open Image Content Discovery")
     }
 
     // MARK: - Tabs
@@ -106,10 +127,16 @@ struct CanfarImagesView: View {
             ScrollView {
                 VStack(spacing: 6) {
                     ForEach(rows) { row in
-                        CanfarImageRowCard(row: row) {
-                            preselectedImageID = row.image.id
-                            showDiscoverySheet = true
-                        }
+                        CanfarImageRowCard(
+                            row: row,
+                            onInspect: {
+                                preselectedImageID = row.image.id
+                                showDiscoverySheet = true
+                            },
+                            onUseInLaunchForm: onUseInLaunchForm.map { handler in
+                                { handler(row.image) }
+                            }
+                        )
                     }
                 }
                 .padding(.vertical, 2)
@@ -158,6 +185,8 @@ struct CanfarImagesView: View {
                     .foregroundStyle(.orange)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                    .textSelection(.enabled)
+                CopyErrorButton(message: banner)
             }
             Spacer()
             Button {

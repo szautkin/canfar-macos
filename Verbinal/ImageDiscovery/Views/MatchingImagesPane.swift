@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import AppKit
 
 /// RIGHT pane — project-grouped list of images that satisfy the
 /// current package filters and search text. Each row shows the
@@ -18,7 +19,19 @@ struct MatchingImagesPane: View {
     var onCommit: (String) -> Void
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            // Pane-scoped image search — narrows the rows below by
+            // image label / id substring without touching the
+            // package checkboxes in the left pane.
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Filter images by name / tag…", text: $model.imageSearchText)
+                    .textFieldStyle(.roundedBorder)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
             if model.filteredImagesByProject.isEmpty {
                 emptyState
             } else {
@@ -58,6 +71,8 @@ struct MatchingImagesPane: View {
             Spacer()
             staleBadge(state: state)
             statusIndicator(state: state)
+            copyErrorButton(imageID: image.id, state: state)
+            viewDetailsButton(imageID: image.id, state: state)
             viewLogsButton(state: state)
             dismissErrorButton(imageID: image.id, state: state)
             discoverButton(imageID: image.id, state: state)
@@ -112,6 +127,7 @@ struct MatchingImagesPane: View {
             }
             .buttonStyle(.borderless)
             .help("Discover packages for this image")
+            .accessibilityLabel("Discover packages")
         case .discovered, .failed:
             Button {
                 Task { await model.rediscover(imageID) }
@@ -121,6 +137,72 @@ struct MatchingImagesPane: View {
             }
             .buttonStyle(.borderless)
             .help("Re-run discovery for this image")
+            .accessibilityLabel("Re-run discovery")
+        }
+    }
+
+    /// "Copy error" affordance — visible on every failed row.
+    /// One-click copies the cached failure message verbatim to the
+    /// pasteboard so the user can paste it into a CADC ticket / chat
+    /// without round-tripping through the detail sheet.
+    @ViewBuilder
+    private func copyErrorButton(
+        imageID: String,
+        state: ImageDiscoveryModel.RowState
+    ) -> some View {
+        if case .failed(let msg, _, _) = state {
+            CopyErrorButton(message: msg)
+        }
+    }
+
+    /// "View details" affordance.
+    ///
+    /// * On a `.failed` row — opens `FailureDetailSheet` with the
+    ///   full Skaha response, scrollable + selectable so the user
+    ///   can copy it into a CADC ticket.
+    /// * On a `.discovered` row — opens `ManifestDetailSheet`
+    ///   showing every section of the cached manifest, with copy-
+    ///   as-JSON + reveal-in-Finder in the footer. 2026-05-21
+    ///   Phase 3 addition closes the picky-astronomer "I want to
+    ///   verify the primary data without digging through
+    ///   `~/Library/Application Support/...`" gap.
+    /// * Other states (running, never-discovered) — no button,
+    ///   nothing useful to show yet.
+    @ViewBuilder
+    private func viewDetailsButton(
+        imageID: String,
+        state: ImageDiscoveryModel.RowState
+    ) -> some View {
+        switch state {
+        case .failed(let msg, let attemptedAt, let jobID):
+            Button {
+                model.failureDetailForSheet = ImageDiscoveryModel.FailureDetail(
+                    imageID: imageID,
+                    message: msg,
+                    attemptedAt: attemptedAt,
+                    jobID: jobID
+                )
+            } label: {
+                Image(systemName: "info.circle")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .help("Show the full failure message")
+            .accessibilityLabel("Show failure details")
+
+        case .discovered(let manifest):
+            Button {
+                model.manifestDetailForSheet = manifest
+            } label: {
+                Image(systemName: "info.circle")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .help("Show what this image contains")
+            .accessibilityLabel("Show manifest details")
+
+        case .neverDiscovered, .running:
+            EmptyView()
         }
     }
 
@@ -140,6 +222,7 @@ struct MatchingImagesPane: View {
             }
             .buttonStyle(.borderless)
             .help("View container logs for the failed probe job")
+            .accessibilityLabel("View probe logs")
         }
     }
 
@@ -163,6 +246,7 @@ struct MatchingImagesPane: View {
             }
             .buttonStyle(.borderless)
             .help("Dismiss this error (does not re-run the probe)")
+            .accessibilityLabel("Dismiss error")
         }
     }
 
@@ -180,6 +264,9 @@ struct MatchingImagesPane: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         case .discovered(let manifest):
+            // 2026-05-21 Phase 2 add: time-since-probe so the
+            // picky-astronomer user knows whether they're
+            // looking at fresh data or a 3-week-old cache.
             HStack(spacing: 6) {
                 Text(manifest.osFamily == "unknown" ? "—" : "\(manifest.osFamily) \(manifest.osVersion)")
                     .font(.caption2)
@@ -190,14 +277,95 @@ struct MatchingImagesPane: View {
                 Text("\(packageCount(manifest)) packages")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                Text("•")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Text(ImageDiscoveryModel.timeAgo(manifest.capturedAt))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .help("Probed \(manifest.capturedAt.formatted(date: .abbreviated, time: .shortened))")
             }
             .lineLimit(1)
-        case .failed(let msg, _, _):
-            Text(msg)
+        case .failed(let msg, let attemptedAt, _):
+            // Two-line layout: category-aware chip on line 1
+            // (so the user sees "Timed out · 3m ago · checking
+            // in background" at a glance), full message on
+            // line 2 truncated to 2 lines max.
+            VStack(alignment: .leading, spacing: 1) {
+                failureChip(imageID: image.id, attemptedAt: attemptedAt)
+                Text(msg)
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .textSelection(.enabled)
+            }
+        }
+    }
+
+    /// Category-aware status line for the failed state. Renders
+    /// "{Category} · {time-ago}" plus a "checking in background"
+    /// hint when the failure is `jobTimedOut` and recent enough
+    /// that the coordinator's grace-poll task might still
+    /// recover the manifest.
+    @ViewBuilder
+    private func failureChip(imageID: String, attemptedAt: Date) -> some View {
+        let category = model.failureCategories[imageID] ?? .unknown
+        let label = ImageDiscoveryModel.categoryLabel(category)
+        let recovering = ImageDiscoveryModel.isLikelyStillRecovering(
+            category: category,
+            attemptedAt: attemptedAt
+        )
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.caption2.bold())
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(failureChipBackground(category), in: Capsule())
+                .foregroundStyle(failureChipForeground(category))
+            Text("·")
                 .font(.caption2)
-                .foregroundStyle(.orange)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .foregroundStyle(.tertiary)
+            Text(ImageDiscoveryModel.timeAgo(attemptedAt))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .help("Last attempt \(attemptedAt.formatted(date: .abbreviated, time: .shortened))")
+            if recovering {
+                Text("·")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Label("checking in background", systemImage: "arrow.triangle.2.circlepath")
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption2)
+                    .foregroundStyle(.blue)
+                    .help("The probe job may still be running on Skaha. The coordinator is polling VOSpace for a late-landing manifest; this row will flip to discovered automatically if it arrives.")
+            }
+        }
+    }
+
+    /// Capsule background colour per category. Orange for
+    /// transient/retryable categories (timeouts) so the eye
+    /// doesn't lock on them as hard fails; red for "you need to
+    /// act" categories (submit failed = creds wrong).
+    private func failureChipBackground(_ c: LastOutcome.FailureCategory) -> Color {
+        switch c {
+        case .jobTimedOut:           return .orange.opacity(0.18)
+        case .jobSubmitFailed:       return .red.opacity(0.18)
+        case .manifestFetchFailed:   return .red.opacity(0.15)
+        case .manifestParseFailed:   return .red.opacity(0.15)
+        case .cancelled:             return .gray.opacity(0.18)
+        case .unknown:               return .red.opacity(0.15)
+        }
+    }
+
+    private func failureChipForeground(_ c: LastOutcome.FailureCategory) -> Color {
+        switch c {
+        case .jobTimedOut:           return .orange
+        case .jobSubmitFailed:       return .red
+        case .manifestFetchFailed:   return .red
+        case .manifestParseFailed:   return .red
+        case .cancelled:             return .secondary
+        case .unknown:               return .red
         }
     }
 
@@ -243,5 +411,35 @@ struct MatchingImagesPane: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Compact pasteboard-copy button. Local `@State` flips the icon
+/// from `doc.on.doc` to `checkmark.circle.fill` for ~1.5s after a
+/// click so the user gets visible feedback without us needing a
+/// global toast / overlay. Shared across the failed-row affordance
+/// and the modal footer's banner so both surfaces have the same
+/// one-click copy behaviour.
+struct CopyErrorButton: View {
+    let message: String
+    @State private var didCopy: Bool = false
+
+    var body: some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(message, forType: .string)
+            didCopy = true
+            Task {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                didCopy = false
+            }
+        } label: {
+            Image(systemName: didCopy ? "checkmark.circle.fill" : "doc.on.doc")
+                .font(.caption)
+                .foregroundStyle(didCopy ? Color.green : Color.accentColor)
+        }
+        .buttonStyle(.borderless)
+        .help(didCopy ? "Copied" : "Copy error message to clipboard")
+        .accessibilityLabel(didCopy ? "Copied to clipboard" : "Copy error to clipboard")
     }
 }

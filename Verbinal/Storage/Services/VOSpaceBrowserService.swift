@@ -5,12 +5,10 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
-import os.log
 import VerbinalKit
 
 /// Actor for browsing and managing VOSpace files via the ARC REST API.
 actor VOSpaceBrowserService {
-    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "VOSpace")
     private let network: NetworkClient
 
     /// VOSpace base URLs. Defaults match `APIEndpoints.storageBaseURL` (the
@@ -66,6 +64,71 @@ actor VOSpaceBrowserService {
         }
         try data.write(to: tempURL)
         return (tempURL, filename)
+    }
+
+    // MARK: - Bounded read into memory
+
+    /// Result of an agent-visible bounded read. `totalBytes` is the
+    /// full file size when the server reports it via `Content-Range`;
+    /// `nil` when the server didn't honour the `Range:` header (it
+    /// returned 200 with the whole body — we still truncate before
+    /// surfacing) or omitted `Content-Range` entirely.
+    struct FetchResult: Sendable {
+        let data: Data
+        let totalBytes: Int?
+    }
+
+    /// Read a bounded slice of a VOSpace file directly into memory,
+    /// for `read_vospace_file` — the agent-visible counterpart to
+    /// `downloadFile`, which writes to the user's local Downloads
+    /// and is therefore invisible to the agent. Uses HTTP
+    /// `Range: bytes=offset-(offset+maxBytes-1)` to ask the ARC
+    /// REST endpoint for just the requested slice; if the server
+    /// ignores the Range header (200 instead of 206), we still
+    /// truncate the local buffer at `maxBytes` so the caller's
+    /// memory contract is honoured.
+    ///
+    /// Closes the QA finding from 2026-05-15: "three of eight
+    /// Skaha jobs in this engagement existed solely to cat file
+    /// contents back through stdout because the agent couldn't
+    /// see what it just wrote." One round-trip here replaces an
+    /// entire follow-up job.
+    func fetchBytes(
+        username: String,
+        path: String,
+        offset: Int,
+        maxBytes: Int
+    ) async throws -> FetchResult {
+        guard maxBytes > 0 else {
+            throw VOSpaceError.operationFailed("fetchBytes maxBytes must be > 0; got \(maxBytes)")
+        }
+        guard offset >= 0 else {
+            throw VOSpaceError.operationFailed("fetchBytes offset must be >= 0; got \(offset)")
+        }
+        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
+        let rangeEnd = offset + maxBytes - 1
+        let headers = ["Range": "bytes=\(offset)-\(rangeEnd)"]
+        let (data, response) = try await network.get(urlString, additionalHeaders: headers)
+        let totalBytes = Self.parseContentRangeTotal(response)
+        // Defensive truncation: if the server ignored Range and
+        // sent us the whole file (some VOSpace deployments don't
+        // implement byte-ranges on all paths), respect the
+        // caller's maxBytes contract anyway.
+        let bounded = data.count > maxBytes ? data.prefix(maxBytes) : data
+        return FetchResult(data: Data(bounded), totalBytes: totalBytes)
+    }
+
+    /// Parse `Content-Range: bytes 0-99/1000` and return the total
+    /// (1000 in the example). Returns nil for `*` (size unknown
+    /// server-side) or when the header is absent / malformed.
+    private static func parseContentRangeTotal(_ response: HTTPURLResponse) -> Int? {
+        guard let header = response.value(forHTTPHeaderField: "Content-Range") else {
+            return nil
+        }
+        guard let slash = header.lastIndex(of: "/") else { return nil }
+        let totalStr = header[header.index(after: slash)...]
+        if totalStr == "*" { return nil }
+        return Int(totalStr)
     }
 
     // MARK: - Upload

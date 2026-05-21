@@ -99,11 +99,28 @@ final class HeadlessService: Sendable {
                 pairs.append(("replicas", String(count)))
             }
 
+            // Build `x-skaha-registry-auth` header when the caller
+            // supplied registry credentials (image discovery's
+            // settings-driven path, or any future call site that
+            // needs Harbor auth). Skaha rejects pulls from private
+            // namespaces with HTTP 400 when the header is absent.
+            // Built once per replica because the header value is a
+            // constant for the whole launch fan-out.
+            var headers: [String: String]?
+            if let auth = params.registryAuthHeader, !auth.isEmpty {
+                headers = ["x-skaha-registry-auth": auth]
+            }
             do {
                 let (data, _) = try await network.post(
                     endpoints.sessionsURL,
                     formPairs: pairs,
-                    timeout: 120
+                    headers: headers,
+                    // CADC's session-create endpoint regularly takes
+                    // 60–90s when the cluster's K8s API is busy.
+                    // 180s is a generous patience floor; the
+                    // ImageDiscoveryCoordinator's K8s-race retry
+                    // wraps a separate, shorter budget on top.
+                    timeout: 180
                 )
                 let id = String(data: data, encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

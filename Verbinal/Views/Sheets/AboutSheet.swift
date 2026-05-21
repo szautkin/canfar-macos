@@ -59,6 +59,7 @@ struct AboutSheet: View {
                 dismiss()
             }
             .keyboardShortcut(.cancelAction)
+            .help("Close this dialog (⎋)")
         }
         .padding(32)
         .sheetFrame(width: 400)

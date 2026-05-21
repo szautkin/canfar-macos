@@ -75,6 +75,10 @@ struct DescribeAppTool: JSONReadTool {
       * `search_observations` — TAP/ADQL query against CADC's archive.
         Accepts target name (resolved server-side), RA/Dec + radius, or
         free-form ADQL. Always cap maxRec sensibly.
+      * `vizier_cone_search` — TAP cone-search against any VizieR
+        catalogue at CDS (Clement+2001 V/97 for globular-cluster
+        variables, OGLE/ASAS-SN/ZTF for general transients, etc.).
+        Public, no auth, returns parsed rows.
       * `resolve_target` — name → coordinates via the CADC resolver.
       * `get_observation_caom2` — full CAOM-2 metadata document for an
         observation by publisher_id (`ivo://...`).
@@ -83,7 +87,7 @@ struct DescribeAppTool: JSONReadTool {
       * `list_recent_searches`, `list_saved_queries`, `get_saved_query`.
       * `list_downloaded_observations`, `get_downloaded_observation`,
         `get_observation_notes`.
-      * `list_vospace_path`, `get_vospace_node`, `get_vospace_quota`.
+      * `list_vospace_path`, `get_vospace_node`.
       * `list_sessions`, `get_session`, `list_session_types`,
         `list_session_images` (call before `launch_session` AND
         `launch_headless_job`!), `list_recent_launches`.
@@ -91,8 +95,16 @@ struct DescribeAppTool: JSONReadTool {
         `get_headless_job_logs`, `get_headless_job_events` —
         background batch jobs (see "Background jobs" below).
       * `find_images_with_packages` — query the local image-content
-        cache (see "Image content discovery" below). Pure read; no
-        Skaha cost.
+        cache by package names AND/OR behavioural capabilities
+        (`fitsio`, `photutils-iterative-psf`, `gpu`, …). Pure
+        read; no Skaha cost. Returns `imageIDs` (matches),
+        `candidatesToProbe` (up to 10 unprobed catalogue images
+        that fit any `type` filter — your shortlist when matches
+        are empty), `allDiscovered` (every probed image), and
+        `coverage` (probe-coverage stats). Optional `type:
+        "headless"|"notebook"|…` narrows everything to images
+        launchable as that session type. See "Image content
+        discovery" below.
       * `get_fits_header`, `get_fits_wcs` — local-file FITS introspection.
       * `list_pending_proposals`, `get_proposal_state`, `list_events` —
         introspect the proposal lifecycle when in strip-confirm mode.
@@ -131,10 +143,18 @@ struct DescribeAppTool: JSONReadTool {
         (many → one proposal envelope).
       * `update_observation_note`, `bulk_update_observation_notes`
         (up to 50 → one envelope).
-      * `upload_to_vospace`, `download_from_vospace`, `vospace_mkdir`,
-        `delete_vospace_node`.
-      * `launch_session`, `delete_session`, `clear_research_archive`,
-        `launch_headless_job` (see "Background jobs" below).
+      * `upload_to_vospace` (file from downloaded-observation id),
+        `upload_text_to_vospace` (arbitrary in-conversation text up
+        to 1 MB — use this to stage scripts/configs without local
+        files), `download_from_vospace`, `vospace_mkdir`,
+        `delete_vospace_node`, `clear_user_site` (wipe
+        ~/.local/lib/python3.*/site-packages after a `pip install
+        --user` poisoned subsequent jobs).
+      * `launch_session`, `delete_session`, `delete_sessions_bulk`
+        (up to 50 ids → one envelope, parallel deletes, partial-
+        success — use for zombie-cleanup after a launch storm),
+        `clear_research_archive`, `launch_headless_job` (see
+        "Background jobs" below).
       * `discover_image_packages` (see "Image content discovery"
         below) — schedules a probe job inside the named image to
         enumerate its packages.
@@ -192,29 +212,44 @@ struct DescribeAppTool: JSONReadTool {
     Tools:
       * `launch_headless_job` — write. Required: `name`, `image` (must
         be from `list_session_images` filtered to `type: "headless"`).
-        Optional: `cmd` (the command to run), `args` (single
-        space-separated string), `env` (array of {key, value} pairs;
-        `REPLICA_ID` and `REPLICA_COUNT` are auto-injected per
-        replica), `cores` / `ram` / `gpus`, `replicas` (1–50).
-        Returns the launched job id(s); ≥ 2 replicas spawn parallel
-        containers with names suffixed `-1, -2, …`. Partial-replica
-        failure: the applier persists the replicas that DID land and
-        the call fails with `backendError` describing which replica
-        failed and how many already running.
+        For Python workloads, pass your source as the `script`
+        parameter — the tool hex-encodes it server-side so all the
+        Skaha env quirks (`=`, `&`, `"`, `$`, newline, 2 KB cap)
+        become invisible to you. For non-Python work use
+        `cmd`+`args` directly (mutually exclusive with `script`).
+        `env` is an ordered array of {key, value} pairs; values
+        containing `=`, `&`, newlines, or exceeding 2 KB are
+        REJECTED at the client validator before the request leaves
+        (typed `invalidArgument` with the offending key named, not
+        a silent drop). `REPLICA_ID` / `REPLICA_COUNT` auto-injected
+        per replica. Returns the launched job id(s); ≥ 2 replicas
+        spawn parallel containers suffixed `-1, -2, …`. SCHEDULING:
+        omitting `cores`/`ram`/`gpus` inherits Skaha's 2/8/0
+        default, which often sits Pending 15+ min. For fastest
+        start (<60s typical), pass `cores: 1, ram: 1, gpus: 0`
+        explicitly — that's the smallest schedulable shape on the
+        CANFAR cluster and almost always fits spare capacity.
+        Scale up only for production runs you're willing to leave
+        queued for hours.
       * `list_headless_jobs` — read. Snapshot of all current jobs
         with status / phase / image / resources.
       * `get_headless_job` — read. Single by id.
       * `get_headless_job_logs` — read. Container stdout/stderr at
-        request time (snapshot, not a live tail).
+        request time plus a typed `state` field (`"ready"` once the
+        pod exists; `"pending"` while the job is queued at Skaha
+        and no pod has been created yet — Skaha returns 404 during
+        that window and the tool surfaces the structured status so
+        you don't have to special-case the error).
       * `get_headless_job_events` — read. Kubernetes-level events
-        (scheduling, image pulls, OOM kills). Useful when a job sits
-        in `Pending` or `Failed` for unobvious reasons.
+        (scheduling, image pulls, OOM kills) plus the same typed
+        `state` field as the logs tool. Useful when a job sits in
+        `Pending` or `Failed` for unobvious reasons.
       * `delete_session` — destructive. Same id space; works for
         headless and interactive both.
 
-    Polling pattern: 2–5 s while `Pending`/`Running`, backing off after
-    a few minutes. Don't poll `get_headless_job_logs` in a tight loop;
-    fetch when the user asks or when status changes.
+    Polling pattern: 2–5 s while `state` is `"pending"`, slower once
+    the pod exists. Don't poll `get_headless_job_logs` in a tight
+    loop; fetch when status changes or the user asks.
 
     ## Image content discovery
 

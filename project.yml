@@ -20,15 +20,23 @@ settings:
     DEVELOPMENT_TEAM: A4ABW5VD88
   configs:
     Release:
-      # Mac App Store submissions require Manual signing with the
-      # "3rd Party Mac Developer Application" identity + a MAS-enabled
-      # provisioning profile. These values assume a profile named
-      # "Verbinal MAS" has been created at developer.apple.com and
-      # downloaded to ~/Library/MobileDevice/Provisioning Profiles/.
-      # See scripts/mas-submit.sh for the submission pipeline.
-      CODE_SIGN_STYLE: Manual
-      CODE_SIGN_IDENTITY: "3rd Party Mac Developer Application"
-      PROVISIONING_PROFILE_SPECIFIER: "Verbinal MAS"
+      # Automatic signing works for App Store submission when archiving
+      # via Xcode → Product → Archive → Distribute → App Store Connect.
+      # The Organizer generates a fresh Mac App Distribution profile
+      # on demand, re-signs with the "3rd Party Mac Developer
+      # Application" certificate (downloaded from developer.apple.com),
+      # and uploads. No local "Verbinal MAS" profile needs to exist.
+      #
+      # Switch back to Manual + explicit PROVISIONING_PROFILE_SPECIFIER
+      # only for headless CI archive flows (xcodebuild archive +
+      # exportArchive) where Xcode can't drive profile generation
+      # interactively. In that case download the profile to
+      # ~/Library/MobileDevice/Provisioning Profiles/ first.
+      #
+      # ENABLE_HARDENED_RUNTIME is explicit (App Sandbox implies it
+      # but App Store review checks for it explicitly; cheaper to
+      # declare than to debate).
+      ENABLE_HARDENED_RUNTIME: YES
       SWIFT_OPTIMIZATION_LEVEL: "-O"
       SWIFT_COMPILATION_MODE: wholemodule
       DEBUG_INFORMATION_FORMAT: dwarf-with-dsym

@@ -177,8 +177,18 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         store: JSONManifestStore,
         headless: MockHeadless,
         vospace: MockVOSpace,
-        timeout: TimeInterval = 5.0
+        timeout: TimeInterval = 5.0,
+        imageTypesLookup: (@Sendable (String) async -> [String]?)? = { _ in ["headless"] }
     ) -> ImageDiscoveryCoordinator {
+        // Default `imageTypesLookup` returns `["headless"]` for any
+        // image so the coordinator routes through `.inTarget` — the
+        // strategy these test fixtures wire VOSpace mocks for. After
+        // the 2026-05-19 fix flipped the nil-default from `.inTarget`
+        // to `.inspector` (closing the private-namespace 400 bug),
+        // tests that don't inject a lookup would silently route
+        // through the inspector path and miss the in-target probe
+        // assertions they were written for. Tests that want the
+        // inspector path explicitly override this argument.
         ImageDiscoveryCoordinator(
             store: store,
             headless: headless,
@@ -186,7 +196,8 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             username: "testuser",
             probeJobTimeout: timeout,
             pollInterval: 0.01,         // fast polling for tests
-            maxConcurrentProbes: 3
+            maxConcurrentProbes: 3,
+            imageTypesLookup: imageTypesLookup
         )
     }
 
@@ -554,10 +565,17 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             ImageDiscoveryCoordinator.strategy(forTypes: []),
             .inspector
         )
-        // Unknown types (lookup returned nil) → in-target fallback
+        // Unknown types (catalogue miss / fetch failure) → inspector
+        // fallback. 2026-05-19 finding: the prior `.inTarget` default
+        // tried to pull the unknown image as the probe host, which
+        // Skaha rejects with HTTP 400 for any image in a private
+        // project namespace (e.g. `images.canfar.net/canucs/...`).
+        // `.inspector` only launches the public terminal host —
+        // never requires registry auth from Skaha — so unknown
+        // images route through the safe path by default.
         XCTAssertEqual(
             ImageDiscoveryCoordinator.strategy(forTypes: nil),
-            .inTarget
+            .inspector
         )
     }
 
@@ -582,6 +600,12 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         }
 
         let nonHeadlessImage = "images.canfar.net/skaha/notebook:24.07"
+        // Inject the inspector-image resolver explicitly so the
+        // test doesn't depend on UserDefaults (which the Settings
+        // ▸ Image Discovery feature now writes to — leftover dev
+        // overrides used to crash this test). Hermetic: closure
+        // returns the canonical builtin regardless of the
+        // developer's app state.
         let coord = ImageDiscoveryCoordinator(
             store: store,
             headless: h,
@@ -592,7 +616,8 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             maxConcurrentProbes: 3,
             imageTypesLookup: { id in
                 id == nonHeadlessImage ? ["notebook"] : nil
-            }
+            },
+            inspectorImageResolver: { InspectorScript.builtinInspectorImageID }
         )
 
         _ = try await coord.discover(nonHeadlessImage)
@@ -600,12 +625,20 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(h.launchCalls.count, 1)
         let call = h.launchCalls[0]
         XCTAssertEqual(call.image, InspectorScript.builtinInspectorImageID,
-                       "inspector path must launch the known-good headless image, NOT the target")
+                       "inspector path must launch the resolver-supplied image, NOT the target")
         XCTAssertEqual(call.cmd, "bash")
         XCTAssertTrue(call.args?.contains(InspectorScript.uploadFilename) ?? false,
                       "args must point at the inspector script; got \(call.args ?? "nil")")
         XCTAssertEqual(call.env.first(where: { $0.0 == "TARGET_IMAGE" })?.1, nonHeadlessImage,
                        "target image id must be passed via TARGET_IMAGE env")
+        // 2026-05-19 regression pin: inspector probes MUST request
+        // 1c/1g/0gpu. The earlier 4 GB ask was theoretically nicer
+        // for syft headroom but sat Pending 15+ min under cluster
+        // pressure. Bumping back up trades probe-OOMs (recoverable
+        // via probeNotes) for indefinite stalls (silent UX failure).
+        XCTAssertEqual(call.cores, 1, "inspector probe must request 1 CPU — smallest schedulable shape")
+        XCTAssertEqual(call.ram, 1, "inspector probe must request 1 GB RAM — anything bigger sits Pending under cluster pressure")
+        XCTAssertEqual(call.gpus, 0, "inspector probe must not ask for GPUs")
     }
 
     func testHeadlessImageStillUsesInTargetPath() async throws {
@@ -629,6 +662,14 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
                        "in-target path launches the target image as the probe host")
         XCTAssertTrue(call.args?.contains(ProbeScript.uploadFilename) ?? false,
                       "in-target path uses probe.sh, not inspector.sh")
+        // 2026-05-19 regression pin: in-target probes MUST request
+        // 1c/1g/0gpu. The earlier `ram: 2` ask was unnecessary —
+        // the probe script's bash + python3 footprint is well
+        // under 1 GB — and bumped probes into the slow-scheduling
+        // tier on a shared cluster.
+        XCTAssertEqual(call.cores, 1, "in-target probe must request 1 CPU")
+        XCTAssertEqual(call.ram, 1, "in-target probe must request 1 GB RAM")
+        XCTAssertEqual(call.gpus, 0, "in-target probe must not ask for GPUs")
     }
 
     func testInspectorScriptInvariants() {
@@ -822,27 +863,30 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         // and re-wrapped, producing a nonsense message in the UI.
         // Pin the contract: the friendly message must round-trip
         // unchanged through the outer catch.
+        // Updated 2026-05: harness now does 4 attempts (initial +
+        // 3 backoffs at 3/7/15s) and the message wording changed
+        // from "Skaha refused to schedule" to a more accurate
+        // "Skaha couldn't see the job it just created" once we
+        // confirmed the failure mode is informer-cache lag, not
+        // quota. Seed enough race errors to exhaust every attempt.
         let store = makeStore()
         let h = MockHeadless()
-        h.launchErrorSequence = [
-            NSError(domain: "Skaha", code: 500,
-                    userInfo: [NSLocalizedDescriptionKey: "HTTP 500: jobs.batch \"x\" not found"]),
-            NSError(domain: "Skaha", code: 500,
-                    userInfo: [NSLocalizedDescriptionKey: "HTTP 500: jobs.batch \"x\" not found"])
-        ]
+        let raceErr = NSError(domain: "Skaha", code: 500,
+                              userInfo: [NSLocalizedDescriptionKey: "HTTP 500: jobs.batch \"x\" not found"])
+        h.launchErrorSequence = Array(repeating: raceErr, count: 4)
         let v = MockVOSpace()
 
         let coord = makeCoord(store: store, headless: h, vospace: v)
 
         do {
             _ = try await coord.discover("test:race-exhausted")
-            XCTFail("expected throw after both retries hit the race")
+            XCTFail("expected throw after every retry hit the race")
         } catch let err as ImageDiscoveryError {
             // Must NOT be the Cocoa "error 0" fallback wrapped.
             XCTAssertFalse(err.displayMessage.contains("error 0"),
                            "raw Error.localizedDescription leaked into the typed error; got: \(err.displayMessage)")
-            XCTAssertTrue(err.displayMessage.contains("Skaha refused"),
-                          "friendly message must survive outer catch; got: \(err.displayMessage)")
+            XCTAssertTrue(err.displayMessage.contains("Skaha couldn't see"),
+                          "friendly informer-cache-lag message must survive outer catch; got: \(err.displayMessage)")
             // LocalizedError conformance — .localizedDescription
             // must return the same friendly text.
             XCTAssertEqual(err.localizedDescription, err.displayMessage)

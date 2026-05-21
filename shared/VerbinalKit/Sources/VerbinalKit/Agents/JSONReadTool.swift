@@ -21,11 +21,29 @@ public protocol JSONReadTool: AITool {
     /// Implement the tool's actual work. Throw a `ToolFailureReason` to
     /// surface a typed failure; any other error wraps as `.backendError`.
     func handle(_ args: Args, context: AIToolContext) async throws -> Output
+
+    /// Wall-clock deadline applied around every `handle(_:context:)`
+    /// invocation. Default 60s.
+    ///
+    /// Override for outliers: fast-listing tools should drop to 30s
+    /// (the QA report named `list_headless_jobs` as the recurring
+    /// 5-minute hang; bounding it tightly is the whole point); heavy
+    /// TAP queries that legitimately take 30–60s should extend to
+    /// 90–120s. The watchdog throws `ToolFailureReason.backendError`
+    /// with a recognisable "<label> exceeded Ns deadline" body — the
+    /// agent gets a typed error instead of an indefinite stall.
+    var toolTimeoutSeconds: TimeInterval { get }
 }
 
 extension JSONReadTool {
     public static var verbClass: VerbClass { .read }
     public static var agentSafe: Bool { true }
+
+    /// 60 seconds is the comfortable default for CADC services
+    /// (TAP, DataLink, target-resolver, VOSpace listing, Skaha
+    /// session/headless listing). Per-tool overrides tighten this
+    /// for fast-list endpoints and loosen for known-slow queries.
+    public var toolTimeoutSeconds: TimeInterval { 60 }
 
     public func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         let args: Args
@@ -41,7 +59,16 @@ extension JSONReadTool {
             }
         }
         do {
-            let output = try await handle(args, context: context)
+            // The deadline-exceeded message names the offending tool
+            // so the agent's error log identifies which call stalled
+            // — not just that *something* did.
+            let toolName = definition.name
+            let output = try await withToolTimeout(
+                seconds: toolTimeoutSeconds,
+                label: toolName
+            ) {
+                try await handle(args, context: context)
+            }
             let bytes = try JSONEncoder().encode(output)
             return .data(bytes)
         } catch let failure as ToolFailureReason {

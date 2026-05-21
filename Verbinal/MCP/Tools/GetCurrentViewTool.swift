@@ -66,6 +66,27 @@ struct GetCurrentViewTool: JSONReadTool {
         /// followed. When off, the user stays put after writes;
         /// `navigate_to` is your only way to keep them oriented.
         let followAgentActivityEnabled: Bool
+        /// Proposal-budget window for the current MCP turn. `cap` is
+        /// the static per-turn ceiling (default 8); `remaining` is
+        /// how many more proposals you can submit before hitting
+        /// `perTurnProposalCapExceeded`. Reset at the start of each
+        /// turn. Read this when pacing a batch of writes so you
+        /// don't get refused mid-sequence — added in response to
+        /// the 2026-05-14 QA review that flagged "no way to ask
+        /// how many proposals are left mid-turn".
+        ///
+        /// Defaults to zero-cap / zero-remaining so call sites
+        /// that don't have a live `AIToolContext` (the snapshot
+        /// closure produces the rest of the Output, then `handle`
+        /// patches this field with the real budget). `var` so
+        /// `handle` can mutate in place without rebuilding the
+        /// whole struct.
+        var proposalBudget: BudgetSnapshot = .init(cap: 0, remaining: 0)
+
+        struct BudgetSnapshot: Encodable, Sendable {
+            let cap: Int
+            let remaining: Int
+        }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
@@ -83,6 +104,16 @@ struct GetCurrentViewTool: JSONReadTool {
     let snapshot: @Sendable () async -> Output
 
     func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
-        await snapshot()
+        var out = await snapshot()
+        // Fill in the live proposal budget from the context. The
+        // snapshot closure doesn't have access to it (it's
+        // produced once at tool-registration time before any
+        // request arrives); reading at handle-time is the only
+        // place we can see the *caller's* origin and the per-
+        // origin counter inside the ProposalBudget actor.
+        let cap = context.budget.limit
+        let remaining = await context.budget.remaining(for: context.origin)
+        out.proposalBudget = .init(cap: cap, remaining: remaining)
+        return out
     }
 }

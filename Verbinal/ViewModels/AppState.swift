@@ -10,6 +10,9 @@ import VerbinalKit
 #if os(macOS)
 import AppKit
 #endif
+#if canImport(MetricKit)
+import MetricKit
+#endif
 
 enum AppMode: Equatable {
     case landing
@@ -36,6 +39,12 @@ final class AppState {
     let recentLaunchStore = RecentLaunchStore()
     let portalSettingsService = PortalSettingsService()
     let portalImageCacheService = PortalImageCacheService()
+    /// User-configurable defaults for the Image Discovery feature:
+    /// registry credentials (for the `x-skaha-registry-auth` header
+    /// on probe jobs) and the inspector-mode host image override.
+    /// Wired into `ImageDiscoveryCoordinator` via closures so the
+    /// coordinator stays unaware of UI / persistence concerns.
+    let imageDiscoverySettings = ImageDiscoverySettingsService()
 
     /// Live network connectivity monitor. UI subscribes via `@Bindable` to
     /// surface "network changed; retrying…" hints when in-flight CADC
@@ -73,6 +82,28 @@ final class AppState {
     /// row. The sheet honors this via its existing
     /// `selectedImageID` binding.
     var preselectedDiscoveryImageID: String?
+
+    /// Which tab inside `LaunchFormView` is currently visible.
+    /// Lifted out of the view's `@State` so widgets that drive
+    /// the form (Canfar Images "use this image" button, agent
+    /// tools) can flip the tab to match what they just wrote —
+    /// otherwise a click on a headless image would silently
+    /// populate the Headless tab while the user is staring at
+    /// the Standard tab and concludes nothing happened.
+    enum LaunchFormTab: Int, Sendable, Equatable {
+        case standard = 0
+        case advanced = 1
+        case headless = 2
+    }
+    var launchFormTab: LaunchFormTab = .standard
+
+    /// Routes a `ParsedImage` to the correct launch model and
+    /// flips `launchFormTab` to match. Owned here (rather than in
+    /// the dashboard) because both launch models live as the
+    /// dashboard's properties and aren't visible to e.g. the
+    /// Canfar Images widget — but every surface that wants to
+    /// "use this image" can call into this single closure.
+    var sendImageToLaunchForm: ((ParsedImage) -> Void)?
 
     // Addon system
     let addonRegistry = AddonRegistry()
@@ -164,6 +195,15 @@ final class AppState {
         // first-party addon can read the CADC token without re-authing. Default
         // is unset when the entitlement isn't granted — the call is a no-op.
         KeychainStorage.configure(accessGroup: "A4ABW5VD88.codebg.verbinal.family")
+
+        // Subscribe to MetricKit so crash/hang/CPU-exception payloads
+        // accumulate in App Store Connect's Diagnostics dashboard.
+        // Without `add(_:)` Apple's pipeline never delivers payloads
+        // to either the app or its developer dashboards. Idempotent;
+        // safe to call once per process lifetime.
+        #if canImport(MetricKit)
+        MXMetricManager.shared.add(MetricKitSubscriber.shared)
+        #endif
 
         // Restore saved language preference. didSet does NOT fire for this
         // assignment (Swift rule: property observers skipped inside the
@@ -370,12 +410,34 @@ final class AppState {
             return raws.first(where: { $0.id == id })?.types
         }
 
+        // Bridge the Image Discovery settings service into the
+        // coordinator via two closures. The coordinator stays
+        // unaware of UI / persistence concerns; the closures hop
+        // to MainActor on demand to read the current settings
+        // snapshot. Reading on every probe (not caching) means
+        // Settings changes take effect on the next attempt.
+        let settingsService = imageDiscoverySettings
+        let authProvider: @Sendable () async -> String? = { [weak self] in
+            guard let self else { return nil }
+            return await MainActor.run { self.imageDiscoverySettings.currentAuthHeader() }
+        }
+        // Keep `settingsService` referenced inside the resolver so
+        // it doesn't get optimised away — the coordinator captures
+        // it through this closure.
+        _ = settingsService
+        let inspectorResolver: @Sendable () async -> String = { [weak self] in
+            guard let self else { return ImageDiscoverySettings.defaultInspectorImage }
+            return await MainActor.run { self.imageDiscoverySettings.settings.inspectorImage }
+        }
+
         let coord = ImageDiscoveryCoordinator(
             store: store,
             headless: headlessService,
             vospace: VOSpaceBrowserService(network: network),
             username: username,
-            imageTypesLookup: typesLookup
+            imageTypesLookup: typesLookup,
+            registryAuthProvider: authProvider,
+            inspectorImageResolver: inspectorResolver
         )
         imageDiscoveryCoordinator = coord
         imageDiscoveryModel = ImageDiscoveryModel(coordinator: coord)

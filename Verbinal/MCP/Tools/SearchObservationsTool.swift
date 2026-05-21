@@ -17,6 +17,13 @@ import VerbinalKit
 /// `maxRec` is capped at 1000 to defend the public TAP backend; agents are
 /// asked to refine queries rather than slurp everything.
 struct SearchObservationsTool: JSONReadTool {
+    // CADC's TAP service routinely takes 30-50s under load (their
+    // tomcat pools serialise quota / catalogue lookups against
+    // K8s). 120s gives the slow path room to finish; the default
+    // 60s would falsely surface deadlineExceeded on legitimate
+    // slow-but-working queries.
+    var toolTimeoutSeconds: TimeInterval { 120 }
+
     struct Args: Decodable, Sendable {
         var adql: String?
         var target: String?
@@ -35,7 +42,7 @@ struct SearchObservationsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "search_observations",
-        description: "Query the CADC archive via TAP. Either pass `adql` directly, or `target` (or `ra`+`dec`) plus `radiusDeg` for a positional cone search. Results: column headers + rows.",
+        description: "Query the CADC archive via TAP. Either pass `adql` directly, or `target` (or `ra`+`dec`) plus `radiusDeg` for a positional cone search (CIRCLE+INTERSECTS against `Plane.position_bounds`; default radius 0.05°). Results: column headers + rows. The `publisher_id` column in returned rows is the input you pass verbatim to `get_observation_caom2` and `get_data_links`. Server-side cap of 1000 rows per call; set `maxRec` lower for narrow queries. TAP can stall 30–60s under cluster load; the client tolerates 120s before timing out.",
         schema: #"""
         {
           "type": "object",
@@ -95,8 +102,13 @@ struct SearchObservationsTool: JSONReadTool {
         } else {
             throw ToolFailureReason.invalidArgument("Provide one of: adql, target, or (ra+dec).")
         }
-        // Minimal cone search ADQL — agents wanting more shape control
-        // should pass `adql` directly.
+        // Cone search ADQL: any plane whose footprint intersects the
+        // CIRCLE around (ra, dec). Earlier version used `POINT` here
+        // and never inserted `radius` — the caller's `radiusDeg`
+        // was silently ignored, so cone searches collapsed to a
+        // centroid-exact match (rare hit). Now `radius` is part of
+        // the geometry; agents wanting more shape control still
+        // pass `adql` directly.
         return """
         SELECT TOP 1000
           Observation.collection,
@@ -112,8 +124,8 @@ struct SearchObservationsTool: JSONReadTool {
         FROM caom2.Plane AS Plane
         JOIN caom2.Observation AS Observation ON Plane.obsID = Observation.obsID
         WHERE
-          1 = CONTAINS(
-            POINT('ICRS', \(ra), \(dec)),
+          1 = INTERSECTS(
+            CIRCLE('ICRS', \(ra), \(dec), \(radius)),
             Plane.position_bounds
           )
           AND ( Plane.quality_flag IS NULL OR Plane.quality_flag != 'junk' )

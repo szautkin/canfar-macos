@@ -12,6 +12,7 @@ import VerbinalKit
 /// Persists per-observation notes in Application Support, keyed by publisherID.
 /// Survives file deletion — notes are about the observation, not the local file copy.
 @Observable
+@MainActor
 final class ObservationNoteStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ObservationNoteStore")
     private let persistence: DiskPersistence<[String: ObservationNote]>

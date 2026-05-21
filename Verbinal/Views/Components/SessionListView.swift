@@ -58,6 +58,8 @@ struct SessionListView: View {
                         Image(systemName: "arrow.clockwise")
                     }
                     .buttonStyle(.borderless)
+                    .help("Refresh active sessions")
+                    .accessibilityLabel("Refresh sessions")
                 }
 
                 if model.sessions.isEmpty && !model.isLoading {

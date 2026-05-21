@@ -138,6 +138,7 @@ struct SearchResultsView: View {
                     .disabled(resultsModel.currentPage == 0)
                     .keyboardShortcut("[", modifiers: [.command])
                     .help(Text("Previous page"))
+                    .accessibilityLabel("Previous page")
 
                     Text("\(resultsModel.currentPage + 1)/\(resultsModel.totalPages)")
                         .font(.caption)
@@ -154,6 +155,7 @@ struct SearchResultsView: View {
                     .disabled(resultsModel.currentPage >= resultsModel.totalPages - 1)
                     .keyboardShortcut("]", modifiers: [.command])
                     .help(Text("Next page"))
+                    .accessibilityLabel("Next page")
                 }
             }
 

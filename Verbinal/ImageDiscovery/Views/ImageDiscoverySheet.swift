@@ -34,8 +34,13 @@ struct ImageDiscoverySheet: View {
         VStack(spacing: 0) {
             header
 
+            // Chips bar — visible only when one or more filters
+            // are active. Spans both panes so the user always sees
+            // what's currently constraining the right pane.
+            ActiveFiltersBar(model: model)
+
             HStack(spacing: 0) {
-                PackageFilterPane(model: model, searchText: model.searchText)
+                PackageFilterPane(model: model)
                     .frame(width: 280)
                 Divider()
                 MatchingImagesPane(model: model, onCommit: commitAndClose)
@@ -46,11 +51,6 @@ struct ImageDiscoverySheet: View {
             footer
         }
         .frame(minWidth: 720, idealWidth: 900, minHeight: 480, idealHeight: 600)
-        .searchable(
-            text: $model.searchText,
-            placement: .toolbar,
-            prompt: "Filter packages and images"
-        )
         .task {
             // Single-shot load: the sheet might be re-presented; the
             // model lives across showings so cached state survives.
@@ -65,6 +65,23 @@ struct ImageDiscoverySheet: View {
         )) {
             if let jobID = model.jobIDForLogsSheet {
                 ProbeLogsSheet(model: model, jobID: jobID)
+            }
+        }
+        .sheet(item: $model.failureDetailForSheet) { detail in
+            FailureDetailSheet(detail: detail)
+        }
+        // Manifest-detail sheet for a `.discovered` row — Phase 3
+        // of the 2026-05-20 UX audit. `Optional<ImageManifest>`
+        // isn't `Identifiable` natively; wrap via the model's
+        // optional binding so SwiftUI presents iff non-nil.
+        .sheet(
+            isPresented: Binding(
+                get: { model.manifestDetailForSheet != nil },
+                set: { if !$0 { model.manifestDetailForSheet = nil } }
+            )
+        ) {
+            if let manifest = model.manifestDetailForSheet {
+                ManifestDetailSheet(manifest: manifest)
             }
         }
     }
@@ -126,10 +143,32 @@ struct ImageDiscoverySheet: View {
                 Label(banner, systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.orange)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .textSelection(.enabled)
+                CopyErrorButton(message: banner)
+                Button {
+                    model.bannerMessage = nil
+                } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .help("Dismiss this banner")
+                .accessibilityLabel("Dismiss banner")
             }
             Spacer()
-            Button("Cancel") { dismiss() }
+            // "Close" rather than "Cancel" — probes that are
+            // currently running on Skaha continue in the background
+            // after the sheet dismisses (per
+            // `ImageDiscoveryModel.onDisappear`). The
+            // LaunchFormView's magnifier-icon badge tracks in-flight
+            // probe count so the user retains awareness from
+            // outside the sheet. "Cancel" implied stopping the
+            // work, which was misleading.
+            Button("Close") { dismiss() }
                 .keyboardShortcut(.cancelAction)
+                .help("Close this dialog. In-flight probes continue in the background; reopen later to see their results.")
             Button("Use this image") {
                 if let id = model.selectedImageID {
                     commitAndClose(id)
@@ -138,6 +177,7 @@ struct ImageDiscoverySheet: View {
             .buttonStyle(.borderedProminent)
             .disabled(model.selectedImageID == nil)
             .keyboardShortcut(.defaultAction)
+            .help("Pick the selected image for the launch form and close (↩)")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

@@ -70,10 +70,19 @@ public actor NetworkClient {
 
     // MARK: - HTTP Methods
 
-    public func get(_ urlString: String, accept: String? = nil) async throws -> (Data, HTTPURLResponse) {
+    public func get(
+        _ urlString: String,
+        accept: String? = nil,
+        additionalHeaders: [String: String]? = nil
+    ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "GET")
         if let accept {
             request.setValue(accept, forHTTPHeaderField: "Accept")
+        }
+        if let additionalHeaders {
+            for (k, v) in additionalHeaders {
+                request.setValue(v, forHTTPHeaderField: k)
+            }
         }
         return try await execute(request)
     }
@@ -92,7 +101,7 @@ public actor NetworkClient {
         _ urlString: String,
         formData: [String: String],
         headers: [String: String]? = nil,
-        timeout: TimeInterval = 30
+        timeout: TimeInterval = 60
     ) async throws -> (Data, HTTPURLResponse) {
         try await post(
             urlString,
@@ -112,7 +121,11 @@ public actor NetworkClient {
         _ urlString: String,
         formPairs: [(String, String)],
         headers: [String: String]? = nil,
-        timeout: TimeInterval = 30
+        // CADC services routinely take 30–50s under load (their tomcat
+        // pools serialise quota / catalogue lookups against K8s). 60s
+        // is a patience floor that lets honest slowness through while
+        // still bounding pathological hangs.
+        timeout: TimeInterval = 60
     ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "POST", timeout: timeout)
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
@@ -194,7 +207,7 @@ public actor NetworkClient {
 
     // MARK: - Private
 
-    private func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = 30) throws -> URLRequest {
+    private func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = 60) throws -> URLRequest {
         guard let url = URL(string: urlString) else {
             throw NetworkError.invalidURL(urlString)
         }

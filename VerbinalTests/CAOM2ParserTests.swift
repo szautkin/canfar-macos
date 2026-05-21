@@ -27,9 +27,32 @@ final class CAOM2ParserTests: XCTestCase {
     }
 
     func testObservationURIRejectsNonIVOAScheme() {
+        // Foreign schemes are rejected.
         XCTAssertNil(CAOM2Observation.observationURI(fromPublisherID: "https://example.com/x"))
         XCTAssertNil(CAOM2Observation.observationURI(fromPublisherID: ""))
-        XCTAssertNil(CAOM2Observation.observationURI(fromPublisherID: "caom:CFHT/22803"))
+    }
+
+    func testObservationURIAcceptsCanonicalCAOMForm() {
+        // The canonical `caom:Collection/ObsID` form is what
+        // `search_observations` returns and what the metadata
+        // service consumes — it should round-trip identically.
+        XCTAssertEqual(
+            CAOM2Observation.observationURI(fromPublisherID: "caom:CFHT/22803"),
+            "caom:CFHT/22803"
+        )
+        // Plane-level form gets its trailing productID stripped.
+        XCTAssertEqual(
+            CAOM2Observation.observationURI(fromPublisherID: "caom:CFHT/22803/22803p"),
+            "caom:CFHT/22803"
+        )
+        // Whitespace tolerance.
+        XCTAssertEqual(
+            CAOM2Observation.observationURI(fromPublisherID: "  caom:JWST/jw01147  "),
+            "caom:JWST/jw01147"
+        )
+        // Malformed (missing collection or obsID) → nil.
+        XCTAssertNil(CAOM2Observation.observationURI(fromPublisherID: "caom:"))
+        XCTAssertNil(CAOM2Observation.observationURI(fromPublisherID: "caom:CFHT/"))
     }
 
     // MARK: - Parser — minimal observation

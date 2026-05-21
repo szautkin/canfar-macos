@@ -347,13 +347,18 @@ public enum CAOM2Parser {
         return f
     }()
 
-    private static let iso8601Fractional: ISO8601DateFormatter = {
+    // ISO8601DateFormatter is documented thread-safe (Apple
+    // formatter docs); the compiler can't infer that, so we mark
+    // the statics `nonisolated(unsafe)` to silence the strict-
+    // concurrency warning without locking. Used read-only after
+    // the once-initialiser populates them.
+    nonisolated(unsafe) private static let iso8601Fractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
 
-    private static let iso8601: ISO8601DateFormatter = {
+    nonisolated(unsafe) private static let iso8601: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
         return f

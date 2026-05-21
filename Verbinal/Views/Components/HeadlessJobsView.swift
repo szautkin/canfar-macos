@@ -25,10 +25,27 @@ struct HeadlessJobsView: View {
                             .foregroundStyle(.tertiary)
                             .monospacedDigit()
                     }
-                    if model.isLoading {
-                        ProgressView()
-                            .controlSize(.small)
+                    // 2026-05-21 add: manual refresh — useful right
+                    // after the user deletes / launches a job and
+                    // doesn't want to wait 45s for the next auto-
+                    // poll. Spinner replaces the icon during the
+                    // in-flight refresh so the user can't
+                    // double-fire.
+                    Button {
+                        Task { await model.loadJobs() }
+                    } label: {
+                        if model.isLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.caption)
+                        }
                     }
+                    .buttonStyle(.borderless)
+                    .disabled(model.isLoading)
+                    .help("Refresh batch jobs now (or wait \(model.pollCountdown)s for the next auto-refresh)")
+                    .accessibilityLabel("Refresh batch jobs")
                 }
 
                 if model.isLoading && model.jobs.isEmpty {

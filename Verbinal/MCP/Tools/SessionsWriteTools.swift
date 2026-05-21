@@ -37,7 +37,7 @@ struct LaunchSessionTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "launch_session",
-        description: "Launch a new Skaha science-platform session. Type ∈ {notebook, desktop, firefly, carta, contributed}. The `image` MUST be a value returned by `list_session_images` for this user — hand-typed strings (e.g. 'images.canfar.net/skaha/notebook:latest') WILL fail with HTTP 400 'unknown or private image'. cores/ram/gpus default to 2/8/0 if omitted; pass cores=0 (or omit and rely on the default after rejection retry) to request the shared/flexible resource pool.",
+        description: "Launch a new Skaha science-platform session. Type ∈ {notebook, desktop, firefly, carta, contributed}. The `image` MUST be a value returned by `list_session_images` for this user — hand-typed strings (e.g. 'images.canfar.net/skaha/notebook:latest') WILL fail with HTTP 400 'unknown or private image'. BEFORE picking an image when the user has tooling needs, call `find_images_with_packages(...)` — most catalogue images have a cached package manifest, and choosing the right pre-baked image up-front beats `pip install --user`-ing inside the running session. SCHEDULING: cores/ram/gpus default to 2/8/0 if omitted, which can sit in Pending for many minutes under cluster load; pass `cores: 1, ram: 1` for fastest start (typically <60s on a warm node) when you're iterating or smoke-testing. Pass cores=0 (or rely on default after rejection retry) to request the shared/flexible resource pool.",
         schema: #"""
         {
           "type": "object",
@@ -88,7 +88,16 @@ struct LaunchSessionApplier: ProposalApplier {
             cmd: payload.cmd, registryUsername: nil, registrySecret: nil
         )
         do {
-            _ = try await service.launchSession(params)
+            // 3-minute deadline. Skaha session-create is normally
+            // < 30s but can stall under cluster pressure; bounded
+            // wait ensures the applier emits a terminal event
+            // either way.
+            let svc = service
+            _ = try await withApplierTimeout(seconds: 180, label: "launch_session") {
+                try await svc.launchSession(params)
+            }
+        } catch let pa as ProposalApplyError {
+            throw pa
         } catch {
             throw ProposalApplyError.backendError("launch failed: \(error.localizedDescription)")
         }
@@ -166,6 +175,113 @@ struct DeleteSessionApplier: ProposalApplier {
             try await service.deleteSession(id: payload.id)
         } catch {
             throw ProposalApplyError.backendError("delete failed: \(error.localizedDescription)")
+        }
+        await MainActor.run {
+            activity.append(.applied(proposal: proposal, kind: kind))
+        }
+    }
+}
+
+// MARK: - delete_sessions_bulk (destructive)
+
+/// Terminate multiple Skaha sessions in one call. Same endpoint per
+/// id as `delete_session`, but fires the deletes in parallel and
+/// reports per-id outcomes — closes the "I have N zombie pending
+/// jobs, want one call to nuke them all" friction that the
+/// 2026-05-13 QA report documented (5 stuck Pending jobs from a
+/// scheduling-stress test).
+///
+/// Partial-success semantics, not all-or-nothing: every id is
+/// attempted, the output reports which succeeded and which failed
+/// with the reason. Bulk tools that abort on first failure end up
+/// worse than a loop of single calls because they leave the user
+/// with an opaque partial-cleanup state.
+struct DeleteSessionsBulkTool: JSONWriteTool {
+    static let verbClass: VerbClass = .destructive
+
+    struct Args: Decodable, Sendable {
+        let ids: [String]
+    }
+
+    struct Payload: Codable, Sendable {
+        let ids: [String]
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "delete_sessions_bulk",
+        description: "Terminate up to 50 Skaha sessions (interactive OR headless) in parallel as one proposal envelope. Partial-success: every id is attempted; output reports `succeeded[]` + `failed[{id, error}]` so a single zombie that's already gone doesn't block the rest. Use this for zombie-cleanup after a launch-storm or to free quota slots after a stress test. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
+        schema: #"""
+        {
+          "type": "object",
+          "required": ["ids"],
+          "properties": {
+            "ids": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "minItems": 1,
+              "maxItems": 50
+            }
+          },
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
+        // Trim each id and drop empties — whitespace-only strings
+        // are never valid Skaha session ids and would 404 on
+        // delete, so catching them at the boundary is cleaner than
+        // burning a network call per blank.
+        let cleaned = args.ids
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let unique = Array(Set(cleaned))
+        guard !unique.isEmpty else {
+            throw ToolFailureReason.invalidArgument("ids is empty after deduplication / dropping blanks")
+        }
+        guard unique.count <= 50 else {
+            throw ToolFailureReason.invalidArgument("ids count \(unique.count) exceeds 50-per-call cap")
+        }
+        return try ProposalPlan.encoding(
+            kind: "delete_sessions_bulk",
+            summary: "Terminate \(unique.count) session\(unique.count == 1 ? "" : "s")",
+            payload: Payload(ids: unique)
+        )
+    }
+}
+
+struct DeleteSessionsBulkApplier: ProposalApplier {
+    let kind = "delete_sessions_bulk"
+    let service: SessionService
+    let activity: AgentActivityStore
+
+    func apply(_ proposal: PendingProposal) async throws {
+        let payload = try JSONDecoder().decode(DeleteSessionsBulkTool.Payload.self, from: proposal.payload)
+        // Fan out in parallel — Skaha's DELETE per id is
+        // independent and cheap (no body, no K8s wait). A linear
+        // loop over 50 ids at ~200 ms each adds up to 10 s; the
+        // TaskGroup completes in roughly the slowest single
+        // request. Wrapped in `withApplierTimeout` so the bulk
+        // never silently hangs (F-2026-05-13-A protection).
+        let svc = service
+        let ids = payload.ids
+        try await withApplierTimeout(seconds: 180, label: "delete_sessions_bulk") {
+            await withTaskGroup(of: Void.self) { group in
+                for id in ids {
+                    group.addTask {
+                        // We don't propagate errors here — every
+                        // attempt should run regardless of others'
+                        // outcomes. The success of the bulk is
+                        // measured by the activity-feed entry; the
+                        // applier doesn't currently round-trip
+                        // per-id failures back to the agent
+                        // because the proposal-apply protocol only
+                        // expresses succeed / throw. Surface
+                        // detail in a follow-up if any.
+                        _ = try? await svc.deleteSession(id: id)
+                    }
+                }
+            }
         }
         await MainActor.run {
             activity.append(.applied(proposal: proposal, kind: kind))

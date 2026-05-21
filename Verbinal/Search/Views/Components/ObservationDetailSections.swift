@@ -339,6 +339,7 @@ struct ObservationFilesSection: View {
                     }
                     .buttonStyle(.borderless)
                     .help(Text("Download"))
+                    .accessibilityLabel("Download \(filename)")
                 }
             }
             HStack(spacing: 12) {

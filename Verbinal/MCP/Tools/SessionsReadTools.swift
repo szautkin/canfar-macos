@@ -10,6 +10,13 @@ import VerbinalKit
 // MARK: - list_sessions
 
 struct ListSessionsTool: JSONReadTool {
+    // Skaha session listing should return in <5s on a healthy
+    // cluster. 30s catches the same transport-stall failure mode
+    // the 2026-05-15 QA report flagged for list_headless_jobs;
+    // past that, the agent should see a typed deadline error and
+    // decide whether to retry rather than blocking the MCP
+    // transport indefinitely.
+    var toolTimeoutSeconds: TimeInterval { 30 }
     typealias Args = EmptyArgs
 
     struct Output: Encodable, Sendable {

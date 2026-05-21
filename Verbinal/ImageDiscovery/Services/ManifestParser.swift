@@ -35,7 +35,7 @@ enum ManifestParser {
     /// Maximum schemaVersion this build understands. Bumped together
     /// with `ProbeScript.schemaVersion` whenever the probe's JSON
     /// contract changes incompatibly.
-    static let maxSupportedSchemaVersion: Int = 1
+    static let maxSupportedSchemaVersion: Int = 3
 
     /// Parse raw probe output (UTF-8 JSON bytes) into a manifest.
     /// Throws `ParseError` on failure; never crashes on malformed

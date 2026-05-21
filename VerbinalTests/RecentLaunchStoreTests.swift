@@ -7,6 +7,7 @@
 import XCTest
 @testable import Verbinal
 
+@MainActor
 final class RecentLaunchStoreTests: XCTestCase {
 
     private func makeStore() -> RecentLaunchStore {

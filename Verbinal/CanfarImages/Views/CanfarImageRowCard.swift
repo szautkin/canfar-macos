@@ -13,6 +13,11 @@ import SwiftUI
 struct CanfarImageRowCard: View {
     let row: CanfarImageRow
     var onInspect: () -> Void
+    /// Optional "use this image in the launch form" action. When
+    /// `nil`, the affordance is hidden — keeps surfaces that
+    /// shouldn't drive a launch form (tests, future preview-only
+    /// listings) free of a button that would dangle.
+    var onUseInLaunchForm: (() -> Void)?
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -43,6 +48,17 @@ struct CanfarImageRowCard: View {
             Spacer()
 
             statusIndicator
+            if let onUseInLaunchForm {
+                Button {
+                    onUseInLaunchForm()
+                } label: {
+                    Image(systemName: "arrow.right.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .help("Use this image in the Launch Session form")
+                .accessibilityLabel("Use \(row.image.label) in launch form")
+            }
             Button {
                 onInspect()
             } label: {
@@ -51,6 +67,7 @@ struct CanfarImageRowCard: View {
             }
             .buttonStyle(.borderless)
             .help("Inspect this image's installed packages")
+            .accessibilityLabel("Inspect \(row.image.label) packages")
         }
         .padding(10)
         .background(Color.cardBackground)

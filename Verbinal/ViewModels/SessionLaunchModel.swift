@@ -330,6 +330,50 @@ final class SessionLaunchModel {
         return Self.cacheAgeFormatter.localizedString(for: timestamp, relativeTo: Date())
     }
 
+    // MARK: - External image selection
+
+    /// Drive the form's full type → project → image cascade from a
+    /// single `ParsedImage`. Used by surfaces outside the form
+    /// (Canfar Images widget, agent tools) so a click in those
+    /// places lands on the same model state the user would reach
+    /// by walking the pickers manually.
+    ///
+    /// Cascade order matters — assigning out of order leaves the
+    /// model with mismatched lists (e.g. a `selectedImage` that
+    /// isn't in the current `images` array because the project
+    /// hasn't rebuilt yet). The `didSet` observers do all the
+    /// repopulation work; we just trigger them in the right order.
+    ///
+    /// Resource sliders, session name, and other form state are
+    /// preserved — only the image-identity fields change.
+    func applyImageSelection(_ image: ParsedImage) {
+        // Catalogue images bypass the advanced "custom image" mode.
+        if useCustomImage { useCustomImage = false }
+
+        // 1. Session type — first cascade step. Skip if the image
+        // doesn't declare any types (cache-only fallback path).
+        if let primary = image.types.first?.lowercased(),
+           sessionTypes.contains(primary),
+           selectedType != primary {
+            selectedType = primary
+        }
+
+        // 2. Project — only assign if the rebuilt projects list
+        // actually contains it; otherwise stay on whatever the
+        // type cascade landed on.
+        if projects.contains(image.project),
+           selectedProject != image.project {
+            selectedProject = image.project
+        }
+
+        // 3. Image — prefer the catalogue's instance so identity
+        // matches what the picker enumerates. Fall back to the
+        // passed-in value when the catalogue can't produce one
+        // (e.g. cache-only browse during a Skaha catalogue
+        // outage).
+        selectedImage = images.first(where: { $0.id == image.id }) ?? image
+    }
+
     // MARK: - Cascading Selection
 
     private func onRegistryChanged() {

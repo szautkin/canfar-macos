@@ -47,6 +47,7 @@ extension ContentView {
             }
             .buttonStyle(.borderless)
             .help("Open Settings (⌘,)")
+            .accessibilityLabel("Settings")
 
             Button {
                 showAbout.wrappedValue = true
@@ -54,6 +55,8 @@ extension ContentView {
                 Image(systemName: "info.circle")
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("About Verbinal")
+            .help("About Verbinal")
 
             if appState.isLoading {
                 ProgressView().scaleEffect(0.7)
@@ -131,6 +134,8 @@ extension ContentView {
                 Image(systemName: "sidebar.left")
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel(showFileBrowser ? "Hide file browser" : "Show file browser")
+            .help("Toggle file browser")
 
             Button {
                 showAbout.wrappedValue = true
@@ -138,6 +143,8 @@ extension ContentView {
                 Image(systemName: "info.circle")
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("About Verbinal")
+            .help("About Verbinal")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -207,6 +214,8 @@ extension ContentView {
                 Image(systemName: "info.circle")
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("About Verbinal")
+            .help("About Verbinal")
 
             if appState.isLoading {
                 ProgressView()

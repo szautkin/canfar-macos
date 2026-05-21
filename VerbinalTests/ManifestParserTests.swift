@@ -267,6 +267,40 @@ final class ManifestParserTests: XCTestCase {
         XCTAssertEqual(ProbeScript.schemaVersion, ManifestParser.maxSupportedSchemaVersion)
     }
 
+    func testProbeScriptBodyEmitsCorrectSchemaVersionLiteral() {
+        // The probe's emitted JSON encodes `schemaVersion` as a
+        // literal inside an embedded Python heredoc (raw string
+        // can't interpolate Swift values). A future schema bump
+        // that updates `ProbeScript.schemaVersion` but forgets
+        // the inline literal would write the wrong number into
+        // every fresh manifest. Catch that drift here by scraping
+        // the body for the literal and pinning it to the Swift
+        // constant.
+        let expected = "\"schemaVersion\": \(ProbeScript.schemaVersion),"
+        XCTAssertTrue(
+            ProbeScript.body.contains(expected),
+            "ProbeScript.body must emit `\(expected)` so probe output matches the parser's accepted schema. Edit the inline literal in `manifest = { ... }` when you bump `ProbeScript.schemaVersion`."
+        )
+    }
+
+    func testInspectorScriptBodyEmitsCorrectSchemaVersionLiteral() {
+        // Inspector body has FOUR sites where `schemaVersion` is
+        // baked in (success-path manifest, two error-fallback
+        // manifests, one shell-level fallback). All four must
+        // match the Swift constant. Counting at least four hits
+        // protects against the "I edited one but missed the
+        // others" failure mode the 2026-05-14 schema-2 bump
+        // surfaced.
+        let key1 = "\"schemaVersion\":\(InspectorScript.schemaVersion),"      // shell fallback (no spaces)
+        let key2 = "\"schemaVersion\": \(InspectorScript.schemaVersion),"     // python manifests
+        let count1 = InspectorScript.body.components(separatedBy: key1).count - 1
+        let count2 = InspectorScript.body.components(separatedBy: key2).count - 1
+        XCTAssertGreaterThanOrEqual(
+            count1 + count2, 4,
+            "InspectorScript.body must emit the schemaVersion literal in all four bake sites (shell fallback + 3 python paths). Found \(count1) compact + \(count2) spaced — update them together when bumping `InspectorScript.schemaVersion`."
+        )
+    }
+
     func testProbeScriptHashIsStableAcrossInvocations() {
         // The hash drives the on-VOSpace upload filename
         // (probe-<hash>.sh). It must be deterministic across runs of

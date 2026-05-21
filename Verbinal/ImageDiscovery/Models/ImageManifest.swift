@@ -65,6 +65,54 @@ struct ImageManifest: Codable, Equatable, Sendable {
     /// SUCCESS, not failure; this string explains the emptiness.
     let probeNotes: String?
 
+    /// Behavioural capability flags detected by the probe in
+    /// addition to the raw package list. These answer questions
+    /// that package-name matching can't: "does fitsio import
+    /// successfully?" (vs just "is fitsio installed?"), "does
+    /// astropy handle tile-compressed FITS without throwing?",
+    /// "is there a GPU?". Added in response to the 2026-05-14 QA
+    /// review that flagged repeated runtime discovery of these
+    /// boolean questions.
+    ///
+    /// Stable string keys (see `ImageManifest.Capability` for the
+    /// canonical set the probe currently tests); empty when the
+    /// probe predates schemaVersion ≥ 2 or the image is too
+    /// minimal to support the detection.
+    var capabilities: [String] = []
+
+    /// Exact Python 3 interpreter version reported by `python3 -V`
+    /// inside the container, e.g. `"3.11.6"`. `"unknown"` when
+    /// `python3` is not on PATH or the version string couldn't be
+    /// parsed.
+    ///
+    /// Added in v3 to close the 2026-05-15 QA finding: a
+    /// `cirada/cutout_core_interactive:latest` image shipping
+    /// Python 3.6.9 (pre-PEP-563) silently rejected
+    /// `from __future__ import annotations`, costing one job
+    /// submission and ~10 minutes of debugging. Surfacing the
+    /// version pre-launch lets agents (and humans) pick a
+    /// compatible image up-front.
+    var pythonVersion: String = "unknown"
+
+    /// `PRETTY_NAME` line from `/etc/os-release` — the
+    /// human-readable OS string, e.g. `"Ubuntu 22.04.3 LTS"` or
+    /// `"AlmaLinux 9.3 (Shamrock Pampas Cat)"`. Complements
+    /// `osFamily`/`osVersion` (which carry the structured `ID` /
+    /// `VERSION_ID` fields); `osRelease` is the line the user
+    /// sees at the prompt and recognises immediately.
+    /// `"unknown"` when `/etc/os-release` was missing or
+    /// unparseable.
+    var osRelease: String = "unknown"
+
+    /// Interactive shells discovered on `PATH` / `/bin`. Common
+    /// entries: `"bash"`, `"sh"`, `"zsh"`, `"dash"`, `"fish"`.
+    /// Empty when the probe couldn't detect any shell (would
+    /// indicate an extremely minimal image — at minimum `/bin/sh`
+    /// is expected). Agents use this to decide whether
+    /// `cmd: "bash"` is a viable launch shape, or whether they
+    /// need to fall back to `/bin/sh`.
+    var shells: [String] = []
+
     struct Package: Codable, Equatable, Sendable, Hashable {
         let name: String
         let version: String
@@ -99,6 +147,8 @@ struct ImageManifest: Codable, Equatable, Sendable {
         case osFamily, osVersion, kernel
         case dpkgPackages, rpmPackages, apkPackages, pythonPackages, rPackages, condaEnvs
         case probeNotes
+        case capabilities
+        case pythonVersion, osRelease, shells
     }
 
     init(
@@ -115,7 +165,11 @@ struct ImageManifest: Codable, Equatable, Sendable {
         pythonPackages: [PythonPackage] = [],
         rPackages: [Package] = [],
         condaEnvs: [CondaEnv] = [],
-        probeNotes: String? = nil
+        probeNotes: String? = nil,
+        capabilities: [String] = [],
+        pythonVersion: String = "unknown",
+        osRelease: String = "unknown",
+        shells: [String] = []
     ) {
         self.schemaVersion = schemaVersion
         self.imageID = imageID
@@ -131,6 +185,10 @@ struct ImageManifest: Codable, Equatable, Sendable {
         self.rPackages = rPackages
         self.condaEnvs = condaEnvs
         self.probeNotes = probeNotes
+        self.capabilities = capabilities
+        self.pythonVersion = pythonVersion
+        self.osRelease = osRelease
+        self.shells = shells
     }
 
     init(from decoder: Decoder) throws {
@@ -149,6 +207,56 @@ struct ImageManifest: Codable, Equatable, Sendable {
         self.rPackages     = try c.decodeIfPresent([Package].self, forKey: .rPackages) ?? []
         self.condaEnvs     = try c.decodeIfPresent([CondaEnv].self, forKey: .condaEnvs) ?? []
         self.probeNotes    = try c.decodeIfPresent(String.self, forKey: .probeNotes)
+        self.capabilities  = try c.decodeIfPresent([String].self, forKey: .capabilities) ?? []
+        // v3 additions — decodeIfPresent so v1/v2 manifests
+        // already in the user's cache keep deserialising under
+        // the new schema without forcing a re-probe.
+        self.pythonVersion = try c.decodeIfPresent(String.self, forKey: .pythonVersion) ?? "unknown"
+        self.osRelease     = try c.decodeIfPresent(String.self, forKey: .osRelease) ?? "unknown"
+        self.shells        = try c.decodeIfPresent([String].self, forKey: .shells) ?? []
+    }
+}
+
+// MARK: - Capability vocabulary
+
+extension ImageManifest {
+    /// Canonical capability key set the probe currently tests. Each
+    /// key answers a behavioural question agents have repeatedly
+    /// asked: "is the image GPU-ready?", "can it parse tile-
+    /// compressed FITS?", "does photutils have iterative PSF
+    /// photometry?". Adding a key here is the contract — probe
+    /// updates declare detection rules, agents filter on the key.
+    enum Capability {
+        /// `fitsio` Python module imports successfully. Implies
+        /// the image can read CFHT / Megacam tile-compressed
+        /// FITS without the astropy ≥5 `Invalid TFORM2: 1PE(0)`
+        /// failure.
+        public static let fitsio = "fitsio"
+        /// `photutils.psf.IterativePSFPhotometry` is reachable —
+        /// i.e. photutils 1.13+ is the installed major.
+        public static let photutilsIterativePSF = "photutils-iterative-psf"
+        /// `nvidia-smi --version` succeeds inside the container,
+        /// indicating a usable GPU runtime is wired up.
+        public static let gpu = "gpu"
+        /// `python3` is on PATH and importable. Useful for agents
+        /// deciding whether `cmd: "python3"` is even a viable
+        /// launch shape for this image.
+        public static let python3 = "python3"
+        /// `conda` is on PATH. Indicates the image manages
+        /// multiple Python envs, so `find_images_with_packages`
+        /// can produce env-scoped hits.
+        public static let conda = "conda"
+        /// `Rscript` is on PATH. R-language workloads are
+        /// viable. Detected because R isn't always installed
+        /// even in "data-science" images.
+        public static let rscript = "rscript"
+
+        /// Every capability the canonical probe knows how to
+        /// detect. Tests use this to verify probe / parser
+        /// coverage stays aligned with the vocabulary.
+        public static let all: [String] = [
+            fitsio, photutilsIterativePSF, gpu, python3, conda, rscript,
+        ]
     }
 }
 

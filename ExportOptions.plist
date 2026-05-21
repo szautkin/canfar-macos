@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- App Store Connect upload. For direct distribution outside MAS,
+         use "developer-id" + a Developer ID certificate. -->
+    <key>method</key>
+    <string>app-store</string>
+
+    <!-- Your Apple Developer team ID. Confirms which Mac App
+         Distribution certificate to use when more than one matches. -->
+    <key>teamID</key>
+    <string>A4ABW5VD88</string>
+
+    <!-- Automatic signing matches the Release configuration's
+         signing style. Set to "manual" + provisioningProfiles dict
+         if you maintain explicit profiles. -->
+    <key>signingStyle</key>
+    <string>automatic</string>
+
+    <!-- Embed Swift libraries in the package — required for MAS
+         when the app links against any system framework with
+         backward-compat shim. Default is true; pinning explicitly. -->
+    <key>embedOnDemandResourcesAssetPacksInBundle</key>
+    <true/>
+
+    <!-- Strip Swift symbols to reduce binary size. App Store Connect
+         re-symbolicates from the dSYM in the archive. -->
+    <key>stripSwiftSymbols</key>
+    <true/>
+
+    <!-- Upload symbols (.dSYM) so Apple can symbolicate crash
+         reports surfaced via TestFlight / App Store Connect. -->
+    <key>uploadSymbols</key>
+    <true/>
+</dict>
+</plist>
+</content>
+</invoke>

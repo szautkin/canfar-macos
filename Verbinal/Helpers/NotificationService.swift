@@ -5,7 +5,11 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
-import UserNotifications
+// `UserNotifications` predates Sendable annotations; the compiler
+// can't prove `UNUserNotificationCenter` is safe to capture in the
+// callback closures here even though it is. `@preconcurrency`
+// silences the resulting warnings without adding runtime work.
+@preconcurrency import UserNotifications
 
 enum NotificationService {
     private static let groupID = "com.codebg.Verbinal.headless"

@@ -10,7 +10,9 @@ import VerbinalKit
 /// Parses VOSpace XML responses into VOSpaceNode objects.
 enum VOSpaceXMLParser {
 
-    private static let isoDateFormatter: ISO8601DateFormatter = {
+    // ISO8601DateFormatter is documented thread-safe; the
+    // strict-concurrency check can't infer that for a static.
+    nonisolated(unsafe) private static let isoDateFormatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f

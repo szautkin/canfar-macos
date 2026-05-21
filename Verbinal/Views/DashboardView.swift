@@ -49,7 +49,10 @@ struct DashboardView: View {
                             CanfarImagesView(
                                 model: cim,
                                 showDiscoverySheet: Bindable(appState).showImageDiscoverySheet,
-                                preselectedImageID: Bindable(appState).preselectedDiscoveryImageID
+                                preselectedImageID: Bindable(appState).preselectedDiscoveryImageID,
+                                onUseInLaunchForm: { image in
+                                    sendImageToLaunchForm(image)
+                                }
                             )
                         }
 
@@ -98,6 +101,29 @@ struct DashboardView: View {
                     Task { await cim.refreshFromCache() }
                 }
             }
+        }
+    }
+
+    /// Routes a `ParsedImage` to whichever launch model fits its
+    /// declared types, then flips the visible launch-form tab so
+    /// the user sees the change. Lives on the dashboard because
+    /// it's the only surface that holds references to both
+    /// `sessionLaunchModel` and `headlessLaunchModel`.
+    ///
+    /// Single-registry assumption: catalogue images implicitly
+    /// flip out of advanced-mode in `SessionLaunchModel`. No
+    /// custom-registry write happens here.
+    private func sendImageToLaunchForm(_ image: ParsedImage) {
+        let isHeadless = image.types.contains("headless")
+        if isHeadless, let hm = headlessLaunchModel {
+            hm.applyImageSelection(image)
+            appState.launchFormTab = .headless
+        } else {
+            sessionLaunchModel.applyImageSelection(image)
+            // Standard tab fits all the cascade-driven types; only
+            // jump to Advanced if the user is mid-customising it
+            // — that's a future signal we don't track today.
+            appState.launchFormTab = .standard
         }
     }
 }

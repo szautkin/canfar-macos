@@ -32,7 +32,7 @@ enum ProbeScript {
     /// VOSpace; this version field is mirrored into the manifest so
     /// the parser can branch on schema if we ever ship multiple at
     /// once.
-    static let schemaVersion: Int = 1
+    static let schemaVersion: Int = 3
 
     /// Hash of the script body. Used to derive the upload path
     /// (`/arc/home/$USER/.verbinal/probe-<scriptHash>.sh`) so that
@@ -82,6 +82,31 @@ enum ProbeScript {
 
     uname -srm > "$STAGE/kernel" 2>/dev/null || true
     [ -r /etc/os-release ] && cp /etc/os-release "$STAGE/os-release" || true
+
+    # Python 3 interpreter version. `python3 -V` writes the
+    # version to stderr or stdout depending on Python's version
+    # (pre-3.4: stderr; 3.4+: stdout) — capture both. We parse
+    # this in the aggregator into `pythonVersion`, the field
+    # the 2026-05-15 QA report explicitly named ("a
+    # cirada/cutout_core_interactive:latest image shipping
+    # Python 3.6.9 cost one job and ~10 minutes — surfacing
+    # the version pre-launch lets agents pick a compatible
+    # image up-front").
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -V > "$STAGE/python-version.txt" 2>&1 || true
+    fi
+
+    # Interactive shells on PATH / /bin. Used by agents to
+    # decide whether `cmd: "bash"` is viable. Test the common
+    # ones in order of falling popularity; minimal images may
+    # only ship `/bin/sh`. Each line is one shell name; the
+    # aggregator dedupes and sorts.
+    : > "$STAGE/shells.txt"
+    for sh in bash zsh sh dash fish ksh; do
+        if [ -x "/bin/$sh" ] || [ -x "/usr/bin/$sh" ] || command -v "$sh" >/dev/null 2>&1; then
+            echo "$sh" >> "$STAGE/shells.txt"
+        fi
+    done
 
     # System package managers
     if command -v dpkg-query >/dev/null 2>&1; then
@@ -157,6 +182,25 @@ enum ProbeScript {
                 2>/dev/null > "$STAGE/r.txt" || true
     fi
 
+    # Behavioural capability flags. One line per detected
+    # capability written to a stage file the Python aggregator
+    # picks up. Each test is best-effort: silent failure is fine,
+    # the absence of the key in the manifest's `capabilities` is
+    # the signal "not detected". Tests are deliberately strict —
+    # we want false negatives over false positives so an agent
+    # that filters on `fitsio` can trust the hit.
+    : > "$STAGE/capabilities.txt"
+    command -v python3 >/dev/null 2>&1 && echo "python3" >> "$STAGE/capabilities.txt"
+    command -v conda   >/dev/null 2>&1 && echo "conda"   >> "$STAGE/capabilities.txt"
+    command -v Rscript >/dev/null 2>&1 && echo "rscript" >> "$STAGE/capabilities.txt"
+    command -v nvidia-smi >/dev/null 2>&1 && \
+        nvidia-smi --version >/dev/null 2>&1 && echo "gpu" >> "$STAGE/capabilities.txt"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "import fitsio" 2>/dev/null && echo "fitsio" >> "$STAGE/capabilities.txt"
+        python3 -c "from photutils.psf import IterativePSFPhotometry" 2>/dev/null \
+            && echo "photutils-iterative-psf" >> "$STAGE/capabilities.txt"
+    fi
+
     # Content fingerprint over stable marker files
     HASH_INPUT=""
     for f in /etc/os-release /var/lib/dpkg/status /etc/redhat-release /etc/alpine-release; do
@@ -177,7 +221,7 @@ enum ProbeScript {
     # a hung job.
     if ! command -v python3 >/dev/null 2>&1; then
         cat > "$TMP" <<MINIMAL
-    {"schemaVersion":1,"imageID":"$IMAGE_ID","contentHash":"$CONTENT_HASH","capturedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","osFamily":"unknown","osVersion":"unknown","kernel":"unknown","dpkgPackages":[],"rpmPackages":[],"apkPackages":[],"pythonPackages":[],"rPackages":[],"condaEnvs":[],"probeNotes":"python3 not found in image"}
+    {"schemaVersion":3,"imageID":"$IMAGE_ID","contentHash":"$CONTENT_HASH","capturedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","osFamily":"unknown","osVersion":"unknown","osRelease":"unknown","kernel":"unknown","dpkgPackages":[],"rpmPackages":[],"apkPackages":[],"pythonPackages":[],"rPackages":[],"condaEnvs":[],"capabilities":[],"pythonVersion":"unknown","shells":[],"probeNotes":"python3 not found in image"}
     MINIMAL
         mv "$TMP" "$OUT"
         exit 0
@@ -208,9 +252,36 @@ enum ProbeScript {
             for ln in open(os.path.join(stage, "os-release")):
                 k, _, v = ln.strip().partition("=")
                 data[k] = v.strip('"\'')
-            return data.get("ID", "unknown"), data.get("VERSION_ID", "unknown")
+            return (
+                data.get("ID", "unknown"),
+                data.get("VERSION_ID", "unknown"),
+                data.get("PRETTY_NAME", "unknown"),
+            )
         except FileNotFoundError:
-            return "unknown", "unknown"
+            return "unknown", "unknown", "unknown"
+
+    def python_version():
+        # `python3 -V` output looks like "Python 3.11.6" or
+        # (on Python 2 fallback) "Python 2.7.18". Strip the
+        # leading "Python " and trailing whitespace.
+        try:
+            raw = open(os.path.join(stage, "python-version.txt")).read().strip()
+            if raw.startswith("Python "):
+                return raw[len("Python "):].strip() or "unknown"
+            return raw or "unknown"
+        except FileNotFoundError:
+            return "unknown"
+
+    def shells_list():
+        try:
+            seen = []
+            for ln in open(os.path.join(stage, "shells.txt")):
+                name = ln.strip()
+                if name and name not in seen:
+                    seen.append(name)
+            return sorted(seen)
+        except FileNotFoundError:
+            return []
 
     def kernel():
         try:
@@ -240,7 +311,7 @@ enum ProbeScript {
             for p in read_pkgs(os.path.join(stage, "python-system.txt"))
         ]
 
-    os_family, os_version = parse_os_release()
+    os_family, os_version, os_release = parse_os_release()
 
     # Flatten conda envs into pythonPackages so the UI can search uniformly,
     # but keep condaEnvs[] populated for env-aware filters.
@@ -255,13 +326,22 @@ enum ProbeScript {
        and not read_pkgs(os.path.join(stage, "apk")):
         notes = "image lacks dpkg/rpm/apk and pip — minimal manifest"
 
+    # Capability markers — one per line, in order of detection.
+    # Empty file or missing file (older probes) → empty list.
+    capabilities = []
+    cap_path = os.path.join(stage, "capabilities.txt")
+    if os.path.exists(cap_path):
+        with open(cap_path) as f:
+            capabilities = [line.strip() for line in f if line.strip()]
+
     manifest = {
-        "schemaVersion": 1,
+        "schemaVersion": 3,
         "imageID": image_id,
         "contentHash": content_hash,
         "capturedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "osFamily": os_family,
         "osVersion": os_version,
+        "osRelease": os_release,
         "kernel": kernel(),
         "dpkgPackages": read_pkgs(os.path.join(stage, "dpkg")),
         "rpmPackages":  read_pkgs(os.path.join(stage, "rpm")),
@@ -269,6 +349,9 @@ enum ProbeScript {
         "pythonPackages": flat_python,
         "rPackages":    read_pkgs(os.path.join(stage, "r.txt")),
         "condaEnvs":    envs,
+        "capabilities": capabilities,
+        "pythonVersion": python_version(),
+        "shells":       shells_list(),
     }
     if notes is not None:
         manifest["probeNotes"] = notes

@@ -44,6 +44,7 @@ struct SessionEventsSheet: View {
                 Button("Copy") {
                     PlatformClipboard.copy(currentContent)
                 }
+                .help("Copy the current tab's content to the clipboard")
 
                 Spacer()
 
@@ -51,6 +52,7 @@ struct SessionEventsSheet: View {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
+                .help("Close this dialog (⎋)")
             }
         }
         .padding(20)

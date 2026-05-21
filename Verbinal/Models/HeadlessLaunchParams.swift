@@ -44,6 +44,20 @@ struct HeadlessLaunchParams: Equatable {
     /// to surface partial state to the user).
     var replicas: Int = 1
 
+    /// Pre-built `x-skaha-registry-auth` header value (base64 of
+    /// `username:secret`). When set, `HeadlessService` attaches it
+    /// to the launch POST so Skaha can pull from a private namespace
+    /// without rejecting the job at submit time with HTTP 400 "No
+    /// authentication provided for unknown or private image."
+    ///
+    /// Built by `ImageDiscoverySettingsService.currentAuthHeader()`
+    /// reading the user-configured `(username, Keychain secret)`
+    /// pair. `nil` when no credentials are configured — the launch
+    /// proceeds without the header, which is fine for fully-public
+    /// images and matches the historic behaviour for the in-app
+    /// session launch path.
+    var registryAuthHeader: String?
+
     static func == (lhs: HeadlessLaunchParams, rhs: HeadlessLaunchParams) -> Bool {
         lhs.name == rhs.name &&
         lhs.image == rhs.image &&
@@ -53,7 +67,8 @@ struct HeadlessLaunchParams: Equatable {
         lhs.cores == rhs.cores &&
         lhs.ram == rhs.ram &&
         lhs.gpus == rhs.gpus &&
-        lhs.replicas == rhs.replicas
+        lhs.replicas == rhs.replicas &&
+        lhs.registryAuthHeader == rhs.registryAuthHeader
     }
 }
 

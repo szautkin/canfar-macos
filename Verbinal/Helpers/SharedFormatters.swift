@@ -22,16 +22,22 @@ enum SharedFormatters {
 
     // MARK: - Dates
 
+    // Apple's `ISO8601DateFormatter` and `ByteCountFormatter` are
+    // documented thread-safe after configuration; the strict-
+    // concurrency check can't infer that, so we mark the immutable
+    // statics `nonisolated(unsafe)`. Read-only after the
+    // once-initialiser runs.
+
     /// ISO-8601 with internet date-time + fractional seconds, e.g.
     /// `2024-03-15T10:30:45.123Z`. Use for parsing CADC/CAOM2 timestamps.
-    static let iso8601Fractional: ISO8601DateFormatter = {
+    nonisolated(unsafe) static let iso8601Fractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
 
     /// ISO-8601 with internet date-time, no fractional seconds.
-    static let iso8601: ISO8601DateFormatter = {
+    nonisolated(unsafe) static let iso8601: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
         return f
@@ -75,7 +81,7 @@ enum SharedFormatters {
 
     /// File-size byte-count formatter — used everywhere a cell shows a
     /// human-readable size (downloads, artifacts, VOSpace nodes).
-    static let fileBytes: ByteCountFormatter = {
+    nonisolated(unsafe) static let fileBytes: ByteCountFormatter = {
         let f = ByteCountFormatter()
         f.countStyle = .file
         f.allowedUnits = [.useKB, .useMB, .useGB, .useTB]

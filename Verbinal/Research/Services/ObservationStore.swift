@@ -11,6 +11,7 @@ import VerbinalKit
 
 /// Persists metadata for downloaded observations.
 @Observable
+@MainActor
 final class ObservationStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ObservationStore")
     private let persistence: DiskPersistence<[DownloadedObservation]>

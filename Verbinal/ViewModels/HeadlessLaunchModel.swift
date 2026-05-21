@@ -51,6 +51,21 @@ final class HeadlessLaunchModel {
         self.recentLaunchStore = recentLaunchStore
     }
 
+    // MARK: - External image selection
+
+    /// Drive the form's image (and project) from a single
+    /// `ParsedImage`. Mirrors `SessionLaunchModel.applyImageSelection`
+    /// so external surfaces (Canfar Images widget, agent tools)
+    /// can populate either form via a uniform call. Headless has
+    /// no type cascade — there's only one type — so the function
+    /// is a thin assignment plus the project sync.
+    func applyImageSelection(_ image: ParsedImage) {
+        if !image.project.isEmpty, selectedProject != image.project {
+            selectedProject = image.project
+        }
+        selectedImage = image
+    }
+
     // MARK: - Validation
 
     var canLaunch: Bool {

@@ -240,9 +240,18 @@ struct SearchResultColumns {
     /// Integer ⊂ Number and Boolean ⊂ Integer (for "0"/"1"), so priority
     /// decides which win when samples are ambiguous — narrower / semantically
     /// richer kinds come first.
-    private static let kindPredicates: [ColumnKind: (String) -> Bool] = [
-        .isoDate: looksLikeISO8601,
-        .boolean: BooleanValue.looksBoolean,
+    // `[ColumnKind: (String) -> Bool]` would carry function values
+    // without `@Sendable`, which strict-concurrency mode flags on a
+    // static. Closures captured here are pure (no state) so
+    // marking them `@Sendable` is correct.
+    // `[ColumnKind: (String) -> Bool]` would carry non-`@Sendable`
+    // function values, which strict-concurrency mode flags on a
+    // static. The underlying predicates are pure (capture nothing),
+    // so wrapping in explicit `@Sendable` closures is correct and
+    // free.
+    private static let kindPredicates: [ColumnKind: @Sendable (String) -> Bool] = [
+        .isoDate: { looksLikeISO8601($0) },
+        .boolean: { BooleanValue.looksBoolean($0) },
         .integer: { Int($0) != nil },
         .number: { Double($0) != nil },   // NaN/Inf pass here — comparator rejects at sort time
     ]

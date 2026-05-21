@@ -92,6 +92,8 @@ struct ObservationNotesView: View {
                         .foregroundStyle(star <= rating ? Color.yellow : Color.secondary)
                         .font(.callout)
                 }
+                .accessibilityLabel("Rate \(star) star\(star == 1 ? "" : "s")")
+                .help("Set rating to \(star)")
                 .buttonStyle(.plain)
                 .help("Rate \(star) star\(star == 1 ? "" : "s")")
             }
