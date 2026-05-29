@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.codebg
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
   xcodeVersion: "16.0"
   generateEmptyDirectories: true
 configs:
@@ -14,7 +15,7 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
     MARKETING_VERSION: "1.2.0"
-    CURRENT_PROJECT_VERSION: "7"
+    CURRENT_PROJECT_VERSION: "9"
     PRODUCT_NAME: Verbinal
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: A4ABW5VD88
@@ -80,12 +81,73 @@ targets:
       base:
         PRODUCT_NAME: canfar-mcp
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal.canfar-mcp
+        CODE_SIGN_ENTITLEMENTS: helpers/canfar-mcp/CanfarMCP.entitlements
         # The helper runs as a subprocess of an MCP client (Claude Desktop
         # etc.) outside the host app's sandbox. It needs read+write to the
         # app's App Support container (resolved via SocketSidecar) to find
         # the running app's socket — that's a regular user-space file path,
         # so no special entitlements required.
-        SKIP_INSTALL: NO
+        #
+        # SKIP_INSTALL = YES is critical for archive classification: the
+        # helper is embedded inside Verbinal.app via the embed dependency,
+        # so it must NOT be installed as a separate top-level product in
+        # DSTROOT. With SKIP_INSTALL = NO the archive contains two
+        # installable products (Verbinal.app + canfar-mcp), Xcode can't
+        # decide what kind of archive it is, and the Organizer files it
+        # under "Other Items / Generic Xcode Archive" instead of
+        # "macOS Apps / macOS App Archive".
+        SKIP_INSTALL: YES
+  VerbinalIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: Verbinal
+        excludes:
+          - "**/*.py"
+          # Without explicit excludes, xcodegen also bundles the macOS
+          # Info.plist as a resource alongside the iOS one set via
+          # INFOPLIST_FILE, producing "Multiple commands produce Info.plist".
+          - "Info.plist"
+          - "Verbinal.entitlements"
+          - "PrivacyInfo.xcprivacy"
+          # macOS-only feature modules — excluded from the iOS bundle entirely.
+          # Storage browser, FITS viewer, FileBrowser panel, Export dialog, and
+          # the MCP integration all depend on AppKit / Metal / a CLI helper
+          # that has no iOS equivalent. ContentView already guards the call
+          # sites behind #if os(macOS), so excluding the sources keeps the
+          # iOS link clean instead of forcing #if guards inside every file.
+          - "Export/**"
+          - "FileBrowser/**"
+          - "FITSViewer/**"
+          - "Storage/**"
+          - "MCP/**"
+          # Service-layer files that exist outside the macOS-only feature
+          # dirs but depend on types defined inside them. Keeping them in
+          # the iOS target breaks the link.
+          - "Research/Services/ResearchExporter.swift"
+          - "Search/Services/SearchExporter.swift"
+          - "ImageDiscovery/Services/ServiceConformances.swift"
+    dependencies:
+      - package: VerbinalKit
+        product: VerbinalKit
+    settings:
+      base:
+        INFOPLIST_FILE: Verbinal/Info-iOS.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
+        PRODUCT_NAME: Verbinal
+        CODE_SIGN_ENTITLEMENTS: Verbinal/Verbinal-iOS.entitlements
+        # The Mac AppIcon's 1024 PNG has an alpha channel (Mac icons need
+        # one for the rounded-corner mask + shadow), which App Store
+        # Connect rejects for iOS submissions. AppIcon-iOS holds a
+        # flattened opaque variant — same artwork, white background.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-iOS
+        # 1 = iPhone, 2 = iPad. Universal binary covers both via
+        # AdaptiveLayout (TabView on compact, NavigationSplitView on regular).
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        # The macOS deployment target inherited from base.settings is ignored
+        # for iOS builds; IPHONEOS_DEPLOYMENT_TARGET comes from
+        # options.deploymentTarget.iOS above.
   VerbinalTests:
     type: bundle.unit-test
     platform: macOS
@@ -111,3 +173,7 @@ schemes:
     test:
       targets:
         - VerbinalTests
+  VerbinalIOS:
+    build:
+      targets:
+        VerbinalIOS: all
