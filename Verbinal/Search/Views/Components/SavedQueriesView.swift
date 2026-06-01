@@ -69,12 +69,13 @@ struct SavedQueriesView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 if editingId == query.id {
-                    TextField("Name", text: $editingName, onCommit: {
-                        store.rename(query, to: editingName)
-                        editingId = nil
-                    })
-                    .textFieldStyle(.roundedBorder)
-                    .font(.caption2)
+                    TextField("Name", text: $editingName)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption2)
+                        .onSubmit {
+                            store.rename(query, to: editingName)
+                            editingId = nil
+                        }
                 } else {
                     Text(query.name)
                         .font(.caption2.bold())
