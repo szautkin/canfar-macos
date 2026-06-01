@@ -49,6 +49,24 @@ struct FileBrowserPanel: View {
 
             Divider()
 
+            // Distinguish "couldn't load" / "some items unreadable" from an
+            // actually-empty folder.
+            if let error = model.loadError {
+                Label("Couldn't load this folder: \(error)", systemImage: "exclamationmark.triangle")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+            } else if model.loadSkippedCount > 0 {
+                Label("\(model.loadSkippedCount) item\(model.loadSkippedCount == 1 ? "" : "s") could not be read",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+            }
+
             // File list
             List(model.filteredNodes) { node in
                 Button {

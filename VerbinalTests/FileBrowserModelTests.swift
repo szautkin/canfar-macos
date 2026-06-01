@@ -94,4 +94,31 @@ final class FileBrowserModelTests: XCTestCase {
         let filtered = model.filteredNodes
         XCTAssertEqual(filtered.count, 2, "Should show .fits and directory, hide .txt")
     }
+
+    // MARK: - Ticket 011: load error vs. empty folder
+
+    func testUnreadableDirectorySetsLoadError() {
+        let model = FileBrowserModel()
+        model.currentURL = URL(fileURLWithPath: "/does-not-exist-\(UUID().uuidString)")
+        model.loadDirectory()
+        XCTAssertNotNil(model.loadError, "an un-enumerable directory must set loadError, not look empty")
+        XCTAssertTrue(model.nodes.isEmpty)
+    }
+
+    func testCleanLoadHasNoErrorAndListsFiles() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("fb-test-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data("a".utf8).write(to: dir.appendingPathComponent("a.fits"))
+        try Data("b".utf8).write(to: dir.appendingPathComponent("b.txt"))
+
+        let model = FileBrowserModel()
+        model.currentURL = dir
+        model.loadDirectory()
+
+        XCTAssertNil(model.loadError)
+        XCTAssertEqual(model.loadSkippedCount, 0)
+        XCTAssertEqual(model.nodes.count, 2, "both readable files are listed in the raw node set")
+    }
 }

@@ -16,6 +16,13 @@ final class FileBrowserModel {
     var nodes: [LocalFileNode] = []
     var filterText = ""
     var showOnlySupportedTypes = true
+    /// Set when the directory itself couldn't be enumerated — lets the sidebar
+    /// show a distinct "couldn't load" state instead of looking empty.
+    var loadError: String?
+    /// Count of entries in the last load whose metadata read failed and were
+    /// omitted from `nodes`, so a partial read is flagged rather than silently
+    /// dropping files.
+    private(set) var loadSkippedCount = 0
 
     var filteredNodes: [LocalFileNode] {
         var filtered = nodes
@@ -37,6 +44,8 @@ final class FileBrowserModel {
     }
 
     func loadDirectory() {
+        loadError = nil
+        loadSkippedCount = 0
         do {
             let contents = try FileManager.default.contentsOfDirectory(
                 at: currentURL,
@@ -44,8 +53,10 @@ final class FileBrowserModel {
                 options: [.skipsHiddenFiles]
             )
 
+            var skipped = 0
             nodes = contents.compactMap { url -> LocalFileNode? in
                 guard let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey]) else {
+                    skipped += 1   // count, don't silently vanish
                     return nil
                 }
                 return LocalFileNode(
@@ -61,8 +72,10 @@ final class FileBrowserModel {
                 if a.isDirectory != b.isDirectory { return a.isDirectory }
                 return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
             }
+            loadSkippedCount = skipped
         } catch {
             nodes = []
+            loadError = error.localizedDescription
         }
     }
 
