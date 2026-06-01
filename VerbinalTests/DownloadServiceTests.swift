@@ -44,4 +44,57 @@ final class DownloadServiceTests: XCTestCase {
         // A second delete on a now-missing file must not throw.
         try await service.deleteFile(at: url)
     }
+
+    // MARK: - Ticket 006: filename sanitization (path-traversal guard)
+
+    func testSanitizeFilenameStripsPathComponents() {
+        XCTAssertEqual(DownloadService.sanitizeFilename("a/b/c.fits"), "c.fits")
+        XCTAssertEqual(DownloadService.sanitizeFilename("/etc/passwd"), "passwd")
+        XCTAssertEqual(DownloadService.sanitizeFilename("../../etc/passwd"), "passwd")
+    }
+
+    func testSanitizeFilenameStripsIllegalCharacters() {
+        XCTAssertEqual(DownloadService.sanitizeFilename("x:y.fits"), "xy.fits")
+        XCTAssertEqual(DownloadService.sanitizeFilename("na\u{0}me.fits"), "name.fits")
+        XCTAssertEqual(DownloadService.sanitizeFilename(#"a\b.fits"#), "ab.fits")
+    }
+
+    func testSanitizeFilenameEmpty() {
+        XCTAssertEqual(DownloadService.sanitizeFilename(""), "")
+    }
+
+    // MARK: - Ticket 006: publisher-id filename derivation + content-type extension
+
+    func testFilenameFromPublisherIDPicksProductAndExtension() {
+        XCTAssertEqual(
+            DownloadService.filename(fromPublisherID: "ivo://cadc.nrc.ca/CFHT?2376354/2376354p", contentType: "application/fits"),
+            "2376354p.fits")
+        XCTAssertEqual(
+            DownloadService.filename(fromPublisherID: "ivo://cadc.nrc.ca/JWST?obs123/prod456", contentType: "application/x-tar"),
+            "prod456.tar")
+        XCTAssertEqual(
+            DownloadService.filename(fromPublisherID: "ivo://cadc.nrc.ca/JCMT?o/p", contentType: "application/gzip"),
+            "p.fits.gz")
+    }
+
+    func testFilenameFromPublisherIDNoSlashFallsBackToObservation() {
+        // No "/" and no "?" => the literal "observation" base.
+        XCTAssertEqual(
+            DownloadService.filename(fromPublisherID: "bareid", contentType: "application/octet-stream"),
+            "observation")
+    }
+
+    // MARK: - Ticket 006: Content-Disposition extraction (with sanitization)
+
+    func testExtractFilenameFromContentDisposition() async {
+        let service = DownloadService()
+        let resp = HTTPURLResponse(
+            url: URL(string: "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data")!,
+            statusCode: 200, httpVersion: nil,
+            headerFields: ["Content-Disposition": #"attachment; filename="../evil/NGC1234.fits""#]
+        )!
+        // The path-y filename in the header is sanitized to its last component.
+        let name = await service.extractFilename(from: resp, publisherID: "ivo://x?y/z")
+        XCTAssertEqual(name, "NGC1234.fits")
+    }
 }

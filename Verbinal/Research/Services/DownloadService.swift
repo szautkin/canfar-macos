@@ -107,7 +107,9 @@ actor DownloadService {
 
     // MARK: - Private
 
-    private func extractFilename(from response: HTTPURLResponse, publisherID: String) -> String {
+    // `internal` (not `private`) so the filename derivation/sanitization is
+    // unit-testable without a live download.
+    func extractFilename(from response: HTTPURLResponse, publisherID: String) -> String {
         // Try Content-Disposition header
         if let disposition = response.value(forHTTPHeaderField: "Content-Disposition"),
            let range = disposition.range(of: "filename=") {
@@ -122,7 +124,18 @@ actor DownloadService {
             return Self.sanitizeFilename(suggested)
         }
 
-        // Build from publisherID: ivo://cadc.nrc.ca/COLLECTION?OBSID/PRODUCTID
+        // Fall back to a name derived from the publisher id + content type.
+        return Self.filename(
+            fromPublisherID: publisherID,
+            contentType: response.value(forHTTPHeaderField: "Content-Type") ?? ""
+        )
+    }
+
+    /// Derive a safe filename from a CADC publisher id
+    /// (`ivo://cadc.nrc.ca/COLLECTION?OBSID/PRODUCTID`) and the response
+    /// content type, for when the server gives us no usable Content-Disposition
+    /// or suggested name. Pure + `internal` so it can be unit-tested directly.
+    static func filename(fromPublisherID publisherID: String, contentType: String) -> String {
         let productID: String
         if let lastSlash = publisherID.lastIndex(of: "/") {
             productID = String(publisherID[publisherID.index(after: lastSlash)...])
@@ -132,8 +145,6 @@ actor DownloadService {
             productID = "observation"
         }
 
-        // Check content type for extension
-        let contentType = response.value(forHTTPHeaderField: "Content-Type") ?? ""
         let ext: String
         if contentType.contains("tar") {
             ext = ".tar"
@@ -145,12 +156,12 @@ actor DownloadService {
             ext = ""
         }
 
-        return Self.sanitizeFilename(productID.replacingOccurrences(of: "/", with: "_") + ext)
+        return sanitizeFilename(productID.replacingOccurrences(of: "/", with: "_") + ext)
     }
 
     /// Strip any path separators and parent-directory traversal from a server-supplied
     /// filename so it cannot escape the temp directory when appended.
-    private static func sanitizeFilename(_ name: String) -> String {
+    static func sanitizeFilename(_ name: String) -> String {
         // Keep only the last path component, then strip illegal characters.
         let last = (name as NSString).lastPathComponent
         let disallowed = CharacterSet(charactersIn: "/\\:\u{0}")
