@@ -301,6 +301,12 @@ public enum FITSParser {
 
         guard !samples.isEmpty else { return (0, 1) }
         samples.sort()
+        // Safe min/max from the sorted, non-empty samples — avoids
+        // `samples.first!`/`.last!` so a future refactor of the guard above
+        // can't turn this into a crash.
+        guard let minSample = samples.first, let maxSample = samples.last else {
+            return (0, 1)
+        }
 
         // Compute median
         let median = samples[samples.count / 2]
@@ -313,8 +319,8 @@ public enum FITSParser {
 
         if sigma > 0 {
             // Use median ± 3*sigma for initial cut, then clamp to data range
-            let lo = max(samples.first!, median - 3 * sigma)
-            let hi = min(samples.last!, median + 3 * sigma)
+            let lo = max(minSample, median - 3 * sigma)
+            let hi = min(maxSample, median + 3 * sigma)
             if hi > lo { return (lo, hi) }
         }
 
@@ -323,6 +329,6 @@ public enum FITSParser {
         let highIdx = Int(Float(samples.count - 1) * highPercentile)
         let lo = samples[lowIdx]
         let hi = samples[highIdx]
-        return lo < hi ? (lo, hi) : (samples.first!, samples.last!)
+        return lo < hi ? (lo, hi) : (minSample, maxSample)
     }
 }

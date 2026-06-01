@@ -78,9 +78,12 @@ public actor EventLog {
     /// `since` predates the buffer's earliest retained entry — the
     /// caller must re-baseline.
     public func entries(since: UInt64) -> (entries: [AgentEventEntry], expired: Bool) {
-        guard !buffer.isEmpty else { return ([], false) }
-        let earliest = buffer.first!.token
-        let expired = since > 0 && since < earliest - 1
+        guard let earliest = buffer.first?.token else { return ([], false) }
+        // Expired when the caller's cursor sits more than one token behind
+        // the earliest retained entry (a gap = entries were dropped).
+        // Written as `earliest - since > 1` under an `earliest > since`
+        // guard so there's no UInt64 underflow (vs. the old `earliest - 1`).
+        let expired = since > 0 && earliest > since && earliest - since > 1
         let cut = buffer.filter { $0.token > since }
         return (cut, expired)
     }

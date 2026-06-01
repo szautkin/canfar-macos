@@ -47,10 +47,13 @@ extension JSONReadTool {
 
     public func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         let args: Args
-        if Args.self == EmptyArgs.self, arguments.isNullOrEmpty {
+        if Args.self == EmptyArgs.self, arguments.isNullOrEmpty,
+           let empty = EmptyArgs() as? Args {
             // Special case: tools with no args; agents may pass null,
             // omit `arguments`, or send `{}`. Synthesise an EmptyArgs.
-            args = (EmptyArgs() as! Args)
+            // The conditional cast always succeeds here (Args == EmptyArgs);
+            // the `if let` just removes the force-cast.
+            args = empty
         } else {
             do {
                 args = try JSONDecoder().decode(Args.self, from: arguments)
