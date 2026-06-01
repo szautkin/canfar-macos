@@ -15,7 +15,7 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
     MARKETING_VERSION: "1.2.0"
-    CURRENT_PROJECT_VERSION: "9"
+    CURRENT_PROJECT_VERSION: "10"
     PRODUCT_NAME: Verbinal
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: A4ABW5VD88
@@ -82,11 +82,22 @@ targets:
         PRODUCT_NAME: canfar-mcp
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal.canfar-mcp
         CODE_SIGN_ENTITLEMENTS: helpers/canfar-mcp/CanfarMCP.entitlements
-        # The helper runs as a subprocess of an MCP client (Claude Desktop
-        # etc.) outside the host app's sandbox. It needs read+write to the
-        # app's App Support container (resolved via SocketSidecar) to find
-        # the running app's socket — that's a regular user-space file path,
-        # so no special entitlements required.
+        # The helper ships INSIDE Verbinal.app and the Mac App Store requires
+        # every bundled executable to be sandboxed, so CanfarMCP.entitlements
+        # turns on com.apple.security.app-sandbox plus the shared App Group
+        # (A4ABW5VD88.com.codebg.Verbinal) it uses to reach the host app's
+        # socket sidecar.
+        #
+        # A sandboxed Mach-O MUST carry a CFBundleIdentifier so secinitd can
+        # create its sandbox container. A bare command-line tool has no
+        # Info.plist, so without the two settings below secinitd cannot
+        # resolve a container id and the kernel kills the process with SIGTRAP
+        # before main() runs ("Unable to get bundle identifier for container
+        # id canfar-mcp"). GENERATE_INFOPLIST_FILE synthesizes an Info.plist
+        # from PRODUCT_BUNDLE_IDENTIFIER; CREATE_INFOPLIST_SECTION_IN_BINARY
+        # embeds it into the binary's __TEXT,__info_plist section.
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
         #
         # SKIP_INSTALL = YES is critical for archive classification: the
         # helper is embedded inside Verbinal.app via the embed dependency,
