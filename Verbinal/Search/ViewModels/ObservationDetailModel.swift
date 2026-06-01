@@ -33,6 +33,19 @@ final class ObservationDetailModel {
         case authRequired
         case notFound
         case failed(String)
+
+        /// States `loadCAOM2()` may (re)start a fetch from: never started, or
+        /// a recoverable failure (any message). `loading`/`loaded` are
+        /// in-flight/done; `authRequired`/`notFound` are terminal and not
+        /// auto-retried.
+        var isRetryable: Bool {
+            switch self {
+            case .idle, .failed:
+                return true
+            case .loading, .loaded, .authRequired, .notFound:
+                return false
+            }
+        }
     }
 
     var caom2: CAOM2Observation?
@@ -57,7 +70,7 @@ final class ObservationDetailModel {
     /// Trigger the CAOM2 fetch. Idempotent — successive calls during a load
     /// are no-ops; calls after a successful load just return.
     func loadCAOM2() async {
-        guard loadState == .idle || loadState == .failed("") else { return }
+        guard loadState.isRetryable else { return }
         loadState = .loading
 
         let publisherID = self.publisherID
