@@ -9,8 +9,8 @@ import SwiftUI
 import AppKit
 #endif
 
-/// Rich CAOM2-aware detail viewer that replaces the legacy column-dump
-/// `ResultDetailSheet`. Renders three layers:
+/// Rich CAOM2-aware detail viewer — the canonical observation-detail surface.
+/// Renders three layers:
 ///
 /// 1. **Row data** (always visible) — Target, Collection, ObsID hero,
 ///    plus the Raw tab dumping every column the row carries.

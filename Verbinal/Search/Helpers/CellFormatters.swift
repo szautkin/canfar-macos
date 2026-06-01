@@ -41,8 +41,7 @@ protocol ColumnFormatter: Sendable {
 /// single function every time a new column type arrives.
 ///
 /// `CellFormatters.format(key:raw:)` is preserved as a compatibility wrapper
-/// that forwards here — existing call sites (``ResultDetailSheet``, exports,
-/// tests) continue to work.
+/// that forwards here — existing call sites (exports, tests) continue to work.
 enum CellFormatterRegistry {
     /// Multi-unit columns — the user can switch display units via the
     /// column-header unit menu. Resolution precedence at `format(id:raw:unitID:)`
