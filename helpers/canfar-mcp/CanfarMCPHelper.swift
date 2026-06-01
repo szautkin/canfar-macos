@@ -22,6 +22,7 @@
 import Foundation
 import Darwin
 import MCPCore
+import os.log
 
 @main
 struct CanfarMCPHelper {
@@ -58,10 +59,20 @@ enum HelperLog {
         return f
     }()
 
+    /// Fallback diagnostic channel used only when stderr itself fails to
+    /// write — so the helper's diagnostics don't vanish without a trace.
+    private static let fallback = Logger(subsystem: "com.codebg.Verbinal.canfar-mcp", category: "helper")
+
     private static func emit(_ level: String, _ message: String) {
         let line = "\(formatter.string(from: Date())) [canfar-mcp] [\(level)] \(message)\n"
-        if let data = line.data(using: .utf8) {
-            try? FileHandle.standardError.write(contentsOf: data)
+        guard let data = line.data(using: .utf8) else { return }
+        do {
+            try FileHandle.standardError.write(contentsOf: data)
+        } catch {
+            // stderr is the helper's sole diagnostic surface (captured by
+            // Claude Desktop). If it breaks, route to the unified log rather
+            // than dropping the line silently.
+            fallback.log("\(line, privacy: .public)")
         }
     }
 }
@@ -176,8 +187,15 @@ private actor Forwarder {
                 }
                 let payload = JSONRPCErrorPayload(code: code, message: message)
                 let response = JSONRPCResponse.failure(id: request.id, error: payload)
-                if let bytes = try? encoder.encode(response) {
-                    try? await stdio.send(bytes)
+                do {
+                    let bytes = try encoder.encode(response)
+                    try await stdio.send(bytes)
+                } catch {
+                    // The whole point of drainAndFail is to never leave the
+                    // client in silence — so if the error response itself
+                    // can't be delivered, say so on the diagnostic channel
+                    // and keep draining the next frame.
+                    HelperLog.error("failed to send error response for id \(request.id): \(error)")
                 }
             }
         } catch {
