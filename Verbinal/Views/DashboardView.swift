@@ -76,14 +76,19 @@ struct DashboardView: View {
                let cim = appState.canfarImagesModel {
                 ImageDiscoverySheet(
                     model: idm,
-                    onPick: { imageID in
-                        // Sheet's "Use this image" feeds back into
-                        // the launch form's selection so the picker
-                        // reflects the choice on dismiss.
-                        let pool = sessionLaunchModel.images(forType: sessionLaunchModel.selectedType)
-                            .values.flatMap { $0 }
-                        if let match = pool.first(where: { $0.id == imageID }) {
-                            sessionLaunchModel.selectedImage = match
+                    onPick: { [catalogue = cim.allImages] imageID in
+                        // Route the picked image by its declared type
+                        // (headless -> Headless tab, else Standard with a
+                        // full cascade) through the same path the Canfar
+                        // Images row button uses. Looking it up in the
+                        // catalogue the sheet was opened with fixes the
+                        // previous bug where a headless / cross-type pick
+                        // was silently dropped (it wasn't in the current
+                        // Standard type's pool); capturing the snapshot
+                        // also avoids a no-op if the live list reloads
+                        // while the sheet is open.
+                        if let match = catalogue.first(where: { $0.id == imageID }) {
+                            sendImageToLaunchForm(match)
                         }
                     },
                     catalogue: cim.allImages
@@ -93,6 +98,11 @@ struct DashboardView: View {
                     // on. Sheet's "Use this image" button binds to
                     // selectedImageID and updates accordingly.
                     if let pre = appState.preselectedDiscoveryImageID {
+                        // Clear any leftover type filter so the preselected
+                        // row is guaranteed visible (a stale filter could
+                        // otherwise hide it while "Use this image" stays
+                        // enabled, targeting an invisible row).
+                        idm.typeFilter = nil
                         idm.selectedImageID = pre
                     }
                 }
@@ -114,8 +124,14 @@ struct DashboardView: View {
     /// flip out of advanced-mode in `SessionLaunchModel`. No
     /// custom-registry write happens here.
     private func sendImageToLaunchForm(_ image: ParsedImage) {
-        let isHeadless = image.types.contains("headless")
-        if isHeadless, let hm = headlessLaunchModel {
+        if image.types.contains("headless") {
+            // Headless images route ONLY to the headless form. If it's
+            // unavailable (nil model), do nothing rather than load a
+            // headless image into the Standard form — SessionLaunchModel
+            // excludes "headless" from its session types, so that would
+            // pair a Standard type with a headless image and build an
+            // invalid launch.
+            guard let hm = headlessLaunchModel else { return }
             hm.applyImageSelection(image)
             appState.launchFormTab = .headless
         } else {

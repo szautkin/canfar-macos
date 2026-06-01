@@ -88,6 +88,11 @@ final class ImageDiscoveryModel {
         set { packageSearchText = newValue }
     }
 
+    /// Session-type filter for the right pane (`nil` = all types).
+    /// ANDs with the package query + image search. Cache-only images
+    /// (no known `types`) are never hidden by it — see `filteredImageIDs`.
+    var typeFilter: String?
+
     /// Image id the user has highlighted in the right pane.
     var selectedImageID: String?
 
@@ -469,12 +474,34 @@ final class ImageDiscoveryModel {
             return query.isEmpty ? img.id : nil
         }
         // Apply image-scoped search on top.
-        guard !imageSearchText.isEmpty else { return cached }
-        let needle = imageSearchText.lowercased()
-        return cached.filter { id in
-            id.lowercased().contains(needle) ||
-            allKnownImages.first(where: { $0.id == id })?.label.lowercased().contains(needle) == true
+        let searched: [String]
+        if imageSearchText.isEmpty {
+            searched = cached
+        } else {
+            let needle = imageSearchText.lowercased()
+            searched = cached.filter { id in
+                id.lowercased().contains(needle) ||
+                allKnownImages.first(where: { $0.id == id })?.label.lowercased().contains(needle) == true
+            }
         }
+        // Session-type filter. Unknown-type (cache-only) images are never
+        // hidden — they bucket under "All" so a Skaha-catalogue outage
+        // doesn't make them vanish when a specific type is selected.
+        guard let type = typeFilter else { return searched }
+        return searched.filter { id in
+            guard let img = allKnownImages.first(where: { $0.id == id }) else { return false }
+            return img.types.isEmpty || img.types.contains(type)
+        }
+    }
+
+    /// Session types present across the catalogue, in canonical UI order
+    /// (then any extras alphabetically). Drives the type filter control.
+    var availableTypes: [String] {
+        let present = Set(allKnownImages.flatMap { $0.types })
+        let canonical = ["notebook", "desktop", "carta", "headless", "contributed", "firefly", "desktop-app"]
+        let ordered = canonical.filter { present.contains($0) }
+        let extras = present.subtracting(canonical).sorted()
+        return ordered + extras
     }
 
     /// Every successfully-discovered manifest in row state. Used by

@@ -20,8 +20,14 @@ struct ResourceSelectorView: View {
     private var maxRam: Int { ramOptions.max() ?? 256 }
     private var maxGpus: Int { gpuOptions.max() ?? 0 }
 
-    // Build power-of-2 values within RAM range
+    // Selectable RAM values. Honor the API-provided `ramOptions` exactly
+    // (deduped + sorted) so a non-power-of-2 option is never silently
+    // remapped to a nearby power of 2 — that would change the resources the
+    // user actually requested. Only synthesize a power-of-2 ladder when no
+    // options were supplied at all.
     private var ramPower2Values: [Int] {
+        let opts = Array(Set(ramOptions)).sorted()
+        if !opts.isEmpty { return opts }
         var values: [Int] = []
         var v = 1
         while v <= maxRam {
@@ -30,7 +36,7 @@ struct ResourceSelectorView: View {
             }
             v *= 2
         }
-        return values.isEmpty ? ramOptions : values
+        return values.isEmpty ? [minRam] : values
     }
 
     var body: some View {

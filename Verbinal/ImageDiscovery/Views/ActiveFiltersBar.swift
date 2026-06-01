@@ -31,6 +31,7 @@ struct ActiveFiltersBar: View {
                     Spacer()
                     Button(role: .destructive) {
                         model.query = PackageQuery()
+                        model.typeFilter = nil
                     } label: {
                         Label("Clear all", systemImage: "xmark.circle")
                             .font(.caption2)
@@ -96,6 +97,12 @@ struct ActiveFiltersBar: View {
     private func makeChips() -> [Chip] {
         var chips: [Chip] = []
 
+        if let type = model.typeFilter {
+            chips.append(Chip(id: "type:\(type)", category: "Type",
+                              value: type, remove: {
+                model.typeFilter = nil
+            }))
+        }
         for value in model.query.osFamilies.sorted() {
             chips.append(Chip(id: "fam:\(value)", category: "OS",
                               value: value, remove: {

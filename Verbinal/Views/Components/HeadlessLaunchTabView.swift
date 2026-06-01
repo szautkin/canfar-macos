@@ -99,41 +99,15 @@ struct HeadlessLaunchTabView: View {
                 .help("Number of parallel container replicas. REPLICA_ID and REPLICA_COUNT are auto-injected as env vars.")
             }
 
-            LabeledContent("Resources") {
-                Picker("", selection: $model.resourceType) {
-                    Text("Flexible").tag("flexible")
-                    Text("Fixed").tag("fixed")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 200)
-            }
-
-            if model.resourceType == "fixed" {
-                LabeledContent("Cores") {
-                    Picker("", selection: $model.cores) {
-                        ForEach(coreOptions, id: \.self) { Text(String($0)).tag($0) }
-                    }
-                    .labelsHidden()
-                    .frame(width: 80)
-                }
-                LabeledContent("RAM (GB)") {
-                    Picker("", selection: $model.ram) {
-                        ForEach(ramOptions, id: \.self) { Text(String($0)).tag($0) }
-                    }
-                    .labelsHidden()
-                    .frame(width: 80)
-                }
-                if !gpuOptions.isEmpty {
-                    LabeledContent("GPUs") {
-                        Picker("", selection: $model.gpus) {
-                            ForEach(gpuOptions, id: \.self) { Text(String($0)).tag($0) }
-                        }
-                        .labelsHidden()
-                        .frame(width: 80)
-                    }
-                }
-            }
+            ResourceFormSection(
+                resourceType: $model.resourceType,
+                cores: $model.cores,
+                ram: $model.ram,
+                gpus: $model.gpus,
+                coreOptions: coreOptions,
+                ramOptions: ramOptions,
+                gpuOptions: gpuOptions
+            )
 
             HStack {
                 Spacer()

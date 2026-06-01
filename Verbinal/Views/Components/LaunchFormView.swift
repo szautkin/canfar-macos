@@ -109,13 +109,18 @@ struct LaunchFormView: View {
                 ImageDiscoverySheet(
                     model: idm,
                     onPick: { imageID in
-                        // Map the picked id back into the launch
-                        // model: find it in the current type's
-                        // catalogue and assign so the picker rebinds.
-                        let pool = model.images(forType: model.selectedType)
-                            .values.flatMap { $0 }
-                        if let match = pool.first(where: { $0.id == imageID }) {
-                            model.selectedImage = match
+                        // Look the pick up across ALL session types, not
+                        // just the currently-selected one: the sheet is
+                        // opened against a snapshot of one type, but the
+                        // Session Type picker stays live, so searching only
+                        // the current type would silently no-op if the user
+                        // switched it. applyImageSelection then cascades the
+                        // image's own type + project + image.
+                        let all = model.sessionTypes.flatMap {
+                            model.images(forType: $0).values.flatMap { $0 }
+                        }
+                        if let match = all.first(where: { $0.id == imageID }) {
+                            model.applyImageSelection(match)
                         }
                     },
                     catalogue: catalogueForCurrentTab
@@ -293,32 +298,17 @@ struct LaunchFormView: View {
                 .help("Suggest a fresh name")
             }
 
-            LabeledContent("Resources") {
-                HStack(spacing: 4) {
-                    Picker("", selection: $model.resourceType) {
-                        Text("Flexible").tag("flexible")
-                        Text("Fixed").tag("fixed")
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    defaultStar(isOn: model.isSelectedResourcesDefault,
-                                tipOn: "Current default — tap to clear",
-                                tipOff: "Set current resources as default") {
-                        model.toggleDefaultResources()
-                    }
-                }
-            }
-
-            if model.resourceType == "fixed" {
-                ResourceSelectorView(
-                    cores: $model.cores,
-                    ram: $model.ram,
-                    gpus: $model.gpus,
-                    coreOptions: model.coreOptions,
-                    ramOptions: model.ramOptions,
-                    gpuOptions: model.gpuOptions
-                )
-            }
+            ResourceFormSection(
+                resourceType: $model.resourceType,
+                cores: $model.cores,
+                ram: $model.ram,
+                gpus: $model.gpus,
+                coreOptions: model.coreOptions,
+                ramOptions: model.ramOptions,
+                gpuOptions: model.gpuOptions,
+                isDefault: model.isSelectedResourcesDefault,
+                onToggleDefault: { model.toggleDefaultResources() }
+            )
         }
         .formStyle(.grouped)
         #if os(macOS)
@@ -438,22 +428,17 @@ struct LaunchFormView: View {
                 .help("Suggest a fresh name")
             }
 
-            Picker("Resources", selection: $model.resourceType) {
-                Text("Flexible").tag("flexible")
-                Text("Fixed").tag("fixed")
-            }
-            .pickerStyle(.segmented)
-
-            if model.resourceType == "fixed" {
-                ResourceSelectorView(
-                    cores: $model.cores,
-                    ram: $model.ram,
-                    gpus: $model.gpus,
-                    coreOptions: model.coreOptions,
-                    ramOptions: model.ramOptions,
-                    gpuOptions: model.gpuOptions
-                )
-            }
+            ResourceFormSection(
+                resourceType: $model.resourceType,
+                cores: $model.cores,
+                ram: $model.ram,
+                gpus: $model.gpus,
+                coreOptions: model.coreOptions,
+                ramOptions: model.ramOptions,
+                gpuOptions: model.gpuOptions,
+                isDefault: model.isSelectedResourcesDefault,
+                onToggleDefault: { model.toggleDefaultResources() }
+            )
         }
         .formStyle(.grouped)
         #if os(macOS)

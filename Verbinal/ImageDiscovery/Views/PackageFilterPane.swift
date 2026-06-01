@@ -37,6 +37,32 @@ struct PackageFilterPane: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
 
+            // Session-type filter — narrows the right pane to one image
+            // type (notebook / desktop / headless / …) on top of the
+            // package filters. "All" clears it.
+            if !model.availableTypes.isEmpty {
+                HStack {
+                    Text("Session type")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Picker("", selection: Binding(
+                        get: { model.typeFilter ?? "" },
+                        set: { model.typeFilter = $0.isEmpty ? nil : $0 }
+                    )) {
+                        Text("All").tag("")
+                        ForEach(model.availableTypes, id: \.self) { type in
+                            Text(type.capitalized).tag(type)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            }
+
             List {
                 osFamilySection
                 osVersionSection
@@ -64,10 +90,11 @@ struct PackageFilterPane: View {
                                binding: apkBinding,
                                selected: model.query.apk)
 
-                if !model.query.isEmpty {
+                if !model.query.isEmpty || model.typeFilter != nil {
                     Section {
                         Button(role: .destructive) {
                             model.query = PackageQuery()
+                            model.typeFilter = nil
                         } label: {
                             Label("Clear all filters", systemImage: "xmark.circle")
                         }
