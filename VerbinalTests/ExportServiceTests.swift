@@ -345,4 +345,48 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertGreaterThan(size, 0, "Zip archive should be non-empty")
     }
     #endif
+
+    // MARK: - Ticket 012: attached-file copy failures
+
+    private struct StubModule: ExportableModule {
+        let moduleID = "stub"
+        let displayName = "Stub"
+        var output: ExportModuleOutput
+        func export(options: ExportOptions) async throws -> ExportModuleOutput { output }
+    }
+
+    func testExportFailsWhenAttachedFileMissing() async {
+        var out = ExportModuleOutput()
+        out.jsonFiles = ["data.json": Data("{}".utf8)]
+        out.attachedFiles = [FileManager.default.temporaryDirectory
+            .appendingPathComponent("nope-\(UUID().uuidString).fits")]
+        let service = ExportService()
+        var options = ExportOptions()
+        options.includeFileCopies = true
+
+        let url = await service.exportAll(to: makeTempDir(), modules: [StubModule(output: out)], options: options)
+
+        XCTAssertNil(url, "export must fail when an attached file can't be copied")
+        XCTAssertTrue(service.lastError?.contains("could not be copied") ?? false,
+                      "expected a copy-failure error, got: \(service.lastError ?? "nil")")
+    }
+
+    func testExportCopiesAttachedFilesWhenPresent() async throws {
+        let work = makeTempDir()
+        let src = work.appendingPathComponent("real.fits")
+        try Data("x".utf8).write(to: src)
+        var out = ExportModuleOutput()
+        out.jsonFiles = ["data.json": Data("{}".utf8)]
+        out.attachedFiles = [src]
+        let service = ExportService()
+        var options = ExportOptions()
+        options.includeFileCopies = true
+
+        let bundleURL = await service.exportAll(to: makeTempDir(), modules: [StubModule(output: out)], options: options)
+        guard let bundleURL else { return XCTFail("export failed: \(service.lastError ?? "nil")") }
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: bundleURL.appendingPathComponent("stub/files/real.fits").path),
+            "the attached file should be copied into the bundle"
+        )
+    }
 }

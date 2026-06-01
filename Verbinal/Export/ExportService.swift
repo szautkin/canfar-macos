@@ -44,6 +44,7 @@ final class ExportService {
             try FileManager.default.createDirectory(at: bundleURL, withIntermediateDirectories: true)
 
             var manifestModules: [ExportManifest.Module] = []
+            var copyFailures: [String] = []
 
             for module in modules {
                 let output = try await module.export(options: options)
@@ -70,11 +71,22 @@ final class ExportService {
                 if options.includeFileCopies && !output.attachedFiles.isEmpty {
                     let filesDir = moduleDir.appendingPathComponent("files", isDirectory: true)
                     try FileManager.default.createDirectory(at: filesDir, withIntermediateDirectories: true)
+                    var copied = 0
                     for src in output.attachedFiles {
                         let dest = filesDir.appendingPathComponent(src.lastPathComponent)
-                        try? FileManager.default.copyItem(at: src, to: dest)
+                        do {
+                            try FileManager.default.copyItem(at: src, to: dest)
+                            copied += 1
+                        } catch {
+                            copyFailures.append(src.lastPathComponent)
+                            Self.logger.error("export: failed to copy \(src.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                        }
                     }
-                    files.append("\(module.moduleID)/files/")
+                    // Only claim a files/ directory in the manifest if something
+                    // actually landed there.
+                    if copied > 0 {
+                        files.append("\(module.moduleID)/files/")
+                    }
                 }
 
                 manifestModules.append(
@@ -85,6 +97,17 @@ final class ExportService {
                         itemCounts: output.itemCounts
                     )
                 )
+            }
+
+            // A file-copy export that lists files/ but silently dropped files
+            // is a false success — fail loudly and discard the partial bundle
+            // so what ships is always trustworthy.
+            if !copyFailures.isEmpty {
+                let names = copyFailures.prefix(5).joined(separator: ", ")
+                let suffix = copyFailures.count > 5 ? ", …" : ""
+                lastError = "Export incomplete: \(copyFailures.count) attached file\(copyFailures.count == 1 ? "" : "s") could not be copied (\(names)\(suffix)). Re-export, or disable file copies."
+                try? FileManager.default.removeItem(at: bundleURL)
+                return nil
             }
 
             // Write manifest.json — Claude hints derived from the actual files written.
