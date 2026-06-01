@@ -55,6 +55,9 @@ final class AppState {
     /// Settings ▸ Agents. Read tools land in P4; until then the bridge
     /// answers tools/list with an empty manifest.
     let agentsService = AgentsService()
+    #if os(macOS)
+    let mcpIntegrationSettings = MCPIntegrationSettingsService()
+    #endif
 
     // Headless job monitor (created on auth, destroyed on logout)
     private(set) var headlessMonitor: HeadlessMonitorModel?

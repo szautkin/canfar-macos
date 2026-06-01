@@ -31,6 +31,10 @@ struct SettingsView: View {
                 .environment(appState)
                 .tabItem { Label("Agents", systemImage: "wand.and.rays") }
 
+            MCPIntegrationSettingsTab()
+                .environment(appState)
+                .tabItem { Label("MCP", systemImage: "network") }
+
             AboutSettingsTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
