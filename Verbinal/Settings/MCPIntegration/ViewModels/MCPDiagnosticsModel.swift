@@ -26,7 +26,10 @@ final class MCPDiagnosticsModel {
     /// Non-fatal error from a Fix / Configure action, surfaced to the user.
     var actionError: String?
     /// Set after a successful merge so the UI can prompt a Claude restart.
-    private(set) var didUpdateConfig = false
+    /// Transient "restart Claude Desktop to apply" banner flag. Raised after a
+    /// successful merge, cleared by the next `runAll()`. Internally settable so
+    /// the reset behavior is unit-testable; the view only reads it.
+    var didUpdateConfig = false
 
     init(agents: AgentsService, settings: MCPIntegrationSettingsService) {
         self.agents = agents
@@ -36,6 +39,9 @@ final class MCPDiagnosticsModel {
     // MARK: - Run all checks (synchronous — every check is a fast read)
 
     func runAll() {
+        // Any diagnostics refresh clears the transient "restart Claude" banner;
+        // a fresh merge re-raises it *after* calling runAll().
+        didUpdateConfig = false
         var out: [DiagnosticCheck] = []
 
         // 1. Server enabled (user preference)
@@ -177,8 +183,8 @@ final class MCPDiagnosticsModel {
         do {
             if !settings.hasConfigAccess { try settings.grantConfigAccess() }
             try settings.mergeVerbinalEntry()
-            didUpdateConfig = true
-            runAll()
+            runAll()                 // refresh checks (clears any prior banner)
+            didUpdateConfig = true   // then raise the restart banner
         } catch let e as MCPConfigError where e == .cancelled {
             // user dismissed the panel — nothing to do
         } catch {
@@ -189,8 +195,8 @@ final class MCPDiagnosticsModel {
     private func updateConfig() {
         do {
             try settings.mergeVerbinalEntry()
-            didUpdateConfig = true
-            runAll()
+            runAll()                 // refresh checks (clears any prior banner)
+            didUpdateConfig = true   // then raise the restart banner
         } catch {
             actionError = (error as? MCPConfigError)?.errorDescription ?? error.localizedDescription
         }
