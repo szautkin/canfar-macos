@@ -221,11 +221,11 @@ final class AgentsService {
              "download_observation", "download_observations_bulk",
              "delete_downloaded_observation", "clear_research_archive":
             return .research
-        case "upload_to_vospace", "download_from_vospace",
+        case "upload_to_vospace", "upload_text_to_vospace", "download_from_vospace",
              "vospace_mkdir", "delete_vospace_node":
             return .storage
-        case "launch_session", "delete_session", "launch_headless_job",
-             "discover_image_packages":
+        case "launch_session", "delete_session", "delete_sessions_bulk",
+             "launch_headless_job", "discover_image_packages":
             return .portal
         default:
             return nil
