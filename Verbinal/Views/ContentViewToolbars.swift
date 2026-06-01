@@ -6,6 +6,27 @@
 
 import SwiftUI
 
+/// Pure, view-agnostic decisions for what the toolbars should render.
+///
+/// Extracted so the conditional-rendering rules (omit empty status text,
+/// omit a blank account-menu email row) can be unit-tested without a
+/// SwiftUI view host, mirroring the `if !statusMessage.isEmpty` and
+/// `if let email` guards used in the landing toolbar and `iOSAccountTab`.
+enum ToolbarContent {
+
+    /// Whether the toolbar status caption should be rendered at all.
+    /// Empty status text is omitted so it reserves no layout space.
+    static func showsStatusMessage(_ statusMessage: String) -> Bool {
+        !statusMessage.isEmpty
+    }
+
+    /// Whether the account menu should render an email row.
+    /// A nil email is omitted so the menu has no blank row.
+    static func showsAccountEmail(_ email: String?) -> Bool {
+        email != nil
+    }
+}
+
 #if os(macOS)
 extension ContentView {
 
@@ -23,7 +44,7 @@ extension ContentView {
 
             Spacer()
 
-            if !appState.statusMessage.isEmpty {
+            if ToolbarContent.showsStatusMessage(appState.statusMessage) {
                 Text(appState.statusMessage)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
@@ -202,9 +223,11 @@ extension ContentView {
 
             Spacer()
 
-            Text(appState.statusMessage)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            if ToolbarContent.showsStatusMessage(appState.statusMessage) {
+                Text(appState.statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
 
             Spacer()
 
@@ -226,7 +249,7 @@ extension ContentView {
                 Menu {
                     if let info = appState.userInfo {
                         Section {
-                            Text(info.email ?? "")
+                            if let email = info.email { Text(email) }
                             if let inst = info.institute {
                                 Text(inst)
                             }
