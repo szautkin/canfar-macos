@@ -10,7 +10,7 @@ import Observation
 @Observable
 @MainActor
 final class SessionLaunchModel {
-    private let sessionService: SessionService
+    private let sessionService: any SessionLaunching
     private let imageService: ImageService
     private let recentLaunchStore: RecentLaunchStore
     private let cacheService: PortalImageCacheService?
@@ -92,7 +92,7 @@ final class SessionLaunchModel {
     var totalSessionCounter: (() -> Int)?
     var sessionNamesForType: ((String) -> [String])?
 
-    init(sessionService: SessionService,
+    init(sessionService: any SessionLaunching,
          imageService: ImageService,
          recentLaunchStore: RecentLaunchStore,
          cacheService: PortalImageCacheService? = nil,
@@ -622,25 +622,34 @@ final class SessionLaunchModel {
 
         do {
             let sessionId = try await sessionService.launchSession(params)
-            launchSuccess = true
-            launchStatus = String(localized: "Session launched! ID: \(sessionId ?? "unknown")")
+            if let sessionId {
+                launchSuccess = true
+                launchStatus = String(localized: "Session launched! ID: \(sessionId)")
 
-            // Hold pending entry — saved when user closes the progress sheet
-            pendingRecentLaunch = RecentLaunch(
-                name: sessionName,
-                type: selectedType,
-                image: imageId,
-                imageLabel: selectedImage?.label ?? customImageUrl,
-                project: selectedProject,
-                resourceType: resourceType,
-                cores: params.cores,
-                ram: params.ram,
-                gpus: params.gpus,
-                launchedAt: Date()
-            )
+                // Hold pending entry — saved when user closes the progress sheet
+                pendingRecentLaunch = RecentLaunch(
+                    name: sessionName,
+                    type: selectedType,
+                    image: imageId,
+                    imageLabel: selectedImage?.label ?? customImageUrl,
+                    project: selectedProject,
+                    resourceType: resourceType,
+                    cores: params.cores,
+                    ram: params.ram,
+                    gpus: params.gpus,
+                    launchedAt: Date()
+                )
 
-            // Reset form
-            generateSessionName()
+                // Reset form
+                generateSessionName()
+            } else {
+                // Non-throwing call but no session ID — a server/contract
+                // failure. Report it rather than claiming success and storing a
+                // meaningless "unknown" RecentLaunch.
+                hasError = true
+                errorMessage = String(localized: "The server accepted the launch but returned no session ID.")
+                launchStatus = String(localized: "Launch failed")
+            }
         } catch {
             hasError = true
             errorMessage = error.localizedDescription

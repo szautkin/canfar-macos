@@ -16,7 +16,14 @@ private struct SafeDecodable<T: Decodable>: Decodable {
     }
 }
 
-final class SessionService: Sendable {
+/// Abstraction over the session-launch call so view models that depend on it
+/// can be unit-tested with a stub (SessionService is `final`, so it can't be
+/// subclassed). SessionService is the production conformer.
+protocol SessionLaunching: Sendable {
+    func launchSession(_ params: SessionLaunchParams) async throws -> String?
+}
+
+final class SessionService: SessionLaunching {
     private let network: NetworkClient
     private let endpoints: APIEndpoints
 
