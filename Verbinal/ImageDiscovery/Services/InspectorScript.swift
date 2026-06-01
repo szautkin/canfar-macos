@@ -5,9 +5,6 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
-#if canImport(CryptoKit)
-import CryptoKit
-#endif
 
 /// Inspector-mode probe script. Runs inside a *known-good headless
 /// image* (default: `images.canfar.net/skaha/terminal:1.1.2`) and
@@ -45,7 +42,7 @@ enum InspectorScript {
     /// derive the upload filename — bumping the body auto-busts
     /// any prior upload in VOSpace.
     static var scriptHash: String {
-        sha256Hex(of: body).prefix(12).lowercased()
+        ImageProbeScriptHash.sha256Hex(of: body).prefix(12).lowercased()
     }
 
     static var uploadFilename: String {
@@ -370,13 +367,4 @@ enum InspectorScript {
     echo "ok: $OUT"
     """#
 
-    private static func sha256Hex(of string: String) -> String {
-        let data = Data(string.utf8)
-        #if canImport(CryptoKit)
-        let digest = SHA256.hash(data: data)
-        return digest.map { String(format: "%02x", $0) }.joined()
-        #else
-        return String(string.hashValue)
-        #endif
-    }
 }

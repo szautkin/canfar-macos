@@ -5,9 +5,6 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
-#if canImport(CryptoKit)
-import CryptoKit
-#endif
 
 /// The shell script Verbinal uploads to the user's VOSpace and runs
 /// inside Skaha containers as a headless probe job.
@@ -39,7 +36,7 @@ enum ProbeScript {
     /// updating this constant automatically invalidates the previous
     /// upload without touching the cache layer.
     static var scriptHash: String {
-        sha256Hex(of: body).prefix(12).lowercased()
+        ImageProbeScriptHash.sha256Hex(of: body).prefix(12).lowercased()
     }
 
     /// Filename the coordinator uploads to and references in `cmd`.
@@ -364,16 +361,4 @@ enum ProbeScript {
     echo "ok: $OUT"
     """#
 
-    // MARK: - Hash helper
-
-    private static func sha256Hex(of string: String) -> String {
-        let data = Data(string.utf8)
-        #if canImport(CryptoKit)
-        let digest = SHA256.hash(data: data)
-        return digest.map { String(format: "%02x", $0) }.joined()
-        #else
-        // Fallback for build configurations without CryptoKit (none we ship).
-        return String(string.hashValue)
-        #endif
-    }
 }
