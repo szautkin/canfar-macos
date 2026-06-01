@@ -478,11 +478,11 @@ final class MCPBridgeServiceTests: XCTestCase {
             version: "1.0.0",
             instructions: "Use describe_app for orientation."
         )
-        let bridge = MCPBridgeService(router: router, identity: identity, approval: .allowAll)
-        await bridge.configure(services: .init(
-            proposals: InMemoryProposalStore(),
-            budget: ProposalBudget(limit: 8)
-        ))
+        let bridge = MCPBridgeService(
+            router: router, identity: identity,
+            services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8)),
+            approval: .allowAll
+        )
 
         let (clientSide, serverSide) = makePair()
 
@@ -535,11 +535,10 @@ final class MCPBridgeServiceTests: XCTestCase {
     func testCallBeforeInitializeFails() async throws {
         let router = AIToolRouter(tools: [EchoReadTool()], auditSink: CapturingAuditSink())
         let identity = MCPBridgeService.ServerIdentity(name: "X", version: "1")
-        let bridge = MCPBridgeService(router: router, identity: identity)
-        await bridge.configure(services: .init(
-            proposals: InMemoryProposalStore(),
-            budget: ProposalBudget(limit: 8)
-        ))
+        let bridge = MCPBridgeService(
+            router: router, identity: identity,
+            services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8))
+        )
 
         let (clientSide, serverSide) = makePair()
         let serveTask = Task { await bridge.serve(on: serverSide) }

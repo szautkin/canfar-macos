@@ -60,6 +60,9 @@ public actor MCPBridgeService {
     private let router: AIToolRouter
     private let identity: ServerIdentity
     private let approval: ApprovalGate
+    /// Per-connection capability bag, injected at construction so the bridge
+    /// can never be served in an unconfigured state.
+    private let services: PerConnectionServices
     private let logger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "bridge")
 
     /// Per-connection state. Initialized lazily on the first `initialize`
@@ -70,10 +73,12 @@ public actor MCPBridgeService {
     public init(
         router: AIToolRouter,
         identity: ServerIdentity,
+        services: PerConnectionServices,
         approval: ApprovalGate = .allowAll
     ) {
         self.router = router
         self.identity = identity
+        self.services = services
         self.approval = approval
     }
 
@@ -338,7 +343,8 @@ public actor MCPBridgeService {
 
     /// The bridge needs concrete proposal/budget instances per connection.
     /// Subclassing the actor for tests would be awkward; instead, the
-    /// caller injects them by setting `services` before `serve(on:)`.
+    /// caller injects them through `init(router:identity:services:approval:)`,
+    /// so the bridge can never be served in an unconfigured state.
     public struct PerConnectionServices: Sendable {
         public let proposals: any ProposalStore
         public let budget: ProposalBudget
@@ -351,18 +357,6 @@ public actor MCPBridgeService {
             self.budget = budget
             self.eventLog = eventLog
         }
-    }
-
-    private var _services: PerConnectionServices?
-    private var services: PerConnectionServices {
-        guard let s = _services else {
-            preconditionFailure("MCPBridgeService: services were not configured before serve(on:)")
-        }
-        return s
-    }
-
-    public func configure(services: PerConnectionServices) {
-        _services = services
     }
 
     // MARK: - Helpers

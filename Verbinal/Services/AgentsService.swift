@@ -362,13 +362,13 @@ final class AgentsService {
         let bridge = MCPBridgeService(
             router: router,
             identity: identity,
+            services: .init(
+                proposals: proposals,
+                budget: ProposalBudget(),
+                eventLog: eventLog
+            ),
             approval: .allowAll  // P3 minimum: gate is the toggle. P8 adds per-client approval.
         )
-        await bridge.configure(services: .init(
-            proposals: proposals,
-            budget: ProposalBudget(),
-            eventLog: eventLog
-        ))
 
         // Background poller: refresh the strip's @Observable snapshot
         // periodically while the connection is active. This is coarse
