@@ -8,6 +8,7 @@ import XCTest
 import VerbinalKit
 @testable import Verbinal
 
+@MainActor
 final class RecentSearchStoreTests: XCTestCase {
 
     private func makeStore() -> RecentSearchStore {

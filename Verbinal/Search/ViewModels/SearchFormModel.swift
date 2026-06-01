@@ -45,10 +45,10 @@ final class SearchFormModel {
     // @State property-wrapper init position isn't always inferred
     // MainActor at the syntactic call site).
     init(tapClient: TAPClient = TAPClient(),
-         recentSearchStore: RecentSearchStore = RecentSearchStore(),
+         recentSearchStore: RecentSearchStore? = nil,
          savedQueryStore: SavedQueryStore? = nil) {
         self.tapClient = tapClient
-        self.recentSearchStore = recentSearchStore
+        self.recentSearchStore = recentSearchStore ?? RecentSearchStore()
         self.savedQueryStore = savedQueryStore ?? SavedQueryStore()
         self.resolverService = TargetResolverService(tapClient: tapClient)
         self.dataTrainModel = DataTrainModel(

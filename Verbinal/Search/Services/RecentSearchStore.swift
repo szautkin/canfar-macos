@@ -9,7 +9,10 @@ import Observation
 import os.log
 import VerbinalKit
 
+// `@MainActor` to match SavedQueryStore: the @Sendable MCP applier structs
+// hold this store, and the @Observable state must mutate on the main actor.
 @Observable
+@MainActor
 final class RecentSearchStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "RecentSearches")
     private let maxEntries = 20
