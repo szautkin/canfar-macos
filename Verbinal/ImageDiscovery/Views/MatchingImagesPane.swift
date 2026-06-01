@@ -5,7 +5,6 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
-import AppKit
 
 /// RIGHT pane — project-grouped list of images that satisfy the
 /// current package filters and search text. Each row shows the
@@ -60,7 +59,9 @@ struct MatchingImagesPane: View {
     @ViewBuilder
     private func row(_ image: ParsedImage) -> some View {
         let state = model.rowStates[image.id] ?? .neverDiscovered
+        let isSelected = model.selectedImageID == image.id
         HStack(spacing: 8) {
+            selectionRadio(imageID: image.id, isSelected: isSelected)
             VStack(alignment: .leading, spacing: 2) {
                 Text(image.label)
                     .font(.body)
@@ -78,6 +79,27 @@ struct MatchingImagesPane: View {
             discoverButton(imageID: image.id, state: state)
         }
         .padding(.vertical, 2)
+    }
+
+    /// Leading single-select radio. Clicking it (or anywhere in the
+    /// row) selects the image; the `List(selection:)` binding above
+    /// drives the filled/empty state. Distinct from the row's
+    /// double-click-to-commit gesture so the user can browse without
+    /// committing accidentally.
+    @ViewBuilder
+    private func selectionRadio(imageID: String, isSelected: Bool) -> some View {
+        Button {
+            model.selectedImageID = imageID
+        } label: {
+            Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                .font(.system(size: 16))
+                .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(.borderless)
+        .help(isSelected ? "Selected — click \"Use this image\" or press Return" : "Select this image")
+        .accessibilityLabel(isSelected ? "Selected" : "Select \(imageID)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     /// Displays the failed probe's Skaha session id so the user can
@@ -426,8 +448,7 @@ struct CopyErrorButton: View {
 
     var body: some View {
         Button {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(message, forType: .string)
+            PlatformClipboard.copy(message)
             didCopy = true
             Task {
                 try? await Task.sleep(nanoseconds: 1_500_000_000)

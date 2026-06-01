@@ -42,7 +42,7 @@ struct FailureDetailSheet: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
             }
-            .background(Color(NSColor.textBackgroundColor))
+            .background(Color.textFieldBackground)
             Divider()
             footer
         }
@@ -84,8 +84,7 @@ struct FailureDetailSheet: View {
     private var footer: some View {
         HStack(spacing: 12) {
             Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(detail.message, forType: .string)
+                PlatformClipboard.copy(detail.message)
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }

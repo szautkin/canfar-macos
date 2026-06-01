@@ -5,7 +5,6 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
-import AppKit
 
 /// Structured view of a discovered image's probe manifest.
 ///
@@ -296,12 +295,14 @@ struct ManifestDetailSheet: View {
     @ViewBuilder
     private var footer: some View {
         HStack(spacing: 12) {
+            #if os(macOS)
             Button {
                 revealLocalCopyInFinder()
             } label: {
                 Label("Reveal in Finder", systemImage: "folder")
             }
             .help("Open Finder with the cached manifest file highlighted.")
+            #endif
 
             Button {
                 copyManifestAsJSON()
@@ -327,6 +328,7 @@ struct ManifestDetailSheet: View {
 
     // MARK: - Actions
 
+    #if os(macOS)
     /// Open Finder pointing at the local cache file. The file
     /// lives at the JSONManifestStore's directory; we recompute
     /// the safe path here to avoid coupling this view to the
@@ -343,6 +345,7 @@ struct ManifestDetailSheet: View {
             NSWorkspace.shared.activateFileViewerSelecting([dir])
         }
     }
+    #endif
 
     /// Encode the manifest as pretty-printed JSON and put it on
     /// the clipboard. Visual ack via the button label flip for
@@ -356,8 +359,7 @@ struct ManifestDetailSheet: View {
               let s = String(data: data, encoding: .utf8) else {
             return
         }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(s, forType: .string)
+        PlatformClipboard.copy(s)
         didCopyJSON = true
         Task {
             try? await Task.sleep(nanoseconds: 1_500_000_000)

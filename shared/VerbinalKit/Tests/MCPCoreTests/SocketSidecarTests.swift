@@ -5,13 +5,17 @@ import XCTest
 
 final class SocketSidecarTests: XCTestCase {
 
-    func testCandidateDirectoriesIncludeSandboxedAndUnsandboxed() {
+    func testCandidateDirectoriesIncludeLegacyPaths() {
+        // The legacy paths (Library/Containers/<bundle>/...,
+        // Library/Application Support/<bundle>) are always present as
+        // read fallbacks. The App Group container is prepended *only*
+        // when the calling process holds the entitlement — in unit
+        // tests run via `swift test` it doesn't, so we don't assert
+        // on the group container here.
         let dirs = SocketSidecar.candidateDirectories()
-        XCTAssertEqual(dirs.count, 2)
-        XCTAssertTrue(dirs[0].path.contains("Library/Containers"))
-        XCTAssertTrue(dirs[0].path.contains(SocketSidecar.appBundleID))
-        XCTAssertTrue(dirs[1].path.contains("Library/Application Support"))
-        XCTAssertTrue(dirs[1].path.contains(SocketSidecar.appBundleID))
+        let paths = dirs.map(\.path)
+        XCTAssertTrue(paths.contains { $0.contains("Library/Containers") && $0.contains(SocketSidecar.appBundleID) })
+        XCTAssertTrue(paths.contains { $0.contains("Library/Application Support") && $0.contains(SocketSidecar.appBundleID) })
     }
 
     func testWriteThenReadRoundTrip() throws {

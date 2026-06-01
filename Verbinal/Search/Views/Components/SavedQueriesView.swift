@@ -84,9 +84,11 @@ struct SavedQueriesView: View {
                             editingName = query.name
                         }
                 }
+                #if os(macOS)
                 if let attribution = query.agentAttribution {
                     AgentAttributionBadge(attribution: attribution)
                 }
+                #endif
                 Spacer()
                 Text(formatDate(query.savedAt))
                     .font(.caption2)

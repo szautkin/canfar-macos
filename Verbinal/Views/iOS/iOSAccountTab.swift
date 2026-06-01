@@ -35,6 +35,9 @@ struct iOSAccountTab: View {
             }
 
             Section {
+                Button("Close App") {
+                    AppLifecycle.suspend()
+                }
                 Button("Logout", role: .destructive) {
                     Task { await appState.logout() }
                 }

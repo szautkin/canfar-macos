@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- App Store Connect upload for the iOS target. The macOS app
+         uses ExportOptions.plist; this file is the iOS sibling so the
+         two archive flows don't interfere. -->
+    <key>method</key>
+    <string>app-store</string>
+
+    <key>destination</key>
+    <string>upload</string>
+
+    <!-- Apple Developer team ID — same as the Mac target. With a shared
+         bundle ID, Universal Purchase ties the two binaries together
+         in App Store Connect. -->
+    <key>teamID</key>
+    <string>A4ABW5VD88</string>
+
+    <!-- Automatic signing matches the Release configuration's signing
+         style. Xcode generates an iOS App Store distribution profile on
+         demand from developer.apple.com. -->
+    <key>signingStyle</key>
+    <string>automatic</string>
+
+    <!-- Strip Swift symbols to reduce binary size. App Store Connect
+         re-symbolicates from the dSYM in the archive. -->
+    <key>stripSwiftSymbols</key>
+    <true/>
+
+    <!-- Upload symbols (.dSYM) so crashes from TestFlight / App Store
+         surface with readable stack traces. -->
+    <key>uploadSymbols</key>
+    <true/>
+</dict>
+</plist>

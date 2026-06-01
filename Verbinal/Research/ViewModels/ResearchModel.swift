@@ -17,7 +17,9 @@ final class ResearchModel {
     let observationStore: ObservationStore
     let downloadService: DownloadService
     let noteStore: ObservationNoteStore
+    #if os(macOS)
     let exportService = ExportService()
+    #endif
 
     var activeDownloads: [UUID: DownloadProgress] = [:]
     var selectedObservation: DownloadedObservation?

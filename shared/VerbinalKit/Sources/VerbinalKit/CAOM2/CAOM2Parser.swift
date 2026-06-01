@@ -7,13 +7,15 @@
 import Foundation
 
 public enum CAOM2ParserError: Error, LocalizedError {
-    case malformedXML(underlying: Error)
+    case malformedXML(underlying: Error?)
     case missingRoot
     case missingRequiredField(String)
 
     public var errorDescription: String? {
         switch self {
-        case .malformedXML(let e): return "Malformed CAOM2 XML: \(e.localizedDescription)"
+        case .malformedXML(let e):
+            if let e { return "Malformed CAOM2 XML: \(e.localizedDescription)" }
+            return "Malformed CAOM2 XML"
         case .missingRoot: return "CAOM2 document has no root element"
         case .missingRequiredField(let f): return "CAOM2 document missing required field: \(f)"
         }
@@ -22,28 +24,33 @@ public enum CAOM2ParserError: Error, LocalizedError {
 
 /// Tolerant CAOM-2 XML reader.
 ///
-/// Walks the DOM rather than using XPath because the document namespaces
-/// vary across schema versions (`v2.4`, `v2.5`, …) and `XMLDocument`'s
-/// XPath namespace handling is fragile. Element matching uses `localName`
-/// so version drift doesn't break us. Unknown elements are skipped, not
-/// errored — we don't want a future schema additive change to make every
-/// observation unviewable.
+/// Builds a minimal in-memory DOM from `XMLParser` (SAX) events so the
+/// same code path runs on macOS and iOS — Foundation's `XMLDocument` and
+/// `XMLElement` are macOS-only. Element matching uses `localName` so the
+/// document namespace prefix (`caom2:`, `vodml:`, …) doesn't matter and
+/// schema-version drift across `v2.4` / `v2.5` is tolerated. Unknown
+/// elements are skipped, not errored — we don't want a future schema
+/// additive change to make every observation unviewable.
 public enum CAOM2Parser {
 
     public static func parse(data: Data) throws -> CAOM2Observation {
-        let doc: XMLDocument
-        do {
-            doc = try XMLDocument(data: data)
-        } catch {
-            throw CAOM2ParserError.malformedXML(underlying: error)
+        let builder = TreeBuilder()
+        let parser = XMLParser(data: data)
+        // shouldProcessNamespaces stays at its default (false) so element
+        // names arrive prefixed (e.g. `caom2:observation`) and we strip
+        // the prefix in the SAX delegate. This matches the localName
+        // semantics the rest of the parser depends on.
+        parser.delegate = builder
+        guard parser.parse() else {
+            throw CAOM2ParserError.malformedXML(underlying: parser.parserError)
         }
-        guard let root = doc.rootElement() else { throw CAOM2ParserError.missingRoot }
+        guard let root = builder.root else { throw CAOM2ParserError.missingRoot }
         return try parseObservation(root)
     }
 
     // MARK: - Observation
 
-    private static func parseObservation(_ el: XMLElement) throws -> CAOM2Observation {
+    private static func parseObservation(_ el: Node) throws -> CAOM2Observation {
         guard let collection = textChild(el, "collection"), !collection.isEmpty else {
             throw CAOM2ParserError.missingRequiredField("collection")
         }
@@ -70,7 +77,7 @@ public enum CAOM2Parser {
 
     // MARK: - Section parsers
 
-    private static func parseProposal(_ el: XMLElement) -> CAOM2Observation.Proposal {
+    private static func parseProposal(_ el: Node) -> CAOM2Observation.Proposal {
         CAOM2Observation.Proposal(
             id: textChild(el, "id"),
             pi: textChild(el, "pi"),
@@ -80,7 +87,7 @@ public enum CAOM2Parser {
         )
     }
 
-    private static func parseTarget(_ el: XMLElement) -> CAOM2Observation.Target {
+    private static func parseTarget(_ el: Node) -> CAOM2Observation.Target {
         CAOM2Observation.Target(
             name: textChild(el, "name"),
             type: textChild(el, "type"),
@@ -91,7 +98,7 @@ public enum CAOM2Parser {
         )
     }
 
-    private static func parseTelescope(_ el: XMLElement) -> CAOM2Observation.Telescope {
+    private static func parseTelescope(_ el: Node) -> CAOM2Observation.Telescope {
         let x = doubleChild(el, "geoLocationX")
         let y = doubleChild(el, "geoLocationY")
         let z = doubleChild(el, "geoLocationZ")
@@ -104,14 +111,14 @@ public enum CAOM2Parser {
         )
     }
 
-    private static func parseInstrument(_ el: XMLElement) -> CAOM2Observation.Instrument {
+    private static func parseInstrument(_ el: Node) -> CAOM2Observation.Instrument {
         CAOM2Observation.Instrument(
             name: textChild(el, "name"),
             keywords: keywordList(child(el, "keywords"))
         )
     }
 
-    private static func parseEnvironment(_ el: XMLElement) -> CAOM2Observation.Environment {
+    private static func parseEnvironment(_ el: Node) -> CAOM2Observation.Environment {
         CAOM2Observation.Environment(
             seeing: doubleChild(el, "seeing"),
             humidity: doubleChild(el, "humidity"),
@@ -123,7 +130,7 @@ public enum CAOM2Parser {
         )
     }
 
-    private static func parsePlane(_ el: XMLElement) -> CAOM2Observation.Plane {
+    private static func parsePlane(_ el: Node) -> CAOM2Observation.Plane {
         CAOM2Observation.Plane(
             productID: textChild(el, "productID") ?? "",
             creatorID: textChild(el, "creatorID"),
@@ -142,9 +149,9 @@ public enum CAOM2Parser {
         )
     }
 
-    private static func parseProvenance(_ el: XMLElement) -> CAOM2Observation.Provenance {
+    private static func parseProvenance(_ el: Node) -> CAOM2Observation.Provenance {
         let inputs: [String] = children(of: child(el, "inputs"), named: "planeURI")
-            .compactMap(\.stringValue)
+            .map(\.text)
             .filter { !$0.isEmpty }
         return CAOM2Observation.Provenance(
             name: textChild(el, "name"),
@@ -159,7 +166,7 @@ public enum CAOM2Parser {
         )
     }
 
-    private static func parseMetrics(_ el: XMLElement) -> CAOM2Observation.Metrics {
+    private static func parseMetrics(_ el: Node) -> CAOM2Observation.Metrics {
         CAOM2Observation.Metrics(
             sourceNumberDensity: doubleChild(el, "sourceNumberDensity"),
             background: doubleChild(el, "background"),
@@ -175,7 +182,7 @@ public enum CAOM2Parser {
     /// the `xsi:type="caom2:Polygon"` discriminator); only vertices with
     /// `coord` ordinal in {1, 2, …} contribute (some files include extra
     /// segment-control entries we should skip).
-    private static func parsePosition(_ el: XMLElement) -> CAOM2Observation.Position? {
+    private static func parsePosition(_ el: Node) -> CAOM2Observation.Position? {
         var polygon: [(Double, Double)] = []
         if let bounds = child(el, "bounds") {
             // Walk to the polygon points list — name varies slightly across versions.
@@ -213,7 +220,7 @@ public enum CAOM2Parser {
         )
     }
 
-    private static func parseVertex(_ el: XMLElement) -> (Double, Double)? {
+    private static func parseVertex(_ el: Node) -> (Double, Double)? {
         // Vertex shapes seen in the wild:
         //  • <vertex><cval1>RA</cval1><cval2>Dec</cval2></vertex>
         //  • <vertex coord="1"><cval1>...</cval1>...</vertex>
@@ -228,7 +235,7 @@ public enum CAOM2Parser {
     /// inside `bounds/lower` and `bounds/upper`. Some older docs use
     /// `samples` / range `start.val` / `end.val` — the latter two are
     /// pulled in as a fallback when bounds are absent.
-    private static func parseEnergy(_ el: XMLElement) -> CAOM2Observation.Energy {
+    private static func parseEnergy(_ el: Node) -> CAOM2Observation.Energy {
         var lower = doubleChild(child(el, "bounds"), "lower")
         var upper = doubleChild(child(el, "bounds"), "upper")
         if lower == nil || upper == nil {
@@ -248,7 +255,7 @@ public enum CAOM2Parser {
         )
     }
 
-    private static func parseTime(_ el: XMLElement) -> CAOM2Observation.Time {
+    private static func parseTime(_ el: Node) -> CAOM2Observation.Time {
         CAOM2Observation.Time(
             lowerMJD: doubleChild(child(el, "bounds"), "lower"),
             upperMJD: doubleChild(child(el, "bounds"), "upper"),
@@ -256,14 +263,14 @@ public enum CAOM2Parser {
         )
     }
 
-    private static func parsePolarization(_ el: XMLElement) -> CAOM2Observation.Polarization {
+    private static func parsePolarization(_ el: Node) -> CAOM2Observation.Polarization {
         let states = children(of: child(el, "states"), named: "state")
-            .compactMap(\.stringValue)
+            .map(\.text)
             .filter { !$0.isEmpty }
         return CAOM2Observation.Polarization(states: states)
     }
 
-    private static func parseArtifact(_ el: XMLElement) -> CAOM2Observation.Artifact {
+    private static func parseArtifact(_ el: Node) -> CAOM2Observation.Artifact {
         let length = textChild(el, "contentLength").flatMap(Int64.init)
         return CAOM2Observation.Artifact(
             uri: textChild(el, "uri") ?? "",
@@ -275,41 +282,34 @@ public enum CAOM2Parser {
         )
     }
 
-    // MARK: - DOM helpers (namespace-agnostic via `localName`)
+    // MARK: - Tree helpers (namespace-agnostic via `localName`)
 
-    /// First direct child element of `parent` whose local name equals `name`.
-    /// Tolerates `nil` parent so call sites can chain without `if let`.
-    private static func child(_ parent: XMLElement?, _ name: String) -> XMLElement? {
-        guard let parent else { return nil }
-        for c in parent.children ?? [] {
-            if let e = c as? XMLElement, e.localName == name { return e }
-        }
-        return nil
+    /// First direct child of `parent` whose local name equals `name`.
+    /// Tolerates a nil parent so call sites can chain without `if let`.
+    private static func child(_ parent: Node?, _ name: String) -> Node? {
+        parent?.children.first { $0.localName == name }
     }
 
-    /// All direct children whose local name equals `name`. Empty if `parent`
-    /// is nil.
-    private static func children(of parent: XMLElement?, named name: String) -> [XMLElement] {
-        guard let parent else { return [] }
-        return (parent.children ?? []).compactMap { node in
-            (node as? XMLElement).flatMap { $0.localName == name ? $0 : nil }
-        }
+    /// All direct children whose local name equals `name`. Empty if
+    /// `parent` is nil.
+    private static func children(of parent: Node?, named name: String) -> [Node] {
+        (parent?.children ?? []).filter { $0.localName == name }
     }
 
-    private static func textChild(_ parent: XMLElement?, _ name: String) -> String? {
-        let value = child(parent, name)?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
+    private static func textChild(_ parent: Node?, _ name: String) -> String? {
+        let value = child(parent, name)?.text.trimmingCharacters(in: .whitespacesAndNewlines)
         return (value?.isEmpty == false) ? value : nil
     }
 
-    private static func doubleChild(_ parent: XMLElement?, _ name: String) -> Double? {
+    private static func doubleChild(_ parent: Node?, _ name: String) -> Double? {
         textChild(parent, name).flatMap(Double.init)
     }
 
-    private static func intChild(_ parent: XMLElement?, _ name: String) -> Int? {
+    private static func intChild(_ parent: Node?, _ name: String) -> Int? {
         textChild(parent, name).flatMap(Int.init)
     }
 
-    private static func boolChild(_ parent: XMLElement?, _ name: String) -> Bool? {
+    private static func boolChild(_ parent: Node?, _ name: String) -> Bool? {
         guard let s = textChild(parent, name)?.lowercased() else { return nil }
         switch s {
         case "true", "1": return true
@@ -323,7 +323,7 @@ public enum CAOM2Parser {
     ///   • full ISO-8601 with `Z` or `±HH:MM`
     /// Try the plain UTC form first (matches the common case in fixtures);
     /// fall back to ISO-8601 with and without fractional seconds.
-    private static func dateChild(_ parent: XMLElement?, _ name: String) -> Date? {
+    private static func dateChild(_ parent: Node?, _ name: String) -> Date? {
         guard let raw = textChild(parent, name) else { return nil }
         return Self.plainUTCFractional.date(from: raw)
             ?? Self.plainUTC.date(from: raw)
@@ -367,17 +367,71 @@ public enum CAOM2Parser {
     /// Keyword lists are stored as `<keywords><keyword>...</keyword>...</keywords>`
     /// in some schema versions and as a single space-separated string in
     /// others. Handle both.
-    private static func keywordList(_ container: XMLElement?) -> [String] {
+    private static func keywordList(_ container: Node?) -> [String] {
         guard let container else { return [] }
         let elements = children(of: container, named: "keyword")
         if !elements.isEmpty {
-            return elements.compactMap { $0.stringValue?.trimmingCharacters(in: .whitespaces) }
+            return elements
+                .map { $0.text.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
         }
-        if let raw = container.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty {
-            return raw.split(whereSeparator: { $0.isWhitespace || $0 == ";" })
-                .map(String.init)
+        let raw = container.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !raw.isEmpty {
+            return raw.split(whereSeparator: { $0.isWhitespace || $0 == ";" }).map(String.init)
         }
         return []
+    }
+
+    // MARK: - Minimal tree built from SAX events
+
+    /// Direct-children only. `text` accumulates the character data that
+    /// arrives while this node is on top of the parser stack — i.e. the
+    /// element's *immediate* text, not the descendant string-value. CAOM2
+    /// only reads leaf text, so this matches the old `XMLElement.stringValue`
+    /// behavior in practice while sidestepping the surprise that property
+    /// returns concatenated descendant text.
+    fileprivate final class Node {
+        let localName: String
+        let attributes: [String: String]
+        var text: String = ""
+        var children: [Node] = []
+
+        init(localName: String, attributes: [String: String]) {
+            self.localName = localName
+            self.attributes = attributes
+        }
+    }
+
+    private final class TreeBuilder: NSObject, XMLParserDelegate {
+        var root: Node?
+        private var stack: [Node] = []
+
+        func parser(_ parser: XMLParser, didStartElement elementName: String,
+                     namespaceURI: String?, qualifiedName: String?,
+                     attributes attrs: [String: String]) {
+            let local = elementName.split(separator: ":").last.map(String.init) ?? elementName
+            let node = Node(localName: local, attributes: attrs)
+            if let parent = stack.last {
+                parent.children.append(node)
+            } else {
+                root = node
+            }
+            stack.append(node)
+        }
+
+        func parser(_ parser: XMLParser, foundCharacters string: String) {
+            stack.last?.text += string
+        }
+
+        func parser(_ parser: XMLParser, foundCDATA CDATABlock: Data) {
+            if let s = String(data: CDATABlock, encoding: .utf8) {
+                stack.last?.text += s
+            }
+        }
+
+        func parser(_ parser: XMLParser, didEndElement elementName: String,
+                     namespaceURI: String?, qualifiedName: String?) {
+            _ = stack.popLast()
+        }
     }
 }

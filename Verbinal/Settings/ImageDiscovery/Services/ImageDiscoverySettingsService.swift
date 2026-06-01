@@ -33,7 +33,7 @@ final class ImageDiscoverySettingsService {
     private static let keyRegistryHost    = "com.codebg.Verbinal.imageDiscovery.registryHost"
     private static let keyUsername        = "com.codebg.Verbinal.imageDiscovery.username"
     private static let keyInspectorImage  = "com.codebg.Verbinal.imageDiscovery.inspectorImage"
-    private static let keychainServiceID  = "com.codebg.Verbinal.imageDiscovery"
+    private nonisolated static let keychainServiceID  = "com.codebg.Verbinal.imageDiscovery"
 
     private let userDefaults: UserDefaults
 

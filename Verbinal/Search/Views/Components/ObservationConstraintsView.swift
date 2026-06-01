@@ -23,7 +23,7 @@ struct ObservationConstraintsView: View {
 
             HStack {
                 Toggle("Public only", isOn: $formState.publicOnly)
-                    .toggleStyle(.checkbox)
+                    .platformCheckboxToggle()
                 Spacer()
             }
 

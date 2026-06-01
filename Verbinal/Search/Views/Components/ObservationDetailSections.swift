@@ -409,7 +409,7 @@ struct ObservationProvenanceSection: View {
                                 .foregroundStyle(.secondary)
                                 .frame(width: 110, alignment: .trailing)
                             Button(ref) { openURL(url) }
-                                .buttonStyle(.link)
+                                .platformLinkButton()
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                             Spacer()

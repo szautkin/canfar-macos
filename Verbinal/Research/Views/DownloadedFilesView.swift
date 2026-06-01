@@ -214,12 +214,14 @@ struct DownloadedFilesView: View {
     }
     #endif
 
+    #if os(macOS)
     private var researchItemCountLabel: String {
         ResearchExporter.itemCountLabel(
             observations: model.observationStore.observations.count,
             notes: model.noteStore.notes.count
         )
     }
+    #endif
 
     /// Collection group label with uppercase title + capsule count badge.
     /// `DisclosureGroup` draws its own always-visible chevron, so this view
@@ -282,9 +284,11 @@ struct DownloadedFilesView: View {
                     Text(obs.targetName.isEmpty ? obs.observationID : obs.targetName)
                         .font(.caption)
                         .lineLimit(1)
+                    #if os(macOS)
                     if let attribution = obs.agentAttribution {
                         AgentAttributionBadge(attribution: attribution)
                     }
+                    #endif
                 }
                 HStack(spacing: 4) {
                     Text(obs.instrument)

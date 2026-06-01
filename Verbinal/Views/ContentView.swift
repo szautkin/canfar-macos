@@ -11,7 +11,14 @@ struct ContentView: View {
     @State var showAbout = false
     @State private var searchModel = SearchFormModel()
     @State private var researchModel = ResearchModel()
+    #if os(macOS)
+    // StorageBrowserModel, FileBrowserModel, and FileBrowserPanel live in
+    // feature dirs excluded from the iOS target. The shell that hosts the
+    // browser column is macOS-only — iOS routes Storage to a placeholder.
     @State private var storageBrowserModel: StorageBrowserModel?
+    @State private var fileBrowserModel = FileBrowserModel()
+    @State var showFileBrowser = false
+    #endif
 
     private func initResearchModel() {
         researchModel.onOpenFile = { [weak appState] url in
@@ -26,11 +33,10 @@ struct ContentView: View {
             }
         }
     }
-    @State private var fileBrowserModel = FileBrowserModel()
-    @State var showFileBrowser = false
 
     var body: some View {
         HStack(spacing: 0) {
+            #if os(macOS)
             if showFileBrowser {
                 FileBrowserPanel(model: fileBrowserModel) { url in
                     handleFileOpen(url)
@@ -38,6 +44,7 @@ struct ContentView: View {
                 .frame(width: 260)
                 Divider()
             }
+            #endif
 
             mainContent
         }
@@ -203,7 +210,16 @@ struct ContentView: View {
             LandingView()
         }
         #else
-        LandingView()
+        // iOS doesn't use the mode-card Mac landing. The app's home is the
+        // tab bar (iPhone) / split view (iPad), so once authenticated we
+        // jump straight to AuthenticatedRootView, which already chooses
+        // AdaptiveLayout on iOS. Signed-out users get the same
+        // login-required prompt the other modes use.
+        if appState.isAuthenticated {
+            AuthenticatedRootView()
+        } else {
+            loginRequiredView(for: .landing)
+        }
         #endif
     }
 
@@ -255,11 +271,11 @@ struct ContentView: View {
         #endif
     }
 
-    // MARK: - FITS Viewer
+    // MARK: - FITS Viewer & Storage (macOS-only — types live in excluded dirs)
 
+    #if os(macOS)
     @ViewBuilder
     private var fitsViewerContent: some View {
-        #if os(macOS)
         VStack(spacing: 0) {
             makeModeToolbar(title: "FITS Viewer", showAbout: $showAbout)
             Divider()
@@ -271,17 +287,11 @@ struct ContentView: View {
                 // body to fill keeps the toolbar pinned to the top.
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        #else
-        FITSViewerRootView()
-        #endif
     }
-
-    // MARK: - Storage
 
     @ViewBuilder
     private var storageContent: some View {
         if appState.isAuthenticated {
-            #if os(macOS)
             VStack(spacing: 0) {
                 makeModeToolbar(title: "Storage", showAbout: $showAbout)
                 Divider()
@@ -292,15 +302,11 @@ struct ContentView: View {
                         .task { initStorageModel() }
                 }
             }
-            #else
-            if let model = storageBrowserModel {
-                StorageBrowserRootView(model: model)
-            }
-            #endif
         } else {
             loginRequiredView(for: .storage)
         }
     }
+    #endif
 
     // MARK: - Portal
 
@@ -334,8 +340,16 @@ struct ContentView: View {
             Text("Sign in to continue.")
                 .foregroundStyle(.secondary)
             HStack(spacing: 12) {
+                #if os(iOS)
+                // iOS landing is a dead-end when signed out — there's no
+                // previous screen to go back to. Repurpose the leading
+                // button as a soft-close instead.
+                Button("Close") { AppLifecycle.suspend() }
+                    .buttonStyle(.bordered)
+                #else
                 Button("Back") { appState.navigateBack() }
                     .buttonStyle(.bordered)
+                #endif
                 Button("Login") {
                     appState.showLoginSheet = true
                     appState.pendingModeAfterLogin = mode
@@ -344,6 +358,12 @@ struct ContentView: View {
                 .controlSize(.large)
             }
             Spacer()
+            #if os(iOS)
+            Button("About Verbinal") { appState.activeSheet = .about }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .padding(.bottom, 24)
+            #endif
         }
     }
 
@@ -368,6 +388,7 @@ struct ContentView: View {
 
     // MARK: - Helpers
 
+    #if os(macOS)
     private func initStorageModel() {
         guard storageBrowserModel == nil, !appState.username.isEmpty else { return }
         let model = StorageBrowserModel(
@@ -379,9 +400,7 @@ struct ContentView: View {
             if FileHelper.isFITS(ext) {
                 appState?.dispatch(.openFITS(url: url))
             } else {
-                #if os(macOS)
                 NSWorkspace.shared.open(url)
-                #endif
             }
         }
         storageBrowserModel = model
@@ -392,9 +411,8 @@ struct ContentView: View {
         if FileHelper.isFITS(ext) {
             appState.dispatch(.openFITS(url: url))
         } else {
-            #if os(macOS)
             NSWorkspace.shared.open(url)
-            #endif
         }
     }
+    #endif
 }

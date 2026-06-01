@@ -153,8 +153,10 @@ final class ImageDiscoveryModel {
     /// MainActor init and read exactly once from the nonisolated
     /// deinit. No concurrent access; the "unsafe" annotation is
     /// the standard escape hatch for this single-writer / single-
-    /// reader pattern. `Task<Void, Never>` is Sendable so no
-    /// boxing is required.
+    /// reader pattern. Required (not just stylistic) here because
+    /// the enclosing class is `@Observable`, and Observation's macro
+    /// expansion requires `nonisolated(unsafe)` for mutable stored
+    /// properties that step outside the actor's isolation.
     private nonisolated(unsafe) var inFlightCountSubscription: Task<Void, Never>?
 
     init(coordinator: ImageDiscoveryCoordinator) {
@@ -610,7 +612,7 @@ final class ImageDiscoveryModel {
         return Self.absoluteFormatter.string(from: date)
     }
 
-    private static let absoluteFormatter: DateFormatter = {
+    nonisolated private static let absoluteFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "MMM d"
         return f

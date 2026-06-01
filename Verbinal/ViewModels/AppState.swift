@@ -230,7 +230,13 @@ final class AppState {
         // Register the MCP tool surface. Order matters: tools must be
         // registered *before* bootstrap, since the listener captures the
         // router's tool table when it starts.
+        //
+        // iOS doesn't link the MCP tool extension (the JSON-RPC helper
+        // is a macOS CLI subprocess with no iOS analogue) — leave the
+        // tool table empty on iOS.
+        #if os(macOS)
         agentsService.register(tools: makeAgentTools())
+        #endif
 
         // Wire the navigator closure the auto-apply path uses to drive
         // follow-on navigation. The closure captures `self` weakly —
@@ -433,6 +439,13 @@ final class AppState {
             return await MainActor.run { self.imageDiscoverySettings.settings.inspectorImage }
         }
 
+        // ImageDiscoveryCoordinator's `vospace` parameter takes any
+        // `VOSpaceFileTransfer`; the only concrete conformance ships in
+        // `Storage/Services/VOSpaceBrowserService.swift` which is iOS-
+        // excluded (the browser leans on AppKit's NSWorkspace + sandbox
+        // file APIs). Image discovery / Canfar images stay disabled on
+        // iOS until a UIKit-friendly transfer is written.
+        #if os(macOS)
         let coord = ImageDiscoveryCoordinator(
             store: store,
             headless: headlessService,
@@ -451,6 +464,7 @@ final class AppState {
             portalSettingsService: portalSettingsService,
             username: username
         )
+        #endif
 
         prewarmPortalCache()
     }

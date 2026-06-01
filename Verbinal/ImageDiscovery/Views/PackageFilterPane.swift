@@ -198,7 +198,7 @@ struct PackageFilterPane: View {
                 .truncationMode(.middle)
                 .foregroundStyle(enabled ? .primary : .tertiary)
         }
-        .toggleStyle(.checkbox)
+        .platformCheckboxToggle()
         .disabled(!enabled)
         .help(enabled ? "" : "No image with the current filters has this value")
     }

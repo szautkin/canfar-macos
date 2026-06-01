@@ -56,7 +56,7 @@ struct ProbeLogsSheet: View {
                     .padding(.vertical, 12)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            .background(Color(NSColor.textBackgroundColor))
+            .background(Color.textFieldBackground)
 
             Divider()
             footer

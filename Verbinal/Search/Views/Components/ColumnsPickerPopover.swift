@@ -90,7 +90,7 @@ struct ColumnsPickerPopover: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
-                    .toggleStyle(.checkbox)
+                    .platformCheckboxToggle()
                     .help(Text(col.label))
                 }
             }
