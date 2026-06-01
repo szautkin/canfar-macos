@@ -161,13 +161,20 @@ final class ResearchModel {
 
     func deleteObservation(_ observation: DownloadedObservation) {
         let url = URL(fileURLWithPath: observation.localPath)
-        Task {
-            // Delete file first; ignore errors — file may already be gone
-            try? await downloadService.deleteFile(at: url)
-            // Remove metadata only after file deletion is attempted
-            observationStore.remove(observation)
-            if selectedObservation?.id == observation.id {
-                selectedObservation = nil
+        // Delete the file off the main actor (DownloadService is an actor),
+        // then apply the @Observable state mutations explicitly back on the
+        // MainActor. The closure already inherits this model's @MainActor
+        // isolation, but the explicit annotation + [weak self] make the
+        // hop-back unambiguous under strict concurrency and avoid a strong
+        // self capture for the lifetime of the file delete.
+        Task { @MainActor [weak self] in
+            // Ignore errors — the file may already be gone.
+            try? await self?.downloadService.deleteFile(at: url)
+            guard let self else { return }
+            // Remove metadata only after file deletion is attempted.
+            self.observationStore.remove(observation)
+            if self.selectedObservation?.id == observation.id {
+                self.selectedObservation = nil
             }
         }
     }
