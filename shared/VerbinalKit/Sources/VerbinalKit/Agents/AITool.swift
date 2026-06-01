@@ -132,19 +132,30 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
     case backendError(String)
     case notImplemented
 
+    /// Bound a user- or server-supplied string before it goes onto the wire
+    /// description, so an overlong or noisy value (a giant URI, a verbose
+    /// backend stack trace) can't bloat the agent-facing error or leak a large
+    /// payload verbatim. The head — the actionable part — is kept; the rest is
+    /// marked truncated. `auditTag` never interpolates input, so log/PII
+    /// hygiene there is unaffected.
+    static func clip(_ value: String, max: Int = 200) -> String {
+        guard value.count > max else { return value }
+        return String(value.prefix(max)) + "… (truncated)"
+    }
+
     public var description: String {
         switch self {
-        case .invalidArgument(let msg): return "invalidArgument: \(msg)"
-        case .unknownTarget(let what): return "unknownTarget: \(what)"
+        case .invalidArgument(let msg): return "invalidArgument: \(Self.clip(msg))"
+        case .unknownTarget(let what): return "unknownTarget: \(Self.clip(what))"
         case .targetNotResolved(let name):
-            return "targetNotResolved: '\(name)' did not resolve via SIMBAD/NED. Try a different spelling, or pass `ra`+`dec` directly."
+            return "targetNotResolved: '\(Self.clip(name, max: 120))' did not resolve via SIMBAD/NED. Try a different spelling, or pass `ra`+`dec` directly."
         case .unsupportedIdScheme(let id):
-            return "unsupportedIdScheme: '\(id)' must use the ivo:// scheme."
+            return "unsupportedIdScheme: '\(Self.clip(id, max: 120))' must use the ivo:// scheme."
         case .planePublisherIdNotSupported(let id):
-            return "planePublisherIdNotSupported: '\(id)' looks like a Plane publisher_id; couldn't reduce to an Observation URI."
+            return "planePublisherIdNotSupported: '\(Self.clip(id, max: 120))' looks like a Plane publisher_id; couldn't reduce to an Observation URI."
         case .authRequired: return "authRequired"
         case .perTurnProposalCapExceeded(let limit): return "perTurnProposalCapExceeded(\(limit))"
-        case .backendError(let msg): return "backendError: \(msg)"
+        case .backendError(let msg): return "backendError: \(Self.clip(msg))"
         case .notImplemented: return "notImplemented"
         }
     }
