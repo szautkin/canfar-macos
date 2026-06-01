@@ -345,7 +345,14 @@ final class FITSTabHostModel {
     ///
     /// Matches Windows `OnBlinkTick`: increments/decrements opacity by a fixed
     /// fraction per tick so the full cycle takes `blinkInterval` seconds.
-    private func tickBlink() {
+    ///
+    /// The `isBlinking` guard is the authoritative stop barrier: `stopBlink()`
+    /// cancels the task *and* clears `isBlinking`, and because both this method
+    /// and `stopBlink()` are `@MainActor`-isolated (no `await` between the
+    /// task's cancellation check and this call) a tick can never mutate
+    /// `blinkOpacity` against a stopped/torn-down session. `internal` (not
+    /// `private`) only so the lifecycle can be unit-tested.
+    func tickBlink() {
         guard isBlinking, !isBlinkPaused else { return }
 
         // Step size: fraction of [0,1] range advanced per 50ms tick.
