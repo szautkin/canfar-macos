@@ -166,15 +166,9 @@ final class FITSViewerModel: Identifiable {
             loadError = error.localizedDescription
         }
 
-        // Issue 7: validate crosshair is still within the new HDU's bounds
-        if let crosshair = crosshairPixel, let newHDU = selectedHDU {
-            let naxis1 = Double(newHDU.header.naxis1)
-            let naxis2 = Double(newHDU.header.naxis2)
-            if crosshair.x < 0 || crosshair.x >= naxis1 ||
-               crosshair.y < 0 || crosshair.y >= naxis2 {
-                Self.logger.info("selectHDU: clearing crosshair out of new HDU bounds (\(crosshair.x), \(crosshair.y)) vs \(naxis1)×\(naxis2)")
-                clearCrosshair()
-            }
+        // Issue 7 / Ticket 010: reconcile the crosshair with the new HDU.
+        if let newHDU = selectedHDU {
+            reconcileCrosshair(naxis1: newHDU.header.naxis1, naxis2: newHDU.header.naxis2)
         }
     }
 
@@ -244,6 +238,32 @@ final class FITSViewerModel: Identifiable {
         crosshairValue = ""
         crosshairRADeg = nil
         crosshairDecDeg = nil
+        crosshairOutOfBounds = false
+        outOfBoundsRA = ""
+        outOfBoundsDec = ""
+    }
+
+    /// Reconcile the crosshair with a newly-selected HDU's bounds: clear it
+    /// entirely if it now falls outside, or — when it's still valid (or
+    /// absent) — clear any stale out-of-bounds RA/Dec readout left over from a
+    /// prior linked operation so the sidebar never shows old out-of-bounds
+    /// coordinates on a valid view. Extracted from `selectHDU` for testability.
+    func reconcileCrosshair(naxis1: Int, naxis2: Int) {
+        guard let crosshair = crosshairPixel else {
+            clearStaleOutOfBounds()
+            return
+        }
+        let w = Double(naxis1), h = Double(naxis2)
+        if crosshair.x < 0 || crosshair.x >= w || crosshair.y < 0 || crosshair.y >= h {
+            Self.logger.info("selectHDU: clearing crosshair out of new HDU bounds (\(crosshair.x), \(crosshair.y)) vs \(naxis1)×\(naxis2)")
+            clearCrosshair()
+        } else {
+            clearStaleOutOfBounds()
+        }
+    }
+
+    private func clearStaleOutOfBounds() {
+        guard crosshairOutOfBounds else { return }
         crosshairOutOfBounds = false
         outOfBoundsRA = ""
         outOfBoundsDec = ""
