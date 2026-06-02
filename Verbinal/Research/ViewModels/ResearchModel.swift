@@ -102,8 +102,11 @@ final class ResearchModel {
             #endif
 
             guard let saveResult else {
-                // User cancelled — clean up temp
-                try? await downloadService.deleteFile(at: tempURL)
+                // User cancelled — clean up temp. A failure here (orphaned
+                // temp file, read-only temp dir) is logged under category
+                // Downloads rather than swallowed, but must not interrupt the
+                // cancel flow, so we don't propagate it.
+                await downloadService.deleteFileLoggingFailure(at: tempURL)
                 activeDownloads.removeValue(forKey: downloadID)
                 return
             }
@@ -168,8 +171,10 @@ final class ResearchModel {
         // hop-back unambiguous under strict concurrency and avoid a strong
         // self capture for the lifetime of the file delete.
         Task { @MainActor [weak self] in
-            // Ignore errors — the file may already be gone.
-            try? await self?.downloadService.deleteFile(at: url)
+            // The file may already be gone (handled as a no-op). Any genuine
+            // deletion failure is logged under category Downloads for
+            // diagnostics rather than surfaced to the user mid-delete.
+            await self?.downloadService.deleteFileLoggingFailure(at: url)
             guard let self else { return }
             // Remove metadata only after file deletion is attempted.
             self.observationStore.remove(observation)

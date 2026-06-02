@@ -45,6 +45,32 @@ final class DownloadServiceTests: XCTestCase {
         try await service.deleteFile(at: url)
     }
 
+    // MARK: - Ticket 051: logged (non-throwing) deletion
+
+    func testDeleteFileLoggingFailureRemovesExistingFileAndReportsSuccess() async throws {
+        let service = DownloadService()
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dl-log-del-\(UUID().uuidString).bin")
+        try Data("x".utf8).write(to: url)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+
+        let ok = await service.deleteFileLoggingFailure(at: url)
+        XCTAssertTrue(ok, "successful deletion reports success")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+    }
+
+    func testDeleteFileLoggingFailureIsNoOpForMissingFile() async {
+        let service = DownloadService()
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dl-log-missing-\(UUID().uuidString).bin")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+
+        // A missing file is a no-op (fileExists guard) and must not throw or
+        // report failure — it returns success without logging a warning.
+        let ok = await service.deleteFileLoggingFailure(at: url)
+        XCTAssertTrue(ok, "deleting a non-existent file is a successful no-op")
+    }
+
     // MARK: - Ticket 006: filename sanitization (path-traversal guard)
 
     func testSanitizeFilenameStripsPathComponents() {

@@ -53,6 +53,25 @@ final class ResearchModelDeleteTests: XCTestCase {
         store.clear()
     }
 
+    /// Ticket 051: deleting an observation whose backing file is already gone
+    /// must remove the row without surfacing an error to the user — the
+    /// no-op/logged-failure deletion path stays silent in the UI.
+    func testDeleteMissingBackingFileDoesNotSurfaceError() async {
+        let (model, store) = makeModel()
+        let obs = makeObservation()  // localPath points at a non-existent temp file
+        store.save(obs)
+        XCTAssertNil(model.lastError)
+
+        model.deleteObservation(obs)
+
+        for _ in 0..<200 where !store.observations.isEmpty {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertTrue(store.observations.isEmpty, "row removed despite missing file")
+        XCTAssertNil(model.lastError, "missing-file deletion must not surface an error to the user")
+        store.clear()
+    }
+
     func testDeleteLeavesUnrelatedSelectionIntact() async {
         let (model, store) = makeModel()
         let toDelete = makeObservation()

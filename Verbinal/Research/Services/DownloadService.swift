@@ -72,6 +72,27 @@ actor DownloadService {
         }
     }
 
+    /// Delete a file, logging (rather than throwing) any failure so callers
+    /// in fire-and-forget cleanup paths — save-panel cancel, observation
+    /// delete — don't have to swallow disk errors with a bare `try?`.
+    ///
+    /// A missing file is treated as success (the `deleteFile` guard makes it
+    /// a no-op). Returns `false` only when an actual removal failed (e.g.
+    /// permission denied, device offline), after writing a warning to the
+    /// unified log under the `Downloads` category for diagnostics.
+    @discardableResult
+    func deleteFileLoggingFailure(at url: URL) -> Bool {
+        do {
+            try deleteFile(at: url)
+            return true
+        } catch {
+            Self.logger.warning(
+                "Failed to delete file at \(url.path, privacy: .public): \(error.localizedDescription, privacy: .public)"
+            )
+            return false
+        }
+    }
+
     /// Get file size at a URL.
     func fileSize(at url: URL) -> Int64? {
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) else { return nil }
