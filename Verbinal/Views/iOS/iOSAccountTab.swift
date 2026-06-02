@@ -9,6 +9,7 @@ import SwiftUI
 
 struct iOSAccountTab: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.locale) private var locale
     @State private var showAbout = false
     @State private var showTerms = false
 
@@ -33,7 +34,7 @@ struct iOSAccountTab: View {
                 Button("About Verbinal") {
                     showAbout = true
                 }
-                Button("Terms of Use") {
+                Button(LegalText.document(for: locale).termsLink) {
                     showTerms = true
                 }
             }

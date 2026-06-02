@@ -11,20 +11,24 @@ import AppKit
 
 // MARK: - Document renderer (reused by the gate and the in-app viewer)
 
-/// Scrollable rendering of ``LegalText``. No Markdown engine — plain structured
-/// text so it renders identically on macOS and iOS.
+/// Scrollable rendering of the localized Terms (``LegalText``). No Markdown
+/// engine — plain structured text, identical on macOS and iOS. Localized via the
+/// app's `\.locale` environment (English / French).
 struct LegalDocumentView: View {
+    @Environment(\.locale) private var locale
+
     var body: some View {
+        let doc = LegalText.document(for: locale)
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(LegalText.title)
+                Text(doc.title)
                     .font(.title2.bold())
-                Text("Last updated: \(LegalText.lastUpdated)")
+                Text(doc.lastUpdatedLine)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(LegalText.intro)
+                Text(doc.intro)
                     .font(.callout)
-                ForEach(LegalText.sections) { section in
+                ForEach(doc.sections) { section in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(section.heading)
                             .font(.headline)
@@ -47,9 +51,11 @@ struct LegalDocumentView: View {
 /// Terms version changes). The user must explicitly agree to continue.
 struct LegalAgreementGate: View {
     let service: LegalAgreementService
+    @Environment(\.locale) private var locale
     @State private var agreed = false
 
     var body: some View {
+        let doc = LegalText.document(for: locale)
         ZStack {
             // Opaque backdrop blocks interaction with the app beneath.
             Rectangle()
@@ -61,9 +67,9 @@ struct LegalAgreementGate: View {
                     Image(systemName: "checkmark.shield")
                         .font(.largeTitle)
                         .foregroundStyle(.tint)
-                    Text("Welcome to \(LegalText.appName)")
+                    Text(doc.acceptHeadline)
                         .font(.title3.bold())
-                    Text("Please review and accept the Terms of Use to continue.")
+                    Text(doc.acceptSubhead)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -79,18 +85,18 @@ struct LegalAgreementGate: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     Toggle(isOn: $agreed) {
-                        Text("I have read and agree to the Terms of Use, including the disclaimer of warranties and the limitation of liability (including for data loss).")
+                        Text(doc.agreeToggle)
                             .font(.callout)
                     }
                     HStack {
                         #if os(macOS)
-                        Button("Quit") {
+                        Button(doc.quitButton) {
                             NSApplication.shared.terminate(nil)
                         }
                         .keyboardShortcut("q", modifiers: .command)
                         #endif
                         Spacer()
-                        Button("I Agree") {
+                        Button(doc.agreeButton) {
                             service.accept()
                         }
                         .buttonStyle(.borderedProminent)
@@ -111,24 +117,26 @@ struct LegalAgreementGate: View {
 /// Read-only presentation of the Terms for the About (macOS) / Account (iOS) links.
 struct LegalDocumentSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
 
     var body: some View {
+        let doc = LegalText.document(for: locale)
         VStack(spacing: 0) {
             HStack {
-                Text(LegalText.title)
+                Text(doc.title)
                     .font(.headline)
                 Spacer()
                 #if os(macOS)
                 Button {
                     let pb = NSPasteboard.general
                     pb.clearContents()
-                    pb.setString(LegalText.plainText, forType: .string)
+                    pb.setString(doc.plainText, forType: .string)
                 } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
+                    Label(doc.copyButton, systemImage: "doc.on.doc")
                 }
                 .controlSize(.small)
                 #endif
-                Button("Done") { dismiss() }
+                Button(doc.doneButton) { dismiss() }
                     .keyboardShortcut(.defaultAction)
             }
             .padding()

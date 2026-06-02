@@ -8,6 +8,7 @@ import SwiftUI
 
 struct AboutSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @State private var showTerms = false
 
     var body: some View {
@@ -49,7 +50,7 @@ struct AboutSheet: View {
                     .font(.caption)
             }
 
-            Button("Terms of Use") {
+            Button(LegalText.document(for: locale).termsLink) {
                 showTerms = true
             }
             .buttonStyle(.borderless)
