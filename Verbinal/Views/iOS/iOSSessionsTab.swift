@@ -99,15 +99,15 @@ struct iOSSessionsTab: View {
             HStack(spacing: 10) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(typeColor(session).opacity(0.15))
-                    if let asset = typeImageAsset(session) {
+                        .fill(SessionDisplay.typeColor(session.sessionType).opacity(0.15))
+                    if let asset = SessionDisplay.typeImageAsset(session.sessionType) {
                         Image(asset)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 24, height: 24)
                     } else {
-                        Image(systemName: typeIcon(session))
-                            .foregroundStyle(typeColor(session))
+                        Image(systemName: SessionDisplay.typeIcon(session.sessionType))
+                            .foregroundStyle(SessionDisplay.typeColor(session.sessionType))
                     }
                 }
                 .frame(width: 36, height: 36)
@@ -116,7 +116,7 @@ struct iOSSessionsTab: View {
                     Text(session.sessionName)
                         .font(.body)
                         .fontWeight(.semibold)
-                    Text(shortImageLabel(session.containerImage))
+                    Text(SessionDisplay.shortImageLabel(session.containerImage))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -128,16 +128,16 @@ struct iOSSessionsTab: View {
                     .fontWeight(.semibold)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(statusColor(session).opacity(0.15))
-                    .foregroundStyle(statusColor(session))
+                    .background(SessionDisplay.statusColor(session.status).opacity(0.15))
+                    .foregroundStyle(SessionDisplay.statusColor(session.status))
                     .clipShape(Capsule())
             }
 
             // Times
             HStack(spacing: 12) {
-                Label(formatTime(session.startedTime), systemImage: "clock")
+                Label(SessionDisplay.formatTime(session.startedTime), systemImage: "clock")
                 Spacer()
-                Label(formatTime(session.expiresTime), systemImage: "timer")
+                Label(SessionDisplay.formatTime(session.expiresTime), systemImage: "timer")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -215,15 +215,6 @@ struct iOSSessionsTab: View {
             isLoadingEvents = false
         }
     }
-
-    // MARK: - Display Helpers (delegated to shared SessionDisplay)
-
-    private func statusColor(_ session: Session) -> Color { SessionDisplay.statusColor(session.status) }
-    private func typeColor(_ session: Session) -> Color { SessionDisplay.typeColor(session.sessionType) }
-    private func typeImageAsset(_ session: Session) -> String? { SessionDisplay.typeImageAsset(session.sessionType) }
-    private func typeIcon(_ session: Session) -> String { SessionDisplay.typeIcon(session.sessionType) }
-    private func formatTime(_ s: String) -> String { SessionDisplay.formatTime(s) }
-    private func shortImageLabel(_ image: String) -> String { SessionDisplay.shortImageLabel(image) }
 }
 
 // MARK: - Events Sheet (immediate open, loading inside)
