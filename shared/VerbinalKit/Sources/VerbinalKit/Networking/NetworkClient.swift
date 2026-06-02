@@ -50,11 +50,44 @@ public actor NetworkClient {
         "canfar.net",
     ]
 
+    // MARK: - Mutable configuration
+    //
+    // Concurrency contract: `NetworkClient` is an `actor`, so the config
+    // mutators below and `execute` are serialized through the actor's
+    // executor — there is no torn read/write. What is *not* promised is a
+    // happens-before relationship between a config update and an in-flight
+    // request: a `setToken` issued concurrently with an outstanding `get`/
+    // `post` may or may not be observed by that request, since the request
+    // may already have stamped (or skipped) its Authorization header before
+    // the write is serialized. The token a request uses always reflects one
+    // of the serialized writes — never a partially-applied value — but
+    // callers must not assume an awaited mutator retroactively affects
+    // requests that were started before it. To order an update ahead of a
+    // request, `await` the mutator before issuing the request.
+
+    /// Set the bearer token attached to requests bound for trusted hosts.
+    /// See the concurrency contract above: ordering relative to in-flight
+    /// requests is not guaranteed; `await` this before issuing a request
+    /// that must see the new token.
     public func setToken(_ token: String?) {
         self.token = token
     }
 
+    /// Replace the host allow-list the bearer token may be attached to.
+    /// See the concurrency contract above for ordering relative to in-flight
+    /// requests.
     public func setTrustedAuthHostSuffixes(_ hosts: [String]) {
+        self.trustedAuthHostSuffixes = hosts
+    }
+
+    /// Atomically set the token and host allow-list together. Because both
+    /// writes happen within a single actor-isolated call, no request can
+    /// observe one without the other (e.g. a new token paired with a stale
+    /// allow-list). Prefer this when both values change as a unit, such as on
+    /// sign-in. Ordering relative to *already in-flight* requests is still not
+    /// guaranteed — see the concurrency contract above.
+    public func configure(token: String?, trustedAuthHostSuffixes hosts: [String]) {
+        self.token = token
         self.trustedAuthHostSuffixes = hosts
     }
 

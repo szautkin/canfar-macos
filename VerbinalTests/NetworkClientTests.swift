@@ -102,6 +102,131 @@ final class NetworkClientTests: XCTestCase {
         XCTAssertFalse(nilHost)
     }
 
+    func testIsTrustedAuthHostMatchesExactAndDottedSuffix() async {
+        let client = NetworkClient(
+            session: MockURLProtocol.mockSession(),
+            trustedAuthHostSuffixes: ["canfar.net"]
+        )
+        let exact = await client.isTrustedAuthHost("canfar.net")
+        let dotted = await client.isTrustedAuthHost("ws-uv.canfar.net")
+        let nonBoundary = await client.isTrustedAuthHost("evilcanfar.net")
+        XCTAssertTrue(exact, "Exact host must match its own suffix entry")
+        XCTAssertTrue(dotted, "Dotted-subdomain host must match")
+        XCTAssertFalse(nonBoundary, "Match must require a dot boundary, not a bare string suffix")
+    }
+
+    func testIsTrustedAuthHostFalseForEmptyAllowList() async {
+        let client = NetworkClient(
+            session: MockURLProtocol.mockSession(),
+            trustedAuthHostSuffixes: []
+        )
+        // Empty allow-list means "trust nothing" — the safe default.
+        let trusted = await client.isTrustedAuthHost("ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca")
+        let nilHost = await client.isTrustedAuthHost(nil)
+        XCTAssertFalse(trusted, "Empty allow-list must not trust any host")
+        XCTAssertFalse(nilHost, "nil host is never trusted")
+    }
+
+    func testTokenAttachmentTracksTrustedHostListUpdates() async throws {
+        // Same host, two allow-list states: the token must attach only while
+        // the host is on the list, demonstrating that setTrustedAuthHostSuffixes
+        // is reflected by subsequent requests.
+        let client = NetworkClient(
+            session: MockURLProtocol.mockSession(),
+            trustedAuthHostSuffixes: []
+        )
+        await client.setToken("tok-list-update")
+        let host = "https://service.example.com/api"
+
+        // Before: host not on the (empty) allow-list → no Authorization.
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertNil(
+                request.value(forHTTPHeaderField: "Authorization"),
+                "Token must be withheld while host is untrusted"
+            )
+            return self.okResponse(url: host)
+        }
+        _ = try await client.get(host)
+
+        // After: add the host's suffix → token now attaches.
+        await client.setTrustedAuthHostSuffixes(["example.com"])
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(
+                request.value(forHTTPHeaderField: "Authorization"),
+                "Bearer tok-list-update",
+                "Token must attach once host becomes trusted"
+            )
+            return self.okResponse(url: host)
+        }
+        _ = try await client.get(host)
+    }
+
+    func testConfigureSetsTokenAndHostsAtomically() async throws {
+        let client = NetworkClient(
+            session: MockURLProtocol.mockSession(),
+            trustedAuthHostSuffixes: []
+        )
+        await client.configure(
+            token: "tok-configured",
+            trustedAuthHostSuffixes: ["example.com"]
+        )
+
+        let token = await client.token
+        let hosts = await client.trustedAuthHostSuffixes
+        XCTAssertEqual(token, "tok-configured")
+        XCTAssertEqual(hosts, ["example.com"])
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(
+                request.value(forHTTPHeaderField: "Authorization"),
+                "Bearer tok-configured"
+            )
+            return self.okResponse(url: "https://api.example.com/x")
+        }
+        _ = try await client.get("https://api.example.com/x")
+    }
+
+    func testConcurrentSetTokenAndRequestLeaveConsistentState() async throws {
+        // Hammer the actor with interleaved setToken writes and requests.
+        // The actor serializes every call, so the token a request stamps is
+        // always one of the values written (never a torn/partial value), and
+        // the client's final token reflects the last serialized write.
+        let client = NetworkClient(
+            session: MockURLProtocol.mockSession(),
+            trustedAuthHostSuffixes: ["example.com"]
+        )
+        let host = "https://api.example.com/ping"
+        let allowed: Set<String?> = [
+            nil,
+            "Bearer tok-A",
+            "Bearer tok-B",
+            "Bearer tok-C",
+        ]
+
+        MockURLProtocol.requestHandler = { request in
+            let header = request.value(forHTTPHeaderField: "Authorization")
+            XCTAssertTrue(
+                allowed.contains(header),
+                "Request stamped an unexpected (torn) Authorization value: \(header ?? "nil")"
+            )
+            return self.okResponse(url: host)
+        }
+
+        await withThrowingTaskGroup(of: Void.self) { group in
+            for token in ["tok-A", "tok-B", "tok-C"] {
+                group.addTask { await client.setToken(token) }
+                group.addTask { _ = try await client.get(host) }
+            }
+            // Drain — ignore per-task throws; we only assert consistency.
+            while let _ = try? await group.next() {}
+        }
+
+        // A final serialized write must be the value observed afterward.
+        await client.setToken("tok-final")
+        let finalToken = await client.token
+        XCTAssertEqual(finalToken, "tok-final")
+    }
+
     // MARK: - Error Handling
 
     func testUnauthorizedThrowsNetworkError() async {
