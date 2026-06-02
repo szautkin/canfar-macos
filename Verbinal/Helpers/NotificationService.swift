@@ -65,8 +65,13 @@ enum NotificationService {
     }
 
     /// Extracts a short label from a container image URL (e.g. "astroml:latest" from "images.canfar.net/skaha/astroml:latest").
-    private static func shortImageLabel(_ image: String) -> String {
-        let parts = image.split(separator: "/")
-        return String(parts.last ?? Substring(image))
+    ///
+    /// Keeps empty subsequences so a trailing-slash input (".../skaha/") yields an empty
+    /// last segment, which falls back to the original string rather than silently
+    /// surfacing the parent path segment.
+    static func shortImageLabel(_ image: String) -> String {
+        let parts = image.split(separator: "/", omittingEmptySubsequences: false)
+        guard let last = parts.last, !last.isEmpty else { return image }
+        return String(last)
     }
 }
