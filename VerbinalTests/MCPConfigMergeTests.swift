@@ -53,11 +53,25 @@ final class MCPConfigMergeTests: XCTestCase {
             "mcpServers": ["verbinal-canfar": ["command": "/old", "env": ["X": "1"]]],
         ]
         let root = MCPIntegrationSettingsService.mergedRoot(existing: existing, helperPath: helper)
-        // The merge replaces the whole entry with just `command` — document
-        // that behavior so a future change that needs to preserve `env` is
-        // a deliberate decision, not an accident.
+        // The merge updates `command` but must preserve user-set non-command
+        // fields on our own entry (here: `env`) rather than wiping them.
         let entry = (root["mcpServers"] as? [String: Any])?["verbinal-canfar"] as? [String: Any]
         XCTAssertEqual(entry?["command"] as? String, helper)
+        XCTAssertEqual((entry?["env"] as? [String: Any])?["X"] as? String, "1",
+                       "user-set env on our entry must survive the merge")
+    }
+
+    func testPreservesEnvFileOnOurEntry() {
+        let existing: [String: Any] = [
+            "mcpServers": ["verbinal-canfar": ["command": "/old", "env_file": "/home/user/.verbinal.env"]],
+        ]
+        let root = MCPIntegrationSettingsService.mergedRoot(existing: existing, helperPath: helper)
+        let entry = (root["mcpServers"] as? [String: Any])?["verbinal-canfar"] as? [String: Any]
+        // command is updated to this build's helper…
+        XCTAssertEqual(entry?["command"] as? String, helper)
+        // …while a user-set env_file is retained.
+        XCTAssertEqual(entry?["env_file"] as? String, "/home/user/.verbinal.env",
+                       "user-set env_file on our entry must survive the merge")
     }
 
     func testRoundTripsThroughJSONSerialization() throws {

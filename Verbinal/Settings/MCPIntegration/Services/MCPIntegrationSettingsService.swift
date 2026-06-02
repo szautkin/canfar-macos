@@ -183,12 +183,16 @@ final class MCPIntegrationSettingsService {
 
     /// Pure merge: return `existing` (or an empty doc) with
     /// `mcpServers[serverKey].command` set to `helperPath`, preserving every
-    /// other server entry and top-level key untouched. Extracted so it can be
+    /// other server entry and top-level key untouched. Any non-`command`
+    /// fields already on our own entry (e.g. user-set `env` / `env_file`) are
+    /// retained — only `command` is overwritten. Extracted so it can be
     /// unit-tested without any file/bookmark plumbing.
     nonisolated static func mergedRoot(existing: [String: Any]?, helperPath: String) -> [String: Any] {
         var root = existing ?? [:]
         var servers = (root["mcpServers"] as? [String: Any]) ?? [:]
-        servers[serverKey] = ["command": helperPath]
+        var entry = (servers[serverKey] as? [String: Any]) ?? [:]
+        entry["command"] = helperPath
+        servers[serverKey] = entry
         root["mcpServers"] = servers
         return root
     }
