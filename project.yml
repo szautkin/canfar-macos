@@ -176,6 +176,8 @@ targets:
       - VerbinalTests
     dependencies:
       - target: Verbinal
+      - package: GRDB
+        product: GRDB
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
