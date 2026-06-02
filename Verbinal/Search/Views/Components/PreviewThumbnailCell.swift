@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import os.log
 
 /// Shows a small camera icon per row. On hover, fetches and shows thumbnail popover.
 ///
@@ -83,11 +84,33 @@ struct PreviewThumbnailCell: View {
 
     private func fetchThumbnail() async {
         guard !publisherID.isEmpty else { return }
+        thumbnailURL = await Self.resolveThumbnailURL(publisherID: publisherID) {
+            try await tapClient.fetchDataLinks(publisherID: publisherID)
+        }
+    }
+
+    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "PreviewThumbnail")
+
+    /// Resolves a thumbnail/preview URL from a DataLink fetch, returning `nil`
+    /// on any failure. Failures are intentionally swallowed for graceful
+    /// degradation (no error UI on a hover popover) but emit a debug log so a
+    /// genuine fetch/logic problem is observable rather than invisible.
+    ///
+    /// Extracted to a static helper so the swallow-and-return-nil contract is
+    /// unit-testable with an injected throwing `fetch` double, without standing
+    /// up a SwiftUI view or hitting the network.
+    static func resolveThumbnailURL(
+        publisherID: String,
+        fetch: () async throws -> DataLinkResult
+    ) async -> URL? {
         do {
-            let dataLink = try await tapClient.fetchDataLinks(publisherID: publisherID)
-            thumbnailURL = dataLink.firstThumbnail ?? dataLink.firstPreview
+            let dataLink = try await fetch()
+            return dataLink.firstThumbnail ?? dataLink.firstPreview
         } catch {
-            // Silently fail — just no thumbnail
+            // Graceful degradation — no thumbnail, no UI error. Log so the
+            // failure is observable when debugging preview behavior.
+            logger.debug("DataLink thumbnail fetch failed for \(publisherID, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return nil
         }
     }
 }
