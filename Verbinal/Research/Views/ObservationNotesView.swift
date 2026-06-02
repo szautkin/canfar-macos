@@ -14,16 +14,19 @@ import AppKit
 
 /// Astronomer's notebook for a single observation: quality rating, tags, and free-form notes.
 /// Auto-saves on edit with a 500ms debounce. Clearing all fields deletes the note.
+///
+/// All editing state and the load/save *keying* live in ``NoteEditingModel`` so that
+/// committing always targets the note the in-memory fields actually belong to — even when
+/// SwiftUI reuses this view in place across observation selections (see NoteEditingModel
+/// for the cross-contamination bug this prevents).
 struct ObservationNotesView: View {
     let publisherID: String
-    var store: ObservationNoteStore
+    @State private var editor: NoteEditingModel
 
-    @State private var text: String = ""
-    @State private var rating: Int = 0
-    @State private var tagsInput: String = ""
-    @State private var modifiedAt: Date?
-    @State private var saveTask: Task<Void, Never>?
-    @State private var loaded = false
+    init(publisherID: String, store: ObservationNoteStore) {
+        self.publisherID = publisherID
+        _editor = State(initialValue: NoteEditingModel(store: store))
+    }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter()
@@ -32,20 +35,54 @@ struct ObservationNotesView: View {
     }()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        @Bindable var editor = editor
+        return VStack(alignment: .leading, spacing: 10) {
             header
             ratingRow
-            tagsRow
-            notesEditor
+
+            // Tags
+            HStack(spacing: 4) {
+                Text("Tags")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 60, alignment: .leading)
+                TextField("e.g. usable, calibration, reprocess", text: $editor.tagsInput)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
+                    .onChange(of: editor.tagsInput) { _, _ in editor.scheduleSave() }
+            }
+
+            // Notes editor
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(.quaternary, lineWidth: 1)
+
+                TextEditor(text: $editor.text)
+                    .font(.system(.caption, design: .default))
+                    .scrollContentBackground(.hidden)
+                    .padding(6)
+                    .frame(minHeight: 120)
+                    .onChange(of: editor.text) { _, _ in editor.scheduleSave() }
+
+                if editor.text.isEmpty {
+                    Text("Observing conditions, calibration notes, reduction steps, reminders…")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 13)
+                        .allowsHitTesting(false)
+                }
+            }
+
             footerRow
         }
         .task(id: publisherID) {
-            load()
+            editor.load(publisherID: publisherID)
         }
         .onDisappear {
             // Flush any pending save when the view is torn down (selection change, tab switch).
-            saveTask?.cancel()
-            commitSave()
+            // Commits under the loaded id, never a stale one.
+            editor.flush()
         }
     }
 
@@ -56,7 +93,7 @@ struct ObservationNotesView: View {
             Text("Notes")
                 .font(.subheadline.bold())
             Spacer()
-            if let modifiedAt {
+            if let modifiedAt = editor.modifiedAt {
                 Text("Edited \(Self.relativeFormatter.localizedString(for: modifiedAt, relativeTo: Date()))")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -69,7 +106,7 @@ struct ObservationNotesView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.mini)
-            .disabled(text.isEmpty)
+            .disabled(editor.text.isEmpty)
             .help("Copy notes to clipboard")
             #endif
         }
@@ -85,11 +122,11 @@ struct ObservationNotesView: View {
             ForEach(1...5, id: \.self) { star in
                 Button {
                     // Tap same star again to clear, otherwise set to that star.
-                    rating = (rating == star) ? 0 : star
-                    scheduleSave()
+                    editor.rating = (editor.rating == star) ? 0 : star
+                    editor.scheduleSave()
                 } label: {
-                    Image(systemName: star <= rating ? "star.fill" : "star")
-                        .foregroundStyle(star <= rating ? Color.yellow : Color.secondary)
+                    Image(systemName: star <= editor.rating ? "star.fill" : "star")
+                        .foregroundStyle(star <= editor.rating ? Color.yellow : Color.secondary)
                         .font(.callout)
                 }
                 .accessibilityLabel("Rate \(star) star\(star == 1 ? "" : "s")")
@@ -98,10 +135,10 @@ struct ObservationNotesView: View {
                 .help("Rate \(star) star\(star == 1 ? "" : "s")")
             }
 
-            if rating > 0 {
+            if editor.rating > 0 {
                 // qualityLabel returns a LocalizedStringKey so Text routes
                 // through the String Catalog (each star tier has a FR value).
-                Text(qualityLabel(rating))
+                Text(qualityLabel(editor.rating))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 4)
@@ -110,48 +147,12 @@ struct ObservationNotesView: View {
             Spacer()
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Quality rating \(rating) of 5")
-    }
-
-    private var tagsRow: some View {
-        HStack(spacing: 4) {
-            Text("Tags")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
-                .frame(width: 60, alignment: .leading)
-            TextField("e.g. usable, calibration, reprocess", text: $tagsInput)
-                .textFieldStyle(.roundedBorder)
-                .font(.caption)
-                .onChange(of: tagsInput) { _, _ in scheduleSave() }
-        }
-    }
-
-    private var notesEditor: some View {
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(.quaternary, lineWidth: 1)
-
-            TextEditor(text: $text)
-                .font(.system(.caption, design: .default))
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .frame(minHeight: 120)
-                .onChange(of: text) { _, _ in scheduleSave() }
-
-            if text.isEmpty {
-                Text("Observing conditions, calibration notes, reduction steps, reminders…")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 13)
-                    .allowsHitTesting(false)
-            }
-        }
+        .accessibilityLabel("Quality rating \(editor.rating) of 5")
     }
 
     private var footerRow: some View {
         HStack {
-            if !text.isEmpty {
+            if !editor.text.isEmpty {
                 // Coerce to String so the interpolation key is `%@ words`
                 // (what Xcode extracts for object interpolations).
                 // `\(wordCount)` as a raw Int would auto-generate `%lld words`,
@@ -162,9 +163,9 @@ struct ObservationNotesView: View {
                     .monospacedDigit()
             }
             Spacer()
-            if !isEmpty {
+            if !editor.isEmpty {
                 Button(role: .destructive) {
-                    clearAll()
+                    editor.clear()
                 } label: {
                     Label("Clear", systemImage: "xmark.circle")
                 }
@@ -178,18 +179,7 @@ struct ObservationNotesView: View {
     // MARK: - Helpers
 
     private var wordCount: Int {
-        text.split { $0.isWhitespace || $0.isNewline }.count
-    }
-
-    private var isEmpty: Bool {
-        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && rating == 0 && parsedTags.isEmpty
-    }
-
-    private var parsedTags: [String] {
-        tagsInput
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
+        editor.text.split { $0.isWhitespace || $0.isNewline }.count
     }
 
     private func qualityLabel(_ stars: Int) -> LocalizedStringKey {
@@ -203,59 +193,11 @@ struct ObservationNotesView: View {
         }
     }
 
-    // MARK: - Load / Save
-
-    private func load() {
-        // Cancel any pending save from a previous observation before switching.
-        saveTask?.cancel()
-        if loaded { commitSave() }
-
-        let existing = store.note(for: publisherID)
-        text = existing?.text ?? ""
-        rating = existing?.rating ?? 0
-        tagsInput = existing?.tags.joined(separator: ", ") ?? ""
-        modifiedAt = existing?.modifiedAt
-        loaded = true
-    }
-
-    private func scheduleSave() {
-        guard loaded else { return }
-        saveTask?.cancel()
-        saveTask = Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled else { return }
-            commitSave()
-        }
-    }
-
-    private func commitSave() {
-        let existing = store.note(for: publisherID)
-        let note = ObservationNote(
-            publisherID: publisherID,
-            text: text,
-            rating: rating,
-            tags: parsedTags,
-            createdAt: existing?.createdAt ?? Date(),
-            modifiedAt: Date()
-        )
-        store.save(note)
-        modifiedAt = store.note(for: publisherID)?.modifiedAt
-    }
-
-    private func clearAll() {
-        saveTask?.cancel()
-        text = ""
-        rating = 0
-        tagsInput = ""
-        store.remove(publisherID: publisherID)
-        modifiedAt = nil
-    }
-
     #if os(macOS)
     private func copyToClipboard() {
         let pb = NSPasteboard.general
         pb.clearContents()
-        pb.setString(text, forType: .string)
+        pb.setString(editor.text, forType: .string)
     }
     #endif
 }

@@ -41,6 +41,11 @@ struct ResearchRootView: View {
                     Group {
                         if let observation = researchModel.selectedObservation {
                             ObservationDetailView(observation: observation, model: researchModel)
+                                // Give the detail a per-observation identity so SwiftUI
+                                // rebuilds it (and its NoteEditingModel) on selection change
+                                // instead of reusing the instance in place. Defense-in-depth
+                                // alongside NoteEditingModel's key-safe load/flush.
+                                .id(observation.id)
                         } else {
                             emptyState
                         }
