@@ -109,11 +109,6 @@ final class SearchResultsModel {
         self.unitStore = unitStore
     }
 
-    // MARK: - Compatibility accessors (transitional)
-
-    /// Legacy alias for ``columns/visible`` used by older view code.
-    var visibleColumns: [SearchResultColumn] { columns.visible }
-
     // MARK: - Loading
 
     /// Replace the loaded rows. Resets sort, filter, and pagination state.

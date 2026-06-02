@@ -151,6 +151,22 @@ final class SearchResultsModelTests: XCTestCase {
         XCTAssertEqual(model.columns.visible.count, before - 1)
     }
 
+    func testToggleVisibilityReflectedInColumnsVisible() {
+        // Locks in `columns.visible` as the single canonical source of truth for
+        // visible columns after removal of the transitional `visibleColumns` alias.
+        let model = makeModel()
+        model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
+
+        let id = model.columns.list[0].id
+        XCTAssertTrue(model.columns.visible.contains { $0.id == id })
+
+        model.toggleColumnVisibility(id)
+        XCTAssertFalse(model.columns.visible.contains { $0.id == id })
+
+        model.toggleColumnVisibility(id)
+        XCTAssertTrue(model.columns.visible.contains { $0.id == id })
+    }
+
     func testResetColumnVisibility() {
         let model = makeModel()
         model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
