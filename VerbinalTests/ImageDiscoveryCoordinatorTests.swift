@@ -989,6 +989,68 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(h.launchCalls.count, 2, "rediscover must launch a fresh probe")
     }
 
+    // MARK: - Cache count / clear (Settings ▸ Agents cache row)
+
+    // The Settings ▸ Agents "Image Discovery" cache row renders its
+    // "N entries" label from `cacheCount()` and wipes via
+    // `clearCache()`. These pin the coordinator behaviour the row's
+    // displayed count and disabled-after-clear state are anchored to,
+    // so the (now explicitly MainActor-isolated) view closure can
+    // trust the values it awaits.
+
+    func testCacheCountReflectsStoreCount() async throws {
+        let store = makeStore()
+        let h = MockHeadless()
+        let v = MockVOSpace()
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+
+        // Empty cache → 0.
+        let empty = await coord.cacheCount()
+        XCTAssertEqual(empty, 0, "fresh cache must report 0 entries")
+
+        // Seed two successes and one failure (failures count too — the
+        // store's count() is total records, not just successes).
+        let mA = ImageManifest(schemaVersion: 1, imageID: "a:1",
+                               contentHash: "x", capturedAt: Date(),
+                               osFamily: "ubuntu", osVersion: "22.04", kernel: "Linux")
+        let mB = ImageManifest(schemaVersion: 1, imageID: "b:1",
+                               contentHash: "x", capturedAt: Date(),
+                               osFamily: "ubuntu", osVersion: "22.04", kernel: "Linux")
+        try await store.setManifest(mA)
+        try await store.setManifest(mB)
+        try await store.setFailure(imageID: "c:1", category: .jobTimedOut,
+                                   message: "timed out", attemptedAt: Date(), jobID: nil)
+
+        let count = await coord.cacheCount()
+        let storeCount = await store.count()
+        XCTAssertEqual(count, storeCount,
+                       "cacheCount() must mirror the store's count()")
+        XCTAssertEqual(count, 3, "two manifests + one failure = 3 records")
+    }
+
+    func testClearCacheLeavesCacheCountZero() async throws {
+        let store = makeStore()
+        let h = MockHeadless()
+        let v = MockVOSpace()
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+
+        let m = ImageManifest(schemaVersion: 1, imageID: "z:1",
+                              contentHash: "x", capturedAt: Date(),
+                              osFamily: "ubuntu", osVersion: "22.04", kernel: "Linux")
+        try await store.setManifest(m)
+        try await store.setFailure(imageID: "w:1", category: .jobSubmitFailed,
+                                   message: "nope", attemptedAt: Date(), jobID: nil)
+
+        let before = await coord.cacheCount()
+        XCTAssertEqual(before, 2, "precondition: cache holds two records")
+
+        try await coord.clearCache()
+
+        let after = await coord.cacheCount()
+        XCTAssertEqual(after, 0,
+                       "clearCache() must leave cacheCount() == 0 — the row's '0 entries' label and disabled Clear button depend on it")
+    }
+
     // MARK: - Timeout
 
     func testProbeTimeoutPersistsCacheFailure() async throws {

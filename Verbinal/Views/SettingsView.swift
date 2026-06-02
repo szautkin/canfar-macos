@@ -689,7 +689,15 @@ private struct AgentsSettingsTab: View {
                     .font(.callout)
                 Spacer()
                 Button("Clear", role: .destructive) {
-                    Task {
+                    // Explicitly hop back to the main actor after each
+                    // await on the non-MainActor coordinator. Under
+                    // Swift 5.9 + SwiftUI the enclosing Task already
+                    // inherits MainActor isolation, so this is a no-op
+                    // today — but making it explicit documents the
+                    // contract and keeps the @State writes correct if
+                    // this closure is ever refactored out of the View
+                    // or the project enables Swift 6 strict concurrency.
+                    Task { @MainActor in
                         clearing = true
                         try? await coordinator.clearCache()
                         count = await coordinator.cacheCount()
@@ -700,7 +708,7 @@ private struct AgentsSettingsTab: View {
                 .help("Drop every cached image manifest; in-flight probes keep running")
                 .disabled(clearing || (count ?? 0) == 0)
             }
-            .task {
+            .task { @MainActor in
                 if count == nil {
                     count = await coordinator.cacheCount()
                 }
