@@ -21,6 +21,20 @@ struct PortalImageCache: Codable {
     var fetchedAt: Date
 }
 
+// MARK: - Image source abstraction
+
+/// The subset of `ImageService` the cache depends on. Declared as a protocol so
+/// the refresh path can be exercised with a stub that fails individual endpoints
+/// (e.g. context succeeds but repositories throws) without a live network.
+/// `Sendable` so conformers can be used across the `async let` fan-out below.
+protocol PortalImageProviding: Sendable {
+    func getImages() async throws -> [RawImage]
+    func getContext() async throws -> SessionContext
+    func getRepositories() async throws -> [String]
+}
+
+extension ImageService: PortalImageProviding {}
+
 // MARK: - Service
 
 /// Stale-while-revalidate disk cache for Skaha image / context / repository payloads.
@@ -39,6 +53,11 @@ final class PortalImageCacheService {
 
     private(set) var cache: PortalImageCache?
     var isFetching = false
+    /// `true` when the most recent refresh persisted images but could not fetch
+    /// the context and/or repositories (those endpoints failed and were swallowed
+    /// so images still load). Lets views flag the cache as partially stale and
+    /// gives diagnostics a signal instead of silent nil/empty data.
+    private(set) var refreshIncomplete = false
     /// Tracks the currently in-flight fetchFresh task so `clear()` can cancel it.
     private var activeFetchTask: Task<PortalImageCache, Error>?
 
@@ -64,7 +83,7 @@ final class PortalImageCacheService {
     /// Returns `(cache, wasCached)` so the caller can decide on a background refresh.
     func loadOrFetch(
         username: String,
-        imageService: ImageService
+        imageService: any PortalImageProviding
     ) async throws -> (cache: PortalImageCache, wasCached: Bool) {
         if let existing = cache, existing.username == username {
             return (existing, true)
@@ -79,7 +98,7 @@ final class PortalImageCacheService {
     @discardableResult
     func fetchFresh(
         username: String,
-        imageService: ImageService
+        imageService: any PortalImageProviding
     ) async throws -> PortalImageCache {
         activeFetchTask?.cancel()
 
@@ -92,9 +111,30 @@ final class PortalImageCacheService {
             async let contextTask = imageService.getContext()
             async let reposTask = imageService.getRepositories()
 
+            // Images are required — a failure here propagates and the cache is
+            // left untouched. Context and repositories are best-effort: a
+            // failure still lets images load, but we record it instead of
+            // swallowing it silently so stale/partial data is traceable.
             let rawImages = try await rawImagesTask
-            let context = try? await contextTask
-            let repos = (try? await reposTask) ?? []
+
+            var incomplete = false
+            let context: SessionContext?
+            do {
+                context = try await contextTask
+            } catch {
+                context = nil
+                incomplete = true
+                Self.logger.error("Context fetch failed during refresh; persisting nil context: \(error.localizedDescription, privacy: .public)")
+            }
+
+            let repos: [String]
+            do {
+                repos = try await reposTask
+            } catch {
+                repos = []
+                incomplete = true
+                Self.logger.error("Repository fetch failed during refresh; persisting empty repos: \(error.localizedDescription, privacy: .public)")
+            }
 
             try Task.checkCancellation()
 
@@ -106,10 +146,15 @@ final class PortalImageCacheService {
                 fetchedAt: Date()
             )
             self.cache = newCache
+            self.refreshIncomplete = incomplete
             self.persistence.write(newCache)
             // Username is institutional PII — keep redacted in logs.
             // Image count is safe to surface for diagnostics.
-            Self.logger.info("Fetched \(rawImages.count) images for \(username, privacy: .private)")
+            if incomplete {
+                Self.logger.warning("Refresh incomplete: fetched \(rawImages.count) images for \(username, privacy: .private) but context and/or repositories were unavailable")
+            } else {
+                Self.logger.info("Fetched \(rawImages.count) images for \(username, privacy: .private)")
+            }
             return newCache
         }
         activeFetchTask = task
@@ -122,6 +167,7 @@ final class PortalImageCacheService {
         activeFetchTask?.cancel()
         activeFetchTask = nil
         cache = nil
+        refreshIncomplete = false
         persistence.delete()
     }
 }

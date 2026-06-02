@@ -7,6 +7,46 @@
 import XCTest
 @testable import Verbinal
 
+/// Stub `PortalImageProviding` whose three endpoints can each be made to
+/// succeed or throw independently, so the refresh path can be exercised with
+/// partial failures (e.g. context throws but images succeed) without a network.
+private struct StubImageProvider: PortalImageProviding {
+    struct StubError: Error {}
+
+    var images: [RawImage]
+    var contextThrows: Bool
+    var reposThrows: Bool
+    var repos: [String]
+
+    init(
+        images: [RawImage] = [RawImage(id: "images.canfar.net/skaha/astroml:24.06", types: ["notebook"])],
+        contextThrows: Bool = false,
+        reposThrows: Bool = false,
+        repos: [String] = ["images.canfar.net"]
+    ) {
+        self.images = images
+        self.contextThrows = contextThrows
+        self.reposThrows = reposThrows
+        self.repos = repos
+    }
+
+    func getImages() async throws -> [RawImage] { images }
+
+    func getContext() async throws -> SessionContext {
+        if contextThrows { throw StubError() }
+        return SessionContext(
+            cores: ResourceOptions(default: 2, options: [1, 2, 4]),
+            memoryGB: ResourceOptions(default: 4, options: [4, 8, 16]),
+            gpus: GpuOptions(options: [0, 1])
+        )
+    }
+
+    func getRepositories() async throws -> [String] {
+        if reposThrows { throw StubError() }
+        return repos
+    }
+}
+
 @MainActor
 final class PortalCacheServiceTests: XCTestCase {
 
@@ -210,5 +250,58 @@ final class PortalCacheServiceTests: XCTestCase {
         XCTAssertEqual(svc.cache?.username, "alice")
         XCTAssertEqual(svc.cache?.images.count, 1)
         XCTAssertEqual(svc.cache?.images.first?.id, "images.canfar.net/skaha/astroml:24.06")
+    }
+
+    // MARK: - PortalImageCacheService — incomplete refresh signalling
+
+    func testRefreshContextFailureStillWritesCacheAndFlagsIncomplete() async throws {
+        let svc = makeCacheService()
+        let provider = StubImageProvider(contextThrows: true)
+
+        let cache = try await svc.fetchFresh(username: "alice", imageService: provider)
+
+        // Images still loaded and the cache was written despite the context failure.
+        XCTAssertEqual(cache.images.count, 1)
+        XCTAssertNil(cache.context, "Failed context fetch persists nil, not a crash")
+        XCTAssertEqual(cache.repositories, ["images.canfar.net"])
+        XCTAssertNotNil(svc.cache)
+        // The failure is recorded, not silently swallowed.
+        XCTAssertTrue(svc.refreshIncomplete)
+    }
+
+    func testRefreshRepositoriesFailureDefaultsEmptyAndFlagsIncomplete() async throws {
+        let svc = makeCacheService()
+        let provider = StubImageProvider(reposThrows: true)
+
+        let cache = try await svc.fetchFresh(username: "alice", imageService: provider)
+
+        XCTAssertEqual(cache.images.count, 1)
+        XCTAssertNotNil(cache.context, "Context succeeded so it is persisted")
+        XCTAssertEqual(cache.repositories, [], "Failed repository fetch defaults to empty")
+        XCTAssertTrue(svc.refreshIncomplete)
+    }
+
+    func testRefreshAllSuccessRecordsNoIncompleteSignal() async throws {
+        let svc = makeCacheService()
+        let provider = StubImageProvider()
+
+        let cache = try await svc.fetchFresh(username: "alice", imageService: provider)
+
+        XCTAssertEqual(cache.images.count, 1)
+        XCTAssertNotNil(cache.context)
+        XCTAssertEqual(cache.repositories, ["images.canfar.net"])
+        XCTAssertFalse(svc.refreshIncomplete, "A fully successful refresh produces no staleness signal")
+    }
+
+    func testClearResetsIncompleteSignal() async throws {
+        let svc = makeCacheService()
+        let provider = StubImageProvider(contextThrows: true, reposThrows: true)
+
+        _ = try await svc.fetchFresh(username: "alice", imageService: provider)
+        XCTAssertTrue(svc.refreshIncomplete)
+
+        svc.clear()
+        XCTAssertFalse(svc.refreshIncomplete, "Logout clears the incomplete-refresh signal")
+        XCTAssertNil(svc.cache)
     }
 }
