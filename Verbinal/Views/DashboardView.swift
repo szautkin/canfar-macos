@@ -50,8 +50,8 @@ struct DashboardView: View {
                                 model: cim,
                                 showDiscoverySheet: Bindable(appState).showImageDiscoverySheet,
                                 preselectedImageID: Bindable(appState).preselectedDiscoveryImageID,
-                                onUseInLaunchForm: { image in
-                                    sendImageToLaunchForm(image)
+                                onUseInLaunchForm: { image, preferredType in
+                                    sendImageToLaunchForm(image, preferredType: preferredType)
                                 }
                             )
                         }
@@ -88,7 +88,7 @@ struct DashboardView: View {
                         // also avoids a no-op if the live list reloads
                         // while the sheet is open.
                         if let match = catalogue.first(where: { $0.id == imageID }) {
-                            sendImageToLaunchForm(match)
+                            sendImageToLaunchForm(match, preferredType: idm.typeFilter)
                         }
                     },
                     catalogue: cim.allImages
@@ -123,22 +123,34 @@ struct DashboardView: View {
     /// Single-registry assumption: catalogue images implicitly
     /// flip out of advanced-mode in `SessionLaunchModel`. No
     /// custom-registry write happens here.
-    private func sendImageToLaunchForm(_ image: ParsedImage) {
-        if image.types.contains("headless") {
-            // Headless images route ONLY to the headless form. If it's
-            // unavailable (nil model), do nothing rather than load a
-            // headless image into the Standard form — SessionLaunchModel
-            // excludes "headless" from its session types, so that would
-            // pair a Standard type with a headless image and build an
-            // invalid launch.
+    private func sendImageToLaunchForm(_ image: ParsedImage, preferredType: String?) {
+        // Honor the type the user was filtering by. Catalogue images are often
+        // multi-type (e.g. notebook+headless), so routing purely on
+        // `types.contains("headless")` would yank a notebook the user picked
+        // under the Notebook filter over to the Headless tab. When a specific
+        // type was selected, that decides the tab; only with no type context
+        // (Default/Popular) do we fall back to the image's own types — and even
+        // then only a headless-ONLY image goes to the Headless tab.
+        let routeHeadless: Bool
+        if let preferredType {
+            routeHeadless = (preferredType.lowercased() == "headless")
+        } else {
+            let types = image.types.map { $0.lowercased() }
+            routeHeadless = types.contains("headless") && !types.contains { $0 != "headless" }
+        }
+
+        if routeHeadless {
+            // Headless routes ONLY to the headless form. If it's unavailable
+            // (nil model), do nothing rather than load a headless image into the
+            // Standard form — SessionLaunchModel excludes "headless" from its
+            // session types, so that would build an invalid launch.
             guard let hm = headlessLaunchModel else { return }
             hm.applyImageSelection(image)
             appState.launchFormTab = .headless
         } else {
-            sessionLaunchModel.applyImageSelection(image)
-            // Standard tab fits all the cascade-driven types; only
-            // jump to Advanced if the user is mid-customising it
-            // — that's a future signal we don't track today.
+            // Standard tab fits all cascade-driven types; pass the user's chosen
+            // type so a multi-type image lands on the type they selected.
+            sessionLaunchModel.applyImageSelection(image, preferredType: preferredType)
             appState.launchFormTab = .standard
         }
     }

@@ -34,7 +34,11 @@ struct CanfarImagesView: View {
     /// dashboard owns both launch models, so it provides the
     /// concrete implementation; the widget just calls back when
     /// the user clicks the "use this image" button on a row.
-    var onUseInLaunchForm: ((ParsedImage) -> Void)?
+    /// Carries the widget's currently-selected type (`selectedTab.sessionTypeKey`,
+    /// nil for Default/Popular) alongside the image, so the launch form opens the
+    /// tab the user was filtering by — not whatever the multi-type image's first
+    /// declared type happens to be.
+    var onUseInLaunchForm: ((ParsedImage, String?) -> Void)?
 
     var body: some View {
         GroupBox {
@@ -134,7 +138,7 @@ struct CanfarImagesView: View {
                                 showDiscoverySheet = true
                             },
                             onUseInLaunchForm: onUseInLaunchForm.map { handler in
-                                { handler(row.image) }
+                                { handler(row.image, model.selectedTab.sessionTypeKey) }
                             }
                         )
                     }

@@ -376,16 +376,25 @@ final class SessionLaunchModel {
     ///
     /// Resource sliders, session name, and other form state are
     /// preserved — only the image-identity fields change.
-    func applyImageSelection(_ image: ParsedImage) {
+    func applyImageSelection(_ image: ParsedImage, preferredType: String? = nil) {
         // Catalogue images bypass the advanced "custom image" mode.
         if useCustomImage { useCustomImage = false }
 
-        // 1. Session type — first cascade step. Skip if the image
-        // doesn't declare any types (cache-only fallback path).
-        if let primary = image.types.first?.lowercased(),
-           sessionTypes.contains(primary),
-           selectedType != primary {
-            selectedType = primary
+        // 1. Session type — first cascade step. Honor the type the user was
+        // filtering by (`preferredType`) when the image actually supports it;
+        // catalogue images are frequently multi-type (e.g. notebook+headless),
+        // so the first declared type isn't necessarily the one the user meant.
+        // Fall back to the image's primary declared type otherwise. Skip if the
+        // image declares no types (cache-only fallback path).
+        let imageTypes = image.types.map { $0.lowercased() }
+        let chosenType = preferredType
+            .map { $0.lowercased() }
+            .flatMap { imageTypes.contains($0) ? $0 : nil }
+            ?? imageTypes.first
+        if let chosenType,
+           sessionTypes.contains(chosenType),
+           selectedType != chosenType {
+            selectedType = chosenType
         }
 
         // 2. Project — only assign if the rebuilt projects list

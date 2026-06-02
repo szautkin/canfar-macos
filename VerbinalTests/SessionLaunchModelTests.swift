@@ -89,4 +89,46 @@ final class SessionLaunchModelTests: XCTestCase {
         XCTAssertTrue(message.contains(current.formatted(.number)),
                       "current count should be rendered with locale number formatting")
     }
+
+    // MARK: - applyImageSelection honors the user's selected type
+
+    /// A multi-type catalogue image (e.g. notebook + headless) used from the
+    /// Canfar Images widget under the Notebook filter must land on the notebook
+    /// session type — not the image's first declared type — so the launch form
+    /// opens the tab the user selected.
+    func testApplyImageSelectionHonorsPreferredTypeForMultiTypeImage() {
+        let model = makeModel(returning: nil)
+        let img = ImageParser.parse(
+            RawImage(id: "images.canfar.net/skaha/astroml:1.0", types: ["headless", "notebook"])
+        )
+        model.selectedType = "desktop"
+        model.applyImageSelection(img, preferredType: "notebook")
+        XCTAssertEqual(model.selectedType, "notebook",
+                       "must honor the user's selected type for a multi-type image")
+    }
+
+    /// With no type context (Default/Popular filter) it falls back to the
+    /// image's primary declared type.
+    func testApplyImageSelectionFallsBackToPrimaryTypeWhenNoPreferred() {
+        let model = makeModel(returning: nil)
+        let img = ImageParser.parse(
+            RawImage(id: "images.canfar.net/skaha/carta:1.0", types: ["carta", "notebook"])
+        )
+        model.selectedType = "desktop"
+        model.applyImageSelection(img)
+        XCTAssertEqual(model.selectedType, "carta",
+                       "falls back to the image's primary declared type when no preferred type")
+    }
+
+    /// A preferred type the image doesn't actually support is ignored in favour
+    /// of the primary declared type (defensive).
+    func testApplyImageSelectionIgnoresUnsupportedPreferredType() {
+        let model = makeModel(returning: nil)
+        let img = ImageParser.parse(
+            RawImage(id: "images.canfar.net/skaha/notebook:1.0", types: ["notebook"])
+        )
+        model.selectedType = "desktop"
+        model.applyImageSelection(img, preferredType: "carta")
+        XCTAssertEqual(model.selectedType, "notebook")
+    }
 }
