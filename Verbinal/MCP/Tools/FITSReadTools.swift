@@ -192,7 +192,7 @@ struct GetFITSWCSTool: JSONReadTool {
 /// Parsed FITS file plus its observation context. Returned by the
 /// AppState resolver closure with security-scoped access already in
 /// hand (caller has invoked startAccessingSecurityScopedResource).
-struct ResolvedFITS: @unchecked Sendable {
+struct ResolvedFITS: Sendable {
     let observationID: String
     let file: FITSFile
 }
