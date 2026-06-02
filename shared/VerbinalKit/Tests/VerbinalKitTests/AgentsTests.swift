@@ -570,7 +570,9 @@ final class MCPBridgeServiceTests: XCTestCase {
     private func readResponse(from t: PairTransport) async throws -> JSONRPCResponse {
         var iterator = t.incoming.makeAsyncIterator()
         guard let frame = try await iterator.next() else {
-            throw MCPTransportError.peerClosed
+            // Stream finished without yielding a response frame — surface as
+            // a transport-closed sentinel so the caller's `try` propagates.
+            throw MCPTransportError.closed
         }
         return try JSONDecoder().decode(JSONRPCResponse.self, from: frame)
     }

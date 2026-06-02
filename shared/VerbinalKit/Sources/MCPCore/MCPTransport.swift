@@ -39,8 +39,6 @@ public protocol MCPTransport: AnyObject, Sendable {
 public enum MCPTransportError: Error, Sendable, Equatable, LocalizedError {
     /// Local end was already closed when the operation was attempted.
     case closed
-    /// Peer closed the connection (clean EOF / FIN).
-    case peerClosed
     /// Underlying I/O failure with a POSIX-style error code.
     case io(Int32, String)
     /// Wire-level frame parsing failure.
@@ -48,7 +46,7 @@ public enum MCPTransportError: Error, Sendable, Equatable, LocalizedError {
 
     public static func == (lhs: MCPTransportError, rhs: MCPTransportError) -> Bool {
         switch (lhs, rhs) {
-        case (.closed, .closed), (.peerClosed, .peerClosed): return true
+        case (.closed, .closed): return true
         case (.io(let l, _), .io(let r, _)): return l == r
         case (.framing(let l), .framing(let r)): return l == r
         default: return false
@@ -61,7 +59,6 @@ public enum MCPTransportError: Error, Sendable, Equatable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .closed:           return "Transport is closed."
-        case .peerClosed:       return "Peer closed the connection."
         case .io(let code, let msg):
             return "I/O error (errno \(code)): \(msg)"
         case .framing(let msg): return "Framing error: \(msg)"
