@@ -26,11 +26,26 @@ import VerbinalKit
 /// which always works for downloadable observations even when
 /// DataLink is silent.
 struct GetDataLinksTool: JSONReadTool {
-    // 30s deadline matches the inline documentation in the tool's
-    // description ("wrapped in a 30-second watchdog"). DataLink +
-    // CAOM-2 parallel fetch should complete well inside this; past
-    // that the agent gets a recognisable deadline error instead of
-    // the multi-minute hang the 2026-05-13 QA pass observed.
+    // There are TWO independent 30s watchdogs guarding this tool;
+    // they are NOT the same timer and neither is redundant:
+    //   1. Tool-level (here): `JSONReadTool.invoke` wraps the whole
+    //      `handle(_:context:)` — DataLink + CAOM-2 fetch + result
+    //      shaping — in `withToolTimeout(seconds: toolTimeoutSeconds)`.
+    //      That bounds the *entire* tool call and throws a typed
+    //      `ToolFailureReason.backendError` naming "get_data_links".
+    //   2. Applier-level (in `makeGetDataLinksTool`'s fetch closure):
+    //      a separate `withApplierTimeout(seconds: 30)` wraps ONLY the
+    //      `tap.fetchDataLinks` network call — the specific leg the
+    //      2026-05-13 QA pass saw hang for minutes. It fails faster and
+    //      more specifically than the outer tool deadline, letting the
+    //      wiring fall back to the CAOM-2 inventory before the tool
+    //      deadline fires.
+    // Both happen to be 30s today; keep this value and the inner
+    // `withApplierTimeout` value in sync, and do not assume removing
+    // one is safe because "the other already times out" — they bound
+    // different scopes. The `ApplierTimeoutTests`/`ToolTimeoutTests`
+    // suites pin both watchdog primitives; `GetDataLinksTimeoutTests`
+    // pins this value against the description text.
     var toolTimeoutSeconds: TimeInterval { 30 }
 
     struct Args: Decodable, Sendable {
@@ -79,7 +94,7 @@ struct GetDataLinksTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_data_links",
-        description: "Fetch thumbnail / preview / direct-download URLs for a CADC observation by publisher_id, plus the full CAOM-2 artefact inventory. **For a single file you can fetch directly from inside a Skaha container**, use `caom2Artifacts[i].downloadURL` — it's a ready-to-curl HTTPS URL on `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data/pub/<collection>/<file>`, no construction needed and no DataLink round-trip required for public collections. `files[]` is DataLink #this when available (sometimes empty for public-archive-only observations); `caom2Artifacts[]` is the full inventory (science + weight + preview + aux + provenance), always populated when CAOM-2 is reachable. Use `files[]` for whatever DataLink advertises, `caom2Artifacts[]` for direct-by-name fetches and to discover sibling products DataLink suppresses. `packageDownloadURL` always works as a tarball fallback. Wrapped in a 30-second watchdog to bound the rare DataLink-service hang the 2026-05 QA review documented.",
+        description: "Fetch thumbnail / preview / direct-download URLs for a CADC observation by publisher_id, plus the full CAOM-2 artefact inventory. **For a single file you can fetch directly from inside a Skaha container**, use `caom2Artifacts[i].downloadURL` — it's a ready-to-curl HTTPS URL on `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data/pub/<collection>/<file>`, no construction needed and no DataLink round-trip required for public collections. `files[]` is DataLink #this when available (sometimes empty for public-archive-only observations); `caom2Artifacts[]` is the full inventory (science + weight + preview + aux + provenance), always populated when CAOM-2 is reachable. Use `files[]` for whatever DataLink advertises, `caom2Artifacts[]` for direct-by-name fetches and to discover sibling products DataLink suppresses. `packageDownloadURL` always works as a tarball fallback. Bounded by two independent 30-second watchdogs: a tool-level deadline around the whole call and a tighter deadline around the DataLink fetch specifically, so the rare DataLink-service hang the 2026-05 QA review documented surfaces as a typed timeout error rather than a multi-minute stall.",
         schema: #"""
         {
           "type": "object",

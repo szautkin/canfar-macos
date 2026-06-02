@@ -764,15 +764,21 @@ extension AppState {
 
     private func makeGetDataLinksTool(tap: TAPClient, caom2: CAOM2Service) -> GetDataLinksTool {
         GetDataLinksTool(fetch: { id in
-            // 30-second wall-clock deadline on the DataLink fetch.
-            // The QA review of 2026-05-14 documented a 4-minute
-            // silent hang here — same failure class as the upload
-            // applier F-2026-05-13-A: the network call neither
-            // returns nor throws, so the caller can't distinguish
-            // "still working" from "stuck forever". Watchdog
-            // converts that to a typed timeout error the agent
-            // can react to (fall back to caom2.fetch directly,
-            // or use the per-artefact downloadURL pattern).
+            // Applier-level 30-second wall-clock deadline scoped to
+            // the DataLink fetch ONLY. This is the inner of two
+            // independent watchdogs (the outer one is the tool-level
+            // `GetDataLinksTool.toolTimeoutSeconds == 30`, applied by
+            // `JSONReadTool.invoke` around the whole `handle`). The
+            // QA review of 2026-05-14 documented a 4-minute silent
+            // hang here — same failure class as the upload applier
+            // F-2026-05-13-A: the network call neither returns nor
+            // throws, so the caller can't distinguish "still working"
+            // from "stuck forever". This inner watchdog converts that
+            // to a typed timeout error the wiring can react to before
+            // the outer tool deadline fires — falling back to the
+            // CAOM-2 inventory below, or letting the agent use the
+            // per-artefact downloadURL pattern. Keep this 30s in sync
+            // with `GetDataLinksTool.toolTimeoutSeconds`.
             let r = try await withApplierTimeout(seconds: 30, label: "get_data_links") {
                 try await tap.fetchDataLinks(publisherID: id)
             }
