@@ -141,6 +141,8 @@ final class ToolTimeoutTests: XCTestCase {
             XCTFail("hanging tool should not produce a data envelope")
         case .proposed:
             XCTFail("hanging read tool should not produce a proposal")
+        case .image:
+            XCTFail("hanging tool should not produce an image")
         }
     }
 
@@ -177,6 +179,8 @@ final class ToolTimeoutTests: XCTestCase {
             XCTFail("expected data; got failed(\(f))")
         case .proposed:
             XCTFail("read tool should not surface a proposal")
+        case .image:
+            XCTFail("read tool should not surface an image")
         }
     }
 }

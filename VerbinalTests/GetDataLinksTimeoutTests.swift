@@ -70,6 +70,8 @@ final class GetDataLinksTimeoutTests: XCTestCase {
             XCTFail("expected data; got failed(\(f))")
         case .proposed:
             XCTFail("read tool should not surface a proposal")
+        case .image:
+            XCTFail("read tool should not surface an image")
         }
     }
 
