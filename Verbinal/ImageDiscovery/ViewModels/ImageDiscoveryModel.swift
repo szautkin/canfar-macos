@@ -149,15 +149,17 @@ final class ImageDiscoveryModel {
     /// launch form stays accurate from the moment the model is
     /// constructed.
     ///
-    /// `nonisolated(unsafe)` — written exactly once during the
-    /// MainActor init and read exactly once from the nonisolated
-    /// deinit. No concurrent access; the "unsafe" annotation is
-    /// the standard escape hatch for this single-writer / single-
-    /// reader pattern. Required (not just stylistic) here because
-    /// the enclosing class is `@Observable`, and Observation's macro
-    /// expansion requires `nonisolated(unsafe)` for mutable stored
-    /// properties that step outside the actor's isolation.
-    private nonisolated(unsafe) var inFlightCountSubscription: Task<Void, Never>?
+    /// Owns the long-lived subscription Task. See ``InFlightSubscription``:
+    /// holding the Task in a tiny non-isolated helper (instead of a
+    /// `nonisolated(unsafe) var` on this `@Observable @MainActor` type) lets
+    /// the model store it as a plain `let` with no concurrency escape hatch.
+    /// The Task can't itself be a stored `let` because its `[weak self]`
+    /// closure would capture `self` before every stored property is
+    /// initialized; the helper sidesteps that — the Task is assigned to
+    /// `inFlightSubscription.task` *after* init has set all stored properties,
+    /// and the helper's own `deinit` cancels it (so no main-actor state is
+    /// touched from a nonisolated deinit).
+    private let inFlightSubscription = InFlightSubscription()
 
     init(coordinator: ImageDiscoveryCoordinator) {
         self.coordinator = coordinator
@@ -166,21 +168,27 @@ final class ImageDiscoveryModel {
         // task self-terminates if the model is deallocated; the
         // stream's `.onTermination` callback cleans up the
         // coordinator-side continuation in that case.
+        //
+        // `.utility` priority: in-flight count changes are a
+        // background-awareness signal (the magnifier badge), not a
+        // latency-critical interaction. Running the subscription at
+        // utility priority keeps a flurry of count mutations — which
+        // can arrive rapidly when a batch of probes starts/finishes
+        // — from competing with user-driven UI work on the main
+        // actor. The brief hop to mutate `inFlightProbeCount` still
+        // lands on the MainActor (the property is MainActor-isolated)
+        // but is scheduled behind any pending higher-priority work.
         let stream = coordinator.inFlightCountChanges()
-        inFlightCountSubscription = Task { [weak self] in
+        // Assigned after every stored property is initialized, so capturing
+        // `self` (weakly) here is legal. The helper's deinit cancels the Task
+        // when the model is deallocated; the stream's `.onTermination` then
+        // unregisters the coordinator-side continuation.
+        inFlightSubscription.task = Task(priority: .utility) { [weak self] in
             for await count in stream {
                 guard let self else { return }
                 self.inFlightProbeCount = count
             }
         }
-    }
-
-    deinit {
-        // Synchronous cancel of the captured Task reference. The
-        // stream's `.onTermination` then unregisters the
-        // coordinator-side continuation. No MainActor hop needed
-        // — Task.cancel() is nonisolated.
-        inFlightCountSubscription?.cancel()
     }
 
     // MARK: - Open / close lifecycle
@@ -638,4 +646,19 @@ final class ImageDiscoveryModel {
         guard category == .jobTimedOut else { return false }
         return now.timeIntervalSince(attemptedAt) < 10 * 60
     }
+}
+
+/// Owns a single long-lived subscription `Task` and cancels it on `deinit`.
+///
+/// Extracted so `ImageDiscoveryModel` (an `@Observable @MainActor` type) can
+/// hold its subscription as a plain `let` with no `nonisolated(unsafe)` escape
+/// hatch: the model stores an `InFlightSubscription`, assigns its `task` once
+/// during init (after all stored properties are set, so a `[weak self]`
+/// capture is legal), and relies on this helper's own `deinit` to cancel —
+/// which runs in a nonisolated context and touches no main-actor state. The
+/// helper is created and mutated only from the model's MainActor init, so a
+/// single-writer `@unchecked Sendable` is accurate.
+private final class InFlightSubscription: @unchecked Sendable {
+    var task: Task<Void, Never>?
+    deinit { task?.cancel() }
 }

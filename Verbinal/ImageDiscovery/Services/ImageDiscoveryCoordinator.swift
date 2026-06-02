@@ -1123,4 +1123,12 @@ actor ImageDiscoveryCoordinator {
     func setProbeScriptNotUploaded() {
         probeScriptUploaded = false
     }
+
+    /// Test hook: number of live `inFlightCountChanges()` subscribers
+    /// currently registered. Lets a test assert that a subscriber's
+    /// continuation is unregistered (count returns to zero) after the
+    /// consumer's stream terminates — e.g. when the subscribing model
+    /// is deallocated and its subscription Task ends, the stream's
+    /// `.onTermination` should drop the coordinator-side continuation.
+    func inFlightSubscriberCount() -> Int { inFlightContinuations.count }
 }
