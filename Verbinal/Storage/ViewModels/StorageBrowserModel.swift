@@ -39,21 +39,23 @@ final class StorageBrowserModel {
     }
 
     var sortedNodes: [VOSpaceNode] {
-        let sorted: [VOSpaceNode]
-        switch sortKey {
-        case .name:
-            sorted = nodes.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        case .size:
-            sorted = nodes.sorted { ($0.sizeBytes ?? 0) < ($1.sizeBytes ?? 0) }
-        case .date:
-            sorted = nodes.sorted { ($0.lastModified ?? .distantPast) < ($1.lastModified ?? .distantPast) }
+        // Single stable pass: folders sort ahead of files, ties broken by the
+        // active sort key. `sorted(by:)` is stable, so equal-priority nodes keep
+        // their key order. Descending reverses the whole folders-then-files list
+        // (folders are no longer guaranteed first when descending), matching the
+        // prior two-filter behaviour exactly.
+        let ascending = nodes.sorted { lhs, rhs in
+            if lhs.isContainer != rhs.isContainer { return lhs.isContainer }
+            switch sortKey {
+            case .name:
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            case .size:
+                return (lhs.sizeBytes ?? 0) < (rhs.sizeBytes ?? 0)
+            case .date:
+                return (lhs.lastModified ?? .distantPast) < (rhs.lastModified ?? .distantPast)
+            }
         }
-
-        // Folders first, then apply sort order
-        let folders = sorted.filter(\.isContainer)
-        let files = sorted.filter { !$0.isContainer }
-        let ordered = sortOrder == .ascending ? (folders + files) : (folders + files).reversed()
-        return Array(ordered)
+        return sortOrder == .ascending ? ascending : ascending.reversed()
     }
 
     init(service: VOSpaceBrowserService, username: String) {

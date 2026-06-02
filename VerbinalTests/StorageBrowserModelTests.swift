@@ -73,15 +73,79 @@ final class StorageBrowserSortTests: XCTestCase {
 
         model.nodes = [
             VOSpaceNode(name: "file.fits", path: "file.fits", type: .dataNode),
+            VOSpaceNode(name: "zeta", path: "zeta", type: .container),
             VOSpaceNode(name: "alpha", path: "alpha", type: .container),
             VOSpaceNode(name: "beta.csv", path: "beta.csv", type: .dataNode),
         ]
         model.sortKey = .name
         model.sortOrder = .ascending
 
+        // Folders first (name-ascending), then files (name-ascending).
         let sorted = model.sortedNodes
-        XCTAssertTrue(sorted[0].isContainer, "Folders should come first")
-        XCTAssertEqual(sorted[0].name, "alpha")
+        XCTAssertEqual(sorted.map(\.name), ["alpha", "zeta", "beta.csv", "file.fits"])
+    }
+
+    func testSortedNodesDescendingExactSequence() {
+        let network = NetworkClient()
+        let service = VOSpaceBrowserService(network: network)
+        let model = StorageBrowserModel(service: service, username: "testuser")
+
+        model.nodes = [
+            VOSpaceNode(name: "file.fits", path: "file.fits", type: .dataNode),
+            VOSpaceNode(name: "zeta", path: "zeta", type: .container),
+            VOSpaceNode(name: "alpha", path: "alpha", type: .container),
+            VOSpaceNode(name: "beta.csv", path: "beta.csv", type: .dataNode),
+        ]
+        model.sortKey = .name
+        model.sortOrder = .descending
+
+        // Descending reverses the whole folders-then-files list, so files lead
+        // and folders trail. This pins the pre-refactor behaviour exactly.
+        let sorted = model.sortedNodes
+        XCTAssertEqual(sorted.map(\.name), ["file.fits", "beta.csv", "zeta", "alpha"])
+    }
+
+    func testSortedNodesBySizeFoldersFirst() {
+        let network = NetworkClient()
+        let service = VOSpaceBrowserService(network: network)
+        let model = StorageBrowserModel(service: service, username: "testuser")
+
+        model.nodes = [
+            VOSpaceNode(name: "big.fits", path: "big.fits", type: .dataNode, sizeBytes: 9000),
+            VOSpaceNode(name: "dirB", path: "dirB", type: .container, sizeBytes: 5000),
+            VOSpaceNode(name: "small.csv", path: "small.csv", type: .dataNode, sizeBytes: 100),
+            VOSpaceNode(name: "dirA", path: "dirA", type: .container, sizeBytes: 200),
+        ]
+        model.sortKey = .size
+        model.sortOrder = .ascending
+
+        // Folders first (size-ascending), then files (size-ascending).
+        let sorted = model.sortedNodes
+        XCTAssertEqual(sorted.map(\.name), ["dirA", "dirB", "small.csv", "big.fits"])
+    }
+
+    func testSortedNodesByDateFoldersFirst() {
+        let network = NetworkClient()
+        let service = VOSpaceBrowserService(network: network)
+        let model = StorageBrowserModel(service: service, username: "testuser")
+
+        let t0 = Date(timeIntervalSince1970: 1_000)
+        let t1 = Date(timeIntervalSince1970: 2_000)
+        let t2 = Date(timeIntervalSince1970: 3_000)
+        let t3 = Date(timeIntervalSince1970: 4_000)
+
+        model.nodes = [
+            VOSpaceNode(name: "newFile", path: "newFile", type: .dataNode, lastModified: t3),
+            VOSpaceNode(name: "newDir", path: "newDir", type: .container, lastModified: t2),
+            VOSpaceNode(name: "oldFile", path: "oldFile", type: .dataNode, lastModified: t1),
+            VOSpaceNode(name: "oldDir", path: "oldDir", type: .container, lastModified: t0),
+        ]
+        model.sortKey = .date
+        model.sortOrder = .ascending
+
+        // Folders first (date-ascending), then files (date-ascending).
+        let sorted = model.sortedNodes
+        XCTAssertEqual(sorted.map(\.name), ["oldDir", "newDir", "oldFile", "newFile"])
     }
 
     func testToggleSortChangesOrder() {
