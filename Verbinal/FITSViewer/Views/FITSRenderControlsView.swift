@@ -114,6 +114,16 @@ struct FITSRenderControlsView: View {
                         .foregroundStyle(.tertiary)
                         .monospacedDigit()
                 }
+                // Ticket 037: when the loaded image has no usable spread (all
+                // pixels identical or all NaN) the slider falls back to 0...1.
+                // Explain that rather than letting the range silently misrepresent
+                // the data.
+                if !model.pixels.isEmpty && model.pixelRangeDegenerate {
+                    Label("Uniform or NaN-only data — showing fallback 0…1 range", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .help("Every finite pixel in this image has the same value (or all pixels are NaN), so there is no data range to map. The cut controls show a 0…1 fallback.")
+                }
             }
 
             // Crosshair & Coordinates
@@ -270,7 +280,7 @@ struct FITSRenderControlsView: View {
     }
 
     private var cutRange: ClosedRange<Float> {
-        model.pixelMin < model.pixelMax ? model.pixelMin...model.pixelMax : 0...1
+        model.pixelRangeDegenerate ? 0...1 : model.pixelMin...model.pixelMax
     }
 
     /// Current cut window width (maxCut − minCut).

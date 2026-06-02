@@ -37,6 +37,18 @@ final class FITSViewerModel: Identifiable {
     var pixelMin: Float = 0
     var pixelMax: Float = 1
 
+    /// True when the most recent pixel scan found no usable spread — an empty
+    /// buffer, uniform (all-identical) pixels, or an all-NaN image. In that case
+    /// `pixelMin`/`pixelMax` carry the 0...1 *fallback* rather than a real data
+    /// range, so the cut-range slider can surface that to the astronomer instead
+    /// of silently presenting a bogus 0...1 window.
+    ///
+    /// This must be a stored flag fed from the scan (see ``scanPixelRange(_:)``),
+    /// not derived from `pixelMin >= pixelMax`: the fallback range is `0...1`,
+    /// where `0 < 1`, so a min/max comparison can never distinguish a genuine
+    /// 0...1 data range from the degenerate fallback.
+    var pixelRangeDegenerate: Bool = false
+
     // Crosshair
     var crosshairPixel: CGPoint?
     var crosshairRA: String = ""
@@ -118,6 +130,7 @@ final class FITSViewerModel: Identifiable {
             pixels = extractedPixels
             pixelMin = range.min
             pixelMax = range.max
+            pixelRangeDegenerate = range.degenerate
             renderParams.minCut = cuts.min
             renderParams.maxCut = cuts.max
             Self.logger.info("Loaded \(extractedPixels.count) pixels, cuts=[\(cuts.min), \(cuts.max)], HDUs=\(fitsFile.hdus.count), WCS=\(fitsFile.firstImageHDU?.wcs != nil)")
@@ -159,6 +172,7 @@ final class FITSViewerModel: Identifiable {
             pixels = extractedPixels
             pixelMin = range.min
             pixelMax = range.max
+            pixelRangeDegenerate = range.degenerate
             renderParams.minCut = cuts.min
             renderParams.maxCut = cuts.max
             renderImage()
@@ -477,16 +491,22 @@ final class FITSViewerModel: Identifiable {
     /// Static + non-isolated so callers can run it from `Task.detached` —
     /// the previous instance method lived on `@MainActor` and ran the loop
     /// every time `pixels` was assigned, blocking the UI on large images.
-    nonisolated static func scanPixelRange(_ pixels: [Float]) -> (min: Float, max: Float) {
-        guard !pixels.isEmpty else { return (0, 1) }
+    nonisolated static func scanPixelRange(_ pixels: [Float]) -> (min: Float, max: Float, degenerate: Bool) {
+        guard !pixels.isEmpty else {
+            logger.warning("scanPixelRange: empty pixel buffer — falling back to degenerate 0...1 range")
+            return (0, 1, true)
+        }
         var lo: Float = .greatestFiniteMagnitude
         var hi: Float = -.greatestFiniteMagnitude
         for p in pixels where p.isFinite {
             if p < lo { lo = p }
             if p > hi { hi = p }
         }
-        if lo < hi { return (lo, hi) }
-        return (0, 1)
+        if lo < hi { return (lo, hi, false) }
+        // Uniform (all-identical) or all-NaN data: no usable spread. Surface the
+        // degenerate condition rather than masking it behind a silent fallback.
+        logger.warning("scanPixelRange: degenerate pixel range (uniform or all-NaN data) — falling back to 0...1")
+        return (0, 1, true)
     }
 
     #if os(macOS)
