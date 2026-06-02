@@ -58,7 +58,14 @@
       }
     },
     "“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the %@ entry at this app's helper. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating." : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "« Configurer Claude Desktop » accorde un accès ponctuel au dossier de configuration de Claude, puis fait pointer l’entrée %@ vers l’utilitaire de cette application. Seule cette entrée est modifiée ; une sauvegarde .bak est créée au préalable. Redémarrez Claude Desktop après la mise à jour."
+          }
+        }
+      }
     },
     "(%@ total)" : {
       "localizations" : {
@@ -1136,10 +1143,24 @@
       }
     },
     "Claude Desktop and other MCP clients reach Verbinal through the bundled canfar-mcp helper. These checks verify each link in that chain and can repair Claude Desktop's config." : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Desktop et d’autres clients MCP accèdent à Verbinal via l’utilitaire canfar-mcp intégré. Ces vérifications contrôlent chaque maillon de cette chaîne et peuvent réparer la configuration de Claude Desktop."
+          }
+        }
+      }
     },
     "Claude Desktop Configuration" : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuration de Claude Desktop"
+          }
+        }
+      }
     },
     "Clear" : {
       "extractionState" : "stale",
@@ -3017,7 +3038,14 @@
       }
     },
     "Helper self-test" : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autotest de l’utilitaire"
+          }
+        }
+      }
     },
     "Hide" : {
       "extractionState" : "stale",
@@ -3064,7 +3092,14 @@
       }
     },
     "I have read and agree to the Terms of Use, including the disclaimer of warranties and the limitation of liability (including for data loss)." : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "J’ai lu et j’accepte les conditions d’utilisation, y compris l’exclusion de garanties et la limitation de responsabilité (notamment en cas de perte de données)."
+          }
+        }
+      }
     },
     "Identity" : {
       "localizations" : {
@@ -3505,7 +3540,14 @@
       }
     },
     "Launches the bundled canfar-mcp exactly as Claude Desktop would and confirms it can initialize. Requires the server to be running. If the helper can't initialize its sandbox container, this is where you'll see it." : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lance l’utilitaire canfar-mcp intégré exactement comme le ferait Claude Desktop et confirme qu’il peut s’initialiser. Nécessite que le serveur soit en cours d’exécution. Si l’utilitaire ne parvient pas à initialiser son conteneur de bac à sable, c’est ici que vous le verrez."
+          }
+        }
+      }
     },
     "Launching session…" : {
       "extractionState" : "stale",
@@ -4829,7 +4871,14 @@
       }
     },
     "Please review and accept the Terms of Use to continue." : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veuillez lire et accepter les conditions d’utilisation pour continuer."
+          }
+        }
+      }
     },
     "Please select an image" : {
       "extractionState" : "stale",
@@ -5712,7 +5761,14 @@
       }
     },
     "Run helper self-test" : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécuter l’autotest de l’utilitaire"
+          }
+        }
+      }
     },
     "Run Jupyter notebooks locally" : {
       "extractionState" : "stale",
@@ -5759,7 +5815,14 @@
       }
     },
     "Running checks…" : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifications en cours…"
+          }
+        }
+      }
     },
     "Runtime" : {
       "extractionState" : "stale",
@@ -6173,7 +6236,14 @@
       }
     },
     "Session type" : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type de session"
+          }
+        }
+      }
     },
     "Session Type" : {
       "extractionState" : "stale",
@@ -7378,7 +7448,14 @@
       }
     },
     "Welcome to %@" : {
-
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bienvenue dans %@"
+          }
+        }
+      }
     },
     "Welcome, %@" : {
       "extractionState" : "stale",
