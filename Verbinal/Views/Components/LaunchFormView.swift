@@ -20,7 +20,6 @@ struct LaunchFormView: View {
     var onLaunched: (() -> Void)?
     @Environment(AppState.self) private var appState
     @State private var showLaunchProgress = false
-    @State private var showHeadlessLaunchProgress = false
     @State private var showImageDiscovery = false
 
     /// Bridge AppState's `launchFormTab` enum to the integer the
