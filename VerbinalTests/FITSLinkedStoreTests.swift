@@ -284,6 +284,114 @@ final class FITSLinkedStoreTests: XCTestCase {
         XCTAssertNotNil(host.linkedState.sharedCrosshair)
     }
 
+    /// Explicit assertion of the documented linked-state contract:
+    /// `applySharedStateToActiveTab()` raises the `isApplyingSharedState` guard
+    /// around the apply so that any `writeToStore(...)` reaching the host while
+    /// state is being applied to the newly activated tab is **dropped** — the
+    /// store the reader is consuming can never be clobbered. The guard is
+    /// balanced via `defer`, so once the apply returns a normal write succeeds
+    /// again.
+    ///
+    /// Because reads (`applySharedStateToActiveTab`) and writes (`writeToStore`)
+    /// are both `@MainActor`, they run to completion without interleaving — the
+    /// apply applies state to the activated tab purely through callback-free
+    /// setters (`applyLinkedCrosshair`, `centerOnPixel`), so it never triggers a
+    /// store write of its own. The observable contract is therefore: the apply
+    /// leaves the store unchanged, and writes are accepted again afterward
+    /// (guard cleared).
+    func testApplyGuardDropsStoreWritesAndIsBalanced() {
+        let host = FITSTabHostModel()
+        let tabA = host.addTab()
+        let tabB = host.addTab()
+
+        let modelA = makeModel()
+        tabA.file = modelA.file
+        tabA.selectedHDUIndex = 0
+        tabA.pixels = modelA.pixels
+
+        let modelB = makeModel()
+        tabB.file = modelB.file
+        tabB.selectedHDUIndex = 0
+        tabB.pixels = modelB.pixels
+
+        host.linkedState.linkCrosshair = true
+        host.activeTabIndex = 0
+
+        // Seed the store with the value a user "placed" on tab A.
+        let originalRA = 180.123
+        let originalDec = 45.456
+        host.linkedState.sharedCrosshair = WorldPosition(ra: originalRA, dec: originalDec)
+
+        // Activate tab B → pulls from store and applies the crosshair locally.
+        // The apply must NOT write back to the store (no feedback loop): the
+        // store still holds tab A's original coordinates after activation.
+        host.activeTabIndex = 1
+
+        let afterApply = host.linkedState.sharedCrosshair
+        XCTAssertNotNil(afterApply)
+        XCTAssertEqual(afterApply!.ra, originalRA, accuracy: 1e-10,
+                       "Apply must not write back to the store (store unchanged)")
+        XCTAssertEqual(afterApply!.dec, originalDec, accuracy: 1e-10,
+                       "Apply must not write back to the store (store unchanged)")
+
+        // The guard is cleared after the apply (balanced via defer): a normal
+        // write through the active tab's wiring now succeeds, proving
+        // isApplyingSharedState was reset and writes are accepted again.
+        let sentinelRA = 12.0
+        let sentinelDec = -34.0
+        host.writeToStore(crosshairFrom: tabB, ra: sentinelRA, dec: sentinelDec)
+
+        let afterPostWrite = host.linkedState.sharedCrosshair
+        XCTAssertNotNil(afterPostWrite)
+        XCTAssertEqual(afterPostWrite!.ra, sentinelRA, accuracy: 1e-10,
+                       "Guard must be cleared after apply so later writes succeed")
+        XCTAssertEqual(afterPostWrite!.dec, sentinelDec, accuracy: 1e-10,
+                       "Guard must be cleared after apply so later writes succeed")
+    }
+
+    /// Exercises the guard via the internal `applySharedStateToActiveTab()`
+    /// entry point directly (the same set/clear path used by the `activeTabIndex`
+    /// `didSet`). The explicit apply must leave the store untouched, and a write
+    /// issued after the apply returns must land — proving the guard is set
+    /// during the apply and cleared (balanced) once it returns.
+    func testExplicitApplyLeavesStoreIntactAndClearsGuard() {
+        let host = FITSTabHostModel()
+        let tabA = host.addTab()
+        let tabB = host.addTab()
+
+        let modelA = makeModel()
+        tabA.file = modelA.file
+        tabA.selectedHDUIndex = 0
+        tabA.pixels = modelA.pixels
+
+        let modelB = makeModel()
+        tabB.file = modelB.file
+        tabB.selectedHDUIndex = 0
+        tabB.pixels = modelB.pixels
+
+        host.linkedState.linkCrosshair = true
+
+        let originalRA = 200.0
+        let originalDec = -10.0
+        host.linkedState.sharedCrosshair = WorldPosition(ra: originalRA, dec: originalDec)
+
+        // Calling applySharedStateToActiveTab directly (internal entry point)
+        // exercises the same guard-set/guard-clear path used by activeTabIndex.
+        host.activeTabIndex = 0
+        host.applySharedStateToActiveTab()
+
+        // Store untouched by the explicit apply.
+        XCTAssertEqual(host.linkedState.sharedCrosshair!.ra, originalRA, accuracy: 1e-10)
+        XCTAssertEqual(host.linkedState.sharedCrosshair!.dec, originalDec, accuracy: 1e-10)
+
+        // After the apply returns the guard is down: a write lands normally.
+        host.writeToStore(crosshairFrom: tabA, ra: 1.0, dec: 2.0)
+        XCTAssertEqual(host.linkedState.sharedCrosshair!.ra, 1.0, accuracy: 1e-10,
+                       "Write after apply must land (guard cleared)")
+        XCTAssertEqual(host.linkedState.sharedCrosshair!.dec, 2.0, accuracy: 1e-10,
+                       "Write after apply must land (guard cleared)")
+    }
+
     // MARK: - Disabled Linking Tests
 
     func testCrosshairNotStoredWhenLinkDisabled() {

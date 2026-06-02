@@ -114,6 +114,22 @@ final class FITSTabHostModel {
 
     // MARK: - Store: Write (active tab → store)
 
+    // Linked-state contract (writes):
+    //
+    // These `writeToStore(...)` methods are **non-blocking broadcasts with no
+    // ordering guarantees**. The active tab pushes its latest crosshair / zoom
+    // into `linkedState`; the value is *not* pushed to other tabs and there is
+    // no acknowledgement or serialization beyond what `@MainActor` already
+    // provides. Both the writes here and `applySharedStateToActiveTab()` (the
+    // reader) are `@MainActor`, so every individual call runs to completion
+    // without interleaving — the only concurrency model is "last writer on the
+    // main actor wins". The `isApplyingSharedState` guard suppresses writes
+    // that would otherwise fire *while* a read is applying state to a tab
+    // (preventing a feedback loop); it does **not** impose any cross-tab
+    // write/read ordering. Do not assume a write here is observed by a specific
+    // tab, in a specific order, or at any time other than that tab's next
+    // activation. Reads happen exactly once, on tab activation (pull pattern).
+
     /// Write crosshair position to shared store. Only stores — does NOT touch other tabs.
     func writeToStore(crosshairFrom sourceTab: FITSViewerModel, ra: Double, dec: Double) {
         guard linkedState.linkCrosshair, !isApplyingSharedState else { return }
@@ -143,10 +159,23 @@ final class FITSTabHostModel {
 
     /// Apply shared crosshair and zoom to the newly active tab.
     /// Called on tab switch (pull-on-activation pattern).
+    ///
+    /// Linked-state contract (reads): this is the *only* reader of the shared
+    /// store and it runs exactly once per tab activation. It is `@MainActor`,
+    /// like the `writeToStore(...)` broadcasters, so an apply never interleaves
+    /// with a write — the main actor serializes the two. There is no need (and
+    /// no mechanism) to wait for or order writes relative to this read: it
+    /// simply consumes whatever happens to be in `linkedState` at activation
+    /// time. See the "Linked-state contract (writes)" note above.
     func applySharedStateToActiveTab() {
         guard let tab = activeTab else { return }
         Self.logger.info("applySharedState: tabIdx=\(self.activeTabIndex) linkCrosshair=\(self.linkedState.linkCrosshair) hasCrosshair=\(self.linkedState.sharedCrosshair != nil) linkZoom=\(self.linkedState.linkZoom)")
 
+        // Raise the feedback-loop guard for the duration of the apply: any
+        // `writeToStore(...)` triggered re-entrantly by mutating this tab is
+        // dropped (see the guard in each writer) so applying state can never
+        // clobber the store we are reading from. The flag is set on entry and
+        // cleared via `defer` so it is always balanced even on early `return`.
         isApplyingSharedState = true
         defer { isApplyingSharedState = false }
 
