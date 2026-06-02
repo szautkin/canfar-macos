@@ -5,7 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
-import VerbinalKit
+@testable import VerbinalKit
 @testable import Verbinal
 
 /// Behaviour pinning for the retry helper. Time-budget concerns: each test
@@ -121,6 +121,127 @@ final class RetryPolicyTests: XCTestCase {
             // retry sleep we get CancellationError. If we manage to land in
             // the operation closure it'd throw 503 first — accept either.
         }
+    }
+
+    // MARK: - Backoff math (nextDelay)
+
+    /// `nextDelay` scales the current delay by `backoffMultiplier` for a range
+    /// of multipliers and clamps each result at `maxDelay`.
+    func testNextDelayScalesByMultiplierAcrossAttempts() {
+        // maxDelay set high enough that clamping never kicks in here.
+        for multiplier in [1.5, 2.0, 3.0] as [Double] {
+            let policy = RetryPolicy(
+                maxAttempts: 5,
+                initialDelay: .milliseconds(100),
+                maxDelay: .seconds(1_000),
+                backoffMultiplier: multiplier
+            )
+            var delay = policy.initialDelay
+            var expectedSeconds = 0.1
+            for attempt in 1...4 {
+                delay = policy.nextDelay(after: delay)
+                expectedSeconds *= multiplier
+                XCTAssertEqual(
+                    delay.timeInSeconds, expectedSeconds, accuracy: 1e-9,
+                    "multiplier \(multiplier), attempt \(attempt)")
+            }
+        }
+    }
+
+    /// Once the scaled value exceeds `maxDelay`, every subsequent delay is
+    /// pinned to the clamp.
+    func testNextDelayClampsAtMaxDelay() {
+        let policy = RetryPolicy(
+            maxAttempts: 6,
+            initialDelay: .milliseconds(300),
+            maxDelay: .seconds(5),
+            backoffMultiplier: 2.0
+        )
+        var delay = policy.initialDelay
+        var sawClamp = false
+        for _ in 0..<10 {
+            delay = policy.nextDelay(after: delay)
+            XCTAssertLessThanOrEqual(
+                delay, policy.maxDelay,
+                "delay must never exceed maxDelay")
+            if delay == policy.maxDelay { sawClamp = true }
+        }
+        XCTAssertTrue(sawClamp, "exponential growth should reach the clamp")
+        // Stays pinned at the clamp once reached.
+        XCTAssertEqual(policy.nextDelay(after: policy.maxDelay), policy.maxDelay)
+    }
+
+    /// A tiny `maxDelay` combined with a large multiplier keeps every delay at
+    /// the clamp from the very first step.
+    func testNextDelayTinyMaxDelayLargeMultiplierStaysClamped() {
+        let policy = RetryPolicy(
+            maxAttempts: 4,
+            initialDelay: .milliseconds(1),
+            maxDelay: .milliseconds(1),
+            backoffMultiplier: 1_000.0
+        )
+        var delay = policy.initialDelay
+        for _ in 0..<5 {
+            delay = policy.nextDelay(after: delay)
+            XCTAssertEqual(delay, .milliseconds(1),
+                           "delay must stay clamped at the 1ms maxDelay")
+        }
+    }
+
+    /// Very small and very large multipliers stay non-negative and bounded by
+    /// `maxDelay`. A multiplier of 0 collapses the delay to zero; a negative
+    /// multiplier is floored at zero rather than producing a negative sleep.
+    func testNextDelayExtremeMultipliersStayNonNegativeAndBounded() {
+        let multipliers: [Double] = [0.0, 0.000_001, 1e9, -1.0, -5.0]
+        for multiplier in multipliers {
+            let policy = RetryPolicy(
+                maxAttempts: 3,
+                initialDelay: .milliseconds(50),
+                maxDelay: .seconds(2),
+                backoffMultiplier: multiplier
+            )
+            var delay = policy.initialDelay
+            for _ in 0..<5 {
+                delay = policy.nextDelay(after: delay)
+                XCTAssertGreaterThanOrEqual(
+                    delay, .zero,
+                    "multiplier \(multiplier) produced a negative delay")
+                XCTAssertLessThanOrEqual(
+                    delay, policy.maxDelay,
+                    "multiplier \(multiplier) exceeded maxDelay")
+            }
+        }
+    }
+
+    // MARK: - Duration.timeInSeconds precision
+
+    func testTimeInSecondsForWholeSeconds() {
+        XCTAssertEqual(Duration.seconds(3).timeInSeconds, 3.0, accuracy: 1e-12)
+    }
+
+    func testTimeInSecondsForSubSecondDurations() {
+        XCTAssertEqual(Duration.milliseconds(300).timeInSeconds, 0.3,
+                       accuracy: 1e-9)
+        XCTAssertEqual(Duration.milliseconds(1).timeInSeconds, 0.001,
+                       accuracy: 1e-12)
+        XCTAssertEqual(Duration.microseconds(500).timeInSeconds, 0.000_5,
+                       accuracy: 1e-12)
+    }
+
+    func testTimeInSecondsForFractionalNanoseconds() {
+        // 1.5 seconds split as 1 s + 500 ms exercises the seconds +
+        // attoseconds recombination in timeInSeconds.
+        let oneAndAHalf = Duration.seconds(1) + Duration.milliseconds(500)
+        XCTAssertEqual(oneAndAHalf.timeInSeconds, 1.5, accuracy: 1e-9)
+
+        // Attosecond-level component (1 ns = 1e9 attoseconds) survives the
+        // Double conversion to roughly nanosecond precision.
+        XCTAssertEqual(Duration.nanoseconds(1).timeInSeconds, 1e-9,
+                       accuracy: 1e-12)
+    }
+
+    func testTimeInSecondsForZero() {
+        XCTAssertEqual(Duration.zero.timeInSeconds, 0.0)
     }
 }
 

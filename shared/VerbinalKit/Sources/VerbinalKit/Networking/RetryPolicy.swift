@@ -39,6 +39,20 @@ public struct RetryPolicy: Sendable {
     /// No retries. Use for user-facing actions where a single failure should
     /// surface immediately (e.g., login).
     public static let none = RetryPolicy(maxAttempts: 1)
+
+    /// Next backoff delay after `current`: exponential scaling by
+    /// `backoffMultiplier`, clamped to `maxDelay` and floored at zero.
+    ///
+    /// Extracted from the `retrying` loop so the backoff math (multiplier
+    /// scaling, clamping, and the `Duration` ↔ `Double` conversion) is
+    /// directly unit-testable without timing-sensitive sleeps.
+    func nextDelay(after current: Duration) -> Duration {
+        let scaled = current.timeInSeconds * backoffMultiplier
+        // A negative multiplier (or precision underflow) must never produce a
+        // negative sleep interval.
+        let next = Duration.seconds(max(0, scaled))
+        return next > maxDelay ? maxDelay : next
+    }
 }
 
 /// Decide whether a given error should trigger a retry.
@@ -95,16 +109,16 @@ public func retrying<T: Sendable>(
             }
             try await Task.sleep(for: delay)
             // Exponential backoff, clamped to maxDelay.
-            let next = Duration.seconds(delay.timeInSeconds * policy.backoffMultiplier)
-            delay = next > policy.maxDelay ? policy.maxDelay : next
+            delay = policy.nextDelay(after: delay)
         }
     }
 }
 
-private extension Duration {
+extension Duration {
     /// Total duration in seconds as a `Double`. Used for backoff scaling
     /// because `Duration` doesn't expose multiplication by a non-integer
-    /// scalar directly.
+    /// scalar directly. `internal` (not `private`) so the conversion is
+    /// unit-testable for fractional / sub-second precision.
     var timeInSeconds: Double {
         let components = self.components
         return Double(components.seconds) + Double(components.attoseconds) / 1e18
