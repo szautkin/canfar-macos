@@ -50,6 +50,12 @@ settings:
 packages:
   VerbinalKit:
     path: shared/VerbinalKit
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    # Pinned exactly — .xcodeproj/Package.resolved are gitignored, so this is the
+    # only tracked record of the version. GRDB links the OS system libsqlite3, so
+    # the on-disk SQLite file stays a standard, portable artifact.
+    exactVersion: "7.11.0"
 targets:
   Verbinal:
     type: application
@@ -61,6 +67,8 @@ targets:
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit
+      - package: GRDB
+        product: GRDB
       - target: CanfarMCP
         embed: true
         codeSign: true
@@ -141,6 +149,8 @@ targets:
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit
+      - package: GRDB
+        product: GRDB
     settings:
       base:
         INFOPLIST_FILE: Verbinal/Info-iOS.plist
