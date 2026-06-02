@@ -33,6 +33,7 @@ extension AppState {
         tools.append(makeResolveTargetTool(resolver: resolver))
         tools.append(makeGetObservationCAOM2Tool(caom2: caom2))
         tools.append(makeGetDataLinksTool(tap: tap, caom2: caom2))
+        tools.append(makeGetPreviewImageTool(network: network, caom2: caom2))
         tools.append(makeListRecentSearchesTool(store: recentStore))
         tools.append(makeListSavedQueriesTool(store: savedStore))
         tools.append(makeGetSavedQueryTool(store: savedStore))
@@ -825,6 +826,64 @@ extension AppState {
                 packageDownloadURL: TAPClient.downloadURL(publisherID: id)
             )
         })
+    }
+
+    private func makeGetPreviewImageTool(network: NetworkClient, caom2: CAOM2Service) -> GetPreviewImageTool {
+        let endpoints = self.endpoints
+        return GetPreviewImageTool(
+            resolvePreviews: { id in
+                // Resolve preview artifacts from the CAOM-2 inventory: each
+                // plane carries its bandpass (energy.bandpassName) and its
+                // artifacts; keep only previews (productType "preview" or an
+                // image/* content type). Band lives in CAOM-2, NOT DataLink
+                // rows (verified against IVOA DataLink 1.0). The per-artifact
+                // dataPubURL 302-redirects to signed storage; the fetch follows.
+                let obs = try await caom2.fetch(publisherID: id)
+                var out: [GetPreviewImageTool.PreviewArtifact] = []
+                for plane in obs.planes {
+                    let band = plane.energy?.bandpassName
+                    for a in plane.artifacts {
+                        let isPreview = (a.productType?.lowercased() == "preview")
+                            || (a.contentType?.lowercased().hasPrefix("image/") ?? false)
+                        guard isPreview, let url = endpoints.dataPubURL(forArtifactURI: a.uri) else { continue }
+                        out.append(.init(
+                            band: band,
+                            url: url,
+                            contentType: a.contentType,
+                            contentLength: a.contentLength,
+                            filename: (a.uri as NSString).lastPathComponent
+                        ))
+                    }
+                }
+                return out
+            },
+            fetchImage: { url, maxBytes in
+                // Inner watchdog scoped to the fetch only (mirrors get_data_links);
+                // its deadline surfaces as a typed backendError naming the tool.
+                try await withApplierTimeout(seconds: 30, label: "get_preview_image") {
+                    do {
+                        let (data, response) = try await network.get(url.absoluteString, accept: "image/*")
+                        if data.count > maxBytes {
+                            throw GetPreviewImageTool.PreviewFetchError.tooLarge(data.count)
+                        }
+                        return (data, response.value(forHTTPHeaderField: "Content-Type"))
+                    } catch let e as GetPreviewImageTool.PreviewFetchError {
+                        throw e
+                    } catch let e as NetworkError {
+                        switch e {
+                        case .unauthorized:
+                            throw GetPreviewImageTool.PreviewFetchError.authRequired
+                        case .httpError(let code, _) where code == 401 || code == 403:
+                            throw GetPreviewImageTool.PreviewFetchError.authRequired
+                        case .httpError(let code, _):
+                            throw GetPreviewImageTool.PreviewFetchError.http(code)
+                        default:
+                            throw GetPreviewImageTool.PreviewFetchError.transport(e.localizedDescription)
+                        }
+                    }
+                }
+            }
+        )
     }
 
     private func makeListRecentSearchesTool(store: RecentSearchStore) -> ListRecentSearchesTool {
