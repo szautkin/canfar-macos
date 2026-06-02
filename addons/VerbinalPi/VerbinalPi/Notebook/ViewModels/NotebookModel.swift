@@ -333,13 +333,29 @@ final class NotebookModel: Identifiable {
     func checkDependencies() {
         guard let pythonPath = PythonDiscovery.findPython3() else { return }
         let sources = cells.filter { $0.cellType == .code }.map(\.source)
+        // Isolation strategy: the package scan launches a `pip list` subprocess
+        // and must not block the MainActor. We hand the inputs (plain value types:
+        // `sources`, `pythonPath`) to a detached task, do the blocking work inside
+        // a `nonisolated` helper that captures NO `self`, then marshal the result
+        // back onto the MainActor in a single hop. Keeping the off-actor work in a
+        // `nonisolated static` helper makes the boundary explicit and prevents an
+        // accidental future capture of MainActor-isolated state across it.
         Task.detached {
-            let missing = DependencyScanner.findMissing(sources: sources, pythonPath: pythonPath)
+            let missing = Self.scanMissingPackages(sources: sources, pythonPath: pythonPath)
             await MainActor.run {
                 self.missingPackages = missing
                 self.showDependencyAlert = !missing.isEmpty
             }
         }
+    }
+
+    /// Off-actor dependency scan. Runs `DependencyScanner.findMissing`, which
+    /// spawns a `pip list` subprocess and blocks until it exits — therefore this
+    /// MUST run off the MainActor (it is the body of the detached task above).
+    /// Being `nonisolated static` it has no access to `self`/MainActor state,
+    /// so the inputs/outputs are the only values that cross the actor boundary.
+    nonisolated static func scanMissingPackages(sources: [String], pythonPath: String) -> [String] {
+        DependencyScanner.findMissing(sources: sources, pythonPath: pythonPath)
     }
 
     func installMissingPackages() async {
