@@ -53,16 +53,14 @@ final class ExportService {
 
                 var files: [String] = []
 
-                // Sort filenames for deterministic, reproducible output.
-                for filename in output.jsonFiles.keys.sorted() {
-                    guard let data = output.jsonFiles[filename] else { continue }
+                // Sort by filename for deterministic, reproducible output.
+                for (filename, data) in output.jsonFiles.sorted(by: { $0.key < $1.key }) {
                     let fileURL = moduleDir.appendingPathComponent(filename)
                     try data.write(to: fileURL, options: .atomic)
                     files.append("\(module.moduleID)/\(filename)")
                 }
 
-                for filename in output.markdownFiles.keys.sorted() {
-                    guard let text = output.markdownFiles[filename] else { continue }
+                for (filename, text) in output.markdownFiles.sorted(by: { $0.key < $1.key }) {
                     let fileURL = moduleDir.appendingPathComponent(filename)
                     try text.write(to: fileURL, atomically: true, encoding: .utf8)
                     files.append("\(module.moduleID)/\(filename)")

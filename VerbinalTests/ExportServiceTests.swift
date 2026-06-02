@@ -371,6 +371,48 @@ final class ExportServiceTests: XCTestCase {
                       "expected a copy-failure error, got: \(service.lastError ?? "nil")")
     }
 
+    // MARK: - Ticket 041: deterministic per-module file ordering
+
+    func testExportAllManifestFilesAreSortedDeterministically() async throws {
+        // Supply JSON and Markdown files whose dictionary insertion order is
+        // intentionally not alphabetical, to prove the writer sorts by filename.
+        var out = ExportModuleOutput()
+        out.jsonFiles = [
+            "zeta.json": Data("{}".utf8),
+            "alpha.json": Data("{}".utf8),
+            "mid.json": Data("{}".utf8),
+        ]
+        out.markdownFiles = [
+            "notes.md": "# notes",
+            "alpha.md": "# alpha",
+        ]
+        let service = ExportService()
+        let bundleURL = await service.exportAll(
+            to: makeTempDir(),
+            modules: [StubModule(output: out)]
+        )
+        guard let bundleURL else { return XCTFail("export failed: \(service.lastError ?? "nil")") }
+
+        let manifestData = try Data(contentsOf: bundleURL.appendingPathComponent("manifest.json"))
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(ExportManifest.self, from: manifestData)
+
+        let files = manifest.modules.first?.files ?? []
+        XCTAssertEqual(
+            files,
+            [
+                "stub/alpha.json",
+                "stub/alpha.md",
+                "stub/mid.json",
+                "stub/notes.md",
+                "stub/zeta.json",
+            ],
+            "Per-module files must be sorted for reproducible output regardless of dictionary order"
+        )
+        XCTAssertEqual(files, files.sorted(), "files array must be in sorted order")
+    }
+
     func testExportCopiesAttachedFilesWhenPresent() async throws {
         let work = makeTempDir()
         let src = work.appendingPathComponent("real.fits")
