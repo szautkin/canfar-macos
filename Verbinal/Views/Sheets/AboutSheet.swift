@@ -8,6 +8,7 @@ import SwiftUI
 
 struct AboutSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var showTerms = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -48,6 +49,12 @@ struct AboutSheet: View {
                     .font(.caption)
             }
 
+            Button("Terms of Use") {
+                showTerms = true
+            }
+            .buttonStyle(.borderless)
+            .font(.caption)
+
             Divider()
                 .frame(width: 200)
 
@@ -63,6 +70,9 @@ struct AboutSheet: View {
         }
         .padding(32)
         .sheetFrame(width: 400)
+        .sheet(isPresented: $showTerms) {
+            LegalDocumentSheet()
+        }
     }
 
     private var platformVersionString: String {

@@ -10,6 +10,7 @@ import SwiftUI
 struct iOSAccountTab: View {
     @Environment(AppState.self) private var appState
     @State private var showAbout = false
+    @State private var showTerms = false
 
     var body: some View {
         List {
@@ -32,6 +33,9 @@ struct iOSAccountTab: View {
                 Button("About Verbinal") {
                     showAbout = true
                 }
+                Button("Terms of Use") {
+                    showTerms = true
+                }
             }
 
             Section {
@@ -46,6 +50,9 @@ struct iOSAccountTab: View {
         .navigationTitle(appState.username)
         .sheet(isPresented: $showAbout) {
             AboutSheet()
+        }
+        .sheet(isPresented: $showTerms) {
+            LegalDocumentSheet()
         }
     }
 }

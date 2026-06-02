@@ -9,6 +9,8 @@ import SwiftUI
 struct ContentView: View {
     @Environment(AppState.self) var appState
     @State var showAbout = false
+    /// First-launch Terms-of-Use acceptance gate; blocks the app until accepted.
+    @State private var legal = LegalAgreementService()
     @State private var searchModel = SearchFormModel()
     @State private var researchModel = ResearchModel()
     #if os(macOS)
@@ -35,18 +37,25 @@ struct ContentView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            #if os(macOS)
-            if showFileBrowser {
-                FileBrowserPanel(model: fileBrowserModel) { url in
-                    handleFileOpen(url)
+        ZStack {
+            HStack(spacing: 0) {
+                #if os(macOS)
+                if showFileBrowser {
+                    FileBrowserPanel(model: fileBrowserModel) { url in
+                        handleFileOpen(url)
+                    }
+                    .frame(width: 260)
+                    Divider()
                 }
-                .frame(width: 260)
-                Divider()
-            }
-            #endif
+                #endif
 
-            mainContent
+                mainContent
+            }
+
+            // Block all app interaction behind the Terms gate until accepted.
+            if !legal.hasAcceptedCurrent {
+                LegalAgreementGate(service: legal)
+            }
         }
     }
 
