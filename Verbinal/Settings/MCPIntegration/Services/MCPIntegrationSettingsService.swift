@@ -8,7 +8,6 @@
 import Foundation
 import AppKit
 import Observation
-import UniformTypeIdentifiers
 
 /// Errors surfaced by the Claude-config grant/merge flow.
 enum MCPConfigError: LocalizedError, Equatable {
