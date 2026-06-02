@@ -74,12 +74,24 @@ final class SessionListModel {
         }
     }
 
-    func getSessionEvents(id: String) async -> String? {
-        try? await sessionService.getSessionEvents(id: id)
+    /// Fetches session events. Returns `.failure` (with the underlying error)
+    /// instead of swallowing it, so callers can distinguish a real fetch
+    /// failure (auth/network/missing endpoint) from a successful empty result.
+    func getSessionEvents(id: String) async -> Result<String, Error> {
+        do {
+            return .success(try await sessionService.getSessionEvents(id: id))
+        } catch {
+            return .failure(error)
+        }
     }
 
-    func getSessionLogs(id: String) async -> String? {
-        try? await sessionService.getSessionLogs(id: id)
+    /// Fetches session logs. See `getSessionEvents` for failure semantics.
+    func getSessionLogs(id: String) async -> Result<String, Error> {
+        do {
+            return .success(try await sessionService.getSessionLogs(id: id))
+        } catch {
+            return .failure(error)
+        }
     }
 
     func connectURL(for session: Session) -> URL? {

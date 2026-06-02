@@ -358,8 +358,8 @@ struct HeadlessJobsDetailSheet: View {
     private func showEvents(for job: HeadlessJob) async {
         async let events = model.getEvents(id: job.id)
         async let logs = model.getLogs(id: job.id)
-        eventsText = (await events) ?? "No events available"
-        logsText = (await logs) ?? "No logs available"
+        eventsText = SessionDisplay.logResultText(await events, emptyFallback: "No events available")
+        logsText = SessionDisplay.logResultText(await logs, emptyFallback: "No logs available")
         eventsSheetJob = job
     }
 }

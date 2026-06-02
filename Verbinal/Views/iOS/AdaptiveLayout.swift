@@ -395,8 +395,8 @@ private struct iPadSessionsDetail: View {
         Task {
             async let e = model.getSessionEvents(id: session.id)
             async let l = model.getSessionLogs(id: session.id)
-            eventsText = await e
-            logsText = await l
+            eventsText = SessionDisplay.logResultText(await e, emptyFallback: "No events available")
+            logsText = SessionDisplay.logResultText(await l, emptyFallback: "No logs available")
             isLoadingEvents = false
         }
     }

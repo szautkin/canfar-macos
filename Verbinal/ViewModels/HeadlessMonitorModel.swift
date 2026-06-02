@@ -141,12 +141,24 @@ final class HeadlessMonitorModel {
         }
     }
 
-    func getLogs(id: String) async -> String? {
-        try? await headlessService.getLogs(id: id)
+    /// Fetches job logs. Returns `.failure` (with the underlying error)
+    /// instead of swallowing it, so callers can distinguish a real fetch
+    /// failure (auth/network/missing endpoint) from a successful empty result.
+    func getLogs(id: String) async -> Result<String, Error> {
+        do {
+            return .success(try await headlessService.getLogs(id: id))
+        } catch {
+            return .failure(error)
+        }
     }
 
-    func getEvents(id: String) async -> String? {
-        try? await headlessService.getEvents(id: id)
+    /// Fetches job events. See `getLogs` for failure semantics.
+    func getEvents(id: String) async -> Result<String, Error> {
+        do {
+            return .success(try await headlessService.getEvents(id: id))
+        } catch {
+            return .failure(error)
+        }
     }
 
     // MARK: - Private

@@ -209,8 +209,8 @@ struct SessionListView: View {
                     eventsTitle = session.sessionName
                     async let e = model.getSessionEvents(id: session.id)
                     async let l = model.getSessionLogs(id: session.id)
-                    eventsContent = await e
-                    logsContent = await l
+                    eventsContent = SessionDisplay.logResultText(await e, emptyFallback: "No events available")
+                    logsContent = SessionDisplay.logResultText(await l, emptyFallback: "No logs available")
                     showEventsSheet = true
                 }
             }

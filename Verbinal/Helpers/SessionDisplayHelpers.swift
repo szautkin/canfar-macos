@@ -101,6 +101,28 @@ enum SessionDisplay {
         String(image.split(separator: "/").last ?? Substring(image))
     }
 
+    // MARK: - Logs / Events Result Display
+
+    /// Converts a logs/events fetch `Result` into text for the events/logs sheet.
+    ///
+    /// - A `.failure` is rendered as a distinct, user-visible error message so a
+    ///   real fetch failure (auth/network/missing endpoint) is no longer
+    ///   indistinguishable from "no data yet".
+    /// - A `.success` with empty/whitespace content falls back to `emptyFallback`,
+    ///   preserving the existing "no events/logs" rendering for genuinely empty
+    ///   but successful fetches.
+    /// - A `.success` with content passes it through unchanged.
+    static func logResultText(_ result: Result<String, Error>, emptyFallback: String) -> String {
+        switch result {
+        case .success(let content):
+            return content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? emptyFallback
+                : content
+        case .failure(let error):
+            return "Failed to load: \(error.localizedDescription)"
+        }
+    }
+
     private static let displayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "MMM d, HH:mm"
