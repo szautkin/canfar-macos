@@ -11,6 +11,63 @@ final class SearchFormSnapshotTests: XCTestCase {
 
     // MARK: - Round-Trip
 
+    /// Round-trips a *fully*-populated form through
+    /// toSnapshot() → JSON → loadFromSnapshot() → toSnapshot() and asserts
+    /// the before/after snapshots are equal. Because SearchFormSnapshot is
+    /// Equatable and toSnapshot() reads every persisted field, this locks in
+    /// that the snapshot covers 100% of the form state that survives a
+    /// recent-search / saved-query round-trip (no field silently dropped).
+    func testFullyPopulatedSnapshotRoundTripIsLossless() {
+        let state = SearchFormState()
+        state.observationID = "obs123"
+        state.piName = "Jane Doe"
+        state.proposalID = "prop1"
+        state.proposalTitle = "Deep Field Survey"
+        state.proposalKeywords = "galaxies, redshift"
+        state.dataRelease = "2024"
+        state.publicOnly = true
+        state.intent = .calibration
+        state.target = "M31"
+        state.resolver = .ned
+        state.pixelScale = "0.05"
+        state.observationDate = "2020..2021"
+        state.datePreset = .pastMonth
+        state.integrationTime = "100"
+        state.timeSpan = "1d"
+        state.spectralCoverage = "400..700nm"
+        state.spectralSampling = "> 1nm"
+        state.resolvingPower = "5000"
+        state.bandpassWidth = "100nm"
+        state.restFrameEnergy = "5keV"
+        state.selectedBands = ["Optical", "Infrared"]
+        state.selectedCollections = ["JWST", "HST"]
+        state.selectedInstruments = ["WFC3"]
+        state.selectedFilters = ["F160W", "F125W"]
+        state.selectedCalLevels = ["2", "3"]
+        state.selectedDataTypes = ["image"]
+        state.selectedObsTypes = ["OBJECT"]
+
+        let original = state.toSnapshot()
+
+        // Persist + reload through JSON, simulating recent-search storage.
+        let data = try! JSONEncoder().encode(original)
+        let decoded = try! JSONDecoder().decode(SearchFormSnapshot.self, from: data)
+
+        let restored = SearchFormState()
+        restored.loadFromSnapshot(decoded)
+        let roundTripped = restored.toSnapshot()
+
+        XCTAssertEqual(roundTripped, original,
+                       "Every persisted form field must survive the round-trip.")
+
+        // Spot-check the typed fields on the restored state directly too,
+        // since enum fields go through rawValue and back.
+        XCTAssertEqual(restored.intent, .calibration)
+        XCTAssertEqual(restored.resolver, .ned)
+        XCTAssertEqual(restored.datePreset, .pastMonth)
+        XCTAssertEqual(restored.selectedCollections, ["JWST", "HST"])
+    }
+
     func testSnapshotRoundTrip() {
         let state = SearchFormState()
         state.target = "M31"

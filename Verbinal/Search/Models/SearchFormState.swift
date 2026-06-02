@@ -23,7 +23,6 @@ final class SearchFormState {
     var target = ""
     var resolver: ResolverValue = .all
     var pixelScale = ""
-    var spatialCutout = false
 
     // Temporal constraints
     var observationDate = ""
@@ -37,7 +36,6 @@ final class SearchFormState {
     var resolvingPower = ""
     var bandpassWidth = ""
     var restFrameEnergy = ""
-    var spectralCutout = false
 
     // Data train selections
     var selectedBands: [String] = []
@@ -52,12 +50,12 @@ final class SearchFormState {
         !observationID.isEmpty || !piName.isEmpty || !proposalID.isEmpty ||
         !proposalTitle.isEmpty || !proposalKeywords.isEmpty || !dataRelease.isEmpty ||
         publicOnly || intent != .any ||
-        !target.isEmpty || !pixelScale.isEmpty || spatialCutout ||
+        !target.isEmpty || !pixelScale.isEmpty ||
         !observationDate.isEmpty || datePreset != .none ||
         !integrationTime.isEmpty || !timeSpan.isEmpty ||
         !spectralCoverage.isEmpty || !spectralSampling.isEmpty ||
         !resolvingPower.isEmpty || !bandpassWidth.isEmpty ||
-        !restFrameEnergy.isEmpty || spectralCutout ||
+        !restFrameEnergy.isEmpty ||
         !selectedBands.isEmpty || !selectedCollections.isEmpty ||
         !selectedInstruments.isEmpty || !selectedFilters.isEmpty ||
         !selectedCalLevels.isEmpty || !selectedDataTypes.isEmpty ||
@@ -94,7 +92,6 @@ final class SearchFormState {
         target = ""
         resolver = .all
         pixelScale = ""
-        spatialCutout = false
         observationDate = ""
         datePreset = .none
         integrationTime = ""
@@ -104,7 +101,6 @@ final class SearchFormState {
         resolvingPower = ""
         bandpassWidth = ""
         restFrameEnergy = ""
-        spectralCutout = false
         selectedBands = []
         selectedCollections = []
         selectedInstruments = []
