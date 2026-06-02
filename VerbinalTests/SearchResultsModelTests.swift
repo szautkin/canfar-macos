@@ -231,4 +231,32 @@ final class SearchResultsModelTests: XCTestCase {
 
         XCTAssertEqual(model.adqlQuery, query)
     }
+
+    // The ADQL editor binds to `adqlQuery` as its single upstream source of
+    // truth (`.onChange(of: adqlQuery, initial: true)` copies it into the
+    // editable buffer). These tests pin the property values that drive that
+    // sync — covering the paths the editor relies on at the model level, since
+    // the view-level `.onChange` itself is not directly unit-testable.
+
+    func testADQLQueryAssignedDirectlyForSavedQueryLoad() {
+        // SearchRootView's saved-query "Load" action assigns the saved ADQL
+        // straight onto `resultsModel.adqlQuery` (no re-run) before switching
+        // to the ADQL tab. The editor then reads this non-empty value.
+        let model = makeModel()
+        let saved = "SELECT TOP 10 * FROM caom2.Observation"
+        model.adqlQuery = saved
+
+        XCTAssertEqual(model.adqlQuery, saved)
+    }
+
+    func testADQLQueryOverwrittenByLaterLoad() {
+        // A non-empty upstream value overwrites whatever was there before,
+        // matching the editor's guard (only non-empty upstream values sync).
+        let model = makeModel()
+        model.adqlQuery = "SELECT 1"
+        let next = "SELECT * FROM caom2.Plane WHERE Plane.calibrationLevel = 2"
+        model.loadResults(headers: sampleHeaders, rows: sampleRows, query: next, maxRec: 30000)
+
+        XCTAssertEqual(model.adqlQuery, next)
+    }
 }

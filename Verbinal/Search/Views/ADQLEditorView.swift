@@ -68,12 +68,11 @@ struct ADQLEditorView: View {
             ADQLTextEditor(text: $editableQuery)
                 .padding(8)
         }
-        .onAppear {
-            if !searchModel.resultsModel.adqlQuery.isEmpty {
-                editableQuery = searchModel.resultsModel.adqlQuery
-            }
-        }
-        .onChange(of: searchModel.resultsModel.adqlQuery) { _, newValue in
+        // Single source of truth for syncing the upstream adqlQuery into the
+        // editor. `initial: true` fires once when the view appears (covering
+        // initial population from saved-query loads / form generation that
+        // happened before this view was on screen) and on every later change.
+        .onChange(of: searchModel.resultsModel.adqlQuery, initial: true) { _, newValue in
             if !newValue.isEmpty {
                 editableQuery = newValue
             }
