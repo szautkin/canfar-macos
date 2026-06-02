@@ -329,7 +329,7 @@ private struct PortalSettingsTab: View {
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 if let fetchedAt = cache?.fetchedAt {
-                    Text("Cached \(Self.relativeFormatter.localizedString(for: fetchedAt, relativeTo: Date()))")
+                    Text("Cached \(PortalCacheRelativeFormatter.string(for: fetchedAt))")
                         .font(.callout)
                     Text("\(cache?.images.count ?? 0) images cached for \(cache?.username ?? "")")
                         .font(.caption2)
@@ -443,11 +443,29 @@ private struct PortalSettingsTab: View {
         syncFromSettings()
     }
 
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
+}
+
+/// Confines the not-thread-safe `RelativeDateTimeFormatter` to the MainActor.
+///
+/// `RelativeDateTimeFormatter` is documented as not thread-safe. The shared
+/// instance and its accessor are MainActor-isolated so the safe-usage contract
+/// is enforced by the compiler; the sole caller (`PortalSettingsTab`'s
+/// `cacheInfoRow`) already runs on the MainActor as a SwiftUI body, so this is
+/// behavior-preserving.
+enum PortalCacheRelativeFormatter {
+    @MainActor
+    private static let formatter: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .full
         return f
     }()
+
+    /// Returns the relative-time portion of the `Cached <relative time>` label
+    /// for a given fetch date.
+    @MainActor
+    static func string(for fetchedAt: Date, relativeTo now: Date = Date()) -> String {
+        formatter.localizedString(for: fetchedAt, relativeTo: now)
+    }
 }
 
 // MARK: - Agents tab
