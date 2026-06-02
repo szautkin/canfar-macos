@@ -47,6 +47,47 @@ final class DiskPersistenceTests: XCTestCase {
         XCTAssertNil(store.read())
     }
 
+    func testCorruptFileIsQuarantinedAndReadStartsFresh() throws {
+        let store = makeStore()
+        let url = try XCTUnwrap(store.fileURL)
+        let dir = url.deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try Data("{ broken".utf8).write(to: url)
+
+        // readResult reports corruption + the quarantine location.
+        guard case .corrupt(let quarantinedTo) = store.readResult() else {
+            return XCTFail("expected .corrupt")
+        }
+        let quarantined = try XCTUnwrap(quarantinedTo, "corrupt file should be quarantined")
+        XCTAssertTrue(quarantined.lastPathComponent.contains(".corrupt-"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: quarantined.path), "bytes preserved")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path), "original moved aside")
+
+        // The store now starts clean instead of failing forever.
+        if case .missing = store.readResult() {} else { XCTFail("expected .missing after quarantine") }
+        XCTAssertNil(store.read())
+    }
+
+    func testReadResultDistinguishesMissingValueCorrupt() throws {
+        let store = makeStore()
+        let dir = try XCTUnwrap(store.fileURL).deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        if case .missing = store.readResult() {} else { XCTFail("expected .missing") }
+
+        let box = Box(name: "obs", when: Date(timeIntervalSince1970: 1_700_000_000), count: 3)
+        XCTAssertTrue(store.write(box), "write should report success")
+        guard case .value(let v) = store.readResult() else { return XCTFail("expected .value") }
+        XCTAssertEqual(v, box)
+    }
+
+    func testWriteReturnsTrueOnSuccess() {
+        let store = makeStore()
+        defer { store.delete() }
+        XCTAssertTrue(store.write(Box(name: "x", when: Date(timeIntervalSince1970: 0), count: 1)))
+    }
+
     func testDeleteRemovesFileAndIsIdempotent() {
         let store = makeStore()
         store.write(Box(name: "x", when: Date(timeIntervalSince1970: 0), count: 1))

@@ -35,34 +35,85 @@ public struct DiskPersistence<T: Codable>: Sendable {
         }
     }
 
-    /// Decode and return the persisted value, or `nil` if the file does not
-    /// exist or cannot be decoded. Decode failures are logged at `.warning`.
-    public func read() -> T? {
-        guard let fileURL else { return nil }
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+    /// Outcome of a read that distinguishes "no file yet" from "file present but
+    /// unreadable" — so callers can tell a fresh install from data corruption
+    /// instead of both collapsing to an empty store.
+    public enum ReadOutcome {
+        /// No file on disk (fresh install / never written / quarantined away).
+        case missing
+        /// Successfully decoded value.
+        case value(T)
+        /// File existed but could not be decoded; it has been quarantined
+        /// (renamed) to preserve its bytes, with the new location if the move
+        /// succeeded.
+        case corrupt(quarantinedTo: URL?)
+    }
+
+    /// Read, distinguishing missing vs corrupt. On corruption the unreadable file
+    /// is *quarantined* (renamed to a `.corrupt-…` sibling) rather than left in
+    /// place: its bytes survive for recovery, and the next read starts clean
+    /// instead of failing forever. Logged at `.error`.
+    public func readResult() -> ReadOutcome {
+        guard let fileURL, FileManager.default.fileExists(atPath: fileURL.path) else {
+            return .missing
+        }
         do {
             let data = try Data(contentsOf: fileURL)
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode(T.self, from: data)
+            return .value(try decoder.decode(T.self, from: data))
         } catch {
-            logger.warning("Read failed: \(error.localizedDescription, privacy: .public)")
+            logger.error("Corrupt store \(fileURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public) — quarantining instead of silently discarding")
+            return .corrupt(quarantinedTo: quarantineCorruptFile(at: fileURL))
+        }
+    }
+
+    /// Decode and return the persisted value, or `nil` if the file is missing or
+    /// corrupt. Corrupt files are quarantined as a side-effect (see
+    /// ``readResult()``); callers that need to surface corruption to the user
+    /// should call ``readResult()`` directly.
+    public func read() -> T? {
+        if case .value(let value) = readResult() { return value }
+        return nil
+    }
+
+    /// Move an unreadable file aside so its bytes are preserved for recovery and
+    /// the next read starts clean. Best-effort; returns the new location on success.
+    private func quarantineCorruptFile(at fileURL: URL) -> URL? {
+        let dir = fileURL.deletingLastPathComponent()
+        let base = fileURL.lastPathComponent
+        var target = dir.appendingPathComponent("\(base).corrupt-\(Int(Date().timeIntervalSince1970))")
+        if FileManager.default.fileExists(atPath: target.path) {
+            target = dir.appendingPathComponent("\(base).corrupt-\(UUID().uuidString)")
+        }
+        do {
+            try FileManager.default.moveItem(at: fileURL, to: target)
+            logger.error("Quarantined corrupt store to \(target.lastPathComponent, privacy: .public)")
+            return target
+        } catch {
+            logger.error("Quarantine move failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
 
-    /// Atomically encode and write the value to disk. Encode/write failures are
-    /// logged at `.error`. No-op if the directory is unavailable.
-    public func write(_ value: T) {
-        guard let fileURL else { return }
+    /// Atomically encode and write the value to disk. Returns `true` on success,
+    /// `false` if the directory is unavailable or the encode/write failed (logged
+    /// at `.error`). The result is `@discardableResult` so existing call sites are
+    /// unaffected, but callers that must know whether the save landed (to surface
+    /// a "save failed" affordance) can check it.
+    @discardableResult
+    public func write(_ value: T) -> Bool {
+        guard let fileURL else { return false }
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(value)
             try data.write(to: fileURL, options: .atomic)
+            return true
         } catch {
             logger.error("Write failed: \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 
