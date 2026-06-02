@@ -8,6 +8,16 @@ import Foundation
 
 /// Capability the bridge passes into tools so they can enqueue proposals
 /// without coupling to a concrete store.
+///
+/// Concurrency note: every requirement is declared `async` so the
+/// protocol is honest about its cross-isolation contract — callers must
+/// always `await`. A concrete actor conformer (see `InMemoryProposalStore`)
+/// may satisfy a synchronous-looking `async` requirement with a method
+/// written *without* the `async` keyword: actor isolation already makes
+/// the cross-actor call suspend, so the keyword is implied at the call
+/// site. The two declarations are not in conflict; the actor's bare
+/// signature and the protocol's `async` signature describe the same
+/// awaited call from outside the actor.
 public protocol ProposalStore: Sendable {
     /// Enqueue a proposal and return it (so callers see the assigned id).
     func enqueue(_ proposal: PendingProposal) async -> PendingProposal
@@ -74,6 +84,11 @@ public actor InMemoryProposalStore: ProposalStore {
         return proposal
     }
 
+    // `list` and `state` are written without `async` even though they
+    // satisfy the protocol's `async` requirements: actor isolation makes
+    // any call from outside the actor suspend and require `await`, so the
+    // keyword is redundant here. Callers await regardless — see the
+    // protocol doc-comment for the full rationale.
     public func list(origin: OperationOrigin? = nil) -> [PendingProposal] {
         let all = pendingOrder.compactMap { pending[$0] }
         guard let origin else { return all }

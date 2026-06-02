@@ -89,10 +89,17 @@ public actor EventLog {
     }
 
     /// Snapshot the most-recent token without reading entries.
+    ///
+    /// Declared without `async`, but because `EventLog` is an actor every
+    /// call from outside it suspends and must be `await`ed (e.g.
+    /// `await log.currentToken()`). The bare signature and the implied
+    /// cross-actor `await` are not in conflict — the keyword is simply
+    /// redundant on an actor-isolated method.
     public func currentToken() -> UInt64 {
         buffer.last?.token ?? 0
     }
 
-    /// Test helper.
+    /// Test helper. Actor-isolated, so callers `await` it from outside
+    /// the actor despite the synchronous-looking signature.
     public func snapshot() -> [AgentEventEntry] { buffer }
 }

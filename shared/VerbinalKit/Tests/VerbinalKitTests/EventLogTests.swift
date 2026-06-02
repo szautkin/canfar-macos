@@ -53,6 +53,18 @@ final class EventLogTests: XCTestCase {
         XCTAssertTrue(result.expired)
     }
 
+    func testCurrentTokenAwaitedFromOutsideActor() async {
+        let log = EventLog()
+        // Empty log reports 0 (no entries yet).
+        let empty = await log.currentToken()
+        XCTAssertEqual(empty, 0)
+
+        _ = await log.append(.proposalArrived(id: UUID(), kind: "k", originKind: "u"))
+        _ = await log.append(.proposalApplied(id: UUID(), kind: "k"))
+        let current = await log.currentToken()
+        XCTAssertEqual(current, 2)
+    }
+
     func testStoreFanOutOnLifecycle() async {
         let log = EventLog()
         let store = InMemoryProposalStore(eventLog: log)
