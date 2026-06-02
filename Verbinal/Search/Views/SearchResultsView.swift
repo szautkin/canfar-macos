@@ -450,39 +450,18 @@ struct SearchResultsView: View {
         isExporting = true
         defer { isExporting = false }
 
+        let session = ResultExportService.makeExportSession()
+        defer { session.invalidateAndCancel() }
         do {
-            // Build a URLRequest with explicit timeout — the default 60s is
-            // too tight for large VOTable exports of 10k+ rows. Use a
-            // dedicated session with both per-request and per-resource
-            // timeouts so a stalled transfer eventually fails instead of
-            // hanging the UI's "Export…" indicator forever.
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 300
-            let config = URLSessionConfiguration.default
-            config.timeoutIntervalForRequest = 300
-            config.timeoutIntervalForResource = 600
-            let session = URLSession(configuration: config)
-            defer { session.invalidateAndCancel() }
-            let (tempURL, response) = try await session.download(for: request)
-            guard let http = response as? HTTPURLResponse else {
-                exportErrorMessage = String(localized: "Invalid server response.")
-                return
-            }
-            guard http.statusCode == 200 else {
-                exportErrorMessage = String(localized: "Export failed (HTTP \(http.statusCode)).")
-                try? FileManager.default.removeItem(at: tempURL)
-                return
-            }
-
-            let filename = "results.\(ext)"
-            let stableTemp = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-            if FileManager.default.fileExists(atPath: stableTemp.path) {
-                try FileManager.default.removeItem(at: stableTemp)
-            }
-            try FileManager.default.moveItem(at: tempURL, to: stableTemp)
-
+            let tempURL = try await ResultExportService.exportServerSide(
+                url: url,
+                ext: ext,
+                session: session
+            )
             #if os(macOS)
-            await presentExportSavePanel(filename: filename, tempURL: stableTemp)
+            await presentExportSavePanel(filename: "results.\(ext)", tempURL: tempURL)
+            #else
+            _ = tempURL
             #endif
         } catch {
             exportErrorMessage = error.localizedDescription
@@ -490,29 +469,19 @@ struct SearchResultsView: View {
     }
 
     private func exportClientSide(format: ClientExporter.Format) async {
-        let rows = resultsModel.fullFilteredSortedResults
-        guard !rows.isEmpty else {
-            exportErrorMessage = String(localized: "No rows to export.")
-            return
-        }
         isExporting = true
         defer { isExporting = false }
 
-        let filename = "results.\(format.pathExtension)"
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-
         do {
-            if FileManager.default.fileExists(atPath: tempURL.path) {
-                try FileManager.default.removeItem(at: tempURL)
-            }
-            try ClientExporter.write(
-                rows: rows,
+            let tempURL = try ResultExportService.exportClientSide(
+                rows: resultsModel.fullFilteredSortedResults,
                 columns: resultsModel.columns,
-                format: format,
-                to: tempURL
+                format: format
             )
             #if os(macOS)
-            await presentExportSavePanel(filename: filename, tempURL: tempURL)
+            await presentExportSavePanel(filename: "results.\(format.pathExtension)", tempURL: tempURL)
+            #else
+            _ = tempURL
             #endif
         } catch {
             exportErrorMessage = error.localizedDescription
