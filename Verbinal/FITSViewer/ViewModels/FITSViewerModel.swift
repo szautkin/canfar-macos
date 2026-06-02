@@ -193,21 +193,57 @@ final class FITSViewerModel: Identifiable {
     /// Debounce task for slider-driven renders.
     private var renderDebounceTask: Task<Void, Never>?
 
+    /// Debounce delay used by `renderImageDebounced()`. Defaults to the shared
+    /// constant; overridable so tests can exercise the debounce with a short
+    /// interval without waiting the full slider delay.
+    var renderDebounceMs: Int = FITSViewerConstants.renderDebounceMs
+
+    /// Test seam: when set, the debounce fires this instead of `renderImage()`.
+    /// Lets tests count fired renders without a loaded file/HDU (which
+    /// `renderImage()` requires). Nil in production, so behavior is unchanged.
+    var renderImageOverride: (@MainActor () -> Void)?
+
     func renderImage() {
         guard selectedHDU != nil, !pixels.isEmpty else { return }
         renderTask?.cancel()
         renderTask = Task { await renderImageAsync() }
     }
 
-    /// Debounced render — waits 80ms after last call before actually rendering.
-    /// Use for slider drags to avoid 60 renders/sec.
+    /// Debounced render — waits `renderDebounceMs` after the last call before
+    /// actually rendering. Use for slider drags to avoid 60 renders/sec.
+    ///
+    /// Each call cancels the previously scheduled debounce task, so the
+    /// `Task.sleep` below is the deliberate cancellation point: a superseding
+    /// call throws `CancellationError` out of the sleep, which we treat as
+    /// "this debounce was replaced — do nothing." Any *other* error from the
+    /// sleep is a scheduling anomaly we intentionally ignore; the post-catch
+    /// `isCancelled` guard still short-circuits a cancelled task before we
+    /// touch render state.
     func renderImageDebounced() {
         renderDebounceTask?.cancel()
+        let delayMs = renderDebounceMs
         renderDebounceTask = Task {
-            try? await Task.sleep(for: .milliseconds(FITSViewerConstants.renderDebounceMs))
+            do {
+                try await Task.sleep(for: .milliseconds(delayMs))
+            } catch is CancellationError {
+                return  // Superseded by a newer debounce — intentional.
+            } catch {
+                return  // Non-cancellation sleep failure — deliberately ignored.
+            }
             guard !Task.isCancelled else { return }
-            renderImage()
+            if let renderImageOverride {
+                renderImageOverride()
+            } else {
+                renderImage()
+            }
         }
+    }
+
+    /// Test seam: awaits completion of the in-flight debounce task (the one that
+    /// either fired a render or returned after being superseded). Returns
+    /// immediately when no debounce is scheduled.
+    func awaitDebounceForTesting() async {
+        await renderDebounceTask?.value
     }
 
     /// True while an image render is in progress (drives the sidebar spinner).
