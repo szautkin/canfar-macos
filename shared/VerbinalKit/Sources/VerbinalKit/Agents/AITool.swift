@@ -101,6 +101,12 @@ public enum ToolResult: Sendable {
     /// Typed failure. The bridge converts to a `CallToolResult` with
     /// `isError: true` (per MCP convention).
     case failed(ToolFailureReason)
+
+    /// Read tool returning an inline image fetched server-side: raw `data`
+    /// (NOT a URL) + its `mimeType`, plus an optional text `caption`
+    /// (metadata). The bridge emits an MCP `image` content block (base64) so
+    /// the agent can display it, followed by the caption as a text block.
+    case image(data: Data, mimeType: String, caption: String?)
 }
 
 /// Typed reasons a tool can fail. New cases append; existing cases keep
@@ -131,6 +137,17 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
     case perTurnProposalCapExceeded(limit: Int)
     case backendError(String)
     case notImplemented
+    /// No preview-image artifact for the requested observation/band. The
+    /// message should list the bands that DO have previews.
+    case previewNotFound(String)
+    /// A resolved preview exceeded the caller's `max_bytes` cap; carries the
+    /// offending size in bytes.
+    case previewTooLarge(Int)
+    /// An upstream fetch exceeded the tool watchdog deadline.
+    case upstreamTimeout(String)
+    /// Fetched bytes did not match the declared/expected media type — e.g. a
+    /// 403 "host_not_allowed" body returned where image bytes were expected.
+    case contentTypeMismatch(String)
 
     /// Bound a user- or server-supplied string before it goes onto the wire
     /// description, so an overlong or noisy value (a giant URI, a verbose
@@ -157,6 +174,10 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         case .perTurnProposalCapExceeded(let limit): return "perTurnProposalCapExceeded(\(limit))"
         case .backendError(let msg): return "backendError: \(Self.clip(msg))"
         case .notImplemented: return "notImplemented"
+        case .previewNotFound(let msg): return "previewNotFound: \(Self.clip(msg))"
+        case .previewTooLarge(let bytes): return "previewTooLarge: \(bytes) bytes exceeds the max_bytes cap"
+        case .upstreamTimeout(let msg): return "upstreamTimeout: \(Self.clip(msg))"
+        case .contentTypeMismatch(let msg): return "contentTypeMismatch: \(Self.clip(msg))"
         }
     }
 
@@ -172,6 +193,10 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         case .perTurnProposalCapExceeded: return "perTurnProposalCapExceeded"
         case .backendError: return "backendError"
         case .notImplemented: return "notImplemented"
+        case .previewNotFound: return "previewNotFound"
+        case .previewTooLarge: return "previewTooLarge"
+        case .upstreamTimeout: return "upstreamTimeout"
+        case .contentTypeMismatch: return "contentTypeMismatch"
         }
     }
 }

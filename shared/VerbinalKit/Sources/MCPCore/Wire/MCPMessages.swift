@@ -215,6 +215,18 @@ public enum CallToolContent: Codable, Sendable, Equatable {
         }
     }
 
+    /// An MCP `image` content block (base64 payload + media type), carried via
+    /// the `.other` opaque case so the agent receives an inline, displayable
+    /// image. Used by server-side fetch tools (e.g. `get_preview_image`) that
+    /// return raw bytes rather than a URL.
+    public static func image(base64: String, mimeType: String) -> CallToolContent {
+        .other(.object([
+            "type": .string("image"),
+            "data": .string(base64),
+            "mimeType": .string(mimeType),
+        ]))
+    }
+
     private enum CodingKeys: String, CodingKey {
         case type, text
     }

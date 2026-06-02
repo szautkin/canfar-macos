@@ -111,7 +111,9 @@ public actor AIToolRouter {
         // budget is exhausted, withdraw the proposal so the user's strip
         // is unaffected.
         switch result {
-        case .data:
+        case .data, .image:
+            // Both are read-tool successes (image = inline bytes); neither needs
+            // the write-budget gate.
             emitAudit(name: name, args: rawArguments, context: context,
                       outcome: .data, verbClass: meta.verbClass, durationMS: durationMS)
             return result

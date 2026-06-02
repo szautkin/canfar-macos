@@ -302,6 +302,8 @@ public actor MCPBridgeService {
             logger.info("tools/call \(params.name, privacy: .public) -> proposed kind=\(proposal.kind, privacy: .public) id=\(proposal.id.uuidString, privacy: .public)")
         case .failed(let reason):
             logger.notice("tools/call \(params.name, privacy: .public) -> failed (\(reason.auditTag, privacy: .public))")
+        case .image(let data, let mimeType, _):
+            logger.info("tools/call \(params.name, privacy: .public) -> image (\(mimeType, privacy: .public), \(data.count) bytes)")
         }
         return mapToolResult(id: request.id, result: result)
     }
@@ -335,6 +337,14 @@ public actor MCPBridgeService {
                 content: [.text(reason.description)],
                 isError: true
             )
+            return successResponse(id: id, body: payload)
+
+        case .image(let data, let mimeType, let caption):
+            // Inline image block (base64) so the agent can display it, plus an
+            // optional metadata text block.
+            var blocks: [CallToolContent] = [.image(base64: data.base64EncodedString(), mimeType: mimeType)]
+            if let caption, !caption.isEmpty { blocks.append(.text(caption)) }
+            let payload = CallToolResult(content: blocks, isError: false)
             return successResponse(id: id, body: payload)
         }
     }
