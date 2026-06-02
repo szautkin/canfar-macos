@@ -28,11 +28,19 @@ public final class AddonBeacon {
 
     public init(manifest: AddonManifest) {
         self.manifest = manifest
-        var tempContinuation: AsyncStream<AddonActivationContext>.Continuation!
+        var tempContinuation: AsyncStream<AddonActivationContext>.Continuation?
         self.activations = AsyncStream<AddonActivationContext> { cont in
             tempContinuation = cont
         }
-        self.continuation = tempContinuation
+        // AsyncStream invokes its build closure synchronously, so the
+        // continuation must be captured by now. If a future stdlib change ever
+        // breaks that contract, fail loudly at construction rather than deferring
+        // to a confusing force-unwrap crash on the first URL activation.
+        precondition(
+            tempContinuation != nil,
+            "AsyncStream build closure did not run synchronously; continuation was not captured"
+        )
+        self.continuation = tempContinuation!
         Self.logger.info("AddonBeacon live: \(manifest.addonID, privacy: .public) v\(manifest.version, privacy: .public)")
     }
 
