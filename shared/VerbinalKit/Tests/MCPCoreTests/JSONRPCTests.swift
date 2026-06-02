@@ -57,6 +57,52 @@ final class JSONRPCTests: XCTestCase {
         XCTAssertNil(req.params)
     }
 
+    func testRequestWithStringIDRoundTrips() throws {
+        let original = #"{"jsonrpc":"2.0","id":"abc","method":"tools/list"}"#
+        let req = try decoder.decode(JSONRPCRequest.self, from: Data(original.utf8))
+        XCTAssertEqual(req.id, .string("abc"))
+        XCTAssertEqual(req.method, "tools/list")
+    }
+
+    // A *present-but-malformed* id (e.g. an array) must surface as a
+    // DecodingError rather than silently collapsing to .null. .null is the
+    // absent-id (notification) form; coercing a malformed id into it would
+    // masquerade as a notification and break request/response correlation.
+    func testRequestWithMalformedArrayIDThrows() {
+        let original = #"{"jsonrpc":"2.0","method":"x","id":[1,2,3]}"#
+        XCTAssertThrowsError(
+            try decoder.decode(JSONRPCRequest.self, from: Data(original.utf8))
+        ) { error in
+            XCTAssertTrue(error is DecodingError, "expected DecodingError, got \(error)")
+        }
+    }
+
+    func testRequestWithMalformedObjectIDThrows() {
+        let original = #"{"jsonrpc":"2.0","method":"x","id":{"k":"v"}}"#
+        XCTAssertThrowsError(
+            try decoder.decode(JSONRPCRequest.self, from: Data(original.utf8))
+        ) { error in
+            XCTAssertTrue(error is DecodingError, "expected DecodingError, got \(error)")
+        }
+    }
+
+    // A genuinely absent id key still decodes to .null (notification),
+    // unchanged from prior behavior — this is what guards the
+    // absent-vs-malformed distinction.
+    func testRequestWithAbsentIDDecodesToNull() throws {
+        let original = #"{"jsonrpc":"2.0","method":"notify"}"#
+        let req = try decoder.decode(JSONRPCRequest.self, from: Data(original.utf8))
+        XCTAssertEqual(req.id, .null)
+        XCTAssertEqual(req.method, "notify")
+    }
+
+    // An explicit `id: null` also decodes to .null (the absent-id form).
+    func testRequestWithExplicitNullIDDecodesToNull() throws {
+        let original = #"{"jsonrpc":"2.0","id":null,"method":"notify"}"#
+        let req = try decoder.decode(JSONRPCRequest.self, from: Data(original.utf8))
+        XCTAssertEqual(req.id, .null)
+    }
+
     // MARK: - Response
 
     func testSuccessResponseEncodesResult() throws {

@@ -77,7 +77,17 @@ public struct JSONRPCRequest: Codable, Sendable {
     public init(from decoder: Swift.Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.jsonrpc = try c.decode(String.self, forKey: .jsonrpc)
-        self.id = (try? c.decode(JSONRPCID.self, forKey: .id)) ?? .null
+        // Distinguish an *absent* id (notification → .null) from a
+        // *present-but-malformed* id (e.g. `id: [1,2,3]`). The latter must
+        // surface as a DecodingError rather than silently collapsing to
+        // .null, which would masquerade as a notification and break
+        // request/response correlation. The error propagates to the
+        // bridge's frame-decode catch, which drops & logs the bad frame.
+        if c.contains(.id) {
+            self.id = try c.decode(JSONRPCID.self, forKey: .id)
+        } else {
+            self.id = .null
+        }
         self.method = try c.decode(String.self, forKey: .method)
         if c.contains(.params) {
             // Re-encode the raw value to bytes for downstream typed parsing.
