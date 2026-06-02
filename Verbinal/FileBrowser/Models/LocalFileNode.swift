@@ -17,17 +17,16 @@ struct LocalFileNode: Identifiable, Equatable {
     var fileExtension: String { url.pathExtension.lowercased() }
 
     var isFITS: Bool { FileHelper.isFITS(fileExtension) }
-    var isNotebook: Bool { fileExtension == "ipynb" }
-    var isPython: Bool { fileExtension == "py" }
-    var isMarkdown: Bool { fileExtension == "md" }
 
     var icon: String {
         if isDirectory { return "folder.fill" }
         if isFITS { return "star.circle" }
-        if isNotebook { return "doc.text" }
-        if isPython { return "chevron.left.forwardslash.chevron.right" }
-        if isMarkdown { return "doc.richtext" }
-        return "doc"
+        switch fileExtension {
+        case "ipynb": return "doc.text"
+        case "py": return "chevron.left.forwardslash.chevron.right"
+        case "md": return "doc.richtext"
+        default: return "doc"
+        }
     }
 
     var formattedSize: String {

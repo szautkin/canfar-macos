@@ -21,14 +21,24 @@ final class LocalFileNodeTests: XCTestCase {
         }
     }
 
-    func testIsNotebook() {
+    func testNotebookIcon() {
         let node = LocalFileNode(id: "/nb.ipynb", name: "nb.ipynb", url: URL(fileURLWithPath: "/nb.ipynb"), isDirectory: false, fileSize: nil, modifiedDate: nil)
-        XCTAssertTrue(node.isNotebook)
+        XCTAssertEqual(node.icon, "doc.text")
     }
 
-    func testIsPython() {
+    func testPythonIcon() {
         let node = LocalFileNode(id: "/s.py", name: "s.py", url: URL(fileURLWithPath: "/s.py"), isDirectory: false, fileSize: nil, modifiedDate: nil)
-        XCTAssertTrue(node.isPython)
+        XCTAssertEqual(node.icon, "chevron.left.forwardslash.chevron.right")
+    }
+
+    func testMarkdownIcon() {
+        let node = LocalFileNode(id: "/r.md", name: "r.md", url: URL(fileURLWithPath: "/r.md"), isDirectory: false, fileSize: nil, modifiedDate: nil)
+        XCTAssertEqual(node.icon, "doc.richtext")
+    }
+
+    func testDefaultIcon() {
+        let node = LocalFileNode(id: "/f.txt", name: "f.txt", url: URL(fileURLWithPath: "/f.txt"), isDirectory: false, fileSize: nil, modifiedDate: nil)
+        XCTAssertEqual(node.icon, "doc")
     }
 
     func testDirectoryIcon() {
