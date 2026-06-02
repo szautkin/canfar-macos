@@ -40,17 +40,25 @@ final class SessionLaunchModel {
 
     // Form state
     var selectedType = "notebook" {
-        didSet { if oldValue != selectedType { onTypeChanged() } }
+        didSet { if oldValue != selectedType { onTypeChanged(); recomputeDefaultFlags() } }
     }
     var selectedProject = "" {
         didSet { if oldValue != selectedProject { onProjectChanged() } }
     }
     var selectedImage: ParsedImage?
     var sessionName = ""
-    var resourceType = "flexible" // "flexible" or "fixed"
-    var cores = 2
-    var ram = 8
-    var gpus = 0
+    var resourceType = "flexible" { // "flexible" or "fixed"
+        didSet { if oldValue != resourceType { recomputeDefaultFlags() } }
+    }
+    var cores = 2 {
+        didSet { if oldValue != cores { recomputeDefaultFlags() } }
+    }
+    var ram = 8 {
+        didSet { if oldValue != ram { recomputeDefaultFlags() } }
+    }
+    var gpus = 0 {
+        didSet { if oldValue != gpus { recomputeDefaultFlags() } }
+    }
 
     // Advanced mode
     var useCustomImage = false
@@ -104,6 +112,7 @@ final class SessionLaunchModel {
         self.cacheService = cacheService
         self.settingsService = settingsService
         self.username = username
+        recomputeDefaultFlags()
     }
 
     // MARK: - Load Data
@@ -270,6 +279,7 @@ final class SessionLaunchModel {
         let current = settingsService.settings(for: username)?.defaultSessionType
         let next = (current == selectedType) ? nil : selectedType
         settingsService.setDefaultSessionType(next, for: username)
+        recomputeDefaultFlags()
     }
 
     var isSelectedProjectDefault: Bool {
@@ -282,13 +292,24 @@ final class SessionLaunchModel {
         return settingsService.settings(for: username)?.defaultContainerImageID == img.id
     }
 
-    var isSelectedSessionTypeDefault: Bool {
+    /// Cached "current selection matches saved default" flags.
+    ///
+    /// Recomputed eagerly via ``recomputeDefaultFlags()`` whenever an input
+    /// changes (session type / resource type / cores / ram / gpus, through
+    /// their `didSet`) or the saved defaults are toggled — instead of
+    /// re-reading `settingsService.settings(for:)` on every SwiftUI body
+    /// evaluation (ticket 059). Exposed read-only so views observe a plain
+    /// stored property and nothing mutates model state during rendering.
+    private(set) var isSelectedSessionTypeDefault = false
+    private(set) var isSelectedResourcesDefault = false
+
+    private func computeIsSelectedSessionTypeDefault() -> Bool {
         guard let settingsService, !username.isEmpty else { return false }
         return settingsService.settings(for: username)?.defaultSessionType == selectedType
     }
 
     /// True when the current resource selection matches the saved defaults.
-    var isSelectedResourcesDefault: Bool {
+    private func computeIsSelectedResourcesDefault() -> Bool {
         guard let settingsService, !username.isEmpty,
               let saved = settingsService.settings(for: username),
               let savedType = saved.defaultResourceType else { return false }
@@ -297,6 +318,14 @@ final class SessionLaunchModel {
         return saved.defaultCores == cores
             && saved.defaultRam == ram
             && saved.defaultGpus == gpus
+    }
+
+    /// Recompute the cached default-match flags from the current form inputs
+    /// and saved settings. Cheap (one settings lookup); called only at change
+    /// points, never from a view body.
+    func recomputeDefaultFlags() {
+        isSelectedSessionTypeDefault = computeIsSelectedSessionTypeDefault()
+        isSelectedResourcesDefault = computeIsSelectedResourcesDefault()
     }
 
     /// Save (or clear) the current resource selection as the user's default.
@@ -316,6 +345,7 @@ final class SessionLaunchModel {
                 for: username
             )
         }
+        recomputeDefaultFlags()
     }
 
     private static let cacheAgeFormatter: RelativeDateTimeFormatter = {
