@@ -227,6 +227,12 @@ final class AgentsService {
         case "launch_session", "delete_session", "delete_sessions_bulk",
              "launch_headless_job", "discover_image_packages":
             return .portal
+        // INTENTIONALLY OMITTED — `clear_user_site` falls through to nil.
+        // It wipes ~/.local/lib/python3.*/site-packages, which has no
+        // user-visible UI surface, so navigating to Storage afterward
+        // would mislead rather than help. This is a deliberate gap, not
+        // the same defect as the once-missing delete_sessions_bulk /
+        // upload_text_to_vospace cases — do not add a navigation here.
         default:
             return nil
         }

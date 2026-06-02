@@ -28,4 +28,22 @@ final class NavigationTargetTests: XCTestCase {
     func testUnknownKindHasNoTarget() {
         XCTAssertNil(AgentsService.navigationTarget(forKind: "totally_unknown_tool"))
     }
+
+    /// Ticket 036: `clear_user_site` is intentionally excluded from the
+    /// navigation table. It wipes user-site Python packages, which has no
+    /// user-visible UI surface, so it must fall through to nil rather than
+    /// route to Storage. This is a deliberate omission, not the missing-case
+    /// defect fixed in ticket 009.
+    func testClearUserSiteIntentionallyHasNoTarget() {
+        // Allow-list of kinds that must stay nil on purpose. A future
+        // reviewer adding follow-on navigation for one of these should
+        // remove it from this list deliberately, not by accident.
+        let intentionallyNilKinds = ["clear_user_site"]
+        for kind in intentionallyNilKinds {
+            XCTAssertNil(
+                AgentsService.navigationTarget(forKind: kind),
+                "\(kind) is intentionally omitted from navigationTarget and must remain nil"
+            )
+        }
+    }
 }
