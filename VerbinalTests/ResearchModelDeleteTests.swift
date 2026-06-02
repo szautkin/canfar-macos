@@ -19,7 +19,7 @@ final class ResearchModelDeleteTests: XCTestCase {
         let model = ResearchModel(
             observationStore: store,
             downloadService: DownloadService(),
-            noteStore: ObservationNoteStore(fileName: "test-notes-\(UUID().uuidString).json")
+            noteStore: ObservationNoteStore(database: try! AppDatabase.makeInMemory(), legacyNotesSource: nil)
         )
         return (model, store)
     }

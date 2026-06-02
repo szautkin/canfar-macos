@@ -24,7 +24,7 @@ final class ExportServiceTests: XCTestCase {
     }
 
     private func makeNoteStore() -> ObservationNoteStore {
-        ObservationNoteStore(fileName: "test_export_notes_\(UUID().uuidString).json")
+        ObservationNoteStore(database: try! AppDatabase.makeInMemory(), legacyNotesSource: nil)
     }
 
     private func makeSavedQueryStore() -> SavedQueryStore {

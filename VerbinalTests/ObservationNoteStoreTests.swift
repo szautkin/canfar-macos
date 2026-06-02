@@ -5,24 +5,17 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
+import os.log
+import VerbinalKit
 @testable import Verbinal
 
 @MainActor
 final class ObservationNoteStoreTests: XCTestCase {
 
+    /// Fresh in-memory DB per store, with the legacy-JSON importer disabled so a
+    /// developer's real notes file is never read into a test.
     private func makeStore() -> ObservationNoteStore {
-        ObservationNoteStore(fileName: "test_notes_\(UUID().uuidString).json")
-    }
-
-    override func tearDown() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        if let dir = appSupport?.appendingPathComponent("Verbinal") {
-            let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
-            for file in files where file.lastPathComponent.hasPrefix("test_notes_") {
-                try? FileManager.default.removeItem(at: file)
-            }
-        }
-        super.tearDown()
+        ObservationNoteStore(database: try! AppDatabase.makeInMemory(), legacyNotesSource: nil)
     }
 
     // MARK: - ObservationNote (pure)
@@ -118,12 +111,76 @@ final class ObservationNoteStoreTests: XCTestCase {
         XCTAssertEqual(store.note(for: "ivo://b")?.rating, 5)
     }
 
-    func testPersistenceAcrossInstances() {
-        let fileName = "test_notes_persist_\(UUID().uuidString).json"
-        let store1 = ObservationNoteStore(fileName: fileName)
+    func testPersistenceAcrossInstances() throws {
+        // Two stores over the SAME database see each other's committed writes.
+        let db = try AppDatabase.makeInMemory()
+        let store1 = ObservationNoteStore(database: db, legacyNotesSource: nil)
         store1.save(ObservationNote(publisherID: "ivo://persist", text: "remembered"))
 
-        let store2 = ObservationNoteStore(fileName: fileName)
+        let store2 = ObservationNoteStore(database: db, legacyNotesSource: nil)
         XCTAssertEqual(store2.note(for: "ivo://persist")?.text, "remembered")
+    }
+
+    // MARK: - Full-text search
+
+    func testSearchFindsNoteByTextWord() {
+        let store = makeStore()
+        store.save(ObservationNote(publisherID: "ivo://a", text: "spiral galaxy reduction"))
+        store.save(ObservationNote(publisherID: "ivo://b", text: "calibration frame"))
+        XCTAssertEqual(store.searchPublisherIDs(matching: "spiral"), ["ivo://a"])
+        XCTAssertEqual(store.searchPublisherIDs(matching: "galax"), ["ivo://a"], "prefix match")
+    }
+
+    func testSearchFindsNoteByTag() {
+        let store = makeStore()
+        store.save(ObservationNote(publisherID: "ivo://a", text: "x", tags: ["usable", "calibration"]))
+        XCTAssertEqual(store.searchPublisherIDs(matching: "calibration"), ["ivo://a"])
+    }
+
+    func testSearchExcludesRemovedNotes() {
+        let store = makeStore()
+        store.save(ObservationNote(publisherID: "ivo://a", text: "uniquetoken here"))
+        XCTAssertEqual(store.searchPublisherIDs(matching: "uniquetoken"), ["ivo://a"])
+        store.remove(publisherID: "ivo://a")
+        XCTAssertEqual(store.searchPublisherIDs(matching: "uniquetoken"), [], "soft-deleted notes drop out of search")
+    }
+
+    func testSearchEmptyQueryReturnsNothing() {
+        let store = makeStore()
+        store.save(ObservationNote(publisherID: "ivo://a", text: "content"))
+        XCTAssertEqual(store.searchPublisherIDs(matching: "   "), [])
+    }
+
+    // MARK: - One-shot JSON → DB migration
+
+    func testImportsLegacyJSONOnceThenMovesFileAside() throws {
+        let sub = "VerbinalNoteMigrationTest-\(UUID().uuidString)"
+        let logger = Logger(subsystem: "com.codebg.Verbinal.tests", category: "noteMig")
+        let legacy = DiskPersistence<[String: ObservationNote]>(
+            subdirectory: sub, fileName: "observation_notes.json", logger: logger
+        )
+        let dir = legacy.fileURL!.deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        legacy.write([
+            "ivo://x": ObservationNote(publisherID: "ivo://x", text: "legacy note", rating: 3, tags: ["old"]),
+            "ivo://empty": ObservationNote(publisherID: "ivo://empty")   // empty → skipped
+        ])
+
+        let db = try AppDatabase.makeInMemory()
+        let store = ObservationNoteStore(database: db, legacyNotesSource: legacy)
+        XCTAssertEqual(store.note(for: "ivo://x")?.text, "legacy note")
+        XCTAssertEqual(store.note(for: "ivo://x")?.rating, 3)
+        XCTAssertEqual(store.note(for: "ivo://x")?.tags, ["old"])
+        XCTAssertNil(store.note(for: "ivo://empty"), "empty legacy notes are skipped")
+        XCTAssertEqual(store.notes.count, 1)
+
+        // The JSON was moved aside (kept as backup, not deleted).
+        XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.fileURL!.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: legacy.fileURL!.appendingPathExtension("migrated").path))
+
+        // One-shot: a second store on the same DB does not double-import.
+        let store2 = ObservationNoteStore(database: db, legacyNotesSource: legacy)
+        XCTAssertEqual(store2.notes.count, 1)
     }
 }

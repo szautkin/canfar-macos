@@ -48,6 +48,21 @@ struct AppDatabase {
         try AppDatabase(try DatabaseQueue())
     }
 
+    /// Process-wide shared database (the app's single local store). Falls back to
+    /// an in-memory database if the on-disk file can't be opened, so a storage
+    /// failure degrades to a session-only store rather than crashing the app
+    /// (mirrors `DiskPersistence`'s nil-fileURL no-op resilience).
+    static let shared: AppDatabase = {
+        do {
+            return try makeShared()
+        } catch {
+            logger.error("On-disk DB open failed: \(error.localizedDescription, privacy: .public) — falling back to in-memory (no persistence this session)")
+            // makeInMemory only fails on a malformed migration, which is a
+            // programmer error caught in tests, not a runtime condition.
+            return try! makeInMemory()
+        }
+    }()
+
     // MARK: - Migrations
 
     static var migrator: DatabaseMigrator {
@@ -93,6 +108,7 @@ struct AppDatabase {
                 // Denormalized tag string (feeds FTS via synchronize); the
                 // normalized side table below backs facet/filter-by-tag.
                 t.column("tags", .text).notNull().defaults(to: "")
+                t.column("agentAttribution", .text)     // JSON; device-local, excluded from export
                 t.column("createdAt", .text)
                 t.column("modifiedAt", .text)           // display only
                 t.column("updatedAt", .text)            // sync clock
@@ -119,6 +135,13 @@ struct AppDatabase {
                 t.column("text")
                 t.column("tags")
                 t.tokenizer = .porter(wrapping: .unicode61())
+            }
+
+            // App-level key/value metadata (e.g. one-shot migration flags). Separate
+            // from DatabaseMigrator's own internal schema-version bookkeeping.
+            try db.create(table: "meta") { t in
+                t.primaryKey("key", .text).notNull()
+                t.column("value", .text)
             }
         }
 

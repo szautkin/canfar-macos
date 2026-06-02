@@ -16,7 +16,7 @@ import XCTest
 final class NoteEditingModelTests: XCTestCase {
 
     private func makeStore() -> ObservationNoteStore {
-        ObservationNoteStore(fileName: "test_note_editing_\(UUID().uuidString).json")
+        ObservationNoteStore(database: try! AppDatabase.makeInMemory(), legacyNotesSource: nil)
     }
 
     // MARK: - The bug
