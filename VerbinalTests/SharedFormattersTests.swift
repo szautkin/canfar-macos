@@ -109,6 +109,23 @@ final class SharedFormattersTests: XCTestCase {
         XCTAssertFalse(SharedFormatters.userMediumDateShortTime.string(from: now).isEmpty)
     }
 
+    func testMonthDayShortTimeMatchesCustomPattern() {
+        // The search side panels render per-row timestamps with the literal
+        // "MMM d, HH:mm" pattern. The POSIX locale keeps month abbreviations and
+        // the comma/space layout stable regardless of the host locale. Use the
+        // formatter's own time zone so the expected hour matches the rendering.
+        let instant = Date(timeIntervalSince1970: 1_710_499_845) // 2024-03-15T10:30:45Z
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = SharedFormatters.monthDayShortTime.timeZone
+        let components = calendar.dateComponents([.hour, .minute], from: instant)
+        let expected = String(format: "Mar 15, %02d:%02d", components.hour ?? -1, components.minute ?? -1)
+        XCTAssertEqual(SharedFormatters.monthDayShortTime.string(from: instant), expected)
+    }
+
+    func testMonthDayShortTimeUsesPOSIXLocale() {
+        XCTAssertEqual(SharedFormatters.monthDayShortTime.locale, Locale(identifier: "en_US_POSIX"))
+    }
+
     // MARK: - Bytes
 
     func testBytesZero() {

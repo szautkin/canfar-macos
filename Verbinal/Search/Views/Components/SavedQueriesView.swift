@@ -31,7 +31,7 @@ struct SavedQueriesView: View {
                 // Save current button
                 if !currentQuery.isEmpty {
                     Button {
-                        let name = "Query \u{2014} \(formatDate(Date()))"
+                        let name = "Query \u{2014} \(SharedFormatters.monthDayShortTime.string(from: Date()))"
                         store.save(SavedQuery(name: name, adql: currentQuery))
                     } label: {
                         Label("Save Current Query", systemImage: "plus.circle")
@@ -91,7 +91,7 @@ struct SavedQueriesView: View {
                 }
                 #endif
                 Spacer()
-                Text(formatDate(query.savedAt))
+                Text(SharedFormatters.monthDayShortTime.string(from: query.savedAt))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -112,11 +112,5 @@ struct SavedQueriesView: View {
         }
         .padding(8)
         .background(RoundedRectangle(cornerRadius: 6).fill(.background.secondary))
-    }
-
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, HH:mm"
-        return formatter.string(from: date)
     }
 }

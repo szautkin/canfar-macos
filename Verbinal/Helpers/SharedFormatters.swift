@@ -77,6 +77,16 @@ enum SharedFormatters {
         return f
     }()
 
+    /// Compact `MMM d, HH:mm` (e.g., "Apr 27, 10:30"). Used by the search side
+    /// panels (recent searches / saved queries) for per-row timestamps. POSIX
+    /// locale keeps the literal month-abbreviation pattern stable.
+    static let monthDayShortTime: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d, HH:mm"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
     // MARK: - Bytes
 
     /// File-size byte-count formatter — used everywhere a cell shows a

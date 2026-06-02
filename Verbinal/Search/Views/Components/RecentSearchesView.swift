@@ -87,7 +87,7 @@ struct RecentSearchesView: View {
                         }
                 }
                 Spacer()
-                Text(formatDate(search.savedAt))
+                Text(SharedFormatters.monthDayShortTime.string(from: search.savedAt))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -107,11 +107,5 @@ struct RecentSearchesView: View {
         }
         .padding(8)
         .background(RoundedRectangle(cornerRadius: 6).fill(.background.secondary))
-    }
-
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, HH:mm"
-        return formatter.string(from: date)
     }
 }
