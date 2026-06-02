@@ -136,7 +136,7 @@ private struct PortalSettingsTab: View {
     }
 
     private var availableProjects: [String] {
-        Array(grouped[selectedType]?.keys ?? [:].keys).sorted()
+        grouped[selectedType].map { Array($0.keys).sorted() } ?? []
     }
 
     private var availableImages: [ParsedImage] {

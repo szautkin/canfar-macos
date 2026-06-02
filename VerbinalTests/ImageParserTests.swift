@@ -50,4 +50,30 @@ final class ImageParserTests: XCTestCase {
         XCTAssertEqual(grouped["desktop"]?["skaha"]?.map(\.label), ["desktop:2.0", "desktop:1.0"])
         XCTAssertEqual(grouped["notebook"]?["skaha"]?.map(\.label), ["notebook:3.0"])
     }
+
+    // Mirrors PortalSettingsTab.availableProjects: a present type returns its
+    // sorted project keys, an absent type yields an empty list.
+    func testGroupByTypeAndProjectYieldsSortedProjectKeysForPresentType() {
+        let rawImages = [
+            RawImage(id: "images.canfar.net/skaha/desktop:1.0", types: ["desktop"]),
+            RawImage(id: "images.canfar.net/cadc/desktop:1.0", types: ["desktop"]),
+            RawImage(id: "images.canfar.net/astro/desktop:1.0", types: ["desktop"])
+        ]
+
+        let grouped = ImageParser.groupByTypeAndProject(rawImages)
+
+        let projects = grouped["desktop"].map { Array($0.keys).sorted() } ?? []
+        XCTAssertEqual(projects, ["astro", "cadc", "skaha"])
+    }
+
+    func testGroupByTypeAndProjectYieldsEmptyProjectsForAbsentType() {
+        let rawImages = [
+            RawImage(id: "images.canfar.net/skaha/desktop:1.0", types: ["desktop"])
+        ]
+
+        let grouped = ImageParser.groupByTypeAndProject(rawImages)
+
+        let projects = grouped["notebook"].map { Array($0.keys).sorted() } ?? []
+        XCTAssertEqual(projects, [])
+    }
 }
