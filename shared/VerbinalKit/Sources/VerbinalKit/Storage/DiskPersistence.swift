@@ -16,9 +16,22 @@ public struct DiskPersistence<T: Codable>: Sendable {
     /// unavailable (e.g. sandbox failure). All methods become no-ops in that case.
     public let fileURL: URL?
     public let logger: Logger
+    /// The on-disk schema version this store writes and the highest it can read.
+    /// Bump in a store when its persisted type changes in a way an older build
+    /// could not safely read. Files written with a higher version are refused
+    /// (not clobbered) — important once data syncs across devices/accounts.
+    public let schemaVersion: Int
 
-    public init(subdirectory: String, fileName: String, logger: Logger) {
+    /// Versioned wrapper written to disk: `{ "schemaVersion": N, "value": <T> }`.
+    /// Reading falls back to a bare `T` for files written before versioning.
+    private struct Envelope: Codable {
+        let schemaVersion: Int
+        let value: T
+    }
+
+    public init(subdirectory: String, fileName: String, logger: Logger, schemaVersion: Int = 1) {
         self.logger = logger
+        self.schemaVersion = schemaVersion
         let appSupport = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first
@@ -47,6 +60,9 @@ public struct DiskPersistence<T: Codable>: Sendable {
         /// (renamed) to preserve its bytes, with the new location if the move
         /// succeeded.
         case corrupt(quarantinedTo: URL?)
+        /// File was written by a newer schema version than this build supports.
+        /// Left untouched (NOT quarantined) so a newer device's data survives.
+        case unsupported(foundVersion: Int)
     }
 
     /// Read, distinguishing missing vs corrupt. On corruption the unreadable file
@@ -57,15 +73,36 @@ public struct DiskPersistence<T: Codable>: Sendable {
         guard let fileURL, FileManager.default.fileExists(atPath: fileURL.path) else {
             return .missing
         }
+        let data: Data
         do {
-            let data = try Data(contentsOf: fileURL)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return .value(try decoder.decode(T.self, from: data))
+            data = try Data(contentsOf: fileURL)
         } catch {
-            logger.error("Corrupt store \(fileURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public) — quarantining instead of silently discarding")
+            logger.error("Read failed \(fileURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public) — quarantining")
             return .corrupt(quarantinedTo: quarantineCorruptFile(at: fileURL))
         }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        // Preferred path: a versioned envelope.
+        if let envelope = try? decoder.decode(Envelope.self, from: data) {
+            if envelope.schemaVersion > schemaVersion {
+                logger.error("Store \(fileURL.lastPathComponent, privacy: .public) is schema v\(envelope.schemaVersion), newer than supported v\(self.schemaVersion) — not loading to avoid clobbering newer data")
+                return .unsupported(foundVersion: envelope.schemaVersion)
+            }
+            // Older or equal: additive field changes are absorbed by Codable's
+            // optional synthesis; explicit per-version migrations can be layered
+            // in later if a non-additive change is needed.
+            return .value(envelope.value)
+        }
+
+        // Backward compatibility: a bare value written before versioning (treated
+        // as v1). Going forward this is re-saved as an envelope on the next write.
+        if let legacy = try? decoder.decode(T.self, from: data) {
+            return .value(legacy)
+        }
+
+        logger.error("Corrupt store \(fileURL.lastPathComponent, privacy: .public): not a valid envelope or legacy value — quarantining instead of silently discarding")
+        return .corrupt(quarantinedTo: quarantineCorruptFile(at: fileURL))
     }
 
     /// Decode and return the persisted value, or `nil` if the file is missing or
@@ -108,7 +145,7 @@ public struct DiskPersistence<T: Codable>: Sendable {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(value)
+            let data = try encoder.encode(Envelope(schemaVersion: schemaVersion, value: value))
             try data.write(to: fileURL, options: .atomic)
             return true
         } catch {

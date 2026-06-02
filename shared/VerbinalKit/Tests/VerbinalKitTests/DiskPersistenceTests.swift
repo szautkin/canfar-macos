@@ -15,6 +15,13 @@ final class DiskPersistenceTests: XCTestCase {
         let count: Int
     }
 
+    /// Mirrors DiskPersistence's private envelope shape so tests can author
+    /// legacy/newer on-disk files by hand.
+    private struct Env: Codable {
+        let schemaVersion: Int
+        let value: Box
+    }
+
     private let logger = Logger(subsystem: "com.codebg.Verbinal.tests", category: "DiskPersistence")
 
     private func makeStore(file: String = "box.json") -> DiskPersistence<Box> {
@@ -86,6 +93,46 @@ final class DiskPersistenceTests: XCTestCase {
         let store = makeStore()
         defer { store.delete() }
         XCTAssertTrue(store.write(Box(name: "x", when: Date(timeIntervalSince1970: 0), count: 1)))
+    }
+
+    // MARK: - Schema versioning (S02)
+
+    func testLegacyBareValueIsStillReadable() throws {
+        let store = makeStore()
+        defer { store.delete() }
+        let url = try XCTUnwrap(store.fileURL)
+        let box = Box(name: "legacy", when: Date(timeIntervalSince1970: 1_700_000_000), count: 2)
+        let enc = JSONEncoder(); enc.dateEncodingStrategy = .iso8601
+        try enc.encode(box).write(to: url)   // bare value, no envelope (pre-versioning)
+        XCTAssertEqual(store.read(), box)
+    }
+
+    func testWriteProducesVersionedEnvelope() throws {
+        let store = makeStore()   // schemaVersion defaults to 1
+        defer { store.delete() }
+        let box = Box(name: "v", when: Date(timeIntervalSince1970: 1_700_000_000), count: 1)
+        XCTAssertTrue(store.write(box))
+        let url = try XCTUnwrap(store.fileURL)
+        let json = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertTrue(json.contains("schemaVersion"), "writes a versioned envelope")
+        XCTAssertEqual(store.read(), box, "round-trips through the envelope")
+    }
+
+    func testNewerSchemaVersionIsNotLoadedNorQuarantined() throws {
+        let store = makeStore()   // supports v1
+        defer { store.delete() }
+        let url = try XCTUnwrap(store.fileURL)
+        let box = Box(name: "future", when: Date(timeIntervalSince1970: 1_700_000_000), count: 7)
+        let enc = JSONEncoder(); enc.dateEncodingStrategy = .iso8601
+        try enc.encode(Env(schemaVersion: 99, value: box)).write(to: url)
+
+        guard case .unsupported(let found) = store.readResult() else {
+            return XCTFail("expected .unsupported for a newer-version file")
+        }
+        XCTAssertEqual(found, 99)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path),
+                      "a newer-version file must NOT be quarantined or clobbered")
+        XCTAssertNil(store.read())
     }
 
     func testDeleteRemovesFileAndIsIdempotent() {
