@@ -89,4 +89,30 @@ final class ResearchModelDeleteTests: XCTestCase {
                        "selection must not be cleared when it didn't match the deleted row")
         store.clear()
     }
+
+    /// P1-E: filtering also matches the NOTE text/tags (FTS), so the user can
+    /// find a download by what they wrote about it — even when the observation's
+    /// own metadata doesn't contain the query.
+    func testFilterAlsoMatchesNoteText() async {
+        let (model, store) = makeModel()
+        let obs = makeObservation()   // empty metadata — won't substring-match "spiral"
+        store.save(obs)
+        model.noteStore.save(ObservationNote(publisherID: obs.publisherID, text: "spiral arms visible"))
+
+        model.filterText = "spiral"
+        // Debounced FTS refresh — poll the (readable) matched set.
+        for _ in 0..<100 where model.noteMatchedPublisherIDs.isEmpty {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(model.filteredObservations.contains { $0.id == obs.id },
+                      "an observation whose NOTE matches is included even if its metadata doesn't")
+
+        model.filterText = "nomatchtoken"
+        for _ in 0..<100 where !model.noteMatchedPublisherIDs.isEmpty {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertFalse(model.filteredObservations.contains { $0.id == obs.id },
+                       "a non-matching query drops the note-only match")
+        store.clear()
+    }
 }

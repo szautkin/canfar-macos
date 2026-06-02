@@ -23,7 +23,14 @@ final class ResearchModel {
 
     var activeDownloads: [UUID: DownloadProgress] = [:]
     var selectedObservation: DownloadedObservation?
-    var filterText = ""
+    var filterText = "" {
+        didSet { if oldValue != filterText { scheduleNoteSearch() } }
+    }
+    /// PublisherIDs of observations whose NOTE text/tags match `filterText`,
+    /// refreshed (debounced) off the render path so the FTS read never runs
+    /// inside `filteredObservations`'s body evaluation.
+    private(set) var noteMatchedPublisherIDs: Set<String> = []
+    private var noteSearchTask: Task<Void, Never>?
     var storageUsed: Int64 = 0
     var lastError: String?
     var lastSuccess: String?
@@ -55,11 +62,25 @@ final class ResearchModel {
     var filteredObservations: [DownloadedObservation] {
         guard !filterText.isEmpty else { return observationStore.observations }
         let query = filterText.lowercased()
-        return observationStore.observations.filter {
-            $0.targetName.lowercased().contains(query) ||
-            $0.collection.lowercased().contains(query) ||
-            $0.instrument.lowercased().contains(query) ||
-            $0.observationID.lowercased().contains(query)
+        return observationStore.observations.filter { obs in
+            obs.targetName.lowercased().contains(query) ||
+            obs.collection.lowercased().contains(query) ||
+            obs.instrument.lowercased().contains(query) ||
+            obs.observationID.lowercased().contains(query) ||
+            // Also match what the user wrote ABOUT the observation (note FTS).
+            noteMatchedPublisherIDs.contains(obs.publisherID)
+        }
+    }
+
+    /// Debounced refresh of the note-text/tag FTS matches for `filterText`.
+    private func scheduleNoteSearch() {
+        noteSearchTask?.cancel()
+        let query = filterText
+        guard !query.isEmpty else { noteMatchedPublisherIDs = []; return }
+        noteSearchTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled, let self else { return }
+            self.noteMatchedPublisherIDs = Set(self.noteStore.searchPublisherIDs(matching: query))
         }
     }
 
