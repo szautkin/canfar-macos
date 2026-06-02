@@ -6114,13 +6114,13 @@
         }
       }
     },
-    "Session limit reached (%lld/%lld)": {
-      "extractionState": "stale",
+    "Session limit reached (%1$@/%2$@)": {
+      "extractionState": "manual",
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Limite de sessions atteinte (%1$lld/%2$lld)"
+            "value": "Limite de sessions atteinte (%1$@/%2$@)"
           }
         }
       }

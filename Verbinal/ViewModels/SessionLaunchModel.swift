@@ -541,12 +541,27 @@ final class SessionLaunchModel {
     func updateSessionLimit() {
         let total = totalSessionCounter?() ?? 0
         isAtSessionLimit = total >= maxConcurrentSessions
-        // View layer renders `Label(model.sessionLimitMessage, ...)` with a
-        // String, bypassing LocalizedStringKey. Resolve at assignment time so
-        // the message is already in the user's language.
         sessionLimitMessage = isAtSessionLimit
-            ? String(localized: "Session limit reached (\(total)/\(maxConcurrentSessions))")
+            ? Self.sessionLimitMessage(total: total, max: maxConcurrentSessions)
             : ""
+    }
+
+    /// Build the "Session limit reached (N/M)" string.
+    ///
+    /// The view layer renders `Label(model.sessionLimitMessage, ...)` with a
+    /// `String`, bypassing `LocalizedStringKey`, so the message is resolved
+    /// here at assignment time. The counts are formatted as locale-aware
+    /// number arguments (rather than interpolated raw `Int`s) so that the
+    /// catalog string can reorder them per language and the digits follow the
+    /// user's locale conventions.
+    static func sessionLimitMessage(total: Int, max: Int) -> String {
+        let current = total.formatted(.number)
+        let limit = max.formatted(.number)
+        return String(
+            format: String(localized: "Session limit reached (%1$@/%2$@)"),
+            current,
+            limit
+        )
     }
 
     // MARK: - Launch

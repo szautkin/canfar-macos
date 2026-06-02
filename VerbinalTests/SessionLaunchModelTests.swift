@@ -47,4 +47,46 @@ final class SessionLaunchModelTests: XCTestCase {
         XCTAssertTrue(model.launchStatus.contains("sess-abc123"), "status should carry the real id")
         XCTAssertEqual(model.pendingRecentLaunch?.name, "test-session")
     }
+
+    // MARK: - Ticket 060: locale-aware session-limit message
+
+    func testSessionLimitMessageEmptyBelowLimit() {
+        let model = makeModel(returning: nil)
+        model.totalSessionCounter = { 0 }
+        model.updateSessionLimit()
+        XCTAssertFalse(model.isAtSessionLimit)
+        XCTAssertTrue(model.sessionLimitMessage.isEmpty,
+                      "message must be empty when below the concurrent-session limit")
+    }
+
+    func testSessionLimitMessageCarriesBothCountsAtLimit() {
+        let model = makeModel(returning: nil)
+        let limit = model.maxConcurrentSessions
+        model.totalSessionCounter = { limit }
+        model.updateSessionLimit()
+        XCTAssertTrue(model.isAtSessionLimit)
+        XCTAssertFalse(model.sessionLimitMessage.isEmpty)
+        XCTAssertTrue(model.sessionLimitMessage.contains("\(limit)"),
+                      "message should contain both the current and max counts")
+    }
+
+    /// The counts must be passed as locale-aware format arguments, so the
+    /// builder produces a string with the numbers placed into the catalog
+    /// template rather than raw `Int` interpolation. For a thousands-scale
+    /// count this means locale number formatting is applied.
+    func testSessionLimitMessageUsesFormattedNumberArguments() {
+        let current = 1234
+        let max = 2
+        let message = SessionLaunchModel.sessionLimitMessage(total: current, max: max)
+        let expected = String(
+            format: String(localized: "Session limit reached (%1$@/%2$@)"),
+            current.formatted(.number),
+            max.formatted(.number)
+        )
+        XCTAssertEqual(message, expected)
+        // Locale formatting groups thousands, so the produced string must not
+        // contain the bare, unseparated digit run.
+        XCTAssertTrue(message.contains(current.formatted(.number)),
+                      "current count should be rendered with locale number formatting")
+    }
 }
