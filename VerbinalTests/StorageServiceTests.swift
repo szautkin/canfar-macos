@@ -46,7 +46,6 @@ final class StorageServiceTests: XCTestCase {
         XCTAssertEqual(quota.quotaGB, 100.0, accuracy: 0.001)
         XCTAssertEqual(quota.usedGB, 50.0, accuracy: 0.001)
         XCTAssertEqual(quota.usagePercent, 50.0, accuracy: 0.001)
-        XCTAssertEqual(quota.lastModified, "2026-03-25T12:00:00.000")
     }
 
     func testGetQuotaHandlesMissingProperties() async throws {
@@ -64,6 +63,5 @@ final class StorageServiceTests: XCTestCase {
 
         XCTAssertEqual(quota.quotaBytes, 0)
         XCTAssertEqual(quota.usedBytes, 0)
-        XCTAssertNil(quota.lastModified)
     }
 }

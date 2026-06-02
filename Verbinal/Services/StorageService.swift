@@ -34,7 +34,6 @@ final class StorageService: Sendable {
     private func parseVOSpaceXML(_ xmlString: String) throws -> StorageQuota {
         var quotaBytes: Int64 = 0
         var usedBytes: Int64 = 0
-        var lastModified: String?
 
         let properties = SimpleXML.elements(localName: "property", in: xmlString)
 
@@ -46,15 +45,12 @@ final class StorageService: Sendable {
                 quotaBytes = Int64(value) ?? 0
             } else if uri.contains("core#length") {
                 usedBytes = Int64(value) ?? 0
-            } else if uri.contains("core#date") {
-                lastModified = value
             }
         }
 
         return StorageQuota(
             quotaBytes: quotaBytes,
-            usedBytes: usedBytes,
-            lastModified: lastModified
+            usedBytes: usedBytes
         )
     }
 }

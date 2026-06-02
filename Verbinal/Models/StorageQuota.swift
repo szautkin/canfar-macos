@@ -9,7 +9,6 @@ import Foundation
 struct StorageQuota {
     var quotaBytes: Int64
     var usedBytes: Int64
-    var lastModified: String?
 
     var quotaGB: Double { Double(quotaBytes) / 1_073_741_824.0 }
     var usedGB: Double { Double(usedBytes) / 1_073_741_824.0 }
