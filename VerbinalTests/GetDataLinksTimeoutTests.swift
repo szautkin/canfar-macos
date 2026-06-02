@@ -62,9 +62,10 @@ final class GetDataLinksTimeoutTests: XCTestCase {
         let result = await tool.invoke(arguments: Data(#"{"publisher_id":"x"}"#.utf8), context: ctx())
         switch result {
         case .data(let bytes):
-            struct Decoded: Decodable { let files: [String] }
-            // Just confirm it decodes as the tool's Output shape.
-            _ = try JSONDecoder().decode(GetDataLinksTool.Output.self, from: bytes)
+            // Confirm it decodes as the tool's Output shape. GetDataLinksTool.Output
+            // is Encodable-only, so decode a local mirror of its [String] fields.
+            struct Decoded: Decodable { let thumbnails: [String]; let previews: [String] }
+            _ = try JSONDecoder().decode(Decoded.self, from: bytes)
         case .failed(let f):
             XCTFail("expected data; got failed(\(f))")
         case .proposed:
