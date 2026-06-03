@@ -364,8 +364,14 @@ struct ContentView: View {
                     appState.pendingModeAfterLogin = mode
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             }
+            // Size the row to its buttons and keep each label on one line —
+            // otherwise a width-constrained container squishes the prominent
+            // button toward square, wrapping "Login" to "Lo-gin" and rendering
+            // the automatic capsule as a circle.
+            .controlSize(.large)
+            .lineLimit(1)
+            .fixedSize()
             Spacer()
             #if os(iOS)
             Button("About Verbinal") { appState.activeSheet = .about }
