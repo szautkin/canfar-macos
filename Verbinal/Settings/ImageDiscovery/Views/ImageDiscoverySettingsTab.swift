@@ -69,10 +69,15 @@ struct ImageDiscoverySettingsTab: View {
 
     private var registrySection: some View {
         Section {
-            TextField("Registry host", text: $registryHost, prompt: Text("images.canfar.net"))
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-                .onSubmit { saveRegistryHost() }
+            HStack {
+                TextField("Registry host", text: $registryHost, prompt: Text("images.canfar.net"))
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .onSubmit { saveRegistryHost() }
+                Button("Save") { saveRegistryHost() }
+                    .controlSize(.small)
+                    .disabled(registryHost == service.settings.registryHost)
+            }
         } header: {
             Text("Registry")
         } footer: {
@@ -84,10 +89,15 @@ struct ImageDiscoverySettingsTab: View {
 
     private var credentialsSection: some View {
         Section {
-            TextField("Username", text: $username, prompt: Text("CADC username"))
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-                .onSubmit { saveUsername() }
+            HStack {
+                TextField("Username", text: $username, prompt: Text("CADC username"))
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .onSubmit { saveUsername() }
+                Button("Save") { saveUsername() }
+                    .controlSize(.small)
+                    .disabled(username == service.settings.username)
+            }
 
             SecureField("Secret", text: $secret, prompt: Text(service.settings.hasSecret ? "•••••••• (set)" : "Harbor CLI secret"))
                 .textFieldStyle(.roundedBorder)
@@ -206,14 +216,19 @@ struct ImageDiscoverySettingsTab: View {
 
     private var inspectorSection: some View {
         Section {
-            TextField(
-                "Inspector image",
-                text: $inspectorImage,
-                prompt: Text(ImageDiscoverySettings.defaultInspectorImage)
-            )
-            .textFieldStyle(.roundedBorder)
-            .autocorrectionDisabled()
-            .onSubmit { saveInspectorImage() }
+            HStack {
+                TextField(
+                    "Inspector image",
+                    text: $inspectorImage,
+                    prompt: Text(ImageDiscoverySettings.defaultInspectorImage)
+                )
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+                .onSubmit { saveInspectorImage() }
+                Button("Save") { saveInspectorImage() }
+                    .controlSize(.small)
+                    .disabled(inspectorImage == service.settings.inspectorImage)
+            }
         } header: {
             Text("Inspector Image")
         } footer: {
