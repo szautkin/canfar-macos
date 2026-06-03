@@ -24,6 +24,7 @@ struct MCPIntegrationSettingsTab: View {
             diagnosticsSection
             selfTestSection
             configSection
+            claudeCodeSection
             if let err = model?.actionError {
                 Section {
                     Label(err, systemImage: "exclamationmark.triangle")
@@ -139,6 +140,38 @@ struct MCPIntegrationSettingsTab: View {
             Text("Claude Desktop Configuration")
         } footer: {
             Text("“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the \(MCPIntegrationSettingsService.serverKey) entry at this app's helper. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private var claudeCodeSection: some View {
+        Section {
+            HStack(spacing: 8) {
+                Image(systemName: settings.isClaudeCodeDetected() ? "checkmark.circle.fill" : "questionmark.circle")
+                    .foregroundStyle(settings.isClaudeCodeDetected() ? Color.green : Color.secondary)
+                Text(settings.isClaudeCodeDetected() ? "Claude Code detected" : "Claude Code not detected")
+                    .font(.callout)
+                Spacer()
+            }
+            Text(settings.claudeCodeAddCommand())
+                .font(.caption2.monospaced())
+                .textSelection(.enabled)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .truncationMode(.middle)
+            HStack {
+                Button("Copy Command") { settings.copyClaudeCodeAddCommand() }
+                    .controlSize(.small)
+                Button("Copy JSON Snippet") { settings.copyClaudeCodeSnippet() }
+                    .controlSize(.small)
+                Button("Reveal Config") { settings.revealClaudeCodeConfig() }
+                    .controlSize(.small)
+            }
+        } header: {
+            Text("Claude Code")
+        } footer: {
+            Text("Claude Code stores MCP servers in ~/.claude.json, which also holds auth tokens — so Verbinal doesn't edit it directly. Run the pre-filled `claude mcp add` command in a terminal to register the helper user-wide (the safe, official way), or paste the JSON snippet into the top-level mcpServers. Restart Claude Code afterwards.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }

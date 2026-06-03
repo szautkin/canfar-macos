@@ -286,5 +286,76 @@ final class MCPIntegrationSettingsService {
             NSWorkspace.shared.activateFileViewerSelecting([url])
         }
     }
+
+    // MARK: - Claude Code (CLI client)
+
+    /// Claude Code stores user-scoped MCP servers in `~/.claude.json` under a
+    /// top-level `mcpServers` object. That file ALSO holds OAuth tokens +
+    /// per-project state, so — unlike Claude Desktop — we never auto-overwrite
+    /// it. Instead we hand the user the official, safe `claude mcp add` command
+    /// (pre-filled with this app's helper path), which merges the entry
+    /// without disturbing anything else. A JSON snippet is offered as a
+    /// hand-edit fallback.
+    static let claudeCodeConfigFileName = ".claude.json"
+
+    static var claudeCodeConfigURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(claudeCodeConfigFileName)
+    }
+    static var claudeCodeConfigDirURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude", isDirectory: true)
+    }
+
+    /// Best-effort presence hint. The sandbox can hide these even when present,
+    /// so the configure command is always offered regardless of this result.
+    func isClaudeCodeDetected() -> Bool {
+        let fm = FileManager.default
+        return fm.fileExists(atPath: Self.claudeCodeConfigURL.path)
+            || fm.fileExists(atPath: Self.claudeCodeConfigDirURL.path)
+    }
+
+    /// Wrap an absolute path as a single-quoted POSIX shell argument — handles
+    /// spaces and suppresses `$`/backtick/quote expansion that double quotes
+    /// would allow. Embedded single quotes use the standard `'\''` idiom.
+    nonisolated static func shellSingleQuoted(_ s: String) -> String {
+        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    /// The exact `claude mcp add` command, pre-populated with this app's helper
+    /// path — the safe, official way to register a user-scoped stdio server.
+    func claudeCodeAddCommand() -> String {
+        let path = (try? resolveHelperPath()) ?? Self.helperURL.path
+        return "claude mcp add --transport stdio --scope user \(Self.serverKey) -- \(Self.shellSingleQuoted(path))"
+    }
+
+    /// The JSON to merge into `~/.claude.json`'s top-level `mcpServers` for
+    /// users who prefer hand-editing. Includes `type: "stdio"` (Claude Code's
+    /// stdio entry shape).
+    func claudeCodeConfigSnippet() -> String {
+        let path = (try? resolveHelperPath()) ?? Self.helperURL.path
+        let dict: [String: Any] = ["mcpServers": [Self.serverKey: ["type": "stdio", "command": path]]]
+        let data = (try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])) ?? Data()
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    func copyClaudeCodeAddCommand() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(claudeCodeAddCommand(), forType: .string)
+    }
+
+    func copyClaudeCodeSnippet() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(claudeCodeConfigSnippet(), forType: .string)
+    }
+
+    func revealClaudeCodeConfig() {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: Self.claudeCodeConfigURL.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([Self.claudeCodeConfigURL])
+        } else {
+            NSWorkspace.shared.activateFileViewerSelecting([fm.homeDirectoryForCurrentUser])
+        }
+    }
 }
 #endif
