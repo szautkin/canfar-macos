@@ -1,6 +1,216 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Claude Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code"
+          }
+        }
+      }
+    },
+    "Claude Code detected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code détecté"
+          }
+        }
+      }
+    },
+    "Claude Code not detected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code non détecté"
+          }
+        }
+      }
+    },
+    "Copy Command" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier la commande"
+          }
+        }
+      }
+    },
+    "Copy JSON Snippet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier l'extrait JSON"
+          }
+        }
+      }
+    },
+    "Reveal Config" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher la config"
+          }
+        }
+      }
+    },
+    "Claude Code stores MCP servers in ~/.claude.json, which also holds auth tokens — so Verbinal doesn't edit it directly. Run the pre-filled `claude mcp add` command in a terminal to register the helper user-wide (the safe, official way), or paste the JSON snippet into the top-level mcpServers. Restart Claude Code afterwards." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code stocke les serveurs MCP dans ~/.claude.json, qui contient aussi des jetons d'authentification — Verbinal ne le modifie donc pas directement. Lancez la commande `claude mcp add` pré-remplie dans un terminal pour enregistrer l'assistant pour tout l'utilisateur (la méthode officielle et sûre), ou collez l'extrait JSON dans le `mcpServers` de premier niveau. Redémarrez Claude Code ensuite."
+          }
+        }
+      }
+    },
+    "Registry host" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hôte du registre"
+          }
+        }
+      }
+    },
+    "Harbor CLI secret" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret CLI Harbor"
+          }
+        }
+      }
+    },
+    "Remove Secret" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le secret"
+          }
+        }
+      }
+    },
+    "Save Secret" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer le secret"
+          }
+        }
+      }
+    },
+    "Secret saved to Keychain." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret enregistré dans le trousseau."
+          }
+        }
+      }
+    },
+    "Reset to Defaults" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser"
+          }
+        }
+      }
+    },
+    "Reset AI Remote Compute settings?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser les réglages de calcul distant IA ?"
+          }
+        }
+      }
+    },
+    "Clears the compute image, registry host, username, and stored secret used by the agent run_code tool." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Efface l'image de calcul, l'hôte du registre, le nom d'utilisateur et le secret stocké utilisés par l'outil run_code de l'agent."
+          }
+        }
+      }
+    },
+    "Container registry the credentials below authenticate against, for pulling the AI compute image. Default is the CANFAR Harbor host; other registries (Docker Hub, Quay, GHCR) work too." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registre de conteneurs contre lequel les identifiants ci-dessous s'authentifient, pour récupérer l'image de calcul IA. Par défaut, l'hôte Harbor de CANFAR ; d'autres registres (Docker Hub, Quay, GHCR) fonctionnent aussi."
+          }
+        }
+      }
+    },
+    "Stored in the macOS Keychain. Used to build the `x-skaha-registry-auth` header so Skaha can pull a private compute image when run_code launches the session. The secret is never read back — set or clear, not view. Click **Test Connection** to verify before launching." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stocké dans le trousseau macOS. Sert à construire l'en-tête `x-skaha-registry-auth` pour que Skaha puisse récupérer une image de calcul privée lorsque run_code lance la session. Le secret n'est jamais relu — définir ou effacer, pas consulter. Cliquez sur **Tester la connexion** pour vérifier avant le lancement."
+          }
+        }
+      }
+    },
+    "AI Remote Compute" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calcul distant IA"
+          }
+        }
+      }
+    },
+    "Compute image" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image de calcul"
+          }
+        }
+      }
+    },
+    "e.g. images.canfar.net/project/verbinal-compute:1.0" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "p. ex. images.canfar.net/project/verbinal-compute:1.0"
+          }
+        }
+      }
+    },
+    "Container image launched as a contributed interactive session so the AI agent can run code on the fast interactive pool, skipping the headless batch queue. Must be registered in Harbor for the contributed session type. Leave empty to disable the run_code tool." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image de conteneur lancée comme session interactive « contributed » afin que l'agent IA puisse exécuter du code sur le pool interactif rapide, en évitant la file d'attente des tâches headless. Doit être enregistrée dans Harbor pour le type de session « contributed ». Laisser vide pour désactiver l'outil run_code."
+          }
+        }
+      }
+    },
     "" : {
       "shouldTranslate" : false
     },

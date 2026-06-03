@@ -46,6 +46,13 @@ final class AppState {
     /// coordinator stays unaware of UI / persistence concerns.
     let imageDiscoverySettings = ImageDiscoverySettingsService()
 
+    /// AI Remote Compute settings — the `verbinal-execution` image the
+    /// agent `run_code` tool launches as a contributed session, plus its
+    /// own registry host + Harbor credentials (so a private compute image
+    /// can be pulled). Sibling of `imageDiscoverySettings`, separate
+    /// keyspace/Keychain. Surfaced in Settings ▸ Compute.
+    let aiComputeSettings = AIComputeSettingsService()
+
     /// Live network connectivity monitor. UI subscribes via `@Bindable` to
     /// surface "network changed; retrying…" hints when in-flight CADC
     /// requests get cut by Wi-Fi → Ethernet transitions or VPN flips.
