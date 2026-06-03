@@ -27,7 +27,14 @@ struct GetPreviewImageTool: AITool {
     static var verbClass: VerbClass { .read }
     static var agentSafe: Bool { true }
 
-    static let defaultMaxBytes = 5 * 1024 * 1024   // 5 MB; previews are ~300–530 KB
+    /// Claude Desktop (and other MCP clients) reject a response body larger
+    /// than ~1 MB. The image ships as base64 in the MCP image block (≈4/3
+    /// inflation), so we cap the RAW image so its base64 — plus the small JSON
+    /// metadata envelope — stays comfortably under that limit. Previews are
+    /// typically 300–530 KB, so real previews pass through; a mis-resolved
+    /// giant file is refused with `previewTooLarge`.
+    static let mcpResponseByteLimit = 1_048_576   // 1 MB
+    static let defaultMaxBytes = 680 * 1024       // ≈ 696 KB raw → ~928 KB base64
 
     /// A candidate preview artifact resolved from CAOM-2/DataLink.
     struct PreviewArtifact: Sendable, Equatable {
@@ -65,7 +72,7 @@ struct GetPreviewImageTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_preview_image",
-        description: "Fetch a CADC observation's PREVIEW image server-side and return it as an inline image you can display to the user, plus a JSON metadata block (filename, band, byteSize, sourceURL, contentType, and the base64 data). Use the same publisher_id as get_data_links / get_observation_caom2. The backend fetches the bytes using the user's CADC auth (the agent sandbox blocks CADC hosts, so a client-side fetch can't display previews), follows the redirect to signed storage, and returns the raw image — never a URL. It resolves to a preview artifact (contentType image/*, productType preview), NEVER a science frame: pass `band` (e.g. G.MP9401) to pick a band for multi-band observations; omit it for the default preview. Safety: `max_bytes` (default 5 MB) refuses a mis-resolved giant file. Typed errors: previewNotFound (lists bands that DO have previews), previewTooLarge, authRequired (proprietary/embargoed), upstreamTimeout, contentTypeMismatch (the fetched bytes weren't a valid image). Bounded by a 30s watchdog.",
+        description: "Fetch a CADC observation's PREVIEW image server-side and return it as an inline image you can display to the user, plus a small JSON metadata block (filename, band, byteSize, sourceURL, contentType). The image itself is the inline image block — it is NOT duplicated as base64 in the JSON. Use the same publisher_id as get_data_links / get_observation_caom2. The backend fetches the bytes using the user's CADC auth (the agent sandbox blocks CADC hosts, so a client-side fetch can't display previews), follows the redirect to signed storage, and returns the raw image — never a URL. It resolves to a preview artifact (contentType image/*, productType preview), NEVER a science frame: pass `band` (e.g. G.MP9401) to pick a band for multi-band observations; omit it for the default preview. Safety: `max_bytes` (default ~680 KB, hard-capped) refuses a mis-resolved giant file and keeps the base64 response under MCP clients' ~1 MB body limit. Typed errors: previewNotFound (lists bands that DO have previews), previewTooLarge, authRequired (proprietary/embargoed), upstreamTimeout, contentTypeMismatch (the fetched bytes weren't a valid image). Bounded by a 30s watchdog.",
         schema: #"""
         {
           "type": "object",
@@ -91,7 +98,9 @@ struct GetPreviewImageTool: AITool {
         guard !publisherID.isEmpty else {
             return .failed(.invalidArgument("publisher_id is required"))
         }
-        let maxBytes = max(1, args.max_bytes ?? Self.defaultMaxBytes)
+        // Clamp to the MCP-safe cap so a caller-supplied max_bytes can't push
+        // the base64 response past the ~1 MB client limit.
+        let maxBytes = min(max(1, args.max_bytes ?? Self.defaultMaxBytes), Self.defaultMaxBytes)
 
         do {
             return try await withToolTimeout(seconds: toolTimeoutSeconds, label: "get_preview_image") {
@@ -159,14 +168,23 @@ struct GetPreviewImageTool: AITool {
             )
         }
 
-        // 6. Build the inline image + JSON metadata (incl. base64).
+        // 6. Safety net: the fetcher already honours maxBytes, but guard
+        //    against a server that over-sends so the base64 response can never
+        //    exceed the MCP client's ~1 MB body limit.
+        guard data.count <= Self.defaultMaxBytes else {
+            throw ToolFailureReason.previewTooLarge(data.count)
+        }
+
+        // 7. Build the inline image + a LEAN JSON metadata block. The image
+        //    rides in the MCP image block (base64 over the wire); we do NOT
+        //    duplicate it as base64 in the caption — that doubled the payload
+        //    and blew past Claude Desktop's ~1 MB response limit.
         let meta = Metadata(
             filename: chosen.filename,
             band: chosen.band,
             byteSize: data.count,
             sourceURL: chosen.url.absoluteString,
-            contentType: mimeType,
-            data: data.base64EncodedString()
+            contentType: mimeType
         )
         let caption = (try? Self.prettyJSON(meta)) ?? "{\"byteSize\": \(data.count), \"contentType\": \"\(mimeType)\"}"
         return .image(data: data, mimeType: mimeType, caption: caption)
@@ -180,7 +198,6 @@ struct GetPreviewImageTool: AITool {
         let byteSize: Int
         let sourceURL: String
         let contentType: String
-        let data: String   // base64
     }
 
     private static func prettyJSON(_ value: some Encodable) throws -> String {

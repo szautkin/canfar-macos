@@ -38,7 +38,7 @@ final class GetPreviewImageToolTests: XCTestCase {
 
     // MARK: - Success
 
-    func testReturnsInlineImageWithMetadataAndBase64() async throws {
+    func testReturnsInlineImageWithLeanMetadata() async throws {
         let gif = gifBytes
         let tool = makeTool(
             resolve: { [a = artifact(band: "G.MP9401")] _ in [a] },
@@ -56,7 +56,24 @@ final class GetPreviewImageToolTests: XCTestCase {
         XCTAssertEqual(obj["contentType"] as? String, "image/gif")
         XCTAssertEqual(obj["band"] as? String, "G.MP9401")
         XCTAssertEqual(obj["byteSize"] as? Int, gif.count)
-        XCTAssertEqual(obj["data"] as? String, gif.base64EncodedString(), "metadata JSON carries the base64 bytes")
+        XCTAssertNil(obj["data"],
+                     "image rides in the MCP image block; it must NOT be duplicated as base64 in the caption — that doubled the payload past Claude Desktop's ~1 MB response limit")
+    }
+
+    func testOversizeFetchedImageIsPreviewTooLarge() async {
+        // No declared Content-Length, but the fetched bytes exceed the
+        // MCP-safe cap → must be refused so the base64 response can never blow
+        // the ~1 MB client limit. Valid GIF magic so it passes the type check
+        // and trips the size guard, not contentTypeMismatch.
+        var bigGif = Data([0x47, 0x49, 0x46, 0x38, 0x39, 0x61])   // "GIF89a"
+        bigGif.append(Data(repeating: 0x00, count: 800 * 1024))   // 800 KB > the ~696 KB cap
+        let tool = makeTool(
+            resolve: { _ in [self.artifact(band: nil)] },
+            fetch: { _, _ in (bigGif, "image/gif") }
+        )
+        let result = await tool.invoke(arguments: argsData(["publisher_id": "ivo://x"]), context: ctx())
+        guard case .failed(let reason) = result else { return XCTFail("expected .failed") }
+        XCTAssertEqual(reason.auditTag, "previewTooLarge")
     }
 
     func testNoBandPicksFirstPreview() async {
