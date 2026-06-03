@@ -106,6 +106,14 @@ extension AppState {
         tools.append(DeleteSessionsBulkTool())
         tools.append(ClearResearchArchiveTool())
 
+        // AI remote compute — run code on a warm `contributed` session
+        // via the /arc file-drop. `run_code` is an auto-apply-gated write
+        // (drops the request into the inbox); `run_code_output` reads the
+        // result back. Disabled until an AI compute image is set in
+        // Settings ▸ Compute.
+        tools.append(RunCodeTool())
+        tools.append(makeRunCodeOutputTool(service: vospace))
+
         // View-state tools — live-applied, no proposal.
         tools.append(makeOpenFITSFileTool(store: observationStore))
         tools.append(makeSetSearchFocusTool())
@@ -123,6 +131,34 @@ extension AppState {
                               vospace: vospace)
 
         return tools
+    }
+
+    // MARK: - AI remote compute
+
+    /// `run_code_output` reads the watcher's result file back over the
+    /// ARC REST API. A 404 means "not produced yet" (the session is still
+    /// provisioning/executing) → surface as nil so the tool reports
+    /// `ready:false` rather than an error.
+    private func makeRunCodeOutputTool(service: VOSpaceBrowserService) -> RunCodeOutputTool {
+        RunCodeOutputTool(fetchOut: { [weak self] path, maxBytes in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let username = await self.username
+            guard !username.isEmpty else { throw ToolFailureReason.authRequired }
+            do {
+                let result = try await service.fetchBytes(
+                    username: username, path: path, offset: 0, maxBytes: maxBytes)
+                return result.data
+            } catch let e as NetworkError {
+                switch e {
+                case .httpError(404, _):
+                    return nil   // result not written yet
+                case .unauthorized, .httpError(401, _), .httpError(403, _):
+                    throw ToolFailureReason.authRequired
+                default:
+                    throw ToolFailureReason.backendError("run_code_output read failed: \(e.localizedDescription)")
+                }
+            }
+        })
     }
 
     // MARK: - View-state factories
@@ -252,6 +288,18 @@ extension AppState {
             DeleteSessionApplier(service: sessionService, activity: activity),
             DeleteSessionsBulkApplier(service: sessionService, activity: activity),
             ClearResearchArchiveApplier(store: observationStore, activity: activity),
+            RunCodeApplier(
+                service: sessionService,
+                vospace: vospace,
+                username: { [weak self] in
+                    guard let self else { return "" }
+                    return await self.username
+                },
+                registryAuth: { [weak self] in
+                    guard let self else { return nil }
+                    return await self.aiComputeSettings.registryCredentials()
+                },
+                activity: activity),
             LaunchHeadlessJobApplier(
                 service: headlessService,
                 recentLaunchStore: recentLaunchStore,
