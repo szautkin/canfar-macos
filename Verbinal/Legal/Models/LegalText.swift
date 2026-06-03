@@ -105,9 +105,9 @@ enum LegalText {
             INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR \
             ANY LOSS OF DATA, LOSS OF RESEARCH, LOST PROFITS, OR LOSS OF GOODWILL, ARISING OUT OF \
             OR RELATED TO YOUR USE OF (OR INABILITY TO USE) THE APP, EVEN IF ADVISED OF THE \
-            POSSIBILITY OF SUCH DAMAGES. OUR TOTAL AGGREGATE LIABILITY FOR ALL CLAIMS RELATING TO \
-            THE APP WILL NOT EXCEED THE GREATER OF (a) THE AMOUNT YOU PAID FOR THE APP IN THE 12 \
-            MONTHS BEFORE THE CLAIM, OR (b) USD $10. Some jurisdictions do not allow certain \
+            POSSIBILITY OF SUCH DAMAGES. BECAUSE THE APP IS PROVIDED TO YOU FREE OF CHARGE, OUR \
+            TOTAL AGGREGATE LIABILITY FOR ALL CLAIMS RELATING TO THE APP WILL NOT EXCEED CAD $20 \
+            (TWENTY CANADIAN DOLLARS). Some jurisdictions do not allow certain \
             exclusions or limitations, so some of the above may not apply to you; in that case \
             our liability is limited to the smallest extent permitted by law.
             """),
@@ -121,13 +121,17 @@ enum LegalText {
             third-party sources, and we are not responsible for their acts, omissions, content, \
             or charges.
             """),
-            Section(heading: "6. AI & Automated Features", body: """
-            The App includes AI-assisted and automated agent features that may generate \
-            suggestions, queries, or actions. These outputs can be incomplete or incorrect and \
-            may change data or interact with services on your behalf. They are not professional, \
-            scientific, or research advice. You are responsible for reviewing any AI-generated or \
-            automated action before relying on it, and for confirming results against \
-            authoritative sources.
+            Section(heading: "6. Third-Party AI Agents & Automation", body: """
+            The App does not itself contain or operate any artificial-intelligence model. At your \
+            option, you may connect it to — and control it with — third-party AI agents or other \
+            MCP clients that you configure (for example, Anthropic's Claude). Those third-party \
+            agents, not the App, generate any suggestions, queries, or code, and may, at your \
+            direction, take actions through the App such as launching compute sessions, running \
+            code, or reading, writing, downloading, or deleting your data. Such outputs and \
+            actions can be incomplete or incorrect and are not professional, scientific, or \
+            research advice. You are responsible for choosing which agents to connect, for any \
+            action you authorize them to take, and for reviewing and confirming results against \
+            authoritative sources before relying on them.
             """),
             Section(heading: "7. Acceptable Use", body: """
             You agree to use the App lawfully and in accordance with the terms of any connected \
@@ -138,12 +142,13 @@ enum LegalText {
             Section(heading: "8. Changes, Termination & Governing Law", body: """
             We may update the App and these Terms; material changes will be presented for your \
             acceptance. You may stop using the App at any time by deleting it. These Terms are \
-            governed by the laws of [GOVERNING-LAW JURISDICTION], without regard to its \
-            conflict-of-laws rules, and you agree to the exclusive jurisdiction of its courts, \
-            except where applicable law gives you the right to bring claims elsewhere.
+            governed by the laws of the Province of British Columbia and the federal laws of Canada \
+            applicable therein, without regard to its conflict-of-laws rules, and you agree to \
+            the exclusive jurisdiction of the courts of the Province of British Columbia, except where \
+            applicable law gives you the right to bring claims elsewhere.
             """),
             Section(heading: "9. Contact", body: """
-            Questions about these Terms: [CONTACT EMAIL]. If any provision is held \
+            Questions about these Terms: support@verbinal.com. If any provision is held \
             unenforceable, the remaining provisions remain in effect.
             """),
         ],
@@ -206,10 +211,9 @@ enum LegalText {
             PUNITIFS, NI D’UNE PERTE DE DONNÉES, D’UNE PERTE DE TRAVAUX DE RECHERCHE, D’UN MANQUE \
             À GAGNER OU D’UNE ATTEINTE À LA RÉPUTATION, DÉCOULANT DE VOTRE UTILISATION (OU DE \
             VOTRE INCAPACITÉ À UTILISER) L’APPLICATION, MÊME SI NOUS AVIONS ÉTÉ INFORMÉS DE LA \
-            POSSIBILITÉ DE TELS DOMMAGES. NOTRE RESPONSABILITÉ GLOBALE TOTALE POUR TOUTE \
-            RÉCLAMATION RELATIVE À L’APPLICATION N’EXCÉDERA PAS LE PLUS ÉLEVÉ DES MONTANTS \
-            SUIVANTS : (a) LE MONTANT QUE VOUS AVEZ PAYÉ POUR L’APPLICATION AU COURS DES 12 MOIS \
-            PRÉCÉDANT LA RÉCLAMATION, OU (b) 10 $ US. Certaines juridictions n’autorisent pas \
+            POSSIBILITÉ DE TELS DOMMAGES. L’APPLICATION VOUS ÉTANT FOURNIE GRATUITEMENT, NOTRE \
+            RESPONSABILITÉ GLOBALE TOTALE POUR TOUTE RÉCLAMATION RELATIVE À L’APPLICATION \
+            N’EXCÉDERA PAS 20 $ CA (VINGT DOLLARS CANADIENS). Certaines juridictions n’autorisent pas \
             certaines exclusions ou limitations ; il se peut donc que ce qui précède ne \
             s’applique pas à vous ; dans ce cas, notre responsabilité est limitée dans la mesure \
             la plus restreinte permise par la loi.
@@ -225,14 +229,19 @@ enum LegalText {
             sources tierces, et nous ne sommes pas responsables de leurs actes, omissions, \
             contenus ou frais.
             """),
-            Section(heading: "6. Fonctionnalités d’IA et automatisées", body: """
-            L’Application comprend des fonctionnalités assistées par IA et des agents automatisés \
-            susceptibles de générer des suggestions, des requêtes ou des actions. Ces résultats \
-            peuvent être incomplets ou incorrects et peuvent modifier des données ou interagir \
-            avec des services en votre nom. Ils ne constituent pas des conseils professionnels, \
-            scientifiques ou de recherche. Il vous incombe de vérifier toute action générée par \
-            l’IA ou automatisée avant de vous y fier, et de confirmer les résultats auprès de \
-            sources faisant autorité.
+            Section(heading: "6. Agents d’IA tiers et automatisation", body: """
+            L’Application ne contient ni n’exécute elle-même aucun modèle d’intelligence \
+            artificielle. À votre choix, vous pouvez la connecter à des agents d’IA tiers ou à \
+            d’autres clients MCP que vous configurez (par exemple, Claude d’Anthropic) et la \
+            commander au moyen de ceux-ci. Ce sont ces agents tiers, et non l’Application, qui \
+            génèrent les suggestions, les requêtes ou le code, et qui peuvent, à votre demande, \
+            effectuer des actions via l’Application telles que lancer des sessions de calcul, \
+            exécuter du code, ou lire, écrire, télécharger ou supprimer vos données. Ces \
+            résultats et actions peuvent être incomplets ou incorrects et ne constituent pas des \
+            conseils professionnels, scientifiques ou de recherche. Il vous incombe de choisir \
+            les agents à connecter, d’assumer toute action que vous les autorisez à effectuer, et \
+            de vérifier et confirmer les résultats auprès de sources faisant autorité avant de \
+            vous y fier.
             """),
             Section(heading: "7. Utilisation acceptable", body: """
             Vous acceptez d’utiliser l’Application de manière licite et conformément aux \
@@ -245,12 +254,13 @@ enum LegalText {
             Nous pouvons mettre à jour l’Application et les présentes Conditions ; les \
             modifications importantes seront soumises à votre acceptation. Vous pouvez cesser \
             d’utiliser l’Application à tout moment en la supprimant. Les présentes Conditions sont \
-            régies par les lois de [JURIDICTION DU DROIT APPLICABLE], sans égard à ses règles de \
-            conflit de lois, et vous acceptez la compétence exclusive de ses tribunaux, sauf \
-            lorsque la loi applicable vous donne le droit d’intenter des actions ailleurs.
+            régies par les lois de la province de la Colombie-Britannique et les lois fédérales du Canada qui \
+            y sont applicables, sans égard à ses règles de conflit de lois, et vous acceptez la \
+            compétence exclusive des tribunaux de la province de la Colombie-Britannique, sauf lorsque la loi \
+            applicable vous donne le droit d’intenter des actions ailleurs.
             """),
             Section(heading: "9. Contact", body: """
-            Questions concernant les présentes Conditions : [COURRIEL DE CONTACT]. Si une \
+            Questions concernant les présentes Conditions : support@verbinal.com. Si une \
             disposition est jugée inapplicable, les autres dispositions demeurent en vigueur.
             """),
         ],
