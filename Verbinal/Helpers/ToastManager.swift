@@ -59,7 +59,7 @@ struct ToastOverlay: ViewModifier {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(.easeInOut(duration: 0.25), value: message)
+                .appAnimation(AppMotion.toast, value: message)
             }
         }
     }

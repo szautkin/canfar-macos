@@ -47,6 +47,10 @@ struct CanfarImagesView: View {
                 tabBar
                 searchField
                 content
+                    // Cross-fade the row set on a TAB change only. The search
+                    // field (a separate per-keystroke filter) is deliberately
+                    // NOT keyed here, so typing re-filters instantly.
+                    .appAnimation(AppMotion.stateSwap, value: model.selectedTab)
                 footer
             }
         }

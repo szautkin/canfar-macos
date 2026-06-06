@@ -54,21 +54,38 @@ struct SearchResultsView: View {
     @State private var showColumnsPicker = false
     @FocusState private var focusedFilter: String?
 
+    /// Boundary discriminator for the empty↔results cross-fade.
+    private var resultsState: DataState {
+        resultsModel.results.isEmpty ? .empty : .content
+    }
+
+    /// Empty↔results boundary cross-fade. Extracted into its own property so the
+    /// `body` expression stays inside the SwiftUI type-checker's complexity
+    /// budget. Cross-fades only the empty↔results BOUNDARY — sorting/filtering
+    /// the (up to 2000-row) table keeps the state at `.content`, so the reorder
+    /// stays INSTANT, never a per-row move on a large list.
+    private var resultsStateContent: some View {
+        DataStateContainer(state: resultsState) {
+            EmptyView()
+        } empty: {
+            ContentUnavailableView(
+                "No Results",
+                systemImage: "magnifyingglass",
+                description: Text("Run a search to see results here.")
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } error: {
+            EmptyView()
+        } content: {
+            resultsTable
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             infoBar
             Divider()
-
-            if resultsModel.results.isEmpty {
-                ContentUnavailableView(
-                    "No Results",
-                    systemImage: "magnifyingglass",
-                    description: Text("Run a search to see results here.")
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                resultsTable
-            }
+            resultsStateContent
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .sheet(item: $selectedResult) { result in
@@ -80,6 +97,7 @@ struct SearchResultsView: View {
                 tapClient: tapClient,
                 researchModel: researchModel
             )
+            .iosSheetChrome([.medium, .large])
         }
         .alert("Export failed", isPresented: $showExportError, presenting: exportErrorMessage) { _ in
             Button("OK", role: .cancel) { exportErrorMessage = nil }

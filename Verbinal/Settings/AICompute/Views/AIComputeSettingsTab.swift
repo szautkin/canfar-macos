@@ -19,6 +19,8 @@ struct AIComputeSettingsTab: View {
     @State private var username: String = ""
     @State private var secret: String = ""
     @State private var image: String = ""
+    @State private var cores: Int = AIComputeSettings.defaultCores
+    @State private var ram: Int = AIComputeSettings.defaultRam
     @State private var saveError: String?
     @State private var saveSuccess: Bool = false
     @State private var resetConfirmShown: Bool = false
@@ -30,6 +32,7 @@ struct AIComputeSettingsTab: View {
     var body: some View {
         Form {
             computeImageSection
+            resourcesSection
             registrySection
             credentialsSection
             footerSection
@@ -66,6 +69,49 @@ struct AIComputeSettingsTab: View {
             Text("AI Remote Compute")
         } footer: {
             Text("Container image launched as a contributed interactive session so the AI agent can run code on the fast interactive pool, skipping the headless batch queue. Must be registered in Harbor for the contributed session type. Leave empty to disable the run_code tool.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    // Resource option lists — prefer the live CANFAR session context
+    // (the deployment's actual offered sizes), fall back to a static
+    // menu when the cache hasn't loaded so the field is always usable.
+    private var coreOptions: [Int] {
+        let opts = appState.portalImageCacheService.cache?.context?.cores.options ?? []
+        let base = opts.isEmpty ? [1, 2, 4, 8, 16] : opts
+        // Always include the persisted value so the Picker has a matching tag.
+        // The agent can size the instance via start_compute to a value the live
+        // menu doesn't offer; without this the Picker would render blank.
+        return Array(Set(base + [cores])).sorted()
+    }
+    private var ramOptions: [Int] {
+        let opts = appState.portalImageCacheService.cache?.context?.memoryGB.options ?? []
+        let base = opts.isEmpty ? [1, 2, 4, 8, 16, 32] : opts
+        return Array(Set(base + [ram])).sorted()
+    }
+
+    private var resourcesSection: some View {
+        Section {
+            Picker("Cores", selection: $cores) {
+                ForEach(coreOptions, id: \.self) { Text("\($0)").tag($0) }
+            }
+            .onChange(of: cores) { _, newValue in
+                service.setCores(newValue)
+                cores = service.settings.cores
+            }
+
+            Picker("RAM (GB)", selection: $ram) {
+                ForEach(ramOptions, id: \.self) { Text("\($0)").tag($0) }
+            }
+            .onChange(of: ram) { _, newValue in
+                service.setRam(newValue)
+                ram = service.settings.ram
+            }
+        } header: {
+            Text("Compute Resources")
+        } footer: {
+            Text("These size the run_code compute instance. Small/fast is best for quick checks — the smallest size schedules fastest. The available sizes come from your CANFAR session context; the agent can also pass a size to start_compute to override this default.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -201,6 +247,8 @@ struct AIComputeSettingsTab: View {
         registryHost = s.registryHost
         username = s.username
         image = s.image
+        cores = s.cores
+        ram = s.ram
         secret = ""
         saveError = nil
         saveSuccess = false

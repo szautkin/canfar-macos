@@ -74,6 +74,7 @@ struct iOSSessionsTab: View {
                 logs: logsText,
                 isLoading: isLoadingEvents
             )
+            .iosSheetChrome()
         }
         .overlay {
             if model.hasError {

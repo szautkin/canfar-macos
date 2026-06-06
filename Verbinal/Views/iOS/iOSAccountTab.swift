@@ -51,9 +51,11 @@ struct iOSAccountTab: View {
         .navigationTitle(appState.username)
         .sheet(isPresented: $showAbout) {
             AboutSheet()
+                .iosSheetChrome()
         }
         .sheet(isPresented: $showTerms) {
             LegalDocumentSheet()
+                .iosSheetChrome()
         }
     }
 }

@@ -145,6 +145,41 @@ struct AppDatabase {
             }
         }
 
+        // v2 — AI Guide: per-tool description overrides + user-authored
+        // instruction tools. The tool's built-in description is the single
+        // source of truth and is NEVER stored here; an override row is a sparse
+        // delta and "reset" soft-deletes it. Same sync-ready column convention
+        // as v1 (uuid PK, updatedAt, version, deletedAt, lastWriterDeviceID).
+        migrator.registerMigration("v2") { db in
+            try db.create(table: "aiToolOverride") { t in
+                t.primaryKey("uuid", .text).notNull()
+                t.column("toolName", .text).notNull()
+                t.column("userDescription", .text).notNull()
+                t.column("createdAt", .text)
+                t.column("updatedAt", .text)
+                t.column("version", .integer).notNull().defaults(to: 1)
+                t.column("deletedAt", .text)               // soft-delete tombstone (NULL = live)
+                t.column("lastWriterDeviceID", .text)
+                t.uniqueKey(["toolName"])                   // one override per tool (ON CONFLICT target)
+            }
+            // User-authored "instruction tools": named, read-only guidance the
+            // agent discovers in tools/list and can call to receive `body`.
+            // Name uniqueness among LIVE rows is enforced in the service (so a
+            // soft-deleted name can be reused), hence no DB UNIQUE here.
+            try db.create(table: "aiGuideTool") { t in
+                t.primaryKey("uuid", .text).notNull()
+                t.column("name", .text).notNull()
+                t.column("description", .text).notNull()
+                t.column("body", .text)
+                t.column("orderIndex", .integer).notNull().defaults(to: 0)
+                t.column("createdAt", .text)
+                t.column("updatedAt", .text)
+                t.column("version", .integer).notNull().defaults(to: 1)
+                t.column("deletedAt", .text)
+                t.column("lastWriterDeviceID", .text)
+            }
+        }
+
         return migrator
     }
 }

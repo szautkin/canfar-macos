@@ -37,9 +37,24 @@ struct AIComputeSettings: Equatable, Sendable {
     /// session for `run_code`. Empty disables `run_code`.
     var image: String = AIComputeSettings.defaultImage
 
+    /// Default core count for the `run_code`/`start_compute` instance.
+    /// The agent may override per `start_compute`; this is the size
+    /// `run_code`'s lazy self-launch uses when no instance is warm.
+    var cores: Int = AIComputeSettings.defaultCores
+
+    /// Default RAM (GB) for the `run_code`/`start_compute` instance —
+    /// same override/default story as `cores`.
+    var ram: Int = AIComputeSettings.defaultRam
+
     /// No built-in default: empty means "unset / `run_code` disabled",
     /// so an unset field can never silently launch the wrong container.
     static let defaultImage: String = ""
+
+    /// Smallest size — fastest to schedule on a warm node. Quick checks
+    /// (the `run_code` sweet spot) want this; heavier work belongs in a
+    /// headless job.
+    static let defaultCores = 1
+    static let defaultRam = 1
 
     /// True when an image is configured — i.e. `run_code` may launch.
     var isEnabled: Bool {
@@ -52,6 +67,8 @@ struct AIComputeSettings: Equatable, Sendable {
         username.isEmpty
             && !hasSecret
             && image == AIComputeSettings.defaultImage
+            && cores == AIComputeSettings.defaultCores
+            && ram == AIComputeSettings.defaultRam
             && (registryHost == "images.canfar.net" || registryHost.isEmpty)
     }
 }

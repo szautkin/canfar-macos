@@ -63,6 +63,11 @@ public actor MCPBridgeService {
     /// Per-connection capability bag, injected at construction so the bridge
     /// can never be served in an unconfigured state.
     private let services: PerConnectionServices
+    /// Optional AI Guide hook. When set, `tools/list` substitutes user
+    /// description overrides + appends user guide tools, and `tools/call`
+    /// answers guide-tool calls with stored text. `nil` serves the plain
+    /// router manifest.
+    private let aiGuide: AIGuideResolver?
     private let logger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "bridge")
 
     /// Per-connection state. Initialized lazily on the first `initialize`
@@ -74,12 +79,14 @@ public actor MCPBridgeService {
         router: AIToolRouter,
         identity: ServerIdentity,
         services: PerConnectionServices,
-        approval: ApprovalGate = .allowAll
+        approval: ApprovalGate = .allowAll,
+        aiGuide: AIGuideResolver? = nil
     ) {
         self.router = router
         self.identity = identity
         self.services = services
         self.approval = approval
+        self.aiGuide = aiGuide
     }
 
     /// Drive the connection. Returns when the transport closes.
@@ -246,7 +253,23 @@ public actor MCPBridgeService {
     private func handleToolsList(_ request: JSONRPCRequest) async -> JSONRPCResponse {
         guard initialized else { return notInitialized(id: request.id) }
         let manifest = await router.externalManifestList()
-        let tools = manifest.map { $0.wire }
+        var tools = manifest.map { $0.wire }
+
+        // AI Guide re-tuning: substitute user description overrides and append
+        // user guide tools. One main-actor hop per request via `adjustments()`.
+        if let aiGuide {
+            let adj = await aiGuide.adjustments()
+            if !adj.descriptionOverrides.isEmpty {
+                tools = manifest.map { def in
+                    guard let override = adj.descriptionOverrides[def.name] else { return def.wire }
+                    return ToolDefinitionWire(name: def.name, description: override, inputSchema: def.inputSchema)
+                }
+            }
+            if !adj.guideTools.isEmpty {
+                tools.append(contentsOf: adj.guideTools.map { $0.wire })
+            }
+        }
+
         logger.info("tools/list -> \(tools.count) tool\(tools.count == 1 ? "" : "s")")
         return successResponse(id: request.id, body: ListToolsResult(tools: tools))
     }
@@ -265,6 +288,15 @@ public actor MCPBridgeService {
             params = try JSONDecoder().decode(CallToolParams.self, from: raw)
         } catch {
             return .failure(id: request.id, error: invalidParams("\(error)"))
+        }
+
+        // AI Guide tools are read-only: a call returns the stored instruction
+        // text directly (no execution, no router dispatch). Checked before the
+        // router so a guide name can't fall through to `unknownTool`.
+        if let aiGuide, let body = await aiGuide.guideBody(params.name) {
+            logger.info("tools/call \(params.name, privacy: .public) -> guide (\(body.count) chars)")
+            let payload = CallToolResult(content: [.text(body)], isError: false)
+            return successResponse(id: request.id, body: payload)
         }
 
         // The router takes raw JSON args (Data). Re-encode the typed

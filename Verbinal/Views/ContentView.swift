@@ -8,6 +8,11 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) var appState
+    /// Read once here — the only place that can — and mirrored into
+    /// `AppState.reduceMotion` so the navigation methods (which can fire
+    /// from non-view contexts) honour the guard. Also selects the
+    /// mode-switch and Terms-gate transitions below.
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
     @State var showAbout = false
     /// First-launch Terms-of-Use acceptance gate; blocks the app until accepted.
     @State private var legal = LegalAgreementService()
@@ -53,47 +58,27 @@ struct ContentView: View {
             }
 
             // Block all app interaction behind the Terms gate until accepted.
+            // The EXIT fades (the gate's accept buttons flip `hasAcceptedCurrent`
+            // inside `withAppAnimation`, driving this `.transition`); the
+            // APPEARANCE stays instant — at launch the gate is the initial
+            // render with no enclosing transaction, so it blocks immediately.
+            // Under Reduce Motion `.appFade` is still a plain cross-fade and the
+            // animated flip is nil'd, so the exit is instant too.
             if !legal.hasAcceptedCurrent {
                 LegalAgreementGate(service: legal)
+                    .transition(.appFade)
+                    .zIndex(1)
             }
         }
-    }
-
-    @ViewBuilder
-    private var mainContent: some View {
-        Group {
-            switch appState.currentMode {
-            case .landing:
-                if appState.isLoading {
-                    Spacer()
-                    ProgressView("Checking authentication...")
-                    Spacer()
-                } else {
-                    landingContent
-                }
-            case .search:
-                searchContent
-            case .portal:
-                portalContent
-            case .research:
-                researchContent
-            case .storage:
-                #if os(macOS)
-                storageContent
-                #else
-                macOSOnlyPlaceholder("Storage")
-                #endif
-            case .fitsViewer:
-                #if os(macOS)
-                fitsViewerContent
-                #else
-                macOSOnlyPlaceholder("FITS Viewer")
-                #endif
-            }
-        }
+        // App-wide presenters live on the root ZStack — NOT on the transitioning
+        // `modeBody` — so the single sheet host stays mounted across mode
+        // cross-fades and never re-presents mid-transition. (Previously these
+        // sat on `mainContent`; with the chrome hoist the body now transitions,
+        // so the presenters must hang above it on a stable parent.)
         // Single sheet presenter — SwiftUI's .sheet has a one-at-a-time limitation,
-        // so we drive all three (login, about, export) through one enum-based modifier.
-        // This prevents silent sheet drops when two triggers fire in the same tick.
+        // so we drive all (login, about, export, agentProposals) through one
+        // enum-based modifier. This prevents silent sheet drops when two triggers
+        // fire in the same tick.
         .sheet(item: Bindable(appState).activeSheet) { sheet in
             switch sheet {
             case .login:
@@ -133,6 +118,145 @@ struct ContentView: View {
                 showAbout = false
             }
         }
+        // Mirror the environment Reduce-Motion flag into AppState so the
+        // navigation methods can consult it from non-view contexts.
+        .onAppear { appState.reduceMotion = reduceMotion }
+        .onChange(of: reduceMotion) { _, newValue in
+            appState.reduceMotion = newValue
+        }
+    }
+
+    @ViewBuilder
+    private var mainContent: some View {
+        #if os(macOS)
+        // CHROME HOIST (macOS): the mode toolbar + Divider live OUT here so the
+        // window chrome PERSISTS across the mode cross-fade — only `modeBody`
+        // transitions. Previously each per-mode `VStack { toolbar; Divider; body }`
+        // re-mounted the whole title bar on every switch, flashing the chrome
+        // through the fade and undercutting it. The toolbar now stays put and
+        // its title cross-fades in place (`hoistedModeToolbar`).
+        //
+        // Exception: while the auth check runs on the landing mode there is no
+        // chrome yet — show the bare spinner so the toolbar doesn't appear over
+        // a "Checking authentication…" state.
+        if appState.currentMode == .landing && appState.isLoading {
+            // Auth check on landing has no chrome yet — bare spinner.
+            VStack {
+                Spacer()
+                ProgressView("Checking authentication...")
+                Spacer()
+            }
+        } else if showsModeChrome {
+            VStack(spacing: 0) {
+                hoistedModeToolbar
+                Divider()
+                modeBody
+            }
+        } else {
+            // Portal / Storage while signed out render a standalone
+            // login-required screen with NO mode toolbar (matches the
+            // pre-hoist behaviour, which never wrapped that screen in chrome).
+            modeBody
+        }
+        #else
+        modeBody
+        #endif
+    }
+
+    #if os(macOS)
+    /// Whether the persistent mode chrome (toolbar + Divider) should be shown.
+    /// Hidden for the signed-out Portal / Storage login-required screen, which
+    /// is a standalone prompt with its own buttons — wrapping it in a back-arrow
+    /// mode toolbar would be redundant and was never done before the hoist.
+    private var showsModeChrome: Bool {
+        switch appState.currentMode {
+        case .portal, .storage:
+            return appState.isAuthenticated
+        default:
+            return true
+        }
+    }
+
+    /// The persistent macOS mode toolbar, chosen by `currentMode`. It lives
+    /// above the transitioning `modeBody` so it does NOT fade with the body;
+    /// only the title text cross-fades in place (each `make…Toolbar` renders a
+    /// title `Text`, and switching the toolbar variant animates under the
+    /// enclosing `withAppAnimation(AppMotion.screen)` transaction). Landing and
+    /// Portal keep their distinct toolbars (account menu, file-browser button);
+    /// the rest share the generic back-arrow mode toolbar.
+    @ViewBuilder
+    private var hoistedModeToolbar: some View {
+        switch appState.currentMode {
+        case .landing:
+            makeLandingToolbar(showAbout: $showAbout)
+        case .portal:
+            makePortalToolbar(showAbout: $showAbout)
+        case .search:
+            makeModeToolbar(title: "Search", showAbout: $showAbout)
+        case .research:
+            makeModeToolbar(title: "Research", showAbout: $showAbout)
+        case .storage:
+            makeModeToolbar(title: "Storage", showAbout: $showAbout)
+        case .fitsViewer:
+            makeModeToolbar(title: "FITS Viewer", showAbout: $showAbout)
+        case .aiGuide:
+            makeModeToolbar(title: "AI Guide", showAbout: $showAbout)
+        }
+    }
+    #endif
+
+    /// The transitioning body — everything BELOW the persistent macOS chrome.
+    /// On iOS this is the whole screen (no hoisted toolbar). The mode-switch
+    /// transition lives here, keyed on the mode VALUE (never `.id`, which would
+    /// rebuild the subtree and re-fire `.task`/`loadData`, landing the fade on a
+    /// spinner). The transaction is supplied by `withAppAnimation(AppMotion.screen)`
+    /// inside `navigateTo`/`navigateBack`. Under Reduce Motion the call-site
+    /// animation is nil'd and we fall back to pure opacity (no scale "breathing",
+    /// no slide) for vestibular safety.
+    @ViewBuilder
+    private var modeBody: some View {
+        Group {
+            switch appState.currentMode {
+            case .landing:
+                landingBody
+            case .search:
+                searchBody
+            case .portal:
+                portalBody
+            case .research:
+                researchBody
+            case .storage:
+                #if os(macOS)
+                storageBody
+                #else
+                macOSOnlyPlaceholder("Storage")
+                #endif
+            case .fitsViewer:
+                #if os(macOS)
+                fitsViewerBody
+                #else
+                macOSOnlyPlaceholder("FITS Viewer")
+                #endif
+            case .aiGuide:
+                #if os(macOS)
+                aiGuideBody
+                #else
+                macOSOnlyPlaceholder("AI Guide")
+                #endif
+            }
+        }
+        .transition(modeTransition)
+    }
+
+    /// macOS = subtle cross-fade (± ≤1.5% scale); iOS = directional slide keyed
+    /// on `appState.navDirection`. Reduce Motion collapses both to pure opacity.
+    private var modeTransition: AnyTransition {
+        if reduceMotion { return .appFade }
+        #if os(macOS)
+        return .appScreen
+        #else
+        return .appScreenDirectional(forward: appState.navDirection == .forward)
+        #endif
     }
 
     #if os(macOS)
@@ -211,13 +335,9 @@ struct ContentView: View {
     // MARK: - Landing
 
     @ViewBuilder
-    private var landingContent: some View {
+    private var landingBody: some View {
         #if os(macOS)
-        VStack(spacing: 0) {
-            makeLandingToolbar(showAbout: $showAbout)
-            Divider()
-            LandingView()
-        }
+        LandingView()
         #else
         // iOS doesn't use the mode-card Mac landing. The app's home is the
         // tab bar (iPhone) / split view (iPad), so once authenticated we
@@ -235,13 +355,9 @@ struct ContentView: View {
     // MARK: - Search
 
     @ViewBuilder
-    private var searchContent: some View {
+    private var searchBody: some View {
         #if os(macOS)
-        VStack(spacing: 0) {
-            makeModeToolbar(title: "Search", showAbout: $showAbout)
-            Divider()
-            SearchRootView(searchModel: searchModel, researchModel: researchModel)
-        }
+        SearchRootView(searchModel: searchModel, researchModel: researchModel)
         #else
         NavigationStack {
             SearchRootView(searchModel: searchModel, researchModel: researchModel)
@@ -259,13 +375,9 @@ struct ContentView: View {
     // MARK: - Research
 
     @ViewBuilder
-    private var researchContent: some View {
+    private var researchBody: some View {
         #if os(macOS)
-        VStack(spacing: 0) {
-            makeModeToolbar(title: "Research", showAbout: $showAbout)
-            Divider()
-            ResearchRootView(researchModel: researchModel, searchModel: searchModel)
-        }
+        ResearchRootView(researchModel: researchModel, searchModel: searchModel)
         #else
         NavigationStack {
             ResearchRootView(researchModel: researchModel, searchModel: searchModel)
@@ -284,32 +396,30 @@ struct ContentView: View {
 
     #if os(macOS)
     @ViewBuilder
-    private var fitsViewerContent: some View {
-        VStack(spacing: 0) {
-            makeModeToolbar(title: "FITS Viewer", showAbout: $showAbout)
-            Divider()
-            FITSViewerRootView()
-                // Empty-state ContentUnavailableView reports its natural
-                // content size (~200pt). Without this, the parent HStack's
-                // default vAlignment centres the whole VStack vertically,
-                // leaving the toolbar floating mid-window. Forcing the
-                // body to fill keeps the toolbar pinned to the top.
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+    private var fitsViewerBody: some View {
+        FITSViewerRootView()
+            // Empty-state ContentUnavailableView reports its natural content
+            // size (~200pt). Without this the body wouldn't fill the area below
+            // the persistent toolbar, leaving the divider floating mid-window.
+            // Forcing the body to fill keeps it pinned just under the chrome.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
-    private var storageContent: some View {
+    private var aiGuideBody: some View {
+        AIGuideView()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var storageBody: some View {
         if appState.isAuthenticated {
-            VStack(spacing: 0) {
-                makeModeToolbar(title: "Storage", showAbout: $showAbout)
-                Divider()
-                if let model = storageBrowserModel {
-                    StorageBrowserRootView(model: model)
-                } else {
-                    ProgressView("Loading...")
-                        .task { initStorageModel() }
-                }
+            if let model = storageBrowserModel {
+                StorageBrowserRootView(model: model)
+            } else {
+                ProgressView("Loading...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .task { initStorageModel() }
             }
         } else {
             loginRequiredView(for: .storage)
@@ -320,17 +430,9 @@ struct ContentView: View {
     // MARK: - Portal
 
     @ViewBuilder
-    private var portalContent: some View {
+    private var portalBody: some View {
         if appState.isAuthenticated {
-            #if os(macOS)
-            VStack(spacing: 0) {
-                makePortalToolbar(showAbout: $showAbout)
-                Divider()
-                AuthenticatedRootView()
-            }
-            #else
             AuthenticatedRootView()
-            #endif
         } else {
             loginRequiredView(for: .portal)
         }

@@ -17,6 +17,7 @@ struct DataTrainColumnView: View {
     let onToggle: (String) -> Void
 
     @State private var searchText = ""
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var filteredOptions: [String] {
         if searchText.isEmpty { return options }
@@ -74,7 +75,7 @@ struct DataTrainColumnView: View {
     private func scrollToAnchor(proxy: ScrollViewProxy) {
         let anchor = firstVisibleSelection ?? filteredOptions.first
         guard let anchor else { return }
-        withAnimation(.easeOut(duration: 0.15)) {
+        withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) {
             proxy.scrollTo(anchor, anchor: .top)
         }
     }

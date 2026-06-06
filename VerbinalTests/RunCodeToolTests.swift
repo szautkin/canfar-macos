@@ -82,6 +82,26 @@ final class RunCodeToolTests: XCTestCase {
         XCTAssertEqual(payload.language, "bash")
     }
 
+    func testLazyLaunchUsesResolvedResources() async throws {
+        // run_code is NOT given per-call resources; its self-launch size
+        // comes from the Settings default, carried in the payload.
+        let tool = RunCodeTool(resolveImage: setImage, resolveResources: { (4, 16) })
+        let r = await tool.invoke(arguments: argsData(["code": "x=1"]), context: ctx())
+        guard case .proposed(let p) = r else { return XCTFail("expected .proposed") }
+        let payload = try JSONDecoder().decode(RunCodeTool.Payload.self, from: p.payload)
+        XCTAssertEqual(payload.cores, 4)
+        XCTAssertEqual(payload.ram, 16)
+    }
+
+    func testLazyLaunchClampsResolvedResources() async throws {
+        let tool = RunCodeTool(resolveImage: setImage, resolveResources: { (0, 9999) })
+        let r = await tool.invoke(arguments: argsData(["code": "x=1"]), context: ctx())
+        guard case .proposed(let p) = r else { return XCTFail("expected .proposed") }
+        let payload = try JSONDecoder().decode(RunCodeTool.Payload.self, from: p.payload)
+        XCTAssertEqual(payload.cores, 1, "0 cores clamps up to the 1-core floor")
+        XCTAssertEqual(payload.ram, RunCodeContract.maxRam, "over-cap ram clamps to the ceiling")
+    }
+
     // MARK: - run_code_output (read / poll)
 
     private func outputTool(_ fetch: @escaping @Sendable (_ path: String, _ maxBytes: Int) async throws -> Data?) -> RunCodeOutputTool {

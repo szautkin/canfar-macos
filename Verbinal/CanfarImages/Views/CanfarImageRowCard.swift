@@ -124,24 +124,39 @@ struct CanfarImageRowCard: View {
         }
     }
 
-    @ViewBuilder
+    /// Single `Image` whose symbol + tint vary by status, so a probe
+    /// completing animates the glyph with `.symbolEffect(.replace)` (matching
+    /// `MatchingImagesPane`) instead of hard-swapping three distinct views.
+    /// SF Symbols' replace transition auto-respects Reduce Motion.
     private var statusIndicator: some View {
+        Image(systemName: statusSymbol)
+            .font(.caption)
+            .foregroundStyle(statusTint)
+            .contentTransition(.symbolEffect(.replace))
+            .help(statusHelp)
+    }
+
+    private var statusSymbol: String {
         switch row.status {
-        case .discovered:
-            Image(systemName: "checkmark.circle.fill")
-                .font(.caption)
-                .foregroundStyle(.green)
-                .help("Manifest cached")
-        case .failed:
-            Image(systemName: "exclamationmark.circle")
-                .font(.caption)
-                .foregroundStyle(.orange)
-                .help(row.failureMessage ?? "Last probe failed")
-        case .unknown:
-            Image(systemName: "circle.dotted")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .help("Not yet inspected")
+        case .discovered: return "checkmark.circle.fill"
+        case .failed:     return "exclamationmark.circle"
+        case .unknown:    return "circle.dotted"
+        }
+    }
+
+    private var statusTint: Color {
+        switch row.status {
+        case .discovered: return .green
+        case .failed:     return .orange
+        case .unknown:    return .secondary
+        }
+    }
+
+    private var statusHelp: String {
+        switch row.status {
+        case .discovered: return "Manifest cached"
+        case .failed:     return row.failureMessage ?? "Last probe failed"
+        case .unknown:    return "Not yet inspected"
         }
     }
 }

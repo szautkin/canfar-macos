@@ -98,6 +98,9 @@ struct NavigateToTool: AITool {
         case .portal:     return "Portal"
         case .storage:    return "Storage"
         case .fitsViewer: return "FITS Viewer"
+        // Not an agent-navigable target (see `mode(from:)`), but the switch
+        // must be exhaustive.
+        case .aiGuide:    return "AI Guide"
         }
     }
 }

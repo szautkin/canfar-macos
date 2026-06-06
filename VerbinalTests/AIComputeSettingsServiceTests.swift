@@ -109,5 +109,63 @@ final class AIComputeSettingsServiceTests: XCTestCase {
     func testResolverKeyMatchesServiceKey() {
         XCTAssertEqual(AIComputeImage.imageDefaultsKey, "com.codebg.Verbinal.aiCompute.image")
         XCTAssertEqual(AIComputeImage.builtinImageID, "")
+        XCTAssertEqual(AIComputeImage.coresDefaultsKey, "com.codebg.Verbinal.aiCompute.cores")
+        XCTAssertEqual(AIComputeImage.ramDefaultsKey, "com.codebg.Verbinal.aiCompute.ram")
+    }
+
+    // MARK: - Resources (cores / ram default size)
+
+    @MainActor
+    func testDefaultResourcesAreSmallest() {
+        let d = freshDefaults()
+        let svc = AIComputeSettingsService(userDefaults: d)
+        XCTAssertEqual(svc.settings.cores, 1)
+        XCTAssertEqual(svc.settings.ram, 1)
+        // The resolver the MCP tools use reads the same store, defaulting (1,1).
+        let r = AIComputeImage.resolvedResources(d)
+        XCTAssertEqual(r.cores, 1)
+        XCTAssertEqual(r.ram, 1)
+    }
+
+    @MainActor
+    func testSetResourcesPersistAndResolverReadsThem() {
+        let d = freshDefaults()
+        let svc = AIComputeSettingsService(userDefaults: d)
+        svc.setCores(4)
+        svc.setRam(16)
+        XCTAssertEqual(svc.settings.cores, 4)
+        XCTAssertEqual(svc.settings.ram, 16)
+        XCTAssertFalse(svc.settings.isAllDefaults)
+        let r = AIComputeImage.resolvedResources(d)
+        XCTAssertEqual(r.cores, 4)
+        XCTAssertEqual(r.ram, 16)
+        // Survives a reload (= app relaunch) on the same store.
+        let reloaded = AIComputeSettingsService(userDefaults: d)
+        XCTAssertEqual(reloaded.settings.cores, 4)
+        XCTAssertEqual(reloaded.settings.ram, 16)
+    }
+
+    @MainActor
+    func testSetResourcesClampToOne() {
+        let d = freshDefaults()
+        let svc = AIComputeSettingsService(userDefaults: d)
+        svc.setCores(0)
+        svc.setRam(-5)
+        XCTAssertEqual(svc.settings.cores, 1, "0 cores clamps to the 1-core floor")
+        XCTAssertEqual(svc.settings.ram, 1)
+    }
+
+    @MainActor
+    func testResetClearsResources() throws {
+        let d = freshDefaults()
+        let svc = AIComputeSettingsService(userDefaults: d)
+        svc.setCores(8)
+        svc.setRam(32)
+        try svc.resetToDefaults()
+        XCTAssertEqual(svc.settings.cores, 1)
+        XCTAssertEqual(svc.settings.ram, 1)
+        let r = AIComputeImage.resolvedResources(d)
+        XCTAssertEqual(r.cores, 1)
+        XCTAssertEqual(r.ram, 1)
     }
 }

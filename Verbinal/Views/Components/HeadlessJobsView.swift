@@ -11,6 +11,15 @@ struct HeadlessJobsView: View {
 
     @State private var showDetail = false
 
+    /// Boundary discriminator for the cross-fade. Maps the model's load/empty
+    /// flags onto `DataState`; `.error` is unused here because the error
+    /// `Label` renders separately below the container.
+    private var jobsState: DataState {
+        if model.isLoading && model.jobs.isEmpty { return .loading }
+        if model.jobs.isEmpty { return .empty }
+        return .content
+    }
+
     var body: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 10) {
@@ -48,20 +57,25 @@ struct HeadlessJobsView: View {
                     .accessibilityLabel("Refresh batch jobs")
                 }
 
-                if model.isLoading && model.jobs.isEmpty {
+                // Cross-fade only on the loading/empty/content BOUNDARY —
+                // the 45 s auto-poll keeps the state at `.content` and
+                // mutates the summary counts instantly underneath, no churn.
+                DataStateContainer(state: jobsState) {
                     HStack {
                         Spacer()
                         ProgressView()
                         Spacer()
                     }
                     .padding(.vertical, 8)
-                } else if model.jobs.isEmpty {
+                } empty: {
                     Label("No batch jobs", systemImage: "tray")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                } else {
+                } error: {
+                    EmptyView()
+                } content: {
                     // Summary counts only — clickable to open detail modal
                     Button { showDetail = true } label: {
                         VStack(alignment: .leading, spacing: 6) {

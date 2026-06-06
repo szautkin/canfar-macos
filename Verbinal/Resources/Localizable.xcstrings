@@ -1,216 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Claude Code" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Claude Code"
-          }
-        }
-      }
-    },
-    "Claude Code detected" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Claude Code détecté"
-          }
-        }
-      }
-    },
-    "Claude Code not detected" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Claude Code non détecté"
-          }
-        }
-      }
-    },
-    "Copy Command" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copier la commande"
-          }
-        }
-      }
-    },
-    "Copy JSON Snippet" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copier l'extrait JSON"
-          }
-        }
-      }
-    },
-    "Reveal Config" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Afficher la config"
-          }
-        }
-      }
-    },
-    "Claude Code stores MCP servers in ~/.claude.json, which also holds auth tokens — so Verbinal doesn't edit it directly. Run the pre-filled `claude mcp add` command in a terminal to register the helper user-wide (the safe, official way), or paste the JSON snippet into the top-level mcpServers. Restart Claude Code afterwards." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Claude Code stocke les serveurs MCP dans ~/.claude.json, qui contient aussi des jetons d'authentification — Verbinal ne le modifie donc pas directement. Lancez la commande `claude mcp add` pré-remplie dans un terminal pour enregistrer l'assistant pour tout l'utilisateur (la méthode officielle et sûre), ou collez l'extrait JSON dans le `mcpServers` de premier niveau. Redémarrez Claude Code ensuite."
-          }
-        }
-      }
-    },
-    "Registry host" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hôte du registre"
-          }
-        }
-      }
-    },
-    "Harbor CLI secret" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Secret CLI Harbor"
-          }
-        }
-      }
-    },
-    "Remove Secret" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer le secret"
-          }
-        }
-      }
-    },
-    "Save Secret" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enregistrer le secret"
-          }
-        }
-      }
-    },
-    "Secret saved to Keychain." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Secret enregistré dans le trousseau."
-          }
-        }
-      }
-    },
-    "Reset to Defaults" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réinitialiser"
-          }
-        }
-      }
-    },
-    "Reset AI Remote Compute settings?" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réinitialiser les réglages de calcul distant IA ?"
-          }
-        }
-      }
-    },
-    "Clears the compute image, registry host, username, and stored secret used by the agent run_code tool." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Efface l'image de calcul, l'hôte du registre, le nom d'utilisateur et le secret stocké utilisés par l'outil run_code de l'agent."
-          }
-        }
-      }
-    },
-    "Container registry the credentials below authenticate against, for pulling the AI compute image. Default is the CANFAR Harbor host; other registries (Docker Hub, Quay, GHCR) work too." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Registre de conteneurs contre lequel les identifiants ci-dessous s'authentifient, pour récupérer l'image de calcul IA. Par défaut, l'hôte Harbor de CANFAR ; d'autres registres (Docker Hub, Quay, GHCR) fonctionnent aussi."
-          }
-        }
-      }
-    },
-    "Stored in the macOS Keychain. Used to build the `x-skaha-registry-auth` header so Skaha can pull a private compute image when run_code launches the session. The secret is never read back — set or clear, not view. Click **Test Connection** to verify before launching." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stocké dans le trousseau macOS. Sert à construire l'en-tête `x-skaha-registry-auth` pour que Skaha puisse récupérer une image de calcul privée lorsque run_code lance la session. Le secret n'est jamais relu — définir ou effacer, pas consulter. Cliquez sur **Tester la connexion** pour vérifier avant le lancement."
-          }
-        }
-      }
-    },
-    "AI Remote Compute" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Calcul distant IA"
-          }
-        }
-      }
-    },
-    "Compute image" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Image de calcul"
-          }
-        }
-      }
-    },
-    "e.g. images.canfar.net/project/verbinal-compute:1.0" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "p. ex. images.canfar.net/project/verbinal-compute:1.0"
-          }
-        }
-      }
-    },
-    "Container image launched as a contributed interactive session so the AI agent can run code on the fast interactive pool, skipping the headless batch queue. Must be registered in Harbor for the contributed session type. Leave empty to disable the run_code tool." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Image de conteneur lancée comme session interactive « contributed » afin que l'agent IA puisse exécuter du code sur le pool interactif rapide, en évitant la file d'attente des tâches headless. Doit être enregistrée dans Harbor pour le type de session « contributed ». Laisser vide pour désactiver l'outil run_code."
-          }
-        }
-      }
-    },
     "" : {
       "shouldTranslate" : false
     },
@@ -473,6 +263,16 @@
         }
       }
     },
+    "%@ of %@ tools match “%@”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@ tools match “%3$@”"
+          }
+        }
+      }
+    },
     "%@ packages" : {
       "localizations" : {
         "fr" : {
@@ -571,6 +371,16 @@
         }
       }
     },
+    "%@/%@ — optional; if blank, the description is returned" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@/%2$@ — optional; if blank, the description is returned"
+          }
+        }
+      }
+    },
     "%@c" : {
       "shouldTranslate" : false
     },
@@ -588,6 +398,16 @@
         }
       }
     },
+    "%lld categories" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld catégories"
+          }
+        }
+      }
+    },
     "%lld images cached for %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -595,6 +415,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$lld images en cache pour %2$@"
+          }
+        }
+      }
+    },
+    "%lld overridden" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld remplacés"
+          }
+        }
+      }
+    },
+    "%lld tools" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld outils"
           }
         }
       }
@@ -613,6 +453,7 @@
     "•" : {
       "shouldTranslate" : false
     },
+    "^[%@ tool](inflect: true)" : {},
     "© 2026 Serhii Zautkin" : {
       "localizations" : {
         "fr" : {
@@ -834,6 +675,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Propositions de l'agent"
+          }
+        }
+      }
+    },
+    "AI Guide" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guide IA"
+          }
+        }
+      }
+    },
+    "AI Remote Compute" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calcul distant IA"
           }
         }
       }
@@ -1158,6 +1019,16 @@
         }
       }
     },
+    "Built-in default" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valeur par défaut intégrée"
+          }
+        }
+      }
+    },
     "Bundle created" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1352,6 +1223,46 @@
         }
       }
     },
+    "Claude Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code"
+          }
+        }
+      }
+    },
+    "Claude Code detected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code détecté"
+          }
+        }
+      }
+    },
+    "Claude Code not detected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code non détecté"
+          }
+        }
+      }
+    },
+    "Claude Code stores MCP servers in ~/.claude.json, which also holds auth tokens — so Verbinal doesn't edit it directly. Run the pre-filled `claude mcp add` command in a terminal to register the helper user-wide (the safe, official way), or paste the JSON snippet into the top-level mcpServers. Restart Claude Code afterwards." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code stocke les serveurs MCP dans ~/.claude.json, qui contient aussi des jetons d'authentification — Verbinal ne le modifie donc pas directement. Lancez la commande `claude mcp add` pré-remplie dans un terminal pour enregistrer l'assistant pour tout l'utilisateur (la méthode officielle et sûre), ou collez l'extrait JSON dans le `mcpServers` de premier niveau. Redémarrez Claude Code ensuite."
+          }
+        }
+      }
+    },
     "Claude Desktop and other MCP clients reach Verbinal through the bundled canfar-mcp helper. These checks verify each link in that chain and can repair Claude Desktop's config." : {
       "localizations" : {
         "fr" : {
@@ -1433,6 +1344,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Effacer le filtre"
+          }
+        }
+      }
+    },
+    "Clear Override" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer le remplacement"
+          }
+        }
+      }
+    },
+    "Clears the compute image, registry host, username, and stored secret used by the agent run_code tool." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Efface l'image de calcul, l'hôte du registre, le nom d'utilisateur et le secret stocké utilisés par l'outil run_code de l'agent."
           }
         }
       }
@@ -1564,6 +1495,16 @@
         }
       }
     },
+    "Compute image" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image de calcul"
+          }
+        }
+      }
+    },
     "Confirm" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1640,6 +1581,16 @@
         }
       }
     },
+    "Container image launched as a contributed interactive session so the AI agent can run code on the fast interactive pool, skipping the headless batch queue. Must be registered in Harbor for the contributed session type. Leave empty to disable the run_code tool." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image de conteneur lancée comme session interactive « contributed » afin que l'agent IA puisse exécuter du code sur le pool interactif rapide, en évitant la file d'attente des tâches headless. Doit être enregistrée dans Harbor pour le type de session « contributed ». Laisser vide pour désactiver l'outil run_code."
+          }
+        }
+      }
+    },
     "Container Image URL" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1657,6 +1608,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Image conteneur utilisée comme hôte pour les sondages en mode inspecteur. Doit être lançable en mode sans interface et inclure bash + python3 + curl. Voir docs/inspector-image.md pour les exigences. Un champ vide rétablit l'image par défaut."
+          }
+        }
+      }
+    },
+    "Container registry the credentials below authenticate against, for pulling the AI compute image. Default is the CANFAR Harbor host; other registries (Docker Hub, Quay, GHCR) work too." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registre de conteneurs contre lequel les identifiants ci-dessous s'authentifient, pour récupérer l'image de calcul IA. Par défaut, l'hôte Harbor de CANFAR ; d'autres registres (Docker Hub, Quay, GHCR) fonctionnent aussi."
           }
         }
       }
@@ -1736,6 +1697,16 @@
         }
       }
     },
+    "Copy Command" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier la commande"
+          }
+        }
+      }
+    },
     "Copy Coordinates" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1743,6 +1714,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier les coordonnées"
+          }
+        }
+      }
+    },
+    "Copy JSON Snippet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier l'extrait JSON"
           }
         }
       }
@@ -1945,6 +1926,16 @@
         }
       }
     },
+    "Custom read-only instruction tools you author. The agent sees each as a callable tool in `tools/list` and receives your text when it calls it — no code runs." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outils d'instructions personnalisés en lecture seule que vous créez. L'agent voit chacun comme un outil appelable dans `tools/list` et reçoit votre texte lorsqu'il l'appelle — aucun code n'est exécuté."
+          }
+        }
+      }
+    },
     "Cuts" : {
       "localizations" : {
         "fr" : {
@@ -2125,6 +2116,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suppression de la session"
+          }
+        }
+      }
+    },
+    "Description — what the agent reads in the tool list" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Description — ce que l'agent lit dans la liste des outils"
           }
         }
       }
@@ -2442,6 +2443,16 @@
         }
       }
     },
+    "e.g. Batch Download Strategy" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "p. ex. Stratégie de téléchargement par lots"
+          }
+        }
+      }
+    },
     "e.g. ia5q06010 or ia*" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2449,6 +2460,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ex. ia5q06010 ou ia*"
+          }
+        }
+      }
+    },
+    "e.g. images.canfar.net/project/verbinal-compute:1.0" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "p. ex. images.canfar.net/project/verbinal-compute:1.0"
           }
         }
       }
@@ -2482,6 +2503,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modifier"
+          }
+        }
+      }
+    },
+    "Edit Guide Tool" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier l'outil guide"
           }
         }
       }
@@ -2916,6 +2947,16 @@
         }
       }
     },
+    "Filter tools…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtrer les outils…"
+          }
+        }
+      }
+    },
     "Filter..." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3186,12 +3227,32 @@
         }
       }
     },
+    "Harbor CLI secret" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret CLI Harbor"
+          }
+        }
+      }
+    },
     "Harbor rejected these credentials. Common cause: you entered your CADC password instead of the Harbor CLI secret (copy it from your Harbor user profile)." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Harbor a rejeté ces identifiants. Cause fréquente : vous avez saisi votre mot de passe CADC au lieu du secret CLI Harbor (copiez-le depuis votre profil Harbor)."
+          }
+        }
+      }
+    },
+    "has overrides" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "comporte des remplacements"
           }
         }
       }
@@ -3456,6 +3517,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Instances : %1$lld au total (%2$lld sessions, %3$lld bureau, %4$lld sans tête)"
+          }
+        }
+      }
+    },
+    "Instructions — returned when the agent calls this tool" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instructions — renvoyées lorsque l'agent appelle cet outil"
           }
         }
       }
@@ -4178,6 +4249,16 @@
         }
       }
     },
+    "My Guides" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mes guides"
+          }
+        }
+      }
+    },
     "Name" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4245,6 +4326,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nouveau dossier"
+          }
+        }
+      }
+    },
+    "New Guide" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau guide"
+          }
+        }
+      }
+    },
+    "New Guide Tool" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouvel outil guide"
           }
         }
       }
@@ -4323,6 +4424,16 @@
       }
     },
     "No active sessions" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune session active"
+          }
+        }
+      }
+    },
+    "No Active Sessions" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4491,6 +4602,16 @@
         }
       }
     },
+    "No guides yet. Add one to teach the agent a workflow, a naming convention, or a project rule." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun guide pour l'instant. Ajoutez-en un pour enseigner à l'agent un flux de travail, une convention de nommage ou une règle de projet."
+          }
+        }
+      }
+    },
     "No image selected" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4603,6 +4724,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune requête enregistrée"
+          }
+        }
+      }
+    },
+    "No Tools Yet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun outil pour l'instant"
           }
         }
       }
@@ -4922,6 +5053,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Autres"
+          }
+        }
+      }
+    },
+    "overridden" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "remplacé"
           }
         }
       }
@@ -5411,6 +5552,27 @@
         }
       }
     },
+    "Re-tune how the AI agent sees each tool. Your edits override the built-in description the MCP server advertises — the agent picks them up on its next request. Reset any tool to restore its default." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustez la façon dont l'agent IA perçoit chaque outil. Vos modifications remplacent la description intégrée annoncée par le serveur MCP — l'agent les prend en compte à sa prochaine requête. Réinitialisez un outil pour rétablir sa valeur par défaut."
+          }
+        }
+      }
+    },
+    "Re-tune how the AI agent sees each tool. Your edits override the built-in description the MCP server advertises." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustez la façon dont l'agent IA perçoit chaque outil. Vos modifications remplacent la description intégrée annoncée par le serveur MCP."
+          }
+        }
+      }
+    },
     "Recent" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5537,6 +5699,16 @@
         }
       }
     },
+    "Registry host" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hôte du registre"
+          }
+        }
+      }
+    },
     "Relaunch" : {
       "localizations" : {
         "fr" : {
@@ -5587,6 +5759,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Retirer"
+          }
+        }
+      }
+    },
+    "Remove Secret" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le secret"
+          }
+        }
+      }
+    },
+    "Remove the override and restore the built-in description." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer la dérogation et rétablir la description intégrée."
           }
         }
       }
@@ -5745,6 +5937,36 @@
         }
       }
     },
+    "Reset AI Remote Compute settings?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser les réglages de calcul distant IA ?"
+          }
+        }
+      }
+    },
+    "Reset to Default" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser par défaut"
+          }
+        }
+      }
+    },
+    "Reset to Defaults" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser"
+          }
+        }
+      }
+    },
     "Reset View" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5892,6 +6114,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réessayer"
+          }
+        }
+      }
+    },
+    "Returns %@ characters of instructions" : {},
+    "Reveal Config" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher la config"
           }
         }
       }
@@ -6133,6 +6366,16 @@
         }
       }
     },
+    "Save Secret" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer le secret"
+          }
+        }
+      }
+    },
     "Saved" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6295,6 +6538,26 @@
         }
       }
     },
+    "Secret saved to Keychain." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret enregistré dans le trousseau."
+          }
+        }
+      }
+    },
+    "See Everything" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout afficher"
+          }
+        }
+      }
+    },
     "Select" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6318,6 +6581,7 @@
       }
     },
     "Select a section" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6888,6 +7152,16 @@
         }
       }
     },
+    "Stored in the macOS Keychain. Used to build the `x-skaha-registry-auth` header so Skaha can pull a private compute image when run_code launches the session. The secret is never read back — set or clear, not view. Click **Test Connection** to verify before launching." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stocké dans le trousseau macOS. Sert à construire l'en-tête `x-skaha-registry-auth` pour que Skaha puisse récupérer une image de calcul privée lorsque run_code lance la session. Le secret n'est jamais relu — définir ou effacer, pas consulter. Cliquez sur **Tester la connexion** pour vérifier avant le lancement."
+          }
+        }
+      }
+    },
     "Stretch" : {
       "localizations" : {
         "fr" : {
@@ -7111,6 +7385,17 @@
         }
       }
     },
+    "The agent calls this as " : {},
+    "The agent's tools appear here once they're registered." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les outils de l'agent apparaissent ici une fois enregistrés."
+          }
+        }
+      }
+    },
     "The container for \"%@\" will be killed immediately and any unsaved work inside it will be lost." : {
       "localizations" : {
         "fr" : {
@@ -7196,6 +7481,16 @@
         }
       }
     },
+    "Tiles" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tuiles"
+          }
+        }
+      }
+    },
     "Time Span" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7234,6 +7529,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Essayez de supprimer certaines contraintes."
+          }
+        }
+      }
+    },
+    "Tune the agent's tools" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustez les outils de l'agent"
           }
         }
       }
@@ -7410,6 +7715,16 @@
         }
       }
     },
+    "Use letters, numbers, spaces, or underscores." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez des lettres, des chiffres, des espaces ou des traits de soulignement."
+          }
+        }
+      }
+    },
     "Used" : {
       "localizations" : {
         "fr" : {
@@ -7548,6 +7863,16 @@
         }
       }
     },
+    "View" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affichage"
+          }
+        }
+      }
+    },
     "View astronomical images" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7599,6 +7924,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Voir sur le CADC"
+          }
+        }
+      }
+    },
+    "View:" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affichage :"
           }
         }
       }
@@ -7721,6 +8056,16 @@
         }
       }
     },
+    "Your description" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre description"
+          }
+        }
+      }
+    },
     "Zoom" : {
       "localizations" : {
         "fr" : {
@@ -7760,6 +8105,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réduire"
+          }
+        }
+      }
+    },
+    "Compute Resources" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ressources de calcul"
+          }
+        }
+      }
+    },
+    "These size the run_code compute instance. Small/fast is best for quick checks — the smallest size schedules fastest. The available sizes come from your CANFAR session context; the agent can also pass a size to start_compute to override this default." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces valeurs dimensionnent l'instance de calcul de run_code. Petit/rapide convient mieux aux vérifications rapides — la plus petite taille démarre le plus vite. Les tailles disponibles proviennent du contexte de session CANFAR ; l'agent peut aussi passer une taille à start_compute pour remplacer cette valeur par défaut."
           }
         }
       }

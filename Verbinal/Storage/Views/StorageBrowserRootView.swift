@@ -13,6 +13,16 @@ struct StorageBrowserRootView: View {
     @State private var showDeleteConfirm = false
     @State private var isDragTargeted = false
 
+    /// Boundary discriminator for the loading/error/empty/content cross-fade.
+    /// The `&& nodes.isEmpty` guards mirror the prior branch order so a
+    /// refresh over existing content never flashes the spinner/error pane.
+    private var browserState: DataState {
+        if model.isLoading && model.nodes.isEmpty { return .loading }
+        if model.hasError && model.nodes.isEmpty { return .error }
+        if model.nodes.isEmpty { return .empty }
+        return .content
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Toolbar
@@ -23,13 +33,23 @@ struct StorageBrowserRootView: View {
             breadcrumbBar
             Divider()
 
-            // File list
-            if model.isLoading && model.nodes.isEmpty {
-                Spacer()
+            // File list — cross-fade the loading/error/empty/content
+            // BOUNDARY only. Refreshing an already-populated folder keeps the
+            // state at `.content`, so the list updates instantly with no fade.
+            DataStateContainer(state: browserState) {
                 ProgressView("Loading...")
-                Spacer()
-            } else if model.hasError && model.nodes.isEmpty {
-                Spacer()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } empty: {
+                VStack(spacing: 8) {
+                    Image(systemName: "folder")
+                        .font(.title)
+                        .foregroundStyle(.secondary)
+                    Text("Empty folder")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } error: {
                 VStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.title)
@@ -41,19 +61,8 @@ struct StorageBrowserRootView: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 }
-                Spacer()
-            } else if model.nodes.isEmpty {
-                Spacer()
-                VStack(spacing: 8) {
-                    Image(systemName: "folder")
-                        .font(.title)
-                        .foregroundStyle(.secondary)
-                    Text("Empty folder")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            } else {
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } content: {
                 FileListView(model: model)
             }
 
@@ -74,6 +83,8 @@ struct StorageBrowserRootView: View {
             return true
         }
         .border(isDragTargeted ? Color.accentColor : Color.clear, width: 2)
+        // Fade the drop-target border in/out instead of snapping it.
+        .appAnimation(AppMotion.quick, value: isDragTargeted)
         #endif
         .task {
             await model.loadCurrentFolder()

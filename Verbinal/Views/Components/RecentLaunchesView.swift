@@ -10,6 +10,7 @@ struct RecentLaunchesView: View {
     @Bindable var store: RecentLaunchStore
     var launchModel: SessionLaunchModel?
     var onRelaunched: (() -> Void)?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var filterText = ""
     @State private var showRelaunchProgress = false
 
@@ -23,6 +24,11 @@ struct RecentLaunchesView: View {
         }
     }
 
+    /// Boundary discriminator for the empty↔content cross-fade.
+    private var launchesState: DataState {
+        filteredLaunches.isEmpty ? .empty : .content
+    }
+
     var body: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 10) {
@@ -32,7 +38,10 @@ struct RecentLaunchesView: View {
                     Spacer()
                     if !store.launches.isEmpty {
                         Button("Clear") {
-                            store.clear()
+                            // User-initiated removal — animate the collapse.
+                            withAppAnimation(AppMotion.stateSwap, reduceMotion: reduceMotion) {
+                                store.clear()
+                            }
                         }
                         .font(.caption)
                         .buttonStyle(.borderless)
@@ -45,7 +54,12 @@ struct RecentLaunchesView: View {
                         .font(.caption)
                 }
 
-                if filteredLaunches.isEmpty {
+                // Cross-fade only the empty↔content BOUNDARY. Narrowing a
+                // non-empty list with the filter keeps the state at `.content`,
+                // so the rows re-filter instantly with no per-keystroke churn.
+                DataStateContainer(state: launchesState) {
+                    EmptyView()
+                } empty: {
                     HStack {
                         Spacer()
                         Text(store.launches.isEmpty ? "No recent launches" : "No matches")
@@ -54,7 +68,9 @@ struct RecentLaunchesView: View {
                         Spacer()
                     }
                     .padding(.vertical, 8)
-                } else {
+                } error: {
+                    EmptyView()
+                } content: {
                     ScrollView {
                         VStack(spacing: 8) {
                             ForEach(filteredLaunches) { launch in
@@ -150,7 +166,10 @@ struct RecentLaunchesView: View {
                     Spacer()
 
                     Button("Remove", role: .destructive) {
-                        store.remove(launch)
+                        // User-initiated removal — animate the row out.
+                        withAppAnimation(AppMotion.stateSwap, reduceMotion: reduceMotion) {
+                            store.remove(launch)
+                        }
                     }
                 }
                 .buttonStyle(.borderless)

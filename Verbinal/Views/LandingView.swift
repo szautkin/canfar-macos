@@ -97,6 +97,20 @@ struct LandingView: View {
                 //    catalog — avoids the graveyard-grid UX where every
                 //    unknown addon claims its own dim tile.
                 addonSlot
+
+                #if os(macOS)
+                // AI Guide — inspect/re-tune the MCP tool surface the agent
+                // sees, and author custom instruction tools. macOS-only: the
+                // MCP server (and its tools) exist only on the desktop build.
+                LandingTile(
+                    icon: "wand.and.stars",
+                    fallbackIcon: "sparkles",
+                    title: "AI Guide",
+                    subtitle: "Tune the agent's tools"
+                ) {
+                    appState.navigateTo(.aiGuide)
+                }
+                #endif
             }
 
             if !appState.statusMessage.isEmpty {
@@ -202,6 +216,7 @@ private struct LandingTile: View {
     let action: () -> Void
 
     @State private var isHovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: action) {
@@ -231,7 +246,7 @@ private struct LandingTile: View {
         .accessibilityLabel(Text(title))
         .help(locked ? LocalizedStringKey("Sign in to access this feature") : "")
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) {
                 isHovering = hovering
             }
         }

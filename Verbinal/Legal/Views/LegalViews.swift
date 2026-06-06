@@ -74,6 +74,7 @@ struct LegalDocumentView: View {
 struct LegalAgreementGate: View {
     let service: LegalAgreementService
     @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var agreed = false
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var hSize
@@ -121,7 +122,13 @@ struct LegalAgreementGate: View {
                         .keyboardShortcut("q", modifiers: .command)
                         Spacer()
                         Button(doc.agreeButton) {
-                            service.accept()
+                            // Flip the acceptance flag inside the RM-aware
+                            // screen animation so the gate's `.transition(.appFade)`
+                            // (declared in ContentView) plays on EXIT only. The
+                            // appearance stays instant — it's the launch render.
+                            withAppAnimation(AppMotion.screen, reduceMotion: reduceMotion) {
+                                service.accept()
+                            }
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(!agreed)
@@ -199,7 +206,12 @@ struct LegalAgreementGate: View {
             .toggleStyle(.switch)
 
             Button {
-                service.accept()
+                // Flip inside the RM-aware screen animation so the gate fades
+                // out on EXIT (the `.transition(.appFade)` lives in ContentView);
+                // appearance stays instant since it's the launch render.
+                withAppAnimation(AppMotion.screen, reduceMotion: reduceMotion) {
+                    service.accept()
+                }
             } label: {
                 Text(doc.agreeButton)
                     .frame(maxWidth: .infinity)                     // full-width CTA

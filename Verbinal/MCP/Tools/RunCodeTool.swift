@@ -47,6 +47,20 @@ enum RunCodeContract {
     static let defaultTimeoutSeconds = 60
     static let maxTimeoutSeconds = 900
 
+    /// Resource bounds for the compute instance. The default size is the
+    /// Settings-resolved value (`AIComputeImage.resolvedResources()`);
+    /// these constants are the floor (1) the lazy launch falls back to
+    /// and the ceiling agent-requested sizes are clamped to. Resources
+    /// are an INSTANCE property — set once at `start_compute` (or the
+    /// `run_code` self-launch) and fixed for that instance's lifetime.
+    static let defaultCores = 1
+    static let defaultRam = 1
+    static let maxCores = 64
+    static let maxRam = 256
+
+    static func clampCores(_ value: Int) -> Int { min(max(value, 1), maxCores) }
+    static func clampRam(_ value: Int) -> Int { min(max(value, 1), maxRam) }
+
     /// Sanitize a request id for filesystem use. The 9-character set
     /// `/ : \ ? * < > | "` MUST match the watcher image and Verbinal's
     /// `ImageManifest.sanitize` byte-for-byte, or id-derived filenames
@@ -118,8 +132,17 @@ struct RunCodeTool: JSONWriteTool {
     /// AI-Remote-Compute Settings section writes.
     let resolveImage: @Sendable () -> String
 
-    init(resolveImage: @escaping @Sendable () -> String = { AIComputeImage.resolvedImageID() }) {
+    /// The configured default instance size for the LAZY self-launch
+    /// (when no compute instance is warm). Resources are not a per-call
+    /// `run_code` knob — the agent sizes the instance up-front via
+    /// `start_compute`; `run_code` only consumes whatever default size
+    /// the user picked in Settings ▸ Compute. Injected for testing.
+    let resolveResources: @Sendable () -> (cores: Int, ram: Int)
+
+    init(resolveImage: @escaping @Sendable () -> String = { AIComputeImage.resolvedImageID() },
+         resolveResources: @escaping @Sendable () -> (cores: Int, ram: Int) = { AIComputeImage.resolvedResources() }) {
         self.resolveImage = resolveImage
+        self.resolveResources = resolveResources
     }
 
     struct Args: Decodable, Sendable {
@@ -129,17 +152,22 @@ struct RunCodeTool: JSONWriteTool {
     }
 
     /// Carried to the applier (and the applier alone writes to /arc).
+    /// `cores`/`ram` size the LAZY self-launch only — they're resolved
+    /// from the Settings default here so the applier can launch a warm
+    /// instance at the configured size when none exists yet.
     struct Payload: Codable, Sendable {
         let id: String
         let language: String
         let code: String
         let timeout_seconds: Int
         let image: String
+        let cores: Int
+        let ram: Int
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "run_code",
-        description: "Run a short Python or bash snippet IMMEDIATELY on a warm interactive CANFAR compute session, skipping the headless batch queue (which can sit Pending for hours). Your code is dropped onto the session via the shared /arc filesystem; the running compute image executes it and writes the result back. Returns an `execution_id` — then call `run_code_output` with that id to fetch stdout/stderr/exit_code (poll a few times if still running; the FIRST call may take a minute or two while the session provisions, then subsequent calls are warm). USE FOR: quick checks, REPL-style iteration, inspecting data you just downloaded, sanity-running a snippet before scaling it up. DO NOT USE FOR: long-running, batch, parallel, or multi-hour work, or anything that must survive your disconnection — use `launch_headless_job` for that (queued, durable, poll with get_headless_job_logs). RULE OF THUMB: if you'd wait and watch for the result → run_code; if you'd submit and come back later → launch_headless_job. Requires an AI compute image configured in Settings ▸ Compute; if it is unset this errors and you should fall back to launch_headless_job. Running code is gated like other writes: it runs immediately when auto-apply is on, otherwise it waits for the user to confirm in the proposal strip. Resources are fixed-small (1 core / 1 GB) for fast start; heavier needs belong in a headless job.",
+        description: "Run a short Python or bash snippet IMMEDIATELY on a warm interactive CANFAR compute session, skipping the headless batch queue (which can sit Pending for hours). Your code is dropped onto the session via the shared /arc filesystem; the running compute image executes it and writes the result back. Returns an `execution_id` — then call `run_code_output` with that id to fetch stdout/stderr/exit_code (poll a few times if still running; the FIRST call may take a minute or two while the session provisions, then subsequent calls are warm). USE FOR: quick checks, REPL-style iteration, inspecting data you just downloaded, sanity-running a snippet before scaling it up. DO NOT USE FOR: long-running, batch, parallel, or multi-hour work, or anything that must survive your disconnection — use `launch_headless_job` for that (queued, durable, poll with get_headless_job_logs). RULE OF THUMB: if you'd wait and watch for the result → run_code; if you'd submit and come back later → launch_headless_job. Requires an AI compute image configured in Settings ▸ Compute; if it is unset this errors and you should fall back to launch_headless_job. Running code is gated like other writes: it runs immediately when auto-apply is on, otherwise it waits for the user to confirm in the proposal strip. Resources come from your Settings ▸ Compute default (or whatever size `start_compute` already gave the running instance); to run heavier code, size the instance up with `start_compute` first, or use `launch_headless_job`.",
         schema: #"""
         {
           "type": "object",
@@ -170,6 +198,12 @@ struct RunCodeTool: JSONWriteTool {
         }
         let timeout = min(max(args.timeout_seconds ?? RunCodeContract.defaultTimeoutSeconds, 1),
                           RunCodeContract.maxTimeoutSeconds)
+        // Lazy-launch size: the Settings default, clamped. Not exposed as
+        // a per-call argument — resources are an instance property the
+        // agent sets via `start_compute`.
+        let resolved = resolveResources()
+        let cores = RunCodeContract.clampCores(resolved.cores)
+        let ram = RunCodeContract.clampRam(resolved.ram)
         let id = UUID().uuidString
         let lines = args.code.split(separator: "\n", omittingEmptySubsequences: false).count
         let summary = "Run a \(lines)-line \(language) snippet on the AI compute session (≤\(timeout)s) — " +
@@ -177,7 +211,8 @@ struct RunCodeTool: JSONWriteTool {
         return try ProposalPlan.encoding(
             kind: "run_code",
             summary: summary,
-            payload: Payload(id: id, language: language, code: args.code, timeout_seconds: timeout, image: image)
+            payload: Payload(id: id, language: language, code: args.code, timeout_seconds: timeout,
+                             image: image, cores: cores, ram: ram)
         )
     }
 }
@@ -211,9 +246,15 @@ struct RunCodeApplier: ProposalApplier {
         do {
             try await withApplierTimeout(seconds: 180, label: "run_code") {
                 // 1. Reuse a warm contributed compute session, or launch one.
-                //    (We don't wait for Running — the watcher's boot re-scan
-                //    picks up a request already in the inbox, and the agent
-                //    polls run_code_output until the result lands.)
+                //    We don't wait for Running — once the watcher boots it
+                //    re-scans the inbox and runs anything already dropped, and
+                //    the agent polls run_code_output until the result lands.
+                //    NOTE: the spec's status.json readiness gate (assert
+                //    ready:true + matching resolved_user BEFORE the first PUT) is
+                //    deferred together with the renew timer until the
+                //    contributed-session-stays-Running question (ticket #28) is
+                //    validated; until then a genuine cold start relies on
+                //    ensureTree below + the watcher boot re-scan.
                 let sessions = try await svc.getSessions()
                 let infos = sessions.map {
                     RunCodeContract.SessionInfo(id: $0.id, type: $0.sessionType,
@@ -228,7 +269,7 @@ struct RunCodeApplier: ProposalApplier {
                         type: RunCodeContract.sessionType,
                         name: RunCodeContract.sessionName,
                         image: image,
-                        cores: 1, ram: 1, gpus: 0,
+                        cores: payload.cores, ram: payload.ram, gpus: 0,
                         cmd: nil,
                         registryUsername: creds?.username,
                         registrySecret: creds?.secret
@@ -268,8 +309,10 @@ struct RunCodeApplier: ProposalApplier {
 
     /// Create the coordination tree, one container per call, ignoring
     /// "already exists" (createFolder throws on conflict). Sequential —
-    /// each parent must exist before its child.
-    private static func ensureTree(_ vos: VOSpaceBrowserService, user: String) async {
+    /// each parent must exist before its child. `internal` so
+    /// `StartComputeApplier` (the explicit pre-warm path) shares the
+    /// single source of truth for the /arc inbox tree.
+    static func ensureTree(_ vos: VOSpaceBrowserService, user: String) async {
         try? await vos.createFolder(username: user, parentPath: "", folderName: ".verbinal")
         try? await vos.createFolder(username: user, parentPath: ".verbinal", folderName: "exec")
         try? await vos.createFolder(username: user, parentPath: ".verbinal/exec", folderName: "inbox")
@@ -293,7 +336,7 @@ struct RunCodeOutputTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "run_code_output",
-        description: "Fetch the result of a `run_code` execution by its `execution_id`. Returns `{ ready: true, status, exit_code, stdout, stderr, ... }` once the compute session has finished, or `{ ready: false }` while it is still starting/executing — in that case poll again shortly (the first execution after a cold start can take a minute or two while the session provisions). `status` is the authoritative outcome: \"ok\" (exit 0), \"error\" (non-zero exit or rejected), or \"timeout\". `stdout`/`stderr` are UTF-8 text unless the matching `stdout_encoding`/`stderr_encoding` is \"base64\" (binary output) — decode the base64 yourself in that case. This is a read; it never executes anything.",
+        description: "Check the status of / fetch the result of a `run_code` execution by its `execution_id`. Returns `{ ready: true, status, exit_code, stdout, stderr, ... }` once the compute session has finished, or `{ ready: false }` while it is still starting/executing — in that case poll again shortly (the first execution after a cold start can take a minute or two while the session provisions). `status` is the authoritative outcome: \"ok\" (exit 0), \"error\" (non-zero exit or rejected), or \"timeout\". `stdout`/`stderr` are UTF-8 text unless the matching `stdout_encoding`/`stderr_encoding` is \"base64\" (binary output) — decode the base64 yourself in that case. This is a read; it never executes anything.",
         schema: #"""
         {
           "type": "object",
@@ -325,7 +368,7 @@ struct RunCodeOutputTool: AITool {
         let data = try await fetchOut(RunCodeContract.outPath(id: id), RunCodeContract.maxResultBytes)
         guard let data else {
             return Self.encode(Output(ready: false, execution_id: id,
-                note: "No result yet — the compute session may still be provisioning or executing. Retry run_code_output shortly."))
+                note: "No result yet — the compute session may still be provisioning or executing. Retry run_code_output shortly; if several polls still return nothing, the session may have stopped — call start_compute (or run_code) to (re)launch it."))
         }
         // A present-but-unparseable file means a partial/propagating write
         // (read-after-write lag on /arc) — treat as not-ready, keep polling.

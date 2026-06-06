@@ -21,6 +21,7 @@ enum AppMode: Equatable {
     case research
     case storage
     case fitsViewer
+    case aiGuide
 }
 
 @Observable
@@ -52,6 +53,13 @@ final class AppState {
     /// can be pulled). Sibling of `imageDiscoverySettings`, separate
     /// keyspace/Keychain. Surfaced in Settings ▸ Compute.
     let aiComputeSettings = AIComputeSettingsService()
+
+    /// AI Guide — per-tool description overrides + user-authored instruction
+    /// tools. The overrides re-tune what the MCP server advertises in
+    /// `tools/list`; the guide tools are exposed as read-only callable tools.
+    /// GRDB-backed (v2 schema). Cross-platform store; the MCP wiring that
+    /// consumes its snapshot is macOS-only.
+    let aiGuideService = AIGuideService()
 
     /// Live network connectivity monitor. UI subscribes via `@Bindable` to
     /// surface "network changed; retrying…" hints when in-flight CADC
@@ -242,7 +250,13 @@ final class AppState {
         // is a macOS CLI subprocess with no iOS analogue) — leave the
         // tool table empty on iOS.
         #if os(macOS)
-        agentsService.register(tools: makeAgentTools())
+        let agentTools = makeAgentTools()
+        agentsService.register(tools: agentTools)
+        // The AI Guide validates new guide-tool names against the live tool
+        // table so a user guide can't shadow a built-in tool.
+        aiGuideService.knownToolNames = Set(agentTools.map(\.name))
+        // Re-tune `tools/list`/`tools/call` from the user's AI Guide edits.
+        agentsService.aiGuideResolver = makeAIGuideResolver()
         #endif
 
         // Wire the navigator closure the auto-apply path uses to drive
@@ -297,14 +311,55 @@ final class AppState {
     private(set) var navigationStack: [AppMode] = []
     var canGoBack: Bool { !navigationStack.isEmpty }
 
+    /// Direction of the last mode change, used by the iOS-only directional
+    /// slide transition (forward pushes from the trailing edge, back pulls
+    /// from the leading edge). `navigationStack` is wiped on `navigateBack`,
+    /// so there is no depth to infer direction from — this flag carries it.
+    /// macOS ignores it (the desktop mode swap stays a subtle cross-fade; a
+    /// directional slide of a full dashboard reads heavy there).
+    enum NavDirection { case forward, back }
+    private(set) var navDirection: NavDirection = .forward
+
+    /// iOS dashboard tab selection (Sessions / Launch / Monitor / Account).
+    /// These tabs live *inside* `AuthenticatedRootView` and are NOT `AppMode`
+    /// values, so they need their own selection. Lifted onto AppState so
+    /// agent / deep-link navigation can target a tab programmatically and let
+    /// the NATIVE TabView / NavigationSplitView transition animate it (we do
+    /// not override that animation). macOS does not use this.
+    enum iOSDashboardTab: String, CaseIterable, Identifiable {
+        case sessions, launch, monitor, account
+        var id: String { rawValue }
+    }
+    var iOSDashboardTab: iOSDashboardTab = .sessions
+
+    /// Mirror of `@Environment(\.accessibilityReduceMotion)`, pushed in by
+    /// `ContentView` (the only place that can read the environment) and kept
+    /// in sync via `.onChange`. The navigation methods can run from non-view
+    /// contexts (the agent navigator closure), so they consult this stored
+    /// flag rather than the SwiftUI environment to decide whether the
+    /// mode-switch cross-fade should play or collapse to an instant cut.
+    var reduceMotion = false
+
     func navigateTo(_ mode: AppMode) {
-        navigationStack.append(currentMode)
-        currentMode = mode
+        // Record direction *before* the animated mutation so the iOS
+        // directional-slide transition (keyed on `navDirection`) resolves the
+        // right edge in the same transaction.
+        navDirection = .forward
+        // Drive the mutation through the RM-aware screen cross-fade so the
+        // `.transition(.appScreen)` on `ContentView.mainContent` runs. Under
+        // Reduce Motion `withAppAnimation` nils the animation → instant cut.
+        withAppAnimation(AppMotion.screen, reduceMotion: reduceMotion) {
+            navigationStack.append(currentMode)
+            currentMode = mode
+        }
     }
 
     func navigateBack() {
-        navigationStack.removeAll()
-        currentMode = .landing
+        navDirection = .back
+        withAppAnimation(AppMotion.screen, reduceMotion: reduceMotion) {
+            navigationStack.removeAll()
+            currentMode = .landing
+        }
     }
 
     // Cross-module actions

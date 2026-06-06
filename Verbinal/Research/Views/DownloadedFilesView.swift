@@ -10,6 +10,7 @@ struct DownloadedFilesView: View {
     var model: ResearchModel
     var searchModel: SearchFormModel?
     @Environment(AppState.self) private var appState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var showExportDialog = false
 
@@ -23,6 +24,11 @@ struct DownloadedFilesView: View {
 
     private var isFiltering: Bool {
         !model.filterText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Boundary discriminator for the empty↔content cross-fade.
+    private var downloadsState: DataState {
+        model.filteredObservations.isEmpty ? .empty : .content
     }
 
     /// Binding that honors filter mode (force-expanded) and otherwise persists to AppStorage.
@@ -78,8 +84,12 @@ struct DownloadedFilesView: View {
 
             Divider()
 
-            // File list grouped by collection
-            if model.filteredObservations.isEmpty {
+            // File list grouped by collection — cross-fade only the
+            // empty↔content BOUNDARY. Narrowing the list with the filter
+            // keeps the state at `.content`, so rows re-filter instantly.
+            DataStateContainer(state: downloadsState) {
+                EmptyView()
+            } empty: {
                 VStack(spacing: 8) {
                     Spacer()
                     if model.observationStore.observations.isEmpty {
@@ -103,7 +113,9 @@ struct DownloadedFilesView: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
-            } else {
+            } error: {
+                EmptyView()
+            } content: {
                 List(selection: Binding(
                     get: { model.selectedObservation?.id },
                     set: { newID in
@@ -122,7 +134,12 @@ struct DownloadedFilesView: View {
                                         Button("Reveal in Finder") { model.revealInFinder(obs) }
                                         Divider()
                                         #endif
-                                        Button("Delete", role: .destructive) { model.deleteObservation(obs) }
+                                        Button("Delete", role: .destructive) {
+                                            // User-initiated removal — animate the row out.
+                                            withAppAnimation(AppMotion.stateSwap, reduceMotion: reduceMotion) {
+                                                model.deleteObservation(obs)
+                                            }
+                                        }
                                     }
                             }
                         } label: {
@@ -133,7 +150,7 @@ struct DownloadedFilesView: View {
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 let binding = expandedBinding(for: collection)
-                                withAnimation(.easeInOut(duration: 0.18)) {
+                                withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) {
                                     binding.wrappedValue.toggle()
                                 }
                             }

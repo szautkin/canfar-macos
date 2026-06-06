@@ -26,6 +26,8 @@ struct MetricBarView: View {
             }
             ProgressView(value: min(percent, 100), total: 100)
                 .tint(percent > 90 ? .red : percent > 70 ? .orange : .accentColor)
+                // Ease the bar from old→new on each poll instead of jumping.
+                .appAnimation(AppMotion.quick, value: percent)
         }
     }
 }

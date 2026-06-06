@@ -9,6 +9,7 @@ import SwiftUI
 struct HeadlessJobsDetailSheet: View {
     @Bindable var model: HeadlessMonitorModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var selectedTab = "running"
     @State private var eventsSheetJob: HeadlessJob?
@@ -295,11 +296,14 @@ struct HeadlessJobsDetailSheet: View {
         if model.deletingJobIDs.contains(job.id) {
             // In-flight: pulsing hourglass while the round-trip
             // completes. Replaces the trash entirely so the user
-            // can't double-click during the in-flight window.
+            // can't double-click during the in-flight window. The
+            // repeating pulse is suppressed entirely under Reduce
+            // Motion — a static glyph still conveys the in-flight
+            // state without an endless animation.
             Image(systemName: "hourglass")
                 .font(.callout)
                 .foregroundStyle(.tertiary)
-                .symbolEffect(.pulse, options: .repeating)
+                .symbolEffect(.pulse, options: .repeating, isActive: !reduceMotion)
                 .accessibilityLabel("Delete in progress")
         } else {
             Button(role: .destructive) {

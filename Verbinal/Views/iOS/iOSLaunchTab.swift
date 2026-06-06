@@ -172,12 +172,14 @@ private struct iOSLaunchFormView: View {
                 showLaunchProgress = false
                 onLaunched?()
             }
+            .iosSheetChrome([.medium, .large])
         }
         .sheet(isPresented: $showRelaunchProgress) {
             LaunchProgressSheet(model: model) {
                 showRelaunchProgress = false
                 onLaunched?()
             }
+            .iosSheetChrome([.medium, .large])
         }
         .alert(
             "Replace Recent Launch?",

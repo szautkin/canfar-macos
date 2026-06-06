@@ -113,6 +113,12 @@ extension AppState {
         // Settings ▸ Compute.
         tools.append(RunCodeTool())
         tools.append(makeRunCodeOutputTool(service: vospace))
+        // Explicit lifecycle on top of the lazy `run_code`: pre-warm /
+        // size the instance (`start_compute`) and tear it down
+        // (`stop_compute`). Resources are an instance property set on
+        // start; `run_code` still self-launches at the Settings default.
+        tools.append(StartComputeTool())
+        tools.append(StopComputeTool())
 
         // View-state tools — live-applied, no proposal.
         tools.append(makeOpenFITSFileTool(store: observationStore))
@@ -131,6 +137,50 @@ extension AppState {
                               vospace: vospace)
 
         return tools
+    }
+
+    /// Build the MCP guide resolver from the live `aiGuideService`. The closures
+    /// weak-capture `self` and hop to the main actor to read `@Observable`
+    /// state, so a user editing a description or adding a guide re-tunes a live
+    /// agent session on its next `tools/list` (same idiom as the auto-apply
+    /// hook). macOS-only — this file isn't part of the iOS target.
+    func makeAIGuideResolver() -> AIGuideResolver {
+        // Guide tools take no arguments: one shared empty-object schema.
+        let emptySchema = AIToolDefinition.withStaticSchema(
+            name: "_guide_schema", description: "_",
+            schema: #"{"type":"object","properties":{},"additionalProperties":false}"#
+        ).inputSchema
+
+        return AIGuideResolver(
+            adjustments: { [weak self] in
+                guard let self else { return .none }
+                let snapshot = await MainActor.run { self.aiGuideService.snapshot() }
+                let guideTools = snapshot.guides.map { guide in
+                    AIToolDefinition(name: guide.name, description: guide.description, inputSchema: emptySchema)
+                }
+                return AIGuideResolver.Adjustments(
+                    descriptionOverrides: snapshot.overrides,
+                    guideTools: guideTools
+                )
+            },
+            guideBody: { [weak self] name in
+                guard let self else { return nil }
+                return await MainActor.run { self.aiGuideService.snapshot().guideBody(forName: name) }
+            }
+        )
+    }
+
+    /// Project the live registered tools into AI Guide inputs (name + built-in
+    /// description + category) for the AI Guide screen. Reads the tools the
+    /// router actually exposes, so the screen and the agent always agree.
+    func aiGuideToolInputs() -> [AIGuideToolInput] {
+        agentsService.tools.map { tool in
+            AIGuideToolInput(
+                name: tool.name,
+                defaultDescription: tool.definition.description,
+                category: AIGuideCatalog.categoryID(forTool: tool.name)
+            )
+        }
     }
 
     // MARK: - AI remote compute
@@ -300,6 +350,22 @@ extension AppState {
                     return await self.aiComputeSettings.registryCredentials()
                 },
                 activity: activity),
+            // Explicit pre-warm/sizing — same deps as RunCodeApplier so a
+            // private compute image still pulls at cold-launch.
+            StartComputeApplier(
+                service: sessionService,
+                vospace: vospace,
+                username: { [weak self] in
+                    guard let self else { return "" }
+                    return await self.username
+                },
+                registryAuth: { [weak self] in
+                    guard let self else { return nil }
+                    return await self.aiComputeSettings.registryCredentials()
+                },
+                activity: activity),
+            // Teardown — needs only the session service (delete-by-name).
+            StopComputeApplier(service: sessionService, activity: activity),
             LaunchHeadlessJobApplier(
                 service: headlessService,
                 recentLaunchStore: recentLaunchStore,
@@ -673,6 +739,7 @@ extension AppState {
         case .portal:     return "portal"
         case .storage:    return "storage"
         case .fitsViewer: return "fitsViewer"
+        case .aiGuide:    return "aiGuide"
         }
     }
 
@@ -684,6 +751,7 @@ extension AppState {
         case .portal:     return "Portal"
         case .storage:    return "Storage"
         case .fitsViewer: return "FITS Viewer"
+        case .aiGuide:    return "AI Guide"
         }
     }
 

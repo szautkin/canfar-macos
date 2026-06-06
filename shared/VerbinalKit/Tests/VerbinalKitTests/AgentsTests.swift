@@ -550,6 +550,80 @@ final class MCPBridgeServiceTests: XCTestCase {
         _ = await serveTask.value
     }
 
+    func testAIGuideResolverOverridesDescriptionsAndAddsGuideTools() async throws {
+        let router = AIToolRouter(tools: [EchoReadTool()], auditSink: CapturingAuditSink())
+        let identity = MCPBridgeService.ServerIdentity(name: "Verbinal", version: "1.0.0")
+
+        let guideTool = AIToolDefinition.withStaticSchema(
+            name: "batch_strategy",
+            description: "How this user prefers bulk downloads.",
+            schema: #"{"type":"object","properties":{}}"#
+        )
+        let resolver = AIGuideResolver(
+            adjustments: {
+                AIGuideResolver.Adjustments(
+                    descriptionOverrides: ["echo": "Re-tuned echo description."],
+                    guideTools: [guideTool]
+                )
+            },
+            guideBody: { name in name == "batch_strategy" ? "Step 1: stage. Step 2: pull." : nil }
+        )
+
+        let bridge = MCPBridgeService(
+            router: router, identity: identity,
+            services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8)),
+            approval: .allowAll,
+            aiGuide: resolver
+        )
+
+        let (clientSide, serverSide) = makePair()
+        let serveTask = Task { await bridge.serve(on: serverSide) }
+
+        let initParams = InitializeParams(protocolVersion: "2024-11-05",
+                                          clientInfo: ClientInfo(name: "test", version: "1.0"))
+        try await clientSide.send(makeRPC(method: "initialize", id: .int(1), params: initParams))
+        _ = try await readResponse(from: clientSide)
+
+        // tools/list — override replaces the built-in description; guide appended.
+        try await clientSide.send(makeRPC(method: "tools/list", id: .int(2), params: EmptyArgs()))
+        let listResp = try await readResponse(from: clientSide)
+        let parsed = try JSONDecoder().decode(ListToolsResult.self, from: try XCTUnwrap(listResp.result))
+        XCTAssertEqual(parsed.tools.map(\.name), ["echo", "batch_strategy"])
+        let echo = try XCTUnwrap(parsed.tools.first { $0.name == "echo" })
+        XCTAssertEqual(echo.description, "Re-tuned echo description.",
+                       "override must replace the built-in description in tools/list")
+        let guide = try XCTUnwrap(parsed.tools.first { $0.name == "batch_strategy" })
+        XCTAssertEqual(guide.description, "How this user prefers bulk downloads.")
+
+        // tools/call on the guide tool — returns the stored body, no router dispatch.
+        try await clientSide.send(makeRPC(method: "tools/call", id: .int(3),
+                                          params: CallToolParams(name: "batch_strategy", arguments: nil)))
+        let callResp = try await readResponse(from: clientSide)
+        let callResult = try JSONDecoder().decode(CallToolResult.self, from: try XCTUnwrap(callResp.result))
+        XCTAssertEqual(callResult.isError, false)
+        XCTAssertEqual(callResult.content.count, 1)
+        if case .text(let body) = callResult.content[0] {
+            XCTAssertEqual(body, "Step 1: stage. Step 2: pull.")
+        } else {
+            XCTFail("expected text content for guide call")
+        }
+
+        // tools/call on a real tool still dispatches to the router.
+        try await clientSide.send(makeRPC(method: "tools/call", id: .int(4),
+                                          params: CallToolParams(name: "echo", arguments: .object(["k": .string("v")]))))
+        let echoResp = try await readResponse(from: clientSide)
+        let echoResult = try JSONDecoder().decode(CallToolResult.self, from: try XCTUnwrap(echoResp.result))
+        if case .text(let echoBody) = echoResult.content[0] {
+            XCTAssertTrue(echoBody.contains("\"k\":\"v\""), "got \(echoBody)")
+        } else {
+            XCTFail("expected echoed args")
+        }
+
+        await serverSide.close()
+        await clientSide.close()
+        _ = await serveTask.value
+    }
+
     // MARK: - Helpers
 
     private struct EmptyArgs: Codable {}

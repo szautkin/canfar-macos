@@ -16,13 +16,19 @@ struct iOSTabView: View {
     var storageModel: StorageModel
 
     var body: some View {
-        TabView {
+        // `selection:` is bound to `AppState.iOSDashboardTab` (with a per-tab
+        // `.tag`) so agent / deep-link navigation can switch tabs
+        // programmatically and the NATIVE TabView cross-dissolve animates it.
+        // We deliberately do NOT wrap this in a custom transition — overriding
+        // the UIKit tab animation fights it and double-animates.
+        TabView(selection: Bindable(appState).iOSDashboardTab) {
             NavigationStack {
                 iOSSessionsTab(model: sessionListModel)
             }
             .tabItem {
                 Label("Sessions", systemImage: "rectangle.stack")
             }
+            .tag(AppState.iOSDashboardTab.sessions)
 
             NavigationStack {
                 iOSLaunchTab(
@@ -36,6 +42,7 @@ struct iOSTabView: View {
             .tabItem {
                 Label("Launch", systemImage: "play.circle")
             }
+            .tag(AppState.iOSDashboardTab.launch)
 
             NavigationStack {
                 iOSMonitorTab(
@@ -46,6 +53,7 @@ struct iOSTabView: View {
             .tabItem {
                 Label("Monitor", systemImage: "gauge.with.dots.needle.33percent")
             }
+            .tag(AppState.iOSDashboardTab.monitor)
 
             NavigationStack {
                 iOSAccountTab()
@@ -53,6 +61,7 @@ struct iOSTabView: View {
             .tabItem {
                 Label("Account", systemImage: "person.circle")
             }
+            .tag(AppState.iOSDashboardTab.account)
         }
     }
 }

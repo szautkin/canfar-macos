@@ -76,6 +76,11 @@ final class AgentsService {
     /// may be no UI to drive. Set by AppState during initialize().
     var navigator: (@Sendable (AppMode) async -> Void)?
 
+    /// AI Guide hook the host wires so `tools/list`/`tools/call` reflect the
+    /// user's description overrides + guide tools. Optional (nil in tests / on
+    /// iOS). Set by AppState during initialize(), before the listener starts.
+    var aiGuideResolver: AIGuideResolver?
+
     private(set) var isRunning: Bool = false
     private(set) var connectionCount: Int = 0
     private(set) var lastError: String?
@@ -373,7 +378,8 @@ final class AgentsService {
                 budget: ProposalBudget(),
                 eventLog: eventLog
             ),
-            approval: .allowAll  // P3 minimum: gate is the toggle. P8 adds per-client approval.
+            approval: .allowAll,  // P3 minimum: gate is the toggle. P8 adds per-client approval.
+            aiGuide: aiGuideResolver
         )
 
         // Background poller: refresh the strip's @Observable snapshot

@@ -24,6 +24,13 @@ struct SessionListView: View {
     @State private var actionTitle = ""
     @State private var actionMessage = ""
 
+    /// Boundary discriminator for the empty↔content cross-fade. The header
+    /// spinner covers the loading affordance, so there is no `.loading`
+    /// branch here; the error `Label` renders separately below.
+    private var sessionsState: DataState {
+        (model.sessions.isEmpty && !model.isLoading) ? .empty : .content
+    }
+
     var body: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 12) {
@@ -62,7 +69,12 @@ struct SessionListView: View {
                     .accessibilityLabel("Refresh sessions")
                 }
 
-                if model.sessions.isEmpty && !model.isLoading {
+                // Cross-fade the empty↔content BOUNDARY only. The 15 s
+                // auto-poll keeps the state at `.content` and swaps cards in
+                // place with no animation — never a flickering carousel.
+                DataStateContainer(state: sessionsState) {
+                    EmptyView()
+                } empty: {
                     HStack {
                         Spacer()
                         VStack(spacing: 8) {
@@ -75,7 +87,9 @@ struct SessionListView: View {
                         .padding(.vertical, 20)
                         Spacer()
                     }
-                } else {
+                } error: {
+                    EmptyView()
+                } content: {
                     HStack(alignment: .top, spacing: 12) {
                         ForEach(model.sessions) { session in
                             sessionCard(session)

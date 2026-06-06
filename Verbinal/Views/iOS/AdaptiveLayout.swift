@@ -53,6 +53,27 @@ private enum iPadSection: String, CaseIterable, Identifiable {
         case .account: return "person.circle"
         }
     }
+
+    /// Bridge to the AppState-owned dashboard tab so the iPad sidebar and the
+    /// iPhone TabView share one programmatically-drivable selection (agent /
+    /// deep-link navigation can target either layout).
+    var dashboardTab: AppState.iOSDashboardTab {
+        switch self {
+        case .sessions: return .sessions
+        case .launch: return .launch
+        case .monitor: return .monitor
+        case .account: return .account
+        }
+    }
+
+    init(_ tab: AppState.iOSDashboardTab) {
+        switch tab {
+        case .sessions: self = .sessions
+        case .launch: self = .launch
+        case .monitor: self = .monitor
+        case .account: self = .account
+        }
+    }
 }
 
 // MARK: - iPad Split View
@@ -65,7 +86,17 @@ private struct iPadSplitView: View {
     var platformLoadModel: PlatformLoadModel
     var storageModel: StorageModel
 
-    @State private var selectedSection: iPadSection? = .sessions
+    /// Sidebar selection bridged to the AppState-owned dashboard tab. Backing
+    /// the `List(selection:)` with this (rather than a local `@State`) lets the
+    /// agent / deep-link navigator drive the iPad sidebar the same way it drives
+    /// the iPhone TabView, while the native NavigationSplitView selection
+    /// animation is preserved (we don't override it).
+    private var selectedSection: Binding<iPadSection?> {
+        Binding(
+            get: { iPadSection(appState.iOSDashboardTab) },
+            set: { if let new = $0 { appState.iOSDashboardTab = new.dashboardTab } }
+        )
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -78,7 +109,7 @@ private struct iPadSplitView: View {
     // MARK: - Sidebar
 
     private var sidebar: some View {
-        List(selection: $selectedSection) {
+        List(selection: selectedSection) {
             Section {
                 ForEach(iPadSection.allCases) { section in
                     NavigationLink(value: section) {
@@ -159,7 +190,7 @@ private struct iPadSplitView: View {
 
     @ViewBuilder
     private var detailView: some View {
-        switch selectedSection {
+        switch appState.iOSDashboardTab {
         case .sessions:
             NavigationStack {
                 iPadSessionsDetail(model: sessionListModel)
@@ -185,9 +216,6 @@ private struct iPadSplitView: View {
             NavigationStack {
                 iOSAccountTab()
             }
-        case .none:
-            Text("Select a section")
-                .foregroundStyle(.secondary)
         }
     }
 }
@@ -255,6 +283,7 @@ private struct iPadSessionsDetail: View {
                 logs: logsText,
                 isLoading: isLoadingEvents
             )
+            .iosSheetChrome()
         }
     }
 

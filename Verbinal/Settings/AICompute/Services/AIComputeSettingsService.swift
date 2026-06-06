@@ -26,6 +26,8 @@ final class AIComputeSettingsService {
     private static let keyRegistryHost = "com.codebg.Verbinal.aiCompute.registryHost"
     private static let keyUsername     = "com.codebg.Verbinal.aiCompute.username"
     private static let keyImage        = "com.codebg.Verbinal.aiCompute.image"
+    private static let keyCores        = "com.codebg.Verbinal.aiCompute.cores"
+    private static let keyRam          = "com.codebg.Verbinal.aiCompute.ram"
     private nonisolated static let keychainServiceID = "com.codebg.Verbinal.aiCompute"
 
     private let userDefaults: UserDefaults
@@ -44,6 +46,14 @@ final class AIComputeSettingsService {
         }
         if let img = userDefaults.string(forKey: Self.keyImage), !img.isEmpty {
             loaded.image = img
+        }
+        // `object(forKey:)` so an explicitly-saved 1 isn't confused with
+        // "never set" (which `integer(forKey:)` also reports as 0).
+        if let cores = userDefaults.object(forKey: Self.keyCores) as? Int, cores >= 1 {
+            loaded.cores = cores
+        }
+        if let ram = userDefaults.object(forKey: Self.keyRam) as? Int, ram >= 1 {
+            loaded.ram = ram
         }
         loaded.hasSecret = ((try? Self.readSecret(
             host: loaded.registryHost, username: loaded.username)) ?? nil) != nil
@@ -82,6 +92,26 @@ final class AIComputeSettingsService {
         settings.image = trimmed
     }
 
+    /// Set the default core count for the compute instance. Clamped to
+    /// >= 1 (a 0-core request is the shared/flexible pool, which the
+    /// compute watcher isn't sized for). Persisted to the same key the
+    /// non-isolated `AIComputeImage.resolvedResources()` reads.
+    func setCores(_ value: Int) {
+        let clamped = max(1, value)
+        guard clamped != settings.cores else { return }
+        userDefaults.set(clamped, forKey: Self.keyCores)
+        settings.cores = clamped
+    }
+
+    /// Set the default RAM (GB) for the compute instance. Same >= 1
+    /// clamp + shared-key contract as `setCores`.
+    func setRam(_ value: Int) {
+        let clamped = max(1, value)
+        guard clamped != settings.ram else { return }
+        userDefaults.set(clamped, forKey: Self.keyRam)
+        settings.ram = clamped
+    }
+
     func setSecret(_ value: String) throws {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { try clearSecret(); return }
@@ -105,6 +135,8 @@ final class AIComputeSettingsService {
         userDefaults.removeObject(forKey: Self.keyRegistryHost)
         userDefaults.removeObject(forKey: Self.keyUsername)
         userDefaults.removeObject(forKey: Self.keyImage)
+        userDefaults.removeObject(forKey: Self.keyCores)
+        userDefaults.removeObject(forKey: Self.keyRam)
         settings = AIComputeSettings()
     }
 

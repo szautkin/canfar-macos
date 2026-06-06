@@ -144,6 +144,13 @@ extension ContentView {
             Text(title)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                // The chrome persists across the mode cross-fade (it lives
+                // above the transitioning body); only this title changes when
+                // switching among same-structure mode toolbars (Search →
+                // Research → Storage → …), so cross-fade it in place rather
+                // than hard-swapping. RM-aware via `.appAnimation`.
+                .contentTransition(.opacity)
+                .appAnimation(AppMotion.quick, value: title)
 
             Spacer()
 
@@ -178,22 +185,40 @@ extension ContentView {
     @ViewBuilder
     private var agentProposalsToolbarItem: some View {
         if appState.agentsService.isEnabled {
+            let count = appState.agentsService.pendingProposals.count
             Button {
                 appState.activeSheet = .agentProposals
             } label: {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "wand.and.rays")
-                    let count = appState.agentsService.pendingProposals.count
+                        // One-shot bounce when the count arrives/changes — the
+                        // app's "an agent did something" heartbeat. `value:`
+                        // fires it exactly once per change (never repeating).
+                        // RM nils the value (no glyph motion) but keeps a static
+                        // wand.
+                        .symbolEffect(.bounce, value: reduceMotion ? 0 : count)
                     if count > 0 {
                         Text("\(count)")
                             .font(.system(size: 9, weight: .bold))
+                            // Tween the digits instead of a hard swap.
+                            .contentTransition(.numericText())
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
                             .background(Color.red, in: Capsule())
                             .foregroundStyle(.white)
                             .offset(x: 8, y: -6)
+                            // Scale+fade the badge in/out. RM collapses to a
+                            // plain cross-fade via `.appFade`.
+                            .transition(
+                                reduceMotion
+                                    ? .appFade
+                                    : .scale.combined(with: .opacity)
+                            )
                     }
                 }
+                // Drive the count/badge changes through the RM-aware quick
+                // settle so the numericText tween + insert/remove animate.
+                .appAnimation(AppMotion.quick, value: count)
             }
             .buttonStyle(.borderless)
             .accessibilityLabel("Agent proposals")

@@ -9,24 +9,55 @@ import SwiftUI
 struct StorageQuotaView: View {
     @Bindable var model: StorageModel
 
+    /// Boundary discriminator: spinner while loading, the quota readout once
+    /// data lands. A poll refresh keeps the state at `.content` (the bar eases
+    /// to its new value instead — see `.appAnimation` below).
+    private var quotaState: DataState {
+        if model.isLoading { return .loading }
+        if model.hasData { return .content }
+        return .empty
+    }
+
     var body: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Storage", systemImage: "internaldrive")
                     .font(.headline)
 
-                if model.isLoading {
+                DataStateContainer(state: quotaState) {
                     HStack {
                         Spacer()
                         ProgressView()
                         Spacer()
                     }
                     .padding(.vertical, 8)
-                } else if model.hasData {
-                    ProgressView(value: min(model.usagePercent, 100), total: 100)
-                        .tint(model.isWarning ? .red : .accentColor)
+                } empty: {
+                    EmptyView()
+                } error: {
+                    EmptyView()
+                } content: {
+                    quotaReadout
+                }
 
-                    HStack {
+                if model.hasError {
+                    Label(model.errorMessage, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+
+    /// The usage bar + Used/Usage/Quota figures, shown once `hasData`.
+    @ViewBuilder
+    private var quotaReadout: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ProgressView(value: min(model.usagePercent, 100), total: 100)
+                .tint(model.isWarning ? .red : .accentColor)
+                // Ease the bar from old→new on each poll instead of jumping.
+                .appAnimation(AppMotion.quick, value: model.usagePercent)
+
+            HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Used")
                                 .font(.caption2)
@@ -60,18 +91,10 @@ struct StorageQuotaView: View {
                         }
                     }
 
-                    if model.isWarning {
-                        Label("Storage nearly full!", systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                if model.hasError {
-                    Label(model.errorMessage, systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
+            if model.isWarning {
+                Label("Storage nearly full!", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.red)
             }
         }
     }

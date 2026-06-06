@@ -33,10 +33,17 @@ struct ProposalStripSheet: View {
             header
             tabPicker
             Divider()
-            switch selectedTab {
-            case .pending: content
-            case .history: historyContent
+            // Cross-fade Pending↔History on the tab BOUNDARY. Inner list
+            // churn (a proposal applied/rejected) keeps `selectedTab` fixed,
+            // so the row removal rides its own List default, not this fade.
+            Group {
+                switch selectedTab {
+                case .pending: content
+                case .history: historyContent
+                }
             }
+            .transition(.appFade)
+            .appAnimation(AppMotion.stateSwap, value: selectedTab)
             Divider()
             footer
         }
