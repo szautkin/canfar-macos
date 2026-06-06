@@ -14,6 +14,9 @@ import VerbinalKit
 struct MCPIntegrationSettingsTab: View {
     @Environment(AppState.self) private var appState
     @State private var model: MCPDiagnosticsModel?
+    /// Show/hide the AI Guide launchpad tile (OFF by default). Shared key with
+    /// `LandingView`, so flipping it here re-renders the tile immediately.
+    @AppStorage(AIGuidePreferences.showLandingTileKey) private var showAIGuideTile = false
 
     private var agents: AgentsService { appState.agentsService }
     private var settings: MCPIntegrationSettingsService { appState.mcpIntegrationSettings }
@@ -21,6 +24,7 @@ struct MCPIntegrationSettingsTab: View {
     var body: some View {
         Form {
             statusSection
+            aiGuideSection
             diagnosticsSection
             selfTestSection
             configSection
@@ -42,23 +46,30 @@ struct MCPIntegrationSettingsTab: View {
         }
     }
 
+    private var aiGuideSection: some View {
+        Section {
+            Toggle("Show AI Guide on the launchpad", isOn: $showAIGuideTile)
+        } header: {
+            Text("AI Guide")
+        } footer: {
+            Text("The AI Guide tile on the home screen lets you re-tune the descriptions the MCP server advertises for each tool and author your own read-only instruction tools. Hiding the tile only removes the shortcut — your saved overrides and guide tools stay active.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var statusSection: some View {
         Section {
-            HStack(spacing: 8) {
-                Image(systemName: agents.isRunning ? "checkmark.circle.fill" : "moon.zzz.fill")
-                    .foregroundStyle(agents.isRunning ? Color.green : Color.secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(agents.isRunning ? "MCP server listening" : "MCP server stopped")
-                        .font(.callout)
-                    if let path = agents.socketPath {
-                        Text(path)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(.secondary)
-                            .truncationMode(.middle)
-                            .lineLimit(1)
-                    }
-                }
-                Spacer()
+            HStack {
+                // One authoritative status, shared with the AI Agent tab.
+                // The compact form points back there for the controls so
+                // the two tabs can't drift in wording.
+                MCPServerStatusRow(
+                    isRunning: agents.isRunning,
+                    socketPath: agents.socketPath,
+                    lastError: agents.lastError,
+                    compact: true
+                )
                 Button("Re-check") { model?.runAll() }
                     .controlSize(.small)
             }
@@ -67,7 +78,7 @@ struct MCPIntegrationSettingsTab: View {
         } footer: {
             Text("Claude Desktop and other MCP clients reach Verbinal through the bundled canfar-mcp helper. These checks verify each link in that chain and can repair Claude Desktop's config.")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -108,7 +119,7 @@ struct MCPIntegrationSettingsTab: View {
         } footer: {
             Text("Launches the bundled canfar-mcp exactly as Claude Desktop would and confirms it can initialize. Requires the server to be running. If the helper can't initialize its sandbox container, this is where you'll see it.")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -141,7 +152,7 @@ struct MCPIntegrationSettingsTab: View {
         } footer: {
             Text("“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the \(MCPIntegrationSettingsService.serverKey) entry at this app's helper. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating.")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -150,6 +161,7 @@ struct MCPIntegrationSettingsTab: View {
             HStack(spacing: 8) {
                 Image(systemName: settings.isClaudeCodeDetected() ? "checkmark.circle.fill" : "questionmark.circle")
                     .foregroundStyle(settings.isClaudeCodeDetected() ? Color.green : Color.secondary)
+                    .accessibilityLabel(settings.isClaudeCodeDetected() ? "Claude Code detected" : "Claude Code not detected")
                 Text(settings.isClaudeCodeDetected() ? "Claude Code detected" : "Claude Code not detected")
                     .font(.callout)
                 Spacer()
@@ -173,7 +185,7 @@ struct MCPIntegrationSettingsTab: View {
         } footer: {
             Text("Claude Code stores MCP servers in ~/.claude.json, which also holds auth tokens — so Verbinal doesn't edit it directly. Run the pre-filled `claude mcp add` command in a terminal to register the helper user-wide (the safe, official way), or paste the JSON snippet into the top-level mcpServers. Restart Claude Code afterwards.")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
         }
     }
 }

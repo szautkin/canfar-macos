@@ -49,13 +49,31 @@ struct ImageDiscoverySettingsTab: View {
 
     var body: some View {
         Form {
-            registrySection
-            credentialsSection
+            // Shared registry + credentials UI (see RegistryCredentialsSection).
+            // Only the UI is shared — this tab keeps its own service and its
+            // own SEPARATE Keychain keystore.
+            RegistryCredentialsSection(
+                registryHost: $registryHost,
+                username: $username,
+                secret: $secret,
+                saveError: $saveError,
+                saveSuccess: $saveSuccess,
+                isTestingCredentials: $isTestingCredentials,
+                testResult: $testResult,
+                savedRegistryHost: service.settings.registryHost,
+                savedUsername: service.settings.username,
+                hasSecret: service.settings.hasSecret,
+                onSaveRegistryHost: saveRegistryHost,
+                onSaveUsername: saveUsername,
+                onSaveSecret: saveSecret,
+                onClearSecret: clearSecret,
+                onTestConnection: testCredentials
+            )
             inspectorSection
+            cacheSection
             footerSection
         }
         .formStyle(.grouped)
-        .padding()
         .onAppear { hydrateFromService() }
         .alert("Reset Image Discovery settings?", isPresented: $resetConfirmShown) {
             Button("Reset", role: .destructive) { resetAll() }
@@ -67,150 +85,27 @@ struct ImageDiscoverySettingsTab: View {
 
     // MARK: - Sections
 
-    private var registrySection: some View {
-        Section {
-            HStack {
-                TextField("Registry host", text: $registryHost, prompt: Text("images.canfar.net"))
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .onSubmit { saveRegistryHost() }
-                Button("Save") { saveRegistryHost() }
-                    .controlSize(.small)
-                    .disabled(registryHost == service.settings.registryHost)
-            }
-        } header: {
-            Text("Registry")
-        } footer: {
-            Text("Container registry the credentials below authenticate against. Default is the CANFAR Harbor host. Other registries (Docker Hub, Quay, GHCR) work too — set the host to match the inspector image's prefix.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var credentialsSection: some View {
-        Section {
-            HStack {
-                TextField("Username", text: $username, prompt: Text("CADC username"))
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .onSubmit { saveUsername() }
-                Button("Save") { saveUsername() }
-                    .controlSize(.small)
-                    .disabled(username == service.settings.username)
-            }
-
-            SecureField("Secret", text: $secret, prompt: Text(service.settings.hasSecret ? "•••••••• (set)" : "Harbor CLI secret"))
-                .textFieldStyle(.roundedBorder)
-
-            HStack {
-                Spacer()
-                if service.settings.hasSecret {
-                    Button("Remove Secret", role: .destructive) {
-                        clearSecret()
-                    }
-                    .controlSize(.small)
-                }
-                Button("Save Secret") {
-                    saveSecret()
-                }
-                .controlSize(.small)
-                .disabled(secret.isEmpty || username.isEmpty)
-                Button(action: testCredentials) {
-                    if isTestingCredentials {
-                        HStack(spacing: 4) {
-                            ProgressView().controlSize(.mini).scaleEffect(0.7)
-                            Text("Testing…")
-                        }
-                    } else {
-                        Text("Test Connection")
-                    }
-                }
-                .controlSize(.small)
-                .disabled(isTestingCredentials
-                          || registryHost.trimmingCharacters(in: .whitespaces).isEmpty
-                          || username.trimmingCharacters(in: .whitespaces).isEmpty
-                          || !service.settings.hasSecret)
-                .help("Verify the stored credentials by performing the Docker Registry V2 token-auth flow against the configured host.")
-            }
-
-            if let saveError {
-                Label(saveError, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            } else if saveSuccess {
-                Label("Secret saved to Keychain.", systemImage: "checkmark.seal")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            }
-
-            if let testResult {
-                testResultLabel(testResult)
-            }
-        } header: {
-            Text("Credentials")
-        } footer: {
-            Text("Stored in the macOS Keychain. Used to build the `x-skaha-registry-auth` header on probe jobs so Skaha can pull from private namespaces (canucs/, project-specific cadc/, …). The secret itself is never read back into this dialog — set or clear, not view. Click **Test Connection** to verify the credentials reach Harbor before submitting a probe job.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    /// Render a result row matching the case. Icon + colour
-    /// communicate at a glance; the message text gives the
-    /// reason. `textSelection(.enabled)` so the user can paste
-    /// the error into a bug report.
+    /// Image Discovery package-manifest cache. Moved here from the AI
+    /// Agent tab (it's a Discovery control). Shown only when the agent
+    /// server is running and a discovery coordinator is alive — the
+    /// same `isRunning` gating it had on the AI Agent tab, since probe
+    /// jobs only run while the server is up.
     @ViewBuilder
-    private func testResultLabel(_ result: ImageDiscoverySettingsService.RegistryTestResult) -> some View {
-        switch result {
-        case .success(let message):
-            Label {
-                Text(message)
-                    .textSelection(.enabled)
-            } icon: {
-                Image(systemName: "checkmark.seal.fill")
+    private var cacheSection: some View {
+        if appState.agentsService.isRunning, let coord = appState.imageDiscoveryCoordinator {
+            Section {
+                ImageDiscoveryCacheRow(coordinator: coord)
+            } header: {
+                Text("Image Discovery Cache")
+            } footer: {
+                Text("Per-image package manifests learned by running " +
+                     "small probe jobs inside Skaha containers. Stored at " +
+                     "Application Support/Verbinal/ImageDiscovery/manifests/. " +
+                     "Clearing wipes the local cache; in-flight probes will " +
+                     "repopulate when they complete.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-            .font(.caption)
-            .foregroundStyle(.green)
-
-        case .unauthorized:
-            Label {
-                Text("Harbor rejected these credentials. Common cause: you entered your CADC password instead of the Harbor CLI secret (copy it from your Harbor user profile).")
-                    .textSelection(.enabled)
-            } icon: {
-                Image(systemName: "xmark.octagon.fill")
-            }
-            .font(.caption)
-            .foregroundStyle(.red)
-
-        case .missingConfiguration(let reason):
-            Label {
-                Text(reason)
-                    .textSelection(.enabled)
-            } icon: {
-                Image(systemName: "exclamationmark.triangle.fill")
-            }
-            .font(.caption)
-            .foregroundStyle(.orange)
-
-        case .invalidChallenge(let message):
-            Label {
-                Text("Registry didn't return a recognisable auth challenge: \(message)")
-                    .textSelection(.enabled)
-            } icon: {
-                Image(systemName: "questionmark.diamond.fill")
-            }
-            .font(.caption)
-            .foregroundStyle(.orange)
-
-        case .networkError(let message):
-            Label {
-                Text("Couldn't reach the registry: \(message)")
-                    .textSelection(.enabled)
-            } icon: {
-                Image(systemName: "wifi.exclamationmark")
-            }
-            .font(.caption)
-            .foregroundStyle(.red)
         }
     }
 
@@ -337,6 +232,57 @@ struct ImageDiscoverySettingsTab: View {
             saveSuccess = false
         } catch {
             saveError = error.localizedDescription
+        }
+    }
+}
+
+/// Live cache count + a destructive Clear button for the Image
+/// Discovery manifest cache. Moved here from the AI Agent tab (QW5) so
+/// all Discovery controls live together. Loading state surfaces on the
+/// initial fetch of `cacheCount()` so the user doesn't see "0 entries"
+/// while the actor is hydrating.
+fileprivate struct ImageDiscoveryCacheRow: View {
+    let coordinator: ImageDiscoveryCoordinator
+    @State private var count: Int? = nil
+    @State private var clearing: Bool = false
+
+    var body: some View {
+        HStack {
+            Label(label, systemImage: "shippingbox")
+                .font(.callout)
+            Spacer()
+            Button("Clear", role: .destructive) {
+                // Explicitly hop back to the main actor after each
+                // await on the non-MainActor coordinator. Under
+                // Swift 5.9 + SwiftUI the enclosing Task already
+                // inherits MainActor isolation, so this is a no-op
+                // today — but making it explicit documents the
+                // contract and keeps the @State writes correct if
+                // this closure is ever refactored out of the View
+                // or the project enables Swift 6 strict concurrency.
+                Task { @MainActor in
+                    clearing = true
+                    try? await coordinator.clearCache()
+                    count = await coordinator.cacheCount()
+                    clearing = false
+                }
+            }
+            .controlSize(.small)
+            .help("Drop every cached image manifest; in-flight probes keep running")
+            .disabled(clearing || (count ?? 0) == 0)
+        }
+        .task { @MainActor in
+            if count == nil {
+                count = await coordinator.cacheCount()
+            }
+        }
+    }
+
+    private var label: String {
+        switch count {
+        case nil: return "Loading…"
+        case .some(let n) where n == 1: return "1 entry"
+        case .some(let n): return "\(n) entries"
         }
     }
 }

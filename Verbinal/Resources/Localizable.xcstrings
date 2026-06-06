@@ -453,7 +453,9 @@
     "•" : {
       "shouldTranslate" : false
     },
-    "^[%@ tool](inflect: true)" : {},
+    "^[%@ tool](inflect: true)" : {
+
+    },
     "© 2026 Serhii Zautkin" : {
       "localizations" : {
         "fr" : {
@@ -675,6 +677,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Propositions de l'agent"
+          }
+        }
+      }
+    },
+    "AI Agent" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent IA"
+          }
+        }
+      }
+    },
+    "AI Compute" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calcul IA"
           }
         }
       }
@@ -1505,6 +1527,16 @@
         }
       }
     },
+    "Compute Resources" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ressources de calcul"
+          }
+        }
+      }
+    },
     "Confirm" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1613,6 +1645,7 @@
       }
     },
     "Container registry the credentials below authenticate against, for pulling the AI compute image. Default is the CANFAR Harbor host; other registries (Docker Hub, Quay, GHCR) work too." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1622,7 +1655,11 @@
         }
       }
     },
+    "Container registry the credentials below authenticate against. Default is the CANFAR Harbor host. Other registries (Docker Hub, Quay, GHCR) work too — set the host to match the image's prefix." : {
+
+    },
     "Container registry the credentials below authenticate against. Default is the CANFAR Harbor host. Other registries (Docker Hub, Quay, GHCR) work too — set the host to match the inspector image's prefix." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3412,6 +3449,16 @@
         }
       }
     },
+    "Image Discovery" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découverte d'images"
+          }
+        }
+      }
+    },
     "Image Discovery Cache" : {
       "localizations" : {
         "fr" : {
@@ -4172,6 +4219,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Max"
+          }
+        }
+      }
+    },
+    "MCP Clients" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clients MCP"
           }
         }
       }
@@ -6118,7 +6175,9 @@
         }
       }
     },
-    "Returns %@ characters of instructions" : {},
+    "Returns %@ characters of instructions" : {
+
+    },
     "Reveal Config" : {
       "localizations" : {
         "fr" : {
@@ -6817,6 +6876,16 @@
         }
       }
     },
+    "Show AI Guide on the launchpad" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le Guide IA sur l'écran d'accueil"
+          }
+        }
+      }
+    },
     "Show image A" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7143,6 +7212,7 @@
       }
     },
     "Stored in the macOS Keychain. Used to build the `x-skaha-registry-auth` header on probe jobs so Skaha can pull from private namespaces (canucs/, project-specific cadc/, …). The secret itself is never read back into this dialog — set or clear, not view. Click **Test Connection** to verify the credentials reach Harbor before submitting a probe job." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7153,6 +7223,7 @@
       }
     },
     "Stored in the macOS Keychain. Used to build the `x-skaha-registry-auth` header so Skaha can pull a private compute image when run_code launches the session. The secret is never read back — set or clear, not view. Click **Test Connection** to verify before launching." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7161,6 +7232,9 @@
           }
         }
       }
+    },
+    "Stored in the macOS Keychain. Used to build the `x-skaha-registry-auth` header so Skaha can pull from private namespaces. The secret itself is never read back into this dialog — set or clear, not view. Click **Test Connection** to verify the credentials reach the registry first." : {
+
     },
     "Stretch" : {
       "localizations" : {
@@ -7385,13 +7459,25 @@
         }
       }
     },
-    "The agent calls this as " : {},
+    "The agent calls this as " : {
+
+    },
     "The agent's tools appear here once they're registered." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Les outils de l'agent apparaissent ici une fois enregistrés."
+          }
+        }
+      }
+    },
+    "The AI Guide tile on the home screen lets you re-tune the descriptions the MCP server advertises for each tool and author your own read-only instruction tools. Hiding the tile only removes the shortcut — your saved overrides and guide tools stay active." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tuile Guide IA de l'écran d'accueil vous permet d'ajuster les descriptions que le serveur MCP annonce pour chaque outil et de créer vos propres outils d'instructions en lecture seule. Masquer la tuile ne supprime que le raccourci — vos remplacements enregistrés et vos outils guides restent actifs."
           }
         }
       }
@@ -7413,6 +7499,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ces choix sont appliqués automatiquement à l'ouverture de l'onglet Portail. Ils sont enregistrés par utilisateur sous Application Support."
+          }
+        }
+      }
+    },
+    "These size the run_code compute instance. Small/fast is best for quick checks — the smallest size schedules fastest. The available sizes come from your CANFAR session context; the agent can also pass a size to start_compute to override this default." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces valeurs dimensionnent l'instance de calcul de run_code. Petit/rapide convient mieux aux vérifications rapides — la plus petite taille démarre le plus vite. Les tailles disponibles proviennent du contexte de session CANFAR ; l'agent peut aussi passer une taille à start_compute pour remplacer cette valeur par défaut."
           }
         }
       }
@@ -8105,26 +8201,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réduire"
-          }
-        }
-      }
-    },
-    "Compute Resources" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ressources de calcul"
-          }
-        }
-      }
-    },
-    "These size the run_code compute instance. Small/fast is best for quick checks — the smallest size schedules fastest. The available sizes come from your CANFAR session context; the agent can also pass a size to start_compute to override this default." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ces valeurs dimensionnent l'instance de calcul de run_code. Petit/rapide convient mieux aux vérifications rapides — la plus petite taille démarre le plus vite. Les tailles disponibles proviennent du contexte de session CANFAR ; l'agent peut aussi passer une taille à start_compute pour remplacer cette valeur par défaut."
           }
         }
       }

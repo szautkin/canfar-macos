@@ -144,3 +144,13 @@ enum AIGuideCatalog {
         categoryByTool[name] ?? other.id
     }
 }
+
+/// AI Guide user preferences stored in `UserDefaults`. Defined here so the
+/// landing tile and the Settings ▸ MCP toggle share one key (no drift).
+enum AIGuidePreferences {
+    /// Whether the AI Guide tile shows on the landing launchpad. OFF by default —
+    /// the tile is hidden until the user enables it in Settings ▸ MCP Clients.
+    /// Showing/hiding it only toggles the launchpad shortcut — saved description
+    /// overrides and guide tools stay active in the MCP server regardless.
+    static let showLandingTileKey = "verbinal.aiGuide.showLandingTile"
+}

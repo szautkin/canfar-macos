@@ -23,26 +23,33 @@ struct SettingsView: View {
                 .environment(appState)
                 .tabItem { Label("Portal", systemImage: "play.circle") }
 
-            ImageDiscoverySettingsTab()
-                .environment(appState)
-                .tabItem { Label("Discovery", systemImage: "shippingbox.and.arrow.backward") }
-
+            // Master switch first, then the features that depend on it
+            // (Image Discovery probe jobs, AI Compute), then the
+            // external-client setup that talks to the server.
             AgentsSettingsTab()
                 .environment(appState)
-                .tabItem { Label("Agents", systemImage: "wand.and.rays") }
+                .tabItem { Label("AI Agent", systemImage: "wand.and.rays") }
+
+            ImageDiscoverySettingsTab()
+                .environment(appState)
+                .tabItem { Label("Image Discovery", systemImage: "shippingbox.and.arrow.backward") }
 
             AIComputeSettingsTab()
                 .environment(appState)
-                .tabItem { Label("Compute", systemImage: "cpu") }
+                .tabItem { Label("AI Compute", systemImage: "cpu") }
 
             MCPIntegrationSettingsTab()
                 .environment(appState)
-                .tabItem { Label("MCP", systemImage: "network") }
+                .tabItem { Label("MCP Clients", systemImage: "network") }
 
             AboutSettingsTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
-        .frame(width: 520, height: 420)
+        // Resizable instead of a fixed 420 height: the AI Agent tab can
+        // stack the autonomy controls + a ~160pt nested activity
+        // ScrollView, which a hard 420 traps. A sensible minimum keeps
+        // the modal from collapsing.
+        .frame(minWidth: 520, idealWidth: 520, minHeight: 420, idealHeight: 520)
     }
 }
 
@@ -99,12 +106,11 @@ private struct GeneralSettingsTab: View {
                 Text("Language")
             } footer: {
                 Text("macOS applies app-language overrides at launch. Changing this setting writes the preference; the next launch picks it up.")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
-        .padding()
     }
 }
 
@@ -176,7 +182,7 @@ private struct PortalSettingsTab: View {
                 Text("These selections are automatically applied whenever you open the Portal tab. " +
                      "They are stored per-user under Application Support.")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
 
             if cache != nil, !appState.username.isEmpty {
@@ -191,7 +197,7 @@ private struct PortalSettingsTab: View {
                     Text("Optional. When set, the launch form starts with these resource settings. " +
                          "CPU / RAM / GPU options are populated from the CANFAR context.")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -204,7 +210,7 @@ private struct PortalSettingsTab: View {
                 Text("Cached container image metadata makes the Portal tab feel instant. " +
                      "The cache refreshes automatically every 24 hours.")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -512,7 +518,7 @@ private struct AgentsSettingsTab: View {
                      "Read tools run directly; writes are subject to the autonomy " +
                      "setting below.")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
 
             if appState.agentsService.isEnabled {
@@ -524,17 +530,10 @@ private struct AgentsSettingsTab: View {
                 } header: {
                     Text("Autonomy")
                 } footer: {
-                    Text("Auto-apply on: connected agents apply their writes immediately " +
-                         "(saved queries, notes, downloads, sessions, VOSpace edits, " +
-                         "deletions). Off: every write queues to the proposal strip " +
-                         "and waits for your Apply click.\n\n" +
-                         "Follow agent activity on: after an auto-applied write the window " +
-                         "jumps to the section where the change is visible (Search for " +
-                         "queries, Research for observations, Storage for VOSpace, Portal " +
-                         "for sessions) so you always see motion. The agent's explicit " +
-                         "`navigate_to` tool ignores this toggle — it always works.")
+                    Text("Auto-apply on: agent writes apply immediately; off: each one queues to the proposal strip for your Apply click. " +
+                         "Follow agent activity jumps the window to where an auto-applied change is visible (the explicit `navigate_to` tool ignores this toggle).")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -547,7 +546,7 @@ private struct AgentsSettingsTab: View {
                     Text("View live activity in Console.app via " +
                          "`log show --predicate 'subsystem == \"com.codebg.Verbinal.agent\"'`.")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section {
@@ -570,23 +569,7 @@ private struct AgentsSettingsTab: View {
                          "live UI ops. Bodies / payloads are never stored — only " +
                          "the same compact summary that showed in the proposal strip.")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-
-                if let coord = appState.imageDiscoveryCoordinator {
-                    Section {
-                        ImageDiscoveryCacheRow(coordinator: coord)
-                    } header: {
-                        Text("Image Discovery Cache")
-                    } footer: {
-                        Text("Per-image package manifests learned by running " +
-                             "small probe jobs inside Skaha containers. Stored at " +
-                             "Application Support/Verbinal/ImageDiscovery/manifests/. " +
-                             "Clearing wipes the local cache; in-flight probes will " +
-                             "repopulate when they complete.")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
+                        .foregroundStyle(.secondary)
                 }
 
                 Section {
@@ -596,35 +579,22 @@ private struct AgentsSettingsTab: View {
                 } footer: {
                     Text("Hashes and outcomes only — call arguments are never logged.")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
         .formStyle(.grouped)
     }
 
+    /// The single authoritative server-status row. The MCP Clients tab
+    /// shows the same `MCPServerStatusRow` in `.compact` form so the two
+    /// tabs can't drift in wording.
     private var statusRow: some View {
-        HStack(spacing: 8) {
-            Image(systemName: appState.agentsService.isRunning ? "checkmark.circle.fill" : "moon.zzz.fill")
-                .foregroundStyle(appState.agentsService.isRunning ? Color.green : Color.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(appState.agentsService.isRunning ? "Listening" : "Stopped")
-                    .font(.callout)
-                if let path = appState.agentsService.socketPath {
-                    Text(path)
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(.secondary)
-                        .truncationMode(.middle)
-                        .lineLimit(1)
-                }
-                if let lastError = appState.agentsService.lastError {
-                    Text(lastError)
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                }
-            }
-            Spacer()
-        }
+        MCPServerStatusRow(
+            isRunning: appState.agentsService.isRunning,
+            socketPath: appState.agentsService.socketPath,
+            lastError: appState.agentsService.lastError
+        )
     }
 
     private var diagnosticsRow: some View {
@@ -652,6 +622,7 @@ private struct AgentsSettingsTab: View {
                             HStack(spacing: 8) {
                                 Image(systemName: icon(for: entry))
                                     .foregroundStyle(color(for: entry))
+                                    .accessibilityLabel(accessibilityLabel(for: entry))
                                 Text(entry.toolName)
                                     .font(.caption.monospaced())
                                 Text(entry.outcome.tag)
@@ -677,57 +648,6 @@ private struct AgentsSettingsTab: View {
         }
     }
 
-    /// Displayed inside the Settings ▸ Agents pane when a discovery
-    /// coordinator is alive. Shows the live cache count and a
-    /// destructive Clear button. Loading state surfaces on the
-    /// initial fetch of `cacheCount()` so the user doesn't see "0
-    /// entries" while the actor is hydrating.
-    fileprivate struct ImageDiscoveryCacheRow: View {
-        let coordinator: ImageDiscoveryCoordinator
-        @State private var count: Int? = nil
-        @State private var clearing: Bool = false
-
-        var body: some View {
-            HStack {
-                Label(label, systemImage: "shippingbox")
-                    .font(.callout)
-                Spacer()
-                Button("Clear", role: .destructive) {
-                    // Explicitly hop back to the main actor after each
-                    // await on the non-MainActor coordinator. Under
-                    // Swift 5.9 + SwiftUI the enclosing Task already
-                    // inherits MainActor isolation, so this is a no-op
-                    // today — but making it explicit documents the
-                    // contract and keeps the @State writes correct if
-                    // this closure is ever refactored out of the View
-                    // or the project enables Swift 6 strict concurrency.
-                    Task { @MainActor in
-                        clearing = true
-                        try? await coordinator.clearCache()
-                        count = await coordinator.cacheCount()
-                        clearing = false
-                    }
-                }
-                .controlSize(.small)
-                .help("Drop every cached image manifest; in-flight probes keep running")
-                .disabled(clearing || (count ?? 0) == 0)
-            }
-            .task { @MainActor in
-                if count == nil {
-                    count = await coordinator.cacheCount()
-                }
-            }
-        }
-
-        private var label: String {
-            switch count {
-            case nil: return "Loading…"
-            case .some(let n) where n == 1: return "1 entry"
-            case .some(let n): return "\(n) entries"
-            }
-        }
-    }
-
     private func icon(for entry: AuditEntry) -> String {
         switch entry.outcome {
         case .ok, .data: return "checkmark.circle"
@@ -743,6 +663,17 @@ private struct AgentsSettingsTab: View {
         case .proposed: return .blue
         case .applied: return .purple
         case .failed: return .orange
+        }
+    }
+
+    /// Spoken description of the color-coded outcome icon so VoiceOver
+    /// conveys state, not just the adjacent tool name.
+    private func accessibilityLabel(for entry: AuditEntry) -> String {
+        switch entry.outcome {
+        case .ok, .data: return "Succeeded"
+        case .proposed: return "Proposed"
+        case .applied: return "Applied"
+        case .failed: return "Failed"
         }
     }
 }

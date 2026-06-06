@@ -12,6 +12,10 @@ import AppKit
 
 struct LandingView: View {
     @Environment(AppState.self) private var appState
+    /// User toggle (Settings ▸ MCP Clients) to show/hide the AI Guide launchpad tile.
+    /// OFF by default — the tile is hidden until the user opts in; enabling it only
+    /// adds the shortcut (the feature/overrides are unaffected either way).
+    @AppStorage(AIGuidePreferences.showLandingTileKey) private var showAIGuideTile = false
 
     var body: some View {
         VStack(spacing: 32) {
@@ -102,13 +106,16 @@ struct LandingView: View {
                 // AI Guide — inspect/re-tune the MCP tool surface the agent
                 // sees, and author custom instruction tools. macOS-only: the
                 // MCP server (and its tools) exist only on the desktop build.
-                LandingTile(
-                    icon: "wand.and.stars",
-                    fallbackIcon: "sparkles",
-                    title: "AI Guide",
-                    subtitle: "Tune the agent's tools"
-                ) {
-                    appState.navigateTo(.aiGuide)
+                // Hidden when the user turns it off in Settings ▸ MCP Clients.
+                if showAIGuideTile {
+                    LandingTile(
+                        icon: "wand.and.stars",
+                        fallbackIcon: "sparkles",
+                        title: "AI Guide",
+                        subtitle: "Tune the agent's tools"
+                    ) {
+                        appState.navigateTo(.aiGuide)
+                    }
                 }
                 #endif
             }

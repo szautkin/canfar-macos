@@ -33,12 +33,31 @@ struct AIComputeSettingsTab: View {
         Form {
             computeImageSection
             resourcesSection
-            registrySection
-            credentialsSection
+            // Shared registry + credentials UI (see RegistryCredentialsSection).
+            // Only the UI is shared — AI Compute keeps its own service and its
+            // own SEPARATE Keychain keystore from Image Discovery, hence the
+            // footer note below.
+            RegistryCredentialsSection(
+                registryHost: $registryHost,
+                username: $username,
+                secret: $secret,
+                saveError: $saveError,
+                saveSuccess: $saveSuccess,
+                isTestingCredentials: $isTestingCredentials,
+                testResult: $testResult,
+                savedRegistryHost: service.settings.registryHost,
+                savedUsername: service.settings.username,
+                hasSecret: service.settings.hasSecret,
+                onSaveRegistryHost: saveRegistryHost,
+                onSaveUsername: saveUsername,
+                onSaveSecret: saveSecret,
+                onClearSecret: clearSecret,
+                onTestConnection: testCredentials,
+                credentialsFooterNote: "These credentials are stored separately from the Image Discovery tab's — setting one does not fill in the other."
+            )
             footerSection
         }
         .formStyle(.grouped)
-        .padding()
         .onAppear { hydrateFromService() }
         .alert("Reset AI Remote Compute settings?", isPresented: $resetConfirmShown) {
             Button("Reset", role: .destructive) { resetAll() }
@@ -114,118 +133,6 @@ struct AIComputeSettingsTab: View {
             Text("These size the run_code compute instance. Small/fast is best for quick checks — the smallest size schedules fastest. The available sizes come from your CANFAR session context; the agent can also pass a size to start_compute to override this default.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-        }
-    }
-
-    private var registrySection: some View {
-        Section {
-            HStack {
-                TextField("Registry host", text: $registryHost, prompt: Text("images.canfar.net"))
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .onSubmit { saveRegistryHost() }
-                Button("Save") { saveRegistryHost() }
-                    .controlSize(.small)
-                    .disabled(registryHost == service.settings.registryHost)
-            }
-        } header: {
-            Text("Registry")
-        } footer: {
-            Text("Container registry the credentials below authenticate against, for pulling the AI compute image. Default is the CANFAR Harbor host; other registries (Docker Hub, Quay, GHCR) work too.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var credentialsSection: some View {
-        Section {
-            HStack {
-                TextField("Username", text: $username, prompt: Text("CADC username"))
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .onSubmit { saveUsername() }
-                Button("Save") { saveUsername() }
-                    .controlSize(.small)
-                    .disabled(username == service.settings.username)
-            }
-
-            SecureField("Secret", text: $secret, prompt: Text(service.settings.hasSecret ? "•••••••• (set)" : "Harbor CLI secret"))
-                .textFieldStyle(.roundedBorder)
-
-            HStack {
-                Spacer()
-                if service.settings.hasSecret {
-                    Button("Remove Secret", role: .destructive) { clearSecret() }
-                        .controlSize(.small)
-                }
-                Button("Save Secret") { saveSecret() }
-                    .controlSize(.small)
-                    .disabled(secret.isEmpty || username.isEmpty)
-                Button(action: testCredentials) {
-                    if isTestingCredentials {
-                        HStack(spacing: 4) {
-                            ProgressView().controlSize(.mini).scaleEffect(0.7)
-                            Text("Testing…")
-                        }
-                    } else {
-                        Text("Test Connection")
-                    }
-                }
-                .controlSize(.small)
-                .disabled(isTestingCredentials
-                          || registryHost.trimmingCharacters(in: .whitespaces).isEmpty
-                          || username.trimmingCharacters(in: .whitespaces).isEmpty
-                          || !service.settings.hasSecret)
-                .help("Verify the stored credentials by performing the Docker Registry V2 token-auth flow against the configured host.")
-            }
-
-            if let saveError {
-                Label(saveError, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            } else if saveSuccess {
-                Label("Secret saved to Keychain.", systemImage: "checkmark.seal")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            }
-
-            if let testResult {
-                testResultLabel(testResult)
-            }
-        } header: {
-            Text("Credentials")
-        } footer: {
-            Text("Stored in the macOS Keychain. Used to build the `x-skaha-registry-auth` header so Skaha can pull a private compute image when run_code launches the session. The secret is never read back — set or clear, not view. Click **Test Connection** to verify before launching.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private func testResultLabel(_ result: ImageDiscoverySettingsService.RegistryTestResult) -> some View {
-        switch result {
-        case .success(let message):
-            Label { Text(message).textSelection(.enabled) } icon: { Image(systemName: "checkmark.seal.fill") }
-                .font(.caption).foregroundStyle(.green)
-        case .unauthorized:
-            Label {
-                Text("Harbor rejected these credentials. Common cause: you entered your CADC password instead of the Harbor CLI secret (copy it from your Harbor user profile).")
-                    .textSelection(.enabled)
-            } icon: { Image(systemName: "xmark.octagon.fill") }
-                .font(.caption).foregroundStyle(.red)
-        case .missingConfiguration(let reason):
-            Label { Text(reason).textSelection(.enabled) } icon: { Image(systemName: "exclamationmark.triangle.fill") }
-                .font(.caption).foregroundStyle(.orange)
-        case .invalidChallenge(let message):
-            Label {
-                Text("Registry didn't return a recognisable auth challenge: \(message)").textSelection(.enabled)
-            } icon: { Image(systemName: "questionmark.diamond.fill") }
-                .font(.caption).foregroundStyle(.orange)
-        case .networkError(let message):
-            Label {
-                Text("Couldn't reach the registry: \(message)").textSelection(.enabled)
-            } icon: { Image(systemName: "wifi.exclamationmark") }
-                .font(.caption).foregroundStyle(.red)
         }
     }
 
