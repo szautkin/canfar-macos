@@ -103,6 +103,19 @@ struct LandingView: View {
                 addonSlot
 
                 #if os(macOS)
+                // AI Assistant — the newcomer-framed entry point to the MCP
+                // setup wizard. Always shown (macOS-only); distinct from the
+                // AI Guide tile, which presumes the agent is already connected.
+                // Opening it presents the guided "Connect your AI agent" sheet.
+                LandingTile(
+                    icon: "wand.and.rays",
+                    fallbackIcon: "sparkles",
+                    title: "AI Assistant",
+                    subtitle: "Connect Claude to drive Verbinal"
+                ) {
+                    appState.activeSheet = .mcpSetupWizard
+                }
+
                 // AI Guide — inspect/re-tune the MCP tool surface the agent
                 // sees, and author custom instruction tools. macOS-only: the
                 // MCP server (and its tools) exist only on the desktop build.

@@ -7,6 +7,7 @@
 import SwiftUI
 
 struct AboutSheet: View {
+    @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @State private var showTerms = false
@@ -34,12 +35,22 @@ struct AboutSheet: View {
                 .frame(width: 200)
 
             VStack(spacing: 4) {
-                Text("Verbinal provides a native interface for managing")
-                Text("interactive computing sessions on the CANFAR platform.")
+                Text("A native CANFAR companion for Search, Research, Storage,")
+                Text("and FITS — with an optional AI agent that drives it for you.")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
+
+            #if os(macOS)
+            Button("Features…") {
+                // Swap the single sheet host in place — no dismiss() first (that
+                // races the binding-nil and can drop the next sheet; see WelcomeSheet).
+                appState.activeSheet = .features
+            }
+            .buttonStyle(.borderless)
+            .font(.caption)
+            #endif
 
             Text(platformVersionString)
                 .font(.caption2)

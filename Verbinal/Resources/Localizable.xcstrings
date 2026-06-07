@@ -57,7 +57,11 @@
         }
       }
     },
+    "“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the %@ entry at this app, launched in MCP mode. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating." : {
+
+    },
     "“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the %@ entry at this app's helper. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -513,6 +517,7 @@
       }
     },
     "A macOS companion for the CANFAR Science Platform." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -521,6 +526,19 @@
           }
         }
       }
+    },
+    "A native CANFAR companion for Search, Research, Storage," : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un compagnon natif de CANFAR pour la recherche, l'exploration, le stockage,"
+          }
+        }
+      }
+    },
+    "A native CANFAR companion for Search, Research, Storage, and FITS — with an optional AI agent that drives it for you." : {
+
     },
     "A timestamped folder will be created inside the selected directory." : {
       "extractionState" : "stale",
@@ -691,6 +709,16 @@
         }
       }
     },
+    "AI agents are allowed — the server is on." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les agents IA sont autorisés — le serveur est actif."
+          }
+        }
+      }
+    },
     "AI Compute" : {
       "localizations" : {
         "fr" : {
@@ -748,6 +776,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tous les fichiers"
+          }
+        }
+      }
+    },
+    "Allow external AI agents" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser les agents IA externes"
+          }
+        }
+      }
+    },
+    "and FITS — with an optional AI agent that drives it for you." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "et FITS — avec un agent IA optionnel qui le pilote pour vous."
           }
         }
       }
@@ -1265,6 +1313,20 @@
         }
       }
     },
+    "Claude Code keeps MCP servers in ~/.claude.json alongside auth tokens, so Verbinal never edits it directly. Run this command in a terminal to register the helper the safe, official way:" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code conserve les serveurs MCP dans ~/.claude.json avec les jetons d'authentification ; Verbinal ne le modifie donc jamais directement. Exécutez cette commande dans un terminal pour enregistrer l'assistant de façon officielle et sûre :"
+          }
+        }
+      }
+    },
+    "Claude Code keeps MCP servers in ~/.claude.json alongside auth tokens, so Verbinal never edits it directly. Run this command in a terminal to register Verbinal the safe, official way:" : {
+
+    },
     "Claude Code not detected" : {
       "localizations" : {
         "fr" : {
@@ -1285,7 +1347,11 @@
         }
       }
     },
+    "Claude Desktop and other MCP clients reach Verbinal by launching it in MCP mode (Verbinal mcp). These checks verify each link in that chain and can repair Claude Desktop's config." : {
+
+    },
     "Claude Desktop and other MCP clients reach Verbinal through the bundled canfar-mcp helper. These checks verify each link in that chain and can repair Claude Desktop's config." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1452,6 +1518,16 @@
         }
       }
     },
+    "Close this dialog (⎋)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer cette fenêtre (⎋)"
+          }
+        }
+      }
+    },
     "Collection" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1537,6 +1613,36 @@
         }
       }
     },
+    "Config updated — restart Claude Desktop to apply." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuration mise à jour — redémarrez Claude Desktop pour l'appliquer."
+          }
+        }
+      }
+    },
+    "Configure Claude Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurer Claude Code"
+          }
+        }
+      }
+    },
+    "Configure Claude Desktop" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurer Claude Desktop"
+          }
+        }
+      }
+    },
     "Confirm" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1559,6 +1665,20 @@
         }
       }
     },
+    "Confirms the MCP server is reachable. Verbinal is sandboxed, so it can't launch the helper itself — your AI client (Claude Desktop/Code) does — so the definitive check is restarting your client and confirming the Verbinal tools appear. Requires the server to be running." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirme que le serveur MCP est accessible. Verbinal est en bac à sable et ne peut donc pas lancer l'assistant lui-même — c'est votre client IA (Claude Desktop/Code) qui le fait — la vérification définitive consiste à redémarrer votre client et à confirmer l'apparition des outils Verbinal. Nécessite que le serveur soit en cours d'exécution."
+          }
+        }
+      }
+    },
+    "Confirms the MCP server is reachable. Your AI client (Claude Desktop/Code) launches Verbinal itself in MCP mode, so the definitive check is restarting your client and confirming the Verbinal tools appear. Requires the server to be running." : {
+
+    },
     "Connect" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1570,6 +1690,16 @@
         }
       }
     },
+    "Connect an AI Agent…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecter un agent IA…"
+          }
+        }
+      }
+    },
     "Connect to session" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1577,6 +1707,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Se connecter à la session"
+          }
+        }
+      }
+    },
+    "Connect your AI agent" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez votre agent IA"
           }
         }
       }
@@ -1783,6 +1923,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier RA/Dec"
+          }
+        }
+      }
+    },
+    "Copy Snippet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier l'extrait"
           }
         }
       }
@@ -2648,6 +2798,16 @@
         }
       }
     },
+    "Everything in one place — open a feature or set up the AI assistant." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout au même endroit — ouvrez une fonctionnalité ou configurez l'assistant IA."
+          }
+        }
+      }
+    },
     "Excellent" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2687,6 +2847,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Présent"
+          }
+        }
+      }
+    },
+    "Explore on my own" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explorer par moi-même"
           }
         }
       }
@@ -2915,6 +3085,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Favoris"
+          }
+        }
+      }
+    },
+    "Features…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fonctionnalités…"
           }
         }
       }
@@ -3346,6 +3526,7 @@
       }
     },
     "Helper self-test" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3465,6 +3646,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cache de découverte d'images"
+          }
+        }
+      }
+    },
+    "Image Discovery…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découverte d'images…"
           }
         }
       }
@@ -3645,6 +3836,7 @@
       }
     },
     "interactive computing sessions on the CANFAR platform." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3868,6 +4060,7 @@
       }
     },
     "Launches the bundled canfar-mcp exactly as Claude Desktop would and confirms it can initialize. Requires the server to be running. If the helper can't initialize its sandbox container, this is where you'll see it." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3884,6 +4077,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lancement de la session…"
+          }
+        }
+      }
+    },
+    "Let Claude drive Verbinal — search the archive, manage sessions, and more." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laissez Claude piloter Verbinal — interroger l'archive, gérer les sessions, et plus encore."
           }
         }
       }
@@ -4242,6 +4445,9 @@
           }
         }
       }
+    },
+    "MCP server self-test" : {
+
     },
     "Metadata" : {
       "localizations" : {
@@ -5005,6 +5211,16 @@
         }
       }
     },
+    "Open Claude" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir Claude"
+          }
+        }
+      }
+    },
     "Open File" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5190,6 +5406,16 @@
         }
       }
     },
+    "Paste this into the top-level mcpServers object:" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collez ceci dans l'objet mcpServers de premier niveau :"
+          }
+        }
+      }
+    },
     "Path" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5241,6 +5467,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Resp. : %@"
+          }
+        }
+      }
+    },
+    "Pick the app you'll talk to Claude in. You can run the wizard again for the other one." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez l'application dans laquelle vous parlerez à Claude. Vous pouvez relancer l'assistant pour l'autre."
           }
         }
       }
@@ -6263,6 +6499,7 @@
       }
     },
     "Run helper self-test" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6283,6 +6520,9 @@
         }
       }
     },
+    "Run MCP server check" : {
+
+    },
     "Run Search" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6290,6 +6530,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lancer la recherche"
+          }
+        }
+      }
+    },
+    "Run self-test" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer l'autotest"
           }
         }
       }
@@ -6322,6 +6572,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vérifications en cours…"
+          }
+        }
+      }
+    },
+    "Running self-test…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autotest en cours…"
           }
         }
       }
@@ -6844,8 +7104,17 @@
         }
       }
     },
+    "Set up the AI assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurer l'assistant IA"
+          }
+        }
+      }
+    },
     "Settings" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7567,6 +7836,20 @@
         }
       }
     },
+    "This grants one-time access to Claude's config folder, then points the “%@” entry at this app, launched in MCP mode. Only that entry changes; a .bak backup is written first." : {
+
+    },
+    "This launches the bundled canfar-mcp helper exactly as your client would and confirms it can initialize." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cela lance l'assistant canfar-mcp intégré exactement comme le ferait votre client et confirme qu'il peut s'initialiser."
+          }
+        }
+      }
+    },
     "This will remove the file from disk. This cannot be undone." : {
       "localizations" : {
         "fr" : {
@@ -7635,6 +7918,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajustez les outils de l'agent"
+          }
+        }
+      }
+    },
+    "Turn on “Allow external AI agents”" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activez « Autoriser les agents IA externes »"
           }
         }
       }
@@ -7907,6 +8200,17 @@
         }
       }
     },
+    "Verbinal is sandboxed, so your AI client — not Verbinal — launches the bundled helper. This confirms the MCP server is reachable; the final proof is restarting your client and seeing the Verbinal tools appear." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal est en bac à sable ; c'est donc votre client IA — et non Verbinal — qui lance l'assistant intégré. Ceci confirme que le serveur MCP est accessible ; la preuve finale est de redémarrer votre client et de voir apparaître les outils Verbinal."
+          }
+        }
+      }
+    },
     "Verbinal Login" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7929,6 +8233,7 @@
       }
     },
     "Verbinal provides a native interface for managing" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7945,6 +8250,30 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbinal offre une interface native pour gérer les sessions de calcul interactif sur la plate-forme CANFAR."
+          }
+        }
+      }
+    },
+    "Verbinal stays private until you opt in. Turning this on starts a local helper that Claude connects to — nothing is exposed to the network." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal reste privé tant que vous n'y consentez pas. L'activation démarre un assistant local auquel Claude se connecte — rien n'est exposé au réseau."
+          }
+        }
+      }
+    },
+    "Verbinal stays private until you opt in. Turning this on starts a local MCP server that Claude connects to — nothing is exposed to the network." : {
+
+    },
+    "Verify the connection" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifier la connexion"
           }
         }
       }
@@ -8098,6 +8427,16 @@
         }
       }
     },
+    "Welcome to Verbinal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bienvenue dans Verbinal"
+          }
+        }
+      }
+    },
     "Welcome, %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8105,6 +8444,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bienvenue, %@"
+          }
+        }
+      }
+    },
+    "What Verbinal Can Do" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce que Verbinal peut faire"
+          }
+        }
+      }
+    },
+    "What Verbinal Can Do…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce que Verbinal peut faire…"
+          }
+        }
+      }
+    },
+    "Which client are you connecting?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quel client connectez-vous ?"
           }
         }
       }
@@ -8141,6 +8510,9 @@
         }
       }
     },
+    "Your AI client launches Verbinal itself in MCP mode. This confirms the MCP server is reachable; the final proof is restarting your client and seeing the Verbinal tools appear." : {
+
+    },
     "Your CADC account" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8158,6 +8530,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Votre description"
+          }
+        }
+      }
+    },
+    "Your native companion for the CANFAR Science Platform." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre compagnon natif pour la plateforme scientifique CANFAR."
           }
         }
       }

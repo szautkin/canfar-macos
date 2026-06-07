@@ -43,7 +43,10 @@ final class MCPClaudeCodeConfigTests: XCTestCase {
 
     @MainActor
     func testConfigURLsAreUnderHome() {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        // Must be the REAL home (`getpwuid`), not `homeDirectoryForCurrentUser`,
+        // which returns the sandbox container — Claude's config lives in the
+        // real `~`, which is exactly why the service resolves it that way.
+        let home = MCPIntegrationSettingsService.realHomeDirectory.path
         XCTAssertEqual(MCPIntegrationSettingsService.claudeCodeConfigURL.lastPathComponent, ".claude.json")
         XCTAssertTrue(MCPIntegrationSettingsService.claudeCodeConfigURL.path.hasPrefix(home))
     }

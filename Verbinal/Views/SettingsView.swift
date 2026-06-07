@@ -514,7 +514,7 @@ private struct AgentsSettingsTab: View {
                 Text("MCP Server")
             } footer: {
                 Text("When enabled, MCP-compatible AI clients (Claude Desktop, etc.) " +
-                     "can call into Verbinal via the bundled `canfar-mcp` helper. " +
+                     "can call into Verbinal, which runs as a local MCP server. " +
                      "Read tools run directly; writes are subject to the autonomy " +
                      "setting below.")
                     .font(.caption2)
@@ -681,6 +681,8 @@ private struct AgentsSettingsTab: View {
 // MARK: - About tab
 
 private struct AboutSettingsTab: View {
+    @Environment(AppState.self) private var appState
+
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: "telescope.fill")
@@ -693,10 +695,15 @@ private struct AboutSettingsTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Text("A macOS companion for the CANFAR Science Platform.")
+            Text("A native CANFAR companion for Search, Research, Storage, and FITS — with an optional AI agent that drives it for you.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Features…") {
+                appState.activeSheet = .features
+            }
+            .controlSize(.small)
             Spacer()
         }
         .padding(24)

@@ -69,53 +69,21 @@ targets:
         product: VerbinalKit
       - package: GRDB
         product: GRDB
-      - target: CanfarMCP
-        embed: true
-        codeSign: true
+      # NOTE: the old `CanfarMCP` bundled command-line helper has been
+      # removed. A sandboxed bare tool embedded in a MAS app can carry only
+      # `app-sandbox` + `inherit`, so when Claude Desktop (a foreign,
+      # non-sandboxed process) launches it, it has no sandbox to inherit and
+      # SIGTRAPs at launch — i.e. it can never work in a distribution build.
+      # The MCP stdio server now lives in the main app binary, reached via
+      # `Verbinal mcp` (see Verbinal/MCP/MCPStdioBridge.swift): the app binary
+      # carries the bundle's embedded provisioning profile + a full sandbox,
+      # so it reaches the App Group socket under App Store distribution
+      # signing where a bare tool cannot.
     settings:
       base:
         INFOPLIST_FILE: Verbinal/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
         CODE_SIGN_ENTITLEMENTS: Verbinal/Verbinal.entitlements
-  CanfarMCP:
-    type: tool
-    platform: macOS
-    sources:
-      - path: helpers/canfar-mcp
-    dependencies:
-      - package: VerbinalKit
-        product: MCPCore
-    settings:
-      base:
-        PRODUCT_NAME: canfar-mcp
-        PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal.canfar-mcp
-        CODE_SIGN_ENTITLEMENTS: helpers/canfar-mcp/CanfarMCP.entitlements
-        # The helper ships INSIDE Verbinal.app and the Mac App Store requires
-        # every bundled executable to be sandboxed, so CanfarMCP.entitlements
-        # turns on com.apple.security.app-sandbox plus the shared App Group
-        # (A4ABW5VD88.com.codebg.Verbinal) it uses to reach the host app's
-        # socket sidecar.
-        #
-        # A sandboxed Mach-O MUST carry a CFBundleIdentifier so secinitd can
-        # create its sandbox container. A bare command-line tool has no
-        # Info.plist, so without the two settings below secinitd cannot
-        # resolve a container id and the kernel kills the process with SIGTRAP
-        # before main() runs ("Unable to get bundle identifier for container
-        # id canfar-mcp"). GENERATE_INFOPLIST_FILE synthesizes an Info.plist
-        # from PRODUCT_BUNDLE_IDENTIFIER; CREATE_INFOPLIST_SECTION_IN_BINARY
-        # embeds it into the binary's __TEXT,__info_plist section.
-        GENERATE_INFOPLIST_FILE: YES
-        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
-        #
-        # SKIP_INSTALL = YES is critical for archive classification: the
-        # helper is embedded inside Verbinal.app via the embed dependency,
-        # so it must NOT be installed as a separate top-level product in
-        # DSTROOT. With SKIP_INSTALL = NO the archive contains two
-        # installable products (Verbinal.app + canfar-mcp), Xcode can't
-        # decide what kind of archive it is, and the Organizer files it
-        # under "Other Items / Generic Xcode Archive" instead of
-        # "macOS Apps / macOS App Archive".
-        SKIP_INSTALL: YES
   VerbinalIOS:
     type: application
     platform: iOS

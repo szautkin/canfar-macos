@@ -10,7 +10,7 @@ import VerbinalKit
 
 /// Settings ▸ MCP. Diagnoses the Claude Desktop / MCP integration end to end
 /// (server, sidecar, helper launch) and repairs Claude Desktop's config to
-/// point at this app's bundled `canfar-mcp` helper.
+/// point at this app's built-in MCP server (the app launched in MCP mode).
 struct MCPIntegrationSettingsTab: View {
     @Environment(AppState.self) private var appState
     @State private var model: MCPDiagnosticsModel?
@@ -76,7 +76,7 @@ struct MCPIntegrationSettingsTab: View {
         } header: {
             Text("Status")
         } footer: {
-            Text("Claude Desktop and other MCP clients reach Verbinal through the bundled canfar-mcp helper. These checks verify each link in that chain and can repair Claude Desktop's config.")
+            Text("Claude Desktop and other MCP clients reach Verbinal by launching it in MCP mode (Verbinal mcp). These checks verify each link in that chain and can repair Claude Desktop's config.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -109,15 +109,15 @@ struct MCPIntegrationSettingsTab: View {
                 if model?.isRunningSelfTest == true {
                     ProgressView().controlSize(.small)
                 } else {
-                    Text("Run helper self-test")
+                    Text("Run MCP server check")
                 }
             }
             .controlSize(.small)
             .disabled(model?.isRunningSelfTest == true)
         } header: {
-            Text("Helper self-test")
+            Text("MCP server self-test")
         } footer: {
-            Text("Launches the bundled canfar-mcp exactly as Claude Desktop would and confirms it can initialize. Requires the server to be running. If the helper can't initialize its sandbox container, this is where you'll see it.")
+            Text("Confirms the MCP server is reachable. Your AI client (Claude Desktop/Code) launches Verbinal itself in MCP mode, so the definitive check is restarting your client and confirming the Verbinal tools appear. Requires the server to be running.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -150,7 +150,7 @@ struct MCPIntegrationSettingsTab: View {
         } header: {
             Text("Claude Desktop Configuration")
         } footer: {
-            Text("“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the \(MCPIntegrationSettingsService.serverKey) entry at this app's helper. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating.")
+            Text("“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the \(MCPIntegrationSettingsService.serverKey) entry at this app, launched in MCP mode. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

@@ -23,8 +23,8 @@ enum MCPConfigError: LocalizedError, Equatable {
         switch self {
         case .cancelled:                 "Cancelled."
         case .noAccess:                  "Grant access to the Claude config folder first."
-        case .helperNotFound(let p):     "The canfar-mcp helper was not found at \(p)."
-        case .helperNotExecutable(let p): "The canfar-mcp helper at \(p) is not executable."
+        case .helperNotFound(let p):     "The Verbinal MCP server binary was not found at \(p)."
+        case .helperNotExecutable(let p): "The Verbinal MCP server binary at \(p) is not executable."
         case .bookmarkStale:             "Access to the Claude config folder expired — grant access again."
         case .readFailed(let m):         "Could not read the Claude config: \(m)"
         case .writeFailed(let m):        "Could not update the Claude config: \(m)"
@@ -62,11 +62,20 @@ final class MCPIntegrationSettingsService {
 
     // MARK: - Helper binary
 
-    /// The bundled helper inside the running app — always the correct,
-    /// current path, which is exactly what should land in Claude's config.
+    /// The command Claude (and other MCP clients) should launch to reach
+    /// Verbinal: this app's OWN main binary, invoked with the `mcp` argument
+    /// (`serverLaunchArguments`). Unlike the old bundled bare `canfar-mcp`
+    /// helper, the main app binary carries the bundle's embedded provisioning
+    /// profile and a full (non-`inherit`) sandbox, so it can reach the App
+    /// Group socket under Mac App Store distribution signing — a bare embedded
+    /// tool traps at launch instead. See `MCPStdioBridge` for the rationale.
     static var helperURL: URL {
-        Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/canfar-mcp")
+        Bundle.main.executableURL
+            ?? Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/Verbinal")
     }
+
+    /// Arguments that switch the app binary into headless MCP-bridge mode.
+    nonisolated static let serverLaunchArguments = ["mcp"]
 
     func resolveHelperPath() throws -> String {
         let url = Self.helperURL
@@ -100,10 +109,23 @@ final class MCPIntegrationSettingsService {
 
     // MARK: - Config locations
 
-    /// The conventional Claude config folder, used to pre-target the panel
+    /// The user's REAL home directory. In a sandboxed (App Store) build
+    /// `FileManager.homeDirectoryForCurrentUser` / `NSHomeDirectory()` return the
+    /// app's CONTAINER (`~/Library/Containers/<id>/Data`), NOT `~`. Claude's
+    /// config lives in the real `~`, so read the passwd entry to get it.
+    static var realHomeDirectory: URL {
+        if let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir {
+            return URL(fileURLWithPath: String(cString: home), isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    /// The conventional Claude Desktop config folder —
+    /// `~/Library/Application Support/Claude/` (holds `claude_desktop_config.json`,
+    /// where MCP servers are defined). Used to pre-target the grant-access panel
     /// and to reveal-in-Finder when no bookmark exists.
     static var defaultConfigFolder: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        realHomeDirectory
             .appendingPathComponent("Library/Application Support/Claude", isDirectory: true)
     }
 
@@ -120,10 +142,11 @@ final class MCPIntegrationSettingsService {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        let folder = Self.defaultConfigFolder
-        if FileManager.default.fileExists(atPath: folder.path) {
-            panel.directoryURL = folder
-        }
+        // Pre-target the REAL ~/Library/Application Support/Claude, unconditionally:
+        // a sandboxed app can't stat that external path before the grant, so a
+        // fileExists() check would skip the pre-target and strand the user at their
+        // container. The powerbox open-panel can navigate there regardless.
+        panel.directoryURL = Self.defaultConfigFolder
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { throw MCPConfigError.cancelled }
         let bookmark = try url.bookmarkData(
@@ -192,6 +215,10 @@ final class MCPIntegrationSettingsService {
         var servers = (root["mcpServers"] as? [String: Any]) ?? [:]
         var entry = (servers[serverKey] as? [String: Any]) ?? [:]
         entry["command"] = helperPath
+        // The app binary IS the server; the `mcp` argument switches it into
+        // headless bridge mode. Overwrite args (the command itself changed),
+        // preserving any other user-set fields (e.g. env) on the entry.
+        entry["args"] = serverLaunchArguments
         servers[serverKey] = entry
         root["mcpServers"] = servers
         return root
@@ -255,7 +282,7 @@ final class MCPIntegrationSettingsService {
     /// The JSON the user would paste manually, with the correct helper path.
     func configSnippet() -> String {
         let path = (try? resolveHelperPath()) ?? Self.helperURL.path
-        let dict: [String: Any] = ["mcpServers": [Self.serverKey: ["command": path]]]
+        let dict: [String: Any] = ["mcpServers": [Self.serverKey: ["command": path, "args": Self.serverLaunchArguments]]]
         let data = (try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])) ?? Data()
         return String(data: data, encoding: .utf8) ?? ""
     }
@@ -299,11 +326,11 @@ final class MCPIntegrationSettingsService {
     static let claudeCodeConfigFileName = ".claude.json"
 
     static var claudeCodeConfigURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        realHomeDirectory
             .appendingPathComponent(claudeCodeConfigFileName)
     }
     static var claudeCodeConfigDirURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        realHomeDirectory
             .appendingPathComponent(".claude", isDirectory: true)
     }
 
@@ -326,7 +353,8 @@ final class MCPIntegrationSettingsService {
     /// path — the safe, official way to register a user-scoped stdio server.
     func claudeCodeAddCommand() -> String {
         let path = (try? resolveHelperPath()) ?? Self.helperURL.path
-        return "claude mcp add --transport stdio --scope user \(Self.serverKey) -- \(Self.shellSingleQuoted(path))"
+        let args = Self.serverLaunchArguments.map(Self.shellSingleQuoted).joined(separator: " ")
+        return "claude mcp add --transport stdio --scope user \(Self.serverKey) -- \(Self.shellSingleQuoted(path)) \(args)"
     }
 
     /// The JSON to merge into `~/.claude.json`'s top-level `mcpServers` for
@@ -334,7 +362,7 @@ final class MCPIntegrationSettingsService {
     /// stdio entry shape).
     func claudeCodeConfigSnippet() -> String {
         let path = (try? resolveHelperPath()) ?? Self.helperURL.path
-        let dict: [String: Any] = ["mcpServers": [Self.serverKey: ["type": "stdio", "command": path]]]
+        let dict: [String: Any] = ["mcpServers": [Self.serverKey: ["type": "stdio", "command": path, "args": Self.serverLaunchArguments]]]
         let data = (try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])) ?? Data()
         return String(data: data, encoding: .utf8) ?? ""
     }
@@ -354,7 +382,7 @@ final class MCPIntegrationSettingsService {
         if fm.fileExists(atPath: Self.claudeCodeConfigURL.path) {
             NSWorkspace.shared.activateFileViewerSelecting([Self.claudeCodeConfigURL])
         } else {
-            NSWorkspace.shared.activateFileViewerSelecting([fm.homeDirectoryForCurrentUser])
+            NSWorkspace.shared.activateFileViewerSelecting([Self.realHomeDirectory])
         }
     }
 }

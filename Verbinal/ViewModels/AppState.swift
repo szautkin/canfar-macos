@@ -416,7 +416,11 @@ final class AppState {
     /// enum prevents silent sheet drops when two triggers fire in the same tick
     /// (e.g. token-expiry login prompt while export is open).
     enum ActiveSheet: String, Identifiable {
-        case login, about, export, agentProposals
+        // `features`, `welcome`, and `mcpSetupWizard` are discovery / onboarding
+        // surfaces; their views are macOS-only (#if os(macOS)) and the iOS
+        // ContentView switch routes them to EmptyView, mirroring `export` /
+        // `agentProposals`.
+        case login, about, export, agentProposals, features, welcome, mcpSetupWizard
         var id: String { rawValue }
     }
     var activeSheet: ActiveSheet?

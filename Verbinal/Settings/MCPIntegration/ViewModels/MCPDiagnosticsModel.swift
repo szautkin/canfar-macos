@@ -141,7 +141,7 @@ final class MCPDiagnosticsModel {
             if command == helperPath {
                 return command.contains("/DerivedData/")
                     ? check("config", "Claude config registered", .warn, "Points at a dev build: \(command)")
-                    : check("config", "Claude config registered", .pass, "Points at this app’s helper.")
+                    : check("config", "Claude config registered", .pass, "Points at this app’s MCP server.")
             } else {
                 return check("config", "Claude config registered", .warn,
                              "Points elsewhere (\(command)) — update to this build.", fix: .updateConfig)
@@ -231,12 +231,27 @@ final class MCPDiagnosticsModel {
         }
 
         isRunningSelfTest = true
-        selfTest = check("selfTest", "Helper launch self-test", .running, "Spawning canfar-mcp…")
+        selfTest = check("selfTest", "Helper launch self-test", .running, "Checking the MCP server…")
         defer { isRunningSelfTest = false }
 
-        // Mode A: spawn the real helper (blocking I/O off the main actor).
-        let outcome = await Task.detached { Self.performSpawnProbe(helperPath: helperPath) }.value
+        // A SANDBOXED app cannot faithfully launch the helper: a child of a
+        // sandboxed process can't establish its OWN sandbox container, so the
+        // helper SIGTRAPs at launch REGARDLESS of whether it is healthy.
+        // (Verified: the identical signed binary launches cleanly and connects
+        // to the socket from a terminal and from Claude Desktop — both
+        // non-sandboxed parents.) Spawning it here would be a guaranteed false
+        // negative, so we validate the server over its socket (loopback) instead
+        // and point the user at the real end-to-end test: connecting their
+        // (non-sandboxed) AI client, which is what actually launches the helper.
+        if Self.isAppSandboxed {
+            let lb = await Self.performLoopbackProbe(socketPath: socketPath)
+            selfTest = sandboxedSelfTestCheck(lb)
+            return
+        }
 
+        // Non-sandboxed build: the in-app spawn mirrors how a client launches the
+        // helper, so exercise the binary for real.
+        let outcome = await Task.detached { Self.performSpawnProbe(helperPath: helperPath) }.value
         if case .spawnDenied(let reason) = outcome {
             // Mode B: socket loopback — exercises app↔socket↔router, not the binary.
             let lb = await Self.performLoopbackProbe(socketPath: socketPath)
@@ -244,6 +259,24 @@ final class MCPDiagnosticsModel {
         } else {
             selfTest = selfTestCheck(outcome, viaLoopback: false, spawnReason: nil)
         }
+    }
+
+    /// True when running under the macOS App Sandbox — set for every signed build
+    /// carrying `com.apple.security.app-sandbox` (dev AND App Store). A sandboxed
+    /// parent cannot spawn the sandboxed helper into its own container, so the
+    /// in-app helper-spawn self-test is not meaningful here.
+    static var isAppSandboxed: Bool { getenv("APP_SANDBOX_CONTAINER_ID") != nil }
+
+    /// Self-test result under the sandbox: the loopback validates the live server
+    /// + MCP protocol; the helper itself is launched by the user's AI client, so
+    /// the definitive proof is connecting that client.
+    private func sandboxedSelfTestCheck(_ outcome: SelfTestOutcome) -> DiagnosticCheck {
+        if case .ok(let info) = outcome {
+            return check("selfTest", "Helper launch self-test", .pass,
+                "Server + MCP protocol reachable (\(info)). Your AI client launches Verbinal itself in MCP mode (Verbinal.app/Contents/MacOS/Verbinal mcp); this in-app test validates the live server over its socket. Finish by configuring your client above, fully restarting it, and confirming the Verbinal tools appear.")
+        }
+        return check("selfTest", "Helper launch self-test", .warn,
+            "Couldn't reach the MCP server over its socket — make sure it's enabled, then verify by connecting your AI client (which launches Verbinal in MCP mode).")
     }
 
     private func selfTestCheck(_ outcome: SelfTestOutcome, viaLoopback: Bool, spawnReason: String?) -> DiagnosticCheck {
@@ -283,6 +316,9 @@ final class MCPDiagnosticsModel {
 
         let proc = Process()
         proc.executableURL = url
+        // The server IS the app binary; the `mcp` argument switches it into
+        // headless bridge mode (without it we'd launch the GUI instead).
+        proc.arguments = MCPIntegrationSettingsService.serverLaunchArguments
         let stdinPipe = Pipe(), stdoutPipe = Pipe(), stderrPipe = Pipe()
         proc.standardInput = stdinPipe
         proc.standardOutput = stdoutPipe

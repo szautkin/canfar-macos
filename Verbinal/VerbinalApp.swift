@@ -6,7 +6,9 @@
 
 import SwiftUI
 
-@main
+// Entry point lives in `VerbinalMain` so we can branch to the headless MCP
+// stdio bridge before SwiftUI initializes. This is a plain `App`, driven by
+// `VerbinalApp.main()` for the normal GUI launch path.
 struct VerbinalApp: App {
     @State private var appState = AppState()
 
@@ -88,10 +90,33 @@ struct VerbinalApp: App {
                     }
                 }
                 .keyboardShortcut("5", modifiers: .command)
+
+                Divider()
+
+                // AI features. The AI Guide route exists independent of the
+                // landing-tile toggle. Image Discovery has no AppMode — it's a
+                // dashboard sheet — so we drive its existing binding directly.
+                Button("AI Guide") {
+                    appState.navigateTo(.aiGuide)
+                }
+                .keyboardShortcut("6", modifiers: .command)
+
+                Button("Image Discovery…") {
+                    appState.showImageDiscoverySheet = true
+                }
             }
 
-            // Help → links to project + issue tracker.
+            // Help → in-app discovery first, then links to project + issue
+            // tracker. macOS users reflexively check Help, so the flagship AI
+            // setup and the feature index live at the top.
             CommandGroup(replacing: .help) {
+                Button("What Verbinal Can Do…") {
+                    appState.activeSheet = .features
+                }
+                Button("Connect an AI Agent…") {
+                    appState.activeSheet = .mcpSetupWizard
+                }
+                Divider()
                 Button("Verbinal Help") {
                     if let url = URL(string: "https://github.com/szautkin/canfar-macos#readme") {
                         NSWorkspace.shared.open(url)

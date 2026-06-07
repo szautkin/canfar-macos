@@ -120,6 +120,11 @@ final class AgentsService {
     private var server: SocketServer?
     private var serverLoopTask: Task<Void, Never>?
     private var router: AIToolRouter?
+    /// In-flight agent connections, keyed by a per-connection token. Each
+    /// is served on its own task (see `serveConcurrently`) so one
+    /// long-lived client can't starve the others; tracked here only so a
+    /// shutdown can close them promptly.
+    private var activeConnections: [UUID: SocketTransport] = [:]
 
     // MARK: - Init
 
@@ -335,13 +340,20 @@ final class AgentsService {
         self.lastError = nil
         self.connectionCount = 0
 
-        // Per-connection serve loop runs detached; it keeps a strong
-        // reference to `self` until the server is stopped.
+        // Accept loop: pull each connection off the stream and serve it on
+        // its OWN task. Serving MUST NOT block the accept loop —
+        // `serve(on:)` runs for the entire lifetime of a connection, and
+        // MCP clients (Claude Desktop especially) hold an idle connection
+        // open for the whole session. Awaiting `handle` serially here meant
+        // the *first* connection monopolised the only consumer slot and
+        // every later connection (Claude Code, a second client, or a stale
+        // prior connection) was accepted but never serviced — the root
+        // cause of "Verbinal never shows up as an MCP server".
         serverLoopTask = Task { [weak self] in
             guard let stream = self?.server?.connections else { return }
             for await transport in stream {
                 guard let self = self else { break }
-                await self.handle(connection: transport)
+                self.serveConcurrently(transport)
             }
         }
 
@@ -354,6 +366,13 @@ final class AgentsService {
         serverLoopTask = nil
         server?.stop()
         server = nil
+        // Close any in-flight agent connections so their serve loops end
+        // now instead of lingering until each client happens to hang up.
+        let live = Array(activeConnections.values)
+        activeConnections.removeAll()
+        if !live.isEmpty {
+            Task { for transport in live { await transport.close() } }
+        }
         SocketSidecar.clear()
         socketPath = nil
         isRunning = false
@@ -362,6 +381,20 @@ final class AgentsService {
     }
 
     // MARK: - Per-connection handler
+
+    /// Serve one accepted connection on a dedicated task so concurrent
+    /// clients are independent. The connection is tracked in
+    /// `activeConnections` for the duration so a shutdown can close it;
+    /// the task self-removes on completion. See the accept loop in
+    /// `startServer` for why serial serving was the MCP-server bug.
+    private func serveConcurrently(_ transport: SocketTransport) {
+        let token = UUID()
+        activeConnections[token] = transport
+        Task { [weak self] in
+            await self?.handle(connection: transport)
+            self?.activeConnections[token] = nil
+        }
+    }
 
     private func handle(connection transport: SocketTransport) async {
         guard let router = router else { return }
