@@ -86,6 +86,10 @@ integration surface, and a broad reliability and localization pass.
   surfacing, isolation/concurrency correctness, dead-code removal, added tests).
 - App Store sandbox fixes: App Groups population (MAS 2.4.5) and a POSIX
   `AF_UNIX` MCP transport that works inside the sandbox.
+- Build portability: the MetricKit metric-payload handler is gated to iOS
+  (`MXMetricPayload` is unavailable on macOS in older SDKs), so the project
+  builds on every Xcode toolchain, not just the latest. macOS keeps the
+  MetricKit diagnostic (crash/hang) reporting.
 
 ### Security
 - No secrets, keys, or credentials in source; credentials are stored only in the

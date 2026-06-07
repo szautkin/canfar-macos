@@ -35,11 +35,19 @@ final class MetricKitSubscriber: NSObject, @unchecked Sendable, MXMetricManagerS
     /// Daily aggregated metrics (CPU time, memory peaks, disk writes,
     /// hang rate, app launch time). Useful for spotting regressions
     /// between releases.
+    ///
+    /// `MXMetricPayload` is iOS-only on older SDKs (it is unavailable on
+    /// macOS in the Xcode 16.x SDK CI builds with), so this handler is
+    /// gated to iOS to keep the source portable across toolchains. The
+    /// diagnostic handler below remains active on macOS, where it carries
+    /// the crash/hang reports that actually matter for post-launch triage.
+    #if os(iOS)
     func didReceive(_ payloads: [MXMetricPayload]) {
         for payload in payloads {
             Self.logger.notice("metrics window=\(payload.timeStampBegin..<payload.timeStampEnd, privacy: .public) bytes=\(payload.jsonRepresentation().count, privacy: .public)")
         }
     }
+    #endif
 
     /// Individual incident reports — one entry per crash, hang,
     /// disk-write spike, or CPU-exception. The OS gathers and
