@@ -97,7 +97,7 @@ xcodebuild test \
 - CI runs build and test on every push and pull request
 - Unit tests cover URL construction, model mapping, networking, XML parsing, and image parsing
 - Strict separation of concerns: views, view models, services, and models
-- Zero external dependencies — only Apple frameworks
+- A single external dependency, pinned to an exact version: [GRDB](https://github.com/groue/GRDB.swift) 7.11.0 (in-app SQLite store); everything else is Apple frameworks
 
 ## Project Structure
 
