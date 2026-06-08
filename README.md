@@ -168,6 +168,10 @@ These open-source companions help you get the most out of Verbinal:
   (`run_code`). It is a file-drop watcher that runs agent-supplied Python/bash snippets
   and writes JSON results back — no shell, no inbound network. Run it in a contributed
   session to let your AI assistant execute code on the platform on your behalf.
+- **[inspector-image](https://github.com/szautkin/inspector-image)** — a minimal
+  Alpine container image with [Anchore syft](https://github.com/anchore/syft) preinstalled,
+  used as the Skaha/CANFAR inspector that powers Verbinal's **image content discovery**
+  (probing container images for their Python, R, system, and OS-level packages).
 - **[Verbinal for Linux](https://github.com/szautkin/CanfarDesktopUbuntu)** — the
   Rust / GTK 4 / libadwaita sibling of this app.
 
