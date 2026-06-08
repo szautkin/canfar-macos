@@ -12,7 +12,7 @@ jobs:
     name: Build macOS app
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -62,7 +62,7 @@ jobs:
           cat checksums-sha256.txt
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verbinal-macos
           path: |
@@ -71,7 +71,7 @@ jobs:
             checksums-sha256.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             Verbinal-macOS.dmg
