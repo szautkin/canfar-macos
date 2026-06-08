@@ -2,8 +2,6 @@
 
 A native macOS desktop companion for the [CANFAR Science Portal](https://www.canfar.net/), built with SwiftUI and XcodeGen.
 
-This is the macOS counterpart of [Verbinal for Linux](https://github.com/szautkin/CanfarDesktopUbuntu) (Rust/GTK 4/libadwaita).
-
 [![CI](https://github.com/szautkin/canfar-macos/actions/workflows/ci.yml/badge.svg)](https://github.com/szautkin/canfar-macos/actions/workflows/ci.yml)
 [![Release](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml/badge.svg)](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue)](LICENSE)
@@ -173,8 +171,6 @@ These open-source companions help you get the most out of Verbinal:
   Alpine container image with [Anchore syft](https://github.com/anchore/syft) preinstalled,
   used as the Skaha/CANFAR inspector that powers Verbinal's **image content discovery**
   (probing container images for their Python, R, system, and OS-level packages).
-- **[Verbinal for Linux](https://github.com/szautkin/CanfarDesktopUbuntu)** — the
-  Rust / GTK 4 / libadwaita sibling of this app.
 
 ## Contributing
 
