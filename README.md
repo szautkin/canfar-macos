@@ -8,20 +8,44 @@ This is the macOS counterpart of [Verbinal for Linux](https://github.com/szautki
 [![Release](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml/badge.svg)](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue)](LICENSE)
 
+Available on the **Mac App Store** (search "Verbinal"), and as a notarised build
+from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
+
 ## Features
 
-- Native SwiftUI macOS application
-- Session management for CANFAR science sessions
-- Storage quota view for home VOSpace usage
-- Platform load view for cluster CPU, GPU, and RAM utilisation
-- Recent launches for quick re-launch
-- Secure credentials stored in macOS Keychain
-- XcodeGen-based project configuration
+- **Sessions** — launch and manage Notebook, Desktop, CARTA, Contributed, and
+  Firefly sessions on the CANFAR Skaha platform, no browser required. Auto-refreshing
+  status, live CPU/RAM availability, one-click re-launch from history, in-place event
+  and container logs, and headless batch jobs with in-app submission and monitoring.
+- **CADC archive search** — build queries against the CADC TAP service, review results
+  in a sortable table, switch units (RA/Dec HMS·DMS, 14-unit spectral conversion), and
+  open rich CAOM2 observation detail — with an ADQL editor for power users.
+- **Research assistant** — a workspace that tracks downloaded observations, searches
+  across them (full-text over notes and tags), and keeps notes alongside your data.
+- **VOSpace storage** — a native file browser to browse, upload, organise, and manage
+  your VOSpace files, with quota and usage at a glance.
+- **FITS viewer** — hardware-accelerated, Metal-based rendering with pan/zoom, scaling
+  modes, WCS-aware pixel readout, and full zenithal projections (TAN/SIN/STG/ZEA).
+- **Image content discovery** — find which CANFAR container image carries the Python,
+  R, system, and OS-level packages your workflow needs, before you launch.
+- **AI assistant integration (MCP)** — a built-in Model Context Protocol server lets
+  Claude Desktop and Claude Code search the archive, query sessions, browse storage,
+  launch jobs, and start/stop compute or run code on your behalf — with a guided setup
+  wizard, an AI Guide to tune what each tool exposes, and permission gates that keep you
+  in control. See [docs/MCP-Setup.md](docs/MCP-Setup.md).
+- **Privacy first** — no analytics or telemetry; credentials live in the macOS Keychain;
+  all traffic goes directly to CANFAR/CADC over HTTPS.
+- **Localized** — full English and French interfaces.
 
 ## Screenshots
 
-![Verbinal for macOS — Login](assets/screenshot-1.png)
-![Verbinal for macOS — Dashboard](assets/screenshot-2.png)
+| Home | CADC archive search |
+|------|---------------------|
+| ![Verbinal — home](assets/screenshot-home.png) | ![Verbinal — CADC archive search](assets/screenshot-search.png) |
+
+| FITS viewer | AI assistant (MCP) driving Verbinal |
+|-------------|-------------------------------------|
+| ![Verbinal — FITS viewer](assets/screenshot-fits.png) | ![Verbinal — AI assistant via MCP](assets/screenshot-ai.png) |
 
 ## Installation
 
@@ -134,6 +158,18 @@ Copyright (C) 2025-2026 Serhii Zautkin
 ## Privacy
 
 See [PRIVACY.md](PRIVACY.md). In short: no data collection, no telemetry, and no third-party services. Data stays on your machine or goes directly to CANFAR.
+
+## Related projects
+
+These open-source companions help you get the most out of Verbinal:
+
+- **[verbinal-execution](https://github.com/szautkin/verbinal-execution)** — a
+  CANFAR/Skaha contributed-session image that powers Verbinal's AI **remote compute**
+  (`run_code`). It is a file-drop watcher that runs agent-supplied Python/bash snippets
+  and writes JSON results back — no shell, no inbound network. Run it in a contributed
+  session to let your AI assistant execute code on the platform on your behalf.
+- **[Verbinal for Linux](https://github.com/szautkin/CanfarDesktopUbuntu)** — the
+  Rust / GTK 4 / libadwaita sibling of this app.
 
 ## Contributing
 
