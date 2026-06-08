@@ -7,9 +7,10 @@ This is the macOS counterpart of [Verbinal for Linux](https://github.com/szautki
 [![CI](https://github.com/szautkin/canfar-macos/actions/workflows/ci.yml/badge.svg)](https://github.com/szautkin/canfar-macos/actions/workflows/ci.yml)
 [![Release](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml/badge.svg)](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue)](LICENSE)
+[![Mac App Store](https://img.shields.io/badge/Mac%20App%20Store-Verbinal-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/ca/app/verbinal/id6761290036)
 
-Available on the **Mac App Store** (search "Verbinal"), and as a notarised build
-from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
+Available on the **[Mac App Store](https://apps.apple.com/ca/app/verbinal/id6761290036)**,
+and as a notarised build from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
 
 ## Features
 
