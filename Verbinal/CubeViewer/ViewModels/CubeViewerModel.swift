@@ -52,6 +52,9 @@ final class CubeViewerModel: Identifiable {
     /// Not observed — it's a transport closure, not UI state.
     @ObservationIgnored var volumeSnapshot: ((Int, Int) -> CGImage?)?
 
+    /// Recently opened cubes (security-scoped bookmarks), persisted across launches.
+    var recents: [CubeRecent] = CubeRecents.load()
+
     // MARK: View state (shared by both modes)
     var viewMode: CubeViewMode = .slice
     private(set) var channel = 0
@@ -156,6 +159,7 @@ final class CubeViewerModel: Identifiable {
             self.channel = nz / 2
             updateSpectralReadout()
             await renderSliceAsync()
+            addRecent(url)
             if isStreamed {
                 toast = "Large cube — slices stream from disk; the spectrum probe needs a memory-resident cube."
             }
@@ -166,33 +170,19 @@ final class CubeViewerModel: Identifiable {
         isLoading = false
     }
 
-    /// Download a remote cube to a temp file, then open it locally — far fewer
-    /// requests than range-streaming a moderate-size sample.
-    func openRemote(url: URL) async {
-        stopPlayback()
-        isLoading = true
-        loadError = nil
-        loadStage = "DOWNLINK"
-        loadProgress = 0
-        fileName = url.lastPathComponent
-        do {
-            let (downloaded, response) = try await URLSession.shared.download(from: url)
-            if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
-                throw NSError(domain: "CubeViewer", code: http.statusCode,
-                              userInfo: [NSLocalizedDescriptionKey: "Download failed (HTTP \(http.statusCode))"])
-            }
-            let dest = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
-            try? FileManager.default.removeItem(at: dest)
-            try FileManager.default.moveItem(at: downloaded, to: dest)
-            await open(url: dest)
-        } catch {
-            loadError = error.localizedDescription
-            isLoading = false
+    /// Re-open a recent cube by resolving its security-scoped bookmark.
+    func openRecent(_ recent: CubeRecent) {
+        guard let url = CubeRecents.resolve(recent) else {
+            recents = CubeRecents.remove(recent)
+            toast = "“\(recent.name)” is no longer available."
+            return
         }
+        Task { await open(url: url) }
     }
 
-    /// Sample cubes for the empty state (hosted on the v-cube demo site).
-    static let samples: [CubeSample] = CubeSample.defaults
+    private func addRecent(_ url: URL) {
+        recents = CubeRecents.add(url: url)
+    }
 
     #if os(macOS)
     func openWithPicker() async {
@@ -477,28 +467,55 @@ final class CubeViewerModel: Identifiable {
     }
 }
 
-/// A downloadable sample cube shown in the empty state.
-struct CubeSample: Identifiable {
-    let id = UUID()
-    let label: String
-    let size: String
-    let url: URL
-    let tip: String
+/// A recently opened cube — a security-scoped bookmark so a sandboxed app can
+/// re-open it across launches.
+struct CubeRecent: Codable, Identifiable {
+    let name: String
+    let path: String
+    let bookmark: Data
+    var id: String { path }
+}
 
-    static let defaults: [CubeSample] = {
-        let base = "https://v-cube.starai.ca"
-        func make(_ label: String, _ size: String, _ path: String, _ tip: String) -> CubeSample? {
-            guard let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
-                  let url = URL(string: base + encoded) else { return nil }
-            return CubeSample(label: label, size: size, url: url, tip: tip)
+/// UserDefaults-backed store of recently opened cubes.
+enum CubeRecents {
+    private static let key = "cubeViewer.recents"
+    private static let limit = 8
+
+    static func load() -> [CubeRecent] {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let items = try? JSONDecoder().decode([CubeRecent].self, from: data) else { return [] }
+        return items
+    }
+
+    @discardableResult
+    static func add(url: URL) -> [CubeRecent] {
+        guard let bookmark = try? url.bookmarkData(options: [.withSecurityScope],
+                                                   includingResourceValuesForKeys: nil, relativeTo: nil) else {
+            return load()
         }
-        return [
-            make("JCMT · CO line cube", "110 MB", "/data_cubes/JCMT/jcmth20260604_00047_06_reduced001_obs_000.fits", "61×61×3872 — high-resolution spectral line cube."),
-            make("JWST MIRI MRS · IFU", "130 MB", "/data_cubes/JWST/product/jw01023011001_02101_00003_mirifushort_s3d.fits", "43×45×4404 — WAVE-TAB wavelengths, ~58% NaN border."),
-            make("JWST NIRSpec · IFU", "37 MB", "/data_cubes/JWST 3/product/jw01409133001_02101_00001_nrs1_s3d.fits", "51×49×972 — compact target, fastest sample."),
-            make("JWST NIRSpec · lamp cal", "61 MB", "/data_cubes/JWST 2/product/jw01132002001_02128_00001_nrs1_s3d.fits", "30×37×3610 — internal lamp exposure, no sky WCS."),
-        ].compactMap { $0 }
-    }()
+        var items = load().filter { $0.path != url.path }
+        items.insert(CubeRecent(name: url.lastPathComponent, path: url.path, bookmark: bookmark), at: 0)
+        if items.count > limit { items = Array(items.prefix(limit)) }
+        save(items)
+        return items
+    }
+
+    static func resolve(_ recent: CubeRecent) -> URL? {
+        var stale = false
+        return try? URL(resolvingBookmarkData: recent.bookmark, options: [.withSecurityScope],
+                        relativeTo: nil, bookmarkDataIsStale: &stale)
+    }
+
+    @discardableResult
+    static func remove(_ recent: CubeRecent) -> [CubeRecent] {
+        let items = load().filter { $0.id != recent.id }
+        save(items)
+        return items
+    }
+
+    private static func save(_ items: [CubeRecent]) {
+        if let data = try? JSONEncoder().encode(items) { UserDefaults.standard.set(data, forKey: key) }
+    }
 }
 
 /// The numbers + labels for a publication figure plate (legend, header, colorbar).

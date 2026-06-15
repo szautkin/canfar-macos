@@ -60,24 +60,22 @@ struct CubeViewerRootView: View {
                     .buttonStyle(.borderedProminent)
                 #endif
             }
-            if !CubeViewerModel.samples.isEmpty {
+            if !model.recents.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("SAMPLE FEEDS").font(.caption2.bold()).tracking(1.5).foregroundStyle(.secondary)
-                    ForEach(CubeViewerModel.samples) { sample in
-                        Button { Task { await model.openRemote(url: sample.url) } } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(sample.label).font(.callout)
-                                    Text(sample.tip).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                                }
+                    Text("RECENTLY OPENED").font(.caption2.bold()).tracking(1.5).foregroundStyle(.secondary)
+                    ForEach(model.recents) { recent in
+                        Button { model.openRecent(recent) } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "cube.transparent").foregroundStyle(.secondary)
+                                Text(recent.name).font(.callout).lineLimit(1)
                                 Spacer()
-                                Text(sample.size).font(.caption2.monospaced()).foregroundStyle(.tertiary)
                             }
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .padding(8)
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                        .help(recent.path)
                     }
                 }
                 .frame(maxWidth: 420)
@@ -89,16 +87,11 @@ struct CubeViewerRootView: View {
 
     private var loadingView: some View {
         VStack(spacing: 12) {
-            if model.loadStage == "DOWNLINK" {
-                ProgressView().controlSize(.large)
-                Text("Downlink — \(model.fileName)").font(.caption.monospaced()).foregroundStyle(.secondary)
-            } else {
-                ProgressView(value: model.loadProgress) {
-                    Text(model.loadStage).font(.caption.monospaced())
-                }
-                .frame(width: 260)
-                Text(model.fileName).font(.caption2).foregroundStyle(.tertiary)
+            ProgressView(value: model.loadProgress) {
+                Text(model.loadStage).font(.caption.monospaced())
             }
+            .frame(width: 260)
+            Text(model.fileName).font(.caption2).foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

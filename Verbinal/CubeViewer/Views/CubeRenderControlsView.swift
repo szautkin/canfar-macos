@@ -235,7 +235,7 @@ struct CubeRenderControlsView: View {
 
 #if os(macOS)
 /// Export typography + theme. Light "journal" theme by default — publication-ready.
-struct CubeExportStyle {
+struct CubeExportStyle: Equatable {
     enum Theme: String, CaseIterable, Identifiable {
         case light, dark
         var id: String { rawValue }
@@ -266,6 +266,7 @@ struct CubeExportView: View {
     @AppStorage("cubeExport.annotate") private var annotate = true
     @AppStorage("cubeExport.transparent") private var transparent = false
     @State private var content: CGImage?
+    @State private var previewImage: NSImage?
 
     private var style: CubeExportStyle {
         CubeExportStyle(theme: CubeExportStyle.Theme(rawValue: themeRaw) ?? .light,
@@ -311,26 +312,35 @@ struct CubeExportView: View {
         }
         .padding(20)
         .frame(width: 560)
-        .onAppear { content = currentContent() }
+        .onAppear { content = currentContent(); rebuildPreview() }
+        .onChange(of: style) { rebuildPreview() }
     }
 
     @ViewBuilder
     private var preview: some View {
-        if let content {
-            GeometryReader { geo in
-                CubeExportPlate(metadata: model.figureMetadata(), date: dateString, content: content, stops: stops, style: style)
-                    .frame(width: 1000)
-                    .scaleEffect(geo.size.width / 1000, anchor: .topLeading)
+        Group {
+            if let previewImage {
+                Image(nsImage: previewImage)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(6)
+            } else {
+                Text("Open a cube and choose Slice or Volume to export.")
+                    .foregroundStyle(.secondary)
             }
-            .frame(height: 250)
-            .clipped()
-            .background(Color(white: 0.2))
-            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
-        } else {
-            Text("Open a cube and choose Slice or Volume to export.")
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity).frame(height: 250)
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: 260)
+        .background(Color(white: 0.15))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
+    }
+
+    /// Render the plate to an image for an accurate preview (recomputed on change).
+    private func rebuildPreview() {
+        guard let content else { previewImage = nil; return }
+        let renderer = ImageRenderer(content: plate(content))
+        renderer.scale = 1
+        previewImage = renderer.nsImage
     }
 
     private var dateString: String { Date.now.formatted(date: .abbreviated, time: .shortened) }
@@ -352,7 +362,8 @@ struct CubeExportView: View {
     }
 
     private func plate(_ image: CGImage) -> CubeExportPlate {
-        CubeExportPlate(metadata: model.figureMetadata(), date: dateString, content: image, stops: stops, style: style)
+        CubeExportPlate(model: model, metadata: model.figureMetadata(), date: dateString,
+                        content: image, stops: stops, style: style, showAxes: model.viewMode == .volume)
     }
 
     private func exportPNG(_ factor: CGFloat) {
@@ -392,11 +403,13 @@ struct CubeExportView: View {
 /// Publication figure plate: header (title / instrument / file / date), the
 /// rendered image, and a legend (colorbar + WCS ranges + dimensions + NaN + mode).
 private struct CubeExportPlate: View {
+    let model: CubeViewerModel
     let metadata: CubeFigureMetadata
     let date: String
     let content: CGImage
     let stops: [Color]
     let style: CubeExportStyle
+    let showAxes: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -407,6 +420,7 @@ private struct CubeExportPlate: View {
             Image(decorative: content, scale: 1)
                 .resizable()
                 .scaledToFit()
+                .overlay { if showAxes { CubeAxisCaptions(model: model) } }
                 .padding(style.annotate ? 14 : 0)
             if style.annotate {
                 Rectangle().fill(style.theme.line).frame(height: 1)
