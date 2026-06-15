@@ -416,6 +416,58 @@ final class CubeViewerModel: Identifiable {
         renderSliceDebounced()
     }
 
+    // MARK: - Figure metadata (publication legend; deterministic + testable)
+
+    /// All the numbers/labels a publication figure plate needs, computed from the
+    /// cube's WCS and statistics. Deterministic (no timestamp) so it can be
+    /// unit-tested against a known cube.
+    func figureMetadata() -> CubeFigureMetadata {
+        let raw = rawWindow
+        let cel = wcs?.celestial
+        let lonLabel = cel?.frame == .galactic ? "GLON" : "RA"
+        let latLabel = cel?.frame == .galactic ? "GLAT" : "DEC"
+
+        func sky(_ x: Int, _ y: Int) -> CelestialWCS.SkyReadout? {
+            guard let cel, let s = cel.pixelToSky(x: Double(x), y: Double(y)) else { return nil }
+            return cel.formatSky(lon: s.lon, lat: s.lat)
+        }
+        let raRange: String? = (nx > 1 ? zip2(sky(0, ny / 2)?.lon, sky(nx - 1, ny / 2)?.lon) : nil)
+        let decRange: String? = (ny > 1 ? zip2(sky(nx / 2, 0)?.lat, sky(nx / 2, ny - 1)?.lat) : nil)
+
+        let spec = wcs?.spectral
+        let now = spec?.format(channel: channel)
+        let spectralRange: String = (spec != nil && nz > 1)
+            ? "\(spec!.format(channel: 0).primary) … \(spec!.format(channel: nz - 1).primary)"
+            : ""
+
+        return CubeFigureMetadata(
+            title: (object.isEmpty || object == "—") ? (fileName.isEmpty ? "Cube" : fileName) : object,
+            instrument: [telescope, instrument].filter { !$0.isEmpty }.joined(separator: " · "),
+            fileName: fileName,
+            dimensions: "\(nx) × \(ny) × \(nz)",
+            valueLo: fmtValue(raw.lo),
+            valueHi: fmtValue(raw.hi),
+            unit: bunit,
+            nan: stats.map { String(format: "%.1f%%", $0.nanFrac * 100) } ?? "—",
+            mode: isStreamed ? "Streamed" : "Resident",
+            stretch: stretch.rawValue,
+            colormap: colormap.rawValue,
+            lonLabel: lonLabel,
+            latLabel: latLabel,
+            raRange: raRange,
+            decRange: decRange,
+            channelLabel: "CH \(channel + 1)/\(nz)",
+            spectral: now.map { $0.secondary.map { s in "\(now!.primary) · \(s)" } ?? $0.primary } ?? "",
+            spectralRange: spectralRange
+        )
+    }
+
+    private func fmtValue(_ v: Float) -> String { String(format: "%.3g", v) }
+    private func zip2(_ a: String?, _ b: String?) -> String? {
+        guard let a, let b else { return nil }
+        return "\(a) … \(b)"
+    }
+
     // MARK: - Volume shader inputs
 
     /// Stretch index matching `FITSRenderParams.StretchMode.allCases` order, fed
@@ -447,4 +499,26 @@ struct CubeSample: Identifiable {
             make("JWST NIRSpec · lamp cal", "61 MB", "/data_cubes/JWST 2/product/jw01132002001_02128_00001_nrs1_s3d.fits", "30×37×3610 — internal lamp exposure, no sky WCS."),
         ].compactMap { $0 }
     }()
+}
+
+/// The numbers + labels for a publication figure plate (legend, header, colorbar).
+struct CubeFigureMetadata: Equatable {
+    let title: String
+    let instrument: String
+    let fileName: String
+    let dimensions: String
+    let valueLo: String
+    let valueHi: String
+    let unit: String
+    let nan: String
+    let mode: String
+    let stretch: String
+    let colormap: String
+    let lonLabel: String
+    let latLabel: String
+    let raRange: String?
+    let decRange: String?
+    let channelLabel: String
+    let spectral: String
+    let spectralRange: String
 }

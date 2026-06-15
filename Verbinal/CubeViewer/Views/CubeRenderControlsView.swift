@@ -16,6 +16,7 @@ import UniformTypeIdentifiers
 /// scale, MIP, and the transfer function apply to the volume mode.
 struct CubeRenderControlsView: View {
     @Bindable var model: CubeViewerModel
+    @State private var showExport = false
 
     var body: some View {
         ScrollView {
@@ -35,6 +36,9 @@ struct CubeRenderControlsView: View {
             .padding(14)
         }
         .frame(width: 270)
+        #if os(macOS)
+        .sheet(isPresented: $showExport) { CubeExportView(model: model) }
+        #endif
     }
 
     // MARK: Cube info + statistics
@@ -188,43 +192,8 @@ struct CubeRenderControlsView: View {
 
     #if os(macOS)
     private var exportSection: some View {
-        Menu {
-            Button("Figure — PNG 2×") { exportFigure(scale: 2) }
-            Button("Figure — PNG 4×") { exportFigure(scale: 4) }
-            Divider()
-            Button("Slice — raw PNG") { model.exportSlicePNG() }
-                .disabled(model.sliceImage == nil)
-        } label: {
-            Label("Export…", systemImage: "square.and.arrow.down")
-        }
-    }
-
-    /// Compose a labeled figure plate (title + image + colorbar) and save as PNG.
-    /// Slice exports its rendered CGImage; volume captures a fresh GPU snapshot.
-    private func exportFigure(scale: CGFloat) {
-        let content: CGImage? = model.viewMode == .slice ? model.sliceImage : model.volumeSnapshot?(1280, 960)
-        guard let image = content else { return }
-        let raw = model.rawWindow
-        let subtitle = model.viewMode == .slice
-            ? "CH \(model.channel + 1)/\(model.nz)   \(model.spectralReadout?.primary ?? "")"
-            : "\(model.nx) × \(model.ny) × \(model.nz)  ·  volume"
-        let title = (model.object.isEmpty || model.object == "—")
-            ? (model.fileName.isEmpty ? "Cube" : model.fileName) : model.object
-        let plate = CubeExportPlate(content: image, title: title, subtitle: subtitle,
-                                    stops: colorbarStops, loLabel: fmt(raw.lo), hiLabel: fmt(raw.hi), unit: model.bunit)
-        let imageRenderer = ImageRenderer(content: plate)
-        imageRenderer.scale = scale
-        guard let nsImage = imageRenderer.nsImage else { return }
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png]
-        let base = (model.object.isEmpty || model.object == "—") ? "cube" : model.object
-        panel.nameFieldStringValue = "\(base)_\(model.viewMode == .slice ? "ch\(model.channel + 1)" : "volume").png"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        if let tiff = nsImage.tiffRepresentation,
-           let rep = NSBitmapImageRep(data: tiff),
-           let data = rep.representation(using: .png, properties: [:]) {
-            try? data.write(to: url)
+        Button { showExport = true } label: {
+            Label("Export figure…", systemImage: "square.and.arrow.down")
         }
     }
     #endif
@@ -265,44 +234,237 @@ struct CubeRenderControlsView: View {
 }
 
 #if os(macOS)
-/// Figure-plate layout rendered to an image by `ImageRenderer` for export.
+/// Export typography + theme. Light "journal" theme by default — publication-ready.
+struct CubeExportStyle {
+    enum Theme: String, CaseIterable, Identifiable {
+        case light, dark
+        var id: String { rawValue }
+        var background: Color { self == .dark ? Color(white: 0.05) : .white }
+        var foreground: Color { self == .dark ? .white : Color(white: 0.08) }
+        var secondary: Color { self == .dark ? Color(white: 0.62) : Color(white: 0.42) }
+        var line: Color { self == .dark ? Color(white: 0.30) : Color(white: 0.78) }
+    }
+    enum FontKind: String, CaseIterable, Identifiable {
+        case sans, mono, serif
+        var id: String { rawValue }
+        var design: Font.Design { self == .mono ? .monospaced : (self == .serif ? .serif : .default) }
+    }
+    var theme: Theme = .light
+    var font: FontKind = .sans
+    var scale: Double = 1.0
+    var annotate = true
+    var transparent = false
+}
+
+/// Export sheet — style controls, a live preview, and PNG/PDF output.
+struct CubeExportView: View {
+    let model: CubeViewerModel
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("cubeExport.theme") private var themeRaw = CubeExportStyle.Theme.light.rawValue
+    @AppStorage("cubeExport.font") private var fontRaw = CubeExportStyle.FontKind.sans.rawValue
+    @AppStorage("cubeExport.scale") private var scale = 1.0
+    @AppStorage("cubeExport.annotate") private var annotate = true
+    @AppStorage("cubeExport.transparent") private var transparent = false
+    @State private var content: CGImage?
+
+    private var style: CubeExportStyle {
+        CubeExportStyle(theme: CubeExportStyle.Theme(rawValue: themeRaw) ?? .light,
+                        font: CubeExportStyle.FontKind(rawValue: fontRaw) ?? .sans,
+                        scale: scale, annotate: annotate, transparent: transparent)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Export Figure").font(.title2.bold())
+                Spacer()
+                Button("Done") { dismiss() }
+            }
+
+            preview
+
+            Picker("Theme", selection: $themeRaw) {
+                Text("Journal light").tag(CubeExportStyle.Theme.light.rawValue)
+                Text("Cockpit dark").tag(CubeExportStyle.Theme.dark.rawValue)
+            }.pickerStyle(.segmented)
+            Picker("Font", selection: $fontRaw) {
+                Text("Sans").tag(CubeExportStyle.FontKind.sans.rawValue)
+                Text("Mono").tag(CubeExportStyle.FontKind.mono.rawValue)
+                Text("Serif").tag(CubeExportStyle.FontKind.serif.rawValue)
+            }.pickerStyle(.segmented)
+            HStack {
+                Text("Text scale").font(.callout)
+                Slider(value: $scale, in: 0.75...1.5)
+                Text(String(format: "%.2f×", scale)).font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+            }
+            Toggle("Annotations (header + legend)", isOn: $annotate)
+            Toggle("Transparent background", isOn: $transparent)
+
+            HStack(spacing: 10) {
+                Button("PNG 2×") { exportPNG(2) }
+                Button("PNG 4×") { exportPNG(4) }
+                Button("PDF…") { exportPDF() }
+                Spacer()
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(content == nil)
+        }
+        .padding(20)
+        .frame(width: 560)
+        .onAppear { content = currentContent() }
+    }
+
+    @ViewBuilder
+    private var preview: some View {
+        if let content {
+            GeometryReader { geo in
+                CubeExportPlate(metadata: model.figureMetadata(), date: dateString, content: content, stops: stops, style: style)
+                    .frame(width: 1000)
+                    .scaleEffect(geo.size.width / 1000, anchor: .topLeading)
+            }
+            .frame(height: 250)
+            .clipped()
+            .background(Color(white: 0.2))
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
+        } else {
+            Text("Open a cube and choose Slice or Volume to export.")
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity).frame(height: 250)
+        }
+    }
+
+    private var dateString: String { Date.now.formatted(date: .abbreviated, time: .shortened) }
+
+    private var stops: [Color] {
+        let lut = FITSRenderEngine.colormapRGBA(model.colormap)
+        return stride(from: 0, to: 256, by: 16).map { i in
+            Color(.sRGB, red: Double(lut[i * 4]) / 255, green: Double(lut[i * 4 + 1]) / 255, blue: Double(lut[i * 4 + 2]) / 255)
+        }
+    }
+
+    private func currentContent() -> CGImage? {
+        model.viewMode == .slice ? model.sliceImage : model.volumeSnapshot?(1400, 1050)
+    }
+
+    private var baseName: String {
+        let base = (model.object.isEmpty || model.object == "—") ? "cube" : model.object
+        return "\(base)_\(model.viewMode == .slice ? "ch\(model.channel + 1)" : "volume")"
+    }
+
+    private func plate(_ image: CGImage) -> CubeExportPlate {
+        CubeExportPlate(metadata: model.figureMetadata(), date: dateString, content: image, stops: stops, style: style)
+    }
+
+    private func exportPNG(_ factor: CGFloat) {
+        guard let content else { return }
+        let renderer = ImageRenderer(content: plate(content))
+        renderer.scale = factor
+        guard let nsImage = renderer.nsImage else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.png]
+        panel.nameFieldStringValue = "\(baseName).png"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if let tiff = nsImage.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
+           let data = rep.representation(using: .png, properties: [:]) {
+            try? data.write(to: url)
+        }
+    }
+
+    private func exportPDF() {
+        guard let content else { return }
+        let renderer = ImageRenderer(content: plate(content))
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.pdf]
+        panel.nameFieldStringValue = "\(baseName).pdf"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        renderer.render { size, renderInContext in
+            var mediaBox = CGRect(origin: .zero, size: size)
+            guard let consumer = CGDataConsumer(url: url as CFURL),
+                  let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return }
+            context.beginPDFPage(nil)
+            renderInContext(context)
+            context.endPDFPage()
+            context.closePDF()
+        }
+    }
+}
+
+/// Publication figure plate: header (title / instrument / file / date), the
+/// rendered image, and a legend (colorbar + WCS ranges + dimensions + NaN + mode).
 private struct CubeExportPlate: View {
+    let metadata: CubeFigureMetadata
+    let date: String
     let content: CGImage
-    let title: String
-    let subtitle: String
     let stops: [Color]
-    let loLabel: String
-    let hiLabel: String
-    let unit: String
+    let style: CubeExportStyle
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.headline)
-                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
+            if style.annotate {
+                header.padding(16)
+                Rectangle().fill(style.theme.line).frame(height: 1)
             }
-            .padding(12)
-
             Image(decorative: content, scale: 1)
                 .resizable()
                 .scaledToFit()
+                .padding(style.annotate ? 14 : 0)
+            if style.annotate {
+                Rectangle().fill(style.theme.line).frame(height: 1)
+                footer.padding(16)
+            }
+        }
+        .frame(width: 1000)
+        .background(style.transparent ? Color.clear : style.theme.background)
+        .foregroundStyle(style.theme.foreground)
+        .font(.system(size: 13 * style.scale, design: style.font.design))
+    }
 
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(metadata.title).font(.system(size: 22 * style.scale, weight: .bold, design: style.font.design))
+                if !metadata.instrument.isEmpty {
+                    Text(metadata.instrument).foregroundStyle(style.theme.secondary)
+                }
+                Text("\(metadata.channelLabel)   \(metadata.spectral)").foregroundStyle(style.theme.secondary)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                if !metadata.fileName.isEmpty { Text(metadata.fileName).foregroundStyle(style.theme.secondary) }
+                Text(date).foregroundStyle(style.theme.secondary)
+            }
+        }
+    }
+
+    private var footer: some View {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text(loLabel).font(.caption2.monospaced())
+                Text(metadata.valueLo).monospacedDigit()
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearGradient(colors: stops, startPoint: .leading, endPoint: .trailing))
-                    .frame(height: 10)
-                Text(hiLabel).font(.caption2.monospaced())
-                if !unit.isEmpty { Text(unit).font(.caption2).foregroundStyle(.secondary) }
+                    .frame(height: 12)
+                    .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(style.theme.line))
+                Text(metadata.valueHi).monospacedDigit()
+                if !metadata.unit.isEmpty { Text(metadata.unit).foregroundStyle(style.theme.secondary) }
+                Text("· \(metadata.stretch) · \(metadata.colormap)").foregroundStyle(style.theme.secondary)
             }
-            .padding(12)
+            HStack(alignment: .top, spacing: 22) {
+                legend("DIMENSIONS", metadata.dimensions)
+                if let ra = metadata.raRange { legend(metadata.lonLabel, ra) }
+                if let dec = metadata.decRange { legend(metadata.latLabel, dec) }
+                if !metadata.spectralRange.isEmpty { legend("SPECTRAL", metadata.spectralRange) }
+                legend("NaN", metadata.nan)
+                legend("MODE", metadata.mode)
+            }
+            .font(.system(size: 11 * style.scale, design: style.font.design))
         }
-        .frame(width: 900)
-        .background(Color.black)
-        .foregroundStyle(.white)
+    }
+
+    private func legend(_ key: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(key).foregroundStyle(style.theme.secondary)
+            Text(value)
+        }
     }
 }
 #endif
