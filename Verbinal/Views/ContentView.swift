@@ -253,6 +253,8 @@ struct ContentView: View {
             makeModeToolbar(title: "Storage", showAbout: $showAbout)
         case .fitsViewer:
             makeModeToolbar(title: "FITS Viewer", showAbout: $showAbout)
+        case .cubeViewer:
+            makeModeToolbar(title: "Cube Viewer", showAbout: $showAbout)
         case .aiGuide:
             makeModeToolbar(title: "AI Guide", showAbout: $showAbout)
         }
@@ -290,6 +292,12 @@ struct ContentView: View {
                 fitsViewerBody
                 #else
                 macOSOnlyPlaceholder("FITS Viewer")
+                #endif
+            case .cubeViewer:
+                #if os(macOS)
+                cubeViewerBody
+                #else
+                macOSOnlyPlaceholder("Cube Viewer")
                 #endif
             case .aiGuide:
                 #if os(macOS)
@@ -456,6 +464,14 @@ struct ContentView: View {
             // size (~200pt). Without this the body wouldn't fill the area below
             // the persistent toolbar, leaving the divider floating mid-window.
             // Forcing the body to fill keeps it pinned just under the chrome.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Cube Viewer — a sibling of the FITS viewer (its own mode/tile), not nested
+    /// inside it. Reuses VerbinalKit rendering but is a fully separate module.
+    @ViewBuilder
+    private var cubeViewerBody: some View {
+        CubeViewerRootView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

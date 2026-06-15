@@ -140,7 +140,7 @@ public enum FITSParser {
     }
 
     /// Parse a single 80-character FITS card.
-    private static func parseCard(_ cardString: String) -> FITSCard {
+    static func parseCard(_ cardString: String) -> FITSCard {
         let keyword = String(cardString.prefix(8)).trimmingCharacters(in: .whitespaces)
 
         guard cardString.count >= 10, cardString[cardString.index(cardString.startIndex, offsetBy: 8)] == "=" else {
@@ -224,54 +224,66 @@ public enum FITSParser {
         }
 
         let dataSlice = data[hdu.dataOffset..<(hdu.dataOffset + hdu.dataLength)]
-        let bscale = Float(header.bscale)
-        let bzero = Float(header.bzero)
+        return try decodeSamples(
+            dataSlice,
+            bitpix: header.bitpix,
+            count: count,
+            blank: nil, // 2D image path keeps legacy behavior (no BLANK→NaN mapping)
+            bscale: Float(header.bscale),
+            bzero: Float(header.bzero)
+        )
+    }
 
-        var pixels: [Float]
+    /// Decode `count` big-endian FITS samples from the start of `slice` into a
+    /// `Float` array: honors BITPIX (8/16/32/-32/-64), an optional integer
+    /// `blank` sentinel (mapped to NaN — used for cube channels), then applies
+    /// BSCALE/BZERO via vDSP. Shared by `extractPixels` (2D images) and
+    /// `FITSCube.extractPlane` (cube channels) so both decode identically.
+    static func decodeSamples(
+        _ slice: Data,
+        bitpix: Int,
+        count: Int,
+        blank: Int?,
+        bscale: Float,
+        bzero: Float
+    ) throws -> [Float] {
+        guard count > 0 else { return [] }
+        let supported: Set<Int> = [8, 16, 32, -32, -64]
+        guard supported.contains(bitpix) else { throw FITSError.unsupportedBitpix(bitpix) }
 
-        switch header.bitpix {
-        case 8:
-            pixels = dataSlice.map { Float($0) }
-
-        case 16:
-            pixels = [Float](repeating: 0, count: count)
-            dataSlice.withUnsafeBytes { raw in
-                let int16Ptr = raw.bindMemory(to: UInt16.self)
-                for i in 0..<count {
-                    let bigEndian = int16Ptr[i]
-                    pixels[i] = Float(Int16(bitPattern: bigEndian.bigEndian))
+        var pixels = [Float](repeating: 0, count: count)
+        pixels.withUnsafeMutableBufferPointer { out in
+            slice.withUnsafeBytes { raw in
+                switch bitpix {
+                case 8:
+                    let p = raw.bindMemory(to: UInt8.self)
+                    if let blank {
+                        for i in 0..<count { let v = Int(p[i]); out[i] = v == blank ? .nan : Float(v) }
+                    } else {
+                        for i in 0..<count { out[i] = Float(p[i]) }
+                    }
+                case 16:
+                    let p = raw.bindMemory(to: UInt16.self)
+                    if let blank {
+                        for i in 0..<count { let v = Int(Int16(bitPattern: p[i].bigEndian)); out[i] = v == blank ? .nan : Float(v) }
+                    } else {
+                        for i in 0..<count { out[i] = Float(Int16(bitPattern: p[i].bigEndian)) }
+                    }
+                case 32:
+                    let p = raw.bindMemory(to: UInt32.self)
+                    if let blank {
+                        for i in 0..<count { let v = Int(Int32(bitPattern: p[i].bigEndian)); out[i] = v == blank ? .nan : Float(v) }
+                    } else {
+                        for i in 0..<count { out[i] = Float(Int32(bitPattern: p[i].bigEndian)) }
+                    }
+                case -32: // IEEE 754 float, big-endian
+                    let p = raw.bindMemory(to: UInt32.self)
+                    for i in 0..<count { out[i] = Float(bitPattern: p[i].bigEndian) }
+                default: // -64: IEEE 754 double, big-endian
+                    let p = raw.bindMemory(to: UInt64.self)
+                    for i in 0..<count { out[i] = Float(Double(bitPattern: p[i].bigEndian)) }
                 }
             }
-
-        case 32:
-            pixels = [Float](repeating: 0, count: count)
-            dataSlice.withUnsafeBytes { raw in
-                let int32Ptr = raw.bindMemory(to: UInt32.self)
-                for i in 0..<count {
-                    pixels[i] = Float(Int32(bitPattern: int32Ptr[i].bigEndian))
-                }
-            }
-
-        case -32: // IEEE 754 float, big-endian
-            pixels = [Float](repeating: 0, count: count)
-            dataSlice.withUnsafeBytes { raw in
-                let uint32Ptr = raw.bindMemory(to: UInt32.self)
-                for i in 0..<count {
-                    pixels[i] = Float(bitPattern: uint32Ptr[i].bigEndian)
-                }
-            }
-
-        case -64: // IEEE 754 double, big-endian
-            pixels = [Float](repeating: 0, count: count)
-            dataSlice.withUnsafeBytes { raw in
-                let uint64Ptr = raw.bindMemory(to: UInt64.self)
-                for i in 0..<count {
-                    pixels[i] = Float(Double(bitPattern: uint64Ptr[i].bigEndian))
-                }
-            }
-
-        default:
-            throw FITSError.unsupportedBitpix(header.bitpix)
         }
 
         // Apply BSCALE/BZERO: physical = bzero + bscale * raw

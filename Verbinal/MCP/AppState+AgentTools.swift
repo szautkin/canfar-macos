@@ -122,6 +122,7 @@ extension AppState {
 
         // View-state tools — live-applied, no proposal.
         tools.append(makeOpenFITSFileTool(store: observationStore))
+        tools.append(makeOpenCubeTool(store: observationStore))
         tools.append(makeSetSearchFocusTool())
         tools.append(makeNavigateToTool())
 
@@ -262,6 +263,48 @@ extension AppState {
                 activity.append(.live(
                     kind: "open_fits_file",
                     summary: "Opened FITS file: \(obs.observationID) (\(obs.collection))",
+                    origin: origin
+                ))
+            }
+            return (observationID: obs.observationID, localPath: obs.localPath)
+        })
+    }
+
+    /// Cube-viewer twin of `makeOpenFITSFileTool` — resolves the downloaded
+    /// observation's URL and routes it into the Cube Viewer (its own mode).
+    private func makeOpenCubeTool(store: ObservationStore) -> OpenCubeTool {
+        let activity = agentsService.activityStore
+        return OpenCubeTool(openCube: { [weak self] id in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let obs = await MainActor.run { store.observations.first(where: { $0.id == id }) }
+            guard let obs else {
+                throw ToolFailureReason.unknownTarget("downloaded_observation \(id)")
+            }
+            guard obs.fileExists else {
+                throw ToolFailureReason.backendError("local file missing: \(obs.localPath)")
+            }
+            let url: URL
+            if let bookmark = obs.bookmarkData {
+                var stale = false
+                do {
+                    url = try URL(resolvingBookmarkData: bookmark,
+                                  options: .withSecurityScope,
+                                  bookmarkDataIsStale: &stale)
+                } catch {
+                    throw ToolFailureReason.backendError("bookmark: \(error.localizedDescription)")
+                }
+            } else {
+                url = obs.localURL
+            }
+            let origin: OperationOrigin = .external(clientID: "open_cube")
+            await MainActor.run {
+                if self.currentMode != .cubeViewer {
+                    self.navigateTo(.cubeViewer)
+                }
+                self.pendingCubeURL = url
+                activity.append(.live(
+                    kind: "open_cube",
+                    summary: "Opened cube: \(obs.observationID) (\(obs.collection))",
                     origin: origin
                 ))
             }
@@ -739,6 +782,7 @@ extension AppState {
         case .portal:     return "portal"
         case .storage:    return "storage"
         case .fitsViewer: return "fitsViewer"
+        case .cubeViewer: return "cubeViewer"
         case .aiGuide:    return "aiGuide"
         }
     }
@@ -751,6 +795,7 @@ extension AppState {
         case .portal:     return "Portal"
         case .storage:    return "Storage"
         case .fitsViewer: return "FITS Viewer"
+        case .cubeViewer: return "Cube Viewer"
         case .aiGuide:    return "AI Guide"
         }
     }

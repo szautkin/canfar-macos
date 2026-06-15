@@ -21,6 +21,7 @@ enum AppMode: Equatable {
     case research
     case storage
     case fitsViewer
+    case cubeViewer
     case aiGuide
 }
 
@@ -365,6 +366,10 @@ final class AppState {
     // Cross-module actions
     var pendingFITSURL: URL?
 
+    /// Pending cube file → Cube Viewer. The Cube Viewer is its own tile/mode,
+    /// separate from the FITS viewer; this mirrors the `pendingFITSURL` bridge.
+    var pendingCubeURL: URL?
+
     /// Pending sky coordinates from FITS viewer crosshair → Search tab.
     /// Includes a unique `id` so `.task(id:)` always re-fires, even if the
     /// same sky position is searched twice in a row.
@@ -377,6 +382,7 @@ final class AppState {
 
     enum AppAction {
         case openFITS(url: URL)
+        case openCube(url: URL)
         case searchCoordinates(ra: Double, dec: Double)
     }
 
@@ -385,6 +391,9 @@ final class AppState {
         case .openFITS(let url):
             pendingFITSURL = url
             navigateTo(.fitsViewer)
+        case .openCube(let url):
+            pendingCubeURL = url
+            navigateTo(.cubeViewer)
         case .searchCoordinates(let ra, let dec):
             pendingSearchCoordinate = PendingCoordinate(ra: ra, dec: dec)
             navigateTo(.search)

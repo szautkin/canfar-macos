@@ -121,34 +121,56 @@ public enum FITSRenderEngine {
     }
 
     private static func buildColormap(_ type: FITSRenderParams.ColormapType) -> [RGB] {
-        (0..<256).map { i -> RGB in
-            let t = Float(i) / 255.0
-            switch type {
-            case .grayscale:
-                let v = UInt8(t * 255)
-                return RGB(r: v, g: v, b: v)
-            case .inverted:
-                let v = UInt8((1 - t) * 255)
-                return RGB(r: v, g: v, b: v)
-            case .heat:
-                let r = UInt8(min(t * 3, 1) * 255)
-                let g = UInt8(max(min((t - 0.33) * 3, 1), 0) * 255)
-                let b = UInt8(max(min((t - 0.67) * 3, 1), 0) * 255)
-                return RGB(r: r, g: g, b: b)
-            case .cool:
-                return RGB(r: UInt8(t * 255), g: UInt8((1 - t) * 255), b: 255)
-            case .viridis:
-                var rv: Float = t * 0.5
-                if t > 0.7 { rv += (t - 0.7) * 3.3 }
-                let gv: Float = t * 0.8 + 0.1
-                var bv: Float = 0.5 - t * 0.5
-                if t < 0.3 { bv += t }
-                return RGB(
-                    r: UInt8(min(max(rv, 0), 1) * 255),
-                    g: UInt8(min(max(gv, 0), 1) * 255),
-                    b: UInt8(min(max(bv, 0), 1) * 255)
-                )
-            }
+        (0..<256).map { i in
+            let c = colormapColor(Float(i) / 255.0, type)
+            return RGB(r: c.0, g: c.1, b: c.2)
+        }
+    }
+
+    /// 256-entry RGBA colormap LUT (4 bytes/entry, alpha = 255). Public so the
+    /// cube viewer's Metal volume renderer can build its colormap texture from
+    /// the *same* ramps the 2D/slice renderer uses — one source of truth, so
+    /// slice and volume modes always agree on color.
+    public static func colormapRGBA(_ type: FITSRenderParams.ColormapType) -> [UInt8] {
+        var out = [UInt8](repeating: 0, count: 256 * 4)
+        for i in 0..<256 {
+            let c = colormapColor(Float(i) / 255.0, type)
+            out[i * 4 + 0] = c.0
+            out[i * 4 + 1] = c.1
+            out[i * 4 + 2] = c.2
+            out[i * 4 + 3] = 255
+        }
+        return out
+    }
+
+    /// Single source of truth for the colormap ramps, shared by `buildColormap`
+    /// (CPU slice render) and `colormapRGBA` (GPU volume texture).
+    private static func colormapColor(_ t: Float, _ type: FITSRenderParams.ColormapType) -> (UInt8, UInt8, UInt8) {
+        switch type {
+        case .grayscale:
+            let v = UInt8(t * 255)
+            return (v, v, v)
+        case .inverted:
+            let v = UInt8((1 - t) * 255)
+            return (v, v, v)
+        case .heat:
+            let r = UInt8(min(t * 3, 1) * 255)
+            let g = UInt8(max(min((t - 0.33) * 3, 1), 0) * 255)
+            let b = UInt8(max(min((t - 0.67) * 3, 1), 0) * 255)
+            return (r, g, b)
+        case .cool:
+            return (UInt8(t * 255), UInt8((1 - t) * 255), 255)
+        case .viridis:
+            var rv: Float = t * 0.5
+            if t > 0.7 { rv += (t - 0.7) * 3.3 }
+            let gv: Float = t * 0.8 + 0.1
+            var bv: Float = 0.5 - t * 0.5
+            if t < 0.3 { bv += t }
+            return (
+                UInt8(min(max(rv, 0), 1) * 255),
+                UInt8(min(max(gv, 0), 1) * 255),
+                UInt8(min(max(bv, 0), 1) * 255)
+            )
         }
     }
 }

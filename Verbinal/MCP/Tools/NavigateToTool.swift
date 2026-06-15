@@ -36,7 +36,7 @@ struct NavigateToTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "navigate_to",
-        description: "Switch the user's window to a specific app section: landing (dashboard / home), search (CADC archive search form), research (downloaded observations + notes), portal (sessions dashboard), storage (VOSpace browser), fitsViewer (the FITS viewer; open a file via `open_fits_file` first). Live-applied; use deliberately to keep the user oriented.",
+        description: "Switch the user's window to a specific app section: landing (dashboard / home), search (CADC archive search form), research (downloaded observations + notes), portal (sessions dashboard), storage (VOSpace browser), fitsViewer (the FITS viewer; open a file via `open_fits_file` first), cubeViewer (the 3D spectral-cube viewer; open a cube via `open_cube` first). Live-applied; use deliberately to keep the user oriented.",
         schema: #"""
         {
           "type": "object",
@@ -44,7 +44,7 @@ struct NavigateToTool: AITool {
           "properties": {
             "mode": {
               "type": "string",
-              "enum": ["landing", "search", "research", "portal", "storage", "fitsViewer"]
+              "enum": ["landing", "search", "research", "portal", "storage", "fitsViewer", "cubeViewer"]
             }
           },
           "additionalProperties": false
@@ -86,6 +86,7 @@ struct NavigateToTool: AITool {
         case "portal":     return .portal
         case "storage":    return .storage
         case "fitsViewer": return .fitsViewer
+        case "cubeViewer": return .cubeViewer
         default:           return nil
         }
     }
@@ -98,6 +99,7 @@ struct NavigateToTool: AITool {
         case .portal:     return "Portal"
         case .storage:    return "Storage"
         case .fitsViewer: return "FITS Viewer"
+        case .cubeViewer: return "Cube Viewer"
         // Not an agent-navigable target (see `mode(from:)`), but the switch
         // must be exhaustive.
         case .aiGuide:    return "AI Guide"

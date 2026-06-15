@@ -93,6 +93,15 @@ struct LandingView: View {
                     appState.navigateTo(.fitsViewer)
                 }
 
+                LandingTile(
+                    icon: "cube.transparent.fill",
+                    fallbackIcon: "cube.fill",
+                    title: "Cube Viewer",
+                    subtitle: "Explore 3D spectral cubes"
+                ) {
+                    appState.navigateTo(.cubeViewer)
+                }
+
                 // Sixth slot is the addon slot.
                 //  - Installed first-party addons get their own tile (e.g.
                 //    Notebook when Verbinal Pi is present).

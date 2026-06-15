@@ -106,6 +106,7 @@ targets:
           - "Export/**"
           - "FileBrowser/**"
           - "FITSViewer/**"
+          - "CubeViewer/**"
           - "Storage/**"
           - "MCP/**"
           # Service-layer files that exist outside the macOS-only feature

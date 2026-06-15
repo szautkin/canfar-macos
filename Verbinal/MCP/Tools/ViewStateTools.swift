@@ -73,6 +73,64 @@ struct OpenFITSFileTool: AITool {
     }
 }
 
+// MARK: - open_cube
+
+/// Open a downloaded observation as a 3D spectral cube in the (separate) Cube
+/// Viewer. Mirrors `open_fits_file`, but routes to the Cube Viewer mode.
+struct OpenCubeTool: AITool {
+    static let verbClass: VerbClass = .viewState
+    static let agentSafe: Bool = true
+
+    struct Args: Decodable, Sendable {
+        let downloaded_observation_id: String
+    }
+
+    struct Output: Encodable, Sendable {
+        let opened: Bool
+        let observationID: String
+        let localPath: String
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "open_cube",
+        description: "Open a downloaded observation as a 3D spectral cube in the in-app Cube Viewer AND navigate the user's window to the Cube Viewer mode. Live-applied; no proposal. Argument is the downloaded-observation UUID returned by `list_downloaded_observations`. Use this for FITS cubes (NAXIS≥3); for 2D images use `open_fits_file`.",
+        schema: #"""
+        {
+          "type": "object",
+          "required": ["downloaded_observation_id"],
+          "properties": {
+            "downloaded_observation_id": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    let openCube: @Sendable (_ id: UUID) async throws -> (observationID: String, localPath: String)
+
+    func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
+        let args: Args
+        do {
+            args = try JSONDecoder().decode(Args.self, from: arguments)
+        } catch {
+            return .failed(.invalidArgument("\(error)"))
+        }
+        guard let uuid = UUID(uuidString: args.downloaded_observation_id) else {
+            return .failed(.invalidArgument("downloaded_observation_id is not a UUID"))
+        }
+        do {
+            let result = try await openCube(uuid)
+            let body = Output(opened: true, observationID: result.observationID, localPath: result.localPath)
+            let bytes = try JSONEncoder().encode(body)
+            return .data(bytes)
+        } catch let f as ToolFailureReason {
+            return .failed(f)
+        } catch {
+            return .failed(.backendError("\(error)"))
+        }
+    }
+}
+
 // MARK: - set_search_focus
 
 /// Pre-position the search form on a sky coordinate. The next time the
