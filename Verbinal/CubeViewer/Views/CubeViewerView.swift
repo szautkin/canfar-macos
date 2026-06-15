@@ -14,12 +14,47 @@ struct CubeViewerView: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
-                modePicker
+                HStack {
+                    modePicker
+                    Spacer()
+                    Button { model.showGuide = true } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Cube Viewer guide")
+                }
+                .padding(.horizontal, 8)
                 Divider()
                 content
             }
             Divider()
             CubeRenderControlsView(model: model)
+        }
+        .focusable()
+        .focusEffectDisabled()
+        .onKeyPress { press in handleKey(press) }
+    }
+
+    /// Keyboard: ←/→ scrub (Shift = ±10), Space play/pause, V toggle mode,
+    /// R reset window. Mirrors v-cube's key map.
+    private func handleKey(_ press: KeyPress) -> KeyPress.Result {
+        switch press.key {
+        case .leftArrow:
+            model.stepChannel(press.modifiers.contains(.shift) ? -10 : -1); return .handled
+        case .rightArrow:
+            model.stepChannel(press.modifiers.contains(.shift) ? 10 : 1); return .handled
+        case .space:
+            model.togglePlayback(); return .handled
+        default:
+            break
+        }
+        switch press.characters {
+        case "v":
+            model.viewMode = model.viewMode == .slice ? .volume : .slice; return .handled
+        case "r":
+            model.autoWindowPercentile(); return .handled
+        default:
+            return .ignored
         }
     }
 
@@ -32,7 +67,7 @@ struct CubeViewerView: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .frame(maxWidth: 320)
-        .padding(8)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder

@@ -122,3 +122,27 @@ fragment float4 fragment_cube(VertexOut in [[stage_in]],
     if (alpha <= 0.003) { discard_fragment(); return float4(0.0); }
     return float4(acc, alpha); // premultiplied
 }
+
+// MARK: - Overlay (bounding-box wireframe + slice-plane marker)
+
+struct OverlayUniforms {
+    float4x4 mvp;
+    float4 color;
+};
+
+struct OverlayOut {
+    float4 position [[position]];
+};
+
+vertex OverlayOut vertex_overlay(uint vid [[vertex_id]],
+                                 const device float3 *verts [[buffer(0)]],
+                                 constant OverlayUniforms &u [[buffer(1)]]) {
+    OverlayOut out;
+    out.position = u.mvp * float4(verts[vid], 1.0);
+    return out;
+}
+
+fragment float4 fragment_overlay(OverlayOut in [[stage_in]],
+                                 constant OverlayUniforms &u [[buffer(0)]]) {
+    return u.color; // straight-alpha (pipeline blends source-over)
+}

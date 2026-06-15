@@ -171,6 +171,39 @@ public enum FITSRenderEngine {
                 UInt8(min(max(gv, 0), 1) * 255),
                 UInt8(min(max(bv, 0), 1) * 255)
             )
+        case .inferno:
+            return interpolateAnchors(infernoAnchors, t)
+        case .magma:
+            return interpolateAnchors(magmaAnchors, t)
+        case .plasma:
+            return interpolateAnchors(plasmaAnchors, t)
         }
     }
+
+    /// Linear interpolation over a compact RGB anchor table (values in 0…1).
+    private static func interpolateAnchors(_ anchors: [SIMD3<Float>], _ t: Float) -> (UInt8, UInt8, UInt8) {
+        let n = anchors.count
+        guard n > 1 else { return (0, 0, 0) }
+        let x = max(0, min(1, t)) * Float(n - 1)
+        let i = min(Int(x), n - 2)
+        let c = anchors[i] + (anchors[i + 1] - anchors[i]) * (x - Float(i))
+        return (UInt8(max(0, min(1, c.x)) * 255), UInt8(max(0, min(1, c.y)) * 255), UInt8(max(0, min(1, c.z)) * 255))
+    }
+
+    // Compact matplotlib-style anchor tables (9 stops), linearly interpolated.
+    private static let infernoAnchors: [SIMD3<Float>] = [
+        SIMD3(0.001, 0.000, 0.014), SIMD3(0.088, 0.044, 0.224), SIMD3(0.258, 0.039, 0.406),
+        SIMD3(0.417, 0.091, 0.433), SIMD3(0.578, 0.148, 0.404), SIMD3(0.736, 0.215, 0.330),
+        SIMD3(0.865, 0.317, 0.226), SIMD3(0.955, 0.485, 0.092), SIMD3(0.988, 0.998, 0.645),
+    ]
+    private static let magmaAnchors: [SIMD3<Float>] = [
+        SIMD3(0.001, 0.000, 0.014), SIMD3(0.078, 0.043, 0.206), SIMD3(0.232, 0.059, 0.438),
+        SIMD3(0.390, 0.100, 0.502), SIMD3(0.550, 0.161, 0.506), SIMD3(0.716, 0.215, 0.475),
+        SIMD3(0.868, 0.288, 0.409), SIMD3(0.967, 0.440, 0.360), SIMD3(0.987, 0.991, 0.749),
+    ]
+    private static let plasmaAnchors: [SIMD3<Float>] = [
+        SIMD3(0.050, 0.030, 0.528), SIMD3(0.254, 0.013, 0.615), SIMD3(0.417, 0.000, 0.658),
+        SIMD3(0.562, 0.052, 0.641), SIMD3(0.692, 0.165, 0.564), SIMD3(0.798, 0.280, 0.470),
+        SIMD3(0.881, 0.392, 0.383), SIMD3(0.949, 0.518, 0.295), SIMD3(0.940, 0.975, 0.131),
+    ]
 }

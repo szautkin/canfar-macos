@@ -8,6 +8,7 @@
 import Metal
 import MetalKit
 import simd
+import Foundation
 import VerbinalKit
 
 /// Matches the `CubeUniforms` struct in Cube.metal byte-for-byte.
@@ -23,21 +24,34 @@ private struct CubeUniforms {
     var pad0: Float
 }
 
-/// `MTKViewDelegate` that ray-marches a cube's half-float 3D texture. All access
-/// is on the main thread (MetalKit drives `draw(in:)` there, and SwiftUI pushes
-/// parameters from `updateNSView`), so this is a plain main-thread object.
+/// Matches `OverlayUniforms` in Cube.metal.
+private struct OverlayUniforms {
+    var mvp: simd_float4x4
+    var color: simd_float4
+}
+
+/// `MTKViewDelegate` that ray-marches a cube's half-float 3D texture and draws
+/// the bounding box + slice-plane overlay. All access is on the main thread
+/// (MetalKit drives `draw(in:)` there; SwiftUI pushes parameters from
+/// `updateNSView`), so this is a plain main-thread object.
 final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     private let device: MTLDevice
     private let queue: MTLCommandQueue
     private var pipeline: MTLRenderPipelineState?
+    private var overlayPipeline: MTLRenderPipelineState?
+    private var boxEdgeBuffer: MTLBuffer?
 
     private var dataTexture: MTLTexture?
     private var colormapTexture: MTLTexture?
     private var transferTexture: MTLTexture?
 
+    // CPU copy of the volume for ray-picking.
+    private var volumeCPU: [Float16]?
+    private var volDims = SIMD3<Int>(1, 1, 1)
+    private var volBinZ = 1
+
     // Box aspect: spatial-true, spectral axis user-stretched.
     private var boxScale = SIMD3<Float>(1, 1, 1)
-    private var volDims = SIMD3<Int>(1, 1, 1)
 
     // Orbit camera.
     private var azimuth: Float = 0.7
@@ -45,6 +59,7 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     private var distance: Float = 2.6
     private var viewportAspect: Float = 1
     private var jitter: Float = 0
+    private var lastInteraction = Date()
 
     // Live parameters pushed from CubeViewerModel.
     var windowLo: Float = 0
@@ -53,6 +68,12 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     var stretch: Int32 = 0
     var mip = false
     var interacting = false
+    var baseSteps: Float = 384
+    var showSlicePlane = true
+    var sliceFraction: Float = 0.5
+    var autoOrbit = false
+    var idleDelay: Double = 8
+    var onPickChannel: ((Int) -> Void)?
     var spectralScale: Float = 1.5 { didSet { applyBoxScale() } }
 
     init?(device: MTLDevice) {
@@ -63,23 +84,45 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     }
 
     func makePipeline(colorFormat: MTLPixelFormat) {
-        guard let library = device.makeDefaultLibrary(),
-              let vfn = library.makeFunction(name: "vertex_cube"),
-              let ffn = library.makeFunction(name: "fragment_cube") else { return }
-        let desc = MTLRenderPipelineDescriptor()
-        desc.vertexFunction = vfn
-        desc.fragmentFunction = ffn
-        guard let attachment = desc.colorAttachments[0] else { return }
-        attachment.pixelFormat = colorFormat
-        attachment.isBlendingEnabled = true
-        attachment.rgbBlendOperation = .add
-        attachment.alphaBlendOperation = .add
-        // Premultiplied "over": the shader outputs premultiplied (acc, alpha).
-        attachment.sourceRGBBlendFactor = .one
-        attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
-        attachment.sourceAlphaBlendFactor = .one
-        attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
-        pipeline = try? device.makeRenderPipelineState(descriptor: desc)
+        guard let library = device.makeDefaultLibrary() else { return }
+        if let vfn = library.makeFunction(name: "vertex_cube"),
+           let ffn = library.makeFunction(name: "fragment_cube") {
+            let desc = MTLRenderPipelineDescriptor()
+            desc.vertexFunction = vfn
+            desc.fragmentFunction = ffn
+            if let attachment = desc.colorAttachments[0] {
+                attachment.pixelFormat = colorFormat
+                attachment.isBlendingEnabled = true
+                attachment.rgbBlendOperation = .add
+                attachment.alphaBlendOperation = .add
+                // Premultiplied "over": the shader outputs premultiplied (acc, alpha).
+                attachment.sourceRGBBlendFactor = .one
+                attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+                attachment.sourceAlphaBlendFactor = .one
+                attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            }
+            pipeline = try? device.makeRenderPipelineState(descriptor: desc)
+        }
+
+        if let vfn = library.makeFunction(name: "vertex_overlay"),
+           let ffn = library.makeFunction(name: "fragment_overlay") {
+            let desc = MTLRenderPipelineDescriptor()
+            desc.vertexFunction = vfn
+            desc.fragmentFunction = ffn
+            if let attachment = desc.colorAttachments[0] {
+                attachment.pixelFormat = colorFormat
+                attachment.isBlendingEnabled = true
+                attachment.rgbBlendOperation = .add
+                attachment.alphaBlendOperation = .add
+                attachment.sourceRGBBlendFactor = .sourceAlpha
+                attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+                attachment.sourceAlphaBlendFactor = .sourceAlpha
+                attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            }
+            overlayPipeline = try? device.makeRenderPipelineState(descriptor: desc)
+            let edges = Self.unitBoxEdges()
+            boxEdgeBuffer = device.makeBuffer(bytes: edges, length: MemoryLayout<SIMD3<Float>>.stride * edges.count, options: [])
+        }
     }
 
     var isReady: Bool { pipeline != nil }
@@ -107,7 +150,9 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
             )
         }
         dataTexture = texture
+        volumeCPU = volume.data
         volDims = SIMD3(volume.nx, volume.ny, volume.nz)
+        volBinZ = volume.binZ
         applyBoxScale()
     }
 
@@ -170,15 +215,69 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     func orbit(dx: Float, dy: Float) {
         azimuth -= dx * 0.01
         elevation = min(max(elevation + dy * 0.01, -1.4), 1.4)
+        lastInteraction = Date()
     }
 
     func zoom(by delta: Float) {
         distance = min(max(distance * exp(delta), 0.5), 8)
+        lastInteraction = Date()
     }
 
     private func cameraPosition() -> SIMD3<Float> {
         let ce = cos(elevation), se = sin(elevation)
         return SIMD3(distance * ce * sin(azimuth), distance * se, distance * ce * cos(azimuth))
+    }
+
+    private func currentMatrices() -> (model: simd_float4x4, viewProj: simd_float4x4) {
+        let model = simd_float4x4(diagonal: SIMD4(boxScale.x, boxScale.y, boxScale.z, 1))
+        let view = makeLookAt(eye: cameraPosition(), center: .zero, up: SIMD3(0, 1, 0))
+        let proj = makePerspective(fovyRadians: 38 * .pi / 180, aspect: viewportAspect, near: 0.01, far: 50)
+        return (model, proj * view)
+    }
+
+    /// Ray-pick: march the CPU volume from the click ray, jump to the brightest
+    /// channel (mapped back through the spectral binning).
+    func pick(ndcX: Float, ndcY: Float) {
+        guard let volumeCPU, let onPickChannel else { return }
+        let (model, viewProj) = currentMatrices()
+        let invVP = viewProj.inverse
+        let invModel = model.inverse
+        let near = invVP * SIMD4<Float>(ndcX, ndcY, 0, 1)
+        let far = invVP * SIMD4<Float>(ndcX, ndcY, 1, 1)
+        let nearW = SIMD3(near.x, near.y, near.z) / near.w
+        let farW = SIMD3(far.x, far.y, far.z) / far.w
+        let ro4 = invModel * SIMD4(nearW, 1)
+        let ro = SIMD3(ro4.x, ro4.y, ro4.z)
+        let rd4 = invModel * SIMD4(farW - nearW, 0)
+        let rd = normalize(SIMD3(rd4.x, rd4.y, rd4.z))
+        guard let bounds = rayBox(ro, rd) else { return }
+
+        let (nx, ny, nz) = (volDims.x, volDims.y, volDims.z)
+        let steps = 512
+        var best: Float = 0
+        var bestZ = -1
+        for i in 0...steps {
+            let t = bounds.0 + (bounds.1 - bounds.0) * Float(i) / Float(steps)
+            let p = ro + rd * t + SIMD3<Float>(0.5, 0.5, 0.5)
+            let px = Int(p.x * Float(nx)), py = Int(p.y * Float(ny)), pz = Int(p.z * Float(nz))
+            if px < 0 || py < 0 || pz < 0 || px >= nx || py >= ny || pz >= nz { continue }
+            let v = Float(volumeCPU[pz * nx * ny + py * nx + px])
+            if v > best { best = v; bestZ = pz }
+        }
+        if bestZ >= 0 { onPickChannel(Int((Float(bestZ) + 0.5) * Float(volBinZ))) }
+    }
+
+    private func rayBox(_ o: SIMD3<Float>, _ d: SIMD3<Float>) -> (Float, Float)? {
+        var tmin = -Float.infinity, tmax = Float.infinity
+        for ax in 0..<3 {
+            let inv = 1 / d[ax]
+            var t0 = (-0.5 - o[ax]) * inv
+            var t1 = (0.5 - o[ax]) * inv
+            if t0 > t1 { swap(&t0, &t1) }
+            tmin = max(tmin, t0); tmax = min(tmax, t1)
+        }
+        if tmax < max(tmin, 0) { return nil }
+        return (max(tmin, 0), tmax)
     }
 
     // MARK: - MTKViewDelegate
@@ -195,8 +294,25 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
               let commandBuffer = queue.makeCommandBuffer(),
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else { return }
 
+        if autoOrbit, !interacting, Date().timeIntervalSince(lastInteraction) > idleDelay {
+            azimuth += 0.0016
+        }
+
         jitter = (jitter + 17.13).truncatingRemainder(dividingBy: 1024)
-        var uniforms = buildUniforms()
+        let (model, viewProj) = currentMatrices()
+        let mvp = viewProj * model
+
+        var uniforms = CubeUniforms(
+            invViewProj: viewProj.inverse,
+            inverseModel: model.inverse,
+            window: SIMD2(windowLo, windowHi),
+            steps: interacting ? min(160, baseSteps) : baseSteps,
+            density: density,
+            jitter: jitter,
+            stretch: stretch,
+            mip: mip ? 1 : 0,
+            pad0: 0
+        )
 
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<CubeUniforms>.stride, index: 0)
@@ -204,27 +320,69 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
         encoder.setFragmentTexture(colormapTexture, index: 1)
         encoder.setFragmentTexture(transferTexture, index: 2)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+
+        drawOverlay(encoder, mvp: mvp)
+
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
     }
 
-    private func buildUniforms() -> CubeUniforms {
-        let model = simd_float4x4(diagonal: SIMD4(boxScale.x, boxScale.y, boxScale.z, 1))
-        let view = makeLookAt(eye: cameraPosition(), center: .zero, up: SIMD3(0, 1, 0))
-        let proj = makePerspective(fovyRadians: 38 * .pi / 180, aspect: viewportAspect, near: 0.01, far: 50)
-        let viewProj = proj * view
-        return CubeUniforms(
-            invViewProj: viewProj.inverse,
-            inverseModel: model.inverse,
-            window: SIMD2(windowLo, windowHi),
-            steps: interacting ? 160 : 384,
-            density: density,
-            jitter: jitter,
-            stretch: stretch,
-            mip: mip ? 1 : 0,
-            pad0: 0
-        )
+    private func drawOverlay(_ encoder: MTLRenderCommandEncoder, mvp: simd_float4x4) {
+        guard let overlayPipeline, let boxEdgeBuffer else { return }
+        encoder.setRenderPipelineState(overlayPipeline)
+
+        // Bounding box wireframe.
+        var boxUniforms = OverlayUniforms(mvp: mvp, color: SIMD4(0.33, 0.66, 0.82, 0.7))
+        encoder.setVertexBuffer(boxEdgeBuffer, offset: 0, index: 0)
+        encoder.setVertexBytes(&boxUniforms, length: MemoryLayout<OverlayUniforms>.stride, index: 1)
+        encoder.setFragmentBytes(&boxUniforms, length: MemoryLayout<OverlayUniforms>.stride, index: 0)
+        encoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: 24)
+
+        guard showSlicePlane else { return }
+        let z = sliceFraction - 0.5
+
+        // Translucent plane fill.
+        let quad = Self.planeTriangles(z)
+        var fillUniforms = OverlayUniforms(mvp: mvp, color: SIMD4(0.34, 0.78, 1.0, 0.16))
+        quad.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 0) }
+        encoder.setVertexBytes(&fillUniforms, length: MemoryLayout<OverlayUniforms>.stride, index: 1)
+        encoder.setFragmentBytes(&fillUniforms, length: MemoryLayout<OverlayUniforms>.stride, index: 0)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+
+        // Plane edges.
+        let edges = Self.planeEdges(z)
+        var edgeUniforms = OverlayUniforms(mvp: mvp, color: SIMD4(0.34, 0.78, 1.0, 0.7))
+        edges.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 0) }
+        encoder.setVertexBytes(&edgeUniforms, length: MemoryLayout<OverlayUniforms>.stride, index: 1)
+        encoder.setFragmentBytes(&edgeUniforms, length: MemoryLayout<OverlayUniforms>.stride, index: 0)
+        encoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: 8)
+    }
+
+    // MARK: - Geometry
+
+    private static func unitBoxEdges() -> [SIMD3<Float>] {
+        let p: Float = 0.5
+        let c: [SIMD3<Float>] = [
+            SIMD3(-p, -p, -p), SIMD3(p, -p, -p), SIMD3(p, p, -p), SIMD3(-p, p, -p),
+            SIMD3(-p, -p, p), SIMD3(p, -p, p), SIMD3(p, p, p), SIMD3(-p, p, p),
+        ]
+        let pairs = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7)]
+        var out: [SIMD3<Float>] = []
+        for (a, b) in pairs { out.append(c[a]); out.append(c[b]) }
+        return out
+    }
+
+    private static func planeTriangles(_ z: Float) -> [SIMD3<Float>] {
+        let a = SIMD3<Float>(-0.5, -0.5, z), b = SIMD3<Float>(0.5, -0.5, z)
+        let c = SIMD3<Float>(0.5, 0.5, z), d = SIMD3<Float>(-0.5, 0.5, z)
+        return [a, b, c, a, c, d]
+    }
+
+    private static func planeEdges(_ z: Float) -> [SIMD3<Float>] {
+        let a = SIMD3<Float>(-0.5, -0.5, z), b = SIMD3<Float>(0.5, -0.5, z)
+        let c = SIMD3<Float>(0.5, 0.5, z), d = SIMD3<Float>(-0.5, 0.5, z)
+        return [a, b, b, c, c, d, d, a]
     }
 }
 

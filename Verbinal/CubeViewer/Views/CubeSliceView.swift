@@ -7,16 +7,17 @@
 import SwiftUI
 
 /// Slice mode: the active channel rendered at native resolution (via the shared
-/// `FITSRenderEngine`), a channel scrubber, a WCS + spectral coordinate bar, and
-/// click-to-probe spectrum.
+/// `FITSRenderEngine`), a floating cursor readout, a WCS + spectral coordinate
+/// bar, a timeline scrubber (play + waveform), and click-to-probe spectrum.
 struct CubeSliceView: View {
     let model: CubeViewerModel
+    @State private var hoverLocation: CGPoint?
 
     var body: some View {
         VStack(spacing: 0) {
             imageArea
             coordinateBar
-            channelScrubber
+            timeline
         }
     }
 
@@ -35,18 +36,29 @@ struct CubeSliceView: View {
                     ProgressView()
                 }
 
-                if model.probePoint != nil, let spectrum = model.probeSpectrum {
-                    spectrumOverlay(spectrum)
+                if model.probePoint != nil || model.probeUnavailableReason != nil {
+                    spectrumOverlay
+                }
+
+                if let location = hoverLocation, !model.cursorValue.isEmpty {
+                    cursorChip
+                        .position(
+                            x: min(max(location.x + 90, 70), geo.size.width - 70),
+                            y: max(location.y - 34, 28)
+                        )
+                        .allowsHitTesting(false)
                 }
             }
             .contentShape(Rectangle())
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let location):
+                    hoverLocation = location
                     if let (x, y) = imagePixel(at: location, in: geo.size) {
                         Task { await model.updateCursor(x: x, y: y) }
                     }
                 case .ended:
+                    hoverLocation = nil
                     model.clearCursor()
                 }
             }
@@ -58,26 +70,50 @@ struct CubeSliceView: View {
         }
     }
 
+    /// Floating readout that follows the cursor (sky + spectral + value).
+    private var cursorChip: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let sky = model.skyReadout {
+                Text("\(sky.lonLabel) \(sky.lon)")
+                Text("\(sky.latLabel) \(sky.lat)")
+            }
+            if let readout = model.spectralReadout {
+                Text(readout.primary).foregroundStyle(.secondary)
+            }
+            Text(model.cursorValue).foregroundStyle(.orange)
+        }
+        .font(.caption2.monospaced())
+        .padding(6)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
+    }
+
     @ViewBuilder
-    private func spectrumOverlay(_ spectrum: [Float]) -> some View {
+    private var spectrumOverlay: some View {
         VStack {
             Spacer()
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     if let point = model.probePoint {
-                        Text("Spectrum @ (\(point.x), \(point.y))")
-                            .font(.caption.bold())
+                        Text("Spectrum @ (\(point.x), \(point.y))").font(.caption.bold())
+                    } else {
+                        Text("Spectrum probe").font(.caption.bold())
                     }
                     Spacer()
-                    Button {
-                        model.clearProbe()
-                    } label: {
+                    Button { model.clearProbe() } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
-                CubeSpectrumView(spectrum: spectrum, channel: model.channel) { model.setChannel($0) }
-                    .frame(height: 90)
+                if let spectrum = model.probeSpectrum, spectrum.contains(where: { $0.isFinite }) {
+                    CubeSpectrumView(spectrum: spectrum, channel: model.channel) { model.setChannel($0) }
+                        .frame(height: 90)
+                } else if let reason = model.probeUnavailableReason {
+                    Text(reason).font(.caption).foregroundStyle(.secondary).frame(height: 90)
+                } else {
+                    Text("NO SIGNAL").font(.caption.monospaced()).foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity).frame(height: 90)
+                }
             }
             .padding(10)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
@@ -112,25 +148,29 @@ struct CubeSliceView: View {
         .background(.bar)
     }
 
-    // MARK: Channel scrubber
+    // MARK: Timeline (play + waveform scrubber)
 
-    private var channelScrubber: some View {
+    private var timeline: some View {
         HStack(spacing: 12) {
-            Button { model.stepChannel(-1) } label: { Image(systemName: "chevron.left") }
-                .buttonStyle(.borderless)
-                .disabled(model.channel <= 0)
+            Button { model.togglePlayback() } label: {
+                Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
+            }
+            .buttonStyle(.borderless)
+            .help(model.isPlaying ? "Pause (Space)" : "Play through channels (Space)")
+            .disabled(model.nz <= 1)
 
-            Slider(
-                value: Binding(
-                    get: { Double(model.channel) },
-                    set: { model.setChannel(Int($0.rounded())) }
-                ),
-                in: 0...Double(max(model.nz - 1, 1))
+            Button { model.stepChannel(-1) } label: { Image(systemName: "chevron.left") }
+                .buttonStyle(.borderless).disabled(model.channel <= 0)
+
+            ChannelScrubber(
+                profile: model.channelProfile,
+                channel: model.channel,
+                count: model.nz,
+                onScrub: { model.setChannel($0) }
             )
 
             Button { model.stepChannel(1) } label: { Image(systemName: "chevron.right") }
-                .buttonStyle(.borderless)
-                .disabled(model.channel >= model.nz - 1)
+                .buttonStyle(.borderless).disabled(model.channel >= model.nz - 1)
 
             Text("\(model.channel + 1) / \(model.nz)")
                 .font(.caption.monospacedDigit())
@@ -159,5 +199,63 @@ struct CubeSliceView: View {
         let fitsX = min(max(px, 0), Double(model.nx - 1))
         let fitsY = min(max(Double(model.ny) - pyTop, 0), Double(model.ny - 1))
         return (fitsX, fitsY)
+    }
+}
+
+/// Timeline-style channel scrubber: the cube-mean spectrum as a waveform
+/// backdrop, a progress fill, and click/drag to scrub.
+private struct ChannelScrubber: View {
+    let profile: [Float]?
+    let channel: Int
+    let count: Int
+    let onScrub: (Int) -> Void
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let frac = count > 1 ? CGFloat(channel) / CGFloat(count - 1) : 0
+
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4).fill(.quaternary)
+
+                Canvas { ctx, size in
+                    guard let profile, profile.count > 1 else { return }
+                    let finite = profile.filter { $0.isFinite }
+                    let lo = finite.min() ?? 0
+                    let hi = finite.max() ?? 1
+                    let range = hi - lo == 0 ? 1 : hi - lo
+                    var path = Path()
+                    path.move(to: CGPoint(x: 0, y: size.height))
+                    for (i, value) in profile.enumerated() {
+                        let x = size.width * CGFloat(i) / CGFloat(profile.count - 1)
+                        let norm = value.isFinite ? CGFloat((value - lo) / range) : 0
+                        path.addLine(to: CGPoint(x: x, y: size.height * (1 - norm)))
+                    }
+                    path.addLine(to: CGPoint(x: size.width, y: size.height))
+                    path.closeSubpath()
+                    ctx.fill(path, with: .color(.secondary.opacity(0.3)))
+                }
+
+                Rectangle()
+                    .fill(Color.accentColor.opacity(0.18))
+                    .frame(width: w * frac)
+
+                Rectangle()
+                    .fill(Color.accentColor)
+                    .frame(width: 2, height: h)
+                    .offset(x: w * frac - 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0).onChanged { value in
+                    guard w > 0 else { return }
+                    let f = max(0, min(1, value.location.x / w))
+                    onScrub(Int((f * CGFloat(max(count - 1, 1))).rounded()))
+                }
+            )
+        }
+        .frame(height: 38)
     }
 }

@@ -62,7 +62,7 @@ public struct FITSRenderParams: Sendable, Equatable {
     }
 
     public enum ColormapType: String, CaseIterable, Identifiable, Sendable {
-        case grayscale, inverted, heat, cool, viridis
+        case grayscale, inverted, heat, cool, viridis, inferno, magma, plasma
         public var id: String { rawValue }
     }
 }

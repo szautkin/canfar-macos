@@ -8,7 +8,7 @@ import SwiftUI
 
 /// Root of the Cube Viewer feature — its own landing-tile destination, fully
 /// separate from the FITS viewer. Owns one `CubeViewerModel` and opens a cube
-/// either from the file picker or from a URL handed in via `AppState`.
+/// from the file picker, a dropped file, or a URL handed in via `AppState`.
 struct CubeViewerRootView: View {
     @Environment(AppState.self) private var appState
     @State private var model = CubeViewerModel()
@@ -25,10 +25,24 @@ struct CubeViewerRootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .top) { errorBanner }
+        .overlay(alignment: .bottom) { toastView }
+        .dropDestination(for: URL.self) { urls, _ in
+            guard let url = urls.first else { return false }
+            Task { await model.open(url: url) }
+            return true
+        }
+        .sheet(isPresented: Binding(get: { model.showGuide }, set: { model.showGuide = $0 })) {
+            CubeGuideView()
+        }
         .task(id: appState.pendingCubeURL) {
             guard let url = appState.pendingCubeURL else { return }
             appState.pendingCubeURL = nil
             await model.open(url: url)
+        }
+        .task(id: model.toast) {
+            guard model.toast != nil else { return }
+            try? await Task.sleep(for: .seconds(6))
+            withAnimation { model.toast = nil }
         }
     }
 
@@ -36,7 +50,7 @@ struct CubeViewerRootView: View {
         ContentUnavailableView {
             Label("Cube Viewer", systemImage: "cube.transparent")
         } description: {
-            Text("Open a FITS spectral cube to explore it as native-resolution slices and a GPU-rendered 3D volume.")
+            Text("Open or drop a FITS spectral cube to explore it as native-resolution slices and a GPU-rendered 3D volume.")
         } actions: {
             #if os(macOS)
             Button("Open Cube…") {
@@ -72,6 +86,67 @@ struct CubeViewerRootView: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
             .padding()
             .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    @ViewBuilder
+    private var toastView: some View {
+        if let toast = model.toast {
+            Text(toast)
+                .font(.callout)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(.regularMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(.quaternary))
+                .padding(.bottom, 24)
+                .shadow(radius: 6)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+}
+
+/// Operating guide sheet — workflow, the slice/volume contract, and key map.
+private struct CubeGuideView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Cube Viewer Guide").font(.title2.bold())
+                Spacer()
+                Button("Done") { dismiss() }
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    section("The loop", [
+                        "Open a cube — the tile, drag-and-drop, or the AI agent.",
+                        "Scrub channels in Slice; tune Window + Stretch for contrast.",
+                        "Switch to Volume for 3D structure; shape opacity with the transfer function.",
+                        "Click a feature in Volume to jump to its brightest channel.",
+                    ])
+                    section("Slice vs Volume", [
+                        "Slice = quantitative: true voxel values with WCS + spectral readouts.",
+                        "Volume = qualitative: GPU ray-march, emission or max-intensity.",
+                    ])
+                    section("Keys", [
+                        "← / →  channel (Shift = ±10)",
+                        "Space  play / pause",
+                        "V  toggle slice ⇆ volume",
+                        "R  reset window",
+                    ])
+                }
+            }
+        }
+        .padding(20)
+        .frame(width: 460, height: 420)
+    }
+
+    private func section(_ title: String, _ items: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.headline)
+            ForEach(items, id: \.self) { item in
+                Text("•  \(item)").font(.callout).foregroundStyle(.secondary)
+            }
         }
     }
 }

@@ -197,6 +197,26 @@ public actor CubeModel {
         return out
     }
 
+    /// NaN-aware mean of each channel — the cube-mean spectrum for the scrubber
+    /// waveform. RAM cubes only (a streamed scan would touch the whole file).
+    public func channelMeans() -> [Float]? {
+        guard let full else { return nil }
+        let planeElems = nx * ny
+        guard planeElems > 0 else { return nil }
+        var out = [Float](repeating: 0, count: nz)
+        for z in 0..<nz {
+            let base = z * planeElems
+            var sum = 0.0
+            var count = 0
+            for i in 0..<planeElems {
+                let v = full[base + i]
+                if v == v { sum += Double(v); count += 1 }
+            }
+            out[z] = count > 0 ? Float(sum / Double(count)) : .nan
+        }
+        return out
+    }
+
     private func touchLRU(_ z: Int) {
         if let idx = lru.firstIndex(of: z) {
             lru.remove(at: idx)

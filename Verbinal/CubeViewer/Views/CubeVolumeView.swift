@@ -10,8 +10,9 @@ import MetalKit
 import VerbinalKit
 
 /// SwiftUI host for the Metal volume renderer. Pushes live parameters from the
-/// model into the renderer on every observed change and uploads the volume +
-/// colormap + transfer-function textures once per loaded cube.
+/// model into the renderer on every observed change, uploads the volume +
+/// colormap + transfer-function textures once per cube, and routes orbit/zoom +
+/// click-to-pick interaction.
 struct CubeVolumeView: NSViewRepresentable {
     let model: CubeViewerModel
 
@@ -32,10 +33,15 @@ struct CubeVolumeView: NSViewRepresentable {
             renderer.makePipeline(colorFormat: view.colorPixelFormat)
             view.delegate = renderer
             context.coordinator.renderer = renderer
+            let model = self.model
             view.onOrbit = { dx, dy in renderer.orbit(dx: Float(dx), dy: Float(dy)) }
             view.onZoom = { delta in renderer.zoom(by: Float(delta)) }
             view.onInteractStart = { renderer.interacting = true }
             view.onInteractEnd = { renderer.interacting = false }
+            view.onClickNDC = { x, y in renderer.pick(ndcX: Float(x), ndcY: Float(y)) }
+            renderer.onPickChannel = { channel in
+                MainActor.assumeIsolated { model.setChannel(channel) }
+            }
         }
         return view
     }
@@ -62,6 +68,10 @@ struct CubeVolumeView: NSViewRepresentable {
         renderer.stretch = model.stretchIndex
         renderer.mip = model.mip
         renderer.spectralScale = model.spectralScale
+        renderer.baseSteps = model.volumeSteps
+        renderer.showSlicePlane = model.showSlicePlane
+        renderer.sliceFraction = model.nz > 1 ? Float(model.channel) / Float(model.nz - 1) : 0
+        renderer.autoOrbit = model.autoOrbit
 
         if coordinator.appliedColormap != model.colormap {
             renderer.setColormap(FITSRenderEngine.colormapRGBA(model.colormap))
@@ -81,32 +91,40 @@ struct CubeVolumeView: NSViewRepresentable {
     }
 }
 
-/// MTKView subclass that turns mouse/scroll/pinch into orbit + zoom callbacks —
-/// self-contained input capture for the volume view (no dependency on the FITS
-/// viewer's scroll capture).
+/// MTKView subclass that turns mouse/scroll/pinch into orbit + zoom + click-pick
+/// callbacks — self-contained input capture for the volume view.
 final class CubeMTKView: MTKView {
     var onOrbit: ((CGFloat, CGFloat) -> Void)?
     var onZoom: ((CGFloat) -> Void)?
     var onInteractStart: (() -> Void)?
     var onInteractEnd: (() -> Void)?
+    var onClickNDC: ((CGFloat, CGFloat) -> Void)?
 
     private var lastDrag: NSPoint?
+    private var dragDistance: CGFloat = 0
 
     override var acceptsFirstResponder: Bool { true }
 
     override func mouseDown(with event: NSEvent) {
         lastDrag = event.locationInWindow
+        dragDistance = 0
         onInteractStart?()
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard let last = lastDrag else { return }
         let point = event.locationInWindow
+        dragDistance += abs(point.x - last.x) + abs(point.y - last.y)
         onOrbit?(point.x - last.x, point.y - last.y)
         lastDrag = point
     }
 
     override func mouseUp(with event: NSEvent) {
+        if dragDistance < 4, bounds.width > 0, bounds.height > 0 {
+            // NSView coords are y-up (origin bottom-left) → matches Metal NDC.
+            let p = convert(event.locationInWindow, from: nil)
+            onClickNDC?(2 * p.x / bounds.width - 1, 2 * p.y / bounds.height - 1)
+        }
         lastDrag = nil
         onInteractEnd?()
     }

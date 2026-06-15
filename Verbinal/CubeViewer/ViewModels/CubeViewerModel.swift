@@ -30,6 +30,8 @@ final class CubeViewerModel: Identifiable {
     var loadStage = ""
     var loadProgress: Double = 0
     var fileName = ""
+    var toast: String?
+    var showGuide = false
 
     // MARK: Data (valid after a successful open)
     private(set) var cube: CubeModel?
@@ -54,16 +56,28 @@ final class CubeViewerModel: Identifiable {
     var windowLo: Float = 0
     var windowHi: Float = 1
     var stretch: FITSRenderParams.StretchMode = .linear
-    var colormap: FITSRenderParams.ColormapType = .viridis
+    var colormap: FITSRenderParams.ColormapType = .inferno
 
     // MARK: Volume-only controls
     var density: Float = 1.0
     var spectralScale: Float = 1.5
     var mip = false
+    var showSlicePlane = true
+    var autoOrbit = false
     /// Opacity transfer function: control points (value ∈ [0,1], alpha ∈ [0,1]).
     var transferFunction: [SIMD2<Float>] = [
         SIMD2(0.0, 0.0), SIMD2(0.45, 0.05), SIMD2(0.75, 0.45), SIMD2(1.0, 1.0),
     ]
+    /// Ray-march step count (volume quality). Higher = sharper but slower.
+    var volumeSteps: Float = 384
+
+    // MARK: Playback
+    private(set) var isPlaying = false
+    var playbackFPS: Double = 12
+    private var playbackTask: Task<Void, Never>?
+
+    // MARK: Scrubber waveform (cube-mean per channel; RAM cubes only)
+    private(set) var channelProfile: [Float]?
 
     // MARK: Slice render output
     private(set) var sliceImage: CGImage?
@@ -90,6 +104,7 @@ final class CubeViewerModel: Identifiable {
     // MARK: - Opening
 
     func open(url: URL) async {
+        stopPlayback()
         isLoading = true
         loadError = nil
         loadStage = "OPENING"
@@ -121,11 +136,15 @@ final class CubeViewerModel: Identifiable {
             self.stats = await cube.stats
             self.wcs = await cube.wcs
             self.volumeData = await cube.volume
+            self.channelProfile = await cube.channelMeans()
             self.isStreamed = await cube.isStreamed
             self.cube = cube
             self.channel = nz / 2
             updateSpectralReadout()
             await renderSliceAsync()
+            if isStreamed {
+                toast = "Large cube — slices stream from disk; the spectrum probe needs a memory-resident cube."
+            }
         } catch {
             Self.logger.error("Cube open failed: \(error.localizedDescription, privacy: .public)")
             loadError = error.localizedDescription
@@ -262,6 +281,61 @@ final class CubeViewerModel: Identifiable {
         probeSpectrum = nil
         probePoint = nil
         probeUnavailableReason = nil
+    }
+
+    // MARK: - Playback (animate through channels)
+
+    func togglePlayback() {
+        if isPlaying { stopPlayback() } else { startPlayback() }
+    }
+
+    func startPlayback() {
+        guard nz > 1, !isPlaying else { return }
+        isPlaying = true
+        // Task created in a @MainActor method is main-actor-isolated, so the
+        // property reads below are synchronous (no data race).
+        playbackTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.isPlaying else { break }
+                let interval = 1.0 / max(self.playbackFPS, 0.5)
+                try? await Task.sleep(for: .seconds(interval))
+                guard !Task.isCancelled, self.isPlaying else { break }
+                self.setChannel(self.channel + 1 >= self.nz ? 0 : self.channel + 1)
+            }
+        }
+    }
+
+    func stopPlayback() {
+        isPlaying = false
+        playbackTask?.cancel()
+        playbackTask = nil
+    }
+
+    // MARK: - Window helpers
+
+    /// Current window expressed in raw data values (for the readout).
+    var rawWindow: (lo: Float, hi: Float) {
+        guard let stats else { return (0, 1) }
+        let range = stats.hi - stats.lo
+        let r = range == 0 ? 1 : range
+        return (stats.lo + windowLo * r, stats.lo + windowHi * r)
+    }
+
+    /// Window the full data min…max.
+    func autoWindowFullRange() {
+        guard let stats else { return }
+        let range = stats.hi - stats.lo
+        let r = range == 0 ? 1 : range
+        windowLo = (stats.min - stats.lo) / r
+        windowHi = (stats.max - stats.lo) / r
+        renderSliceDebounced()
+    }
+
+    /// Window the robust p0.1…p99.9 percentile range (the load-time default).
+    func autoWindowPercentile() {
+        windowLo = 0
+        windowHi = 1
+        renderSliceDebounced()
     }
 
     // MARK: - Volume shader inputs
