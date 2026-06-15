@@ -314,10 +314,14 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
 
     /// Render one frame into an offscreen texture at the given size and read it
     /// back as a CGImage (for figure export). Full quality, no jitter.
-    func snapshot(width: Int, height: Int) -> CGImage? {
+    func snapshot(width: Int, height: Int, distanceScale: Float = 1) -> CGImage? {
         guard width > 0, height > 0,
               let pipeline,
               let dataTexture, let colormapTexture, let transferTexture else { return nil }
+        // Pull the camera back for export so the box + axis labels have margin.
+        let savedDistance = cameraDistance
+        cameraDistance *= distanceScale
+        defer { cameraDistance = savedDistance }
         let texDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
         texDesc.usage = [.renderTarget, .shaderRead]
         texDesc.storageMode = .shared

@@ -420,7 +420,7 @@ private struct CubeExportPlate: View {
             Image(decorative: content, scale: 1)
                 .resizable()
                 .scaledToFit()
-                .overlay { if showAxes { CubeAxisCaptions(model: model) } }
+                .overlay { if showAxes { CubeAxisCaptions(model: model, distanceScale: 1.3) } }
                 .padding(style.annotate ? 14 : 0)
             if style.annotate {
                 Rectangle().fill(style.theme.line).frame(height: 1)

@@ -43,7 +43,8 @@ struct CubeVolumeView: NSViewRepresentable {
             renderer.onPickChannel = { channel in
                 MainActor.assumeIsolated { model.setChannel(channel) }
             }
-            model.volumeSnapshot = { width, height in renderer.snapshot(width: width, height: height) }
+            // 1.3 must match the distanceScale used by CubeAxisCaptions in the export plate.
+            model.volumeSnapshot = { width, height in renderer.snapshot(width: width, height: height, distanceScale: 1.3) }
         }
         return view
     }
@@ -146,6 +147,8 @@ final class CubeMTKView: MTKView {
 /// their endpoint values from the model's orbit camera (no Metal text needed).
 struct CubeAxisCaptions: View {
     let model: CubeViewerModel
+    /// Matches the camera pull-back used for export snapshots so labels align.
+    var distanceScale: Float = 1
 
     private struct Caption: Identifiable { let id = UUID(); let text: String; let point: CGPoint; let accent: Bool }
 
@@ -153,9 +156,12 @@ struct CubeAxisCaptions: View {
         GeometryReader { geo in
             ForEach(captions(in: geo.size)) { caption in
                 Text(caption.text)
-                    .font(.caption2.monospaced())
-                    .foregroundStyle(caption.accent ? Color.cyan : Color.secondary)
-                    .shadow(color: .black, radius: 2)
+                    .font(.system(size: 11, weight: caption.accent ? .semibold : .regular, design: .monospaced))
+                    // Explicit colors (not .secondary) so they stay legible when
+                    // ImageRenderer rasterizes in light mode for export.
+                    .foregroundStyle(caption.accent ? Color(red: 0.45, green: 0.85, blue: 1.0) : Color(white: 0.96))
+                    .shadow(color: .black, radius: 3)
+                    .shadow(color: .black, radius: 1)
                     .position(caption.point)
             }
         }
@@ -197,15 +203,16 @@ struct CubeAxisCaptions: View {
         ]
         return specs.compactMap { text, position, accent in
             guard !text.isEmpty, let point = project(position) else { return nil }
-            return Caption(text: text, point: point, accent: accent)
+            let clamped = CGPoint(x: min(max(point.x, 8), size.width - 8),
+                                  y: min(max(point.y, 8), size.height - 8))
+            return Caption(text: text, point: clamped, accent: accent)
         }
     }
 
     private func cameraEye() -> SIMD3<Float> {
+        let d = model.cameraDistance * distanceScale
         let ce = cos(model.cameraElevation), se = sin(model.cameraElevation)
-        return SIMD3(model.cameraDistance * ce * sin(model.cameraAzimuth),
-                     model.cameraDistance * se,
-                     model.cameraDistance * ce * cos(model.cameraAzimuth))
+        return SIMD3(d * ce * sin(model.cameraAzimuth), d * se, d * ce * cos(model.cameraAzimuth))
     }
 
     private func xEndpoint(_ px: Int) -> String {
