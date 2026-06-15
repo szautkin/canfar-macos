@@ -37,6 +37,16 @@
     "·" : {
       "shouldTranslate" : false
     },
+    "· %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "· %1$@ · %2$@"
+          }
+        }
+      }
+    },
     "'%@' already exists in recent launches. Replace it?" : {
       "localizations" : {
         "fr" : {
@@ -90,6 +100,26 @@
     "%@" : {
       "shouldTranslate" : false
     },
+    "%@   %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@   %2$@"
+          }
+        }
+      }
+    },
+    "%@  ·  %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@  ·  %2$@"
+          }
+        }
+      }
+    },
     "%@  %@" : {
       "localizations" : {
         "en" : {
@@ -117,6 +147,16 @@
         }
       }
     },
+    "%@ … %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ … %2$@"
+          }
+        }
+      }
+    },
     "%@ (%@)" : {
       "localizations" : {
         "en" : {
@@ -129,6 +169,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "%@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
           }
         }
       }
@@ -456,6 +506,9 @@
     },
     "•" : {
       "shouldTranslate" : false
+    },
+    "•  %@" : {
+
     },
     "^[%@ tool](inflect: true)" : {
 
@@ -790,6 +843,9 @@
         }
       }
     },
+    "Amber" : {
+
+    },
     "and FITS — with an optional AI agent that drives it for you." : {
       "localizations" : {
         "fr" : {
@@ -894,6 +950,9 @@
           }
         }
       }
+    },
+    "Auto" : {
+
     },
     "Auto-cuts" : {
       "extractionState" : "stale",
@@ -1012,6 +1071,9 @@
           }
         }
       }
+    },
+    "Black" : {
+
     },
     "Blink" : {
       "extractionState" : "stale",
@@ -1527,6 +1589,9 @@
           }
         }
       }
+    },
+    "Cockpit dark" : {
+
     },
     "Collection" : {
       "extractionState" : "stale",
@@ -2069,6 +2134,12 @@
         }
       }
     },
+    "Cube Viewer" : {
+
+    },
+    "Cube Viewer Guide" : {
+
+    },
     "Current default — tap to clear" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2132,6 +2203,9 @@
           }
         }
       }
+    },
+    "Cyan" : {
+
     },
     "Dashboard" : {
       "extractionState" : "stale",
@@ -2391,6 +2465,9 @@
           }
         }
       }
+    },
+    "Display" : {
+
     },
     "Display unit" : {
       "localizations" : {
@@ -2714,6 +2791,9 @@
         }
       }
     },
+    "Emission" : {
+
+    },
     "empty" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2958,6 +3038,9 @@
           }
         }
       }
+    },
+    "Export Figure" : {
+
     },
     "Export Here" : {
       "extractionState" : "stale",
@@ -3933,6 +4016,9 @@
         }
       }
     },
+    "Journal light" : {
+
+    },
     "Keep editing" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4426,6 +4512,9 @@
         }
       }
     },
+    "Max-intensity" : {
+
+    },
     "MCP Clients" : {
       "localizations" : {
         "fr" : {
@@ -4500,6 +4589,9 @@
           }
         }
       }
+    },
+    "Mono" : {
+
     },
     "Move" : {
       "extractionState" : "stale",
@@ -4991,6 +5083,9 @@
         }
       }
     },
+    "NO SIGNAL" : {
+
+    },
     "No Tools Yet" : {
       "localizations" : {
         "fr" : {
@@ -5170,6 +5265,9 @@
         }
       }
     },
+    "Opacity curve" : {
+
+    },
     "Open" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5180,6 +5278,9 @@
           }
         }
       }
+    },
+    "Open a cube and choose Slice or Volume to export." : {
+
     },
     "Open a FITS file" : {
       "localizations" : {
@@ -5275,6 +5376,9 @@
           }
         }
       }
+    },
+    "Open or drop a FITS spectral cube to explore it as native-resolution slices and a GPU-rendered 3D volume." : {
+
     },
     "Open Settings (⌘,)" : {
       "extractionState" : "stale",
@@ -5907,6 +6011,9 @@
           }
         }
       }
+    },
+    "RECENTLY OPENED" : {
+
     },
     "Reference" : {
       "localizations" : {
@@ -6597,6 +6704,9 @@
         }
       }
     },
+    "Sans" : {
+
+    },
     "Save" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6929,6 +7039,9 @@
           }
         }
       }
+    },
+    "Serif" : {
+
     },
     "Session '%@' deleted." : {
       "extractionState" : "stale",
@@ -7361,6 +7474,19 @@
         }
       }
     },
+    "Spectrum @ (%@, %@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Spectrum @ (%1$@, %2$@)"
+          }
+        }
+      }
+    },
+    "Spectrum probe" : {
+
+    },
     "Square Root" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7727,6 +7853,9 @@
           }
         }
       }
+    },
+    "Text scale" : {
+
     },
     "The agent calls this as " : {
 
@@ -8373,6 +8502,9 @@
         }
       }
     },
+    "Volume" : {
+
+    },
     "Warning" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8477,6 +8609,12 @@
           }
         }
       }
+    },
+    "White" : {
+
+    },
+    "Window" : {
+
     },
     "Window: %.1f" : {
       "localizations" : {
