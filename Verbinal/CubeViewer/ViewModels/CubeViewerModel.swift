@@ -56,7 +56,11 @@ final class CubeViewerModel: Identifiable {
     var recents: [CubeRecent] = CubeRecents.load()
 
     // MARK: View state (shared by both modes)
-    var viewMode: CubeViewMode = .slice
+    var viewMode: CubeViewMode = .slice {
+        // The slice only renders while it's visible; switching back to it brings
+        // it current. Avoids wasted CPU slice renders during volume-mode scrubbing.
+        didSet { if viewMode == .slice && oldValue != .slice { requestSliceRender() } }
+    }
     private(set) var channel = 0
     /// Window over the normalized [0,1] value, shared by slice cuts and the
     /// volume shader so the two modes display the same dynamic range.
@@ -116,8 +120,6 @@ final class CubeViewerModel: Identifiable {
     /// GPU 3D-texture edge cap. Metal's max `type3D` dimension is 2048; 512
     /// balances spectral/spatial detail against the volume's memory budget.
     private let max3D = 512
-
-    var channelCount: Int { nz }
 
     // MARK: - Opening
 
@@ -196,31 +198,17 @@ final class CubeViewerModel: Identifiable {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         await open(url: url)
     }
-
-    /// Save the current rendered slice (a CGImage from FITSRenderEngine) as PNG.
-    func exportSlicePNG() {
-        guard let image = sliceImage else { return }
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png]
-        let base = (object.isEmpty || object == "—") ? "cube" : object
-        panel.nameFieldStringValue = "\(base)_ch\(channel + 1).png"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        let rep = NSBitmapImageRep(cgImage: image)
-        if let data = rep.representation(using: .png, properties: [:]) {
-            try? data.write(to: url)
-        }
-    }
     #endif
 
     // MARK: - Channel scrubbing
 
-    /// Set the active channel and re-render the slice (debounced — slider-safe).
+    /// Set the active channel and re-render the slice (coalesced — slider-safe).
     func setChannel(_ value: Int) {
         let clamped = max(0, min(max(nz - 1, 0), value))
         guard clamped != channel else { return }
         channel = clamped
         updateSpectralReadout()
-        renderSliceDebounced()
+        requestSliceRender()
     }
 
     func stepChannel(_ delta: Int) { setChannel(channel + delta) }
@@ -231,8 +219,7 @@ final class CubeViewerModel: Identifiable {
     /// so the slice honors the exact same [lo,hi]·stretch·colormap as the volume.
     var sliceRenderParams: FITSRenderParams {
         guard let stats else { return FITSRenderParams(stretch: stretch, colormap: colormap) }
-        let range = stats.hi - stats.lo
-        let r = range == 0 ? 1 : range
+        let r = statsRange
         return FITSRenderParams(
             minCut: stats.lo + windowLo * r,
             maxCut: stats.lo + windowHi * r,
@@ -244,7 +231,8 @@ final class CubeViewerModel: Identifiable {
     /// Request a slice re-render. Single-flight + coalescing: rapid channel or
     /// window changes (scrubbing, playback) always converge to the *latest*
     /// frame instead of being dropped, so the slice never freezes during play.
-    func renderSliceDebounced() {
+    func requestSliceRender() {
+        guard viewMode == .slice else { return }   // slice isn't visible in volume mode
         renderPending = true
         guard !renderRunning else { return }
         renderRunning = true
@@ -382,29 +370,35 @@ final class CubeViewerModel: Identifiable {
 
     // MARK: - Window helpers
 
+    /// Raw-value span for mapping the normalized [0,1] window onto data values;
+    /// 1 when stats are absent or the data is flat.
+    private var statsRange: Float {
+        guard let stats else { return 1 }
+        let range = stats.hi - stats.lo
+        return range == 0 ? 1 : range
+    }
+
     /// Current window expressed in raw data values (for the readout).
     var rawWindow: (lo: Float, hi: Float) {
         guard let stats else { return (0, 1) }
-        let range = stats.hi - stats.lo
-        let r = range == 0 ? 1 : range
+        let r = statsRange
         return (stats.lo + windowLo * r, stats.lo + windowHi * r)
     }
 
     /// Window the full data min…max.
     func autoWindowFullRange() {
         guard let stats else { return }
-        let range = stats.hi - stats.lo
-        let r = range == 0 ? 1 : range
+        let r = statsRange
         windowLo = (stats.min - stats.lo) / r
         windowHi = (stats.max - stats.lo) / r
-        renderSliceDebounced()
+        requestSliceRender()
     }
 
     /// Window the robust p0.1…p99.9 percentile range (the load-time default).
     func autoWindowPercentile() {
         windowLo = 0
         windowHi = 1
-        renderSliceDebounced()
+        requestSliceRender()
     }
 
     // MARK: - Figure metadata (publication legend; deterministic + testable)

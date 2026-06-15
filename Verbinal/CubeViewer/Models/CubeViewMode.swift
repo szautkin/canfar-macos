@@ -29,3 +29,14 @@ enum CubeViewMode: String, CaseIterable, Identifiable {
         }
     }
 }
+
+/// Constants shared between the volume renderer's export snapshot and the SwiftUI
+/// axis-caption overlay — kept in one place so the two can't drift apart.
+enum CubeViewerConstants {
+    /// Camera pull-back applied for export snapshots (adds figure margin around
+    /// the box). `CubeAxisCaptions` must use the same value so labels stay aligned.
+    static let exportDistanceScale: Float = 1.3
+    /// Pixel size of the GPU export snapshot.
+    static let exportWidth = 1400
+    static let exportHeight = 1050
+}

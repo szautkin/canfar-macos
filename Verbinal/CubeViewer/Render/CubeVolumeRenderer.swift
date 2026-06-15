@@ -433,7 +433,7 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
 
 // MARK: - Matrix helpers (column-major, Metal NDC z ∈ [0,1])
 
-private func makePerspective(fovyRadians fovy: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
+func makePerspective(fovyRadians fovy: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
     let ys = 1 / tan(fovy * 0.5)
     let xs = ys / max(aspect, 0.0001)
     let zs = far / (near - far)
@@ -445,7 +445,7 @@ private func makePerspective(fovyRadians fovy: Float, aspect: Float, near: Float
     ))
 }
 
-private func makeLookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
+func makeLookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
     let z = normalize(eye - center)
     let x = normalize(cross(up, z))
     let y = cross(z, x)

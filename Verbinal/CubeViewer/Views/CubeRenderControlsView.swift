@@ -11,8 +11,17 @@ import AppKit
 import UniformTypeIdentifiers
 #endif
 
+/// Coarse SwiftUI gradient stops sampled from a colormap LUT — shared by the live
+/// colorbar, the colormap swatches, and the export legend so they can't drift.
+private func cubeColormapStops(_ cm: FITSRenderParams.ColormapType) -> [Color] {
+    let lut = FITSRenderEngine.colormapRGBA(cm)
+    return stride(from: 0, to: 256, by: 16).map { i in
+        Color(.sRGB, red: Double(lut[i * 4]) / 255, green: Double(lut[i * 4 + 1]) / 255, blue: Double(lut[i * 4 + 2]) / 255)
+    }
+}
+
 /// Render-control side panel. Window/stretch/colormap are shared by both modes
-/// (slice re-renders, debounced; volume picks them up live). Density, spectral
+/// (slice re-renders coalesced; volume picks them up live). Density, spectral
 /// scale, MIP, and the transfer function apply to the volume mode.
 struct CubeRenderControlsView: View {
     @Bindable var model: CubeViewerModel
@@ -118,14 +127,7 @@ struct CubeRenderControlsView: View {
         }
     }
 
-    private var colorbarStops: [Color] { stops(for: model.colormap) }
-
-    private func stops(for cm: FITSRenderParams.ColormapType) -> [Color] {
-        let lut = FITSRenderEngine.colormapRGBA(cm)
-        return stride(from: 0, to: 256, by: 16).map { i in
-            Color(.sRGB, red: Double(lut[i * 4]) / 255, green: Double(lut[i * 4 + 1]) / 255, blue: Double(lut[i * 4 + 2]) / 255)
-        }
-    }
+    private var colorbarStops: [Color] { cubeColormapStops(model.colormap) }
 
     private var colormapSwatches: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -133,7 +135,7 @@ struct CubeRenderControlsView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 46), spacing: 4)], spacing: 4) {
                 ForEach(FITSRenderParams.ColormapType.allCases) { cm in
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(LinearGradient(colors: stops(for: cm), startPoint: .leading, endPoint: .trailing))
+                        .fill(LinearGradient(colors: cubeColormapStops(cm), startPoint: .leading, endPoint: .trailing))
                         .frame(height: 18)
                         .overlay(
                             RoundedRectangle(cornerRadius: 3)
@@ -141,7 +143,7 @@ struct CubeRenderControlsView: View {
                                               lineWidth: model.colormap == cm ? 2 : 1)
                         )
                         .help(cm.rawValue.capitalized)
-                        .onTapGesture { model.colormap = cm; model.renderSliceDebounced() }
+                        .onTapGesture { model.colormap = cm; model.requestSliceRender() }
                 }
             }
         }
@@ -153,7 +155,7 @@ struct CubeRenderControlsView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 4)], spacing: 4) {
                 ForEach(FITSRenderParams.StretchMode.allCases) { mode in
                     Button(mode.rawValue.capitalized) {
-                        model.stretch = mode; model.renderSliceDebounced()
+                        model.stretch = mode; model.requestSliceRender()
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -227,13 +229,13 @@ struct CubeRenderControlsView: View {
 
     private func fmt(_ v: Float) -> String { String(format: "%.3g", v) }
 
-    // Slice-affecting bindings re-render the slice (debounced); the volume reads
+    // Slice-affecting bindings re-render the slice (coalesced); the volume reads
     // these live via updateNSView, so no extra plumbing there.
     private var windowLoBinding: Binding<Float> {
-        Binding(get: { model.windowLo }, set: { model.windowLo = min($0, model.windowHi - 0.01); model.renderSliceDebounced() })
+        Binding(get: { model.windowLo }, set: { model.windowLo = min($0, model.windowHi - 0.01); model.requestSliceRender() })
     }
     private var windowHiBinding: Binding<Float> {
-        Binding(get: { model.windowHi }, set: { model.windowHi = max($0, model.windowLo + 0.01); model.renderSliceDebounced() })
+        Binding(get: { model.windowHi }, set: { model.windowHi = max($0, model.windowLo + 0.01); model.requestSliceRender() })
     }
 }
 
@@ -244,6 +246,9 @@ struct CubeExportStyle: Equatable {
         case light, dark
         var id: String { rawValue }
         var background: Color { self == .dark ? Color(white: 0.05) : .white }
+        /// `background` as the linear RGBA the Metal snapshot expects — defined
+        /// here so the SwiftUI plate and the GPU background can't drift apart.
+        var backgroundRGBA: SIMD4<Float> { self == .dark ? SIMD4(0.05, 0.05, 0.05, 1) : SIMD4(1, 1, 1, 1) }
         var foreground: Color { self == .dark ? .white : Color(white: 0.08) }
         var secondary: Color { self == .dark ? Color(white: 0.62) : Color(white: 0.42) }
         var line: Color { self == .dark ? Color(white: 0.30) : Color(white: 0.78) }
@@ -379,19 +384,14 @@ struct CubeExportView: View {
 
     private var dateString: String { Date.now.formatted(date: .abbreviated, time: .shortened) }
 
-    private var stops: [Color] {
-        let lut = FITSRenderEngine.colormapRGBA(model.colormap)
-        return stride(from: 0, to: 256, by: 16).map { i in
-            Color(.sRGB, red: Double(lut[i * 4]) / 255, green: Double(lut[i * 4 + 1]) / 255, blue: Double(lut[i * 4 + 2]) / 255)
-        }
-    }
+    private var stops: [Color] { cubeColormapStops(model.colormap) }
 
     private func currentContent() -> CGImage? {
         guard model.viewMode == .volume else { return model.sliceImage }
         // Volume export background follows the theme (or transparent).
         let bg: SIMD4<Float>? = transparent ? nil
-            : (themeRaw == CubeExportStyle.Theme.light.rawValue ? SIMD4(1, 1, 1, 1) : SIMD4(0.05, 0.05, 0.05, 1))
-        return model.volumeSnapshot?(1400, 1050, bg)
+            : (CubeExportStyle.Theme(rawValue: themeRaw) ?? .light).backgroundRGBA
+        return model.volumeSnapshot?(CubeViewerConstants.exportWidth, CubeViewerConstants.exportHeight, bg)
     }
 
     private var baseName: String {
@@ -458,7 +458,7 @@ private struct CubeExportPlate: View {
             Image(decorative: content, scale: 1)
                 .resizable()
                 .scaledToFit()
-                .overlay { if showAxes { CubeAxisCaptions(model: model, distanceScale: 1.3) } }
+                .overlay { if showAxes { CubeAxisCaptions(model: model, distanceScale: CubeViewerConstants.exportDistanceScale) } }
                 .padding(style.annotate ? 14 : 0)
             if style.annotate {
                 Rectangle().fill(style.theme.line).frame(height: 1)

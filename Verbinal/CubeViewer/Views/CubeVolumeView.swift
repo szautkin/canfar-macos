@@ -39,13 +39,15 @@ struct CubeVolumeView: NSViewRepresentable {
             view.onZoom = { delta in MainActor.assumeIsolated { model.zoomCamera(Float(delta)) } }
             view.onInteractStart = { renderer.interacting = true }
             view.onInteractEnd = { renderer.interacting = false }
-            view.onClickNDC = { x, y in renderer.pick(ndcX: Float(x), ndcY: Float(y)) }
-            renderer.onPickChannel = { channel in
-                MainActor.assumeIsolated { model.setChannel(channel) }
+            view.onClickNDC = { [weak renderer] x, y in renderer?.pick(ndcX: Float(x), ndcY: Float(y)) }
+            renderer.onPickChannel = { [weak model] channel in
+                MainActor.assumeIsolated { model?.setChannel(channel) }
             }
-            // 1.3 must match the distanceScale used by CubeAxisCaptions in the export plate.
-            model.volumeSnapshot = { width, height, background in
-                renderer.snapshot(width: width, height: height, distanceScale: 1.3, background: background)
+            // Capture the renderer weakly: this transport closure is stored on the
+            // model, so a strong capture would form a model↔renderer retain cycle
+            // that keeps the 3D volume texture alive after leaving volume mode.
+            model.volumeSnapshot = { [weak renderer] width, height, background in
+                renderer?.snapshot(width: width, height: height, distanceScale: CubeViewerConstants.exportDistanceScale, background: background)
             }
         }
         return view
@@ -179,8 +181,8 @@ struct CubeAxisCaptions: View {
         guard m > 0 else { return [] }
         let boxScale = SIMD3<Float>(Float(model.nx) / m, Float(model.ny) / m, model.spectralScale)
         let modelMatrix = simd_float4x4(diagonal: SIMD4(boxScale.x, boxScale.y, boxScale.z, 1))
-        let view = axisLookAt(eye: cameraEye(), center: .zero, up: SIMD3(0, 1, 0))
-        let proj = axisPerspective(fovy: 38 * .pi / 180, aspect: Float(size.width / size.height), near: 0.01, far: 50)
+        let view = makeLookAt(eye: cameraEye(), center: .zero, up: SIMD3(0, 1, 0))
+        let proj = makePerspective(fovyRadians: 38 * .pi / 180, aspect: Float(size.width / size.height), near: 0.01, far: 50)
         let mvp = proj * view * modelMatrix
 
         func project(_ p: SIMD3<Float>) -> CGPoint? {
@@ -233,22 +235,4 @@ struct CubeAxisCaptions: View {
     }
 }
 
-private func axisPerspective(fovy: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
-    let ys = 1 / tan(fovy * 0.5)
-    let xs = ys / max(aspect, 0.0001)
-    let zs = far / (near - far)
-    return simd_float4x4(columns: (
-        SIMD4(xs, 0, 0, 0), SIMD4(0, ys, 0, 0), SIMD4(0, 0, zs, -1), SIMD4(0, 0, zs * near, 0)
-    ))
-}
-
-private func axisLookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
-    let z = normalize(eye - center)
-    let x = normalize(cross(up, z))
-    let y = cross(z, x)
-    return simd_float4x4(columns: (
-        SIMD4(x.x, y.x, z.x, 0), SIMD4(x.y, y.y, z.y, 0), SIMD4(x.z, y.z, z.z, 0),
-        SIMD4(-dot(x, eye), -dot(y, eye), -dot(z, eye), 1)
-    ))
-}
 #endif
