@@ -7,6 +7,7 @@
 #if os(macOS)
 import SwiftUI
 import MetalKit
+import simd
 import VerbinalKit
 
 /// SwiftUI host for the Metal volume renderer. Pushes live parameters from the
@@ -34,8 +35,8 @@ struct CubeVolumeView: NSViewRepresentable {
             view.delegate = renderer
             context.coordinator.renderer = renderer
             let model = self.model
-            view.onOrbit = { dx, dy in renderer.orbit(dx: Float(dx), dy: Float(dy)) }
-            view.onZoom = { delta in renderer.zoom(by: Float(delta)) }
+            view.onOrbit = { dx, dy in MainActor.assumeIsolated { model.orbitCamera(dx: Float(dx), dy: Float(dy)) } }
+            view.onZoom = { delta in MainActor.assumeIsolated { model.zoomCamera(Float(delta)) } }
             view.onInteractStart = { renderer.interacting = true }
             view.onInteractEnd = { renderer.interacting = false }
             view.onClickNDC = { x, y in renderer.pick(ndcX: Float(x), ndcY: Float(y)) }
@@ -72,7 +73,9 @@ struct CubeVolumeView: NSViewRepresentable {
         renderer.baseSteps = model.volumeSteps
         renderer.showSlicePlane = model.showSlicePlane
         renderer.sliceFraction = model.nz > 1 ? Float(model.channel) / Float(model.nz - 1) : 0
-        renderer.autoOrbit = model.autoOrbit
+        renderer.cameraAzimuth = model.cameraAzimuth
+        renderer.cameraElevation = model.cameraElevation
+        renderer.cameraDistance = model.cameraDistance
 
         if coordinator.appliedColormap != model.colormap {
             renderer.setColormap(FITSRenderEngine.colormapRGBA(model.colormap))
@@ -137,5 +140,103 @@ final class CubeMTKView: MTKView {
     override func magnify(with event: NSEvent) {
         onZoom?(-event.magnification)
     }
+}
+
+/// Axis captions for the volume box — projects RA/DEC/spectral axis names and
+/// their endpoint values from the model's orbit camera (no Metal text needed).
+struct CubeAxisCaptions: View {
+    let model: CubeViewerModel
+
+    private struct Caption: Identifiable { let id = UUID(); let text: String; let point: CGPoint; let accent: Bool }
+
+    var body: some View {
+        GeometryReader { geo in
+            ForEach(captions(in: geo.size)) { caption in
+                Text(caption.text)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(caption.accent ? Color.cyan : Color.secondary)
+                    .shadow(color: .black, radius: 2)
+                    .position(caption.point)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func captions(in size: CGSize) -> [Caption] {
+        guard model.nz > 0, size.width > 1, size.height > 1 else { return [] }
+        let m = Float(max(model.nx, model.ny))
+        guard m > 0 else { return [] }
+        let boxScale = SIMD3<Float>(Float(model.nx) / m, Float(model.ny) / m, model.spectralScale)
+        let modelMatrix = simd_float4x4(diagonal: SIMD4(boxScale.x, boxScale.y, boxScale.z, 1))
+        let view = axisLookAt(eye: cameraEye(), center: .zero, up: SIMD3(0, 1, 0))
+        let proj = axisPerspective(fovy: 38 * .pi / 180, aspect: Float(size.width / size.height), near: 0.01, far: 50)
+        let mvp = proj * view * modelMatrix
+
+        func project(_ p: SIMD3<Float>) -> CGPoint? {
+            let clip = mvp * SIMD4(p, 1)
+            guard clip.w > 0.0001 else { return nil }
+            let x = clip.x / clip.w, y = clip.y / clip.w
+            return CGPoint(x: CGFloat(x * 0.5 + 0.5) * size.width, y: CGFloat(1 - (y * 0.5 + 0.5)) * size.height)
+        }
+
+        let frame = model.wcs?.celestial.frame
+        let lon = frame == .galactic ? "GLON" : "RA"
+        let lat = frame == .galactic ? "GLAT" : "DEC"
+        let spec = model.wcs?.spectral.format(channel: model.channel).axisLabel ?? "CHANNEL"
+
+        let specs: [(String, SIMD3<Float>, Bool)] = [
+            (lon, SIMD3(0, -0.62, -0.62), true),
+            (xEndpoint(0), SIMD3(-0.5, -0.62, -0.62), false),
+            (xEndpoint(model.nx - 1), SIMD3(0.5, -0.62, -0.62), false),
+            (lat, SIMD3(-0.62, 0, -0.62), true),
+            (yEndpoint(0), SIMD3(-0.62, -0.5, -0.62), false),
+            (yEndpoint(model.ny - 1), SIMD3(-0.62, 0.5, -0.62), false),
+            (spec, SIMD3(-0.62, -0.62, 0), true),
+            (zEndpoint(0), SIMD3(-0.62, -0.62, -0.5), false),
+            (zEndpoint(model.nz - 1), SIMD3(-0.62, -0.62, 0.5), false),
+        ]
+        return specs.compactMap { text, position, accent in
+            guard !text.isEmpty, let point = project(position) else { return nil }
+            return Caption(text: text, point: point, accent: accent)
+        }
+    }
+
+    private func cameraEye() -> SIMD3<Float> {
+        let ce = cos(model.cameraElevation), se = sin(model.cameraElevation)
+        return SIMD3(model.cameraDistance * ce * sin(model.cameraAzimuth),
+                     model.cameraDistance * se,
+                     model.cameraDistance * ce * cos(model.cameraAzimuth))
+    }
+
+    private func xEndpoint(_ px: Int) -> String {
+        guard let cel = model.wcs?.celestial, let sky = cel.pixelToSky(x: Double(px), y: 0) else { return "" }
+        return cel.formatSky(lon: sky.lon, lat: sky.lat).lon
+    }
+    private func yEndpoint(_ py: Int) -> String {
+        guard let cel = model.wcs?.celestial, let sky = cel.pixelToSky(x: 0, y: Double(py)) else { return "" }
+        return cel.formatSky(lon: sky.lon, lat: sky.lat).lat
+    }
+    private func zEndpoint(_ ch: Int) -> String {
+        model.wcs?.spectral.format(channel: ch).primary ?? ""
+    }
+}
+
+private func axisPerspective(fovy: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
+    let ys = 1 / tan(fovy * 0.5)
+    let xs = ys / max(aspect, 0.0001)
+    let zs = far / (near - far)
+    return simd_float4x4(columns: (
+        SIMD4(xs, 0, 0, 0), SIMD4(0, ys, 0, 0), SIMD4(0, 0, zs, -1), SIMD4(0, 0, zs * near, 0)
+    ))
+}
+
+private func axisLookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
+    let z = normalize(eye - center)
+    let x = normalize(cross(up, z))
+    let y = cross(z, x)
+    return simd_float4x4(columns: (
+        SIMD4(x.x, y.x, z.x, 0), SIMD4(x.y, y.y, z.y, 0), SIMD4(x.z, y.z, z.z, 0),
+        SIMD4(-dot(x, eye), -dot(y, eye), -dot(z, eye), 1)
+    ))
 }
 #endif

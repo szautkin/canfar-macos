@@ -47,27 +47,58 @@ struct CubeViewerRootView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Cube Viewer", systemImage: "cube.transparent")
-        } description: {
-            Text("Open or drop a FITS spectral cube to explore it as native-resolution slices and a GPU-rendered 3D volume.")
-        } actions: {
-            #if os(macOS)
-            Button("Open Cube…") {
-                Task { await model.openWithPicker() }
+        VStack(spacing: 22) {
+            VStack(spacing: 8) {
+                Image(systemName: "cube.transparent")
+                    .font(.system(size: 50)).foregroundStyle(.secondary)
+                Text("Cube Viewer").font(.title2.bold())
+                Text("Open or drop a FITS spectral cube to explore it as native-resolution slices and a GPU-rendered 3D volume.")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).frame(maxWidth: 420)
+                #if os(macOS)
+                Button("Open Cube…") { Task { await model.openWithPicker() } }
+                    .buttonStyle(.borderedProminent)
+                #endif
             }
-            .buttonStyle(.borderedProminent)
-            #endif
+            if !CubeViewerModel.samples.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("SAMPLE FEEDS").font(.caption2.bold()).tracking(1.5).foregroundStyle(.secondary)
+                    ForEach(CubeViewerModel.samples) { sample in
+                        Button { Task { await model.openRemote(url: sample.url) } } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(sample.label).font(.callout)
+                                    Text(sample.tip).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                                Spacer()
+                                Text(sample.size).font(.caption2.monospaced()).foregroundStyle(.tertiary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(8)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+                .frame(maxWidth: 420)
+            }
         }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var loadingView: some View {
         VStack(spacing: 12) {
-            ProgressView(value: model.loadProgress) {
-                Text(model.loadStage).font(.caption.monospaced())
+            if model.loadStage == "DOWNLINK" {
+                ProgressView().controlSize(.large)
+                Text("Downlink — \(model.fileName)").font(.caption.monospaced()).foregroundStyle(.secondary)
+            } else {
+                ProgressView(value: model.loadProgress) {
+                    Text(model.loadStage).font(.caption.monospaced())
+                }
+                .frame(width: 260)
+                Text(model.fileName).font(.caption2).foregroundStyle(.tertiary)
             }
-            .frame(width: 260)
-            Text(model.fileName).font(.caption2).foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

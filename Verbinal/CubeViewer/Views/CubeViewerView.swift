@@ -77,8 +77,11 @@ struct CubeViewerView: View {
             CubeSliceView(model: model)
         case .volume:
             #if os(macOS)
-            CubeVolumeView(model: model)
-                .background(Color.black)
+            ZStack {
+                CubeVolumeView(model: model)
+                CubeAxisCaptions(model: model)
+            }
+            .background(Color.black)
             #else
             ContentUnavailableView("Volume mode requires macOS", systemImage: "cube.transparent")
             #endif

@@ -54,13 +54,13 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     // Box aspect: spatial-true, spectral axis user-stretched.
     private var boxScale = SIMD3<Float>(1, 1, 1)
 
-    // Orbit camera.
-    private var azimuth: Float = 0.7
-    private var elevation: Float = 0.5
-    private var distance: Float = 2.6
+    // Orbit camera — pushed from the model each frame (the model owns it so the
+    // axis-caption overlay can track the orbit).
+    var cameraAzimuth: Float = 0.7
+    var cameraElevation: Float = 0.5
+    var cameraDistance: Float = 2.6
     private var viewportAspect: Float = 1
     private var jitter: Float = 0
-    private var lastInteraction = Date()
 
     // Live parameters pushed from CubeViewerModel.
     var windowLo: Float = 0
@@ -72,8 +72,6 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     var baseSteps: Float = 384
     var showSlicePlane = true
     var sliceFraction: Float = 0.5
-    var autoOrbit = false
-    var idleDelay: Double = 8
     var onPickChannel: ((Int) -> Void)?
     var spectralScale: Float = 1.5 { didSet { applyBoxScale() } }
 
@@ -213,20 +211,9 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
 
     // MARK: - Camera interaction
 
-    func orbit(dx: Float, dy: Float) {
-        azimuth -= dx * 0.01
-        elevation = min(max(elevation + dy * 0.01, -1.4), 1.4)
-        lastInteraction = Date()
-    }
-
-    func zoom(by delta: Float) {
-        distance = min(max(distance * exp(delta), 0.5), 8)
-        lastInteraction = Date()
-    }
-
     private func cameraPosition() -> SIMD3<Float> {
-        let ce = cos(elevation), se = sin(elevation)
-        return SIMD3(distance * ce * sin(azimuth), distance * se, distance * ce * cos(azimuth))
+        let ce = cos(cameraElevation), se = sin(cameraElevation)
+        return SIMD3(cameraDistance * ce * sin(cameraAzimuth), cameraDistance * se, cameraDistance * ce * cos(cameraAzimuth))
     }
 
     private func currentMatrices() -> (model: simd_float4x4, viewProj: simd_float4x4) {
@@ -294,10 +281,6 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
               let drawable = view.currentDrawable,
               let commandBuffer = queue.makeCommandBuffer(),
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else { return }
-
-        if autoOrbit, !interacting, Date().timeIntervalSince(lastInteraction) > idleDelay {
-            azimuth += 0.0016
-        }
 
         jitter = (jitter + 17.13).truncatingRemainder(dividingBy: 1024)
         let (model, viewProj) = currentMatrices()

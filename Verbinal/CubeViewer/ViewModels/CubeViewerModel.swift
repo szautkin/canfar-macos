@@ -67,7 +67,16 @@ final class CubeViewerModel: Identifiable {
     var spectralScale: Float = 1.5
     var mip = false
     var showSlicePlane = true
-    var autoOrbit = false
+    var autoOrbit = false {
+        didSet { autoOrbit ? startAutoOrbitLoop() : stopAutoOrbitLoop() }
+    }
+
+    // Orbit camera — owned here so the axis-caption overlay can track the orbit.
+    var cameraAzimuth: Float = 0.7
+    var cameraElevation: Float = 0.5
+    var cameraDistance: Float = 2.6
+    private var lastCameraInteraction = Date()
+    private var autoOrbitTask: Task<Void, Never>?
     /// Opacity transfer function: control points (value ∈ [0,1], alpha ∈ [0,1]).
     var transferFunction: [SIMD2<Float>] = [
         SIMD2(0.0, 0.0), SIMD2(0.45, 0.05), SIMD2(0.75, 0.45), SIMD2(1.0, 1.0),
@@ -97,7 +106,8 @@ final class CubeViewerModel: Identifiable {
     private(set) var probePoint: (x: Int, y: Int)?
     var probeUnavailableReason: String?
 
-    private var sliceDebounce: Task<Void, Never>?
+    private var renderRunning = false
+    private var renderPending = false
 
     /// GPU 3D-texture edge cap. Metal's max `type3D` dimension is 2048; 512
     /// balances spectral/spatial detail against the volume's memory budget.
@@ -156,6 +166,34 @@ final class CubeViewerModel: Identifiable {
         isLoading = false
     }
 
+    /// Download a remote cube to a temp file, then open it locally — far fewer
+    /// requests than range-streaming a moderate-size sample.
+    func openRemote(url: URL) async {
+        stopPlayback()
+        isLoading = true
+        loadError = nil
+        loadStage = "DOWNLINK"
+        loadProgress = 0
+        fileName = url.lastPathComponent
+        do {
+            let (downloaded, response) = try await URLSession.shared.download(from: url)
+            if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+                throw NSError(domain: "CubeViewer", code: http.statusCode,
+                              userInfo: [NSLocalizedDescriptionKey: "Download failed (HTTP \(http.statusCode))"])
+            }
+            let dest = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+            try? FileManager.default.removeItem(at: dest)
+            try FileManager.default.moveItem(at: downloaded, to: dest)
+            await open(url: dest)
+        } catch {
+            loadError = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    /// Sample cubes for the empty state (hosted on the v-cube demo site).
+    static let samples: [CubeSample] = CubeSample.defaults
+
     #if os(macOS)
     func openWithPicker() async {
         let panel = NSOpenPanel()
@@ -212,13 +250,20 @@ final class CubeViewerModel: Identifiable {
         )
     }
 
-    /// Re-render after a window/stretch/colormap change (debounced).
+    /// Request a slice re-render. Single-flight + coalescing: rapid channel or
+    /// window changes (scrubbing, playback) always converge to the *latest*
+    /// frame instead of being dropped, so the slice never freezes during play.
     func renderSliceDebounced() {
-        sliceDebounce?.cancel()
-        sliceDebounce = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(30))
-            guard let self, !Task.isCancelled else { return }
-            await self.renderSliceAsync()
+        renderPending = true
+        guard !renderRunning else { return }
+        renderRunning = true
+        Task { [weak self] in
+            guard let self else { return }
+            while self.renderPending {
+                self.renderPending = false
+                await self.renderSliceAsync()
+            }
+            self.renderRunning = false
         }
     }
 
@@ -226,20 +271,17 @@ final class CubeViewerModel: Identifiable {
         guard let cube, nx > 0, ny > 0 else { return }
         isRendering = true
         defer { isRendering = false }
-        let requested = channel
         let width = nx, height = ny
         let params = sliceRenderParams
         let plane: [Float]
         do {
-            plane = try await cube.plane(requested)
+            plane = try await cube.plane(channel)
         } catch {
             return
         }
         let image = await Task.detached(priority: .userInitiated) {
             FITSRenderEngine.render(pixels: plane, width: width, height: height, params: params)
         }.value
-        // Drop stale renders if the user kept scrubbing while we awaited.
-        guard requested == channel else { return }
         sliceImage = image
     }
 
@@ -315,6 +357,38 @@ final class CubeViewerModel: Identifiable {
         playbackTask = nil
     }
 
+    // MARK: - Camera
+
+    func orbitCamera(dx: Float, dy: Float) {
+        cameraAzimuth -= dx * 0.01
+        cameraElevation = min(max(cameraElevation + dy * 0.01, -1.4), 1.4)
+        lastCameraInteraction = Date()
+    }
+
+    func zoomCamera(_ delta: Float) {
+        cameraDistance = min(max(cameraDistance * exp(delta), 0.5), 8)
+        lastCameraInteraction = Date()
+    }
+
+    private func startAutoOrbitLoop() {
+        autoOrbitTask?.cancel()
+        autoOrbitTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.autoOrbit else { break }
+                if self.viewMode == .volume, self.hasData,
+                   Date().timeIntervalSince(self.lastCameraInteraction) > 6 {
+                    self.cameraAzimuth += 0.0016
+                }
+                try? await Task.sleep(for: .milliseconds(33))
+            }
+        }
+    }
+
+    private func stopAutoOrbitLoop() {
+        autoOrbitTask?.cancel()
+        autoOrbitTask = nil
+    }
+
     // MARK: - Window helpers
 
     /// Current window expressed in raw data values (for the readout).
@@ -349,4 +423,28 @@ final class CubeViewerModel: Identifiable {
     var stretchIndex: Int32 {
         Int32(FITSRenderParams.StretchMode.allCases.firstIndex(of: stretch) ?? 0)
     }
+}
+
+/// A downloadable sample cube shown in the empty state.
+struct CubeSample: Identifiable {
+    let id = UUID()
+    let label: String
+    let size: String
+    let url: URL
+    let tip: String
+
+    static let defaults: [CubeSample] = {
+        let base = "https://v-cube.starai.ca"
+        func make(_ label: String, _ size: String, _ path: String, _ tip: String) -> CubeSample? {
+            guard let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+                  let url = URL(string: base + encoded) else { return nil }
+            return CubeSample(label: label, size: size, url: url, tip: tip)
+        }
+        return [
+            make("JCMT · CO line cube", "110 MB", "/data_cubes/JCMT/jcmth20260604_00047_06_reduced001_obs_000.fits", "61×61×3872 — high-resolution spectral line cube."),
+            make("JWST MIRI MRS · IFU", "130 MB", "/data_cubes/JWST/product/jw01023011001_02101_00003_mirifushort_s3d.fits", "43×45×4404 — WAVE-TAB wavelengths, ~58% NaN border."),
+            make("JWST NIRSpec · IFU", "37 MB", "/data_cubes/JWST 3/product/jw01409133001_02101_00001_nrs1_s3d.fits", "51×49×972 — compact target, fastest sample."),
+            make("JWST NIRSpec · lamp cal", "61 MB", "/data_cubes/JWST 2/product/jw01132002001_02128_00001_nrs1_s3d.fits", "30×37×3610 — internal lamp exposure, no sky WCS."),
+        ].compactMap { $0 }
+    }()
 }

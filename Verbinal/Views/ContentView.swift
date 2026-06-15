@@ -41,7 +41,7 @@ struct ContentView: View {
             guard let appState else { return }
             let ext = url.pathExtension.lowercased()
             if FileHelper.isFITS(ext) {
-                appState.dispatch(.openFITS(url: url))
+                appState.openAstronomyFITS(url: url)
             } else {
                 #if os(macOS)
                 NSWorkspace.shared.open(url)
@@ -585,7 +585,7 @@ struct ContentView: View {
         model.onOpenFile = { [weak appState] url in
             let ext = url.pathExtension.lowercased()
             if FileHelper.isFITS(ext) {
-                appState?.dispatch(.openFITS(url: url))
+                appState?.openAstronomyFITS(url: url)
             } else {
                 NSWorkspace.shared.open(url)
             }

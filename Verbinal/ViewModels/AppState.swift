@@ -400,6 +400,26 @@ final class AppState {
         }
     }
 
+    /// Open a FITS file in the right viewer: cubes (NAXIS≥3) route to the Cube
+    /// Viewer, 2D images to the FITS Viewer. Detection reads only the header.
+    func openAstronomyFITS(url: URL) {
+        Task {
+            if await Self.fitsIsCube(url) {
+                dispatch(.openCube(url: url))
+            } else {
+                dispatch(.openFITS(url: url))
+            }
+        }
+    }
+
+    private nonisolated static func fitsIsCube(_ url: URL) async -> Bool {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        guard let source = try? LocalFileCubeSource(url: url),
+              let hdus = try? await FITSCube.parseStructure(source: source) else { return false }
+        return !FITSCube.findCubeHDUs(hdus).isEmpty
+    }
+
     // Auth state — owned by AuthLifecycleController. AppState forwards for
     // call sites that read `appState.isAuthenticated` etc. directly. New
     // code should prefer reading off `auth.*` to keep the controller's
