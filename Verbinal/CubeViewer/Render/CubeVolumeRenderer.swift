@@ -47,7 +47,7 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     private var transferTexture: MTLTexture?
 
     // CPU copy of the volume for ray-picking.
-    private var volumeCPU: [Float16]?
+    private var volumeCPU: [UInt16]?
     private var volDims = SIMD3<Int>(1, 1, 1)
     private var volBinZ = 1
 
@@ -144,8 +144,8 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
                 mipmapLevel: 0,
                 slice: 0,
                 withBytes: base,
-                bytesPerRow: volume.nx * MemoryLayout<Float16>.stride,
-                bytesPerImage: volume.nx * volume.ny * MemoryLayout<Float16>.stride
+                bytesPerRow: volume.nx * MemoryLayout<UInt16>.stride,
+                bytesPerImage: volume.nx * volume.ny * MemoryLayout<UInt16>.stride
             )
         }
         dataTexture = texture
@@ -249,7 +249,7 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
             let p = ro + rd * t + SIMD3<Float>(0.5, 0.5, 0.5)
             let px = Int(p.x * Float(nx)), py = Int(p.y * Float(ny)), pz = Int(p.z * Float(nz))
             if px < 0 || py < 0 || pz < 0 || px >= nx || py >= ny || pz >= nz { continue }
-            let v = Float(volumeCPU[pz * nx * ny + py * nx + px])
+            let v = halfBitsToFloat(volumeCPU[pz * nx * ny + py * nx + px])
             if v > best { best = v; bestZ = pz }
         }
         if bestZ >= 0 { onPickChannel(Int((Float(bestZ) + 0.5) * Float(volBinZ))) }

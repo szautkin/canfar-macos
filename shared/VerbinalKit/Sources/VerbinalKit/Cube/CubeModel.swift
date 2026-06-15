@@ -23,14 +23,17 @@ public struct CubeStats: Sendable, Equatable {
     }
 }
 
-/// Downsampled half-float volume for the 3D texture. `data` holds `Float16`
-/// values normalized onto (0, 1]; a stored 0 is the invalid/NaN sentinel.
+/// Downsampled half-float volume for the 3D texture. `data` holds binary16
+/// (half) bit patterns — stored as `UInt16` rather than `Float16` so a universal
+/// build compiles on x86_64 (where `Float16` is unavailable). The `.r16Float`
+/// texture consumes the same bytes. Values are normalized onto (0, 1]; a stored
+/// 0 (half +0.0) is the invalid/NaN sentinel. See `HalfFloat.swift`.
 public struct VolumeData: Sendable {
-    public let data: [Float16]
+    public let data: [UInt16]
     public let nx: Int, ny: Int, nz: Int
     public let binXY: Int, binZ: Int
 
-    public init(data: [Float16], nx: Int, ny: Int, nz: Int, binXY: Int, binZ: Int) {
+    public init(data: [UInt16], nx: Int, ny: Int, nz: Int, binXY: Int, binZ: Int) {
         self.data = data; self.nx = nx; self.ny = ny; self.nz = nz
         self.binXY = binXY; self.binZ = binZ
     }
@@ -240,7 +243,7 @@ public actor CubeModel {
         let oNx = ceilDiv(nx, binXY)
         let oNy = ceilDiv(ny, binXY)
 
-        var data = [Float16](repeating: 0, count: oNx * oNy * oNz)
+        var data = [UInt16](repeating: 0, count: oNx * oNy * oNz)
         var sum = [Float](repeating: 0, count: oNx * oNy)
         var cnt = [Int32](repeating: 0, count: oNx * oNy)
         let range = (stats.hi - stats.lo) == 0 ? 1 : (stats.hi - stats.lo)
@@ -276,7 +279,7 @@ public actor CubeModel {
                 if cnt[i] == 0 { continue }   // stays 0 = invalid
                 var t = (sum[i] / Float(cnt[i]) - stats.lo) / range
                 t = t < 0 ? 0 : (t > 1 ? 1 : t)
-                data[slab + i] = Float16(eps + t * (1 - eps))
+                data[slab + i] = floatToHalfBits(eps + t * (1 - eps))
             }
             if zo % 8 == 0 || zo == oNz - 1 {
                 onProgress(.init(stage: "BUILDING VOLUME", fraction: Double(zo + 1) / Double(oNz)))
