@@ -9,6 +9,7 @@ import Metal
 import MetalKit
 import simd
 import Foundation
+import CoreGraphics
 import VerbinalKit
 
 /// Matches the `CubeUniforms` struct in Cube.metal byte-for-byte.
@@ -326,6 +327,62 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
+    }
+
+    /// Render one frame into an offscreen texture at the given size and read it
+    /// back as a CGImage (for figure export). Full quality, no jitter.
+    func snapshot(width: Int, height: Int) -> CGImage? {
+        guard width > 0, height > 0,
+              let pipeline,
+              let dataTexture, let colormapTexture, let transferTexture else { return nil }
+        let texDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        texDesc.usage = [.renderTarget, .shaderRead]
+        texDesc.storageMode = .shared
+        guard let target = device.makeTexture(descriptor: texDesc),
+              let commandBuffer = queue.makeCommandBuffer() else { return nil }
+        let rpd = MTLRenderPassDescriptor()
+        rpd.colorAttachments[0].texture = target
+        rpd.colorAttachments[0].loadAction = .clear
+        rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0.02, green: 0.03, blue: 0.06, alpha: 1)
+        rpd.colorAttachments[0].storeAction = .store
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else { return nil }
+
+        let savedAspect = viewportAspect
+        viewportAspect = Float(width) / Float(height)
+        let (model, viewProj) = currentMatrices()
+        let mvp = viewProj * model
+        var uniforms = CubeUniforms(
+            invViewProj: viewProj.inverse, inverseModel: model.inverse,
+            window: SIMD2(windowLo, windowHi), steps: max(baseSteps, 384),
+            density: density, jitter: 0, stretch: stretch, mip: mip ? 1 : 0, pad0: 0
+        )
+        encoder.setRenderPipelineState(pipeline)
+        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<CubeUniforms>.stride, index: 0)
+        encoder.setFragmentTexture(dataTexture, index: 0)
+        encoder.setFragmentTexture(colormapTexture, index: 1)
+        encoder.setFragmentTexture(transferTexture, index: 2)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        drawOverlay(encoder, mvp: mvp)
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        viewportAspect = savedAspect
+        return Self.cgImage(from: target)
+    }
+
+    private static func cgImage(from texture: MTLTexture) -> CGImage? {
+        let w = texture.width, h = texture.height
+        let rowBytes = w * 4
+        var data = [UInt8](repeating: 0, count: rowBytes * h)
+        return data.withUnsafeMutableBytes { ptr -> CGImage? in
+            guard let base = ptr.baseAddress else { return nil }
+            texture.getBytes(base, bytesPerRow: rowBytes, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+            let bitmapInfo = CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+            guard let ctx = CGContext(data: base, width: w, height: h, bitsPerComponent: 8,
+                                      bytesPerRow: rowBytes, space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: bitmapInfo) else { return nil }
+            return ctx.makeImage()
+        }
     }
 
     private func drawOverlay(_ encoder: MTLRenderCommandEncoder, mvp: simd_float4x4) {

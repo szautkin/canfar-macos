@@ -6,6 +6,10 @@
 
 import SwiftUI
 import VerbinalKit
+#if os(macOS)
+import AppKit
+import UniformTypeIdentifiers
+#endif
 
 /// Render-control side panel. Window/stretch/colormap are shared by both modes
 /// (slice re-renders, debounced; volume picks them up live). Density, spectral
@@ -184,12 +188,44 @@ struct CubeRenderControlsView: View {
 
     #if os(macOS)
     private var exportSection: some View {
-        Button {
-            model.exportSlicePNG()
+        Menu {
+            Button("Figure — PNG 2×") { exportFigure(scale: 2) }
+            Button("Figure — PNG 4×") { exportFigure(scale: 4) }
+            Divider()
+            Button("Slice — raw PNG") { model.exportSlicePNG() }
+                .disabled(model.sliceImage == nil)
         } label: {
-            Label("Export slice as PNG…", systemImage: "square.and.arrow.down")
+            Label("Export…", systemImage: "square.and.arrow.down")
         }
-        .disabled(model.sliceImage == nil)
+    }
+
+    /// Compose a labeled figure plate (title + image + colorbar) and save as PNG.
+    /// Slice exports its rendered CGImage; volume captures a fresh GPU snapshot.
+    private func exportFigure(scale: CGFloat) {
+        let content: CGImage? = model.viewMode == .slice ? model.sliceImage : model.volumeSnapshot?(1280, 960)
+        guard let image = content else { return }
+        let raw = model.rawWindow
+        let subtitle = model.viewMode == .slice
+            ? "CH \(model.channel + 1)/\(model.nz)   \(model.spectralReadout?.primary ?? "")"
+            : "\(model.nx) × \(model.ny) × \(model.nz)  ·  volume"
+        let title = (model.object.isEmpty || model.object == "—")
+            ? (model.fileName.isEmpty ? "Cube" : model.fileName) : model.object
+        let plate = CubeExportPlate(content: image, title: title, subtitle: subtitle,
+                                    stops: colorbarStops, loLabel: fmt(raw.lo), hiLabel: fmt(raw.hi), unit: model.bunit)
+        let imageRenderer = ImageRenderer(content: plate)
+        imageRenderer.scale = scale
+        guard let nsImage = imageRenderer.nsImage else { return }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.png]
+        let base = (model.object.isEmpty || model.object == "—") ? "cube" : model.object
+        panel.nameFieldStringValue = "\(base)_\(model.viewMode == .slice ? "ch\(model.channel + 1)" : "volume").png"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if let tiff = nsImage.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tiff),
+           let data = rep.representation(using: .png, properties: [:]) {
+            try? data.write(to: url)
+        }
     }
     #endif
 
@@ -227,3 +263,46 @@ struct CubeRenderControlsView: View {
         Binding(get: { model.windowHi }, set: { model.windowHi = max($0, model.windowLo + 0.01); model.renderSliceDebounced() })
     }
 }
+
+#if os(macOS)
+/// Figure-plate layout rendered to an image by `ImageRenderer` for export.
+private struct CubeExportPlate: View {
+    let content: CGImage
+    let title: String
+    let subtitle: String
+    let stops: [Color]
+    let loLabel: String
+    let hiLabel: String
+    let unit: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.headline)
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(12)
+
+            Image(decorative: content, scale: 1)
+                .resizable()
+                .scaledToFit()
+
+            HStack(spacing: 8) {
+                Text(loLabel).font(.caption2.monospaced())
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(LinearGradient(colors: stops, startPoint: .leading, endPoint: .trailing))
+                    .frame(height: 10)
+                Text(hiLabel).font(.caption2.monospaced())
+                if !unit.isEmpty { Text(unit).font(.caption2).foregroundStyle(.secondary) }
+            }
+            .padding(12)
+        }
+        .frame(width: 900)
+        .background(Color.black)
+        .foregroundStyle(.white)
+    }
+}
+#endif

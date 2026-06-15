@@ -42,6 +42,7 @@ struct CubeVolumeView: NSViewRepresentable {
             renderer.onPickChannel = { channel in
                 MainActor.assumeIsolated { model.setChannel(channel) }
             }
+            model.volumeSnapshot = { width, height in renderer.snapshot(width: width, height: height) }
         }
         return view
     }

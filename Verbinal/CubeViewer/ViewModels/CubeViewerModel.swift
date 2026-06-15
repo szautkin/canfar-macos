@@ -48,6 +48,10 @@ final class CubeViewerModel: Identifiable {
     var bunit = ""
     var hasData: Bool { cube != nil }
 
+    /// Set by the volume view so figure export can capture the GPU render.
+    /// Not observed — it's a transport closure, not UI state.
+    @ObservationIgnored var volumeSnapshot: ((Int, Int) -> CGImage?)?
+
     // MARK: View state (shared by both modes)
     var viewMode: CubeViewMode = .slice
     private(set) var channel = 0

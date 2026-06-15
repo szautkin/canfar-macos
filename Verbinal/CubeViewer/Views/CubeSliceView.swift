@@ -12,6 +12,10 @@ import SwiftUI
 struct CubeSliceView: View {
     let model: CubeViewerModel
     @State private var hoverLocation: CGPoint?
+    @State private var zoom: CGFloat = 1
+    @State private var lastZoom: CGFloat = 1
+    @State private var pan: CGSize = .zero
+    @State private var lastPan: CGSize = .zero
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,6 +36,8 @@ struct CubeSliceView: View {
                         .interpolation(.none)
                         .resizable()
                         .scaledToFit()
+                        .scaleEffect(zoom)
+                        .offset(pan)
                 } else if model.isRendering {
                     ProgressView()
                 }
@@ -50,11 +56,27 @@ struct CubeSliceView: View {
                 }
             }
             .contentShape(Rectangle())
+            .simultaneousGesture(
+                MagnificationGesture()
+                    .onChanged { zoom = max(1, min(lastZoom * $0, 20)) }
+                    .onEnded { _ in lastZoom = zoom }
+            )
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { pan = CGSize(width: lastPan.width + $0.translation.width, height: lastPan.height + $0.translation.height) }
+                    .onEnded { _ in lastPan = pan }
+            )
+            .onTapGesture(count: 2) { resetView() }
+            .onTapGesture(coordinateSpace: .local) { location in
+                if let (x, y) = imagePixel(at: fitLocation(location, in: geo.size), in: geo.size) {
+                    Task { await model.probe(x: Int(x.rounded()), y: Int(y.rounded())) }
+                }
+            }
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let location):
                     hoverLocation = location
-                    if let (x, y) = imagePixel(at: location, in: geo.size) {
+                    if let (x, y) = imagePixel(at: fitLocation(location, in: geo.size), in: geo.size) {
                         Task { await model.updateCursor(x: x, y: y) }
                     }
                 case .ended:
@@ -62,12 +84,19 @@ struct CubeSliceView: View {
                     model.clearCursor()
                 }
             }
-            .onTapGesture(coordinateSpace: .local) { location in
-                if let (x, y) = imagePixel(at: location, in: geo.size) {
-                    Task { await model.probe(x: Int(x.rounded()), y: Int(y.rounded())) }
-                }
-            }
+            .onChange(of: model.fileName) { _, _ in resetView() }
         }
+    }
+
+    private func resetView() {
+        zoom = 1; lastZoom = 1; pan = .zero; lastPan = .zero
+    }
+
+    /// Undo the zoom/pan transform (applied around the view center) so a view-space
+    /// location maps back to the aspect-fit image space `imagePixel` expects.
+    private func fitLocation(_ p: CGPoint, in size: CGSize) -> CGPoint {
+        let cx = size.width / 2, cy = size.height / 2
+        return CGPoint(x: cx + (p.x - pan.width - cx) / zoom, y: cy + (p.y - pan.height - cy) / zoom)
     }
 
     /// Floating readout that follows the cursor (sky + spectral + value).
