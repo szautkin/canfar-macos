@@ -314,7 +314,7 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
 
     /// Render one frame into an offscreen texture at the given size and read it
     /// back as a CGImage (for figure export). Full quality, no jitter.
-    func snapshot(width: Int, height: Int, distanceScale: Float = 1) -> CGImage? {
+    func snapshot(width: Int, height: Int, distanceScale: Float = 1, background: SIMD4<Float>? = nil) -> CGImage? {
         guard width > 0, height > 0,
               let pipeline,
               let dataTexture, let colormapTexture, let transferTexture else { return nil }
@@ -327,10 +327,11 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
         texDesc.storageMode = .shared
         guard let target = device.makeTexture(descriptor: texDesc),
               let commandBuffer = queue.makeCommandBuffer() else { return nil }
+        let bg = background ?? SIMD4(0, 0, 0, 0)   // nil = transparent
         let rpd = MTLRenderPassDescriptor()
         rpd.colorAttachments[0].texture = target
         rpd.colorAttachments[0].loadAction = .clear
-        rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0.02, green: 0.03, blue: 0.06, alpha: 1)
+        rpd.colorAttachments[0].clearColor = MTLClearColor(red: Double(bg.x), green: Double(bg.y), blue: Double(bg.z), alpha: Double(bg.w))
         rpd.colorAttachments[0].storeAction = .store
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else { return nil }
 
@@ -364,7 +365,7 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
         return data.withUnsafeMutableBytes { ptr -> CGImage? in
             guard let base = ptr.baseAddress else { return nil }
             texture.getBytes(base, bytesPerRow: rowBytes, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
-            let bitmapInfo = CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+            let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
             guard let ctx = CGContext(data: base, width: w, height: h, bitsPerComponent: 8,
                                       bytesPerRow: rowBytes, space: CGColorSpaceCreateDeviceRGB(),
                                       bitmapInfo: bitmapInfo) else { return nil }

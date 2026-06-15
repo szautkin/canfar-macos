@@ -117,10 +117,17 @@ struct CubeViewerView: View {
                 CubeVolumeView(model: model)
                 CubeAxisCaptions(model: model)
             }
-            .background(Color.black)
+            .background(model.background.color)
             #else
             ContentUnavailableView("Volume mode requires macOS", systemImage: "cube.transparent")
             #endif
         }
+    }
+}
+
+extension CubeBackground {
+    /// SwiftUI bridge for the model's SwiftUI-free `rgba`.
+    var color: Color {
+        Color(.sRGB, red: Double(rgba.x), green: Double(rgba.y), blue: Double(rgba.z), opacity: Double(rgba.w))
     }
 }

@@ -44,7 +44,9 @@ struct CubeVolumeView: NSViewRepresentable {
                 MainActor.assumeIsolated { model.setChannel(channel) }
             }
             // 1.3 must match the distanceScale used by CubeAxisCaptions in the export plate.
-            model.volumeSnapshot = { width, height in renderer.snapshot(width: width, height: height, distanceScale: 1.3) }
+            model.volumeSnapshot = { width, height, background in
+                renderer.snapshot(width: width, height: height, distanceScale: 1.3, background: background)
+            }
         }
         return view
     }
@@ -77,6 +79,9 @@ struct CubeVolumeView: NSViewRepresentable {
         renderer.cameraAzimuth = model.cameraAzimuth
         renderer.cameraElevation = model.cameraElevation
         renderer.cameraDistance = model.cameraDistance
+
+        let bg = model.background.rgba
+        view.clearColor = MTLClearColor(red: Double(bg.x), green: Double(bg.y), blue: Double(bg.z), alpha: Double(bg.w))
 
         if coordinator.appliedColormap != model.colormap {
             renderer.setColormap(FITSRenderEngine.colormapRGBA(model.colormap))

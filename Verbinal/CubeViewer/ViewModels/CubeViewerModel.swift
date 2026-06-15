@@ -50,7 +50,7 @@ final class CubeViewerModel: Identifiable {
 
     /// Set by the volume view so figure export can capture the GPU render.
     /// Not observed — it's a transport closure, not UI state.
-    @ObservationIgnored var volumeSnapshot: ((Int, Int) -> CGImage?)?
+    @ObservationIgnored var volumeSnapshot: ((Int, Int, SIMD4<Float>?) -> CGImage?)?
 
     /// Recently opened cubes (security-scoped bookmarks), persisted across launches.
     var recents: [CubeRecent] = CubeRecents.load()
@@ -64,6 +64,7 @@ final class CubeViewerModel: Identifiable {
     var windowHi: Float = 1
     var stretch: FITSRenderParams.StretchMode = .linear
     var colormap: FITSRenderParams.ColormapType = .inferno
+    var background: CubeBackground = .dark
 
     // MARK: Volume-only controls
     var density: Float = 1.0
@@ -538,4 +539,20 @@ struct CubeFigureMetadata: Equatable {
     let channelLabel: String
     let spectral: String
     let spectralRange: String
+}
+
+/// Background for the cube viewer display and figure export. `rgba` (kept
+/// SwiftUI-free so it lives in the model) feeds both the Metal clear color and
+/// a SwiftUI Color (see the `color` extension).
+enum CubeBackground: String, CaseIterable, Identifiable {
+    case dark, black, light
+    var id: String { rawValue }
+    var label: String { rawValue.capitalized }
+    var rgba: SIMD4<Float> {
+        switch self {
+        case .dark: return SIMD4(0.02, 0.03, 0.06, 1)
+        case .black: return SIMD4(0, 0, 0, 1)
+        case .light: return SIMD4(0.96, 0.96, 0.96, 1)
+        }
+    }
 }

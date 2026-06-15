@@ -29,7 +29,7 @@ struct CubeSliceView: View {
     private var imageArea: some View {
         GeometryReader { geo in
             ZStack {
-                Color.black
+                model.background.color
                 if let image = model.sliceImage {
                     Image(decorative: image, scale: 1)
                         .interpolation(.none)

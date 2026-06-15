@@ -74,6 +74,10 @@ struct CubeRenderControlsView: View {
             stretchButtons
             windowControl
             colorbar
+            Picker("Background", selection: $model.background) {
+                ForEach(CubeBackground.allCases) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.segmented)
         }
     }
 
@@ -341,6 +345,8 @@ struct CubeExportView: View {
         .padding(20)
         .frame(width: 560)
         .onAppear { content = currentContent(); rebuildPreview() }
+        .onChange(of: themeRaw) { content = currentContent(); rebuildPreview() }
+        .onChange(of: transparent) { content = currentContent(); rebuildPreview() }
         .onChange(of: style) { rebuildPreview() }
     }
 
@@ -381,7 +387,11 @@ struct CubeExportView: View {
     }
 
     private func currentContent() -> CGImage? {
-        model.viewMode == .slice ? model.sliceImage : model.volumeSnapshot?(1400, 1050)
+        guard model.viewMode == .volume else { return model.sliceImage }
+        // Volume export background follows the theme (or transparent).
+        let bg: SIMD4<Float>? = transparent ? nil
+            : (themeRaw == CubeExportStyle.Theme.light.rawValue ? SIMD4(1, 1, 1, 1) : SIMD4(0.05, 0.05, 0.05, 1))
+        return model.volumeSnapshot?(1400, 1050, bg)
     }
 
     private var baseName: String {
