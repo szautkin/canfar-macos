@@ -249,11 +249,30 @@ struct CubeExportStyle: Equatable {
         var id: String { rawValue }
         var design: Font.Design { self == .mono ? .monospaced : (self == .serif ? .serif : .default) }
     }
+    /// Text/accent color for the header + legend. (Axis captions stay light so
+    /// they remain legible over the dark volume render.)
+    enum TextColor: String, CaseIterable, Identifiable {
+        case auto, white, black, cyan, amber
+        var id: String { rawValue }
+        func main(_ theme: Theme) -> Color {
+            switch self {
+            case .auto: return theme.foreground
+            case .white: return .white
+            case .black: return Color(white: 0.08)
+            case .cyan: return Color(red: 0.25, green: 0.70, blue: 0.95)
+            case .amber: return Color(red: 0.95, green: 0.60, blue: 0.15)
+            }
+        }
+        func secondary(_ theme: Theme) -> Color {
+            self == .auto ? theme.secondary : main(theme).opacity(0.65)
+        }
+    }
     var theme: Theme = .light
     var font: FontKind = .sans
     var scale: Double = 1.0
     var annotate = true
     var transparent = false
+    var textColor: TextColor = .auto
 }
 
 /// Export sheet — style controls, a live preview, and PNG/PDF output.
@@ -265,13 +284,15 @@ struct CubeExportView: View {
     @AppStorage("cubeExport.scale") private var scale = 1.0
     @AppStorage("cubeExport.annotate") private var annotate = true
     @AppStorage("cubeExport.transparent") private var transparent = false
+    @AppStorage("cubeExport.textColor") private var textColorRaw = CubeExportStyle.TextColor.auto.rawValue
     @State private var content: CGImage?
     @State private var previewImage: NSImage?
 
     private var style: CubeExportStyle {
         CubeExportStyle(theme: CubeExportStyle.Theme(rawValue: themeRaw) ?? .light,
                         font: CubeExportStyle.FontKind(rawValue: fontRaw) ?? .sans,
-                        scale: scale, annotate: annotate, transparent: transparent)
+                        scale: scale, annotate: annotate, transparent: transparent,
+                        textColor: CubeExportStyle.TextColor(rawValue: textColorRaw) ?? .auto)
     }
 
     var body: some View {
@@ -292,6 +313,13 @@ struct CubeExportView: View {
                 Text("Sans").tag(CubeExportStyle.FontKind.sans.rawValue)
                 Text("Mono").tag(CubeExportStyle.FontKind.mono.rawValue)
                 Text("Serif").tag(CubeExportStyle.FontKind.serif.rawValue)
+            }.pickerStyle(.segmented)
+            Picker("Text color", selection: $textColorRaw) {
+                Text("Auto").tag(CubeExportStyle.TextColor.auto.rawValue)
+                Text("White").tag(CubeExportStyle.TextColor.white.rawValue)
+                Text("Black").tag(CubeExportStyle.TextColor.black.rawValue)
+                Text("Cyan").tag(CubeExportStyle.TextColor.cyan.rawValue)
+                Text("Amber").tag(CubeExportStyle.TextColor.amber.rawValue)
             }.pickerStyle(.segmented)
             HStack {
                 Text("Text scale").font(.callout)
@@ -429,7 +457,7 @@ private struct CubeExportPlate: View {
         }
         .frame(width: 1000)
         .background(style.transparent ? Color.clear : style.theme.background)
-        .foregroundStyle(style.theme.foreground)
+        .foregroundStyle(style.textColor.main(style.theme))
         .font(.system(size: 13 * style.scale, design: style.font.design))
     }
 
@@ -438,14 +466,14 @@ private struct CubeExportPlate: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(metadata.title).font(.system(size: 22 * style.scale, weight: .bold, design: style.font.design))
                 if !metadata.instrument.isEmpty {
-                    Text(metadata.instrument).foregroundStyle(style.theme.secondary)
+                    Text(metadata.instrument).foregroundStyle(style.textColor.secondary(style.theme))
                 }
-                Text("\(metadata.channelLabel)   \(metadata.spectral)").foregroundStyle(style.theme.secondary)
+                Text("\(metadata.channelLabel)   \(metadata.spectral)").foregroundStyle(style.textColor.secondary(style.theme))
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
-                if !metadata.fileName.isEmpty { Text(metadata.fileName).foregroundStyle(style.theme.secondary) }
-                Text(date).foregroundStyle(style.theme.secondary)
+                if !metadata.fileName.isEmpty { Text(metadata.fileName).foregroundStyle(style.textColor.secondary(style.theme)) }
+                Text(date).foregroundStyle(style.textColor.secondary(style.theme))
             }
         }
     }
@@ -459,8 +487,8 @@ private struct CubeExportPlate: View {
                     .frame(height: 12)
                     .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(style.theme.line))
                 Text(metadata.valueHi).monospacedDigit()
-                if !metadata.unit.isEmpty { Text(metadata.unit).foregroundStyle(style.theme.secondary) }
-                Text("· \(metadata.stretch) · \(metadata.colormap)").foregroundStyle(style.theme.secondary)
+                if !metadata.unit.isEmpty { Text(metadata.unit).foregroundStyle(style.textColor.secondary(style.theme)) }
+                Text("· \(metadata.stretch) · \(metadata.colormap)").foregroundStyle(style.textColor.secondary(style.theme))
             }
             HStack(alignment: .top, spacing: 22) {
                 legend("DIMENSIONS", metadata.dimensions)
@@ -476,7 +504,7 @@ private struct CubeExportPlate: View {
 
     private func legend(_ key: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(key).foregroundStyle(style.theme.secondary)
+            Text(key).foregroundStyle(style.textColor.secondary(style.theme))
             Text(value)
         }
     }
