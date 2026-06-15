@@ -26,6 +26,8 @@ struct CubeViewerView: View {
                 .padding(.horizontal, 8)
                 Divider()
                 content
+                Divider()
+                timelineBar
             }
             Divider()
             CubeRenderControlsView(model: model)
@@ -67,6 +69,40 @@ struct CubeViewerView: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .frame(maxWidth: 320)
+        .padding(.vertical, 8)
+    }
+
+    /// Channel timeline — shared by both modes. In volume mode, scrubbing moves
+    /// the slice-plane marker and updates the spectral readout.
+    private var timelineBar: some View {
+        HStack(spacing: 12) {
+            Button { model.togglePlayback() } label: {
+                Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
+            }
+            .buttonStyle(.borderless)
+            .help(model.isPlaying ? "Pause (Space)" : "Play through channels (Space)")
+            .disabled(model.nz <= 1)
+
+            Button { model.stepChannel(-1) } label: { Image(systemName: "chevron.left") }
+                .buttonStyle(.borderless).disabled(model.channel <= 0)
+
+            ChannelScrubber(profile: model.channelProfile, channel: model.channel, count: model.nz) {
+                model.setChannel($0)
+            }
+
+            Button { model.stepChannel(1) } label: { Image(systemName: "chevron.right") }
+                .buttonStyle(.borderless).disabled(model.channel >= model.nz - 1)
+
+            if let readout = model.spectralReadout {
+                Text(readout.primary)
+                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    .frame(minWidth: 90, alignment: .trailing)
+            }
+            Text("\(model.channel + 1) / \(model.nz)")
+                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                .frame(width: 72, alignment: .trailing)
+        }
+        .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 

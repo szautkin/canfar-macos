@@ -21,7 +21,6 @@ struct CubeSliceView: View {
         VStack(spacing: 0) {
             imageArea
             coordinateBar
-            timeline
         }
     }
 
@@ -177,39 +176,6 @@ struct CubeSliceView: View {
         .background(.bar)
     }
 
-    // MARK: Timeline (play + waveform scrubber)
-
-    private var timeline: some View {
-        HStack(spacing: 12) {
-            Button { model.togglePlayback() } label: {
-                Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
-            }
-            .buttonStyle(.borderless)
-            .help(model.isPlaying ? "Pause (Space)" : "Play through channels (Space)")
-            .disabled(model.nz <= 1)
-
-            Button { model.stepChannel(-1) } label: { Image(systemName: "chevron.left") }
-                .buttonStyle(.borderless).disabled(model.channel <= 0)
-
-            ChannelScrubber(
-                profile: model.channelProfile,
-                channel: model.channel,
-                count: model.nz,
-                onScrub: { model.setChannel($0) }
-            )
-
-            Button { model.stepChannel(1) } label: { Image(systemName: "chevron.right") }
-                .buttonStyle(.borderless).disabled(model.channel >= model.nz - 1)
-
-            Text("\(model.channel + 1) / \(model.nz)")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .frame(width: 80, alignment: .trailing)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
     // MARK: Hit-testing
 
     /// Map a view-space location to a 0-based FITS pixel (x, y), flipping Y so the
@@ -232,8 +198,9 @@ struct CubeSliceView: View {
 }
 
 /// Timeline-style channel scrubber: the cube-mean spectrum as a waveform
-/// backdrop, a progress fill, and click/drag to scrub.
-private struct ChannelScrubber: View {
+/// backdrop, a progress fill, and click/drag to scrub. Shared by slice and
+/// volume modes (in volume it drives the slice-plane marker).
+struct ChannelScrubber: View {
     let profile: [Float]?
     let channel: Int
     let count: Int
