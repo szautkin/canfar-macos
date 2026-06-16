@@ -28,6 +28,9 @@ and as a notarised build from [GitHub Releases](https://github.com/szautkin/canf
   your VOSpace files, with quota and usage at a glance.
 - **FITS viewer** — hardware-accelerated, Metal-based rendering with pan/zoom, scaling
   modes, WCS-aware pixel readout, and full zenithal projections (TAN/SIN/STG/ZEA).
+- **Cube Viewer** — explore FITS spectral cubes in 3D: a GPU ray-marched volume mode and
+  a quantitative slice mode with WCS sky coordinates, spectral readout, and click-to-probe
+  spectra — plus publication-quality figure export to PNG/PDF.
 - **Image content discovery** — find which CANFAR container image carries the Python,
   R, system, and OS-level packages your workflow needs, before you launch.
 - **AI assistant integration (MCP)** — a built-in Model Context Protocol server lets
@@ -40,6 +43,10 @@ and as a notarised build from [GitHub Releases](https://github.com/szautkin/canf
 - **Localized** — full English and French interfaces.
 
 ## Screenshots
+
+The 3D **Cube Viewer** (new in 1.3) — explore FITS spectral cubes as an interactive, GPU ray-marched volume:
+
+![Verbinal — Cube Viewer 3D volume](assets/screenshot-cube-volume.png)
 
 | Home | CADC archive search |
 |------|---------------------|
