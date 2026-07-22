@@ -19,7 +19,7 @@ struct DownloadProgressView: View {
                         switch download.state {
                         case .downloading:
                             ProgressView()
-                                .scaleEffect(0.6)
+                                .controlSize(.small)
                                 .accessibilityLabel("Downloading")
                         case .completed:
                             Image(systemName: "checkmark.circle.fill")

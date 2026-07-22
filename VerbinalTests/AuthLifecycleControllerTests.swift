@@ -176,6 +176,155 @@ final class AuthLifecycleControllerTests: XCTestCase {
         XCTAssertFalse(shouldRetry)
     }
 
+    // MARK: - Offline gating / connectivity retry
+
+    func testValidateStoredTokenOfflineShortCircuitsWithoutNetworkCall() async {
+        KeychainStorage.saveToken("valid-token", username: "alice")
+        let controller = makeController { _ in
+            XCTFail("No network call expected while definitely offline")
+            return self.errorResponse(500)
+        }
+        controller.connectivityProvider = { .unsatisfied }
+
+        await controller.validateStoredToken()
+
+        XCTAssertTrue(controller.awaitingConnectivity)
+        XCTAssertFalse(controller.isLoading, "The spinner must never engage offline")
+        XCTAssertFalse(controller.isAuthenticated)
+        XCTAssertTrue(controller.statusMessage.lowercased().contains("offline"))
+    }
+
+    func testUnknownConnectivityStillAttemptsValidation() async {
+        // Regression pin: the default (unwired) provider must not change
+        // online behavior — .unknown proceeds with the network call.
+        KeychainStorage.saveToken("valid-token", username: "alice")
+        var sawRequest = false
+        let controller = makeController { request in
+            if request.url?.path.contains("/whoami") == true {
+                sawRequest = true
+                return self.okResponse(Data("alice".utf8))
+            }
+            return self.okResponse(Data())
+        }
+
+        await controller.validateStoredToken()
+
+        XCTAssertTrue(sawRequest)
+        XCTAssertTrue(controller.isAuthenticated)
+        XCTAssertFalse(controller.awaitingConnectivity)
+    }
+
+    func testNetworkErrorArmsAwaitingConnectivity() async {
+        KeychainStorage.saveToken("valid-token", username: "alice")
+        let controller = makeController { _ in self.okResponse(Data()) }
+        controller.connectivityProvider = { .satisfied }
+        MockURLProtocol.requestHandler = { _ in throw URLError(.notConnectedToInternet) }
+
+        await controller.validateStoredToken()
+
+        XCTAssertTrue(controller.awaitingConnectivity)
+        XCTAssertFalse(controller.isAuthenticated)
+        XCTAssertFalse(controller.isLoading)
+    }
+
+    func testRetryAfterConnectivityRestoredAuthenticates() async {
+        KeychainStorage.saveToken("valid-token", username: "alice")
+        var connectivity = NetworkPathMonitor.Connectivity.unsatisfied
+        let controller = makeController { request in
+            if request.url?.path.contains("/whoami") == true {
+                return self.okResponse(Data("alice".utf8))
+            }
+            return self.okResponse(Data())
+        }
+        controller.connectivityProvider = { connectivity }
+
+        await controller.validateStoredToken()
+        XCTAssertTrue(controller.awaitingConnectivity)
+
+        connectivity = .satisfied
+        await controller.retryValidationIfConnectivityRestored()
+
+        XCTAssertTrue(controller.isAuthenticated)
+        XCTAssertFalse(controller.awaitingConnectivity)
+    }
+
+    func testRetryIsNoOpWhenNotAwaitingConnectivity() async {
+        let controller = makeController { _ in
+            XCTFail("Retry must be a no-op when nothing was deferred")
+            return self.errorResponse(500)
+        }
+        controller.connectivityProvider = { .satisfied }
+        await controller.retryValidationIfConnectivityRestored()
+        XCTAssertFalse(controller.isAuthenticated)
+    }
+
+    func testRetryIsNoOpWhileStillUnsatisfied() async {
+        KeychainStorage.saveToken("valid-token", username: "alice")
+        let controller = makeController { _ in
+            XCTFail("Retry must not fire while the path is still down")
+            return self.errorResponse(500)
+        }
+        controller.connectivityProvider = { .unsatisfied }
+
+        await controller.validateStoredToken()   // arms awaitingConnectivity
+        await controller.retryValidationIfConnectivityRestored()
+
+        XCTAssertTrue(controller.awaitingConnectivity, "Deferred sign-in must stay armed")
+    }
+
+    func testRetryIsNoOpWhenAlreadyAuthenticated() async {
+        let controller = makeController { _ in
+            XCTFail("Retry must be a no-op for an authenticated session")
+            return self.errorResponse(500)
+        }
+        controller.connectivityProvider = { .satisfied }
+        controller.apply(username: "alice", userInfo: nil)
+
+        await controller.retryValidationIfConnectivityRestored()
+
+        XCTAssertTrue(controller.isAuthenticated)
+    }
+
+    func testHandleTokenExpiredOfflineDoesNotFireSessionExpired() async throws {
+        KeychainStorage.saveToken("valid-token", username: "alice")
+        let controller = makeController { _ in
+            XCTFail("No network call expected while definitely offline")
+            return self.errorResponse(500)
+        }
+        controller.connectivityProvider = { .unsatisfied }
+        controller.apply(username: "alice", userInfo: nil)
+
+        var sessionExpiredFires = 0
+        controller.onSessionExpired = { sessionExpiredFires += 1 }
+
+        controller.handleTokenExpired()
+        try await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(sessionExpiredFires, 0, "Offline must not masquerade as session expiry")
+        XCTAssertTrue(controller.awaitingConnectivity)
+        let (token, _) = KeychainStorage.loadToken()
+        XCTAssertEqual(token, "valid-token", "Offline must not clear the stored token")
+        XCTAssertTrue(controller.statusMessage.lowercased().contains("offline"))
+    }
+
+    func testHandleTokenExpiredExpiredTokenStillFiresSessionExpired() async throws {
+        // Regression guard: real expiry (401 from /whoami, no stored password)
+        // must still surface the login sheet even with connectivity wired.
+        KeychainStorage.saveToken("stale-token", username: "alice")
+        let controller = makeController { _ in self.errorResponse(401) }
+        controller.connectivityProvider = { .satisfied }
+        controller.apply(username: "alice", userInfo: nil)
+
+        var sessionExpiredFires = 0
+        controller.onSessionExpired = { sessionExpiredFires += 1 }
+
+        controller.handleTokenExpired()
+        try await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(sessionExpiredFires, 1)
+        XCTAssertFalse(controller.isAuthenticated)
+    }
+
     // MARK: - clear
 
     func testClearTearsDownAuthState() async {

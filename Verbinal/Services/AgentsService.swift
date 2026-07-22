@@ -106,6 +106,10 @@ final class AgentsService {
     /// toolbar wand popover, per-row badges, and "what did the agent
     /// do recently" surfaces all read from.
     let activityStore = AgentActivityStore()
+    /// Transient live feed for the top-of-window agent-activity snackbar.
+    /// Fed by a push audit sink on every dispatch (reads included);
+    /// distinct from `activityStore` (persistent, writes only).
+    let liveActivity = AgentLiveActivity()
     private let logger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "service")
 
     /// Tools registered with the router. Mutate before the first
@@ -299,11 +303,30 @@ final class AgentsService {
         // Build the router *now* (so any pending tool registration is
         // captured). Audit entries fan out to our capturing sink AND
         // the os.log sink for system-wide visibility.
-        let multiSink = MultiplexAuditSink(sinks: [auditSink, LoggingAuditSink()])
+        // Push sink → live snackbar. Fires on every dispatch (reads
+        // included) from an external agent; hops to the main actor to
+        // update the @Observable feed. `.user`-origin calls (rare
+        // in-app router use) are skipped — the snackbar is about
+        // external agents touching the app.
+        let liveActivity = self.liveActivity
+        let pushSink = ClosureAuditSink { entry in
+            guard case .external = entry.origin else { return }
+            let label = entry.originLabel
+            let tool = entry.toolName
+            Task { @MainActor in
+                liveActivity.record(originLabel: label, toolName: tool)
+            }
+        }
+        let multiSink = MultiplexAuditSink(sinks: [auditSink, LoggingAuditSink(), pushSink])
         let hook = AutoApplyHook(
-            shouldAutoApply: { [weak self] _, _ in
+            // Windows AutoApplyPolicy: destructive writes never auto-apply
+            // even when the user has autonomy on — deletes/teardowns always
+            // queue for explicit approval.
+            shouldAutoApply: { [weak self] verbClass, _ in
                 guard let self else { return false }
-                return await MainActor.run { self.autoApplyWrites }
+                return await MainActor.run {
+                    self.autoApplyWrites && verbClass != .destructive
+                }
             },
             apply: { [weak self] id in
                 guard let self else {

@@ -63,11 +63,11 @@ final class LocalFileNodeTests: XCTestCase {
 @MainActor
 final class FileBrowserModelTests: XCTestCase {
 
-    func testInitDefaultsToDocuments() {
+    func testInitDefaultsToDownloads() {
         let model = FileBrowserModel()
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        XCTAssertEqual(model.rootURL, docs)
-        XCTAssertEqual(model.currentURL, docs)
+        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
+        XCTAssertEqual(model.rootURL, downloads)
+        XCTAssertEqual(model.currentURL, downloads)
     }
 
     func testCanGoUpAtRoot() {
@@ -75,11 +75,21 @@ final class FileBrowserModelTests: XCTestCase {
         XCTAssertFalse(model.canGoUp)
     }
 
-    func testLoadDirectoryPopulatesNodes() {
+    func testLoadDirectoryPopulatesNodes() throws {
+        // Use a private temp folder — enumerating the real ~/Downloads can
+        // hang on network/iCloud placeholders under xcodebuild.
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("fb-smoke-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data("x".utf8).write(to: dir.appendingPathComponent("sample.fits"))
+
         let model = FileBrowserModel()
+        model.currentURL = dir
         model.loadDirectory()
-        // Documents dir likely has files; at minimum no crash
-        XCTAssertTrue(true) // smoke test — verify it doesn't crash
+        XCTAssertNil(model.loadError)
+        XCTAssertEqual(model.nodes.count, 1)
+        XCTAssertEqual(model.nodes.first?.name, "sample.fits")
     }
 
     func testFilterTextFilters() {

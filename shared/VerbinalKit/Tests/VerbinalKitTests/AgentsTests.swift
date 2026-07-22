@@ -254,7 +254,7 @@ final class AIToolRouterTests: XCTestCase {
         XCTAssertEqual(calls, 0, "apply must not run when hook says no")
     }
 
-    func testAutoApplyHookFailureLeavesProposalInQueue() async {
+    func testAutoApplyHookFailureWithdrawsProposal() async {
         let store = InMemoryProposalStore()
         let counter = ApplyCallCounter()
         await counter.setShouldThrow(true)
@@ -278,8 +278,11 @@ final class AIToolRouterTests: XCTestCase {
         guard case .failed(.backendError) = result else {
             return XCTFail("expected backendError on apply throw, got \(result)")
         }
+        // A deterministically failing auto-apply must withdraw the
+        // optimistic proposal (mirroring the budget-cap path) so it
+        // can't linger in the queue only to fail again.
         let pending = await store.list(origin: nil)
-        XCTAssertEqual(pending.count, 1, "failed auto-apply must leave proposal in queue for manual review")
+        XCTAssertTrue(pending.isEmpty, "failed auto-apply must withdraw the proposal, not leave it queued")
     }
 
     func testAuditSinkRecordsEachCall() async {

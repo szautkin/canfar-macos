@@ -45,7 +45,7 @@ struct SessionListView: View {
                     if model.isPolling {
                         HStack(spacing: 4) {
                             ProgressView()
-                                .scaleEffect(0.5)
+                                .controlSize(.small)
                             Text("Auto-refresh \(model.pollCountdown)s")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
@@ -56,7 +56,7 @@ struct SessionListView: View {
 
                     if model.isLoading {
                         ProgressView()
-                            .scaleEffect(0.6)
+                            .controlSize(.small)
                     }
 
                     Button {
@@ -103,9 +103,7 @@ struct SessionListView: View {
                 }
 
                 if model.hasError {
-                    Label(model.errorMessage, systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                    InlineErrorLabel(message: model.errorMessage)
                 }
             }
         }
@@ -116,8 +114,8 @@ struct SessionListView: View {
         ) { session in
             Button("Delete", role: .destructive) {
                 performAction(
-                    title: "Deleting Session",
-                    successMessage: "Session '\(session.sessionName)' deleted."
+                    title: String(localized: "Deleting Session"),
+                    successMessage: String(localized: "Session '\(session.sessionName)' deleted.")
                 ) {
                     await model.deleteSession(id: session.id)
                 }
@@ -163,8 +161,8 @@ struct SessionListView: View {
         VStack(spacing: 20) {
             if actionInProgress {
                 ProgressView()
-                    .scaleEffect(1.5)
-                Text(actionTitle + "...")
+                    .controlSize(.large)
+                Text("\(actionTitle)…")
                     .font(.body)
             } else if actionSuccess {
                 Image(systemName: "checkmark.circle.fill")
@@ -197,6 +195,10 @@ struct SessionListView: View {
         }
         .padding(32)
         .sheetFrame(width: 380)
+        // Escape always dismisses — including mid-action, so a hung
+        // request can't trap the user in a buttonless sheet (the action
+        // itself continues in its Task and lands its result silently).
+        .onEscape { showActionSheet = false }
     }
 
     @ViewBuilder
@@ -212,8 +214,8 @@ struct SessionListView: View {
             },
             onRenew: {
                 performAction(
-                    title: "Renewing Session",
-                    successMessage: "Session '\(session.sessionName)' renewed."
+                    title: String(localized: "Renewing Session"),
+                    successMessage: String(localized: "Session '\(session.sessionName)' renewed.")
                 ) {
                     await model.renewSession(id: session.id)
                 }

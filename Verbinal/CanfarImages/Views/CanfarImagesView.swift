@@ -201,7 +201,7 @@ struct CanfarImagesView: View {
                 preselectedImageID = nil
                 showDiscoverySheet = true
             } label: {
-                Label("More inspection…", systemImage: "magnifyingglass")
+                Label("More Inspection…", systemImage: "magnifyingglass.circle")
                     .font(.caption)
             }
             .buttonStyle(.borderless)

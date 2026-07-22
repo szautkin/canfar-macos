@@ -43,6 +43,7 @@ enum BlinkAligner {
     ///   - zoomA: Image A's current viewport zoom (px/px, not angular).
     ///   - referenceRA: Reference sky position RA in degrees (use crosshair or WCS center).
     ///   - referenceDec: Reference sky position Dec in degrees.
+    ///   - imageWidthA: Pixel width of image A (drives its angular field of view).
     ///   - imageWidthB: Pixel width of image B.
     ///   - imageHeightB: Pixel height of image B.
     ///   - displayWidthA: Rendered display width of image A on canvas (pixels).
@@ -57,6 +58,7 @@ enum BlinkAligner {
         zoomA: Double,
         referenceRA: Double,
         referenceDec: Double,
+        imageWidthA: Int,
         imageWidthB: Int,
         imageHeightB: Int,
         displayWidthA: Double,
@@ -64,12 +66,13 @@ enum BlinkAligner {
         canvasWidth: Double,
         canvasHeight: Double
     ) -> BlinkTransform? {
-        // 1. Scale: match angular extent of A at its current zoom.
-        //    If B has larger pixels (coarser), it needs less zoom.
+        // 1. Scale: match the angular field of view of A at its current zoom.
+        //    B is stretched to fill A's display box, so matching the on-screen
+        //    angular scale means matching *field widths*, not pixel scales.
         let matchedZoom = computeMatchedZoom(
             zoomA: zoomA,
-            pixelScaleA: wcsA.pixelScaleArcsec,
-            pixelScaleB: wcsB.pixelScaleArcsec
+            angularFieldA: Double(imageWidthA) * wcsA.pixelScaleArcsec,
+            angularFieldB: Double(imageWidthB) * wcsB.pixelScaleArcsec
         )
 
         // 2. Rotation: apply North-up relative to A's current sky orientation.
@@ -128,17 +131,25 @@ enum BlinkAligner {
 
     // MARK: - Viewport Math (matches Windows ViewportMath)
 
-    /// Compute zoom for image B that matches the angular extent of image A.
+    /// Compute the zoom for image B that matches the angular field of view of
+    /// image A on screen.
     ///
-    /// If B has coarser pixels (larger arcsec/px), it needs proportionally less zoom
-    /// to cover the same angular area on screen.
+    /// The overlay (image B) is stretched to fill image A's display box, so at
+    /// zoom 1 both full frames span the same width. Matching the on-screen
+    /// angular scale therefore means matching *field widths*, not pixel scales:
+    ///
+    ///   `matchedZoom = zoomA · (angularFieldB / angularFieldA)`
+    ///
+    /// where `angularField = imageWidth · pixelScaleArcsec`. The earlier
+    /// pixel-scale-ratio form (`zoomA · scaleA / scaleB`) dropped the width
+    /// term and shrank a wide-vs-narrow overlay to a tiny square.
     static func computeMatchedZoom(
         zoomA: Double,
-        pixelScaleA: Double,
-        pixelScaleB: Double
+        angularFieldA: Double,
+        angularFieldB: Double
     ) -> Double {
-        guard pixelScaleB > 0 else { return zoomA }
-        return zoomA * (pixelScaleA / pixelScaleB)
+        guard angularFieldA > 0, angularFieldB > 0 else { return zoomA }
+        return zoomA * (angularFieldB / angularFieldA)
     }
 
     /// Compute the translate needed to center a given local coordinate on the canvas.

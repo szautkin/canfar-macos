@@ -12,29 +12,65 @@ struct CubeViewerView: View {
     @Bindable var model: CubeViewerModel
 
     var body: some View {
-        HStack(spacing: 0) {
+        // HSplitView so the control panel is user-resizable within the
+        // same bounds idiom as the FITS sidebar — the two viewers' side
+        // panels must feel like the same piece of furniture. (Previously
+        // the cube panel was a hard fixed width.)
+        HSplitView {
             VStack(spacing: 0) {
                 HStack {
                     modePicker
                     Spacer()
+                    Button {
+                        model.showSpectrumPanel.toggle()
+                    } label: {
+                        Label("Spectrum", systemImage: "chart.xyaxis.line")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Show or hide spectrum inspector")
                     Button { model.showGuide = true } label: {
                         Image(systemName: "questionmark.circle")
                     }
                     .buttonStyle(.borderless)
                     .help("Cube Viewer guide")
+                    .accessibilityLabel("Cube Viewer guide")
                 }
                 .padding(.horizontal, 8)
                 Divider()
                 content
+                if model.showSpectrumPanel {
+                    Divider()
+                    spectrumPanel
+                }
                 Divider()
                 timelineBar
             }
-            Divider()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             CubeRenderControlsView(model: model)
+                .frame(minWidth: 240, idealWidth: 270, maxWidth: 340)
         }
         .focusable()
         .focusEffectDisabled()
         .onKeyPress { press in handleKey(press) }
+    }
+
+    private var spectrumPanel: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Spectrum")
+                .font(.caption.bold())
+            if let spectrum = model.probeSpectrum, !spectrum.isEmpty {
+                Text("Pixel (\(model.probePoint?.x ?? 0), \(model.probePoint?.y ?? 0)) · \(spectrum.count) channels")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Click a spatial pixel in Slice mode to inspect its spectrum.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 
     /// Keyboard: ←/→ scrub (Shift = ±10), Space play/pause, V toggle mode,
@@ -81,10 +117,13 @@ struct CubeViewerView: View {
             }
             .buttonStyle(.borderless)
             .help(model.isPlaying ? "Pause (Space)" : "Play through channels (Space)")
+            .accessibilityLabel(model.isPlaying ? "Pause" : "Play")
             .disabled(model.nz <= 1)
 
             Button { model.stepChannel(-1) } label: { Image(systemName: "chevron.left") }
                 .buttonStyle(.borderless).disabled(model.channel <= 0)
+                .help("Previous channel (←)")
+                .accessibilityLabel("Previous channel")
 
             ChannelScrubber(profile: model.channelProfile, channel: model.channel, count: model.nz) {
                 model.setChannel($0)
@@ -92,6 +131,8 @@ struct CubeViewerView: View {
 
             Button { model.stepChannel(1) } label: { Image(systemName: "chevron.right") }
                 .buttonStyle(.borderless).disabled(model.channel >= model.nz - 1)
+                .help("Next channel (→)")
+                .accessibilityLabel("Next channel")
 
             if let readout = model.spectralReadout {
                 Text(readout.primary)

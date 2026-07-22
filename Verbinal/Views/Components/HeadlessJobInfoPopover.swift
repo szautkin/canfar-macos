@@ -173,18 +173,12 @@ struct HeadlessJobInfoPopover: View {
         let parser = ISO8601DateFormatter()
         parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = parser.date(from: isoString) {
-            return displayFormatter.string(from: date)
+            return date.formatted(date: .abbreviated, time: .shortened)
         }
         parser.formatOptions = [.withInternetDateTime]
         if let date = parser.date(from: isoString) {
-            return displayFormatter.string(from: date)
+            return date.formatted(date: .abbreviated, time: .shortened)
         }
         return isoString
     }
-
-    private static let displayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "MMM d, yyyy HH:mm"
-        return f
-    }()
 }

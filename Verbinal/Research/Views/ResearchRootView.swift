@@ -15,7 +15,7 @@ struct ResearchRootView: View {
             // Error banner
             if let error = researchModel.lastError {
                 HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                    Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(.red)
                     Text(error)
                         .font(.caption)
@@ -64,17 +64,10 @@ struct ResearchRootView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "tray")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Select an observation")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            Text("Download observations from Search to view them here.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ContentUnavailableView(
+            "Select an observation",
+            systemImage: "tray",
+            description: Text("Download observations from Search to view them here.")
+        )
     }
 }

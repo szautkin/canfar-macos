@@ -5,6 +5,7 @@
       "shouldTranslate" : false
     },
     "     Dec:" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15,6 +16,7 @@
       }
     },
     "     Val:" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -67,7 +69,7 @@
         }
       }
     },
-    "“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the %@ entry at this app, launched in MCP mode. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating." : {
+    "“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the %@ entry at this app, launched in MCP mode. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating. The one-click “Configure Claude Desktop” is the normal path — the other buttons are manual alternatives for advanced setups." : {
 
     },
     "“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the %@ entry at this app's helper. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating." : {
@@ -173,12 +175,32 @@
         }
       }
     },
+    "%@ (%@/%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (%2$@/%3$@)"
+          }
+        }
+      }
+    },
     "%@ / %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ / %@ %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@ %3$@ (%4$@)"
           }
         }
       }
@@ -239,6 +261,9 @@
           }
         }
       }
+    },
+    "%@ GB" : {
+
     },
     "%@ images cached for %@" : {
       "localizations" : {
@@ -409,6 +434,9 @@
         }
       }
     },
+    "%@…" : {
+
+    },
     "%@/%@" : {
       "localizations" : {
         "en" : {
@@ -506,9 +534,6 @@
     },
     "•" : {
       "shouldTranslate" : false
-    },
-    "•  %@" : {
-
     },
     "^[%@ tool](inflect: true)" : {
 
@@ -898,6 +923,17 @@
         }
       }
     },
+    "Approximate" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approximatif"
+          }
+        }
+      }
+    },
     "Are you sure you want to delete '%@'? This action cannot be undone." : {
       "localizations" : {
         "fr" : {
@@ -992,6 +1028,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Autonomie"
+          }
+        }
+      }
+    },
+    "Available" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disponible"
           }
         }
       }
@@ -1264,7 +1311,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Centrer"
+            "value" : "Centre"
           }
         }
       }
@@ -1527,6 +1574,9 @@
           }
         }
       }
+    },
+    "Click a spatial pixel in Slice mode to inspect its spectrum." : {
+
     },
     "Click on image to place crosshair" : {
       "localizations" : {
@@ -1797,6 +1847,9 @@
         }
       }
     },
+    "Contacting the registry…" : {
+
+    },
     "Container" : {
       "localizations" : {
         "fr" : {
@@ -2044,7 +2097,18 @@
         }
       }
     },
+    "CPU: %@ · RAM: %@ GB" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "CPU: %1$@ · RAM: %2$@ GB"
+          }
+        }
+      }
+    },
     "CPU: %@ | RAM: %@G" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2136,6 +2200,22 @@
     },
     "Cube Viewer" : {
 
+    },
+    "Cube Viewer (3D)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cube Viewer (3D)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visionneuse Cube (3D)"
+          }
+        }
+      }
     },
     "Cube Viewer Guide" : {
 
@@ -2408,6 +2488,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diagnostic"
+          }
+        }
+      }
+    },
+    "Dimensions" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dimensions"
           }
         }
       }
@@ -2826,6 +2917,9 @@
         }
       }
     },
+    "Endpoints are applied at launch. Restart Verbinal to use the new values." : {
+
+    },
     "Energy" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2846,6 +2940,9 @@
           }
         }
       }
+    },
+    "Enter a full http(s) URL, e.g. %@" : {
+
     },
     "Error" : {
       "extractionState" : "stale",
@@ -3182,6 +3279,17 @@
         }
       }
     },
+    "Field of view" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Champ de vue"
+          }
+        }
+      }
+    },
     "File" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3312,6 +3420,22 @@
         }
       }
     },
+    "FITS Viewer (2D)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FITS Viewer (2D)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visionneuse FITS (2D)"
+          }
+        }
+      }
+    },
     "Fixed" : {
       "localizations" : {
         "fr" : {
@@ -3371,6 +3495,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dossier"
+          }
+        }
+      }
+    },
+    "Follow reusable research protocols" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suivez des protocoles de recherche réutilisables"
           }
         }
       }
@@ -3516,6 +3650,38 @@
         }
       }
     },
+    "Grant Access" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grant Access"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser l’accès"
+          }
+        }
+      }
+    },
+    "Grant Access…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grant Access…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser l’accès…"
+          }
+        }
+      }
+    },
     "Grayscale" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3630,6 +3796,9 @@
         }
       }
     },
+    "High" : {
+
+    },
     "History" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3640,6 +3809,9 @@
           }
         }
       }
+    },
+    "History (%@)" : {
+
     },
     "Home" : {
       "extractionState" : "stale",
@@ -3743,6 +3915,16 @@
         }
       }
     },
+    "Image Info" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informations sur l’image"
+          }
+        }
+      }
+    },
     "Image URL" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3827,6 +4009,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Image d'inspection"
+          }
+        }
+      }
+    },
+    "Instances: %@ total (%@ sessions, %@ desktop, %@ headless)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Instances: %1$@ total (%2$@ sessions, %3$@ desktop, %4$@ headless)"
           }
         }
       }
@@ -3994,6 +4186,9 @@
           }
         }
       }
+    },
+    "IVOA Registry" : {
+
     },
     "Job %@" : {
       "localizations" : {
@@ -4232,6 +4427,9 @@
         }
       }
     },
+    "Listening" : {
+
+    },
     "Load" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4385,6 +4583,9 @@
         }
       }
     },
+    "Locked" : {
+
+    },
     "Log" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4395,6 +4596,9 @@
           }
         }
       }
+    },
+    "Log In to CANFAR" : {
+
     },
     "Log in to manage Portal defaults." : {
       "extractionState" : "stale",
@@ -4440,6 +4644,7 @@
       }
     },
     "Login to CANFAR" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4469,6 +4674,9 @@
           }
         }
       }
+    },
+    "Low" : {
+
     },
     "macOS applies app-language overrides at launch. Changing this setting writes the preference; the next launch picks it up." : {
       "localizations" : {
@@ -4512,7 +4720,7 @@
         }
       }
     },
-    "Max-intensity" : {
+    "Max Intensity" : {
 
     },
     "MCP Clients" : {
@@ -4535,7 +4743,7 @@
         }
       }
     },
-    "MCP server self-test" : {
+    "MCP Server Self-Test" : {
 
     },
     "Metadata" : {
@@ -4967,6 +5175,9 @@
         }
       }
     },
+    "No header cards" : {
+
+    },
     "No image selected" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5086,6 +5297,9 @@
     "NO SIGNAL" : {
 
     },
+    "No storage data yet" : {
+
+    },
     "No Tools Yet" : {
       "localizations" : {
         "fr" : {
@@ -5137,6 +5351,12 @@
           }
         }
       }
+    },
+    "Not resolved yet — using configured values." : {
+
+    },
+    "Not tested yet." : {
+
     },
     "Notebook" : {
       "extractionState" : "stale",
@@ -5254,6 +5474,9 @@
         }
       }
     },
+    "Off" : {
+
+    },
     "OK" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5264,6 +5487,9 @@
           }
         }
       }
+    },
+    "On" : {
+
     },
     "Opacity curve" : {
 
@@ -5308,6 +5534,25 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ouvrez un fichier FITS pour voir des images astronomiques."
+          }
+        }
+      }
+    },
+    "Open a FITS image to export." : {
+
+    },
+    "Open as…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open as…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir comme…"
           }
         }
       }
@@ -5380,6 +5625,9 @@
     "Open or drop a FITS spectral cube to explore it as native-resolution slices and a GPU-rendered 3D volume." : {
 
     },
+    "Open Settings" : {
+
+    },
     "Open Settings (⌘,)" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5419,6 +5667,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Options"
+          }
+        }
+      }
+    },
+    "Orientation" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orientation"
           }
         }
       }
@@ -5564,6 +5823,9 @@
         }
       }
     },
+    "Pending (%@)" : {
+
+    },
     "PI: %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5581,6 +5843,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisissez l'application dans laquelle vous parlerez à Claude. Vous pouvez relancer l'assistant pour l'autre."
+          }
+        }
+      }
+    },
+    "Pixel (%@, %@) · %@ channels" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pixel (%1$@, %2$@) · %3$@ channels"
+          }
+        }
+      }
+    },
+    "Pixel range" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plage de pixels"
           }
         }
       }
@@ -5754,6 +6037,15 @@
           }
         }
       }
+    },
+    "Probed %@ services." : {
+
+    },
+    "Probes each service's /availability endpoint for reachability. Reflects the saved/effective values services use at the next launch, not unsaved edits. VizieR mirrors are excluded." : {
+
+    },
+    "Probing endpoints…" : {
+
     },
     "Project" : {
       "extractionState" : "stale",
@@ -6109,6 +6401,9 @@
         }
       }
     },
+    "Registry-resolved values and CANFAR defaults will apply after the next launch." : {
+
+    },
     "Relaunch" : {
       "localizations" : {
         "fr" : {
@@ -6378,6 +6673,16 @@
         }
       }
     },
+    "Resolved %@ services %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Resolved %1$@ services %2$@."
+          }
+        }
+      }
+    },
     "Resolved: RA %@, Dec %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6627,7 +6932,7 @@
         }
       }
     },
-    "Run MCP server check" : {
+    "Run MCP Server Check" : {
 
     },
     "Run Search" : {
@@ -6692,6 +6997,9 @@
           }
         }
       }
+    },
+    "Runs local checks of the MCP server, its launch path, and the Claude Desktop config." : {
+
     },
     "Runtime" : {
       "extractionState" : "stale",
@@ -6845,6 +7153,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enregistré : %@"
+          }
+        }
+      }
+    },
+    "Scale" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échelle"
           }
         }
       }
@@ -7043,6 +7362,15 @@
     "Serif" : {
 
     },
+    "Server: Listening — manage in the AI Agent tab" : {
+
+    },
+    "Server: Stopped — manage in the AI Agent tab" : {
+
+    },
+    "Service locations are pulled from the registry's resource-caps document, cached locally, and re-checked daily. Overrides always win over resolved values." : {
+
+    },
     "Session '%@' deleted." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7076,7 +7404,11 @@
         }
       }
     },
+    "Session Launched" : {
+
+    },
     "Session launched successfully!" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7258,6 +7590,22 @@
         }
       }
     },
+    "Show activity snackbar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show activity snackbar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher la bannière d’activité"
+          }
+        }
+      }
+    },
     "Show AI Guide on the launchpad" : {
       "localizations" : {
         "fr" : {
@@ -7290,6 +7638,9 @@
         }
       }
     },
+    "Showing the 5 most recent" : {
+
+    },
     "Sign In" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7313,7 +7664,6 @@
       }
     },
     "Sign in to access this feature" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7474,6 +7824,9 @@
         }
       }
     },
+    "Spectrum" : {
+
+    },
     "Spectrum @ (%@, %@)" : {
       "localizations" : {
         "en" : {
@@ -7563,7 +7916,6 @@
       }
     },
     "Stopped" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7844,6 +8196,9 @@
         }
       }
     },
+    "Test Connections" : {
+
+    },
     "Testing…" : {
       "localizations" : {
         "fr" : {
@@ -7928,6 +8283,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Action irréversible."
+          }
+        }
+      }
+    },
+    "This file has a third axis. Open it in the 2D FITS Viewer or the 3D Cube Viewer." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file has a third axis. Open it in the 2D FITS Viewer or the 3D Cube Viewer."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier a un troisième axe. Ouvrez-le dans la visionneuse FITS 2D ou la visionneuse Cube 3D."
           }
         }
       }
@@ -8057,6 +8428,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Activez « Autoriser les agents IA externes »"
+          }
+        }
+      }
+    },
+    "Unavailable" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indisponible"
           }
         }
       }
@@ -8265,7 +8647,6 @@
       }
     },
     "Val:" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8360,6 +8741,9 @@
           }
         }
       }
+    },
+    "Verbinal needs your permission to read this folder." : {
+
     },
     "Verbinal provides a native interface for managing" : {
       "extractionState" : "stale",
@@ -8580,6 +8964,86 @@
         }
       }
     },
+    "Wf_Cancel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
+          }
+        }
+      }
+    },
+    "Wf_EmptyState" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionnez un flux de travail pour voir ses étapes — ou partez d’un modèle."
+          }
+        }
+      }
+    },
+    "Wf_MyWorkflowsHeader" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MES FLUX DE TRAVAIL"
+          }
+        }
+      }
+    },
+    "Wf_NewWorkflowTitle" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau flux de travail"
+          }
+        }
+      }
+    },
+    "Wf_PageTitle" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flux de travail"
+          }
+        }
+      }
+    },
+    "Wf_Save" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer"
+          }
+        }
+      }
+    },
+    "Wf_TemplatesHeader" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MODÈLES"
+          }
+        }
+      }
+    },
+    "Wf_Use" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser ce flux de travail"
+          }
+        }
+      }
+    },
     "What Verbinal Can Do" : {
       "localizations" : {
         "fr" : {
@@ -8622,6 +9086,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fenêtre : %.1f"
+          }
+        }
+      }
+    },
+    "Workflows" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flux de travail"
           }
         }
       }

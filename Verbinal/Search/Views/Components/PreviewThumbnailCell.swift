@@ -25,7 +25,7 @@ struct PreviewThumbnailCell: View {
         Button(action: onTap) {
             Image(systemName: thumbnailURL != nil ? "photo.fill" : "photo")
                 .font(.caption2)
-                .foregroundColor(thumbnailURL != nil ? .accentColor : .secondary)
+                .foregroundStyle(thumbnailURL != nil ? Color.accentColor : Color.secondary)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("Preview"))
@@ -52,7 +52,7 @@ struct PreviewThumbnailCell: View {
                 }
                 .padding(4)
             } else {
-                ProgressView("Loading...")
+                ProgressView("Loading…")
                     .font(.caption)
                     .frame(width: 128, height: 64)
                     .padding(4)

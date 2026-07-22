@@ -50,8 +50,8 @@ struct ColumnsPickerPopover: View {
             Spacer()
         }
         .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
+        .padding(.top, 16)
+        .padding(.bottom, 8)
     }
 
     private var searchField: some View {

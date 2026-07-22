@@ -24,6 +24,15 @@ final class FileBrowserModel {
     /// dropping files.
     private(set) var loadSkippedCount = 0
 
+    /// True when the current folder is outside the sandbox's reach and the
+    /// user hasn't granted access — drives the "Grant Access…" prompt
+    /// instead of a bare permission error (2026-07-21 Mac QA, F14).
+    private(set) var needsGrant = false
+
+    /// User-granted folder access, injected from `AppState`. `nil` in
+    /// previews/tests falls back to Downloads-only reach.
+    var access: LocalFolderAccessStore?
+
     var filteredNodes: [LocalFileNode] {
         var filtered = nodes
         if showOnlySupportedTypes {
@@ -37,15 +46,37 @@ final class FileBrowserModel {
     }
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser
-        self.rootURL = docs
-        self.currentURL = docs
+        // Start in Downloads — the one user folder the sandbox grants by
+        // default, so the browser opens to something readable instead of
+        // ~/Documents (which is denied until the user grants it).
+        let start = LocalFolderAccessStore.downloadsRoot
+        self.rootURL = start
+        self.currentURL = start
+    }
+
+    /// Grant access to the current folder (or a folder the user picks)
+    /// via the sandbox powerbox, then reload. No-op without an access
+    /// store.
+    func grantAccessToCurrentFolder() {
+        guard let access else { return }
+        if let granted = try? access.grantAccess(startingAt: currentURL) {
+            currentURL = granted
+            loadDirectory()
+        }
     }
 
     func loadDirectory() {
         loadError = nil
         loadSkippedCount = 0
+        needsGrant = false
+        // Cheap pre-check: if the folder is outside the sandbox's reach and
+        // hasn't been granted, surface the grant prompt rather than letting
+        // the enumeration fail with a raw permission error.
+        if let access, !access.hasAccess(to: currentURL) {
+            nodes = []
+            needsGrant = true
+            return
+        }
         do {
             let contents = try FileManager.default.contentsOfDirectory(
                 at: currentURL,

@@ -90,7 +90,7 @@ struct WelcomeSheet: View {
             }
         }
         .padding(28)
-        .frame(width: 440)
+        .sheetFrame(width: 440)
     }
 
     private func pillar(icon: String, title: LocalizedStringKey, line: LocalizedStringKey) -> some View {

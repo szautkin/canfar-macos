@@ -90,16 +90,19 @@ struct ObservationDetailViewer: View {
                 if let downloadMessage {
                     Label(
                         downloadMessage,
-                        systemImage: downloadIsError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+                        systemImage: downloadIsError ? "exclamationmark.triangle" : "checkmark.circle.fill"
                     )
                     .font(.caption)
                     .foregroundStyle(downloadIsError ? .red : .green)
                 }
             }
             Spacer()
+            // Quiet dismiss — Download is the hero row's one prominent
+            // action; two filled buttons in a row competed for the eye.
+            // ⎋ dismisses; Return still belongs to the primary CTA flow.
             Button("Done") { dismiss() }
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.cancelAction)
+                .buttonStyle(.bordered)
                 .controlSize(.small)
         }
         .padding(16)
@@ -148,7 +151,7 @@ struct ObservationDetailViewer: View {
                         startDownload(research: research)
                     } label: {
                         HStack(spacing: 4) {
-                            if isDownloading { ProgressView().scaleEffect(0.6) }
+                            if isDownloading { ProgressView().controlSize(.small) }
                             Label(
                                 isDownloading ? String(localized: "Downloading…")
                                               : (alreadyDownloaded ? String(localized: "Re-download")

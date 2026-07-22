@@ -20,10 +20,14 @@ public final class AuthService: Sendable {
     /// Logs in with username/password. Returns an AuthResult.
     public func login(username: String, password: String, rememberMe: Bool = true) async -> AuthResult {
         do {
-            // POST form-urlencoded to /ac/login — response is plain text token
+            // POST form-urlencoded to /ac/login — response is plain text token.
+            // `allowAuthRetry: false`: a 401 here means bad credentials, and
+            // the interceptor's recovery path runs THIS flow — re-entering it
+            // would recurse (see NetworkClient.get's allowAuthRetry note).
             let (data, _) = try await network.post(
                 endpoints.loginURL,
-                formData: ["username": username, "password": password]
+                formData: ["username": username, "password": password],
+                allowAuthRetry: false
             )
 
             guard let token = String(data: data, encoding: .utf8)?
@@ -38,7 +42,7 @@ public final class AuthService: Sendable {
             // Get canonical username from /whoami (case-sensitive for storage paths).
             // Don't use validateToken() here — it clears the token on failure.
             let canonicalUsername: String
-            if let apiUsername = try? await network.getText(endpoints.whoAmIURL),
+            if let apiUsername = try? await network.getText(endpoints.whoAmIURL, allowAuthRetry: false),
                !apiUsername.isEmpty {
                 canonicalUsername = apiUsername
             } else {
@@ -83,20 +87,48 @@ public final class AuthService: Sendable {
             )
         } catch let error as NetworkError {
             if case .unauthorized = error {
-                return AuthResult(success: false, errorMessage: "Invalid username or password.")
+                return AuthResult(
+                    success: false,
+                    errorMessage: "Invalid username or password.",
+                    isCredentialRejection: true
+                )
             }
-            return AuthResult(success: false, errorMessage: error.localizedDescription)
+            return AuthResult(
+                success: false,
+                errorMessage: error.localizedDescription,
+                isCredentialRejection: false
+            )
         } catch {
-            return AuthResult(success: false, errorMessage: error.localizedDescription)
+            return AuthResult(
+                success: false,
+                errorMessage: error.localizedDescription,
+                isCredentialRejection: false
+            )
         }
     }
 
+    /// Timeout for the /whoami validation probe. Deliberately shorter than
+    /// the 60 s request default: this call gates the launch spinner, and on
+    /// a half-dead network (associated Wi-Fi, no upstream) the user would
+    /// otherwise stare at "Checking authentication…" for a full minute.
+    public static let validationTimeout: TimeInterval = 15
+
     /// Validates a stored token by calling /whoami.
     /// Returns `.valid(username)`, `.expired`, or `.networkError`.
+    ///
+    /// `allowAuthRetry: false` is load-bearing: this call is what the
+    /// `onUnauthorized` interceptor runs to decide whether a 401'd request
+    /// deserves a retry. If the probe itself went through the interceptor,
+    /// an expired token would recurse 401 → validate → 401 → … forever,
+    /// pinning app launch on the "Checking authentication…" spinner.
     public func validateToken(_ token: String) async -> TokenValidation {
         await network.setToken(token)
         do {
-            let username = try await network.getText(endpoints.whoAmIURL)
+            let username = try await network.getText(
+                endpoints.whoAmIURL,
+                timeout: Self.validationTimeout,
+                allowAuthRetry: false
+            )
             return username.isEmpty ? .expired : .valid(username)
         } catch let error as NetworkError {
             switch error {
@@ -161,19 +193,25 @@ public struct AuthResult: Sendable {
     public var username: String?
     public var userInfo: UserInfo?
     public var errorMessage: String?
+    /// `true` only when the server rejected the credentials (HTTP 401).
+    /// Transient network / 5xx failures leave this `false` so callers
+    /// like `silentReauth` do not burn a stored password on a blip.
+    public var isCredentialRejection: Bool
 
     public init(
         success: Bool,
         token: String? = nil,
         username: String? = nil,
         userInfo: UserInfo? = nil,
-        errorMessage: String? = nil
+        errorMessage: String? = nil,
+        isCredentialRejection: Bool = false
     ) {
         self.success = success
         self.token = token
         self.username = username
         self.userInfo = userInfo
         self.errorMessage = errorMessage
+        self.isCredentialRejection = isCredentialRejection
     }
 }
 

@@ -137,7 +137,7 @@ struct DownloadFromVOSpaceTool: JSONWriteTool {
     }
 
     let definition = AIToolDefinition.withStaticSchema(
-        name: "download_from_vospace",
+        name: "download_vospace_file",
         description: "Download a VOSpace file to the user's Downloads folder. Synchronous with a 10-min applier deadline; a stuck transfer surfaces as `backendError` with the deadline named, not a silent hang. For files > ~100 MB on slow links: the underlying transfer can outlast the MCP transport timeout — on `Request timed out` re-check the Downloads folder before retrying, the bytes are often there.",
         schema: #"""
         {
@@ -179,7 +179,7 @@ struct VOSpaceMkdirTool: JSONWriteTool {
     }
 
     let definition = AIToolDefinition.withStaticSchema(
-        name: "vospace_mkdir",
+        name: "create_vospace_folder",
         description: "Create a folder under a VOSpace path.",
         schema: #"""
         {

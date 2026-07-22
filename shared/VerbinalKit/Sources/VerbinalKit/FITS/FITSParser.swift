@@ -38,7 +38,16 @@ public enum FITSParser {
             }
             let dataOffset = headerEndOffset
 
-            // Calculate data length
+            // Calculate data length per the FITS 4.4.1 formula:
+            //   (|BITPIX|/8) × max(1, GCOUNT) × (PCOUNT + ∏ NAXISi)
+            // PCOUNT is the heap size in bytes for a (tile-compressed) BINTABLE;
+            // omitting it advances the next-HDU offset into the middle of the
+            // heap and silently drops every trailing extension in a
+            // multi-extension fpack MEF (e.g. a 36-CCD MegaCam mosaic).
+            // PCOUNT/GCOUNT are read from the RAW header here, before the
+            // ZCMPTYPE remap below overwrites NAXIS/BITPIX — that remap never
+            // touches PCOUNT/GCOUNT. Absent PCOUNT → 0 and absent GCOUNT →
+            // max(1, 0) = 1 keep plain images and NAXIS=3 cubes unchanged.
             let dataLength: Int
             if header.naxis == 0 {
                 dataLength = 0
@@ -49,14 +58,31 @@ public enum FITSParser {
                 guard abs(header.bitpix) > 0 else {
                     throw FITSError.invalidFile("BITPIX must be non-zero")
                 }
-                var size = abs(header.bitpix) / 8
+                // Pure product of the axis lengths: ∏ NAXISi (i = 1…NAXIS).
+                var axesProduct = 1
                 for i in 1...header.naxis {
                     let axisSize = header.int("NAXIS\(i)")
-                    let (newSize, overflow) = size.multipliedReportingOverflow(by: axisSize)
+                    let (newProduct, overflow) = axesProduct.multipliedReportingOverflow(by: axisSize)
                     guard !overflow else {
                         throw FITSError.invalidFile("NAXIS product overflow at axis \(i)")
                     }
-                    size = newSize
+                    axesProduct = newProduct
+                }
+                // Negative PCOUNT is illegal and would underflow the
+                // length math into a huge UInt-wrap / infinite walk.
+                let pcount = max(0, header.int("PCOUNT"))    // absent → 0
+                let gcount = max(1, header.int("GCOUNT"))    // absent → max(1, 0) = 1
+                let (elements, elementsOverflow) = axesProduct.addingReportingOverflow(pcount)
+                guard !elementsOverflow else {
+                    throw FITSError.invalidFile("PCOUNT + NAXIS product overflow")
+                }
+                let (groupBytes, gcountOverflow) = (abs(header.bitpix) / 8).multipliedReportingOverflow(by: gcount)
+                guard !gcountOverflow else {
+                    throw FITSError.invalidFile("GCOUNT product overflow")
+                }
+                let (size, sizeOverflow) = groupBytes.multipliedReportingOverflow(by: elements)
+                guard !sizeOverflow else {
+                    throw FITSError.invalidFile("Data length overflow")
                 }
                 dataLength = size
             }

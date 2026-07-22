@@ -32,7 +32,11 @@ struct StorageQuotaView: View {
                     }
                     .padding(.vertical, 8)
                 } empty: {
-                    EmptyView()
+                    // Not loading, no error, no data — say so instead of
+                    // rendering a silent dead panel under the header.
+                    Text("No storage data yet")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 } error: {
                     EmptyView()
                 } content: {
@@ -40,9 +44,7 @@ struct StorageQuotaView: View {
                 }
 
                 if model.hasError {
-                    Label(model.errorMessage, systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                    InlineErrorLabel(message: model.errorMessage)
                 }
             }
         }
@@ -58,41 +60,41 @@ struct StorageQuotaView: View {
                 .appAnimation(AppMotion.quick, value: model.usagePercent)
 
             HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Used")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                            Text(String(format: "%.2f GB", model.usedGB))
-                                .font(.caption)
-                                .fontWeight(.medium)
-                        }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Used")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Text("\(model.usedGB.formatted(.number.precision(.fractionLength(2)))) GB")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
 
-                        Spacer()
+                Spacer()
 
-                        VStack(alignment: .center, spacing: 2) {
-                            Text("Usage")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                            Text(String(format: "%.1f%%", model.usagePercent))
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(model.isWarning ? .red : .primary)
-                        }
+                VStack(alignment: .center, spacing: 2) {
+                    Text("Usage")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Text((model.usagePercent / 100).formatted(.percent.precision(.fractionLength(1))))
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(model.isWarning ? .red : .primary)
+                }
 
-                        Spacer()
+                Spacer()
 
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("Quota")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                            Text(String(format: "%.2f GB", model.quotaGB))
-                                .font(.caption)
-                                .fontWeight(.medium)
-                        }
-                    }
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Quota")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Text("\(model.quotaGB.formatted(.number.precision(.fractionLength(2)))) GB")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+            }
 
             if model.isWarning {
-                Label("Storage nearly full!", systemImage: "exclamationmark.triangle.fill")
+                Label("Storage nearly full", systemImage: "exclamationmark.triangle")
                     .font(.caption2)
                     .foregroundStyle(.red)
             }

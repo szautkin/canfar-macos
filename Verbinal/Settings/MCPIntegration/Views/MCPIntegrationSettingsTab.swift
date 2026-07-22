@@ -95,6 +95,10 @@ struct MCPIntegrationSettingsTab: View {
             }
         } header: {
             Text("Diagnostics")
+        } footer: {
+            Text("Runs local checks of the MCP server, its launch path, and the Claude Desktop config.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -109,13 +113,13 @@ struct MCPIntegrationSettingsTab: View {
                 if model?.isRunningSelfTest == true {
                     ProgressView().controlSize(.small)
                 } else {
-                    Text("Run MCP server check")
+                    Text("Run MCP Server Check")
                 }
             }
             .controlSize(.small)
             .disabled(model?.isRunningSelfTest == true)
         } header: {
-            Text("MCP server self-test")
+            Text("MCP Server Self-Test")
         } footer: {
             Text("Confirms the MCP server is reachable. Your AI client (Claude Desktop/Code) launches Verbinal itself in MCP mode, so the definitive check is restarting your client and confirming the Verbinal tools appear. Requires the server to be running.")
                 .font(.caption2)
@@ -150,7 +154,7 @@ struct MCPIntegrationSettingsTab: View {
         } header: {
             Text("Claude Desktop Configuration")
         } footer: {
-            Text("“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the \(MCPIntegrationSettingsService.serverKey) entry at this app, launched in MCP mode. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating.")
+            Text("“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the \(MCPIntegrationSettingsService.serverKey) entry at this app, launched in MCP mode. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating. The one-click “Configure Claude Desktop” is the normal path — the other buttons are manual alternatives for advanced setups.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -159,11 +163,19 @@ struct MCPIntegrationSettingsTab: View {
     private var claudeCodeSection: some View {
         Section {
             HStack(spacing: 8) {
-                Image(systemName: settings.isClaudeCodeDetected() ? "checkmark.circle.fill" : "questionmark.circle")
-                    .foregroundStyle(settings.isClaudeCodeDetected() ? Color.green : Color.secondary)
-                    .accessibilityLabel(settings.isClaudeCodeDetected() ? "Claude Code detected" : "Claude Code not detected")
-                Text(settings.isClaudeCodeDetected() ? "Claude Code detected" : "Claude Code not detected")
-                    .font(.callout)
+                if settings.isClaudeCodeDetected() {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.green)
+                        .accessibilityLabel("Claude Code detected")
+                    Text("Claude Code detected")
+                        .font(.callout)
+                } else {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(Color.secondary)
+                        .accessibilityLabel("Claude Code not detected")
+                    Text("Claude Code not detected")
+                        .font(.callout)
+                }
                 Spacer()
             }
             Text(settings.claudeCodeAddCommand())

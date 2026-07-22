@@ -58,7 +58,6 @@ struct SearchFormView: View {
                         if searchModel.isSearching {
                             ProgressView()
                                 .controlSize(.small)
-                                .scaleEffect(0.7)
                         }
                     }
                     .frame(width: 16, height: 16)
@@ -88,14 +87,14 @@ struct SearchFormView: View {
             Spacer()
 
             if let error = searchModel.searchError {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
+                Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.red)
                     .lineLimit(2)
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .background(.bar)
     }
 }

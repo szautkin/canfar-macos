@@ -13,9 +13,14 @@ import VerbinalKit
 /// Multi-tab container for FITS viewer instances.
 struct FITSTabView: View {
     var tabHost: FITSTabHostModel
+    @Environment(AppState.self) private var appState
     @State private var showHeader = false
     @State private var showBookmarks = false
-    @State private var bookmarkStore = BookmarkStore()
+
+    /// App-owned (see `AppState.fitsBookmarks`): the agent bookmark tools
+    /// write to the same live store the panel renders, so a tool-saved
+    /// bookmark appears immediately instead of on next launch.
+    private var bookmarkStore: BookmarkStore { appState.fitsBookmarks }
 
     #if os(macOS)
     /// Retains the NSEvent local monitor while blink is active.
@@ -164,6 +169,15 @@ struct FITSTabView: View {
                         }
                     }
 
+                    // Cross-tab sync is only as accurate as the least-precise
+                    // linked WCS — warn when any tab is missing/invalid/approximate.
+                    if tabHost.syncUsesImpreciseWCS {
+                        Label("Approximate WCS — sync may be imprecise", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                            .help("A linked tab has missing, invalid, or approximate WCS. Crosshair and zoom sync across tabs may not land on the exact sky position.")
+                    }
+
                     Spacer()
                 }
                 .padding(.horizontal, 8)
@@ -184,6 +198,8 @@ struct FITSTabView: View {
                                 hduList(activeModel)
                                 FITSRenderControlsView(model: activeModel)
                                 if showHeader {
+                                    Divider()
+                                    FITSImageInfoPanel(model: activeModel)
                                     Divider()
                                     FITSHeaderPanel(model: activeModel)
                                         .frame(minHeight: 150)

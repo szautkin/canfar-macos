@@ -78,6 +78,7 @@ struct AIGuideSummaryHeader: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.tertiary)
+                .help("Clear filter")
                 .accessibilityLabel("Clear filter")
             }
         }

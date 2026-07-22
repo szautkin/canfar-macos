@@ -58,6 +58,22 @@ public struct AgentAttribution: Codable, Sendable, Equatable {
             summary: proposal.summary
         )
     }
+
+    /// Build an attribution for a LIVE view-state op (no proposal) — e.g.
+    /// a search an agent ran directly. These bypass the proposal queue,
+    /// so there's no `PendingProposal` to stamp from; we synthesize one
+    /// with a fresh id and the originating tool as the label so the row
+    /// still carries the agent badge. `label` is the tool name (the same
+    /// synthetic origin used for the live activity log).
+    public static func forLiveTool(label: String, summary: String) -> AgentAttribution {
+        AgentAttribution(
+            proposalID: UUID(),
+            originFingerprint: "agent",
+            originLabel: label,
+            appliedAt: Date(),
+            summary: summary
+        )
+    }
 }
 
 extension OperationOrigin {

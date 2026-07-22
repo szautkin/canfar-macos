@@ -36,6 +36,14 @@ struct GetCurrentViewTool: JSONReadTool {
         let searchFocusRA: Double?
         let searchFocusDec: Double?
 
+        /// (Search) The selected sub-tab: "search", "results", or "adql".
+        let searchTab: String?
+        /// (Search) Loaded results-table row count, and how many survive
+        /// the user's live per-column filters. Nil when no results are
+        /// loaded. Read the table itself with `get_search_results`.
+        let searchResultsTotal: Int?
+        let searchResultsFiltered: Int?
+
         /// (FITS Viewer) Local paths of all FITS files currently open
         /// in viewer tabs. Empty when the empty-state placeholder is
         /// showing.
@@ -91,7 +99,7 @@ struct GetCurrentViewTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_current_view",
-        description: "Return what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer), auth state, search-form focus when in Search, open FITS files when in FITS Viewer, pending-proposal count, plus the two autonomy toggles: `autoApplyEnabled` (do writes return applied results, or queue for strip review?) and `followAgentActivityEnabled` (does the app auto-navigate to the relevant view after a write, so you don't need a redundant `navigate_to`?).",
+        description: "Return what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer/cubeViewer/aiGuide), auth state, the Search sub-tab and loaded-results counts, search-form focus when set, open FITS files when in FITS Viewer, pending-proposal count, plus the two autonomy toggles: `autoApplyEnabled` (do writes return applied results, or queue for strip review?) and `followAgentActivityEnabled` (does the app auto-navigate to the relevant view after a write, so you don't need a redundant `navigate_to`?).",
         schema: #"""
         {
           "type": "object",

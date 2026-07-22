@@ -48,6 +48,8 @@ struct ResourceFormSection: View {
                         .buttonStyle(.borderless)
                         .help(isDefault ? "Current default — tap to clear"
                                         : "Set current resources as default")
+                        .accessibilityLabel("Save resources as default")
+                        .accessibilityValue(isDefault ? Text("On") : Text("Off"))
                     }
                 }
             }

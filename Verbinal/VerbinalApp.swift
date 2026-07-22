@@ -69,6 +69,15 @@ struct VerbinalApp: App {
                 }
                 .keyboardShortcut("3", modifiers: .command)
 
+                Button("Cube Viewer") {
+                    appState.navigateTo(.cubeViewer)
+                }
+                .keyboardShortcut("4", modifiers: .command)
+
+                Button("Workflows") {
+                    appState.navigateTo(.workflows)
+                }
+
                 Divider()
 
                 Button("Portal") {
@@ -79,7 +88,7 @@ struct VerbinalApp: App {
                         appState.showLoginSheet = true
                     }
                 }
-                .keyboardShortcut("4", modifiers: .command)
+                .keyboardShortcut("5", modifiers: .command)
 
                 Button("Storage") {
                     if appState.isAuthenticated {
@@ -89,7 +98,7 @@ struct VerbinalApp: App {
                         appState.showLoginSheet = true
                     }
                 }
-                .keyboardShortcut("5", modifiers: .command)
+                .keyboardShortcut("6", modifiers: .command)
 
                 Divider()
 
@@ -99,11 +108,49 @@ struct VerbinalApp: App {
                 Button("AI Guide") {
                     appState.navigateTo(.aiGuide)
                 }
-                .keyboardShortcut("6", modifiers: .command)
+                .keyboardShortcut("7", modifiers: .command)
 
                 Button("Image Discovery…") {
                     appState.showImageDiscoverySheet = true
                 }
+                .keyboardShortcut("8", modifiers: .command)
+            }
+
+            // View menu additions — FITS-viewer zoom, targeting the
+            // app-owned tab host so the shortcuts work without a focus
+            // dance. ⌘0 belongs to Go ▸ Landing, so Actual Size / Fit
+            // take ⌥⌘ variants. Disabled outside the FITS viewer.
+            CommandGroup(after: .toolbar) {
+                let activeTab = appState.currentMode == .fitsViewer
+                    ? appState.fitsTabHost.activeTab : nil
+
+                Divider()
+
+                Button("Zoom In") {
+                    if let tab = activeTab { tab.setZoom(tab.viewport.zoom * 1.25) }
+                }
+                .keyboardShortcut("+", modifiers: .command)
+                .disabled(activeTab == nil)
+
+                Button("Zoom Out") {
+                    if let tab = activeTab { tab.setZoom(tab.viewport.zoom / 1.25) }
+                }
+                .keyboardShortcut("-", modifiers: .command)
+                .disabled(activeTab == nil)
+
+                Button("Actual Size") {
+                    if let tab = activeTab { tab.setZoom(1.0) }
+                }
+                .keyboardShortcut("1", modifiers: [.command, .option])
+                .disabled(activeTab == nil)
+
+                Button("Zoom to Fit") {
+                    if let tab = activeTab, tab.lastCanvasSize.width > 0 {
+                        tab.fitToWindow(canvasSize: tab.lastCanvasSize)
+                    }
+                }
+                .keyboardShortcut("0", modifiers: [.command, .option])
+                .disabled(activeTab == nil)
             }
 
             // Help → in-app discovery first, then links to project + issue
@@ -122,7 +169,8 @@ struct VerbinalApp: App {
                         NSWorkspace.shared.open(url)
                     }
                 }
-                Button("Report an Issue…") {
+                .keyboardShortcut("?", modifiers: .command)
+                Button("Report an Issue") {
                     if let url = URL(string: "https://github.com/szautkin/canfar-macos/issues/new") {
                         NSWorkspace.shared.open(url)
                     }

@@ -37,7 +37,7 @@ struct PlatformLoadView: View {
                     value: model.cpuAvailable,
                     maxValue: model.cpuTotal,
                     percent: model.cpuPercent,
-                    unit: "cores"
+                    unit: String(localized: "cores")
                 )
 
                 MetricBarView(
@@ -45,18 +45,15 @@ struct PlatformLoadView: View {
                     value: model.ramAvailableGB,
                     maxValue: model.ramTotalGB,
                     percent: model.ramPercent,
-                    unit: "GB"
+                    unit: String(localized: "GB")
                 )
 
                 if model.hasInstanceData {
-                    Text(
-                        "Instances: \(model.totalInstances) total "
-                        + "(\(model.sessionInstances) sessions, "
-                        + "\(model.desktopAppInstances) desktop, "
-                        + "\(model.headlessInstances) headless)"
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    // One interpolated literal (not concatenation) so the whole
+                    // sentence lands in the string catalog as a single key.
+                    Text("Instances: \(model.totalInstances) total (\(model.sessionInstances) sessions, \(model.desktopAppInstances) desktop, \(model.headlessInstances) headless)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 if !model.lastUpdate.isEmpty {
@@ -66,9 +63,7 @@ struct PlatformLoadView: View {
                 }
 
                 if model.hasError {
-                    Label(model.errorMessage, systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                    InlineErrorLabel(message: model.errorMessage)
                 }
             }
         }

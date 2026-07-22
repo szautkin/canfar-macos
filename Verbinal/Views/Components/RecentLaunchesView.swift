@@ -126,6 +126,12 @@ struct RecentLaunchesView: View {
                         .background(typeColor(launch.type).opacity(0.15))
                         .foregroundStyle(typeColor(launch.type))
                         .clipShape(Capsule())
+
+                    #if os(macOS)
+                    if let attribution = launch.agentAttribution {
+                        AgentAttributionBadge(attribution: attribution)
+                    }
+                    #endif
                 }
 
                 Text(launch.imageLabel)
@@ -135,7 +141,7 @@ struct RecentLaunchesView: View {
 
                 HStack {
                     if launch.resourceType == "fixed" {
-                        Text("CPU: \(launch.cores) | RAM: \(launch.ram)G")
+                        Text("CPU: \(launch.cores) · RAM: \(launch.ram) GB")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     } else {
@@ -152,6 +158,9 @@ struct RecentLaunchesView: View {
                 }
 
                 HStack {
+                    // The card's primary action gets a real button shape;
+                    // borderless is reserved for the destructive Remove,
+                    // which should read quieter than the CTA.
                     Button("Relaunch") {
                         showRelaunchProgress = true
                         Task {
@@ -161,6 +170,8 @@ struct RecentLaunchesView: View {
                             }
                         }
                     }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     .disabled(launchModel?.isAtSessionLimit ?? true)
 
                     Spacer()
@@ -171,8 +182,8 @@ struct RecentLaunchesView: View {
                             store.remove(launch)
                         }
                     }
+                    .buttonStyle(.borderless)
                 }
-                .buttonStyle(.borderless)
                 .font(.caption2)
             }
         }
@@ -192,8 +203,7 @@ struct RecentLaunchesView: View {
     private func typeIcon(_ type: String) -> String { SessionDisplay.typeIcon(type) }
 
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter.string(from: date)
+        // Locale-aware; a hardcoded dateFormat ignores region ordering.
+        date.formatted(date: .abbreviated, time: .omitted)
     }
 }

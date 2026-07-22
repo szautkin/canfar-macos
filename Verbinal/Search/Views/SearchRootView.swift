@@ -66,13 +66,13 @@ struct SearchRootView: View {
                 Spacer()
                 if searchModel.isSearching {
                     ProgressView()
-                        .scaleEffect(0.75)
+                        .controlSize(.small)
                         .padding(.trailing, 16)
                 }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .background(.bar)
     }
 

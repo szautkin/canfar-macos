@@ -15,7 +15,10 @@ actor DownloadService {
     private let session: URLSession
     private let endpoints: APIEndpoints
 
-    init(session: URLSession = .shared, endpoints: APIEndpoints = APIEndpoints()) {
+    // Default to the launch-configured archive endpoints (TAPConfig) rather
+    // than a fresh APIEndpoints() — otherwise an overridden or registry-
+    // resolved archive base would still download from the hardcoded CADC host.
+    init(session: URLSession = .shared, endpoints: APIEndpoints = TAPConfig.endpoints) {
         self.session = session
         self.endpoints = endpoints
     }

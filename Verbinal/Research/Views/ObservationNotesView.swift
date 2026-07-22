@@ -92,6 +92,11 @@ struct ObservationNotesView: View {
         HStack {
             Text("Notes")
                 .font(.subheadline.bold())
+            #if os(macOS)
+            if let attribution = editor.agentAttribution {
+                AgentAttributionBadge(attribution: attribution)
+            }
+            #endif
             Spacer()
             if let modifiedAt = editor.modifiedAt {
                 Text("Edited \(Self.relativeFormatter.localizedString(for: modifiedAt, relativeTo: Date()))")
@@ -130,9 +135,8 @@ struct ObservationNotesView: View {
                         .font(.callout)
                 }
                 .accessibilityLabel("Rate \(star) star\(star == 1 ? "" : "s")")
-                .help("Set rating to \(star)")
-                .buttonStyle(.plain)
                 .help("Rate \(star) star\(star == 1 ? "" : "s")")
+                .buttonStyle(.plain)
             }
 
             if editor.rating > 0 {

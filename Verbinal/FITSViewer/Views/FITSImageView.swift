@@ -72,6 +72,7 @@ struct FITSImageView: View {
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .clipped()
+                .help("Scroll or drag to pan, ⌘-scroll or pinch to zoom, click to place the crosshair")
                 #if os(macOS)
                 .contextMenu {
                     Button("Reset View") { model.fitToWindow(canvasSize: geometry.size) }

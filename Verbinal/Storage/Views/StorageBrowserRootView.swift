@@ -37,7 +37,7 @@ struct StorageBrowserRootView: View {
             // BOUNDARY only. Refreshing an already-populated folder keeps the
             // state at `.content`, so the list updates instantly with no fade.
             DataStateContainer(state: browserState) {
-                ProgressView("Loading...")
+                ProgressView("Loading…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } empty: {
                 VStack(spacing: 8) {
@@ -202,17 +202,12 @@ struct StorageBrowserRootView: View {
     // MARK: - Status Bar
 
     private var statusBar: some View {
+        // Errors surface once, in the center error pane — no duplicated
+        // red copy down here.
         HStack {
             Text(model.statusMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-
-            if model.hasError {
-                Label(model.errorMessage, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .lineLimit(1)
-            }
 
             Spacer()
         }

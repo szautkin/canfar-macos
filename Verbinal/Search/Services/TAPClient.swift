@@ -12,8 +12,20 @@ import VerbinalKit
 actor TAPClient {
     private let session: URLSession
 
-    init(session: URLSession = .shared) {
-        self.session = session
+    /// Dedicated session with bounded timeouts. `URLSession.shared`
+    /// carries a 7-DAY resource timeout — a mirror that accepts the
+    /// connection and then trickles bytes could hold a TAP call (and,
+    /// through it, the MCP dispatch) essentially forever. Per-request
+    /// `timeoutInterval`s set at call sites still apply on top.
+    private static let boundedSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 300
+        return URLSession(configuration: config)
+    }()
+
+    init(session: URLSession? = nil) {
+        self.session = session ?? Self.boundedSession
     }
 
     // MARK: - TAP Query
@@ -137,7 +149,7 @@ actor TAPClient {
         )
         """
         var attempts: [(host: String, error: Error)] = []
-        for endpoint in Self.vizierEndpoints {
+        for endpoint in Self.queryableVizierEndpoints {
             do {
                 let csv = try await tapQueryAt(endpoint: endpoint.syncURL, adql: adql, maxRec: maxRec)
                 return CSVParser.parse(csv)
@@ -198,6 +210,20 @@ actor TAPClient {
             syncURL: "http://vizier.china-vo.org/tap/sync"
         ),
     ]
+
+    /// The subset of `vizierEndpoints` actually worth querying on this
+    /// platform. On Apple platforms App Transport Security blocks plaintext
+    /// http, so the http-only China-VO mirror can never answer — drop it
+    /// rather than burn a failover attempt on a guaranteed ATS failure
+    /// (2026-07-21 Mac QA, F13). `vizierEndpoints` stays the full canonical
+    /// list (tests pin it); this is the runtime query set.
+    static var queryableVizierEndpoints: [VizierEndpoint] {
+        #if os(macOS) || os(iOS)
+        return vizierEndpoints.filter { $0.syncURL.lowercased().hasPrefix("https://") }
+        #else
+        return vizierEndpoints
+        #endif
+    }
 
     /// Predicate for "this error means *this host* is the problem,
     /// try the next one." Any `URLError` (DNS failure, TLS handshake,

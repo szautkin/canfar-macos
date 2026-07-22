@@ -55,6 +55,13 @@ final class FITSTabHostModel {
     private var blinkFadeDirection: Int = 1
     private var blinkTask: Task<Void, Never>?
 
+    /// Tab A's viewport captured before the shared-field reframe, so
+    /// `stopBlink()` restores the user's framing. A weak tab reference (rather
+    /// than an index) survives a tab reorder/close without applying the
+    /// restore to the wrong tab.
+    private weak var blinkRestoreTab: FITSViewerModel?
+    private var blinkRestoreViewport: FITSViewport?
+
     /// Active tab index — applies shared state on change (pull-on-activation).
     var activeTabIndex: Int = 0 {
         didSet {
@@ -111,6 +118,21 @@ final class FITSTabHostModel {
 
     var tabCount: Int { tabs.count }
     var hasMultipleTabs: Bool { tabs.count > 1 }
+
+    /// True when a sync mode (linked crosshair or linked zoom) is active and
+    /// any open tab has missing / invalid / approximate WCS — meaning the
+    /// cross-tab crosshair or zoom sync may land off the true sky position.
+    /// Drives a warning next to the sync toggles. Mirrors Windows
+    /// `UpdateWcsSyncWarning`, which flags missing/invalid/approximate alike.
+    /// Recomputes automatically (observable) on toggle, tab switch, and open.
+    var syncUsesImpreciseWCS: Bool {
+        guard linkedState.linkCrosshair || linkedState.linkZoom else { return false }
+        guard tabs.count > 1 else { return false }
+        return tabs.contains { tab in
+            guard let wcs = tab.wcs else { return true }
+            return !wcs.isValid || wcs.isApproximate
+        }
+    }
 
     // MARK: - Store: Write (active tab → store)
 
@@ -302,6 +324,11 @@ final class FITSTabHostModel {
         blinkOverlayImage = tabBModel.renderedImage
         Self.logger.info("startBlink: tabA=\(tabA) tabB=\(tabB) overlayImage=\(tabBModel.renderedImage != nil) transform=\(self.blinkTransform != nil)")
 
+        // Frame both images on the shared (overlap) field before aligning, so
+        // a wide-vs-narrow pair is compared at the same scale. Must run before
+        // computeBlinkTransform, which reads tab A's (now reframed) zoom.
+        reframeForBlink(tabAModel: tabAModel, tabBModel: tabBModel)
+
         // Compute WCS alignment transform if both images have valid WCS
         blinkTransform = computeBlinkTransform(tabAModel: tabAModel, tabBModel: tabBModel)
 
@@ -361,6 +388,7 @@ final class FITSTabHostModel {
             zoomA: tabAModel.viewport.zoom,
             referenceRA: referenceRA,
             referenceDec: referenceDec,
+            imageWidthA: hduA.header.naxis1,
             imageWidthB: hduB.header.naxis1,
             imageHeightB: hduB.header.naxis2,
             displayWidthA: displayWidthA,
@@ -368,6 +396,49 @@ final class FITSTabHostModel {
             canvasWidth: Double(canvasWidth),
             canvasHeight: Double(canvasHeight)
         )
+    }
+
+    /// Reframe image A onto the shared (overlap) field that both images cover,
+    /// centred on the blink reference point — the macOS equivalent of Windows'
+    /// `StartBlink` "frame the shared field" step. The wider frame is zoomed in
+    /// to the smaller field so the narrower image fills the view instead of
+    /// rendering as a tiny square; the reference-centred framing lets the
+    /// overlay (positioned at the reference) co-register with image A.
+    ///
+    /// The pre-blink viewport is captured for restoration in `stopBlink()`.
+    /// No-op unless both tabs have valid WCS — without it the unaligned overlay
+    /// path tracks image A's viewport directly, so a reframe would gain nothing.
+    private func reframeForBlink(tabAModel: FITSViewerModel, tabBModel: FITSViewerModel) {
+        guard let wcsA = tabAModel.wcs, let wcsB = tabBModel.wcs,
+              let hduA = tabAModel.selectedHDU, let hduB = tabBModel.selectedHDU else { return }
+        let scaleA = wcsA.pixelScaleArcsec
+        let scaleB = wcsB.pixelScaleArcsec
+        guard scaleA > 0, scaleB > 0 else { return }
+
+        let fieldA = Double(hduA.header.naxis1) * scaleA
+        let fieldB = Double(hduB.header.naxis1) * scaleB
+        let minField = min(fieldA, fieldB)
+        guard minField > 0, fieldA.isFinite, fieldB.isFinite else { return }
+
+        // Capture the user's framing before we override it.
+        blinkRestoreTab = tabAModel
+        blinkRestoreViewport = tabAModel.viewport
+
+        // Magnify A's fit-to-window view so it shows just the shared field.
+        let imgSizeA = CGSize(width: hduA.header.naxis1, height: hduA.header.naxis2)
+        if let fitA = ViewportTransform.fitZoom(imageSize: imgSizeA, canvasSize: tabAModel.lastCanvasSize) {
+            let reframed = fitA * FITSViewerConstants.fitMargin * (fieldA / minField)
+            tabAModel.viewport.zoom = max(FITSViewerConstants.zoomMin, min(FITSViewerConstants.zoomMax, reframed))
+        }
+
+        // Centre A on the blink reference — crosshair if placed, else the WCS
+        // centre — matching how `computeBlinkTransform` derives the reference.
+        if let crosshair = tabAModel.crosshairPixel {
+            tabAModel.centerOnPixel(crosshair, canvasSize: tabAModel.lastCanvasSize)
+        } else if let refPixel = wcsA.worldToPixel(ra: wcsA.crval1, dec: wcsA.crval2) {
+            let displayY = FITSViewerModel.displayToFITSY(refPixel.y, naxis2: hduA.header.naxis2)
+            tabAModel.centerOnPixel(CGPoint(x: refPixel.x, y: displayY), canvasSize: tabAModel.lastCanvasSize)
+        }
     }
 
     /// Advance the blink fade by one 50ms tick.
@@ -406,6 +477,13 @@ final class FITSTabHostModel {
     // does not need to be touched from a nonisolated deinit.
 
     func stopBlink() {
+        // Undo the shared-field reframe, restoring tab A's pre-blink framing.
+        if let tab = blinkRestoreTab, let saved = blinkRestoreViewport {
+            tab.viewport = saved
+        }
+        blinkRestoreTab = nil
+        blinkRestoreViewport = nil
+
         blinkTask?.cancel()
         blinkTask = nil
         isBlinking = false

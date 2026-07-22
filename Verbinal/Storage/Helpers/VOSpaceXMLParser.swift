@@ -97,6 +97,87 @@ enum VOSpaceXMLParser {
             """
     }
 
+    /// Root node's `xsi:type` from a single-node GET (`?detail=min`).
+    /// Defaults to `.container` on parse failure — matching the Windows
+    /// client — because the container document form is the stricter one
+    /// (cavern accepts its tail on any type, but 400s a container without it).
+    static func parseRootNodeType(_ xml: String) -> VOSpaceNodeType {
+        guard let tagStart = xml.range(of: "<vos:node") ?? xml.range(of: "<node"),
+              let tagEnd = xml.range(of: ">", range: tagStart.upperBound..<xml.endIndex) else {
+            return .container
+        }
+        let tag = xml[tagStart.lowerBound..<tagEnd.upperBound]
+        if tag.contains("ContainerNode") { return .container }
+        if tag.contains("LinkNode") { return .linkNode }
+        if tag.contains("DataNode") { return .dataNode }
+        return .container
+    }
+
+    /// Build the VOSpace setNode document for an ACL update. Three-valued
+    /// per dimension: `nil` emits no property (server leaves it untouched),
+    /// `[]` emits an empty property (revoke all), values replace the whole
+    /// list (space-joined — the cavern delimiter). `xsi:type` must echo the
+    /// node's existing type, and a ContainerNode must carry the
+    /// accepts/provides/capabilities/nodes tail or cavern rejects it with
+    /// 400 (the same validator quirk `buildContainerNodeXml` satisfies).
+    static func buildSetACLNodeXml(
+        nodeURI: String,
+        nodeType: VOSpaceNodeType,
+        groupRead: [String]?,
+        groupWrite: [String]?,
+        isPublic: Bool?
+    ) -> String {
+        let escapedURI = escapeXML(nodeURI)
+        let type: String
+        switch nodeType {
+        case .container: type = "vos:ContainerNode"
+        case .linkNode: type = "vos:LinkNode"
+        case .dataNode: type = "vos:DataNode"
+        }
+
+        var props = ""
+        if let groupRead {
+            props += aclProperty("ivo://ivoa.net/vospace/core#groupread", joinGroups(groupRead))
+        }
+        if let groupWrite {
+            props += aclProperty("ivo://ivoa.net/vospace/core#groupwrite", joinGroups(groupWrite))
+        }
+        if let isPublic {
+            props += aclProperty("ivo://ivoa.net/vospace/core#ispublic", isPublic ? "true" : "false")
+        }
+
+        let containerTail = nodeType == .container
+            ? "\n  <vos:accepts/>\n  <vos:provides/>\n  <vos:capabilities/>\n  <vos:nodes/>"
+            : ""
+
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      uri="\(escapedURI)"
+                      xsi:type="\(type)">
+              <vos:properties>\(props)</vos:properties>\(containerTail)
+            </vos:node>
+            """
+    }
+
+    private static func joinGroups(_ groups: [String]) -> String {
+        groups.map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    private static func aclProperty(_ uri: String, _ value: String) -> String {
+        "\n    <vos:property uri=\"\(escapeXML(uri))\">\(escapeXML(value))</vos:property>"
+    }
+
+    private static func escapeXML(_ s: String) -> String {
+        s.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+    }
+
     // MARK: - Private
 
     private static func applyProperties(

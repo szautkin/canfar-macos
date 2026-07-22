@@ -61,39 +61,16 @@ struct ProposalStripSheet: View {
     }
 
     private var tabPicker: some View {
-        HStack(spacing: 0) {
-            tabButton("Pending", count: proposals.count, tab: .pending)
-            tabButton("History", count: appState.agentsService.activityStore.entries.count, tab: .history)
-            Spacer()
+        Picker("Proposals", selection: $selectedTab) {
+            Text("Pending (\(proposals.count))")
+                .tag(Tab.pending)
+            Text("History (\(appState.agentsService.activityStore.entries.count))")
+                .tag(Tab.history)
         }
+        .pickerStyle(.segmented)
+        .labelsHidden()
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
-    }
-
-    private func tabButton(_ label: String, count: Int, tab: Tab) -> some View {
-        Button {
-            selectedTab = tab
-        } label: {
-            HStack(spacing: 6) {
-                Text(label)
-                    .font(.callout.weight(selectedTab == tab ? .semibold : .regular))
-                if count > 0 {
-                    Text("\(count)")
-                        .font(.caption2.monospacedDigit())
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
-                        .background(.secondary.opacity(0.15), in: Capsule())
-                }
-            }
-            .foregroundStyle(selectedTab == tab ? Color.primary : .secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(selectedTab == tab ? Color.accentColor.opacity(0.15) : .clear)
-            )
-        }
-        .buttonStyle(.plain)
     }
 
     private var header: some View {
@@ -296,9 +273,9 @@ struct ProposalStripSheet: View {
         do {
             try await appState.agentsService.applyProposal(proposal.id)
         } catch ProposalApplyError.noApplierForKind(let kind) {
-            perRowError[proposal.id] = "No handler for kind '\(kind)'."
+            perRowError[proposal.id] = "Couldn't apply this proposal: no handler for kind '\(kind)'."
         } catch {
-            perRowError[proposal.id] = "Apply failed: \(error.localizedDescription)"
+            perRowError[proposal.id] = "Couldn't apply this proposal: \(error.localizedDescription)"
         }
     }
 

@@ -11,14 +11,8 @@ import AppKit
 import UniformTypeIdentifiers
 #endif
 
-/// Coarse SwiftUI gradient stops sampled from a colormap LUT — shared by the live
-/// colorbar, the colormap swatches, and the export legend so they can't drift.
-private func cubeColormapStops(_ cm: FITSRenderParams.ColormapType) -> [Color] {
-    let lut = FITSRenderEngine.colormapRGBA(cm)
-    return stride(from: 0, to: 256, by: 16).map { i in
-        Color(.sRGB, red: Double(lut[i * 4]) / 255, green: Double(lut[i * 4 + 1]) / 255, blue: Double(lut[i * 4 + 2]) / 255)
-    }
-}
+// Colormap gradient stops + the swatch grid live in
+// Helpers/ColormapSwatches.swift, shared with the FITS panel.
 
 /// Render-control side panel. Window/stretch/colormap are shared by both modes
 /// (slice re-renders coalesced; volume picks them up live). Density, spectral
@@ -29,7 +23,7 @@ struct CubeRenderControlsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 infoSection
                 Divider()
                 displaySection
@@ -42,9 +36,10 @@ struct CubeRenderControlsView: View {
                 exportSection
                 #endif
             }
-            .padding(14)
+            .padding(16)
         }
-        .frame(width: 270)
+        // No fixed width — the host HSplitView bounds the panel
+        // (min 240 / ideal 270 / max 340), matching the FITS sidebar.
         #if os(macOS)
         .sheet(isPresented: $showExport) { CubeExportView(model: model) }
         #endif
@@ -77,7 +72,7 @@ struct CubeRenderControlsView: View {
 
     private var displaySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Display").font(.subheadline.bold())
+            Text("Display").font(.subheadline.weight(.semibold))
 
             colormapSwatches
             stretchButtons
@@ -93,21 +88,33 @@ struct CubeRenderControlsView: View {
     private var windowControl: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Window").font(.caption)
+                Text("Window").font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 let raw = model.rawWindow
                 Text("\(fmt(raw.lo)) … \(fmt(raw.hi))")
                     .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
             }
-            Slider(value: windowLoBinding, in: 0...1)
-            Slider(value: windowHiBinding, in: 0...1)
+            HStack(spacing: 4) {
+                Text("Low")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .frame(width: 28, alignment: .trailing)
+                Slider(value: windowLoBinding, in: 0...1)
+                    .accessibilityLabel("Window low")
+            }
+            HStack(spacing: 4) {
+                Text("High")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .frame(width: 28, alignment: .trailing)
+                Slider(value: windowHiBinding, in: 0...1)
+                    .accessibilityLabel("Window high")
+            }
             HStack(spacing: 6) {
-                Button("p99.9") { model.autoWindowPercentile() }
-                Button("Min/Max") { model.autoWindowFullRange() }
+                Button("Auto (99.9%)") { model.autoWindowPercentile() }
+                Button("Full Range") { model.autoWindowFullRange() }
                 Spacer()
             }
             .buttonStyle(.bordered)
-            .controlSize(.mini)
+            .controlSize(.small)
         }
     }
 
@@ -127,41 +134,34 @@ struct CubeRenderControlsView: View {
         }
     }
 
-    private var colorbarStops: [Color] { cubeColormapStops(model.colormap) }
+    private var colorbarStops: [Color] { colormapPreviewStops(model.colormap) }
 
     private var colormapSwatches: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Colormap").font(.caption).foregroundStyle(.secondary)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 46), spacing: 4)], spacing: 4) {
-                ForEach(FITSRenderParams.ColormapType.allCases) { cm in
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(LinearGradient(colors: cubeColormapStops(cm), startPoint: .leading, endPoint: .trailing))
-                        .frame(height: 18)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 3)
-                                .strokeBorder(model.colormap == cm ? Color.accentColor : Color.black.opacity(0.15),
-                                              lineWidth: model.colormap == cm ? 2 : 1)
-                        )
-                        .help(cm.rawValue.capitalized)
-                        .onTapGesture { model.colormap = cm; model.requestSliceRender() }
-                }
-            }
+            ColormapSwatchGrid(
+                selection: Bindable(model).colormap,
+                onChange: { model.requestSliceRender() }
+            )
         }
     }
 
+    /// Segmented, matching the FITS panel — one single-choice affordance
+    /// for the same concept across both viewers (was a grid of tinted
+    /// buttons here, a segmented control there).
     private var stretchButtons: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Stretch").font(.caption).foregroundStyle(.secondary)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 4)], spacing: 4) {
+            Picker("Stretch", selection: Binding(
+                get: { model.stretch },
+                set: { model.stretch = $0; model.requestSliceRender() }
+            )) {
                 ForEach(FITSRenderParams.StretchMode.allCases) { mode in
-                    Button(mode.rawValue.capitalized) {
-                        model.stretch = mode; model.requestSliceRender()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .tint(model.stretch == mode ? Color.accentColor : nil)
+                    Text(mode.rawValue.capitalized).tag(mode)
                 }
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
         }
     }
 
@@ -169,11 +169,11 @@ struct CubeRenderControlsView: View {
 
     private var volumeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Volume").font(.subheadline.bold())
+            Text("Volume").font(.subheadline.weight(.semibold))
 
             Picker("Mode", selection: $model.mip) {
                 Text("Emission").tag(false)
-                Text("Max-intensity").tag(true)
+                Text("Max Intensity").tag(true)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -199,7 +199,7 @@ struct CubeRenderControlsView: View {
     #if os(macOS)
     private var exportSection: some View {
         Button { showExport = true } label: {
-            Label("Export figure…", systemImage: "square.and.arrow.down")
+            Label("Export Figure…", systemImage: "square.and.arrow.up")
         }
     }
     #endif
@@ -207,10 +207,10 @@ struct CubeRenderControlsView: View {
     // MARK: Helpers
 
     @ViewBuilder
-    private func labeledSlider(_ title: String, value: Binding<Float>, range: ClosedRange<Float>) -> some View {
+    private func labeledSlider(_ title: LocalizedStringKey, value: Binding<Float>, range: ClosedRange<Float>) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text(title).font(.caption)
+                Text(title).font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Text(String(format: "%.2f", value.wrappedValue))
                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
@@ -219,7 +219,7 @@ struct CubeRenderControlsView: View {
         }
     }
 
-    private func infoRow(_ key: String, _ value: String) -> some View {
+    private func infoRow(_ key: LocalizedStringKey, _ value: String) -> some View {
         HStack {
             Text(key).font(.caption).foregroundStyle(.tertiary)
             Spacer()
@@ -305,7 +305,7 @@ struct CubeExportView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Export Figure").font(.title2.bold())
                 Spacer()
@@ -384,7 +384,7 @@ struct CubeExportView: View {
 
     private var dateString: String { Date.now.formatted(date: .abbreviated, time: .shortened) }
 
-    private var stops: [Color] { cubeColormapStops(model.colormap) }
+    private var stops: [Color] { colormapPreviewStops(model.colormap) }
 
     private func currentContent() -> CGImage? {
         guard model.viewMode == .volume else { return model.sliceImage }
@@ -436,6 +436,66 @@ struct CubeExportView: View {
             context.closePDF()
         }
     }
+}
+
+/// Headless figure export for the `export_cube_figure` agent tool — the
+/// PNG happy path of `CubeExportView` with no sheet and no save panel.
+/// Reuses the sheet's persisted style defaults (same `@AppStorage` keys)
+/// so agent exports match what the user last configured. Lives in this
+/// file because `CubeExportPlate` is deliberately private to it.
+/// Returns the written file URL (in ~/Downloads).
+@MainActor
+func exportCubeFigureHeadless(model: CubeViewerModel, scale: CGFloat) throws -> URL {
+    guard model.hasData else {
+        throw ToolFailureReason.targetNotResolved("No cube is open in the Cube Viewer")
+    }
+    let d = UserDefaults.standard
+    let style = CubeExportStyle(
+        theme: CubeExportStyle.Theme(rawValue: d.string(forKey: "cubeExport.theme") ?? "") ?? .light,
+        font: CubeExportStyle.FontKind(rawValue: d.string(forKey: "cubeExport.font") ?? "") ?? .sans,
+        scale: d.object(forKey: "cubeExport.scale") as? Double ?? 1.0,
+        annotate: d.object(forKey: "cubeExport.annotate") as? Bool ?? true,
+        transparent: d.object(forKey: "cubeExport.transparent") as? Bool ?? false,
+        textColor: CubeExportStyle.TextColor(rawValue: d.string(forKey: "cubeExport.textColor") ?? "") ?? .auto)
+
+    let content: CGImage?
+    if model.viewMode == .volume {
+        let bg: SIMD4<Float>? = style.transparent ? nil : style.theme.backgroundRGBA
+        content = model.volumeSnapshot?(
+            CubeViewerConstants.exportWidth, CubeViewerConstants.exportHeight, bg)
+    } else {
+        content = model.sliceImage
+    }
+    guard let content else {
+        throw ToolFailureReason.backendError(
+            "No rendered image is available yet — open the Cube Viewer so the render lands first")
+    }
+
+    let plate = CubeExportPlate(
+        model: model, metadata: model.figureMetadata(),
+        date: Date.now.formatted(date: .abbreviated, time: .shortened),
+        content: content, stops: colormapPreviewStops(model.colormap),
+        style: style, showAxes: model.viewMode == .volume)
+    let renderer = ImageRenderer(content: plate)
+    renderer.scale = scale
+    guard let nsImage = renderer.nsImage,
+          let tiff = nsImage.tiffRepresentation,
+          let rep = NSBitmapImageRep(data: tiff),
+          let data = rep.representation(using: .png, properties: [:]) else {
+        throw ToolFailureReason.backendError("Figure rendering failed")
+    }
+
+    let base = (model.object.isEmpty || model.object == "—") ? "cube" : model.object
+    let mode = model.viewMode == .slice ? "ch\(model.channel + 1)" : "volume"
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyyMMdd-HHmmss"
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        ?? FileManager.default.temporaryDirectory
+    let dest = downloads.appendingPathComponent(
+        "\(base)_\(mode)-\(formatter.string(from: Date())).png")
+    try data.write(to: dest)
+    return dest
 }
 
 /// Publication figure plate: header (title / instrument / file / date), the

@@ -19,6 +19,11 @@ struct LoginSheet: View {
     @State private var errorMessage = ""
     @State private var hasError = false
 
+    private enum Field {
+        case username, password
+    }
+    @FocusState private var focusedField: Field?
+
     var body: some View {
         VStack(spacing: 20) {
             Image("VerbinalIcon")
@@ -26,7 +31,7 @@ struct LoginSheet: View {
                 .scaledToFit()
                 .frame(width: 48, height: 48)
 
-            Text("Login to CANFAR")
+            Text("Log In to CANFAR")
                 .font(.title2)
                 .fontWeight(.semibold)
 
@@ -34,10 +39,12 @@ struct LoginSheet: View {
                 TextField("Username", text: $username)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.username)
+                    .focused($focusedField, equals: .username)
 
                 SecureField("Password", text: $password)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
+                    .focused($focusedField, equals: .password)
                     .onSubmit { Task { await login() } }
 
                 Toggle("Remember me", isOn: $rememberMe)
@@ -54,7 +61,7 @@ struct LoginSheet: View {
             }
 
             if isLoggingIn {
-                ProgressView("Authenticating...")
+                ProgressView("Authenticating…")
             }
 
             HStack(spacing: 16) {
@@ -63,7 +70,7 @@ struct LoginSheet: View {
                 }
                 .keyboardShortcut(.cancelAction)
 
-                Button("Login") {
+                Button("Log In") {
                     Task { await login() }
                 }
                 .keyboardShortcut(.defaultAction)
@@ -80,6 +87,9 @@ struct LoginSheet: View {
             if let stored = storedUsername, !stored.isEmpty {
                 username = stored
             }
+            // Land the cursor where typing starts: the password field when a
+            // stored username was pre-filled, the username field otherwise.
+            focusedField = username.isEmpty ? .username : .password
         }
     }
 

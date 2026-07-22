@@ -12,12 +12,71 @@ import AppKit
 
 struct LandingView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// User toggle (Settings ▸ MCP Clients) to show/hide the AI Guide launchpad tile.
     /// OFF by default — the tile is hidden until the user opts in; enabling it only
     /// adds the shortcut (the feature/overrides are unaffected either way).
     @AppStorage(AIGuidePreferences.showLandingTileKey) private var showAIGuideTile = false
 
     var body: some View {
+        // The GeometryReader supplies the container size (the deployment
+        // target is macOS 14, where the newer `.onGeometryChange` isn't
+        // available): width drives the adaptive column count, and height
+        // becomes the scroll content's minHeight so the Spacer-centered
+        // layout stays vertically centered when it fits — and scrolls,
+        // instead of clipping tiles, when the window is short (at the
+        // 900×600 window minimum the grid + branding already overflow).
+        GeometryReader { proxy in
+            ScrollView(.vertical) {
+                launchpad(availableWidth: proxy.size.width)
+                    .padding(.vertical, 20)
+                    .frame(width: proxy.size.width)
+                    .frame(minHeight: proxy.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        // The connectivity banner floats over the bottom edge instead of
+        // living in the scrollable flow: appearing must not reflow the
+        // centered launchpad, and a state banner must not scroll out of
+        // sight in a short window.
+        .overlay(alignment: .bottom) { connectivityBanner }
+        .appAnimation(AppMotion.quick, value: appState.authAwaitingConnectivity)
+        .task { appState.refreshAddons() }
+    }
+
+    /// Sign-in is parked until the network returns. One actionable row:
+    /// the controller's explanation (offline vs cannot-connect) plus the
+    /// manual retry. The general `statusMessage` is NOT rendered on the
+    /// page — the landing toolbar already shows it.
+    @ViewBuilder
+    private var connectivityBanner: some View {
+        if appState.authAwaitingConnectivity {
+            HStack(spacing: 10) {
+                Image(systemName: "wifi.slash")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text(appState.statusMessage)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                Button("Try Again") {
+                    Task { await appState.initialize() }
+                }
+                .controlSize(.small)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            // Material, not a flat fill — the banner overlaps scrollable
+            // content, so it needs its own legible surface.
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.quaternary, lineWidth: 1))
+            .frame(maxWidth: 560)
+            .padding(.bottom, 16)
+            .transition(reduceMotion ? .appFade : .move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    private func launchpad(availableWidth: CGFloat) -> some View {
         VStack(spacing: 32) {
             Spacer()
 
@@ -27,6 +86,7 @@ struct LandingView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
+                    .accessibilityHidden(true)
                 Text("Verbinal")
                     .font(.largeTitle.bold())
                 Text("A CANFAR Science Portal Companion")
@@ -34,12 +94,15 @@ struct LandingView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // Tiles: 3 columns × 2 rows
-            let tileColumns = [
-                GridItem(.fixed(200), spacing: 20),
-                GridItem(.fixed(200), spacing: 20),
-                GridItem(.fixed(200), spacing: 20),
-            ]
+            // Adaptive column count, clamped to [3, 5] by available width —
+            // mirrors Windows 1.3.0's UpdateTileColumns. Each tile is 200pt
+            // wide with 20pt gutters; the clamp also covers the first layout
+            // pass, where the measured width can still be 0.
+            let tileColumnCount = min(5, max(3, Int((availableWidth + 20) / (200 + 20))))
+            let tileColumns = Array(
+                repeating: GridItem(.fixed(200), spacing: 20),
+                count: tileColumnCount
+            )
 
             LazyVGrid(columns: tileColumns, spacing: 20) {
                 // Portal + Storage need the CADC token; lock them when not
@@ -102,6 +165,15 @@ struct LandingView: View {
                     appState.navigateTo(.cubeViewer)
                 }
 
+                LandingTile(
+                    icon: "checklist",
+                    fallbackIcon: "checklist",
+                    title: "Workflows",
+                    subtitle: "Follow reusable research protocols"
+                ) {
+                    appState.navigateTo(.workflows)
+                }
+
                 // Sixth slot is the addon slot.
                 //  - Installed first-party addons get their own tile (e.g.
                 //    Notebook when Verbinal Pi is present).
@@ -142,16 +214,8 @@ struct LandingView: View {
                 #endif
             }
 
-            if !appState.statusMessage.isEmpty {
-                Text(appState.statusMessage)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-
             Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task { appState.refreshAddons() }
     }
 
     // MARK: - Auth-gated navigation
@@ -223,6 +287,21 @@ private extension AddonManifest {
 
 // MARK: - Landing Tile
 
+/// Plain-look tile button that actually responds to the click: a quick
+/// scale dip while pressed (an opacity dim instead under Reduce Motion).
+/// `.plain` gave zero pressed-state feedback — hover was the only visual
+/// response a tile ever produced.
+private struct LandingTileButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(!reduceMotion && configuration.isPressed ? 0.97 : 1.0)
+            .opacity(reduceMotion && configuration.isPressed ? 0.8 : 1.0)
+            .appAnimation(AppMotion.quick, value: configuration.isPressed)
+    }
+}
+
 private struct LandingTile: View {
     let icon: String
     let fallbackIcon: String
@@ -248,20 +327,54 @@ private struct LandingTile: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        // Locked tiles carry the tooltip and announce their state to
+        // VoiceOver; unlocked tiles get neither (the old unconditional
+        // `.help("")` registered an empty tooltip on every tile).
+        if locked {
+            tileButton
+                .help("Sign in to access this feature")
+                .accessibilityValue(Text("Locked"))
+                .accessibilityHint(Text("Sign in to access this feature"))
+        } else {
+            tileButton
+                .accessibilityHint(Text(subtitle))
+        }
+    }
+
+    private var tileButton: some View {
         Button(action: action) {
+            // Three rigid zones so icons and titles line up across every tile
+            // regardless of how the (localized) title wraps. Icon and title
+            // bands are fixed-height; the subtitle fills the remainder.
             VStack(spacing: 16) {
+                // Icon band — fixed height keeps every title's baseline aligned.
                 Image(systemName: iconName)
                     .font(.system(size: 48))
                     .foregroundStyle(isHovering ? .primary : .secondary)
+                    .frame(height: 56)
 
-                VStack(spacing: 4) {
-                    Text(title)
-                        .font(.title2.bold())
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                // Title band — fixed height fits two lines of .title2.bold, so
+                // single- and double-line titles occupy the same vertical space.
+                Text(title)
+                    .font(.title2.bold())
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .frame(height: 56)
+
+                // Subtitle band — fills the remainder, wrapping to two lines.
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
+            // Horizontal inset only — wrapped titles/subtitles must not
+            // touch the rounded border. Vertical stays untouched: the
+            // three bands are sized to fill the 180pt height exactly.
+            .padding(.horizontal, 12)
             .frame(width: 200, height: 180)
             .opacity(dashedBorder || locked ? 0.7 : 1.0)
             .background(
@@ -271,9 +384,8 @@ private struct LandingTile: View {
             .overlay(borderShape)
             .overlay(alignment: .topTrailing) { cornerBadge }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LandingTileButtonStyle())
         .accessibilityLabel(Text(title))
-        .help(locked ? LocalizedStringKey("Sign in to access this feature") : "")
         .onHover { hovering in
             withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) {
                 isHovering = hovering

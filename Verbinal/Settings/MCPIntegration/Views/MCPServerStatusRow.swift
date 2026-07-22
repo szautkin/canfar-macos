@@ -27,18 +27,32 @@ struct MCPServerStatusRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: isRunning ? "checkmark.circle.fill" : "moon.zzz.fill")
-                .foregroundStyle(isRunning ? Color.green : Color.secondary)
-                .accessibilityLabel(isRunning ? "Server running" : "Server stopped")
+            if isRunning {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Color.green)
+                    .accessibilityLabel("Server running")
+            } else {
+                Image(systemName: "moon.zzz.fill")
+                    .foregroundStyle(Color.secondary)
+                    .accessibilityLabel("Server stopped")
+            }
             VStack(alignment: .leading, spacing: 2) {
                 if compact {
-                    Text(isRunning
-                         ? "Server: Listening — manage in the AI Agent tab"
-                         : "Server: Stopped — manage in the AI Agent tab")
-                        .font(.callout)
+                    if isRunning {
+                        Text("Server: Listening — manage in the AI Agent tab")
+                            .font(.callout)
+                    } else {
+                        Text("Server: Stopped — manage in the AI Agent tab")
+                            .font(.callout)
+                    }
                 } else {
-                    Text(isRunning ? "Listening" : "Stopped")
-                        .font(.callout)
+                    if isRunning {
+                        Text("Listening")
+                            .font(.callout)
+                    } else {
+                        Text("Stopped")
+                            .font(.callout)
+                    }
                     if let socketPath {
                         Text(socketPath)
                             .font(.caption2.monospaced())

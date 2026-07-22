@@ -26,6 +26,19 @@ final class APIEndpointsTests: XCTestCase {
         )
     }
 
+    func testRegistryURLs() {
+        XCTAssertEqual(endpoints.registryBaseURL, "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg")
+        XCTAssertEqual(endpoints.resourceCapsURL, "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg/resource-caps")
+        XCTAssertEqual(endpoints.registryCapabilitiesURL, "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg/capabilities")
+        XCTAssertEqual(endpoints.registryAvailabilityURL, "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg/availability")
+    }
+
+    func testCustomRegistryBaseURLPropagates() {
+        let custom = APIEndpoints(registryBaseURL: "https://src.example.org/reg")
+        XCTAssertEqual(custom.resourceCapsURL, "https://src.example.org/reg/resource-caps")
+        XCTAssertEqual(custom.registryAvailabilityURL, "https://src.example.org/reg/availability")
+    }
+
     func testSessionsURL() {
         XCTAssertEqual(endpoints.sessionsURL, "https://ws-uv.canfar.net/skaha/v1/session")
     }

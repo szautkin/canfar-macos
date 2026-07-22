@@ -54,10 +54,9 @@ struct HeadlessJobsDetailSheet: View {
             // Header
             HStack {
                 Text("Batch Jobs")
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .font(.headline)
                 Text("(\(String(model.jobs.count)) total)")
-                    .font(.title3)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
                 // 2026-05-21 add: manual refresh next to Close.
@@ -81,6 +80,7 @@ struct HeadlessJobsDetailSheet: View {
                 .disabled(model.isLoading)
                 .help("Refresh batch jobs from Skaha now (auto-refresh fires every 45s)")
                 Button("Close") { dismiss() }
+                    .buttonStyle(.bordered)
                     .keyboardShortcut(.cancelAction)
                     .help("Close this dialog (⎋)")
             }
@@ -346,15 +346,11 @@ struct HeadlessJobsDetailSheet: View {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = formatter.date(from: isoString) {
-            let display = DateFormatter()
-            display.dateFormat = "MMM d, HH:mm"
-            return display.string(from: date)
+            return date.formatted(date: .abbreviated, time: .shortened)
         }
         formatter.formatOptions = [.withInternetDateTime]
         if let date = formatter.date(from: isoString) {
-            let display = DateFormatter()
-            display.dateFormat = "MMM d, HH:mm"
-            return display.string(from: date)
+            return date.formatted(date: .abbreviated, time: .shortened)
         }
         return isoString
     }

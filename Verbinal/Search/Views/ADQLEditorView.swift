@@ -18,10 +18,9 @@ struct ADQLEditorView: View {
                     generateFromForm()
                 } label: {
                     Label("Generate from Form", systemImage: "doc.text")
-                        .font(.caption)
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
+                .controlSize(.large)
 
                 Button {
                     Task { await executeQuery() }
@@ -29,14 +28,13 @@ struct ADQLEditorView: View {
                     HStack(spacing: 4) {
                         if searchModel.isSearching {
                             ProgressView()
-                                .scaleEffect(0.6)
+                                .controlSize(.small)
                         }
                         Text("Execute")
                     }
-                    .font(.caption)
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .controlSize(.large)
                 .disabled(editableQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || searchModel.isSearching)
                 .keyboardShortcut(.return, modifiers: [.command, .shift])
 
@@ -46,10 +44,9 @@ struct ADQLEditorView: View {
                     saveCurrentQuery()
                 } label: {
                     Label("Save Query", systemImage: "bookmark")
-                        .font(.caption)
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
+                .controlSize(.large)
                 .disabled(editableQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
                 if let error = searchModel.searchError {

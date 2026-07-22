@@ -34,7 +34,7 @@ struct SavedQueriesView: View {
                         let name = "Query \u{2014} \(SharedFormatters.monthDayShortTime.string(from: Date()))"
                         store.save(SavedQuery(name: name, adql: currentQuery))
                     } label: {
-                        Label("Save Current Query", systemImage: "plus.circle")
+                        Label("Save Current Query", systemImage: "bookmark")
                             .font(.caption2)
                     }
                     .buttonStyle(.bordered)
@@ -96,10 +96,11 @@ struct SavedQueriesView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            Text(query.adql.prefix(120) + (query.adql.count > 120 ? "..." : ""))
+            Text(query.adql)
                 .font(.system(.caption2, design: .monospaced))
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
+                .truncationMode(.tail)
 
             HStack {
                 Button("Run") { onRun(query.adql) }

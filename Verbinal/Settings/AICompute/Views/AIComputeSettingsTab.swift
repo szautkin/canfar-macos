@@ -144,6 +144,8 @@ struct AIComputeSettingsTab: View {
                     .controlSize(.small)
                     .disabled(service.settings.isAllDefaults)
             }
+        } header: {
+            Text("Reset")
         }
     }
 

@@ -107,6 +107,16 @@ struct SearchResultsView: View {
         .onChange(of: exportErrorMessage) { _, new in
             showExportError = (new != nil)
         }
+        // `open_observation_detail` bridge — the sheet is local @State, so
+        // the agent tool stamps a pending request on the model and the view
+        // (the only owner of `selectedResult`) applies it here.
+        .task(id: resultsModel.pendingDetailRequest) {
+            guard let request = resultsModel.pendingDetailRequest else { return }
+            resultsModel.pendingDetailRequest = nil
+            guard let result = resultsModel.result(forID: request.rowID) else { return }
+            selectedRowID = result.id
+            selectedResult = result
+        }
     }
 
     // MARK: - Info Bar
@@ -193,7 +203,7 @@ struct SearchResultsView: View {
             columnsMenu
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
 
     private var exportMenu: some View {
@@ -209,7 +219,7 @@ struct SearchResultsView: View {
             }
         } label: {
             HStack(spacing: 4) {
-                if isExporting { ProgressView().scaleEffect(0.6) }
+                if isExporting { ProgressView().controlSize(.small) }
                 Label("Export", systemImage: "square.and.arrow.up")
                     .font(.caption)
             }
@@ -420,7 +430,7 @@ struct SearchResultsView: View {
             && SearchFormModel.quickSearchableColumnIDs.contains(col.id)
             && !raw.isEmpty
 
-        Button {
+        let button = Button {
             if isLink {
                 onQuickSearch?(col.id, raw)
             } else {
@@ -438,7 +448,12 @@ struct SearchResultsView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(isLink ? Text("Narrow search to \(col.label) = \(raw)") : Text(""))
+
+        if isLink {
+            button.help(Text("Narrow search to \(col.label) = \(raw)"))
+        } else {
+            button
+        }
     }
 
     private func copyRow(_ result: SearchResult, columns: [SearchResultColumn]) {

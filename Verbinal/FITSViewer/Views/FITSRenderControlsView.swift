@@ -11,6 +11,7 @@ struct FITSRenderControlsView: View {
     var model: FITSViewerModel
     @State private var goToRA: String = ""
     @State private var goToDec: String = ""
+    @State private var showExport = false
     @Environment(\.fitsToast) private var toast
 
     var body: some View {
@@ -18,34 +19,32 @@ struct FITSRenderControlsView: View {
             // Stretch
             VStack(alignment: .leading, spacing: 4) {
                 Text("Stretch")
-                    .font(.caption.bold())
-                Picker("", selection: Bindable(model).renderParams.stretch) {
+                    .font(.subheadline.weight(.semibold))
+                Picker("Stretch", selection: Bindable(model).renderParams.stretch) {
                     ForEach(FITSRenderParams.StretchMode.allCases) { mode in
                         Text(mode.rawValue.capitalized).tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
                 .onChange(of: model.renderParams.stretch) { _, _ in model.renderImageDebounced() }
             }
 
-            // Colormap
+            // Colormap — the shared swatch grid (what a colormap looks
+            // like IS the choice; the old text menu made users memorize
+            // names, and the Cube panel already showed gradients).
             VStack(alignment: .leading, spacing: 4) {
                 Text("Colormap")
-                    .font(.caption.bold())
-                Picker("", selection: Bindable(model).renderParams.colormap) {
-                    ForEach(FITSRenderParams.ColormapType.allCases) { cm in
-                        Text(cm.rawValue.capitalized).tag(cm)
-                    }
-                }
-                .pickerStyle(.menu)
-                .onChange(of: model.renderParams.colormap) { _, _ in model.renderImageDebounced() }
+                    .font(.subheadline.weight(.semibold))
+                ColormapSwatchGrid(selection: Bindable(model).renderParams.colormap)
+                    .onChange(of: model.renderParams.colormap) { _, _ in model.renderImageDebounced() }
             }
 
             // Min/Max cuts
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text("Cuts")
-                        .font(.caption.bold())
+                        .font(.subheadline.weight(.semibold))
                     if model.isRendering {
                         ProgressView()
                             .controlSize(.mini)
@@ -130,7 +129,7 @@ struct FITSRenderControlsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("Crosshair")
-                        .font(.caption.bold())
+                        .font(.subheadline.weight(.semibold))
                     if model.wcs?.isApproximate == true {
                         Label("WCS approximate", systemImage: "exclamationmark.triangle.fill")
                             .font(.caption2)
@@ -141,24 +140,27 @@ struct FITSRenderControlsView: View {
 
                 // Current crosshair display
                 if model.crosshairPixel != nil {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
+                    Grid(alignment: .leading, horizontalSpacing: 4, verticalSpacing: 2) {
+                        GridRow {
                             Image(systemName: "scope")
                                 .font(.caption2).foregroundStyle(.red)
                             Text("RA:").font(.caption2.bold()).foregroundStyle(.secondary)
+                                .gridColumnAlignment(.trailing)
                             Text(model.crosshairRA)
                                 .font(.system(.caption2, design: .monospaced))
                                 .textSelection(.enabled)
                         }
-                        HStack(spacing: 4) {
-                            Text("     Dec:").font(.caption2.bold()).foregroundStyle(.secondary)
+                        GridRow {
+                            Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                            Text("Dec:").font(.caption2.bold()).foregroundStyle(.secondary)
                             Text(model.crosshairDec)
                                 .font(.system(.caption2, design: .monospaced))
                                 .textSelection(.enabled)
                         }
                         if !model.crosshairValue.isEmpty {
-                            HStack(spacing: 4) {
-                                Text("     Val:").font(.caption2.bold()).foregroundStyle(.secondary)
+                            GridRow {
+                                Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                                Text("Val:").font(.caption2.bold()).foregroundStyle(.secondary)
                                 Text(model.crosshairValue)
                                     .font(.system(.caption2, design: .monospaced))
                             }
@@ -250,7 +252,7 @@ struct FITSRenderControlsView: View {
             // Zoom
             VStack(alignment: .leading, spacing: 4) {
                 Text("Zoom")
-                    .font(.caption.bold())
+                    .font(.subheadline.weight(.semibold))
                 HStack(spacing: 4) {
                     ForEach([0.25, 0.5, 1.0, 2.0, 4.0, 8.0], id: \.self) { level in
                         Button(zoomLabel(level)) {
@@ -275,8 +277,22 @@ struct FITSRenderControlsView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.mini)
             }
+
+            #if os(macOS)
+            // Export — publication figure with header + colorbar legend
+            // (the Cube panel's exporter, for 2D images).
+            Button { showExport = true } label: {
+                Label("Export Figure…", systemImage: "square.and.arrow.up")
+            }
+            .disabled(model.renderedImage == nil)
+            #endif
         }
         .padding(8)
+        #if os(macOS)
+        .sheet(isPresented: $showExport) {
+            FITSExportView(model: model)
+        }
+        #endif
     }
 
     private var cutRange: ClosedRange<Float> {

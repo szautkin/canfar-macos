@@ -7,10 +7,12 @@
 import SwiftUI
 
 struct MetricBarView: View {
-    let label: String
+    /// `LocalizedStringKey` so call-site literals route through the catalog.
+    let label: LocalizedStringKey
     let value: Double
     let maxValue: Double
     let percent: Double
+    /// Localized at the call site (e.g. `String(localized: "cores")`).
     let unit: String
 
     var body: some View {
@@ -20,7 +22,9 @@ struct MetricBarView: View {
                     .font(.caption)
                     .fontWeight(.medium)
                 Spacer()
-                Text(String(format: "%.1f / %.1f %@ (%.0f%%)", value, maxValue, unit, percent))
+                // Locale-aware numbers; the surrounding pattern is a catalog
+                // key so translators can reorder it.
+                Text("\(value.formatted(.number.precision(.fractionLength(1)))) / \(maxValue.formatted(.number.precision(.fractionLength(1)))) \(unit) (\((percent / 100).formatted(.percent.precision(.fractionLength(0)))))")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

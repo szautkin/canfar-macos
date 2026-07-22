@@ -37,7 +37,7 @@ struct RecentSearchesView: View {
                 }
 
                 if !store.searches.isEmpty {
-                    TextField("Filter...", text: $filterText)
+                    TextField("Filter…", text: $filterText)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption2)
                 }
@@ -86,6 +86,11 @@ struct RecentSearchesView: View {
                             editingName = search.name
                         }
                 }
+                #if os(macOS)
+                if let attribution = search.agentAttribution {
+                    AgentAttributionBadge(attribution: attribution)
+                }
+                #endif
                 Spacer()
                 Text(SharedFormatters.monthDayShortTime.string(from: search.savedAt))
                     .font(.caption2)

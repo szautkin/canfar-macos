@@ -6,11 +6,15 @@
 
 import Foundation
 
-public struct APIEndpoints: Sendable {
+public struct APIEndpoints: Sendable, Equatable {
     public var loginBaseURL: String
     public var skahaBaseURL: String
     public var acBaseURL: String
     public var storageBaseURL: String
+    /// IVOA registry service base. Serves `resource-caps` (the map from
+    /// `ivo://` resource IDs to VOSI capabilities documents) plus the
+    /// registry's own capabilities/availability endpoints.
+    public var registryBaseURL: String
     /// CADC archive base — TAP, CAOM2 metadata, DataLink, packaging.
     /// Single root means changing CADC's host name happens in one place.
     public var archiveBaseURL: String
@@ -25,6 +29,7 @@ public struct APIEndpoints: Sendable {
         skahaBaseURL: String = "https://ws-uv.canfar.net/skaha",
         acBaseURL: String = "https://ws-uv.canfar.net/ac",
         storageBaseURL: String = "https://ws-uv.canfar.net/arc/nodes/home",
+        registryBaseURL: String = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg",
         archiveBaseURL: String = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca",
         externalBaseURL: String = "https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca",
         tapMaxRecords: Int = 30000
@@ -33,10 +38,20 @@ public struct APIEndpoints: Sendable {
         self.skahaBaseURL = skahaBaseURL
         self.acBaseURL = acBaseURL
         self.storageBaseURL = storageBaseURL
+        self.registryBaseURL = registryBaseURL
         self.archiveBaseURL = archiveBaseURL
         self.externalBaseURL = externalBaseURL
         self.tapMaxRecords = tapMaxRecords
     }
+
+    // MARK: - IVOA Registry
+
+    /// Plain-text map of `ivo://` resource IDs → capabilities URLs.
+    public var resourceCapsURL: String { "\(registryBaseURL)/resource-caps" }
+    /// VOSI capabilities of the registry service itself.
+    public var registryCapabilitiesURL: String { "\(registryBaseURL)/capabilities" }
+    /// VOSI availability of the registry service.
+    public var registryAvailabilityURL: String { "\(registryBaseURL)/availability" }
 
     public var loginURL: String { "\(loginBaseURL)/login" }
     public var whoAmIURL: String { "\(loginBaseURL)/whoami" }

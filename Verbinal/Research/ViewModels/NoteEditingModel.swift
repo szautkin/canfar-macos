@@ -6,6 +6,7 @@
 
 import Foundation
 import Observation
+import VerbinalKit
 
 /// Editing state for a single observation's note, backed by ``ObservationNoteStore``.
 ///
@@ -37,6 +38,11 @@ final class NoteEditingModel {
     var rating: Int = 0
     var tagsInput: String = ""
     private(set) var modifiedAt: Date?
+    /// Attribution of the currently-loaded note when an MCP agent set it.
+    /// Cleared on the next user commit — once the user edits, the note is
+    /// no longer purely agent-authored (the rebuilt `ObservationNote`
+    /// carries no stamp), and the badge should reflect that.
+    private(set) var agentAttribution: AgentAttribution?
 
     @ObservationIgnored private var saveTask: Task<Void, Never>?
 
@@ -68,6 +74,7 @@ final class NoteEditingModel {
         rating = existing?.rating ?? 0
         tagsInput = existing?.tags.joined(separator: ", ") ?? ""
         modifiedAt = existing?.modifiedAt
+        agentAttribution = existing?.agentAttribution
         loadedID = publisherID
     }
 
@@ -119,6 +126,9 @@ final class NoteEditingModel {
         // the note the fields still represent (not an outgoing flush during a switch).
         if id == loadedID {
             modifiedAt = store.note(for: id)?.modifiedAt
+            // User just wrote over any agent-authored note (rebuilt above
+            // with no stamp), so drop the badge.
+            agentAttribution = nil
         }
     }
 }

@@ -18,7 +18,7 @@ struct DataTrainView: View {
 
                 if dataTrainModel.isRefreshing {
                     ProgressView()
-                        .scaleEffect(0.6)
+                        .controlSize(.small)
                 }
 
                 Spacer()
@@ -38,12 +38,13 @@ struct DataTrainView: View {
                 .buttonStyle(.borderless)
                 .disabled(dataTrainModel.isRefreshing)
                 .help("Refresh data train from CADC")
+                .accessibilityLabel("Refresh data train")
             }
 
             if dataTrainModel.isLoading {
                 HStack {
                     Spacer()
-                    ProgressView("Loading data train...")
+                    ProgressView("Loading data train…")
                     Spacer()
                 }
                 .frame(height: 120)

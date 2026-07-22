@@ -143,6 +143,8 @@ struct ImageDiscoverySettingsTab: View {
                 .controlSize(.small)
                 .disabled(service.settings.isAllDefaults)
             }
+        } header: {
+            Text("Reset")
         }
     }
 

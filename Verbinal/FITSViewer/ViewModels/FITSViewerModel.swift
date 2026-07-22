@@ -31,7 +31,13 @@ final class FITSViewerModel: Identifiable {
     /// the `@MainActor`, which scans every pixel — multi-second pause for
     /// large images. The min/max scan now happens inside the detached load
     /// task and `pixelMin`/`pixelMax` are assigned alongside `pixels`.
-    var pixels: [Float] = []
+    ///
+    /// `@ObservationIgnored` on top: no view renders the buffer reactively
+    /// (readers are event-driven — probe, auto-cut, render), and keeping a
+    /// 400 MB array out of Observation's access tracking keeps its
+    /// assignment from contributing main-actor work right when the MCP
+    /// tools' `MainActor.run` hops are queued behind a big load (F5).
+    @ObservationIgnored var pixels: [Float] = []
 
     /// Cached min/max of finite pixel values (for slider range).
     var pixelMin: Float = 0
@@ -455,6 +461,23 @@ final class FITSViewerModel: Identifiable {
         placeCrosshair(at: imgPoint)
         centerOnPixel(imgPoint, canvasSize: lastCanvasSize)
         return true
+    }
+
+    /// Read-only pixel probe for the agent tools: value + sky coordinate at
+    /// a 0-based DISPLAY pixel, without moving the crosshair or viewport.
+    /// Returns nil when the pixel is outside the image.
+    func probePixel(x: Int, y: Int) -> (value: Double?, ra: Double?, dec: Double?)? {
+        guard let hdu = selectedHDU else { return nil }
+        guard x >= 0, y >= 0, x < hdu.header.naxis1, y < hdu.header.naxis2 else { return nil }
+        var value: Double?
+        let idx = Self.pixelIndex(x: Double(x), y: Double(y), width: hdu.header.naxis1)
+        if idx >= 0 && idx < pixels.count, pixels[idx].isFinite {
+            value = Double(pixels[idx])
+        }
+        guard let wcs else { return (value, nil, nil) }
+        let fitsY = Self.displayToFITSY(Double(y), naxis2: hdu.header.naxis2)
+        let (ra, dec) = wcs.pixelToWorld(x: Double(x), y: fitsY)
+        return (value, ra, dec)
     }
 
     /// Set zoom from UI controls. Centers on crosshair if placed (matches Windows SetZoomLevel).

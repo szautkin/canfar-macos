@@ -44,27 +44,45 @@ final class BlinkAlignerTests: XCTestCase {
 
     // MARK: - computeMatchedZoom
 
-    func testMatchedZoom_SameScale_ReturnsSameZoom() {
-        let zoom = BlinkAligner.computeMatchedZoom(zoomA: 2.0, pixelScaleA: 1.0, pixelScaleB: 1.0)
+    func testMatchedZoom_SameField_ReturnsSameZoom() {
+        // Equal angular fields → overlay matches A's zoom exactly.
+        let zoom = BlinkAligner.computeMatchedZoom(zoomA: 2.0, angularFieldA: 1024, angularFieldB: 1024)
         XCTAssertEqual(zoom, 2.0, accuracy: 1e-10)
     }
 
-    func testMatchedZoom_CoarserB_LessZoom() {
-        // B has 2x coarser pixels → needs half the zoom to match angular extent
-        let zoom = BlinkAligner.computeMatchedZoom(zoomA: 2.0, pixelScaleA: 1.0, pixelScaleB: 2.0)
+    func testMatchedZoom_WiderFieldB_MoreZoom() {
+        // B covers a 2x wider sky field → stretched into A's box it looks 2x
+        // smaller, so it needs double the zoom to match A's on-screen scale.
+        let zoom = BlinkAligner.computeMatchedZoom(zoomA: 2.0, angularFieldA: 1024, angularFieldB: 2048)
+        XCTAssertEqual(zoom, 4.0, accuracy: 1e-10)
+    }
+
+    func testMatchedZoom_NarrowerFieldB_LessZoom() {
+        // B covers half the sky field → needs half the zoom.
+        let zoom = BlinkAligner.computeMatchedZoom(zoomA: 2.0, angularFieldA: 1024, angularFieldB: 512)
         XCTAssertEqual(zoom, 1.0, accuracy: 1e-10)
     }
 
-    func testMatchedZoom_FinerB_MoreZoom() {
-        // B has 2x finer pixels → needs double the zoom
-        let zoom = BlinkAligner.computeMatchedZoom(zoomA: 1.0, pixelScaleA: 2.0, pixelScaleB: 1.0)
-        XCTAssertEqual(zoom, 2.0, accuracy: 1e-10)
+    func testMatchedZoom_EqualPixelScaleDifferentWidth_ScalesWithField() {
+        // Regression for the "tiny square" bug: with EQUAL pixel scales but very
+        // different image widths, the field-width term must still drive the
+        // match. The old pixel-scale-ratio form ignored width and returned
+        // zoomA unchanged, shrinking a wide-vs-narrow overlay to a speck.
+        // angularFieldA = 200·1", angularFieldB = 4000·1" → 20x wider field.
+        let zoom = BlinkAligner.computeMatchedZoom(zoomA: 1.0, angularFieldA: 200, angularFieldB: 4000)
+        XCTAssertEqual(zoom, 20.0, accuracy: 1e-10)
     }
 
-    func testMatchedZoom_ZeroScaleB_ReturnsSameZoom() {
-        // Guard against division by zero
-        let zoom = BlinkAligner.computeMatchedZoom(zoomA: 1.5, pixelScaleA: 1.0, pixelScaleB: 0.0)
-        XCTAssertEqual(zoom, 1.5, accuracy: 1e-10)
+    func testMatchedZoom_ZeroFieldA_ReturnsSameZoom() {
+        // Guard against division by zero on either field.
+        XCTAssertEqual(
+            BlinkAligner.computeMatchedZoom(zoomA: 1.5, angularFieldA: 0.0, angularFieldB: 100),
+            1.5, accuracy: 1e-10
+        )
+        XCTAssertEqual(
+            BlinkAligner.computeMatchedZoom(zoomA: 1.5, angularFieldA: 100, angularFieldB: 0.0),
+            1.5, accuracy: 1e-10
+        )
     }
 
     // MARK: - computeCenterTranslate
@@ -93,7 +111,7 @@ final class BlinkAlignerTests: XCTestCase {
             wcsA: wcs, wcsB: wcs,
             rotationA: 0, zoomA: 1.0,
             referenceRA: 180, referenceDec: 45,
-            imageWidthB: 1024, imageHeightB: 1024,
+            imageWidthA: 1024, imageWidthB: 1024, imageHeightB: 1024,
             displayWidthA: 1024, displayHeightA: 1024,
             canvasWidth: 1200, canvasHeight: 900
         )
@@ -102,21 +120,23 @@ final class BlinkAlignerTests: XCTestCase {
     }
 
     func testAlignedTransform_DifferentPixelScale_MatchesZoom() {
-        // B has 2x coarser pixels → matched zoom should be half of A's zoom.
+        // B has 2x coarser pixels (same width) → 2x wider field → matched zoom = 2·A's zoom.
         let wcsA = makeWCS(crval1: 180, crval2: 45, cdelt: 0.001) // ~3.6"/px
         let wcsB = makeWCS(crval1: 180, crval2: 45, cdelt: 0.002) // ~7.2"/px
         let zoomA = 2.0
+        // Both images are 1024 px wide, so the field ratio equals the pixel-scale
+        // ratio here (B 2x coarser → 2x wider field → matched zoom = 2·zoomA).
         let expectedZoom = BlinkAligner.computeMatchedZoom(
             zoomA: zoomA,
-            pixelScaleA: wcsA.pixelScaleArcsec,
-            pixelScaleB: wcsB.pixelScaleArcsec
+            angularFieldA: 1024 * wcsA.pixelScaleArcsec,
+            angularFieldB: 1024 * wcsB.pixelScaleArcsec
         )
 
         let result = BlinkAligner.computeAlignedTransform(
             wcsA: wcsA, wcsB: wcsB,
             rotationA: 0, zoomA: zoomA,
             referenceRA: 180, referenceDec: 45,
-            imageWidthB: 1024, imageHeightB: 1024,
+            imageWidthA: 1024, imageWidthB: 1024, imageHeightB: 1024,
             displayWidthA: 1024, displayHeightA: 1024,
             canvasWidth: 1200, canvasHeight: 900
         )
@@ -139,7 +159,7 @@ final class BlinkAlignerTests: XCTestCase {
             wcsA: wcsA, wcsB: wcsB,
             rotationA: 0, zoomA: 1.0,
             referenceRA: 180, referenceDec: 45,
-            imageWidthB: 1024, imageHeightB: 1024,
+            imageWidthA: 1024, imageWidthB: 1024, imageHeightB: 1024,
             displayWidthA: 1024, displayHeightA: 1024,
             canvasWidth: 1200, canvasHeight: 900
         )
@@ -159,7 +179,7 @@ final class BlinkAlignerTests: XCTestCase {
             wcsA: wcsA, wcsB: wcsB,
             rotationA: rotationA, zoomA: 1.0,
             referenceRA: 180, referenceDec: 45,
-            imageWidthB: 1024, imageHeightB: 1024,
+            imageWidthA: 1024, imageWidthB: 1024, imageHeightB: 1024,
             displayWidthA: 1024, displayHeightA: 1024,
             canvasWidth: 1200, canvasHeight: 900
         )
@@ -181,7 +201,7 @@ final class BlinkAlignerTests: XCTestCase {
             wcsA: wcsA, wcsB: wcsB,
             rotationA: 0, zoomA: 1.0,
             referenceRA: 180, referenceDec: 45,
-            imageWidthB: 1024, imageHeightB: 1024,
+            imageWidthA: 1024, imageWidthB: 1024, imageHeightB: 1024,
             displayWidthA: 1024, displayHeightA: 1024,
             canvasWidth: 1200, canvasHeight: 900
         )

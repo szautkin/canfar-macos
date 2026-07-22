@@ -15,17 +15,22 @@ struct CoordinateBookmark: Codable, Identifiable, Equatable {
     let dec: Double
     let sourceFilePath: String
     let savedAt: Date
+    /// Stamp set when an MCP agent's `save_fits_bookmark` proposal was
+    /// applied. `nil` for user-placed bookmarks.
+    var agentAttribution: AgentAttribution?
 
     var formattedCoords: String {
         "\(FITSWCSTransform.formatRA(ra))  \(FITSWCSTransform.formatDec(dec))"
     }
 
-    init(label: String, ra: Double, dec: Double, sourceFilePath: String) {
+    init(label: String, ra: Double, dec: Double, sourceFilePath: String,
+         agentAttribution: AgentAttribution? = nil) {
         self.id = UUID()
         self.label = label
         self.ra = ra
         self.dec = dec
         self.sourceFilePath = sourceFilePath
         self.savedAt = Date()
+        self.agentAttribution = agentAttribution
     }
 }

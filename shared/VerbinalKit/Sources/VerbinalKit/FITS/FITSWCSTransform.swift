@@ -97,13 +97,22 @@ public struct FITSWCSTransform: Sendable {
         }
     }
 
-    /// Extract the trailing 3-character projection code from a CTYPE
-    /// string (e.g. `"RA---TAN"` → `"TAN"`, `"DEC--SIN"` → `"SIN"`).
+    /// Extract the projection code from a CTYPE string
+    /// (e.g. `"RA---TAN"` → `"TAN"`, `"DEC--SIN"` → `"SIN"`,
+    /// `"RA---TAN-SIP"` → `"TAN"`).
     private static func projectionCode(from ctype: String) -> String {
-        // CTYPE format: "{coord}---{proj}" or "{coord}--{proj}" — split on
-        // dashes and take the last non-empty segment.
+        // CTYPE format: "{coord}---{proj}" or "{coord}--{proj}", optionally with
+        // a trailing "-SIP" distortion marker. Split on dashes and take the last
+        // non-empty segment — but "SIP" is a distortion tag, not a projection,
+        // so skip it and return the real projection code before it. (Without
+        // this, a SIP-tagged header resolves to "SIP" → the linear fallback,
+        // discarding the spherical projection entirely.)
         let parts = ctype.split(separator: "-", omittingEmptySubsequences: true)
-        return parts.last.map(String.init) ?? ""
+        guard let last = parts.last else { return "" }
+        if last == "SIP", parts.count >= 2 {
+            return String(parts[parts.count - 2])
+        }
+        return String(last)
     }
 
     /// Pixel (0-based) → World (RA, Dec) in degrees.

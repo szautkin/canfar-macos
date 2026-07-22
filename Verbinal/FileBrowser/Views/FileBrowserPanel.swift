@@ -36,18 +36,42 @@ struct FileBrowserPanel: View {
                 .toggleStyle(.button)
                 .buttonStyle(.borderless)
                 .help("Show only supported files")
+                .accessibilityLabel("Show only supported files")
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
 
             // Filter
-            TextField("Filter...", text: Bindable(model).filterText)
+            TextField("Filter…", text: Bindable(model).filterText)
                 .textFieldStyle(.roundedBorder)
                 .font(.caption2)
                 .padding(.horizontal, 8)
                 .padding(.bottom, 4)
 
             Divider()
+
+            // Sandbox denied this folder and the user hasn't granted it —
+            // offer the powerbox grant instead of a raw permission error.
+            if model.needsGrant {
+                VStack(spacing: 8) {
+                    Image(systemName: "lock.folder")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("Verbinal needs your permission to read this folder.")
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                    Button {
+                        model.grantAccessToCurrentFolder()
+                    } label: {
+                        Label("Grant Access…", systemImage: "folder.badge.plus")
+                    }
+                    .controlSize(.small)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 16)
+            }
 
             // Distinguish "couldn't load" / "some items unreadable" from an
             // actually-empty folder.
@@ -78,7 +102,7 @@ struct FileBrowserPanel: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: node.icon)
-                            .foregroundColor(node.isDirectory ? .accentColor : .secondary)
+                            .foregroundStyle(node.isDirectory ? Color.accentColor : Color.secondary)
                             .frame(width: 16)
                         Text(node.name)
                             .font(.caption)
@@ -96,6 +120,7 @@ struct FileBrowserPanel: View {
             .listStyle(.plain)
         }
         .task {
+            model.access = appState.localFolderAccess
             model.loadDirectory()
         }
     }

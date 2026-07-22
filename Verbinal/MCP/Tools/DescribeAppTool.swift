@@ -167,7 +167,8 @@ struct DescribeAppTool: JSONReadTool {
     ### Live ops (always run, no proposal either way)
 
       * `navigate_to` — switch the user's window to a specific section
-        (landing/search/research/portal/storage/fitsViewer). Use this
+        (landing/search/research/portal/storage/fitsViewer/cubeViewer/
+        aiGuide). Use this
         deliberately to keep the user oriented: "I'll show you the
         search form now" → call `navigate_to(mode: 'search')` →
         actually do the next thing. Independent of the
@@ -179,7 +180,62 @@ struct DescribeAppTool: JSONReadTool {
       * `open_fits_file` — opens a downloaded observation's FITS in
         the in-app viewer AND navigates the user's window to the
         viewer mode immediately (so they actually see what you
-        opened — no silent action).
+        opened — no silent action). `open_cube` is the 3D twin for
+        spectral cubes.
+      * Viewer steering — once something is open you can read and
+        drive both viewers live: `get_fits_view` / `set_fits_view`
+        (stretch, colormap, cuts, zoom, fit, north-up, tab switch),
+        `fits_goto_coordinate` (center + crosshair on RA/Dec),
+        `probe_fits_pixel`, and `get_cube_view` / `set_cube_view` /
+        `set_cube_camera` (eased rotate/zoom of the 3D volume) /
+        `probe_cube_spectrum` for the Cube Viewer. Pass `reveal: true`
+        on the cube setters to bring the user's window to the viewer
+        so they watch the change land. `list_open_tabs`
+        and `close_active_tab` manage the FITS tab strip, and
+        `load_saved_search` restores a saved query or recent search
+        into the live Search form. Like the other live ops these
+        change what the user is looking at — narrate as you go.
+
+    ### Full UI parity — drive the app like the user does
+
+    Every user-facing interaction now has a tool twin (audited in
+    docs/agent-ui-parity.md). Highlights beyond the ops above, all
+    live view-state unless marked:
+
+      * **Search form**: `get_search_form` / `set_search_form` (every
+        constraint field + data-train selections, `execute: true` to
+        run), `reset_search_form`, `get_data_train_options` /
+        `refresh_data_train`, `select_search_tab`, `quick_search`.
+      * **ADQL editor**: `set_adql_editor` (set text or
+        `generateFromForm`, optional `execute`) — nothing is saved
+        unless you also call `save_query`.
+      * **Results table**: `get_search_results` reads exactly what the
+        user sees (their live sort/filter/pagination applied);
+        `set_results_view` sorts, filters, paginates, shows/hides
+        columns, and switches display units; `open_observation_detail`
+        opens a row's detail sheet.
+      * **Recent searches**: `rename_recent_search`,
+        `remove_recent_search`, `clear_recent_searches` (writes).
+      * **FITS viewer**: `select_hdu`, `fits_auto_cut`, the blink
+        suite (`start_blink` / `set_blink` / `stop_blink`),
+        `set_tab_sync` (link crosshair / sync zoom),
+        `search_at_crosshair`, and `export_fits_figure` (write —
+        annotated publication PNG to Downloads, like
+        `export_cube_figure`).
+      * **Sessions**: `get_session_events`, `get_session_logs`,
+        `open_session` (opens the connect URL in the user's browser).
+      * **Image discovery diagnostics**: `list_probe_failures`,
+        `get_probe_logs`, `get_image_manifest`,
+        `clear_probe_failures` (write).
+      * **Storage**: `open_vospace_file` (write — download + open in
+        the right viewer).
+      * **Local files**: `list_local_folder`, `open_local_file` (the
+        file-browser panel as tools).
+      * **Settings, read-only**: `get_endpoints`,
+        `get_compute_config`. Changing settings stays a user decision.
+
+    Steering tools change what the user is looking at — narrate as
+    you go, same as the other live ops.
 
     ### Follow-on navigation (passive, user-controlled)
 

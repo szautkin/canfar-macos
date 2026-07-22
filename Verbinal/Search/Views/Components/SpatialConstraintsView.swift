@@ -53,13 +53,13 @@ struct SpatialConstraintsView: View {
             EmptyView()
         case .resolving:
             ProgressView()
-                .scaleEffect(0.7)
+                .controlSize(.small)
         case .resolved(let ra, let dec):
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
                 .help("Resolved: RA \(ra), Dec \(dec)")
         case .failed(let msg):
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(systemName: "exclamationmark.triangle")
                 .foregroundStyle(.orange)
                 .help(msg)
         }

@@ -67,8 +67,7 @@ struct DownloadedFilesView: View {
                 } label: {
                     if model.exportService.isExporting {
                         ProgressView()
-                            .controlSize(.mini)
-                            .scaleEffect(0.7)
+                            .controlSize(.small)
                     } else {
                         Image(systemName: "square.and.arrow.up")
                     }
@@ -77,6 +76,7 @@ struct DownloadedFilesView: View {
                 .controlSize(.small)
                 .disabled(model.observationStore.observations.isEmpty || model.exportService.isExporting)
                 .help("Export observations and notes to a Claude-friendly bundle")
+                .accessibilityLabel("Export observations and notes")
                 #endif
             }
             .padding(.horizontal, 12)
@@ -90,29 +90,18 @@ struct DownloadedFilesView: View {
             DataStateContainer(state: downloadsState) {
                 EmptyView()
             } empty: {
-                VStack(spacing: 8) {
-                    Spacer()
-                    if model.observationStore.observations.isEmpty {
-                        Image(systemName: "tray.fill")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                        Text("No downloads yet")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("Search CADC to find observations")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    } else {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                        Text("No matches")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
+                if model.observationStore.observations.isEmpty {
+                    ContentUnavailableView(
+                        "No downloads yet",
+                        systemImage: "tray.fill",
+                        description: Text("Search CADC to find observations")
+                    )
+                } else {
+                    ContentUnavailableView(
+                        "No matches",
+                        systemImage: "line.3.horizontal.decrease.circle"
+                    )
                 }
-                .frame(maxWidth: .infinity)
             } error: {
                 EmptyView()
             } content: {
@@ -167,7 +156,8 @@ struct DownloadedFilesView: View {
                 availableModules: buildAvailableModules(),
                 exportService: model.exportService,
                 onVOSpaceUpload: { bundleURL in
-                    let vospace = VOSpaceBrowserService(network: appState.network)
+                    let vospace = VOSpaceBrowserService(
+                        network: appState.network, endpoints: appState.endpoints)
                     return try await model.exportService.uploadBundleToVOSpace(
                         bundleURL: bundleURL,
                         vospace: vospace,
@@ -260,7 +250,7 @@ struct DownloadedFilesView: View {
                 .font(.caption2.weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(isCollapsed ? Color.white : Color.secondary)
-                .padding(.horizontal, 7)
+                .padding(.horizontal, 8)
                 .padding(.vertical, 2)
                 .background {
                     if isCollapsed {

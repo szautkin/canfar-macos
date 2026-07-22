@@ -76,6 +76,62 @@ final class GetServiceHealthTests: XCTestCase {
         XCTAssertEqual(Set(names).count, names.count)
     }
 
+    // MARK: - deploymentEndpoints derivation
+
+    /// With CANFAR defaults, the derived probe set must reproduce the
+    /// historical canonical URLs exactly — proves the endpoint-settings
+    /// refactor changed nothing for a default deployment.
+    func testDefaultDeploymentEndpointsMatchHistoricalURLs() {
+        let byName = Dictionary(
+            uniqueKeysWithValues: GetServiceHealthTool.deploymentEndpoints(for: APIEndpoints())
+                .map { ($0.name, $0.url) }
+        )
+        XCTAssertEqual(byName["cadc-tap"], "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus/availability")
+        XCTAssertEqual(byName["cadc-resolver"], "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cadc-target-resolver/availability")
+        XCTAssertEqual(byName["vospace"], "https://ws-uv.canfar.net/arc/availability")
+        XCTAssertEqual(byName["skaha"], "https://ws-uv.canfar.net/skaha/availability")
+        XCTAssertEqual(byName["cadc-registry"], "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg/availability")
+    }
+
+    /// Custom endpoint settings must flow into the probe URLs (the
+    /// canonical list would report the wrong backend otherwise).
+    func testDeploymentEndpointsFollowCustomEndpoints() {
+        let custom = APIEndpoints(
+            skahaBaseURL: "https://src.example.org/skaha",
+            storageBaseURL: "https://src.example.org/cavern/nodes/home",
+            registryBaseURL: "https://src.example.org/reg",
+            archiveBaseURL: "https://archive.example.org"
+        )
+        let byName = Dictionary(
+            uniqueKeysWithValues: GetServiceHealthTool.deploymentEndpoints(for: custom)
+                .map { ($0.name, $0.url) }
+        )
+        XCTAssertEqual(byName["skaha"], "https://src.example.org/skaha/availability")
+        XCTAssertEqual(byName["vospace"], "https://src.example.org/cavern/availability")
+        XCTAssertEqual(byName["cadc-tap"], "https://archive.example.org/argus/availability")
+        XCTAssertEqual(byName["cadc-registry"], "https://src.example.org/reg/availability")
+        // VizieR mirrors stay global.
+        XCTAssertEqual(byName["vizier-cds-unistra"], "https://tap.cds.unistra.fr/tap/availability")
+    }
+
+    /// The Settings ▸ Endpoints "Test Connections" self-test scopes to the
+    /// configured deployment services only: filtering out `vizierMirrors`
+    /// (deployment-independent global infrastructure) leaves exactly the five
+    /// deployment probes and none of the mirror names. Pins the tab's
+    /// probe-scope contract — `Endpoint` being Equatable is what makes the
+    /// `!mirrors.contains($0)` filter possible.
+    func testDeploymentEndpointsFilterExcludesVizieRMirrors() {
+        let mirrors = GetServiceHealthTool.vizierMirrors
+        let scoped = GetServiceHealthTool.deploymentEndpoints(for: APIEndpoints())
+            .filter { !mirrors.contains($0) }
+        let names = Set(scoped.map(\.name))
+        XCTAssertEqual(names, ["cadc-auth", "cadc-registry", "cadc-tap", "cadc-resolver", "vospace", "skaha"])
+        for mirror in mirrors {
+            XCTAssertFalse(names.contains(mirror.name),
+                           "self-test scope must exclude VizieR mirror \(mirror.name)")
+        }
+    }
+
     // MARK: - classify() pure function
 
     func test2xxIsOk() {
@@ -83,21 +139,19 @@ final class GetServiceHealthTests: XCTestCase {
             name: "n", host: "h", statusCode: 200, latencyMs: 42
         )
         XCTAssertEqual(s.status, "ok")
+        XCTAssertTrue(s.ok)
         XCTAssertEqual(s.latencyMs, 42)
         XCTAssertNil(s.message)
     }
 
-    /// 4xx ⇒ "ok" — host reachable, just no `/availability`
-    /// endpoint implemented (or it needs auth). The agent
-    /// shouldn't treat 404 on the probe path as "the service
-    /// is down."
-    func test4xxIsOkWithMessage() {
+    /// 404 is NOT healthy (Windows 1.3.3 honesty) — probing the wrong
+    /// path (e.g. AC base URL) must not report ok.
+    func test404IsDegradedNotOk() {
         let s = GetServiceHealthTool.classify(
             name: "n", host: "h", statusCode: 404, latencyMs: 13
         )
-        XCTAssertEqual(s.status, "ok",
-                       "4xx must read as host-reachable; the /availability endpoint just isn't implemented")
-        XCTAssertNotNil(s.message)
+        XCTAssertEqual(s.status, "degraded")
+        XCTAssertFalse(s.ok)
         XCTAssertTrue(s.message?.contains("404") ?? false)
     }
 
@@ -107,6 +161,7 @@ final class GetServiceHealthTests: XCTestCase {
         )
         XCTAssertEqual(s.status, "ok",
                        "401 means the host is up; we just didn't include credentials on the probe")
+        XCTAssertTrue(s.ok)
         XCTAssertTrue(s.message?.contains("401") ?? false)
     }
 
@@ -133,6 +188,36 @@ final class GetServiceHealthTests: XCTestCase {
         XCTAssertEqual(s.status, "degraded")
     }
 
+    // MARK: - ATS skip (F13)
+
+    /// A plaintext-http endpoint is reported "skipped" (not "down") on
+    /// Apple platforms, without a network round-trip — ATS would block it
+    /// regardless of the mirror's real health.
+    func testPlaintextHTTPProbeIsSkipped() async {
+        let httpEndpoint = GetServiceHealthTool.Endpoint(
+            name: "vizier-china-vo", host: "vizier.china-vo.org",
+            url: "http://vizier.china-vo.org/tap/availability")
+        // A session that would fail loudly if actually used — proves the
+        // skip returns before any request.
+        let output = await GetServiceHealthTool.runCanonicalProbes(
+            endpoints: [httpEndpoint], perProbeBudget: 1)
+        let service = output.services.first
+        XCTAssertEqual(service?.status, "skipped")
+        XCTAssertNil(service?.latencyMs)
+        XCTAssertTrue(service?.message?.contains("Transport Security") ?? false)
+    }
+
+    func testHTTPSProbeIsNotSkipped() async {
+        // An https endpoint is NOT short-circuited — it actually probes
+        // (and, offline in CI, comes back "down", never "skipped").
+        let httpsEndpoint = GetServiceHealthTool.Endpoint(
+            name: "vizier-cds-unistra", host: "tap.cds.unistra.fr",
+            url: "https://tap.cds.unistra.fr/tap/availability")
+        let output = await GetServiceHealthTool.runCanonicalProbes(
+            endpoints: [httpsEndpoint], perProbeBudget: 1)
+        XCTAssertNotEqual(output.services.first?.status, "skipped")
+    }
+
     // MARK: - Tool surface
 
     /// The tool must pass through the synthetic probe verbatim —
@@ -141,10 +226,11 @@ final class GetServiceHealthTests: XCTestCase {
     func testToolReturnsProbeOutputVerbatim() async throws {
         let synthetic = GetServiceHealthTool.Output(
             services: [
-                .init(name: "fake", host: "fake.example", status: "ok", latencyMs: 5, message: nil),
-                .init(name: "broken", host: "broken.example", status: "down", latencyMs: nil, message: "DNS fail"),
+                .init(name: "fake", host: "fake.example", status: "ok", ok: true, latencyMs: 5, message: nil),
+                .init(name: "broken", host: "broken.example", status: "down", ok: false, latencyMs: nil, message: "DNS fail"),
             ],
-            probeStartedISO: "2026-05-15T12:00:00Z"
+            probeStartedISO: "2026-05-15T12:00:00Z",
+            healthyCount: 1
         )
         let tool = GetServiceHealthTool(probe: { synthetic })
         let out = try await tool.handle(EmptyArgs(), context: ctx())
@@ -152,5 +238,11 @@ final class GetServiceHealthTests: XCTestCase {
         XCTAssertEqual(out.services.first?.name, "fake")
         XCTAssertEqual(out.services.last?.message, "DNS fail")
         XCTAssertEqual(out.probeStartedISO, "2026-05-15T12:00:00Z")
+        XCTAssertEqual(out.healthyCount, 1)
+    }
+
+    func testCanonicalEndpointsIncludeAuthWhoAmI() {
+        let auth = GetServiceHealthTool.canonicalEndpoints.first { $0.name == "cadc-auth" }
+        XCTAssertEqual(auth?.url, APIEndpoints().whoAmIURL)
     }
 }

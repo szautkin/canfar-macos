@@ -10,6 +10,11 @@ struct StorageNewFolderSheet: View {
     var model: StorageBrowserModel
     @Binding var isPresented: Bool
     @State private var folderName = ""
+    @FocusState private var nameFieldFocused: Bool
+
+    private var isNameEmpty: Bool {
+        folderName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -17,25 +22,35 @@ struct StorageNewFolderSheet: View {
                 .font(.headline)
             TextField("Folder name", text: $folderName)
                 .textFieldStyle(.roundedBorder)
+                .focused($nameFieldFocused)
+                .onSubmit { createFolder() }
             HStack {
                 Button("Cancel") {
                     folderName = ""
                     isPresented = false
                 }
                 .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button("Create") {
-                    Task {
-                        await model.createFolder(name: folderName)
-                        folderName = ""
-                        isPresented = false
-                    }
+                    createFolder()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(folderName.trimmingCharacters(in: .whitespaces).isEmpty)
+                .keyboardShortcut(.defaultAction)
+                .disabled(isNameEmpty)
             }
         }
         .padding()
         .frame(width: 300)
+        .onAppear { nameFieldFocused = true }
+    }
+
+    private func createFolder() {
+        guard !isNameEmpty else { return }
+        Task {
+            await model.createFolder(name: folderName)
+            folderName = ""
+            isPresented = false
+        }
     }
 }

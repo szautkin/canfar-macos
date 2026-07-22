@@ -11,6 +11,9 @@ struct ObservationDetailView: View {
     var model: ResearchModel
     @Environment(\.openURL) private var openURL
     @State private var showDeleteConfirm = false
+    /// True when the downloaded FITS file is a spectral cube, so the Open
+    /// button can name the Cube Viewer the router will actually pick.
+    @State private var isCube = false
 
     var body: some View {
         ScrollView {
@@ -55,7 +58,11 @@ struct ObservationDetailView: View {
                     } label: {
                         let ext = observation.localURL.pathExtension.lowercased()
                         if FileHelper.isFITS(ext) {
-                            Label("Open in FITS Viewer", systemImage: "star.circle")
+                            if isCube {
+                                Label("Open in Cube Viewer", systemImage: "cube")
+                            } else {
+                                Label("Open in FITS Viewer", systemImage: "star.circle")
+                            }
                         } else {
                             Label("Open File", systemImage: "doc")
                         }
@@ -64,6 +71,15 @@ struct ObservationDetailView: View {
                     .controlSize(.small)
                     .disabled(!observation.fileExists)
                     .keyboardShortcut("o")
+                    .task(id: observation.localURL) {
+                        // Name the viewer the router will pick (same header sniff).
+                        guard observation.fileExists,
+                              FileHelper.isFITS(observation.localURL.pathExtension.lowercased()) else {
+                            isCube = false
+                            return
+                        }
+                        isCube = await AppState.fitsIsCube(observation.localURL)
+                    }
 
                     Button {
                         model.revealInFinder(observation)
@@ -134,7 +150,7 @@ struct ObservationDetailView: View {
                         metadataRow("Size", SharedFormatters.bytes(size))
                     }
                     metadataRow("Downloaded", formatDate(observation.downloadedAt))
-                    metadataRow("Exists", observation.fileExists ? "Yes" : "Missing")
+                    metadataRow("Exists", observation.fileExists ? String(localized: "Yes") : String(localized: "Missing"))
                 }
 
                 Divider()
@@ -162,13 +178,13 @@ struct ObservationDetailView: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary))
     }
 
-    private func metadataRow(_ label: String, _ value: String) -> some View {
+    private func metadataRow(_ label: LocalizedStringKey, _ value: String) -> some View {
         HStack(alignment: .top) {
             Text(label)
                 .font(.caption.bold())
-                .frame(width: 120, alignment: .trailing)
+                .frame(width: 110, alignment: .trailing)
                 .foregroundStyle(.secondary)
-            Text(value.isEmpty ? "-" : value)
+            Text(value.isEmpty ? String(localized: "-") : value)
                 .font(.caption)
                 .textSelection(.enabled)
             Spacer()
@@ -177,8 +193,6 @@ struct ObservationDetailView: View {
     }
 
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy HH:mm"
-        return formatter.string(from: date)
+        date.formatted(date: .abbreviated, time: .shortened)
     }
 }

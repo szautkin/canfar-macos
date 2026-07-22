@@ -25,6 +25,11 @@ final class FITSWCSProjectionTests: XCTestCase {
         XCTAssertEqual(makeTransform(ctype1: "RA---SIN", ctype2: "DEC--SIN").projection, .sin)
         XCTAssertEqual(makeTransform(ctype1: "RA---STG", ctype2: "DEC--STG").projection, .stg)
         XCTAssertEqual(makeTransform(ctype1: "RA---ZEA", ctype2: "DEC--ZEA").projection, .zea)
+        // A trailing "-SIP" distortion marker must not hide the base
+        // projection (regression: it used to resolve to "SIP" → linear,
+        // discarding the spherical transform on wide-field/TESS headers).
+        XCTAssertEqual(makeTransform(ctype1: "RA---TAN-SIP", ctype2: "DEC--TAN-SIP").projection, .tan)
+        XCTAssertEqual(makeTransform(ctype1: "RA---SIN-SIP", ctype2: "DEC--SIN-SIP").projection, .sin)
         // Unknown code → linear fallback.
         XCTAssertEqual(makeTransform(ctype1: "RA---CAR", ctype2: "DEC--CAR").projection, .linear)
         // Mismatched axes → linear fallback (defensive).

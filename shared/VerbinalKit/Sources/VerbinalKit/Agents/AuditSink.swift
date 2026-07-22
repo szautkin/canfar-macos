@@ -34,6 +34,23 @@ public struct LoggingAuditSink: AuditSink {
     }
 }
 
+/// Sink that forwards each recorded entry to a closure. Used to push a
+/// live signal to the UI (the agent-activity snackbar) on every tool
+/// dispatch — reads included — since `CapturingAuditSink` is pull-only.
+/// The closure runs on whatever executor `record` was called from (the
+/// router actor); implementations hop to their own actor as needed.
+public struct ClosureAuditSink: AuditSink {
+    private let onRecord: @Sendable (AuditEntry) -> Void
+
+    public init(onRecord: @escaping @Sendable (AuditEntry) -> Void) {
+        self.onRecord = onRecord
+    }
+
+    public func record(_ entry: AuditEntry) {
+        onRecord(entry)
+    }
+}
+
 /// Test/debug sink that captures entries in memory.
 public final class CapturingAuditSink: AuditSink, @unchecked Sendable {
     private let lock = NSLock()

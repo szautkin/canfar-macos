@@ -7,20 +7,30 @@
 import SwiftUI
 
 /// Root of the Cube Viewer feature — its own landing-tile destination, fully
-/// separate from the FITS viewer. Owns one `CubeViewerModel` and opens a cube
-/// from the file picker, a dropped file, or a URL handed in via `AppState`.
+/// separate from the FITS viewer. Renders the app-owned `CubeViewerModel`
+/// and opens a cube from the file picker, a dropped file, or a URL handed
+/// in via `AppState`.
 struct CubeViewerRootView: View {
     @Environment(AppState.self) private var appState
-    @State private var model = CubeViewerModel()
+
+    /// App-owned (see `AppState.cubeViewer`): the loaded cube survives
+    /// navigating away and back, and the agent tools steer the same model.
+    private var model: CubeViewerModel { appState.cubeViewer }
+    private var tabHost: CubeTabHostModel { appState.cubeTabHost }
 
     var body: some View {
-        Group {
-            if model.isLoading {
-                loadingView
-            } else if model.hasData {
-                CubeViewerView(model: model)
-            } else {
-                emptyState
+        VStack(spacing: 0) {
+            if tabHost.tabs.count > 1 {
+                cubeTabs
+            }
+            Group {
+                if model.isLoading {
+                    loadingView
+                } else if model.hasData {
+                    CubeViewerView(model: model)
+                } else {
+                    emptyState
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -37,7 +47,7 @@ struct CubeViewerRootView: View {
         .task(id: appState.pendingCubeURL) {
             guard let url = appState.pendingCubeURL else { return }
             appState.pendingCubeURL = nil
-            await model.open(url: url)
+            await tabHost.openFile(url: url)
         }
         .task(id: model.toast) {
             guard model.toast != nil else { return }
@@ -46,8 +56,36 @@ struct CubeViewerRootView: View {
         }
     }
 
+    private var cubeTabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 2) {
+                ForEach(Array(tabHost.tabs.enumerated()), id: \.offset) { index, tab in
+                    HStack(spacing: 3) {
+                        Button(tab.fileName.isEmpty ? String(localized: "Untitled") : tab.fileName) {
+                            tabHost.activeTabIndex = index
+                        }
+                        .buttonStyle(.plain)
+                        if tabHost.tabs.count > 1 {
+                            Button { tabHost.closeTab(at: index) } label: {
+                                Image(systemName: "xmark").font(.caption2)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 7).padding(.vertical, 4)
+                    .background(index == tabHost.activeTabIndex ? Color.accentColor.opacity(0.15) : .clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+            }
+            .padding(.horizontal, 5)
+        }
+        .frame(height: 29)
+        .background(.bar)
+    }
+
     private var emptyState: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 20) {
             VStack(spacing: 8) {
                 Image(systemName: "cube.transparent")
                     .font(.system(size: 50)).foregroundStyle(.secondary)
@@ -118,8 +156,8 @@ struct CubeViewerRootView: View {
         if let toast = model.toast {
             Text(toast)
                 .font(.callout)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
                 .background(.regularMaterial, in: Capsule())
                 .overlay(Capsule().strokeBorder(.quaternary))
                 .padding(.bottom, 24)
@@ -134,14 +172,14 @@ private struct CubeGuideView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Cube Viewer Guide").font(.title2.bold())
                 Spacer()
                 Button("Done") { dismiss() }
             }
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 12) {
                     section("The loop", [
                         "Open a cube — the tile, drag-and-drop, or the AI agent.",
                         "Scrub channels in Slice; tune Window + Stretch for contrast.",
@@ -165,11 +203,12 @@ private struct CubeGuideView: View {
         .frame(width: 460, height: 420)
     }
 
-    private func section(_ title: String, _ items: [String]) -> some View {
+    private func section(_ title: LocalizedStringKey, _ items: [LocalizedStringKey]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.headline)
-            ForEach(items, id: \.self) { item in
-                Text("•  \(item)").font(.callout).foregroundStyle(.secondary)
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                (Text(verbatim: "•  ") + Text(item))
+                    .font(.callout).foregroundStyle(.secondary)
             }
         }
     }

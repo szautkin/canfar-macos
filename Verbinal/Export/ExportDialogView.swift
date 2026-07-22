@@ -269,7 +269,7 @@ struct ExportDialogView: View {
             completedBundleURL = bundleURL
             onComplete?(bundleURL)
         } else {
-            errorMessage = exportService.lastError ?? "Export failed"
+            errorMessage = exportService.lastError ?? String(localized: "Export failed")
         }
     }
 
@@ -279,9 +279,9 @@ struct ExportDialogView: View {
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        panel.title = "Choose Export Destination"
-        panel.message = "A timestamped folder will be created inside the selected directory."
-        panel.prompt = "Export Here"
+        panel.title = String(localized: "Choose Export Destination")
+        panel.message = String(localized: "A timestamped folder will be created inside the selected directory.")
+        panel.prompt = String(localized: "Export Here")
 
         let fm = FileManager.default
         if let iCloud = fm.url(forUbiquityContainerIdentifier: nil)?
@@ -311,7 +311,7 @@ struct ExportDialogView: View {
             let remotePath = try await onVOSpaceUpload(url)
             uploadedRemotePath = remotePath
         } catch {
-            errorMessage = "VOSpace upload failed: \(error.localizedDescription)"
+            errorMessage = String(localized: "VOSpace upload failed: \(error.localizedDescription)")
         }
     }
 }

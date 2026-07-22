@@ -35,11 +35,15 @@ public actor AIToolRouter {
     /// returns a synchronous applied result, not a queued proposal.
     /// `nil` preserves the strict proposal-strip flow.
     private let autoApplyHook: AutoApplyHook?
+    /// Test seam: overrides `dispatchCeiling(for:)` for every verb class
+    /// so the hard-deadline path can be exercised in milliseconds.
+    private let dispatchCeilingOverride: TimeInterval?
 
     public init(
         tools: [any AITool],
         auditSink: any AuditSink = LoggingAuditSink(),
-        autoApplyHook: AutoApplyHook? = nil
+        autoApplyHook: AutoApplyHook? = nil,
+        dispatchCeilingOverride: TimeInterval? = nil
     ) {
         var table: [String: any AITool] = [:]
         var metadata: [String: ToolMetadata] = [:]
@@ -63,6 +67,7 @@ public actor AIToolRouter {
         self.externalManifest = externalManifest
         self.auditSink = auditSink
         self.autoApplyHook = autoApplyHook
+        self.dispatchCeilingOverride = dispatchCeilingOverride
     }
 
     /// Manifest as seen by an external (MCP) client. Filters out tools
@@ -76,9 +81,56 @@ public actor AIToolRouter {
         manifest
     }
 
+    /// Hard per-dispatch ceiling by verb class. Deliberately ABOVE every
+    /// inner watchdog (`withToolTimeout` reads top out at 120s,
+    /// `withApplierTimeout` writes at 600s) so the inner, better-worded
+    /// timeouts fire first; this is the backstop for work that ignores
+    /// cancellation and defeats the task-group-based watchdogs.
+    static func dispatchCeiling(for verbClass: VerbClass) -> TimeInterval {
+        switch verbClass {
+        case .read, .viewState, .proposalLifecycle, .undo:
+            return 150
+        case .semanticWrite, .destructive:
+            return 660
+        }
+    }
+
     /// Run a tool. The bridge is expected to map a JSON-RPC `tools/call`
     /// onto this method.
+    ///
+    /// Bounded by a HARD wall-clock deadline (`dispatchCeiling`): at the
+    /// deadline the caller gets a typed `backendError` immediately, the
+    /// tool task is cancelled and orphaned, and the server stays
+    /// responsive. Without this, a non-cancellable wedge (stalled mmap
+    /// read, CPU-bound render) held the serve loop for minutes and every
+    /// queued request timed out client-side (2026-07-21 Mac QA, F5).
     public func dispatch(
+        name: String,
+        rawArguments: Data,
+        context: AIToolContext
+    ) async -> ToolResult {
+        let verbClass = metadata[name]?.verbClass ?? .read
+        let ceiling = dispatchCeilingOverride ?? Self.dispatchCeiling(for: verbClass)
+        let deadlineHit = DeadlineFlag()
+        let result = await withHardDeadline(
+            seconds: ceiling,
+            onDeadline: {
+                deadlineHit.set()
+                return ToolResult.failed(.backendError(
+                    "\(name) exceeded the \(Int(ceiling))s dispatch deadline — the app-side operation was asked to cancel and may still be finishing in the background. The server stays responsive; check state with a read tool before retrying."))
+            },
+            work: { await self.dispatchInner(name: name, rawArguments: rawArguments, context: context) }
+        )
+        if deadlineHit.value {
+            emitAudit(name: name, args: rawArguments, context: context,
+                      outcome: .failed(tag: "dispatchDeadline"),
+                      verbClass: verbClass,
+                      durationMS: Int(ceiling * 1000))
+        }
+        return result
+    }
+
+    private func dispatchInner(
         name: String,
         rawArguments: Data,
         context: AIToolContext
@@ -148,10 +200,12 @@ public actor AIToolRouter {
                         let body = (try? JSONEncoder().encode(ack)) ?? Data()
                         return .data(body)
                     } catch {
-                        // The applier threw — leave the proposal in the
-                        // queue so the strip can show it; the user
-                        // decides whether to retry or reject. Audit
+                        // The applier threw — withdraw the optimistic
+                        // proposal so a deterministically failing write
+                        // can't linger in the queue only to fail again.
+                        // Mirrors the budget-cap path below. Audit
                         // records the failure.
+                        _ = await context.proposals.withdraw(proposal.id)
                         emitAudit(name: name, args: rawArguments, context: context,
                                   outcome: .failed(tag: "autoApplyFailed"),
                                   verbClass: meta.verbClass,
@@ -209,5 +263,22 @@ public actor AIToolRouter {
 
     private func msSince(_ start: Date) -> Int {
         Int(Date().timeIntervalSince(start) * 1000.0)
+    }
+}
+
+/// Lock-guarded flag set from the deadline racer (off-actor) and read
+/// back on the router after the race resolves.
+private final class DeadlineFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var flag = false
+    func set() {
+        lock.lock()
+        flag = true
+        lock.unlock()
+    }
+    var value: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return flag
     }
 }

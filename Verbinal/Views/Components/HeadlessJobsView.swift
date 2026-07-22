@@ -91,9 +91,7 @@ struct HeadlessJobsView: View {
                 }
 
                 if model.hasError {
-                    Label(model.errorMessage, systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                    InlineErrorLabel(message: model.errorMessage)
                 }
             }
         }

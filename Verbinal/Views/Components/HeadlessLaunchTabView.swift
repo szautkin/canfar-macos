@@ -109,25 +109,37 @@ struct HeadlessLaunchTabView: View {
                 gpuOptions: gpuOptions
             )
 
-            HStack {
-                Spacer()
-                Button {
-                    onLaunch()
-                } label: {
+        }
+        .formStyle(.grouped)
+        #if os(macOS)
+        .fixedSize(horizontal: false, vertical: true)
+        #else
+        .scrollDisabled(true)
+        #endif
+
+        // Same primary-action treatment as the Standard/Advanced tabs
+        // (centered, prominent, large) — the three tabs of one launch
+        // form must not present their CTA three different ways.
+        HStack {
+            Spacer()
+            Button {
+                onLaunch()
+            } label: {
+                HStack {
                     if model.isLaunching {
                         ProgressView()
-                            .scaleEffect(0.7)
-                            .frame(width: 20)
+                            .controlSize(.small)
                     } else {
-                        Label(
-                            model.replicas > 1 ? "Launch \(model.replicas) Replicas" : "Launch Job",
-                            systemImage: "play.fill"
-                        )
+                        Image(systemName: "play.fill")
                     }
+                    Text(model.replicas > 1 ? "Launch \(model.replicas) Replicas" : "Launch Job")
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!model.canLaunch)
+                .padding(.horizontal, 24)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(!model.canLaunch || model.isLaunching)
+            Spacer()
         }
     }
 }

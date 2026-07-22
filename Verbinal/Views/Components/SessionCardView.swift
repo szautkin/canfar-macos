@@ -50,7 +50,7 @@ struct SessionCardView: View {
                 Text(verbatim: SessionDisplay.localizedStatus(session.status))
                     .font(.caption2)
                     .fontWeight(.semibold)
-                    .padding(.horizontal, 7)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 2)
                     .background(statusColor.opacity(0.15))
                     .foregroundStyle(statusColor)
@@ -77,14 +77,16 @@ struct SessionCardView: View {
                     Label("RAM: \(session.memoryAllocated)", systemImage: "memorychip")
                 }
                 if !session.gpuAllocated.isEmpty && session.gpuAllocated != "0" {
-                    Label("GPU: \(session.gpuAllocated)", systemImage: "rectangle.stack")
+                    // Not `rectangle.stack` — that glyph is the Active
+                    // Sessions list header; one symbol, one meaning.
+                    Label("GPU: \(session.gpuAllocated)", systemImage: "bolt.fill")
                 }
                 Spacer()
                 if !session.isFixedResources {
                     Text("FLEX")
                         .font(.system(.caption2, weight: .bold))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
                         .background(Color.blue.opacity(0.15))
                         .foregroundStyle(.blue)
                         .clipShape(Capsule())
@@ -110,40 +112,13 @@ struct SessionCardView: View {
             // session-extension is a chore the user must opt
             // into; in our app a session is more often opened
             // than renewed.
-            HStack(spacing: 10) {
-                Spacer()
-                cardActionButton(
-                    label: "Open",
-                    systemImage: "arrow.up.forward.square.fill",
-                    role: nil,
-                    enabled: session.isRunning,
-                    help: "Open this session in your browser",
-                    action: onOpen
-                )
-                cardActionButton(
-                    label: "Renew",
-                    systemImage: "clock.arrow.circlepath",
-                    role: nil,
-                    enabled: session.isRunning,
-                    help: "Extend this session's lifetime",
-                    action: onRenew
-                )
-                cardActionButton(
-                    label: "Events",
-                    systemImage: "doc.text.fill",
-                    role: nil,
-                    enabled: true,
-                    help: "View Kubernetes events and container logs",
-                    action: onEvents
-                )
-                cardActionButton(
-                    label: "Delete",
-                    systemImage: "trash.fill",
-                    role: .destructive,
-                    enabled: true,
-                    help: "Stop and delete this session",
-                    action: onDelete
-                )
+            // Three cards in a minimum-width window leave ~160pt per card —
+            // not enough for four labeled actions. ViewThatFits drops the
+            // text labels (icons keep .help + accessibility labels) before
+            // the row can compress or clip.
+            ViewThatFits(in: .horizontal) {
+                actionRow(compact: false)
+                actionRow(compact: true)
             }
             .font(.caption)
         }
@@ -165,19 +140,64 @@ struct SessionCardView: View {
     private var typeIcon: String { SessionDisplay.typeIcon(session.sessionType) }
     private func formatTime(_ s: String) -> String { SessionDisplay.formatTime(s) }
 
+    @ViewBuilder
+    private func actionRow(compact: Bool) -> some View {
+        HStack(spacing: compact ? 8 : 10) {
+            Spacer()
+            cardActionButton(
+                label: "Open",
+                systemImage: "arrow.up.forward.square.fill",
+                role: nil,
+                enabled: session.isRunning,
+                compact: compact,
+                help: "Open this session in your browser",
+                action: onOpen
+            )
+            cardActionButton(
+                label: "Renew",
+                systemImage: "clock.arrow.circlepath",
+                role: nil,
+                enabled: session.isRunning,
+                compact: compact,
+                help: "Extend this session's lifetime",
+                action: onRenew
+            )
+            cardActionButton(
+                label: "Events",
+                systemImage: "doc.text.fill",
+                role: nil,
+                enabled: true,
+                compact: compact,
+                help: "View Kubernetes events and container logs",
+                action: onEvents
+            )
+            cardActionButton(
+                label: "Delete",
+                systemImage: "trash.fill",
+                role: .destructive,
+                enabled: true,
+                compact: compact,
+                help: "Stop and delete this session",
+                action: onDelete
+            )
+        }
+    }
+
     /// Circular icon-on-tint action button matching the original
     /// CANFAR Science Portal's session-card affordance style.
     /// Filled SF Symbol on a 28pt circular `accent` (or `red`
     /// for destructive) background, with the action label kept
     /// underneath in caption2 — gives users coming from the web
     /// UI the recognisable visual language plus the discoverable
-    /// macOS-native text label below.
+    /// macOS-native text label below. `compact` drops the text
+    /// label when the card is too narrow for four labeled actions.
     @ViewBuilder
     private func cardActionButton(
         label: LocalizedStringKey,
         systemImage: String,
         role: ButtonRole?,
         enabled: Bool,
+        compact: Bool,
         help: LocalizedStringKey,
         action: @escaping () -> Void
     ) -> some View {
@@ -191,9 +211,11 @@ struct SessionCardView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white)
                 }
-                Text(label)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                if !compact {
+                    Text(label)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
             .contentShape(Rectangle())
             .opacity(enabled ? 1.0 : 0.4)

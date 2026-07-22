@@ -15,8 +15,8 @@ import Foundation
 /// router consults `shouldAutoApply` whenever a write tool returns
 /// `.proposed`. On `true`, it calls `apply(proposalID:)` and converts
 /// the outcome to `.data` (success) or `.failed` (apply threw — the
-/// proposal stays in the queue so the user can retry / reject from
-/// the strip).
+/// router withdraws the optimistic proposal so a deterministically
+/// failing write can't linger in the queue only to fail again).
 ///
 /// Why not bake the policy into the router: trust state lives in the
 /// app layer (per-client preferences, persisted toggles, UI revoke

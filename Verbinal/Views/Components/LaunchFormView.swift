@@ -78,9 +78,7 @@ struct LaunchFormView: View {
                 }
 
                 if model.hasError {
-                    Label(model.errorMessage, systemImage: "xmark.circle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                    InlineErrorLabel(message: model.errorMessage)
                 }
             }
         }
@@ -177,9 +175,7 @@ struct LaunchFormView: View {
             }
         )
         if hm.hasError {
-            Label(hm.errorMessage, systemImage: "xmark.circle")
-                .font(.caption)
-                .foregroundStyle(.red)
+            InlineErrorLabel(message: hm.errorMessage)
         }
         if hm.launchSuccess, !hm.lastLaunchedJobIDs.isEmpty {
             Label(hm.launchStatus, systemImage: "checkmark.circle.fill")
@@ -362,11 +358,14 @@ struct LaunchFormView: View {
     }
 
     /// Small inline star button used next to Portal default pickers.
+    /// `LocalizedStringKey` tips so call-site literals hit the catalog;
+    /// explicit accessibility label + value because an icon-only toggle
+    /// otherwise announces nothing meaningful to VoiceOver.
     @ViewBuilder
     private func defaultStar(
         isOn: Bool,
-        tipOn: String,
-        tipOff: String,
+        tipOn: LocalizedStringKey,
+        tipOff: LocalizedStringKey,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -376,6 +375,8 @@ struct LaunchFormView: View {
         }
         .buttonStyle(.borderless)
         .help(isOn ? tipOn : tipOff)
+        .accessibilityLabel("Save as default")
+        .accessibilityValue(isOn ? Text("On") : Text("Off"))
     }
 
     // MARK: - Advanced Form

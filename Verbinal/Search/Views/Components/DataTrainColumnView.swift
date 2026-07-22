@@ -50,7 +50,7 @@ struct DataTrainColumnView: View {
                                 HStack(spacing: 4) {
                                     Image(systemName: selection.contains(option) ? "checkmark.square.fill" : "square")
                                         .font(.caption)
-                                        .foregroundColor(selection.contains(option) ? .accentColor : .secondary)
+                                        .foregroundStyle(selection.contains(option) ? Color.accentColor : Color.secondary)
                                     Text(option)
                                         .font(.caption)
                                         .lineLimit(1)

@@ -37,9 +37,21 @@ final class AuthLifecycleController {
     private(set) var userInfo: UserInfo?
     var statusMessage: String = ""
 
+    /// True when a validation was skipped or failed for network reasons and
+    /// should re-run automatically when connectivity returns. Consumed (set
+    /// to false) at the top of each retry so one path change triggers at
+    /// most one attempt; only a genuine offline outcome re-arms it.
+    private(set) var awaitingConnectivity = false
+
     /// Single in-flight reauth task. Coalesces concurrent 401s so two
     /// races don't both run `validateToken`.
     private var tokenExpiryTask: Task<Void, Never>?
+
+    /// Injected connectivity probe. `AppState` wires this to its
+    /// `NetworkPathMonitor`; tests inject a stub. The `.unknown` default
+    /// never short-circuits — we only skip network calls on a *definite*
+    /// offline signal, so untested/unwired paths behave exactly as before.
+    var connectivityProvider: @MainActor () -> NetworkPathMonitor.Connectivity = { .unknown }
 
     // MARK: Hooks
 
@@ -55,6 +67,8 @@ final class AuthLifecycleController {
         self.authService = authService
     }
 
+    private enum ReauthOutcome { case success, sessionExpired, offline }
+
     // MARK: Lifecycle
 
     /// Validate the stored Keychain token at app launch.
@@ -66,25 +80,56 @@ final class AuthLifecycleController {
             return
         }
 
+        // Definitely offline — don't fire a doomed request that would hold
+        // the validating state (toolbar spinner, locked tiles) until the
+        // request timeout. The connectivity-change retry path picks this
+        // up automatically.
+        guard connectivityProvider() != .unsatisfied else {
+            awaitingConnectivity = true
+            statusMessage = "You're offline. Verbinal will sign you in when the connection returns."
+            return
+        }
+
         isLoading = true
         statusMessage = "Validating session..."
 
         switch await authService.validateToken(token) {
         case .valid(let validatedUsername):
+            awaitingConnectivity = false
             let name = storedUsername ?? validatedUsername
             let info = await authService.getUserInfo(username: name)
             apply(username: name, userInfo: info)
         case .expired:
-            if await silentReauth() {
+            switch await silentReauth() {
+            case .success:
                 isLoading = false
                 return
+            case .offline:
+                awaitingConnectivity = true
+                statusMessage = "You're offline. Verbinal will sign you in when the connection returns."
+            case .sessionExpired:
+                awaitingConnectivity = false
+                statusMessage = "Session expired. Please log in again."
             }
-            statusMessage = "Session expired. Please log in again."
         case .networkError(let message):
-            statusMessage = "Cannot connect: \(message). Please try again."
+            awaitingConnectivity = true
+            statusMessage = "Cannot connect: \(message). Verbinal will retry when the network returns."
         }
 
         isLoading = false
+    }
+
+    /// Re-run the stored-token validation after a network-path change.
+    /// Call on every path transition; the guards make it a no-op unless a
+    /// previous validation was deferred/failed for network reasons and the
+    /// path is now satisfied. `awaitingConnectivity` is consumed *before*
+    /// the attempt so a failure re-arms it (via `validateStoredToken`'s
+    /// offline branches) rather than looping.
+    func retryValidationIfConnectivityRestored() async {
+        guard awaitingConnectivity, !isAuthenticated, !isLoading,
+              connectivityProvider() == .satisfied else { return }
+        awaitingConnectivity = false
+        await validateStoredToken()
     }
 
     /// Mark the session authenticated and fire `onAuthenticated`. Called
@@ -110,9 +155,19 @@ final class AuthLifecycleController {
         tokenExpiryTask = Task { [weak self] in
             guard let self else { return }
             defer { self.tokenExpiryTask = nil }
-            if await self.silentReauth() { return }
-            self.statusMessage = "Session expired. Please log in again."
-            self.onSessionExpired?()
+            switch await self.silentReauth() {
+            case .success:
+                return
+            case .offline:
+                // Being offline is not session expiry: keep the Keychain
+                // token, skip the login sheet, and let the connectivity
+                // retry path restore the session when the network returns.
+                self.awaitingConnectivity = true
+                self.statusMessage = "You appear to be offline. Verbinal will reconnect automatically."
+            case .sessionExpired:
+                self.statusMessage = "Session expired. Please log in again."
+                self.onSessionExpired?()
+            }
         }
     }
 
@@ -148,10 +203,16 @@ final class AuthLifecycleController {
     ///
     /// Falls through to the strict failure path (clear Keychain,
     /// surface "session expired") only when we have neither a valid
-    /// token NOR usable stored credentials.
-    private func silentReauth() async -> Bool {
+    /// token NOR usable stored credentials. `.offline` means neither
+    /// success nor failure could be established — callers must keep the
+    /// stored credentials and defer to the connectivity retry path.
+    private func silentReauth() async -> ReauthOutcome {
         let (storedToken, storedUsername) = KeychainStorage.loadToken()
-        guard let token = storedToken, let storedUser = storedUsername else { return false }
+        guard let token = storedToken, let storedUser = storedUsername else { return .sessionExpired }
+
+        // Definitely offline — nothing to gain from a doomed request, and
+        // the caller must not mistake the failure for real expiry.
+        guard connectivityProvider() != .unsatisfied else { return .offline }
 
         statusMessage = "Renewing session..."
         isLoading = true
@@ -161,12 +222,12 @@ final class AuthLifecycleController {
         case .valid(let canonical):
             apply(username: canonical, userInfo: nil)
             isLoading = false
-            return true
+            return .success
         case .networkError:
             // Don't burn the password on a transient network blip —
-            // bail out, user retries when connectivity returns.
+            // bail out, the connectivity retry path resumes the session.
             isLoading = false
-            return false
+            return .offline
         case .expired:
             break
         }
@@ -187,7 +248,13 @@ final class AuthLifecycleController {
                     userInfo: result.userInfo
                 )
                 isLoading = false
-                return true
+                return .success
+            }
+            // Transient network / 5xx — keep credentials; connectivity
+            // retry (or the next user action) will try again.
+            if !result.isCredentialRejection {
+                isLoading = false
+                return .offline
             }
             // Password rejected by CADC — likely user changed it.
             // Clear it so we don't keep retrying with a known-bad
@@ -201,7 +268,7 @@ final class AuthLifecycleController {
         userInfo = nil
         isAuthenticated = false
         isLoading = false
-        return false
+        return .sessionExpired
     }
 
     /// Tear the session down (called by `AppState.logout`). Cancels any

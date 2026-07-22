@@ -105,7 +105,7 @@ struct ImageDiscoverySheet: View {
                 Button {
                     Task { await model.clearAllFailures() }
                 } label: {
-                    Label("Clear \(model.failedCount) error\(model.failedCount == 1 ? "" : "s")",
+                    Label("Clear ^[\(model.failedCount) Error](inflect: true)",
                           systemImage: "xmark.circle")
                         .font(.caption)
                 }
@@ -169,7 +169,7 @@ struct ImageDiscoverySheet: View {
             Button("Close") { dismiss() }
                 .keyboardShortcut(.cancelAction)
                 .help("Close this dialog. In-flight probes continue in the background; reopen later to see their results.")
-            Button("Use this image") {
+            Button("Use This Image") {
                 if let id = model.selectedImageID {
                     commitAndClose(id)
                 }

@@ -25,7 +25,9 @@ struct ContentView: View {
     /// gate's blocking contract, it just appears once the gate is gone.
     @AppStorage(WelcomePreferences.seenVersionKey) private var welcomeSeenVersion = 0
     #endif
-    @State private var searchModel = SearchFormModel()
+    /// App-owned (hoisted onto `AppState` so the search-control agent
+    /// tools steer the same live instance the UI renders).
+    private var searchModel: SearchFormModel { appState.searchModel }
     @State private var researchModel = ResearchModel()
     #if os(macOS)
     // StorageBrowserModel, FileBrowserModel, and FileBrowserPanel live in
@@ -34,6 +36,22 @@ struct ContentView: View {
     @State private var storageBrowserModel: StorageBrowserModel?
     @State private var fileBrowserModel = FileBrowserModel()
     @State var showFileBrowser = false
+
+    private struct ViewerChoiceItem: Identifiable {
+        let url: URL
+        var id: String { url.path }
+    }
+
+    private var viewerChoiceItem: Binding<ViewerChoiceItem?> {
+        Binding(
+            get: {
+                appState.pendingViewerChoiceURL.map { ViewerChoiceItem(url: $0) }
+            },
+            set: { newValue in
+                appState.pendingViewerChoiceURL = newValue?.url
+            }
+        )
+    }
     #endif
 
     private func initResearchModel() {
@@ -65,6 +83,15 @@ struct ContentView: View {
 
                 mainContent
             }
+
+            // Global agent-activity snackbar — floats above every mode
+            // (hosted here, not on `modeBody`, so it survives mode
+            // cross-fades). Sits below the legal gate's zIndex so the
+            // Terms wall still covers it at first launch.
+            #if os(macOS)
+            AgentActivitySnackbar(live: appState.agentsService.liveActivity)
+                .zIndex(0.5)
+            #endif
 
             // Block all app interaction behind the Terms gate until accepted.
             // The EXIT fades (the gate's accept buttons flip `hasAcceptedCurrent`
@@ -130,6 +157,12 @@ struct ContentView: View {
                 #endif
             }
         }
+        #if os(macOS)
+        .sheet(item: viewerChoiceItem) { item in
+            ViewerChoiceSheet(url: item.url)
+                .environment(appState)
+        }
+        #endif
         .task {
             initResearchModel()
             await appState.initialize()
@@ -139,6 +172,21 @@ struct ContentView: View {
             appState.pendingSearchCoordinate = nil
             searchModel.setSearchCoordinates(ra: coord.ra, dec: coord.dec)
         }
+        // `load_saved_search` bridge — same shape as the coordinate bridge
+        // above: the agent stamps a pending load, we apply it to the live
+        // form/editor here (the only place that owns `searchModel`).
+        .task(id: appState.pendingSearchLoad) {
+            guard let load = appState.pendingSearchLoad else { return }
+            appState.pendingSearchLoad = nil
+            switch load.kind {
+            case .snapshot(let snapshot):
+                // loadFromSnapshot selects the form tab itself.
+                searchModel.loadFromSnapshot(snapshot)
+            case .adql(let adql):
+                searchModel.resultsModel.adqlQuery = adql
+                searchModel.selectedTab = .adql
+            }
+        }
         // Bridge local `showAbout` binding (used by toolbars) to the unified
         // activeSheet on AppState. When toolbars set `showAbout = true`, we
         // route it to `activeSheet = .about` and reset the local flag.
@@ -147,6 +195,12 @@ struct ContentView: View {
                 appState.activeSheet = .about
                 showAbout = false
             }
+        }
+        // Resume a connectivity-deferred sign-in as soon as the network
+        // path recovers (launch while offline parks the auth check instead
+        // of hanging on the spinner).
+        .onChange(of: appState.networkPath.changeCount) { _, _ in
+            appState.networkPathDidChange()
         }
         // Mirror the environment Reduce-Motion flag into AppState so the
         // navigation methods can consult it from non-view contexts.
@@ -190,17 +244,13 @@ struct ContentView: View {
         // through the fade and undercutting it. The toolbar now stays put and
         // its title cross-fades in place (`hoistedModeToolbar`).
         //
-        // Exception: while the auth check runs on the landing mode there is no
-        // chrome yet — show the bare spinner so the toolbar doesn't appear over
-        // a "Checking authentication…" state.
-        if appState.currentMode == .landing && appState.isLoading {
-            // Auth check on landing has no chrome yet — bare spinner.
-            VStack {
-                Spacer()
-                ProgressView("Checking authentication...")
-                Spacer()
-            }
-        } else if showsModeChrome {
+        // The launch auth check does NOT gate this view: the landing renders
+        // immediately (most tiles need no auth), the landing toolbar shows a
+        // spinner + "Validating session…" while the check runs, and the
+        // auth-gated tiles stay locked until it lands. The old full-screen
+        // "Checking authentication…" interstitial blocked the whole app on
+        // one network round-trip.
+        if showsModeChrome {
             VStack(spacing: 0) {
                 hoistedModeToolbar
                 Divider()
@@ -257,6 +307,8 @@ struct ContentView: View {
             makeModeToolbar(title: "Cube Viewer", showAbout: $showAbout)
         case .aiGuide:
             makeModeToolbar(title: "AI Guide", showAbout: $showAbout)
+        case .workflows:
+            makeModeToolbar(title: String(localized: "Wf_PageTitle"), showAbout: $showAbout)
         }
     }
     #endif
@@ -305,6 +357,12 @@ struct ContentView: View {
                 #else
                 macOSOnlyPlaceholder("AI Guide")
                 #endif
+            case .workflows:
+                #if os(macOS)
+                WorkflowsView()
+                #else
+                macOSOnlyPlaceholder("Workflows")
+                #endif
             }
         }
         .transition(modeTransition)
@@ -329,7 +387,8 @@ struct ContentView: View {
             availableModules: buildGlobalExportModules(),
             exportService: researchModel.exportService,
             onVOSpaceUpload: { bundleURL in
-                let vospace = VOSpaceBrowserService(network: appState.network)
+                let vospace = VOSpaceBrowserService(
+                    network: appState.network, endpoints: appState.endpoints)
                 return try await researchModel.exportService.uploadBundleToVOSpace(
                     bundleURL: bundleURL,
                     vospace: vospace,
@@ -579,7 +638,8 @@ struct ContentView: View {
     private func initStorageModel() {
         guard storageBrowserModel == nil, !appState.username.isEmpty else { return }
         let model = StorageBrowserModel(
-            service: VOSpaceBrowserService(network: appState.network),
+            service: VOSpaceBrowserService(
+                network: appState.network, endpoints: appState.endpoints),
             username: appState.username
         )
         model.onOpenFile = { [weak appState] url in

@@ -28,7 +28,7 @@ struct FITSHeaderPanel: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("Header")
-                    .font(.caption.bold())
+                    .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text("\(filteredCards.count) cards")
                     .font(.caption2)
@@ -36,32 +36,44 @@ struct FITSHeaderPanel: View {
             }
             .padding(.horizontal, 8)
 
-            TextField("Filter keywords...", text: $filterText)
+            TextField("Filter keywords…", text: $filterText)
                 .textFieldStyle(.roundedBorder)
                 .font(.caption2)
                 .padding(.horizontal, 8)
 
-            List(Array(filteredCards.enumerated()), id: \.offset) { _, card in
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack {
-                        Text(card.keyword)
-                            .font(.system(.caption2, design: .monospaced).bold())
-                            .frame(width: 70, alignment: .leading)
-                        Text("=")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        Text(card.value)
-                            .font(.system(.caption2, design: .monospaced))
-                            .textSelection(.enabled)
-                    }
-                    if !card.comment.isEmpty {
-                        Text("/ \(card.comment)")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+            if filteredCards.isEmpty {
+                if filterText.isEmpty {
+                    Text("No header cards")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ContentUnavailableView.search(text: filterText)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else {
+                List(Array(filteredCards.enumerated()), id: \.offset) { _, card in
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack {
+                            Text(card.keyword)
+                                .font(.system(.caption2, design: .monospaced).bold())
+                                .frame(width: 70, alignment: .leading)
+                            Text("=")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                            Text(card.value)
+                                .font(.system(.caption2, design: .monospaced))
+                                .textSelection(.enabled)
+                        }
+                        if !card.comment.isEmpty {
+                            Text("/ \(card.comment)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
+                .listStyle(.plain)
             }
-            .listStyle(.plain)
         }
     }
 }

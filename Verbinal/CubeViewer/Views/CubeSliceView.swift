@@ -55,6 +55,7 @@ struct CubeSliceView: View {
                 }
             }
             .contentShape(Rectangle())
+            .help("Drag to pan, pinch to zoom, double-click to reset, click to probe a spectrum")
             .simultaneousGesture(
                 MagnificationGesture()
                     .onChanged { zoom = max(1, min(lastZoom * $0, 20)) }
@@ -132,6 +133,8 @@ struct CubeSliceView: View {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .help("Close spectrum")
+                    .accessibilityLabel("Close spectrum")
                 }
                 if let spectrum = model.probeSpectrum, spectrum.contains(where: { $0.isFinite }) {
                     CubeSpectrumView(spectrum: spectrum, channel: model.channel) { model.setChannel($0) }

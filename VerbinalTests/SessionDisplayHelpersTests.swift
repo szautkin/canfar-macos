@@ -103,7 +103,9 @@ final class SessionDisplayHelpersTests: XCTestCase {
         XCTAssertEqual(SessionDisplay.typeIcon("notebook"), "book.pages")
         XCTAssertEqual(SessionDisplay.typeIcon("desktop"), "desktopcomputer")
         XCTAssertEqual(SessionDisplay.typeIcon("carta"), "map")
-        XCTAssertEqual(SessionDisplay.typeIcon("contributed"), "shippingbox")
+        // "shared.with.you", not "shippingbox" — the latter is the image/package
+        // catalogue glyph; one symbol, one meaning.
+        XCTAssertEqual(SessionDisplay.typeIcon("contributed"), "shared.with.you")
         XCTAssertEqual(SessionDisplay.typeIcon("firefly"), "flame")
     }
 

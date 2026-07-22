@@ -54,6 +54,7 @@ struct AIGuideFocusPanel: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
+                    .help("Close \(category.title)")
                     .accessibilityLabel("Close \(category.title)")
                 }
                 Text(category.summary)

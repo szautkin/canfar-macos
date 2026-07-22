@@ -113,7 +113,7 @@ struct FileListView: View {
         HStack(spacing: 0) {
             Image(systemName: node.icon)
                 .frame(width: 30)
-                .foregroundColor(node.isContainer ? .accentColor : .secondary)
+                .foregroundStyle(node.isContainer ? Color.accentColor : Color.secondary)
 
             Text(node.name)
                 .font(.caption)

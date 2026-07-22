@@ -58,6 +58,24 @@ final class SearchResultsModel {
     /// Number of pages in the current filtered result given `rowsPerPage`.
     private(set) var totalPages: Int = 1
 
+    // MARK: - Agent detail-request bridge
+
+    /// Pending "open this row's detail sheet" request from the
+    /// `open_observation_detail` agent tool. Same shape as the AppState
+    /// pending bridges: the sheet is `@State` local to `SearchResultsView`,
+    /// so the view consumes this via `.task(id:)`. The `id` keeps repeat
+    /// requests for the same row re-firing.
+    struct PendingDetailRequest: Equatable {
+        let id = UUID()
+        let rowID: String
+    }
+    var pendingDetailRequest: PendingDetailRequest?
+
+    /// Look up a loaded row by its stable id (obsid / publisherID / synthetic).
+    func result(forID id: String) -> SearchResult? {
+        results.first { $0.id == id }
+    }
+
     // MARK: - Filter, sort, pagination state
 
     /// Per-column filter text. Empty entries are removed eagerly to keep the map tight.

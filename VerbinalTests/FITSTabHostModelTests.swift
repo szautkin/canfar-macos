@@ -71,4 +71,35 @@ final class FITSTabHostModelTests: XCTestCase {
         host.closeTab(at: 99)
         XCTAssertEqual(host.tabCount, 1, "Out-of-bounds close should be no-op")
     }
+
+    // MARK: - syncUsesImpreciseWCS
+
+    func testSyncWCSWarning_OffWhenNoSyncMode() {
+        let host = FITSTabHostModel()
+        _ = host.addTab()
+        _ = host.addTab()
+        // No sync mode active → never warns, even with WCS-less tabs.
+        XCTAssertFalse(host.syncUsesImpreciseWCS)
+    }
+
+    func testSyncWCSWarning_OffWithSingleTab() {
+        let host = FITSTabHostModel()
+        _ = host.addTab()
+        host.linkedState.linkCrosshair = true
+        // A lone tab has nothing to sync against.
+        XCTAssertFalse(host.syncUsesImpreciseWCS)
+    }
+
+    func testSyncWCSWarning_OnWhenLinkedTabLacksWCS() {
+        let host = FITSTabHostModel()
+        _ = host.addTab()
+        _ = host.addTab()
+        // Empty tabs have no WCS; with a sync mode on that is imprecise.
+        host.linkedState.linkCrosshair = true
+        XCTAssertTrue(host.syncUsesImpreciseWCS)
+        // Also fires for the zoom-sync mode.
+        host.linkedState.linkCrosshair = false
+        host.linkedState.linkZoom = true
+        XCTAssertTrue(host.syncUsesImpreciseWCS)
+    }
 }

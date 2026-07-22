@@ -75,6 +75,15 @@ public actor MCPBridgeService {
     private var clientID: String?
     private var initialized: Bool = false
 
+    /// Concurrently-running `tools/call` handlers (see `routeFrame`).
+    /// Keyed so completed handlers can remove themselves; drained with
+    /// cancellation when the transport closes.
+    private var inFlightCalls: [UUID: Task<Void, Never>] = [:]
+    /// Cap on concurrent `tools/call` handling per connection. Beyond
+    /// this, frames fall back to inline (serial) handling — natural
+    /// backpressure instead of unbounded task growth.
+    private static let maxConcurrentCalls = 8
+
     public init(
         router: AIToolRouter,
         identity: ServerIdentity,
@@ -96,11 +105,44 @@ public actor MCPBridgeService {
         do {
             for try await frame in transport.incoming {
                 if frame.isEmpty { continue } // skip ndjson keep-alives
-                await handleIncoming(frame: frame, transport: transport)
+                await routeFrame(frame, transport: transport)
             }
         } catch {
             logger.notice("transport ended: \(String(describing: error), privacy: .public)")
         }
+        cancelInFlightCalls()
+    }
+
+    /// Route one frame: `tools/call` runs in its OWN task so a slow tool
+    /// can never head-of-line-block the next request on this connection
+    /// (the 2026-07-21 Mac QA wedge: one stalled search queued every
+    /// later call — including `get_current_view` — into the client's
+    /// 4-minute timeout). Out-of-order JSON-RPC responses are legal
+    /// (matched by id) and the transport contract guarantees concurrent
+    /// `send` calls don't interleave frame bytes. Lifecycle methods
+    /// (`initialize`, `tools/list`, …) stay inline: they're cheap and
+    /// order-sensitive.
+    private func routeFrame(_ frame: Data, transport: any MCPTransport) async {
+        let method = ((try? JSONSerialization.jsonObject(with: frame)) as? [String: Any])?["method"] as? String
+        guard method == "tools/call", inFlightCalls.count < Self.maxConcurrentCalls else {
+            await handleIncoming(frame: frame, transport: transport)
+            return
+        }
+        let key = UUID()
+        inFlightCalls[key] = Task { [weak self] in
+            guard let self else { return }
+            await self.handleIncoming(frame: frame, transport: transport)
+            await self.finishInFlightCall(key)
+        }
+    }
+
+    private func finishInFlightCall(_ key: UUID) {
+        inFlightCalls[key] = nil
+    }
+
+    private func cancelInFlightCalls() {
+        for task in inFlightCalls.values { task.cancel() }
+        inFlightCalls.removeAll()
     }
 
     // MARK: - Dispatch

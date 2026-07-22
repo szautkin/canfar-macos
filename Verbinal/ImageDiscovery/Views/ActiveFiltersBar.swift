@@ -33,11 +33,12 @@ struct ActiveFiltersBar: View {
                         model.query = PackageQuery()
                         model.typeFilter = nil
                     } label: {
-                        Label("Clear all", systemImage: "xmark.circle")
+                        Label("Clear All", systemImage: "xmark.circle")
                             .font(.caption2)
                     }
                     .buttonStyle(.borderless)
-                    .help("Clear every active filter")
+                    .keyboardShortcut(.delete, modifiers: .command)
+                    .help("Clear every active filter (⌘⌫)")
                 }
                 FilterChipFlow(spacing: 6) {
                     ForEach(chips) { chip in

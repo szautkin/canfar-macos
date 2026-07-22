@@ -17,8 +17,20 @@ import VerbinalKit
 /// forms without each one having to construct an `APIEndpoints` instance.
 /// New callers in other modules should depend on `APIEndpoints` directly.
 enum TAPConfig {
-    /// Shared instance — single source of truth for archive URLs.
-    static let endpoints = APIEndpoints()
+    /// Shared instance — single source of truth for archive URLs. Configured
+    /// once at launch from the effective endpoint settings (`AppState.init`,
+    /// which runs before any view model exists), so an overridden or
+    /// registry-resolved `archiveBaseURL` redirects every TAP/resolver/
+    /// DataLink/pkg call. The CANFAR default covers tests and previews that
+    /// never call `configure`.
+    /// `nonisolated(unsafe)` documents the set-once-before-use discipline —
+    /// same pattern as `KeychainStorage.service`.
+    nonisolated(unsafe) private(set) static var endpoints = APIEndpoints()
+
+    /// Call once at app launch, before any Search/Research model is built.
+    static func configure(_ endpoints: APIEndpoints) {
+        Self.endpoints = endpoints
+    }
 
     static var baseURL: String { endpoints.archiveBaseURL }
     static var syncPath: String { "/argus/sync" }

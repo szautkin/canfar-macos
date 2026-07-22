@@ -90,17 +90,9 @@ struct PackageFilterPane: View {
                                binding: apkBinding,
                                selected: model.query.apk)
 
-                if !model.query.isEmpty || model.typeFilter != nil {
-                    Section {
-                        Button(role: .destructive) {
-                            model.query = PackageQuery()
-                            model.typeFilter = nil
-                        } label: {
-                            Label("Clear all filters", systemImage: "xmark.circle")
-                        }
-                        .keyboardShortcut(.delete, modifiers: .command)
-                    }
-                }
+                // No duplicate clear-filters control here — the active-filters
+                // chips bar owns "Clear All" (and its ⌘⌫ shortcut); two
+                // identical actions in one sheet diluted both.
             }
             .listStyle(.sidebar)
         }

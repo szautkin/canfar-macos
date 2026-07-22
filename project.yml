@@ -14,8 +14,8 @@ settings:
     SWIFT_VERSION: "5.9"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
-    MARKETING_VERSION: "1.3.0"
-    CURRENT_PROJECT_VERSION: "12"
+    MARKETING_VERSION: "1.3.2"
+    CURRENT_PROJECT_VERSION: "14"
     PRODUCT_NAME: Verbinal
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: A4ABW5VD88
@@ -64,6 +64,11 @@ targets:
       - path: Verbinal
         excludes:
           - "**/*.py"
+          # Bundled as a folder resource below so Bundle looks under Workflows/.
+          - "Workflows/Resources/**"
+      - path: Verbinal/Workflows/Resources/Workflows
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit
@@ -109,12 +114,17 @@ targets:
           - "CubeViewer/**"
           - "Storage/**"
           - "MCP/**"
+          # Bundled as a folder resource below so Bundle looks under Workflows/.
+          - "Workflows/Resources/**"
           # Service-layer files that exist outside the macOS-only feature
           # dirs but depend on types defined inside them. Keeping them in
           # the iOS target breaks the link.
           - "Research/Services/ResearchExporter.swift"
           - "Search/Services/SearchExporter.swift"
           - "ImageDiscovery/Services/ServiceConformances.swift"
+      - path: Verbinal/Workflows/Resources/Workflows
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit

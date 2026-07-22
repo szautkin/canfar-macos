@@ -20,8 +20,7 @@ struct SessionEventsSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Events / Logs: \(title)")
-                .font(.title3)
-                .fontWeight(.semibold)
+                .font(.headline)
 
             Picker("", selection: $selectedTab) {
                 Text("Events").tag(0)
@@ -51,6 +50,7 @@ struct SessionEventsSheet: View {
                 Button("Close") {
                     dismiss()
                 }
+                .buttonStyle(.bordered)
                 .keyboardShortcut(.cancelAction)
                 .help("Close this dialog (⎋)")
             }

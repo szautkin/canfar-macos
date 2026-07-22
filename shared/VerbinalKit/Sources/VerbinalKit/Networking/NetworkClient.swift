@@ -50,6 +50,24 @@ public actor NetworkClient {
         "canfar.net",
     ]
 
+    /// Build the bearer-token host allow-list from effective endpoints,
+    /// always unioned with the classic CADC/CANFAR families so a partial
+    /// override cannot lock the app out of the defaults mid-session.
+    public static func trustedHostSuffixes(from endpoints: APIEndpoints) -> [String] {
+        var hosts = Set(defaultCADCHosts.map { $0.lowercased() })
+        let urls = [
+            endpoints.loginBaseURL, endpoints.skahaBaseURL, endpoints.acBaseURL,
+            endpoints.storageBaseURL, endpoints.registryBaseURL,
+            endpoints.archiveBaseURL, endpoints.externalBaseURL,
+        ]
+        for urlString in urls {
+            if let host = URL(string: urlString)?.host?.lowercased(), !host.isEmpty {
+                hosts.insert(host)
+            }
+        }
+        return hosts.sorted()
+    }
+
     // MARK: - Mutable configuration
     //
     // Concurrency contract: `NetworkClient` is an `actor`, so the config
@@ -103,12 +121,20 @@ public actor NetworkClient {
 
     // MARK: - HTTP Methods
 
+    /// `allowAuthRetry: false` opts a request out of the `onUnauthorized`
+    /// interceptor. REQUIRED for the auth flow's own requests (/whoami
+    /// validation, /login): the interceptor's recovery path issues those
+    /// very requests, so letting them re-enter it on 401 recurses without
+    /// bound — the launch-time symptom is an app stuck on "Checking
+    /// authentication…" hammering /whoami forever.
     public func get(
         _ urlString: String,
         accept: String? = nil,
-        additionalHeaders: [String: String]? = nil
+        additionalHeaders: [String: String]? = nil,
+        timeout: TimeInterval = 60,
+        allowAuthRetry: Bool = true
     ) async throws -> (Data, HTTPURLResponse) {
-        var request = try makeRequest(urlString, method: "GET")
+        var request = try makeRequest(urlString, method: "GET", timeout: timeout)
         if let accept {
             request.setValue(accept, forHTTPHeaderField: "Accept")
         }
@@ -117,11 +143,11 @@ public actor NetworkClient {
                 request.setValue(v, forHTTPHeaderField: k)
             }
         }
-        return try await execute(request)
+        return try await execute(request, allowAuthRetry: allowAuthRetry)
     }
 
-    public func getText(_ urlString: String) async throws -> String {
-        let (data, _) = try await get(urlString)
+    public func getText(_ urlString: String, timeout: TimeInterval = 60, allowAuthRetry: Bool = true) async throws -> String {
+        let (data, _) = try await get(urlString, timeout: timeout, allowAuthRetry: allowAuthRetry)
         return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
@@ -134,13 +160,15 @@ public actor NetworkClient {
         _ urlString: String,
         formData: [String: String],
         headers: [String: String]? = nil,
-        timeout: TimeInterval = 60
+        timeout: TimeInterval = 60,
+        allowAuthRetry: Bool = true
     ) async throws -> (Data, HTTPURLResponse) {
         try await post(
             urlString,
             formPairs: formData.map { ($0.key, $0.value) },
             headers: headers,
-            timeout: timeout
+            timeout: timeout,
+            allowAuthRetry: allowAuthRetry
         )
     }
 
@@ -158,7 +186,8 @@ public actor NetworkClient {
         // pools serialise quota / catalogue lookups against K8s). 60s
         // is a patience floor that lets honest slowness through while
         // still bounding pathological hangs.
-        timeout: TimeInterval = 60
+        timeout: TimeInterval = 60,
+        allowAuthRetry: Bool = true
     ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "POST", timeout: timeout)
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
@@ -176,7 +205,7 @@ public actor NetworkClient {
             }
         }
 
-        return try await execute(request)
+        return try await execute(request, allowAuthRetry: allowAuthRetry)
     }
 
     /// Stricter than `.urlQueryAllowed`: also encodes `&`, `=`, `+`, `?`
@@ -191,6 +220,20 @@ public actor NetworkClient {
 
     private static func formEncode(_ s: String) -> String {
         s.addingPercentEncoding(withAllowedCharacters: formAllowed) ?? s
+    }
+
+    /// POST with a raw body (e.g. VOSpace setNode XML documents — the
+    /// UpdateNodeAction is a POST, unlike CreateNodeAction's PUT).
+    public func post(
+        _ urlString: String,
+        body: Data,
+        contentType: String,
+        timeout: TimeInterval = 60
+    ) async throws -> (Data, HTTPURLResponse) {
+        var request = try makeRequest(urlString, method: "POST", timeout: timeout)
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        return try await execute(request)
     }
 
     public func delete(_ urlString: String) async throws -> HTTPURLResponse {

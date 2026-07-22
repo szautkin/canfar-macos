@@ -40,7 +40,7 @@ struct MCPSetupWizard: View {
     enum Step: Int, CaseIterable {
         case enable, pickClient, configure, verify
 
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
             case .enable:     "Allow AI agents"
             case .pickClient: "Pick your client"
@@ -68,7 +68,7 @@ struct MCPSetupWizard: View {
             case .claudeCode:    "terminal"
             }
         }
-        var blurb: String {
+        var blurb: LocalizedStringKey {
             switch self {
             case .claudeDesktop: "The desktop chat app. Verbinal can update its config for you."
             case .claudeCode:    "The CLI coding agent. Run one command to register Verbinal."
@@ -139,7 +139,7 @@ struct MCPSetupWizard: View {
                 }
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Step \(step.rawValue + 1) of \(Step.allCases.count): \(step.title)")
+            .accessibilityLabel("Step \(step.rawValue + 1) of \(Step.allCases.count): \(Text(step.title))")
         }
         .padding(20)
     }

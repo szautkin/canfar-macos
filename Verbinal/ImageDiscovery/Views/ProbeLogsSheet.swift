@@ -139,7 +139,7 @@ struct ProbeLogsSheet: View {
 
             Button("Close") { dismiss() }
                 .keyboardShortcut(.cancelAction)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .help("Close this dialog (⎋)")
         }
         .padding(.horizontal, 16)

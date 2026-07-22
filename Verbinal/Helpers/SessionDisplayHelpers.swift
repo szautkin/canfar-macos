@@ -74,7 +74,7 @@ enum SessionDisplay {
         case "notebook": return "book.pages"
         case "desktop": return "desktopcomputer"
         case "carta": return "map"
-        case "contributed": return "shippingbox"
+        case "contributed": return "shared.with.you"
         case "firefly": return "flame"
         default: return "questionmark.square"
         }

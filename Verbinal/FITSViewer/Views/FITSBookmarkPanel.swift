@@ -67,9 +67,14 @@ struct FITSBookmarkPanel: View {
             } else {
                 List(bookmarks) { bookmark in
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(bookmark.label)
-                            .font(.caption2.bold())
-                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(bookmark.label)
+                                .font(.caption2.bold())
+                                .lineLimit(1)
+                            if let attribution = bookmark.agentAttribution {
+                                AgentAttributionBadge(attribution: attribution)
+                            }
+                        }
                         Text(bookmark.formattedCoords)
                             .font(.system(.caption2, design: .monospaced))
                             .foregroundStyle(.secondary)

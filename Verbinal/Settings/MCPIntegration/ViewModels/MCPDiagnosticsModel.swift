@@ -108,8 +108,21 @@ final class MCPDiagnosticsModel {
     }
 
     private func sidecarCheck() -> DiagnosticCheck {
-        do {
-            let path = try SocketSidecar.read()
+        // Time-box the probe: Group Containers I/O can stall indefinitely
+        // when another Verbinal host holds the App Group (seen under
+        // concurrent XCTest runs). Never block Settings / the test host.
+        let box = SidecarProbeBox()
+        let sem = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .userInitiated).async {
+            box.result = Result { try SocketSidecar.read() }
+            sem.signal()
+        }
+        if sem.wait(timeout: .now() + .milliseconds(250)) == .timedOut {
+            return check("sidecar", "Sidecar published", .warn,
+                         "Sidecar probe timed out — App Group I/O may be wedged.")
+        }
+        switch box.result {
+        case .success(let path):
             if let live = agents.socketPath, path == live {
                 return check("sidecar", "Sidecar published", .pass, "Points at the live socket.")
             } else if agents.isRunning {
@@ -117,10 +130,18 @@ final class MCPDiagnosticsModel {
             } else {
                 return check("sidecar", "Sidecar published", .warn, "Sidecar present (\(path)) but listener not running.")
             }
-        } catch {
+        case .failure(let error):
             return check("sidecar", "Sidecar published", agents.isRunning ? .fail : .warn,
                          "Sidecar not readable: \(error).", fix: agents.isRunning ? .restartServer : nil)
+        case .none:
+            return check("sidecar", "Sidecar published", .warn, "Sidecar probe returned no result.")
         }
+    }
+
+    /// Tiny box so the time-boxed sidecar probe can hop threads without
+    /// capturing `self` or needing a lock beyond the semaphore.
+    private final class SidecarProbeBox: @unchecked Sendable {
+        var result: Result<String, Error>?
     }
 
     private func configCheck() -> DiagnosticCheck {

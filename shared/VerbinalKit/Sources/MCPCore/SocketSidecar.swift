@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import Darwin
 
 /// Discovery contract between the host app and the `canfar-mcp` helper.
 ///
@@ -134,17 +135,31 @@ public enum SocketSidecar {
     /// Read the socket path the host app last wrote. Probes `directories`
     /// in order; first hit wins. Tests pass a non-default list so a
     /// real running app's sidecar can't shadow the test's own writes.
+    ///
+    /// Uses a non-blocking POSIX open so a wedged App Group / Group
+    /// Containers mount (seen when concurrent XCTest hosts hold the
+    /// container) cannot stall the main thread on `Data(contentsOf:)`.
     public static func read(directories: [URL] = SocketSidecar.candidateDirectories()) throws -> String {
         for dir in directories {
             let url = dir.appendingPathComponent(fileName)
-            if let data = try? Data(contentsOf: url),
-               let line = String(data: data, encoding: .utf8) {
-                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmed.isEmpty else { throw Error.malformedSidecar }
-                return trimmed
-            }
+            guard let line = readLineNonBlocking(at: url) else { continue }
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { throw Error.malformedSidecar }
+            return trimmed
         }
         throw Error.sidecarMissing
+    }
+
+    /// Best-effort read that never blocks the caller for a stuck vnode.
+    private static func readLineNonBlocking(at url: URL) -> String? {
+        let path = url.path
+        let fd = path.withCString { open($0, O_RDONLY | O_NONBLOCK | O_CLOEXEC) }
+        guard fd >= 0 else { return nil }
+        defer { close(fd) }
+        var buffer = [UInt8](repeating: 0, count: 1024)
+        let n = Darwin.read(fd, &buffer, buffer.count)
+        guard n > 0 else { return nil }
+        return String(bytes: buffer.prefix(Int(n)), encoding: .utf8)
     }
 
     /// Atomically write the socket path. Called by the host app when its

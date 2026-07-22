@@ -113,6 +113,8 @@ final class CubeViewerModel: Identifiable {
     private(set) var probeSpectrum: [Float]?
     private(set) var probePoint: (x: Int, y: Int)?
     var probeUnavailableReason: String?
+    /// Controls the spectrum inspector requested by the toolbar or MCP.
+    var showSpectrumPanel = false
 
     private var renderRunning = false
     private var renderPending = false
@@ -339,14 +341,60 @@ final class CubeViewerModel: Identifiable {
     // MARK: - Camera
 
     func orbitCamera(dx: Float, dy: Float) {
+        cameraAnimationTask?.cancel()   // the human's drag wins over an agent move
         cameraAzimuth -= dx * 0.01
         cameraElevation = min(max(cameraElevation + dy * 0.01, -1.4), 1.4)
         lastCameraInteraction = Date()
     }
 
     func zoomCamera(_ delta: Float) {
+        cameraAnimationTask?.cancel()
         cameraDistance = min(max(cameraDistance * exp(delta), 0.5), 8)
         lastCameraInteraction = Date()
+    }
+
+    private var cameraAnimationTask: Task<Void, Never>?
+
+    /// Ease the camera to a target pose. Agent-driven moves ride this so
+    /// the user sees motion they can follow instead of a hard cut; a
+    /// user drag or zoom cancels it mid-flight (the human wins). Duration
+    /// ≤ 0.05 s applies instantly (the Reduce-Motion path). Targets are
+    /// clamped to the same bounds as the gesture handlers.
+    func animateCamera(
+        azimuth: Float? = nil,
+        elevation: Float? = nil,
+        distance: Float? = nil,
+        duration: TimeInterval = 0.6
+    ) {
+        cameraAnimationTask?.cancel()
+        lastCameraInteraction = Date()   // hold the idle auto-orbit off the move
+        let start = SIMD3<Float>(cameraAzimuth, cameraElevation, cameraDistance)
+        let target = SIMD3<Float>(
+            azimuth ?? cameraAzimuth,
+            min(max(elevation ?? cameraElevation, -1.4), 1.4),
+            min(max(distance ?? cameraDistance, 0.5), 8)
+        )
+        guard duration > 0.05 else {
+            cameraAzimuth = target.x
+            cameraElevation = target.y
+            cameraDistance = target.z
+            return
+        }
+        cameraAnimationTask = Task { [weak self] in
+            let steps = max(2, Int(duration * 60))
+            let stepMs = max(1, Int(duration * 1000) / steps)
+            for i in 1...steps {
+                guard let self, !Task.isCancelled else { return }
+                let t = Float(i) / Float(steps)
+                let eased = t * t * (3 - 2 * t)   // smoothstep ease-in-out
+                let pose = start + (target - start) * eased
+                self.cameraAzimuth = pose.x
+                self.cameraElevation = pose.y
+                self.cameraDistance = pose.z
+                self.lastCameraInteraction = Date()
+                try? await Task.sleep(for: .milliseconds(stepMs))
+            }
+        }
     }
 
     private func startAutoOrbitLoop() {

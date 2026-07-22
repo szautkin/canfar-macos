@@ -6,6 +6,7 @@
 
 import Foundation
 import Observation
+import VerbinalKit
 
 /// Orchestrates the search form: form state, target resolution, query building, search execution,
 /// and persistence (recent searches, saved queries).
@@ -38,6 +39,13 @@ final class SearchFormModel {
 
     // Debounce task for target resolution
     private var resolveTask: Task<Void, Never>?
+
+    /// One-shot attribution consumed by the next auto-saved recent
+    /// search. The agent-search wiring sets this before calling
+    /// `executeSearch()` so the resulting Recent Searches row carries the
+    /// agent badge; user-run searches leave it nil. Cleared on every
+    /// auto-save attempt so it can never leak onto a later user search.
+    var nextSearchAttribution: AgentAttribution?
 
     // Stores are constructed inside the @MainActor init body so the
     // strict-concurrency check doesn't reject parameter defaults
@@ -107,11 +115,47 @@ final class SearchFormModel {
         }
     }
 
+    /// Resolve the current target immediately (no debounce) and wait for
+    /// the outcome. The `set_search_form` agent tool uses this so an
+    /// immediate `execute` sees resolver coordinates the same way a user
+    /// who paused after typing would.
+    func resolveTargetNow() async {
+        resolveTask?.cancel()
+        let target = formState.target.trimmingCharacters(in: .whitespaces)
+        guard !target.isEmpty, formState.resolver != .none else {
+            resolverStatus = .idle
+            resolverResult = nil
+            return
+        }
+        resolverStatus = .resolving
+        do {
+            let result = try await resolverService.resolve(
+                target: target,
+                service: formState.resolver
+            )
+            resolverResult = result
+            if !result.coordsRA.isEmpty && !result.coordsDec.isEmpty {
+                resolverStatus = .resolved(ra: result.coordsRA, dec: result.coordsDec)
+            } else {
+                resolverStatus = .failed("No coordinates found")
+            }
+        } catch {
+            resolverResult = nil
+            resolverStatus = .failed(error.localizedDescription)
+        }
+    }
+
     // MARK: - Search (from form)
 
     func executeSearch() async {
         isSearching = true
         searchError = nil
+
+        // Consume the one-shot agent attribution up front and clear it
+        // unconditionally, so a failed search can't leak the stamp onto a
+        // later user-run search.
+        let attribution = nextSearchAttribution
+        nextSearchAttribution = nil
 
         let resolverCoords: (ra: String, dec: String)?
         if let result = resolverResult, !result.coordsRA.isEmpty {
@@ -135,11 +179,12 @@ final class SearchFormModel {
             )
             selectedTab = .results
 
-            // Auto-save to recent searches
+            // Auto-save to recent searches (attribution captured above).
             let snapshot = formState.toSnapshot()
             if snapshot != SearchFormSnapshot() {
                 let name = snapshot.autoName()
-                recentSearchStore.save(RecentSearch(name: name, formSnapshot: snapshot))
+                recentSearchStore.save(RecentSearch(
+                    name: name, formSnapshot: snapshot, agentAttribution: attribution))
             }
         } catch {
             searchError = error.localizedDescription

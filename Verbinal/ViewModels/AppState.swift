@@ -23,6 +23,7 @@ enum AppMode: Equatable {
     case fitsViewer
     case cubeViewer
     case aiGuide
+    case workflows
 }
 
 @Observable
@@ -61,11 +62,22 @@ final class AppState {
     /// GRDB-backed (v2 schema). Cross-platform store; the MCP wiring that
     /// consumes its snapshot is macOS-only.
     let aiGuideService = AIGuideService()
+    /// Shared by the Workflows screen and the MCP workflow tools.
+    let workflowStore = WorkflowStore()
 
     /// Live network connectivity monitor. UI subscribes via `@Bindable` to
     /// surface "network changed; retrying…" hints when in-flight CADC
     /// requests get cut by Wi-Fi → Ethernet transitions or VPN flips.
     let networkPath = NetworkPathMonitor()
+
+    /// User endpoint overrides (Settings ▸ Endpoints). Stored-property
+    /// default so `init()` can read it before any service is constructed.
+    let endpointSettings = EndpointSettingsService()
+
+    /// IVOA-registry endpoint resolution: cache, refresh state, and the
+    /// per-field precedence (override > resolved > default). Constructed
+    /// in `init()` because it wraps `endpointSettings`.
+    let endpointRegistry: EndpointRegistryService
 
     /// MCP server lifecycle. Off by default — the user opts in via
     /// Settings ▸ Agents. Read tools land in P4; until then the bridge
@@ -192,10 +204,24 @@ final class AppState {
     }
 
     init() {
-        let network = NetworkClient()
-        let endpoints = APIEndpoints()
+        // Effective endpoints: user override > cached registry resolution >
+        // CANFAR default, per field. Captured once here — every service
+        // holds this value for the process lifetime (edits relaunch).
+        let registry = EndpointRegistryService(settings: endpointSettings)
+        let endpoints = registry.effectiveEndpoints()
+        registry.activeAtLaunch = endpoints
+        // Bearer token may only go to hosts derived from the effective
+        // endpoints (plus the classic CADC/CANFAR families). Without this,
+        // a Settings ▸ Endpoints override never receives Authorization.
+        let network = NetworkClient(
+            trustedAuthHostSuffixes: NetworkClient.trustedHostSuffixes(from: endpoints)
+        )
+        self.endpointRegistry = registry
         self.network = network
         self.endpoints = endpoints
+        // Search/Research read endpoints through the TAPConfig static —
+        // configure it before any of their models exist.
+        TAPConfig.configure(endpoints)
         let authService = AuthService(network: network, endpoints: endpoints)
         self.authService = authService
         self.sessionService = SessionService(network: network, endpoints: endpoints)
@@ -237,6 +263,9 @@ final class AppState {
         }
         auth.onSessionExpired = { [weak self] in
             self?.showLoginSheet = true
+        }
+        auth.connectivityProvider = { [weak self] in
+            self?.networkPath.connectivity ?? .unknown
         }
 
         // Begin watching for network-path changes (Wi-Fi → Ethernet, VPN flip,
@@ -370,6 +399,35 @@ final class AppState {
     /// separate from the FITS viewer; this mirrors the `pendingFITSURL` bridge.
     var pendingCubeURL: URL?
 
+    /// Hoisted search model — same rationale as the viewer models below:
+    /// app-owned so it survives mode switches and gives the search-control
+    /// agent tools a live target (form fields, data train, results table,
+    /// ADQL editor) instead of the pending-handoff bridges alone. Cheap at
+    /// init: no network until a search or data-train load runs.
+    let searchModel = SearchFormModel()
+
+    #if os(macOS)
+    /// Hoisted viewer state. Previously each viewer root view owned its
+    /// model as `@State`, so navigating away tore the whole viewer down —
+    /// open tabs, stretch, crosshair, the loaded cube — and the agent
+    /// tools had nothing to steer. App-owned models survive mode switches
+    /// (the Windows client made these singletons for the same reason in
+    /// its 1.1.0) and give the viewer-control tools a stable target.
+    /// Cheap at init: both defer all heavy work (parsing, Metal) to open.
+    let fitsTabHost = FITSTabHostModel()
+    let cubeTabHost = CubeTabHostModel()
+    /// Compatibility façade for existing controls; always the active cube tab.
+    var cubeViewer: CubeViewerModel { cubeTabHost.activeTab }
+    /// Shared bookmark store: the panel and the agent bookmark tools must
+    /// mutate the same live instance (it persists to disk, but two
+    /// instances would not see each other's in-memory writes).
+    let fitsBookmarks = BookmarkStore()
+    /// User-granted security-scoped folder access, shared by the local
+    /// file browser and the agent's local-file tools so both can read the
+    /// same sandbox-approved folders (Pictures/Documents/etc.).
+    let localFolderAccess = LocalFolderAccessStore()
+    #endif
+
     /// Pending sky coordinates from FITS viewer crosshair → Search tab.
     /// Includes a unique `id` so `.task(id:)` always re-fires, even if the
     /// same sky position is searched twice in a row.
@@ -379,6 +437,21 @@ final class AppState {
         let dec: Double
     }
     var pendingSearchCoordinate: PendingCoordinate?
+
+    /// Pending saved-query / recent-search load → Search module (the
+    /// `load_saved_search` agent tool's bridge, mirroring
+    /// `pendingSearchCoordinate`): a recent search restores its full form
+    /// snapshot; a saved query lands its ADQL in the editor tab. The `id`
+    /// keeps `.task(id:)` re-firing on repeat loads of the same target.
+    struct PendingSearchLoad: Equatable {
+        let id = UUID()
+        enum Kind: Equatable {
+            case snapshot(SearchFormSnapshot)
+            case adql(String)
+        }
+        let kind: Kind
+    }
+    var pendingSearchLoad: PendingSearchLoad?
 
     enum AppAction {
         case openFITS(url: URL)
@@ -400,19 +473,39 @@ final class AppState {
         }
     }
 
-    /// Open a FITS file in the right viewer: cubes (NAXIS≥3) route to the Cube
-    /// Viewer, 2D images to the FITS Viewer. Detection reads only the header.
+    /// Pending NAXIS≥3 file awaiting the user's 2D vs 3D viewer choice
+    /// (Windows 1.3.1 parity). Presented as a sheet from ContentView.
+    var pendingViewerChoiceURL: URL?
+
+    /// Open a FITS file in the right viewer. Plain 2D images go to the FITS
+    /// Viewer; NAXIS≥3 files prompt for 2D vs Cube (spectral cubes default
+    /// to Cube). Detection reads only the header.
     func openAstronomyFITS(url: URL) {
         Task {
             if await Self.fitsIsCube(url) {
-                dispatch(.openCube(url: url))
+                await MainActor.run { pendingViewerChoiceURL = url }
             } else {
                 dispatch(.openFITS(url: url))
             }
         }
     }
 
-    private nonisolated static func fitsIsCube(_ url: URL) async -> Bool {
+    func openPendingViewerChoiceAsFITS() {
+        guard let url = pendingViewerChoiceURL else { return }
+        pendingViewerChoiceURL = nil
+        dispatch(.openFITS(url: url))
+    }
+
+    func openPendingViewerChoiceAsCube() {
+        guard let url = pendingViewerChoiceURL else { return }
+        pendingViewerChoiceURL = nil
+        dispatch(.openCube(url: url))
+    }
+
+    /// Header-only test for whether a FITS file is a spectral cube (NAXIS≥3),
+    /// so it routes to the Cube Viewer. Internal so the Research detail view can
+    /// label its Open button with the same decision the router will make.
+    nonisolated static func fitsIsCube(_ url: URL) async -> Bool {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         guard let source = try? LocalFileCubeSource(url: url),
@@ -467,9 +560,26 @@ final class AppState {
         }
     }
 
-    /// Called on app launch — delegates to the controller.
+    /// Called on app launch — delegates to the controller. Registry
+    /// endpoint resolution is fired off first but never awaited: launch
+    /// and auth always proceed on the endpoints captured at init.
     func initialize() async {
+        Task { [endpointRegistry] in
+            await endpointRegistry.refreshIfStale()
+        }
         await auth.validateStoredToken()
+    }
+
+    /// True when sign-in is parked waiting for connectivity to return.
+    /// Drives the offline hint + manual retry on the landing screen.
+    var authAwaitingConnectivity: Bool { auth.awaitingConnectivity }
+
+    /// Called by the view layer on every network-path change. Resumes a
+    /// connectivity-deferred sign-in once the path is satisfied; no-op
+    /// otherwise (guards live in the controller).
+    func networkPathDidChange() {
+        guard networkPath.connectivity == .satisfied else { return }
+        Task { await auth.retryValidationIfConnectivityRestored() }
     }
 
     /// Pass-through used by `LoginSheet` after a successful login. Forwards
@@ -544,7 +654,7 @@ final class AppState {
         let coord = ImageDiscoveryCoordinator(
             store: store,
             headless: headlessService,
-            vospace: VOSpaceBrowserService(network: network),
+            vospace: VOSpaceBrowserService(network: network, endpoints: endpoints),
             username: username,
             imageTypesLookup: typesLookup,
             registryAuthProvider: authProvider,

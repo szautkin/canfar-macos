@@ -96,6 +96,7 @@ struct FeaturesSheet: View {
             footer
         }
         .frame(width: 560, height: 560)
+        .onEscape { dismiss() }
     }
 
     // MARK: - Chrome
@@ -152,7 +153,7 @@ struct FeaturesSheet: View {
     /// sheet first keeps the Settings window from opening behind a modal.
     private var settingsLinkSlot: some View {
         SettingsLink {
-            Text("Settings")
+            Text("Open Settings")
         }
         .controlSize(.small)
         .simultaneousGesture(TapGesture().onEnded { dismiss() })

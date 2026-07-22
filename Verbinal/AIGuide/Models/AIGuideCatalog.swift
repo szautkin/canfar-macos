@@ -34,7 +34,9 @@ enum AIGuideCatalog {
         Category(id: "downloads",    title: "Downloads",          systemImage: "arrow.down.circle",
                  summary: "Pull observations into the local research archive."),
         Category(id: "fits",         title: "FITS",               systemImage: "square.stack.3d.up",
-                 summary: "Read FITS headers and WCS; open files in the viewer."),
+                 summary: "Read FITS headers and WCS; open, steer, and probe the viewer."),
+        Category(id: "cube",         title: "Cube Viewer",        systemImage: "cube.transparent",
+                 summary: "Open, steer, and probe the 3D spectral-cube viewer."),
         Category(id: "storage",      title: "Storage (VOSpace)",  systemImage: "externaldrive",
                  summary: "Browse, read, upload, and tidy files in VOSpace."),
         Category(id: "sessions",     title: "Sessions",           systemImage: "desktopcomputer",
@@ -49,6 +51,8 @@ enum AIGuideCatalog {
                  summary: "Steer the app's views and focus the search field."),
         Category(id: "control",      title: "Agent Control",      systemImage: "slider.horizontal.3",
                  summary: "Inspect and withdraw the agent's pending proposals."),
+        Category(id: "workflows",    title: "Workflows",          systemImage: "checklist",
+                 summary: "Follow and author reusable research protocols."),
     ]
 
     /// Fallback bucket for any tool not explicitly categorized.
@@ -69,12 +73,37 @@ enum AIGuideCatalog {
         "get_service_health": "foundational",
         // Search & Archive
         "search_observations": "search",
+        "export_search_results": "search",
+        "load_saved_search": "search",
+        "load_recent_search": "search",
+        "run_saved_query": "search",
         "vizier_cone_search": "search",
         "resolve_target": "search",
         "get_observation_caom2": "search",
         "get_data_links": "search",
         "get_preview_image": "search",
         "list_recent_searches": "search",
+        "rename_recent_search": "search",
+        "remove_recent_search": "search",
+        "clear_recent_searches": "search",
+        // Search form/results control (Windows wire names + Mac aliases)
+        "get_search_form": "search",
+        "set_search_form": "search",
+        "run_search": "search",
+        "reset_search_form": "search",
+        "get_search_constraints": "search",
+        "get_data_train_options": "search",
+        "set_search_constraints": "search",
+        "refresh_data_train": "search",
+        "set_adql_query": "search",
+        "set_adql_editor": "search",
+        "execute_adql_query": "search",
+        "select_search_tab": "search",
+        "quick_search": "search",
+        "get_search_results": "search",
+        "set_search_results_view": "search",
+        "set_results_view": "search",
+        "open_observation_detail": "search",
         // Saved Queries
         "list_saved_queries": "queries",
         "get_saved_query": "queries",
@@ -83,6 +112,7 @@ enum AIGuideCatalog {
         "delete_saved_query": "queries",
         // Research & Notes
         "list_downloaded_observations": "research",
+        "export_research_bundle": "research",
         "get_downloaded_observation": "research",
         "get_observation_notes": "research",
         "update_observation_note": "research",
@@ -96,16 +126,52 @@ enum AIGuideCatalog {
         "get_fits_header": "fits",
         "get_fits_wcs": "fits",
         "open_fits_file": "fits",
+        "get_fits_view": "fits",
+        "set_fits_view": "fits",
+        "fits_goto_coordinate": "fits",
+        "probe_fits_pixel": "fits",
+        "list_fits_bookmarks": "fits",
+        "save_fits_bookmark": "fits",
+        "delete_fits_bookmark": "fits",
+        // FITS viewer parity (UI parity)
+        "select_hdu": "fits",
+        "fits_auto_cut": "fits",
+        "start_blink": "fits",
+        "set_blink": "fits",
+        "stop_blink": "fits",
+        "blink_fits_tabs": "fits",
+        "switch_fits_tab": "fits",
+        "set_tab_sync": "fits",
+        "search_at_crosshair": "fits",
+        "export_fits_figure": "fits",
+        // Cube Viewer
+        "open_cube": "cube",
+        "get_cube_view": "cube",
+        "set_cube_view": "cube",
+        "set_cube_camera": "cube",
+        "probe_cube_spectrum": "cube",
+        "list_recent_cubes": "cube",
+        "show_cube_spectrum": "cube",
+        "get_cube_channel_profile": "cube",
+        "set_cube_transfer": "cube",
+        "switch_cube_tab": "cube",
+        "export_cube_figure": "cube",
         // Storage (VOSpace)
         "list_vospace_path": "storage",
         "get_vospace_node": "storage",
         "read_vospace_file": "storage",
         "upload_to_vospace": "storage",
         "upload_text_to_vospace": "storage",
+        "download_vospace_file": "storage",
         "download_from_vospace": "storage",
+        "create_vospace_folder": "storage",
         "vospace_mkdir": "storage",
         "delete_vospace_node": "storage",
         "clear_user_site": "storage",
+        "get_storage_quota": "storage",
+        "upload_file_to_vospace": "storage",
+        "set_vospace_acl": "storage",
+        "open_vospace_file": "storage",
         // Sessions
         "list_sessions": "sessions",
         "get_session": "sessions",
@@ -113,8 +179,14 @@ enum AIGuideCatalog {
         "list_session_images": "sessions",
         "list_recent_launches": "sessions",
         "launch_session": "sessions",
+        "renew_session": "sessions",
         "delete_session": "sessions",
         "delete_sessions_bulk": "sessions",
+        "get_platform_load": "sessions",
+        // Sessions parity (UI parity)
+        "get_session_events": "sessions",
+        "get_session_logs": "sessions",
+        "open_session": "sessions",
         // Headless / Batch
         "list_headless_jobs": "headless",
         "get_headless_job": "headless",
@@ -124,6 +196,10 @@ enum AIGuideCatalog {
         // Image Discovery
         "find_images_with_packages": "discovery",
         "discover_image_packages": "discovery",
+        "list_probe_failures": "discovery",
+        "get_probe_logs": "discovery",
+        "get_image_manifest": "discovery",
+        "clear_probe_failures": "discovery",
         // AI Compute
         "run_code": "compute",
         "run_code_output": "compute",
@@ -132,17 +208,43 @@ enum AIGuideCatalog {
         // View & Navigation
         "set_search_focus": "navigation",
         "navigate_to": "navigation",
+        "list_open_tabs": "navigation",
+        "close_active_tab": "navigation",
+        "list_local_folder": "navigation",
+        "open_local_file": "navigation",
+        "request_folder_access": "navigation",
+        // Settings reads
+        "get_endpoints": "foundational",
+        "get_compute_config": "compute",
         // Agent Control
+        "list_guide_tools": "control",
+        "set_tool_description": "control",
+        "clear_tool_description": "control",
+        "add_guide_tool": "control",
+        "update_guide_tool": "control",
+        "delete_guide_tool": "control",
         "list_pending_proposals": "control",
         "get_proposal_state": "control",
         "withdraw_proposal": "control",
         "list_events": "control",
+        // Workflows
+        "list_workflows": "workflows",
+        "get_workflow": "workflows",
+        "save_workflow": "workflows",
+        "update_workflow": "workflows",
+        "set_workflow_step": "workflows",
+        "use_workflow": "workflows",
+        "delete_workflow": "workflows",
     ]
 
     /// Category id for a tool name, defaulting to ``other``.
     static func categoryID(forTool name: String) -> String {
         categoryByTool[name] ?? other.id
     }
+
+    /// Every explicitly-mapped tool name — the parity guardrail test
+    /// cross-checks this against the live registry in both directions.
+    static var allMappedToolNames: [String] { Array(categoryByTool.keys) }
 }
 
 /// AI Guide user preferences stored in `UserDefaults`. Defined here so the

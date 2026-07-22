@@ -44,7 +44,7 @@ struct NavigateToTool: AITool {
           "properties": {
             "mode": {
               "type": "string",
-              "enum": ["landing", "search", "research", "portal", "storage", "fitsViewer", "cubeViewer"]
+              "enum": ["landing", "search", "research", "portal", "storage", "fitsViewer", "cubeViewer", "aiGuide", "workflows"]
             }
           },
           "additionalProperties": false
@@ -87,6 +87,8 @@ struct NavigateToTool: AITool {
         case "storage":    return .storage
         case "fitsViewer": return .fitsViewer
         case "cubeViewer": return .cubeViewer
+        case "aiGuide":    return .aiGuide
+        case "workflows":  return .workflows
         default:           return nil
         }
     }
@@ -103,6 +105,7 @@ struct NavigateToTool: AITool {
         // Not an agent-navigable target (see `mode(from:)`), but the switch
         // must be exhaustive.
         case .aiGuide:    return "AI Guide"
+        case .workflows:  return "Workflows"
         }
     }
 }

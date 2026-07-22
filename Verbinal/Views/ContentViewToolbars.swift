@@ -48,19 +48,14 @@ extension ContentView {
                 Text(appState.statusMessage)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
+                    // One line, always — a long "Cannot connect: …" must
+                    // truncate, not wrap and change the toolbar height.
+                    .lineLimit(1)
             }
 
             Spacer()
 
-            Button {
-                showFileBrowser.toggle()
-            } label: {
-                Image(systemName: "sidebar.left")
-            }
-            .buttonStyle(.borderless)
-            .keyboardShortcut("b", modifiers: [.command])
-            .help("Toggle file browser (⌘B)")
-            .accessibilityLabel(Text(showFileBrowser ? "Hide file browser" : "Show file browser"))
+            fileBrowserToolbarItem
 
             // Settings — SettingsLink (macOS 14+) opens the Settings scene.
             SettingsLink {
@@ -83,46 +78,69 @@ extension ContentView {
                 ProgressView().scaleEffect(0.7)
             }
 
-            // Profile / login control — mirrors the Portal toolbar so users
-            // see the same affordance across the app.
-            if appState.isAuthenticated {
-                Menu {
-                    if let info = appState.userInfo {
-                        Section {
-                            if let email = info.email { Text(email) }
-                            if let inst = info.institute { Text(inst) }
-                        }
-                    }
-                    Divider()
-                    Button("Sign Out") {
-                        Task { await appState.logout() }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.crop.circle.fill")
-                        if let info = appState.userInfo,
-                           let first = info.firstName {
-                            Text(verbatim: [first, info.lastName].compactMap { $0 }.joined(separator: " "))
-                        } else {
-                            Text(verbatim: appState.username)
-                        }
-                    }
-                }
-                .help("Your CADC account")
-            } else {
-                Button {
-                    appState.showLoginSheet = true
-                } label: {
-                    Label("Sign In", systemImage: "person.crop.circle")
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .help("Sign in to CADC to use Portal, Storage, and other authenticated services")
-            }
+            accountToolbarItem
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(.bar)
+    }
+
+    /// File-browser toggle, shared by every mode toolbar. The panel itself
+    /// renders in ALL modes (it sits beside `mainContent`), so the toggle —
+    /// and its ⌘B shortcut — must be reachable from every mode too;
+    /// previously Portal had neither, leaving a panel opened elsewhere
+    /// impossible to close without navigating away.
+    private var fileBrowserToolbarItem: some View {
+        Button {
+            showFileBrowser.toggle()
+        } label: {
+            Image(systemName: "sidebar.left")
+        }
+        .buttonStyle(.borderless)
+        .keyboardShortcut("b", modifiers: [.command])
+        .help("Toggle file browser (⌘B)")
+        .accessibilityLabel(Text(showFileBrowser ? "Hide file browser" : "Show file browser"))
+    }
+
+    /// Profile / login control, shared by the landing and Portal toolbars
+    /// so the account affordance is identical everywhere it appears (same
+    /// icon, same menu, same sign-in style).
+    @ViewBuilder
+    private var accountToolbarItem: some View {
+        if appState.isAuthenticated {
+            Menu {
+                if let info = appState.userInfo {
+                    Section {
+                        if let email = info.email { Text(email) }
+                        if let inst = info.institute { Text(inst) }
+                    }
+                }
+                Divider()
+                Button("Sign Out") {
+                    Task { await appState.logout() }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "person.crop.circle.fill")
+                    if let info = appState.userInfo,
+                       let first = info.firstName {
+                        Text(verbatim: [first, info.lastName].compactMap { $0 }.joined(separator: " "))
+                    } else {
+                        Text(verbatim: appState.username)
+                    }
+                }
+            }
+            .help("Your CADC account")
+        } else {
+            Button {
+                appState.showLoginSheet = true
+            } label: {
+                Label("Sign In", systemImage: "person.crop.circle")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .help("Sign in to CADC to use Portal, Storage, and other authenticated services")
+        }
     }
 
     func makeModeToolbar(title: String, showAbout: Binding<Bool>) -> some View {
@@ -156,14 +174,7 @@ extension ContentView {
 
             agentProposalsToolbarItem
 
-            Button {
-                showFileBrowser.toggle()
-            } label: {
-                Image(systemName: "sidebar.left")
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel(showFileBrowser ? "Hide file browser" : "Show file browser")
-            .help("Toggle file browser")
+            fileBrowserToolbarItem
 
             Button {
                 showAbout.wrappedValue = true
@@ -252,9 +263,13 @@ extension ContentView {
                 Text(appState.statusMessage)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
+                    // One line, always — see the landing toolbar's note.
+                    .lineLimit(1)
             }
 
             Spacer()
+
+            fileBrowserToolbarItem
 
             Button {
                 showAbout.wrappedValue = true
@@ -270,37 +285,7 @@ extension ContentView {
                     .scaleEffect(0.7)
             }
 
-            if appState.isAuthenticated {
-                Menu {
-                    if let info = appState.userInfo {
-                        Section {
-                            if let email = info.email { Text(email) }
-                            if let inst = info.institute {
-                                Text(inst)
-                            }
-                        }
-                    }
-                    Divider()
-                    Button("Sign Out") {
-                        Task { await appState.logout() }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.circle.fill")
-                        if let info = appState.userInfo,
-                           let first = info.firstName {
-                            Text(verbatim: [first, info.lastName].compactMap { $0 }.joined(separator: " "))
-                        } else {
-                            Text(verbatim: appState.username)
-                        }
-                    }
-                }
-            } else {
-                Button("Sign In") {
-                    appState.showLoginSheet = true
-                }
-                .buttonStyle(.borderedProminent)
-            }
+            accountToolbarItem
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)

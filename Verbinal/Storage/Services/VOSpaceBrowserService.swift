@@ -176,6 +176,48 @@ actor VOSpaceBrowserService {
         }
     }
 
+    // MARK: - ACL (sharing)
+
+    /// Update a node's sharing properties via VOSpace setNode. Three-valued
+    /// per dimension: `nil` = leave unchanged, `[]` = revoke all groups,
+    /// values = replace the whole list. Groups are full GMS URIs
+    /// (`ivo://cadc.nrc.ca/gms?Name`). Wire protocol matches the Windows
+    /// client: GET the node first (setNode must echo the existing type and
+    /// cannot change it; also confirms existence), then POST the setNode
+    /// document to the same URL.
+    func setNodeACL(
+        username: String,
+        path: String,
+        groupRead: [String]?,
+        groupWrite: [String]?,
+        isPublic: Bool?
+    ) async throws {
+        let fullPath = path.isEmpty ? username : "\(username)/\(path)"
+        let urlString = "\(nodesBase)/\(Self.encodePath(fullPath))"
+
+        let (data, _) = try await network.get("\(urlString)?detail=min", accept: "text/xml")
+        guard let currentXML = String(data: data, encoding: .utf8) else {
+            throw VOSpaceError.invalidResponse
+        }
+        let nodeType = VOSpaceXMLParser.parseRootNodeType(currentXML)
+
+        let xml = VOSpaceXMLParser.buildSetACLNodeXml(
+            nodeURI: "\(Self.vosPrefix)/\(fullPath)",
+            nodeType: nodeType,
+            groupRead: groupRead,
+            groupWrite: groupWrite,
+            isPublic: isPublic
+        )
+        guard let body = xml.data(using: .utf8) else {
+            throw VOSpaceError.operationFailed("Could not encode ACL XML")
+        }
+        do {
+            _ = try await network.post(urlString, body: body, contentType: "text/xml")
+        } catch {
+            throw VOSpaceError.operationFailed("Set ACL failed: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Delete
 
     func deleteNode(username: String, path: String) async throws {

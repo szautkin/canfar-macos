@@ -14,14 +14,14 @@ struct LaunchProgressSheet: View {
         VStack(spacing: 20) {
             if model.isLaunching {
                 ProgressView()
-                    .scaleEffect(1.5)
+                    .controlSize(.large)
                 Text(model.launchStatus)
                     .font(.body)
             } else if model.launchSuccess {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 48))
                     .foregroundStyle(.green)
-                Text("Session launched successfully!")
+                Text("Session Launched")
                     .font(.headline)
                 Text(model.launchStatus)
                     .font(.caption)
@@ -36,6 +36,7 @@ struct LaunchProgressSheet: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                    .lineLimit(6)
             }
 
             if !model.isLaunching {
@@ -48,5 +49,9 @@ struct LaunchProgressSheet: View {
         }
         .padding(32)
         .sheetFrame(width: 380)
+        // Escape always dismisses — a hung launch request must not trap
+        // the user in a buttonless sheet (the launch Task keeps running
+        // and its outcome is picked up by the form's status labels).
+        .onEscape { onDone() }
     }
 }

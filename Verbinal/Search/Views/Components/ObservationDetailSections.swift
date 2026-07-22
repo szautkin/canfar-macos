@@ -347,7 +347,7 @@ struct ObservationFilesSection: View {
                     Text(pt)
                         .font(.caption2)
                         .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
+                        .padding(.vertical, 2)
                         .background(.tertiary, in: Capsule())
                 }
                 if let length = artifact.contentLength {

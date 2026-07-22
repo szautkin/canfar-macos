@@ -118,6 +118,18 @@ extension View {
         #endif
     }
 
+    /// macOS: run `action` on Escape (⎋) — the sheet keyboard-dismissal
+    /// contract. iOS: no-op (`onExitCommand` doesn't exist there, and
+    /// sheets are swipe-dismissable natively).
+    @ViewBuilder
+    func onEscape(_ action: @escaping () -> Void) -> some View {
+        #if os(macOS)
+        self.onExitCommand(perform: action)
+        #else
+        self
+        #endif
+    }
+
     /// macOS has a compact list-style `.checkbox` ToggleStyle; iOS only
     /// ships the heavyweight switch. Use the platform default on iOS —
     /// callers were written for the macOS look, so the iOS branch is the

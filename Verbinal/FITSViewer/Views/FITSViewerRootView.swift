@@ -8,8 +8,11 @@ import SwiftUI
 
 struct FITSViewerRootView: View {
     @Environment(AppState.self) private var appState
-    @State private var tabHost = FITSTabHostModel()
     @State private var toastManager = ToastManager()
+
+    /// App-owned (see `AppState.fitsTabHost`): tabs survive navigating away
+    /// and back, and the agent viewer-control tools steer the same model.
+    private var tabHost: FITSTabHostModel { appState.fitsTabHost }
 
     var body: some View {
         Group {

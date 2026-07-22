@@ -20,17 +20,26 @@ public struct RetryPolicy: Sendable {
     public var maxDelay: Duration
     /// Multiplier applied to the delay between attempts.
     public var backoffMultiplier: Double
+    /// Wall-clock budget across ALL attempts (including the requests
+    /// themselves, not just the backoff sleeps). Once elapsed time
+    /// exceeds this, the last error is rethrown instead of retrying —
+    /// attempt-count caps alone let a host that accepts-then-stalls
+    /// burn `maxAttempts × timeoutInterval` (3 × 120s on the TAP path)
+    /// while holding the caller. `nil` = attempts-only (legacy).
+    public var overallBudget: Duration?
 
     public init(
         maxAttempts: Int = 3,
         initialDelay: Duration = .milliseconds(300),
         maxDelay: Duration = .seconds(5),
-        backoffMultiplier: Double = 2.0
+        backoffMultiplier: Double = 2.0,
+        overallBudget: Duration? = .seconds(180)
     ) {
         self.maxAttempts = max(1, maxAttempts)
         self.initialDelay = initialDelay
         self.maxDelay = maxDelay
         self.backoffMultiplier = backoffMultiplier
+        self.overallBudget = overallBudget
     }
 
     /// Conservative default for short-lived metadata calls.
@@ -97,6 +106,7 @@ public func retrying<T: Sendable>(
 ) async throws -> T {
     var attempt = 0
     var delay = policy.initialDelay
+    let started = ContinuousClock.now
     while true {
         attempt += 1
         do {
@@ -105,6 +115,12 @@ public func retrying<T: Sendable>(
             // Don't retry on cancellation — the caller meant for us to stop.
             if error is CancellationError { throw error }
             if attempt >= policy.maxAttempts || !isTransient(error) {
+                throw error
+            }
+            // Wall-clock budget: give up rather than start an attempt
+            // that would push total time past the ceiling.
+            if let budget = policy.overallBudget,
+               ContinuousClock.now - started + delay >= budget {
                 throw error
             }
             try await Task.sleep(for: delay)

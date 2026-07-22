@@ -4,6 +4,7 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
+import AppKit
 import Foundation
 import VerbinalKit
 
@@ -21,12 +22,15 @@ extension AppState {
         tools.append(makeGetAuthStateTool())
         tools.append(makeGetCurrentViewTool())
 
-        // Search domain
+        // Search domain. The recent/saved stores are the LIVE instances
+        // inside the hoisted `searchModel` — agent writes appear in the
+        // side panel immediately, instead of landing in a shadow store
+        // that only converges through the shared JSON file on relaunch.
         let tap = TAPClient()
         let resolver = TargetResolverService(tapClient: tap)
         let caom2 = CAOM2Service()
-        let recentStore = RecentSearchStore()
-        let savedStore = SavedQueryStore()
+        let recentStore = searchModel.recentSearchStore
+        let savedStore = searchModel.savedQueryStore
 
         tools.append(makeSearchObservationsTool(tap: tap, resolver: resolver))
         tools.append(makeVizierConeSearchTool(tap: tap))
@@ -44,6 +48,8 @@ extension AppState {
         tools.append(makeListDownloadedObservationsTool(store: observationStore))
         tools.append(makeGetDownloadedObservationTool(store: observationStore))
         tools.append(makeGetObservationNotesTool(store: noteStore))
+        tools.append(makeListWorkflowsTool())
+        tools.append(makeGetWorkflowTool())
 
         // VOSpace domain
         let vospace = VOSpaceBrowserService(network: network, endpoints: endpoints)
@@ -51,10 +57,13 @@ extension AppState {
         tools.append(makeGetVOSpaceNodeTool(service: vospace))
         tools.append(makeReadVOSpaceFileTool(service: vospace))
 
-        // Service health — no auth needed; probes upstream
-        // reachability for CADC/VOSpace/Skaha/VizieR.
+        // Service health — no auth needed; probes upstream reachability for
+        // the EFFECTIVE registry/archive/VOSpace/Skaha endpoints plus the
+        // global VizieR mirrors (the canonical CANFAR list would report the
+        // wrong backend when endpoints are overridden or resolved).
+        let healthEndpoints = GetServiceHealthTool.deploymentEndpoints(for: endpoints)
         tools.append(GetServiceHealthTool(probe: {
-            await GetServiceHealthTool.runCanonicalProbes()
+            await GetServiceHealthTool.runCanonicalProbes(endpoints: healthEndpoints)
         }))
 
         // Sessions domain
@@ -72,9 +81,21 @@ extension AppState {
         tools.append(makeGetHeadlessJobEventsTool())
         tools.append(LaunchHeadlessJobTool())
 
+        // Sessions parity — the Events sheet, log view, and Connect button.
+        tools.append(makeGetSessionEventsTool())
+        tools.append(makeGetSessionLogsTool())
+        tools.append(makeOpenSessionTool())
+
         // Image discovery — local cache search + on-demand probing
         tools.append(makeFindImagesWithPackagesTool())
         tools.append(DiscoverImagePackagesTool())
+
+        // Image-discovery parity — the sheet's diagnostics: failure
+        // rows, probe logs/events, cached manifests, clearing failures.
+        tools.append(makeListProbeFailuresTool())
+        tools.append(makeGetProbeLogsTool())
+        tools.append(makeGetImageManifestTool())
+        tools.append(ClearProbeFailuresTool())
 
         // FITS domain — uses the already-instantiated observationStore
         tools.append(makeGetFITSHeaderTool(store: observationStore))
@@ -86,6 +107,11 @@ extension AppState {
         tools.append(DeleteSavedQueryTool())
         tools.append(UpdateObservationNoteTool())
         tools.append(BulkUpdateObservationNotesTool())
+        tools.append(SaveWorkflowTool())
+        tools.append(UpdateWorkflowTool())
+        tools.append(SetWorkflowStepTool())
+        tools.append(UseWorkflowTool())
+        tools.append(DeleteWorkflowTool())
 
         // Write tools — downloads
         tools.append(DownloadObservationTool())
@@ -96,9 +122,20 @@ extension AppState {
         tools.append(UploadToVOSpaceTool())
         tools.append(UploadTextToVOSpaceTool())
         tools.append(ClearUserSiteTool())
-        tools.append(DownloadFromVOSpaceTool())
-        tools.append(VOSpaceMkdirTool())
+        let downloadVOSpace = DownloadFromVOSpaceTool()
+        tools.append(downloadVOSpace)
+        tools.append(AliasedToolBox(
+            name: "download_from_vospace",
+            description: "Alias of `download_vospace_file`.",
+            inner: downloadVOSpace))
+        let mkdirVOSpace = VOSpaceMkdirTool()
+        tools.append(mkdirVOSpace)
+        tools.append(AliasedToolBox(
+            name: "vospace_mkdir",
+            description: "Alias of `create_vospace_folder`.",
+            inner: mkdirVOSpace))
         tools.append(DeleteVOSpaceNodeTool())
+        tools.append(OpenVOSpaceFileTool())
 
         // Write tools — Sessions + archive maintenance
         tools.append(LaunchSessionTool())
@@ -120,11 +157,125 @@ extension AppState {
         tools.append(StartComputeTool())
         tools.append(StopComputeTool())
 
+        // Platform & quota reads — the dashboard widgets as tools.
+        tools.append(makeGetPlatformLoadTool())
+        tools.append(makeGetStorageQuotaTool())
+
+        // Write tools — session renewal, exports, arbitrary-file upload,
+        // FITS bookmarks (Windows-parity names).
+        tools.append(RenewSessionTool())
+        tools.append(ExportSearchResultsTool())
+        tools.append(UploadFileToVOSpaceTool())
+        tools.append(ExportResearchBundleTool())
+        tools.append(SaveFITSBookmarkTool())
+        tools.append(DeleteFITSBookmarkTool())
+        tools.append(SetVOSpaceACLTool())
+        tools.append(ExportCubeFigureTool())
+
+        // AI Guide management — the AI Guide screen's actions as tools
+        // (Windows parity). Proposal-gated like every other write.
+        tools.append(makeListGuideToolsTool())
+        tools.append(SetToolDescriptionTool())
+        tools.append(ClearToolDescriptionTool())
+        tools.append(AddGuideToolTool())
+        tools.append(UpdateGuideToolTool())
+        tools.append(DeleteGuideToolTool())
+
         // View-state tools — live-applied, no proposal.
         tools.append(makeOpenFITSFileTool(store: observationStore))
         tools.append(makeOpenCubeTool(store: observationStore))
         tools.append(makeSetSearchFocusTool())
         tools.append(makeNavigateToTool())
+        let loadSavedSearch = makeLoadSavedSearchTool(savedStore: savedStore, recentStore: recentStore)
+        tools.append(loadSavedSearch)
+        tools.append(makeLoadRecentSearchTool(recentStore: recentStore))
+        tools.append(makeRunSavedQueryTool(savedStore: savedStore))
+
+        // Search form/results control — steer the live search form, data
+        // train, ADQL editor, and results table (UI parity batch).
+        // Windows wire names are primary; macOS legacy names stay as aliases.
+        tools.append(makeGetSearchFormTool())
+        let setSearchForm = makeSetSearchFormTool()
+        tools.append(setSearchForm)
+        tools.append(RunSearchTool(execute: {
+            var args = SetSearchFormTool.Args()
+            args.execute = true
+            return await setSearchForm.apply(args)
+        }))
+        tools.append(makeResetSearchFormTool())
+        let getConstraints = makeGetDataTrainOptionsTool()
+        tools.append(getConstraints)
+        tools.append(AliasedToolBox(
+            name: "get_data_train_options",
+            description: "Alias of `get_search_constraints`.",
+            inner: getConstraints))
+        tools.append(SetSearchConstraintsTool(apply: { args in
+            await setSearchForm.apply(args)
+        }))
+        tools.append(makeRefreshDataTrainTool())
+        let setADQL = makeSetADQLEditorTool()
+        tools.append(setADQL)
+        tools.append(AliasedToolBox(
+            name: "set_adql_editor",
+            description: "Alias of `set_adql_query`.",
+            inner: setADQL))
+        tools.append(ExecuteADQLQueryTool(apply: { args in
+            await setADQL.apply(args)
+        }))
+        tools.append(makeSelectSearchTabTool())
+        tools.append(makeQuickSearchTool())
+        tools.append(makeGetSearchResultsTool())
+        let setResults = makeSetResultsViewTool()
+        tools.append(setResults)
+        tools.append(AliasedToolBox(
+            name: "set_results_view",
+            description: "Alias of `set_search_results_view`.",
+            inner: setResults))
+        tools.append(makeOpenObservationDetailTool())
+
+        // Recent-searches writes — the side panel's rename/remove/clear.
+        tools.append(RenameRecentSearchTool())
+        tools.append(RemoveRecentSearchTool())
+        tools.append(ClearRecentSearchesTool())
+
+        // Viewer control — steer the app-owned FITS tab host + Cube model.
+        tools.append(makeGetFITSViewTool())
+        tools.append(makeSetFITSViewTool())
+        tools.append(makeFITSGotoCoordinateTool())
+        tools.append(makeProbeFITSPixelTool())
+        tools.append(makeListFITSBookmarksTool())
+        tools.append(makeGetCubeViewTool())
+        tools.append(makeSetCubeViewTool())
+        tools.append(makeSetCubeCameraTool())
+        tools.append(makeProbeCubeSpectrumTool())
+        tools.append(makeListRecentCubesTool())
+        tools.append(makeShowCubeSpectrumTool())
+        tools.append(makeGetCubeChannelProfileTool())
+        tools.append(makeSetCubeTransferTool())
+        tools.append(makeSwitchCubeTabTool())
+        tools.append(makeListOpenTabsTool())
+        tools.append(makeCloseActiveTabTool())
+
+        // FITS viewer parity — HDU selection, auto-cut, blink/compare,
+        // tab-sync toggles, search-at-crosshair, figure export.
+        tools.append(makeSelectHDUTool())
+        tools.append(makeFITSAutoCutTool())
+        tools.append(makeStartBlinkTool())
+        tools.append(makeSetBlinkTool())
+        tools.append(makeStopBlinkTool())
+        tools.append(makeBlinkFITSTabsTool())
+        tools.append(makeSwitchFITSTabTool())
+        tools.append(makeSetTabSyncTool())
+        tools.append(makeSearchAtCrosshairTool())
+        tools.append(ExportFITSFigureTool())
+
+        // Shell parity — the local file-browser panel and read-only
+        // Settings views (Endpoints, AI Compute).
+        tools.append(makeListLocalFolderTool())
+        tools.append(makeOpenLocalFileTool())
+        tools.append(makeRequestFolderAccessTool())
+        tools.append(makeGetEndpointsTool())
+        tools.append(makeGetComputeConfigTool())
 
         // Proposal-lifecycle tools — operate on the queue itself.
         tools.append(ListPendingProposalsTool())
@@ -342,6 +493,21 @@ extension AppState {
         })
     }
 
+    private func makeListWorkflowsTool() -> ListWorkflowsTool {
+        ListWorkflowsTool(list: { [weak self] in
+            await MainActor.run {
+                guard let self else { return [] }
+                return self.workflowStore.listBuiltIn() + self.workflowStore.listLocal()
+            }
+        })
+    }
+
+    private func makeGetWorkflowTool() -> GetWorkflowTool {
+        GetWorkflowTool(get: { [weak self] id in
+            await MainActor.run { self?.workflowStore.get(id) }
+        })
+    }
+
     /// Build and register the appliers that the proposal strip dispatches
     /// to. Stores are passed in so the same instance the read tools see
     /// is what the appliers mutate.
@@ -367,6 +533,11 @@ extension AppState {
             DeleteDownloadedObservationApplier(store: observationStore,
                                                downloadService: downloader,
                                                activity: activity),
+            WorkflowApplier(kind: "save_workflow", store: workflowStore, activity: activity),
+            WorkflowApplier(kind: "update_workflow", store: workflowStore, activity: activity),
+            WorkflowApplier(kind: "set_workflow_step", store: workflowStore, activity: activity),
+            WorkflowApplier(kind: "use_workflow", store: workflowStore, activity: activity),
+            WorkflowApplier(kind: "delete_workflow", store: workflowStore, activity: activity),
         ]
         appliers.append(contentsOf: makeVOSpaceAppliers(
             service: vospace,
@@ -444,7 +615,266 @@ extension AppState {
             activity: activity
         )
         appliers.append(imageDiscoveryApplier)
+        appliers.append(ClearProbeFailuresApplier(
+            resolveCoordinator: { [weak self] in
+                await self?.imageDiscoveryCoordinator
+            },
+            activity: activity))
+
+        // Parity batch: renewal, exports, arbitrary-file upload, FITS
+        // bookmarks. Capabilities captured here (MainActor) so the
+        // Sendable applier closures never touch `self` off-actor except
+        // through explicit hops.
+        let sessionSvc = sessionService
+        appliers.append(RenewSessionApplier(
+            renew: { id in try await sessionSvc.renewSession(id: id) },
+            activity: activity))
+        appliers.append(ExportSearchResultsApplier(
+            run: { format, adql, maxRecords in
+                try await Self.runSearchExport(format: format, adql: adql, maxRecords: maxRecords)
+            },
+            activity: activity))
+        appliers.append(UploadFileToVOSpaceApplier(
+            upload: { [weak self] fileURL, remotePath in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                let user = await self.username
+                guard !user.isEmpty else { throw ProposalApplyError.backendError("Sign in to CADC first") }
+                try await vospace.uploadFile(username: user, remotePath: remotePath, fileURL: fileURL)
+            },
+            activity: activity))
+        appliers.append(ExportResearchBundleApplier(
+            run: { [weak self] includeCopies, uploadVOSpace in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                try await self.runResearchBundleExport(
+                    includeFileCopies: includeCopies,
+                    uploadToVOSpace: uploadVOSpace,
+                    vospace: vospace,
+                    observationStore: observationStore,
+                    noteStore: noteStore
+                )
+            },
+            activity: activity))
+        appliers.append(SaveFITSBookmarkApplier(
+            save: { [weak self] label, ra, dec, attribution in
+                guard let self else { return }
+                await MainActor.run {
+                    // Attach to the active tab's file so the panel's
+                    // per-file filter shows it; a global bookmark (no
+                    // viewer open) keeps an empty source path.
+                    let sourcePath = self.fitsTabHost.activeTab?.fileURL?.path ?? ""
+                    self.fitsBookmarks.save(CoordinateBookmark(
+                        label: label, ra: ra, dec: dec, sourceFilePath: sourcePath,
+                        agentAttribution: attribution))
+                }
+            },
+            activity: activity))
+        appliers.append(DeleteFITSBookmarkApplier(
+            delete: { [weak self] id in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                try await MainActor.run {
+                    guard let uuid = UUID(uuidString: id),
+                          let existing = self.fitsBookmarks.bookmarks.first(where: { $0.id == uuid }) else {
+                        throw ProposalApplyError.backendError("bookmark not found: \(id)")
+                    }
+                    self.fitsBookmarks.delete(existing)
+                }
+            },
+            activity: activity))
+        appliers.append(OpenVOSpaceFileApplier(
+            openFile: { [weak self] path in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                let user = await self.username
+                guard !user.isEmpty else { throw ProposalApplyError.backendError("Sign in to CADC first") }
+                let (tempURL, _) = try await vospace.downloadFile(username: user, path: path)
+                await MainActor.run { self.openAstronomyFITS(url: tempURL) }
+            },
+            activity: activity))
+        appliers.append(SetVOSpaceACLApplier(
+            set: { [weak self] path, groupRead, groupWrite, isPublic in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                let user = await self.username
+                guard !user.isEmpty else { throw ProposalApplyError.backendError("Sign in to CADC first") }
+                try await vospace.setNodeACL(
+                    username: user, path: path,
+                    groupRead: groupRead, groupWrite: groupWrite, isPublic: isPublic)
+            },
+            activity: activity))
+        appliers.append(ExportCubeFigureApplier(
+            run: { [weak self] scale in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                return try await MainActor.run {
+                    try exportCubeFigureHeadless(model: self.cubeViewer, scale: CGFloat(scale)).path
+                }
+            },
+            activity: activity))
+        appliers.append(ExportFITSFigureApplier(
+            run: { [weak self] scale in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                return try await MainActor.run {
+                    guard let tab = self.fitsTabHost.activeTab else {
+                        throw ProposalApplyError.backendError("No FITS tab is open")
+                    }
+                    return try exportFITSFigureHeadless(model: tab, scale: CGFloat(scale)).path
+                }
+            },
+            activity: activity))
+        appliers.append(contentsOf: makeAIGuideAppliers(activity: activity))
+
+        // Recent-searches writes — mutate the live store inside the
+        // hoisted search model (same instance the side panel renders).
+        let recentStore = searchModel.recentSearchStore
+        appliers.append(RenameRecentSearchApplier(store: recentStore, activity: activity))
+        appliers.append(RemoveRecentSearchApplier(store: recentStore, activity: activity))
+        appliers.append(ClearRecentSearchesApplier(store: recentStore, activity: activity))
+
         agentsService.register(appliers: appliers)
+    }
+
+    /// Appliers for the five AI Guide mutations. One shared applier shape;
+    /// the closures do the MainActor `aiGuideService` calls plus the
+    /// built-in-name shadow check for guide names.
+    private func makeAIGuideAppliers(activity: AgentActivityStore) -> [any ProposalApplier] {
+        // Guide (or override target) names are checked against the LIVE
+        // registered tool table at apply time.
+        let builtinNames: @MainActor () -> Set<String> = { [weak self] in
+            guard let self else { return [] }
+            return Set(self.aiGuideToolInputs().map(\.name))
+        }
+        return [
+            AIGuideMutationApplier(kind: "set_tool_description", mutate: { [weak self] proposal in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                let p = try JSONDecoder().decode(SetToolDescriptionTool.Payload.self, from: proposal.payload)
+                try await MainActor.run {
+                    guard builtinNames().contains(p.toolName) else {
+                        throw ProposalApplyError.backendError("no tool named '\(p.toolName)'")
+                    }
+                    try self.aiGuideService.setOverride(toolName: p.toolName, description: p.description)
+                }
+            }, activity: activity),
+            AIGuideMutationApplier(kind: "clear_tool_description", mutate: { [weak self] proposal in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                let p = try JSONDecoder().decode(ClearToolDescriptionTool.Payload.self, from: proposal.payload)
+                await MainActor.run { self.aiGuideService.clearOverride(toolName: p.toolName) }
+            }, activity: activity),
+            AIGuideMutationApplier(kind: "add_guide_tool", mutate: { [weak self] proposal in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                let p = try JSONDecoder().decode(AddGuideToolTool.Payload.self, from: proposal.payload)
+                try await MainActor.run {
+                    guard !builtinNames().contains(p.name) else {
+                        throw ProposalApplyError.backendError("'\(p.name)' would shadow a built-in tool")
+                    }
+                    _ = try self.aiGuideService.addGuide(
+                        name: p.name, description: p.description, body: p.body)
+                }
+            }, activity: activity),
+            AIGuideMutationApplier(kind: "update_guide_tool", mutate: { [weak self] proposal in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                let p = try JSONDecoder().decode(UpdateGuideToolTool.Payload.self, from: proposal.payload)
+                guard let id = UUID(uuidString: p.id) else {
+                    throw ProposalApplyError.backendError("invalid id")
+                }
+                try await MainActor.run {
+                    guard !builtinNames().contains(p.name) else {
+                        throw ProposalApplyError.backendError("'\(p.name)' would shadow a built-in tool")
+                    }
+                    try self.aiGuideService.updateGuide(
+                        id: id, name: p.name, description: p.description, body: p.body)
+                }
+            }, activity: activity),
+            AIGuideMutationApplier(kind: "delete_guide_tool", mutate: { [weak self] proposal in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                let p = try JSONDecoder().decode(DeleteGuideToolTool.Payload.self, from: proposal.payload)
+                guard let id = UUID(uuidString: p.id) else {
+                    throw ProposalApplyError.backendError("invalid id")
+                }
+                await MainActor.run { self.aiGuideService.deleteGuide(id: id) }
+            }, activity: activity),
+        ]
+    }
+
+    private func makeListGuideToolsTool() -> ListGuideToolsTool {
+        ListGuideToolsTool(snapshot: { [weak self] in
+            guard let self else { return [] }
+            return await MainActor.run {
+                self.aiGuideService.guides.map {
+                    ListGuideToolsTool.Output.Entry(
+                        id: $0.id.uuidString, name: $0.name,
+                        description: $0.description,
+                        hasBody: !($0.body ?? "").isEmpty)
+                }
+            }
+        })
+    }
+
+    // MARK: - Parity-batch helpers (search export, research bundle)
+
+    /// Server-side TAP export for `export_search_results`. The agent side
+    /// has no view of the UI's live query, so `adql` is effectively
+    /// required here — the tool schema keeps it optional for parity, and
+    /// this surfaces the guidance instead of a silent empty file.
+    private nonisolated static func runSearchExport(
+        format: String, adql: String?, maxRecords: Int?
+    ) async throws -> String {
+        guard let adql, !adql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ProposalApplyError.backendError(
+                "Pass `adql` — the agent-side export runs its own query (take one from list_recent_searches or get_saved_query).")
+        }
+        let ext: String
+        switch format {
+        case "csv": ext = "csv"
+        case "tsv": ext = "tsv"
+        case "votable": ext = "xml"
+        default: throw ProposalApplyError.backendError("unsupported format '\(format)'")
+        }
+        var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.syncPath)")
+        components?.queryItems = [
+            URLQueryItem(name: "LANG", value: "ADQL"),
+            URLQueryItem(name: "FORMAT", value: format),
+            URLQueryItem(name: "QUERY", value: adql),
+            URLQueryItem(name: "MAXREC", value: String(maxRecords ?? TAPConfig.maxRecords)),
+        ]
+        guard let url = components?.url else {
+            throw ProposalApplyError.backendError("could not build the TAP export URL")
+        }
+        let temp = try await ResultExportService.exportServerSide(
+            url: url, ext: ext, session: ResultExportService.makeExportSession())
+        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        let dest = downloads.appendingPathComponent(
+            "verbinal-results-\(formatter.string(from: Date())).\(ext)")
+        try? FileManager.default.removeItem(at: dest)
+        try FileManager.default.moveItem(at: temp, to: dest)
+        return dest.path
+    }
+
+    /// Headless twin of the Export dialog's happy path: Research module →
+    /// timestamped bundle in ~/Downloads, optional zip-and-upload to
+    /// VOSpace `Verbinal-Exports/`.
+    private func runResearchBundleExport(
+        includeFileCopies: Bool,
+        uploadToVOSpace: Bool,
+        vospace: VOSpaceBrowserService,
+        observationStore: ObservationStore,
+        noteStore: ObservationNoteStore
+    ) async throws {
+        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let exporter = ResearchExporter(observationStore: observationStore, noteStore: noteStore)
+        let service = ExportService()
+        let options = ExportOptions(includeFileCopies: includeFileCopies)
+        guard let bundleURL = await service.exportAll(to: downloads, modules: [exporter], options: options) else {
+            throw ProposalApplyError.backendError(service.lastError ?? "export failed")
+        }
+        if uploadToVOSpace {
+            guard !username.isEmpty else {
+                throw ProposalApplyError.backendError("Sign in to CADC before uploading to VOSpace")
+            }
+            _ = try await service.uploadBundleToVOSpace(
+                bundleURL: bundleURL, vospace: vospace, username: username)
+        }
     }
 
     // MARK: - Sessions domain
@@ -474,6 +904,52 @@ extension AppState {
         return ListSessionImagesTool(fetch: {
             let raw = try await service.getImages()
             return raw.map { (id: $0.id, types: $0.types) }
+        })
+    }
+
+    // MARK: - Sessions parity (events, logs, connect)
+
+    private func makeGetSessionEventsTool() -> GetSessionEventsTool {
+        let service = self.sessionService
+        return GetSessionEventsTool(fetch: { id in
+            try await service.getSessionEvents(id: id)
+        })
+    }
+
+    private func makeGetSessionLogsTool() -> GetSessionLogsTool {
+        let service = self.sessionService
+        return GetSessionLogsTool(fetch: { id in
+            try await service.getSessionLogs(id: id)
+        })
+    }
+
+    private func makeOpenSessionTool() -> OpenSessionTool {
+        let service = self.sessionService
+        let activity = agentsService.activityStore
+        return OpenSessionTool(open: { id in
+            let sessions: [Session]
+            do {
+                sessions = try await service.getSessions()
+            } catch {
+                return .rejected("Could not list sessions: \(error.localizedDescription)")
+            }
+            guard let session = sessions.first(where: { $0.id == id }) else {
+                return .rejected("No session with id '\(id)'")
+            }
+            guard session.isRunning else {
+                return .rejected("Session '\(id)' is \(session.status), not Running")
+            }
+            guard let url = URL(string: session.connectUrl) else {
+                return .rejected("Session '\(id)' has no valid connect URL")
+            }
+            return await MainActor.run {
+                NSWorkspace.shared.open(url)
+                activity.append(.live(
+                    kind: "open_session",
+                    summary: "Opened session '\(session.sessionName)' in the browser",
+                    origin: .external(clientID: "open_session")))
+                return .opened(url.absoluteString)
+            }
         })
     }
 
@@ -546,6 +1022,61 @@ extension AppState {
                 return await coord.searchPartial(query, minScore: minScore, limit: limit)
             }
         )
+    }
+
+    private func makeListProbeFailuresTool() -> ListProbeFailuresTool {
+        ListProbeFailuresTool(snapshot: { [weak self] in
+            guard let coordinator = await self?.imageDiscoveryCoordinator else { return [] }
+            let iso = ISO8601DateFormatter()
+            var failures: [ListProbeFailuresTool.Output.Failure] = []
+            for id in await coordinator.knownImages() {
+                if case .failure(let imageID, let category, let message, let attemptedAt, let jobID)
+                    = await coordinator.outcome(for: id) {
+                    failures.append(.init(
+                        imageID: imageID,
+                        category: category.rawValue,
+                        message: message,
+                        attemptedAtISO: iso.string(from: attemptedAt),
+                        jobID: jobID))
+                }
+            }
+            return failures
+        })
+    }
+
+    private func makeGetProbeLogsTool() -> GetProbeLogsTool {
+        GetProbeLogsTool(fetch: { [weak self] jobID in
+            guard let coordinator = await self?.imageDiscoveryCoordinator else {
+                throw ToolFailureReason.authRequired
+            }
+            // Logs and events are independent fetches; run them together.
+            async let logs = coordinator.fetchLogs(jobID: jobID)
+            async let events = coordinator.fetchEvents(jobID: jobID)
+            return (logs: try await logs, events: try await events)
+        })
+    }
+
+    private func makeGetImageManifestTool() -> GetImageManifestTool {
+        GetImageManifestTool(lookup: { [weak self] image in
+            guard let coordinator = await self?.imageDiscoveryCoordinator else { return nil }
+            guard case .success(let manifest) = await coordinator.outcome(for: image) else {
+                return nil
+            }
+            let iso = ISO8601DateFormatter()
+            return GetImageManifestTool.Output(
+                imageID: manifest.imageID,
+                capturedAtISO: iso.string(from: manifest.capturedAt),
+                contentHash: manifest.contentHash,
+                osFamily: manifest.osFamily,
+                osVersion: manifest.osVersion,
+                kernel: manifest.kernel,
+                dpkgCount: manifest.dpkgPackages.count,
+                rpmCount: manifest.rpmPackages.count,
+                apkCount: manifest.apkPackages.count,
+                pythonCount: manifest.pythonPackages.count,
+                rCount: manifest.rPackages.count,
+                condaEnvNames: manifest.condaEnvs.map(\.name))
+        })
     }
 
     private func makeListRecentLaunchesTool(store: RecentLaunchStore) -> ListRecentLaunchesTool {
@@ -745,14 +1276,21 @@ extension AppState {
 
     @MainActor
     fileprivate func snapshotCurrentView() -> GetCurrentViewTool.Output {
-        GetCurrentViewTool.Output(
+        let hasResults = !searchModel.resultsModel.results.isEmpty
+        return GetCurrentViewTool.Output(
             mode: Self.modeKey(currentMode),
             modeTitle: Self.modeTitle(currentMode),
             isAuthenticated: isAuthenticated,
             username: username,
             searchFocusRA: pendingSearchCoordinate?.ra,
             searchFocusDec: pendingSearchCoordinate?.dec,
-            openFITSPaths: pendingFITSURL.map { [$0.path] } ?? [],
+            searchTab: searchModel.selectedTab.rawValue,
+            searchResultsTotal: hasResults ? searchModel.resultsModel.totalRows : nil,
+            searchResultsFiltered: hasResults ? searchModel.resultsModel.filteredCount : nil,
+            // Real open tabs from the app-owned host (plus a pending open
+            // that hasn't been consumed by the viewer yet).
+            openFITSPaths: fitsTabHost.tabs.compactMap { $0.fileURL?.path }
+                + (pendingFITSURL.map { [$0.path] } ?? []),
             pendingProposalsCount: agentsService.pendingProposals.count,
             agentsEnabled: agentsService.isEnabled,
             autoApplyEnabled: agentsService.autoApplyWrites,
@@ -767,6 +1305,9 @@ extension AppState {
         mode: "unknown", modeTitle: "Unknown",
         isAuthenticated: false, username: "",
         searchFocusRA: nil, searchFocusDec: nil,
+        searchTab: nil,
+        searchResultsTotal: nil,
+        searchResultsFiltered: nil,
         openFITSPaths: [],
         pendingProposalsCount: 0,
         agentsEnabled: false,
@@ -784,6 +1325,7 @@ extension AppState {
         case .fitsViewer: return "fitsViewer"
         case .cubeViewer: return "cubeViewer"
         case .aiGuide:    return "aiGuide"
+        case .workflows:  return "workflows"
         }
     }
 
@@ -797,6 +1339,7 @@ extension AppState {
         case .fitsViewer: return "FITS Viewer"
         case .cubeViewer: return "Cube Viewer"
         case .aiGuide:    return "AI Guide"
+        case .workflows:  return "Workflows"
         }
     }
 
@@ -1074,5 +1617,1570 @@ extension AppState {
                 description: q.description, tags: q.tags
             )
         })
+    }
+
+    // MARK: - Platform & quota reads
+
+    private func makeGetPlatformLoadTool() -> GetPlatformLoadTool {
+        let service = platformService
+        return GetPlatformLoadTool(fetch: {
+            let stats = try await service.getStats()
+            return GetPlatformLoadTool.Output(
+                instances: stats.instances.map {
+                    .init(session: $0.session, desktopApp: $0.desktopApp,
+                          headless: $0.headless, total: $0.total)
+                },
+                cores: stats.cores.map {
+                    .init(requested: $0.requestedCPUCores, available: $0.cpuCoresAvailable)
+                },
+                ram: stats.ram.map {
+                    .init(requestedGB: $0.requestedRAM.map { PlatformLoadModel.parseRamGB($0) },
+                          availableGB: $0.ramAvailable.map { PlatformLoadModel.parseRamGB($0) })
+                }
+            )
+        })
+    }
+
+    private func makeGetStorageQuotaTool() -> GetStorageQuotaTool {
+        let service = storageService
+        return GetStorageQuotaTool(fetch: { [weak self] in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let user = await self.username
+            guard !user.isEmpty else { throw ToolFailureReason.authRequired }
+            let quota = try await service.getQuota(username: user)
+            return GetStorageQuotaTool.Output(
+                usedBytes: quota.usedBytes, quotaBytes: quota.quotaBytes,
+                usedGB: quota.usedGB, quotaGB: quota.quotaGB,
+                usagePercent: quota.usagePercent
+            )
+        })
+    }
+
+    // MARK: - Search form loading
+
+    private func makeLoadSavedSearchTool(
+        savedStore: SavedQueryStore, recentStore: RecentSearchStore
+    ) -> LoadSavedSearchTool {
+        let activity = agentsService.activityStore
+        return LoadSavedSearchTool(apply: { [weak self] savedID, recentID in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                if let savedID {
+                    guard let uuid = UUID(uuidString: savedID),
+                          let query = savedStore.queries.first(where: { $0.id == uuid }) else {
+                        return "Saved query not found: \(savedID)"
+                    }
+                    self.pendingSearchLoad = AppState.PendingSearchLoad(kind: .adql(query.adql))
+                    self.navigateTo(.search)
+                    activity.append(.live(
+                        kind: "load_saved_search",
+                        summary: "Loaded saved query '\(query.name)' into the ADQL editor",
+                        origin: .external(clientID: "load_saved_search")))
+                    return nil
+                }
+                if let recentID {
+                    guard let uuid = UUID(uuidString: recentID),
+                          let recent = recentStore.searches.first(where: { $0.id == uuid }) else {
+                        return "Recent search not found: \(recentID)"
+                    }
+                    self.pendingSearchLoad = AppState.PendingSearchLoad(kind: .snapshot(recent.formSnapshot))
+                    self.navigateTo(.search)
+                    activity.append(.live(
+                        kind: "load_saved_search",
+                        summary: "Loaded recent search '\(recent.name)' into the form",
+                        origin: .external(clientID: "load_saved_search")))
+                    return nil
+                }
+                return "Pass savedQueryID or recentSearchID"
+            }
+        })
+    }
+
+    private func makeLoadRecentSearchTool(recentStore: RecentSearchStore) -> LoadRecentSearchTool {
+        let activity = agentsService.activityStore
+        return LoadRecentSearchTool(apply: { [weak self] args in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                let recent: RecentSearch?
+                if let id = args.recentSearchID {
+                    recent = UUID(uuidString: id).flatMap { uuid in
+                        recentStore.searches.first(where: { $0.id == uuid })
+                    }
+                    if recent == nil { return "Recent search not found: \(id)" }
+                } else if let index = args.index {
+                    guard recentStore.searches.indices.contains(index) else {
+                        return "Recent search index \(index) out of range (count=\(recentStore.searches.count))"
+                    }
+                    recent = recentStore.searches[index]
+                } else {
+                    return "Pass index or recentSearchID"
+                }
+                guard let recent else { return "Recent search not found" }
+                self.pendingSearchLoad = AppState.PendingSearchLoad(kind: .snapshot(recent.formSnapshot))
+                self.navigateTo(.search)
+                activity.append(.live(
+                    kind: "load_recent_search",
+                    summary: "Loaded recent search '\(recent.name)' into the form",
+                    origin: .external(clientID: "load_recent_search")))
+                return nil
+            }
+        })
+    }
+
+    private func makeRunSavedQueryTool(savedStore: SavedQueryStore) -> RunSavedQueryTool {
+        let activity = agentsService.activityStore
+        return RunSavedQueryTool(apply: { [weak self] args in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                let query: SavedQuery?
+                if let id = args.savedQueryID {
+                    query = UUID(uuidString: id).flatMap { uuid in
+                        savedStore.queries.first(where: { $0.id == uuid })
+                    }
+                    if query == nil { return "Saved query not found: \(id)" }
+                } else if let name = args.name {
+                    query = savedStore.queries.first(where: { $0.name == name })
+                    if query == nil { return "Saved query not found: \(name)" }
+                } else {
+                    return "Pass name or savedQueryID"
+                }
+                guard let query else { return "Saved query not found" }
+                self.navigateTo(.search)
+                self.searchModel.selectedTab = .adql
+                self.searchModel.resultsModel.adqlQuery = query.adql
+                activity.append(.live(
+                    kind: "run_saved_query",
+                    summary: "Ran saved query '\(query.name)'",
+                    origin: .external(clientID: "run_saved_query")))
+                Task { await self.searchModel.executeRawQuery(query.adql) }
+                return nil
+            }
+        })
+    }
+
+    // MARK: - Shell parity (local files, settings reads)
+
+    private func makeListLocalFolderTool() -> ListLocalFolderTool {
+        ListLocalFolderTool(list: { [weak self] args in
+            let path = args.path ?? LocalFolderAccessStore.downloadsRoot.path
+            let url = URL(fileURLWithPath: path, isDirectory: true)
+            // Sandbox reach: only Downloads and user-granted folders are
+            // readable. Fail with actionable guidance rather than a raw
+            // permission error the agent can't interpret (F14).
+            if let self, await !self.localFolderAccess.hasAccess(to: url) {
+                throw ToolFailureReason.backendError(
+                    "'\(path)' is outside the app sandbox's reach. Only ~/Downloads and folders the user has granted are readable. Ask the user to grant this folder (call `request_folder_access`), or point them at ~/Downloads.")
+            }
+            var isDir: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else {
+                throw ToolFailureReason.unknownTarget("no folder at '\(path)'")
+            }
+            guard isDir.boolValue else {
+                throw ToolFailureReason.invalidArgument("'\(path)' is a file, not a folder")
+            }
+            let contents: [URL]
+            do {
+                contents = try FileManager.default.contentsOfDirectory(
+                    at: url,
+                    includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey],
+                    options: [.skipsHiddenFiles])
+            } catch {
+                throw ToolFailureReason.backendError(
+                    "cannot read '\(path)': \(error.localizedDescription)")
+            }
+            let sorted = contents.sorted {
+                $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent)
+                    == .orderedAscending
+            }
+            var entries: [ListLocalFolderTool.Output.Entry] = []
+            var truncated = false
+            for item in sorted {
+                if entries.count >= 500 { truncated = true; break }
+                let values = try? item.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
+                let isDirectory = values?.isDirectory ?? false
+                let fits = !isDirectory && FileHelper.isFITS(item.pathExtension)
+                if args.supportedOnly == true && !isDirectory && !fits { continue }
+                entries.append(.init(
+                    name: item.lastPathComponent,
+                    isDirectory: isDirectory,
+                    sizeBytes: (values?.fileSize).map(Int64.init),
+                    isFITS: fits))
+            }
+            return .init(path: url.path, entries: entries, truncated: truncated)
+        })
+    }
+
+    private func makeOpenLocalFileTool() -> OpenLocalFileTool {
+        let activity = agentsService.activityStore
+        return OpenLocalFileTool(open: { [weak self] path in
+            guard let self else { return "App state unavailable" }
+            let url = URL(fileURLWithPath: path)
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                return "No file at '\(path)'"
+            }
+            guard FileHelper.isFITS(url.pathExtension) else {
+                return "'\(url.lastPathComponent)' is not a FITS file"
+            }
+            // The file's folder must be granted (or Downloads); otherwise
+            // the viewer's read will hit the sandbox wall even though
+            // fileExists passed.
+            if await !self.localFolderAccess.hasAccess(to: url) {
+                return "'\(path)' is outside the app sandbox's reach — ask the user to grant its folder (call `request_folder_access`), or move it to ~/Downloads."
+            }
+            await MainActor.run {
+                self.openAstronomyFITS(url: url)
+                activity.append(.live(
+                    kind: "open_local_file",
+                    summary: "Opened \(url.lastPathComponent)",
+                    origin: .external(clientID: "open_local_file")))
+            }
+            return nil
+        })
+    }
+
+    private func makeRequestFolderAccessTool() -> RequestFolderAccessTool {
+        let activity = agentsService.activityStore
+        return RequestFolderAccessTool(request: { [weak self] startingPath in
+            guard let self else { return .cancelled }
+            return await MainActor.run {
+                let start = startingPath.map { URL(fileURLWithPath: $0, isDirectory: true) }
+                guard let granted = try? self.localFolderAccess.grantAccess(startingAt: start) else {
+                    return .cancelled
+                }
+                activity.append(.live(
+                    kind: "request_folder_access",
+                    summary: "Granted folder access: \(granted.path)",
+                    origin: .external(clientID: "request_folder_access")))
+                return .granted(granted.path)
+            }
+        })
+    }
+
+    private func makeGetEndpointsTool() -> GetEndpointsTool {
+        let endpoints = self.endpoints
+        return GetEndpointsTool(snapshot: {
+            .init(loginBaseURL: endpoints.loginBaseURL,
+                  skahaBaseURL: endpoints.skahaBaseURL,
+                  acBaseURL: endpoints.acBaseURL,
+                  storageBaseURL: endpoints.storageBaseURL,
+                  registryBaseURL: endpoints.registryBaseURL,
+                  archiveBaseURL: endpoints.archiveBaseURL,
+                  externalBaseURL: endpoints.externalBaseURL)
+        })
+    }
+
+    private func makeGetComputeConfigTool() -> GetComputeConfigTool {
+        GetComputeConfigTool(snapshot: { [weak self] in
+            guard let self else {
+                return .init(isEnabled: false, image: "", cores: 0, ramGB: 0,
+                             registryHost: "", registryUsername: "", hasRegistrySecret: false)
+            }
+            return await MainActor.run {
+                let settings = self.aiComputeSettings.settings
+                return GetComputeConfigTool.Output(
+                    isEnabled: settings.isEnabled,
+                    image: settings.image,
+                    cores: settings.cores,
+                    ramGB: settings.ram,
+                    registryHost: settings.registryHost,
+                    registryUsername: settings.username,
+                    hasRegistrySecret: settings.hasSecret)
+            }
+        })
+    }
+
+    // MARK: - Search form/results control
+
+    /// Map the app's `IntentValue` / `DatePresetValue` to the agent-facing
+    /// keys (the raw values are TAP wire strings like "" that read poorly
+    /// in a tool result).
+    private nonisolated static func intentKey(_ intent: IntentValue) -> String {
+        switch intent {
+        case .any: return "any"
+        case .science: return "science"
+        case .calibration: return "calibration"
+        }
+    }
+
+    private nonisolated static func datePresetKey(_ preset: DatePresetValue) -> String {
+        switch preset {
+        case .none: return "none"
+        case .past24Hours: return "past24Hours"
+        case .pastWeek: return "pastWeek"
+        case .pastMonth: return "pastMonth"
+        }
+    }
+
+    private nonisolated static func columnKindKey(_ kind: ColumnKind) -> String {
+        switch kind {
+        case .text: return "text"
+        case .integer: return "integer"
+        case .number: return "number"
+        case .mjdDate: return "mjdDate"
+        case .isoDate: return "isoDate"
+        case .boolean: return "boolean"
+        }
+    }
+
+    /// Resolver coordinates in the exact shape `ADQLBuilder.buildQuery`
+    /// and `executeSearch` consume.
+    @MainActor
+    private static func resolverCoords(of model: SearchFormModel) -> (ra: String, dec: String)? {
+        guard let result = model.resolverResult, !result.coordsRA.isEmpty else { return nil }
+        return (ra: result.coordsRA, dec: result.coordsDec)
+    }
+
+    private nonisolated static let emptySearchForm = GetSearchFormTool.Output(
+        observationID: "", piName: "", proposalID: "", proposalTitle: "",
+        proposalKeywords: "", dataRelease: "", publicOnly: false, intent: "any",
+        target: "", resolver: "all", pixelScale: "",
+        resolverStatus: "idle", resolvedRA: nil, resolvedDec: nil,
+        observationDate: "", datePreset: "none", integrationTime: "", timeSpan: "",
+        spectralCoverage: "", spectralSampling: "", resolvingPower: "",
+        bandpassWidth: "", restFrameEnergy: "",
+        bands: [], collections: [], instruments: [], filters: [],
+        calLevels: [], dataTypes: [], obsTypes: [],
+        selectedTab: "search", isSearching: false, searchError: nil,
+        generatedADQL: "")
+
+    private func makeGetSearchFormTool() -> GetSearchFormTool {
+        GetSearchFormTool(snapshot: { [weak self] in
+            guard let self else { return Self.emptySearchForm }
+            return await MainActor.run {
+                let model = self.searchModel
+                let state = model.formState
+                var resolvedRA: String?
+                var resolvedDec: String?
+                let statusKey: String
+                switch model.resolverStatus {
+                case .idle: statusKey = "idle"
+                case .resolving: statusKey = "resolving"
+                case .resolved(let ra, let dec):
+                    statusKey = "resolved"
+                    resolvedRA = ra
+                    resolvedDec = dec
+                case .failed(let message): statusKey = "failed: \(message)"
+                }
+                return GetSearchFormTool.Output(
+                    observationID: state.observationID,
+                    piName: state.piName,
+                    proposalID: state.proposalID,
+                    proposalTitle: state.proposalTitle,
+                    proposalKeywords: state.proposalKeywords,
+                    dataRelease: state.dataRelease,
+                    publicOnly: state.publicOnly,
+                    intent: Self.intentKey(state.intent),
+                    target: state.target,
+                    resolver: state.resolver.rawValue.lowercased(),
+                    pixelScale: state.pixelScale,
+                    resolverStatus: statusKey,
+                    resolvedRA: resolvedRA,
+                    resolvedDec: resolvedDec,
+                    observationDate: state.observationDate,
+                    datePreset: Self.datePresetKey(state.datePreset),
+                    integrationTime: state.integrationTime,
+                    timeSpan: state.timeSpan,
+                    spectralCoverage: state.spectralCoverage,
+                    spectralSampling: state.spectralSampling,
+                    resolvingPower: state.resolvingPower,
+                    bandpassWidth: state.bandpassWidth,
+                    restFrameEnergy: state.restFrameEnergy,
+                    bands: state.selectedBands,
+                    collections: state.selectedCollections,
+                    instruments: state.selectedInstruments,
+                    filters: state.selectedFilters,
+                    calLevels: state.selectedCalLevels,
+                    dataTypes: state.selectedDataTypes,
+                    obsTypes: state.selectedObsTypes,
+                    selectedTab: model.selectedTab.rawValue,
+                    isSearching: model.isSearching,
+                    searchError: model.searchError,
+                    generatedADQL: ADQLBuilder.buildQuery(
+                        formState: state,
+                        resolverCoords: Self.resolverCoords(of: model)))
+            }
+        })
+    }
+
+    private func makeSetSearchFormTool() -> SetSearchFormTool {
+        let activity = agentsService.activityStore
+        return SetSearchFormTool(apply: { [weak self] args in
+            guard let self else { return .init(error: "App state unavailable") }
+
+            // Map enum-ish strings up front so bad values reject cleanly
+            // before any form mutation.
+            var intent: IntentValue?
+            if let raw = args.intent {
+                switch raw {
+                case "any": intent = .any
+                case "science": intent = .science
+                case "calibration": intent = .calibration
+                default: return .init(error: "Unknown intent '\(raw)'")
+                }
+            }
+            var resolver: ResolverValue?
+            if let raw = args.resolver {
+                guard let value = ResolverValue(rawValue: raw.uppercased()) else {
+                    return .init(error: "Unknown resolver '\(raw)'")
+                }
+                resolver = value
+            }
+            var datePreset: DatePresetValue?
+            if let raw = args.datePreset {
+                switch raw {
+                case "none": datePreset = DatePresetValue.none
+                case "past24Hours": datePreset = .past24Hours
+                case "pastWeek": datePreset = .pastWeek
+                case "pastMonth": datePreset = .pastMonth
+                default: return .init(error: "Unknown datePreset '\(raw)'")
+                }
+            }
+
+            let model = await self.searchModel
+            let targetTouched: Bool = await MainActor.run {
+                let state = model.formState
+                if let v = args.observationID { state.observationID = v }
+                if let v = args.piName { state.piName = v }
+                if let v = args.proposalID { state.proposalID = v }
+                if let v = args.proposalTitle { state.proposalTitle = v }
+                if let v = args.proposalKeywords { state.proposalKeywords = v }
+                if let v = args.dataRelease { state.dataRelease = v }
+                if let v = args.publicOnly { state.publicOnly = v }
+                if let v = intent { state.intent = v }
+                if let v = args.target { state.target = v }
+                if let v = resolver { state.resolver = v }
+                if let v = args.pixelScale { state.pixelScale = v }
+                if let v = args.observationDate { state.observationDate = v }
+                if let v = datePreset { state.datePreset = v }
+                if let v = args.integrationTime { state.integrationTime = v }
+                if let v = args.timeSpan { state.timeSpan = v }
+                if let v = args.spectralCoverage { state.spectralCoverage = v }
+                if let v = args.spectralSampling { state.spectralSampling = v }
+                if let v = args.resolvingPower { state.resolvingPower = v }
+                if let v = args.bandpassWidth { state.bandpassWidth = v }
+                if let v = args.restFrameEnergy { state.restFrameEnergy = v }
+
+                // Data-train cascade: apply the provided columns, then
+                // clear every column downstream of the highest provided
+                // one that wasn't itself provided — the UI's rule that
+                // an upstream change invalidates downstream selections.
+                let train: [(Int, [String]?)] = [
+                    (0, args.bands), (1, args.collections), (2, args.instruments),
+                    (3, args.filters), (4, args.calLevels), (5, args.dataTypes),
+                    (6, args.obsTypes),
+                ]
+                func setTrain(_ index: Int, _ values: [String]) {
+                    switch index {
+                    case 0: state.selectedBands = values
+                    case 1: state.selectedCollections = values
+                    case 2: state.selectedInstruments = values
+                    case 3: state.selectedFilters = values
+                    case 4: state.selectedCalLevels = values
+                    case 5: state.selectedDataTypes = values
+                    default: state.selectedObsTypes = values
+                    }
+                }
+                if let lowest = train.compactMap({ $0.1 != nil ? $0.0 : nil }).min() {
+                    for (index, values) in train {
+                        if let values {
+                            setTrain(index, values)
+                        } else if index > lowest {
+                            setTrain(index, [])
+                        }
+                    }
+                }
+                return args.target != nil || args.resolver != nil
+            }
+
+            var outcome = SetSearchFormTool.Outcome()
+            if args.execute == true {
+                if targetTouched {
+                    // The UI debounces resolution behind typing; an
+                    // immediate execute must wait for coordinates the
+                    // same way a user pausing after typing would.
+                    await model.resolveTargetNow()
+                }
+                // Stamp the auto-saved recent search with agent provenance
+                // (live op — no proposal — so a synthetic attribution).
+                await MainActor.run {
+                    model.nextSearchAttribution = .forLiveTool(
+                        label: "set_search_form", summary: "Ran a search from the form")
+                }
+                await model.executeSearch()
+                outcome.executed = true
+                let (count, error) = await MainActor.run {
+                    (model.resultsModel.totalRows, model.searchError)
+                }
+                outcome.resultCount = count
+                outcome.searchError = error
+            } else if targetTouched {
+                // Kick the UI's normal debounced resolution so the form
+                // shows the resolver status the user expects to see.
+                await MainActor.run { model.targetChanged() }
+            }
+            await MainActor.run {
+                activity.append(.live(
+                    kind: "set_search_form",
+                    summary: args.execute == true
+                        ? "Filled the search form and ran the search"
+                        : "Filled the search form",
+                    origin: .external(clientID: "set_search_form")))
+            }
+            return outcome
+        })
+    }
+
+    private func makeResetSearchFormTool() -> ResetSearchFormTool {
+        let activity = agentsService.activityStore
+        return ResetSearchFormTool(reset: { [weak self] in
+            guard let self else { return }
+            await MainActor.run {
+                self.searchModel.resetForm()
+                activity.append(.live(
+                    kind: "reset_search_form",
+                    summary: "Reset the search form",
+                    origin: .external(clientID: "reset_search_form")))
+            }
+        })
+    }
+
+    private func makeGetDataTrainOptionsTool() -> GetDataTrainOptionsTool {
+        GetDataTrainOptionsTool(snapshot: { [weak self] in
+            guard let self else {
+                return .init(columns: [], lastRefreshedISO: nil,
+                             isRefreshing: false, error: "App state unavailable")
+            }
+            let model = await self.searchModel
+            // Idempotent: joins any in-flight load, serves cache instantly.
+            await model.dataTrainModel.loadData()
+            return await MainActor.run {
+                let dataTrain = model.dataTrainModel
+                let state = model.formState
+                let meta: [(id: String, title: String)] = [
+                    ("band", "Band"), ("collection", "Collection"),
+                    ("instrument", "Instrument"), ("filter", "Filter"),
+                    ("calLevel", "Cal. Level"), ("dataType", "Data Type"),
+                    ("obsType", "Obs. Type"),
+                ]
+                let selections = [
+                    state.selectedBands, state.selectedCollections,
+                    state.selectedInstruments, state.selectedFilters,
+                    state.selectedCalLevels, state.selectedDataTypes,
+                    state.selectedObsTypes,
+                ]
+                let cap = 500
+                let columns = meta.enumerated().map { index, entry in
+                    let options = dataTrain.filteredOptions(for: index, formState: state)
+                    return GetDataTrainOptionsTool.Output.Column(
+                        index: index, id: entry.id, title: entry.title,
+                        options: Array(options.prefix(cap)),
+                        selected: selections[index],
+                        truncated: options.count > cap)
+                }
+                return GetDataTrainOptionsTool.Output(
+                    columns: columns,
+                    lastRefreshedISO: dataTrain.lastRefreshed.map {
+                        ISO8601DateFormatter().string(from: $0)
+                    },
+                    isRefreshing: dataTrain.isRefreshing,
+                    error: dataTrain.hasError ? dataTrain.errorMessage : nil)
+            }
+        })
+    }
+
+    private func makeRefreshDataTrainTool() -> RefreshDataTrainTool {
+        let activity = agentsService.activityStore
+        return RefreshDataTrainTool(refresh: { [weak self] in
+            guard let self else {
+                return .init(error: "App state unavailable", lastRefreshedISO: nil)
+            }
+            let model = await self.searchModel
+            await model.dataTrainModel.refreshData()
+            return await MainActor.run {
+                let dataTrain = model.dataTrainModel
+                if dataTrain.hasError {
+                    return RefreshDataTrainTool.Refreshed(
+                        error: dataTrain.errorMessage, lastRefreshedISO: nil)
+                }
+                activity.append(.live(
+                    kind: "refresh_data_train",
+                    summary: "Refreshed the data-train facets from CADC",
+                    origin: .external(clientID: "refresh_data_train")))
+                return RefreshDataTrainTool.Refreshed(
+                    error: nil,
+                    lastRefreshedISO: dataTrain.lastRefreshed.map {
+                        ISO8601DateFormatter().string(from: $0)
+                    })
+            }
+        })
+    }
+
+    private func makeSetADQLEditorTool() -> SetADQLEditorTool {
+        let activity = agentsService.activityStore
+        return SetADQLEditorTool(apply: { [weak self] args in
+            guard let self else { return .init(error: "App state unavailable") }
+            let model = await self.searchModel
+            let adql: String = await MainActor.run {
+                if let text = args.adql {
+                    model.resultsModel.adqlQuery = text
+                } else if args.generateFromForm == true {
+                    model.resultsModel.adqlQuery = ADQLBuilder.buildQuery(
+                        formState: model.formState,
+                        resolverCoords: Self.resolverCoords(of: model))
+                }
+                model.selectedTab = .adql
+                return model.resultsModel.adqlQuery
+            }
+            var outcome = SetADQLEditorTool.Outcome(adql: adql)
+            if args.execute == true {
+                guard !adql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    return .init(error: "The ADQL editor is empty — pass `adql` or `generateFromForm`")
+                }
+                await model.executeRawQuery(adql)
+                outcome.executed = true
+                let (count, error) = await MainActor.run {
+                    (model.resultsModel.totalRows, model.searchError)
+                }
+                outcome.resultCount = count
+                outcome.searchError = error
+            }
+            await MainActor.run {
+                activity.append(.live(
+                    kind: "set_adql_editor",
+                    summary: args.execute == true
+                        ? "Set the ADQL editor and ran the query"
+                        : "Set the ADQL editor",
+                    origin: .external(clientID: "set_adql_editor")))
+            }
+            return outcome
+        })
+    }
+
+    private func makeSelectSearchTabTool() -> SelectSearchTabTool {
+        let activity = agentsService.activityStore
+        return SelectSearchTabTool(select: { [weak self] raw in
+            guard let self else { return "App state unavailable" }
+            guard let tab = SearchFormModel.SearchTab(rawValue: raw) else {
+                return "Unknown tab '\(raw)' — use search, results, or adql"
+            }
+            return await MainActor.run {
+                self.searchModel.selectedTab = tab
+                if self.currentMode != .search {
+                    self.navigateTo(.search)
+                }
+                activity.append(.live(
+                    kind: "select_search_tab",
+                    summary: "Switched Search to the \(raw) tab",
+                    origin: .external(clientID: "select_search_tab")))
+                return nil
+            }
+        })
+    }
+
+    private func makeQuickSearchTool() -> QuickSearchTool {
+        let activity = agentsService.activityStore
+        return QuickSearchTool(run: { [weak self] columnID, value in
+            guard let self else { return .init(error: "App state unavailable") }
+            let quickSearchable = await MainActor.run {
+                SearchFormModel.quickSearchableColumnIDs.contains(columnID)
+            }
+            guard quickSearchable else {
+                return .init(error: "Column '\(columnID)' is not quick-searchable")
+            }
+            let trimmed = value.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { return .init(error: "value is empty") }
+            let model = await self.searchModel
+            await MainActor.run {
+                model.nextSearchAttribution = .forLiveTool(
+                    label: "quick_search",
+                    summary: "Quick-searched \(columnID) = '\(trimmed)'")
+            }
+            await model.quickSearch(columnID: columnID, rawValue: trimmed)
+            return await MainActor.run {
+                activity.append(.live(
+                    kind: "quick_search",
+                    summary: "Quick-searched \(columnID) = '\(trimmed)'",
+                    origin: .external(clientID: "quick_search")))
+                return QuickSearchTool.Outcome(
+                    error: nil,
+                    resultCount: model.resultsModel.totalRows,
+                    searchError: model.searchError)
+            }
+        })
+    }
+
+    private nonisolated static let emptySearchResults = GetSearchResultsTool.Output(
+        hasResults: false, adqlQuery: "", totalRows: 0, filteredCount: 0,
+        maxRecordReached: false, currentPage: 0, totalPages: 1, rowsPerPage: 100,
+        sortColumnID: nil, sortAscending: true, activeFilters: [:], columns: [],
+        returnedPage: nil, rowIDs: [], rows: [], rowsTruncated: false)
+
+    private func makeGetSearchResultsTool() -> GetSearchResultsTool {
+        GetSearchResultsTool(snapshot: { [weak self] args in
+            guard let self else { return Self.emptySearchResults }
+            return await MainActor.run {
+                let resultsModel = self.searchModel.resultsModel
+                guard !resultsModel.results.isEmpty else { return Self.emptySearchResults }
+
+                let includeAll = args.allColumns == true
+                let cols = resultsModel.columns.list.filter { includeAll || $0.visible }
+                let columns = cols.map {
+                    GetSearchResultsTool.Output.Column(
+                        id: $0.id, label: $0.label,
+                        kind: Self.columnKindKey($0.kind),
+                        visible: $0.visible,
+                        selectedUnit: resultsModel.selectedUnit(for: $0.id))
+                }
+
+                var rows: [[String]] = []
+                var rowIDs: [String] = []
+                var returnedPage: Int?
+                var truncated = false
+                if args.includeRows ?? true {
+                    let full = resultsModel.fullFilteredSortedResults
+                    let perPage = resultsModel.rowsPerPage
+                    let slice: ArraySlice<SearchResult>
+                    if perPage <= 0 {
+                        returnedPage = 0
+                        slice = full[...]
+                    } else {
+                        let page = args.page ?? resultsModel.currentPage
+                        returnedPage = page
+                        let start = page * perPage
+                        slice = start < full.count
+                            ? full[start..<min(start + perPage, full.count)]
+                            : full[0..<0]
+                    }
+                    let cap = min(max(args.maxRows ?? 200, 1), 1000)
+                    truncated = slice.count > cap
+                    let limited = slice.prefix(cap)
+                    rowIDs = limited.map(\.id)
+                    rows = limited.map { row in
+                        cols.map { col in
+                            row.rawValues.indices.contains(col.index)
+                                ? row.rawValues[col.index] : ""
+                        }
+                    }
+                }
+
+                return GetSearchResultsTool.Output(
+                    hasResults: true,
+                    adqlQuery: resultsModel.adqlQuery,
+                    totalRows: resultsModel.totalRows,
+                    filteredCount: resultsModel.filteredCount,
+                    maxRecordReached: resultsModel.maxRecordReached,
+                    currentPage: resultsModel.currentPage,
+                    totalPages: resultsModel.totalPages,
+                    rowsPerPage: resultsModel.rowsPerPage,
+                    sortColumnID: resultsModel.sortColumnID,
+                    sortAscending: resultsModel.sortAscending,
+                    activeFilters: resultsModel.columnFilters,
+                    columns: columns,
+                    returnedPage: returnedPage,
+                    rowIDs: rowIDs,
+                    rows: rows,
+                    rowsTruncated: truncated)
+            }
+        })
+    }
+
+    private func makeSetResultsViewTool() -> SetResultsViewTool {
+        let activity = agentsService.activityStore
+        return SetResultsViewTool(apply: { [weak self] args in
+            guard let self else { return .rejected("App state unavailable") }
+            return await MainActor.run {
+                let resultsModel = self.searchModel.resultsModel
+                guard !resultsModel.results.isEmpty else {
+                    return .rejected("No search results are loaded")
+                }
+
+                // Validate every reference before mutating anything, so a
+                // rejected call leaves the table exactly as the user had it.
+                if let id = args.sortColumnID, resultsModel.columns.column(id: id) == nil {
+                    return .rejected("Unknown column '\(id)'")
+                }
+                if let visible = args.visibleColumns {
+                    guard !visible.isEmpty else {
+                        return .rejected("visibleColumns must not be empty")
+                    }
+                    for id in visible where resultsModel.columns.column(id: id) == nil {
+                        return .rejected("Unknown column '\(id)'")
+                    }
+                }
+                if let filters = args.filters {
+                    for id in filters.keys where resultsModel.columns.column(id: id) == nil {
+                        return .rejected("Unknown column '\(id)'")
+                    }
+                }
+                if let units = args.columnUnits {
+                    for (id, unit) in units {
+                        guard let available = CellFormatterRegistry.availableUnits(for: id) else {
+                            return .rejected("Column '\(id)' has no unit choices")
+                        }
+                        guard available.contains(where: { $0.unitID == unit }) else {
+                            return .rejected("Unknown unit '\(unit)' for column '\(id)'")
+                        }
+                    }
+                }
+                if let perPage = args.rowsPerPage,
+                   !SearchResultsModel.rowsPerPageOptions.contains(perPage) {
+                    return .rejected("rowsPerPage must be one of 50, 100, 500, or 0 (all)")
+                }
+
+                if args.clearSort == true { resultsModel.sortColumnID = nil }
+                if let id = args.sortColumnID {
+                    resultsModel.sortAscending = args.sortAscending ?? true
+                    resultsModel.sortColumnID = id
+                } else if let ascending = args.sortAscending {
+                    resultsModel.sortAscending = ascending
+                }
+                if args.clearFilters == true { resultsModel.columnFilters = [:] }
+                if let filters = args.filters {
+                    for (id, text) in filters { resultsModel.setFilter(id, text: text) }
+                }
+                if args.resetColumnVisibility == true { resultsModel.resetColumnVisibility() }
+                if let visible = args.visibleColumns {
+                    let visibleSet = Set(visible)
+                    for col in resultsModel.columns.list {
+                        resultsModel.columns.setVisibility(
+                            id: col.id, visible: visibleSet.contains(col.id))
+                    }
+                    resultsModel.columns.persistVisibility()
+                }
+                if let units = args.columnUnits {
+                    for (id, unit) in units {
+                        resultsModel.setUnit(columnID: id, unitID: unit)
+                    }
+                }
+                if let perPage = args.rowsPerPage { resultsModel.rowsPerPage = perPage }
+                if let page = args.page {
+                    resultsModel.currentPage = max(0, min(page, resultsModel.totalPages - 1))
+                }
+
+                activity.append(.live(
+                    kind: "set_results_view",
+                    summary: "Adjusted the results table",
+                    origin: .external(clientID: "set_results_view")))
+                return .applied(.init(
+                    filteredCount: resultsModel.filteredCount,
+                    currentPage: resultsModel.currentPage,
+                    totalPages: resultsModel.totalPages))
+            }
+        })
+    }
+
+    private func makeOpenObservationDetailTool() -> OpenObservationDetailTool {
+        let activity = agentsService.activityStore
+        return OpenObservationDetailTool(open: { [weak self] rowID in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                let model = self.searchModel
+                guard model.resultsModel.result(forID: rowID) != nil else {
+                    return "No results row with id '\(rowID)' — ids come from get_search_results"
+                }
+                if self.currentMode != .search {
+                    self.navigateTo(.search)
+                }
+                model.selectedTab = .results
+                model.resultsModel.pendingDetailRequest = .init(rowID: rowID)
+                activity.append(.live(
+                    kind: "open_observation_detail",
+                    summary: "Opened observation detail for \(rowID)",
+                    origin: .external(clientID: "open_observation_detail")))
+                return nil
+            }
+        })
+    }
+
+    // MARK: - FITS viewer control
+
+    private func makeGetFITSViewTool() -> GetFITSViewTool {
+        GetFITSViewTool(snapshot: { [weak self] in
+            guard let self else { return Self.emptyFITSView() }
+            return await self.fitsViewSnapshot()
+        })
+    }
+
+    private func makeSetFITSViewTool() -> SetFITSViewTool {
+        SetFITSViewTool(apply: { [weak self] args in
+            guard let self else { return "App state unavailable" }
+            return await self.applyFITSView(args)
+        })
+    }
+
+    private func makeFITSGotoCoordinateTool() -> FITSGotoCoordinateTool {
+        FITSGotoCoordinateTool(goTo: { [weak self] ra, dec in
+            guard let self else { return nil }
+            return await MainActor.run {
+                guard let tab = self.fitsTabHost.activeTab, tab.wcs != nil else { return nil }
+                return tab.goToCoordinate(ra: ra, dec: dec)
+            }
+        })
+    }
+
+    private func makeProbeFITSPixelTool() -> ProbeFITSPixelTool {
+        ProbeFITSPixelTool(probe: { [weak self] x, y in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            return try await MainActor.run {
+                guard let tab = self.fitsTabHost.activeTab, let hdu = tab.selectedHDU else {
+                    throw ToolFailureReason.targetNotResolved("No FITS image is open in the viewer")
+                }
+                guard let result = tab.probePixel(x: x, y: y) else {
+                    throw ToolFailureReason.invalidArgument(
+                        "pixel (\(x), \(y)) outside \(hdu.header.naxis1)×\(hdu.header.naxis2)")
+                }
+                return ProbeFITSPixelTool.Output(
+                    x: x, y: y, value: result.value, raDeg: result.ra, decDeg: result.dec)
+            }
+        })
+    }
+
+    private func makeListFITSBookmarksTool() -> ListFITSBookmarksTool {
+        ListFITSBookmarksTool(snapshot: { [weak self] in
+            guard let self else { return [] }
+            return await MainActor.run {
+                let iso = ISO8601DateFormatter()
+                return self.fitsBookmarks.bookmarks.map {
+                    ListFITSBookmarksTool.Entry(
+                        id: $0.id.uuidString, label: $0.label,
+                        raDeg: $0.ra, decDeg: $0.dec,
+                        sourceFilePath: $0.sourceFilePath,
+                        savedAtISO: iso.string(from: $0.savedAt))
+                }
+            }
+        })
+    }
+
+    private func makeListOpenTabsTool() -> ListOpenTabsTool {
+        ListOpenTabsTool(snapshot: { [weak self] in
+            guard let self else {
+                return ListOpenTabsTool.Output(
+                    fitsTabs: [], activeFITSTabIndex: nil, cubeOpen: false, cubeFileName: nil,
+                    cubeTabs: [], activeCubeTabIndex: nil)
+            }
+            return await MainActor.run {
+                let host = self.fitsTabHost
+                let tabs = host.tabs.enumerated().map { index, tab in
+                    ListOpenTabsTool.Output.Tab(
+                        index: index,
+                        path: tab.fileURL?.path ?? "",
+                        isActive: index == host.activeTabIndex)
+                }
+                let cube = self.cubeViewer
+                return ListOpenTabsTool.Output(
+                    fitsTabs: tabs,
+                    activeFITSTabIndex: host.tabs.isEmpty ? nil : host.activeTabIndex,
+                    cubeOpen: cube.hasData,
+                    cubeFileName: cube.hasData ? cube.fileName : nil,
+                    cubeTabs: self.cubeTabHost.tabs.enumerated().map {
+                        .init(index: $0.offset, path: $0.element.fileName, isActive: $0.offset == self.cubeTabHost.activeTabIndex)
+                    },
+                    activeCubeTabIndex: self.cubeTabHost.activeTabIndex)
+            }
+        })
+    }
+
+    private func makeCloseActiveTabTool() -> CloseActiveTabTool {
+        let activity = agentsService.activityStore
+        return CloseActiveTabTool(close: { [weak self] kind in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                guard kind == "fits" else { return "Unknown tab kind '\(kind)' — only \"fits\" tabs can be closed" }
+                let host = self.fitsTabHost
+                guard !host.tabs.isEmpty else { return "No FITS tabs are open" }
+                host.closeActiveTab()
+                activity.append(.live(
+                    kind: "close_active_tab", summary: "Closed the active FITS tab",
+                    origin: .external(clientID: "close_active_tab")))
+                return nil
+            }
+        })
+    }
+
+    private nonisolated static func emptyFITSView() -> GetFITSViewTool.Output {
+        GetFITSViewTool.Output(
+            isOpen: false, filePath: nil, hduIndex: nil, imageWidth: nil, imageHeight: nil,
+            stretch: nil, colormap: nil, minCut: nil, maxCut: nil, zoom: nil,
+            rotationRadians: nil, crosshair: nil, openTabPaths: [], activeTabIndex: nil)
+    }
+
+    private func fitsViewSnapshot() -> GetFITSViewTool.Output {
+        let host = fitsTabHost
+        let paths = host.tabs.compactMap { $0.fileURL?.path }
+        guard let tab = host.activeTab, let hdu = tab.selectedHDU else {
+            var empty = Self.emptyFITSView()
+            if !host.tabs.isEmpty {
+                empty = GetFITSViewTool.Output(
+                    isOpen: true, filePath: host.activeTab?.fileURL?.path,
+                    hduIndex: host.activeTab?.selectedHDUIndex,
+                    imageWidth: nil, imageHeight: nil, stretch: nil, colormap: nil,
+                    minCut: nil, maxCut: nil, zoom: nil, rotationRadians: nil,
+                    crosshair: nil, openTabPaths: paths, activeTabIndex: host.activeTabIndex)
+            }
+            return empty
+        }
+        var crosshair: GetFITSViewTool.Output.Crosshair?
+        if let px = tab.crosshairPixel {
+            crosshair = .init(
+                x: px.x, y: px.y,
+                raDeg: tab.crosshairRADeg, decDeg: tab.crosshairDecDeg,
+                value: tab.crosshairValue)
+        }
+        return GetFITSViewTool.Output(
+            isOpen: true,
+            filePath: tab.fileURL?.path,
+            hduIndex: tab.selectedHDUIndex,
+            imageWidth: hdu.header.naxis1,
+            imageHeight: hdu.header.naxis2,
+            stretch: tab.renderParams.stretch.rawValue,
+            colormap: tab.renderParams.colormap.rawValue,
+            minCut: Double(tab.renderParams.minCut),
+            maxCut: Double(tab.renderParams.maxCut),
+            zoom: tab.viewport.zoom,
+            rotationRadians: tab.viewport.rotation,
+            crosshair: crosshair,
+            openTabPaths: paths,
+            activeTabIndex: host.activeTabIndex)
+    }
+
+    private func applyFITSView(_ args: SetFITSViewTool.Args) -> String? {
+        let host = fitsTabHost
+        if let idx = args.tabIndex {
+            guard host.tabs.indices.contains(idx) else {
+                return host.tabs.isEmpty
+                    ? "No FITS tabs are open"
+                    : "tabIndex \(idx) out of range 0…\(host.tabs.count - 1)"
+            }
+            host.activeTabIndex = idx
+        }
+        guard let tab = host.activeTab else { return "No FITS file is open in the viewer" }
+
+        var needsRender = false
+        if let s = args.stretch {
+            guard let mode = FITSRenderParams.StretchMode(rawValue: s) else { return "Unknown stretch '\(s)'" }
+            tab.renderParams.stretch = mode
+            needsRender = true
+        }
+        if let c = args.colormap {
+            guard let map = FITSRenderParams.ColormapType(rawValue: c) else { return "Unknown colormap '\(c)'" }
+            tab.renderParams.colormap = map
+            needsRender = true
+        }
+        let lo = args.minCut.map(Float.init) ?? tab.renderParams.minCut
+        let hi = args.maxCut.map(Float.init) ?? tab.renderParams.maxCut
+        if args.minCut != nil || args.maxCut != nil {
+            guard lo < hi else { return "minCut must be < maxCut" }
+            tab.renderParams.minCut = lo
+            tab.renderParams.maxCut = hi
+            needsRender = true
+        }
+        if needsRender { tab.renderImage() }
+
+        if let z = args.zoom { tab.setZoom(z) }
+        if args.fitToWindow == true {
+            guard tab.lastCanvasSize.width > 0 else {
+                return "The FITS viewer canvas hasn't been laid out yet — open the FITS Viewer first"
+            }
+            tab.fitToWindow(canvasSize: tab.lastCanvasSize)
+        }
+        if args.northUp == true { tab.applyNorthUp() }
+
+        agentsService.activityStore.append(.live(
+            kind: "set_fits_view", summary: "Adjusted the FITS view",
+            origin: .external(clientID: "set_fits_view")))
+        return nil
+    }
+
+    // MARK: - FITS viewer parity (HDU, auto-cut, blink, sync, export)
+
+    private func makeSelectHDUTool() -> SelectHDUTool {
+        let activity = agentsService.activityStore
+        return SelectHDUTool(select: { [weak self] index in
+            guard let self else { return "App state unavailable" }
+            // Validate on the main actor, then run the (async, main-actor)
+            // HDU switch outside the synchronous run block.
+            let validated: (tab: FITSViewerModel?, error: String?) = await MainActor.run {
+                guard let tab = self.fitsTabHost.activeTab, let file = tab.file else {
+                    return (nil, "No FITS file is open in the viewer")
+                }
+                guard file.hdus.indices.contains(index) else {
+                    return (nil, "hduIndex \(index) out of range 0…\(file.hdus.count - 1)")
+                }
+                guard file.hdus[index].isImage else {
+                    return (nil, "HDU \(index) is not an image HDU")
+                }
+                return (tab, nil)
+            }
+            if let message = validated.error { return message }
+            guard let tab = validated.tab else { return "No FITS file is open in the viewer" }
+            await tab.selectHDU(index)
+            await MainActor.run {
+                activity.append(.live(
+                    kind: "select_hdu",
+                    summary: "Selected HDU \(index)",
+                    origin: .external(clientID: "select_hdu")))
+            }
+            return nil
+        })
+    }
+
+    private func makeFITSAutoCutTool() -> FITSAutoCutTool {
+        let activity = agentsService.activityStore
+        return FITSAutoCutTool(autoCut: { [weak self] in
+            guard let self else { return nil }
+            return await MainActor.run {
+                guard let tab = self.fitsTabHost.activeTab, !tab.pixels.isEmpty else {
+                    return nil
+                }
+                let cuts = FITSParser.autoCut(pixels: tab.pixels)
+                tab.renderParams.minCut = cuts.min
+                tab.renderParams.maxCut = cuts.max
+                tab.renderImage()
+                activity.append(.live(
+                    kind: "fits_auto_cut",
+                    summary: "Auto-computed display cuts",
+                    origin: .external(clientID: "fits_auto_cut")))
+                return FITSAutoCutTool.Cuts(min: Double(cuts.min), max: Double(cuts.max))
+            }
+        })
+    }
+
+    private func makeStartBlinkTool() -> StartBlinkTool {
+        let activity = agentsService.activityStore
+        return StartBlinkTool(start: { [weak self] args in
+            guard let self else { return .rejected("App state unavailable") }
+            return await MainActor.run {
+                let host = self.fitsTabHost
+                guard host.tabs.count >= 2 else {
+                    return .rejected("Blink needs at least 2 open FITS tabs")
+                }
+                let tabA = args.tabA ?? 0
+                let tabB = args.tabB ?? 1
+                guard host.tabs.indices.contains(tabA), host.tabs.indices.contains(tabB) else {
+                    return .rejected("tab index out of range 0…\(host.tabs.count - 1)")
+                }
+                guard tabA != tabB else { return .rejected("tabA and tabB must differ") }
+                if let interval = args.intervalSeconds { host.blinkInterval = interval }
+                if self.currentMode != .fitsViewer { self.navigateTo(.fitsViewer) }
+                host.startBlink(tabA: tabA, tabB: tabB)
+                guard host.isBlinking else { return .rejected("Blink failed to start") }
+                activity.append(.live(
+                    kind: "start_blink",
+                    summary: "Started blink: tab \(tabA) vs tab \(tabB)",
+                    origin: .external(clientID: "start_blink")))
+                return .started(.init(
+                    tabA: tabA, tabB: tabB,
+                    alignedWithWCS: host.blinkTransform != nil))
+            }
+        })
+    }
+
+    private func makeSetBlinkTool() -> SetBlinkTool {
+        let activity = agentsService.activityStore
+        return SetBlinkTool(apply: { [weak self] args in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                let host = self.fitsTabHost
+                guard host.isBlinking else {
+                    return "No blink session is running — call start_blink first"
+                }
+                if let interval = args.intervalSeconds { host.blinkInterval = interval }
+                if let show = args.show {
+                    if show == "a" { host.showBlinkA() } else { host.showBlinkB() }
+                }
+                // Applied after `show` so an explicit paused value wins
+                // over show's implicit pause.
+                if let paused = args.paused, paused != host.isBlinkPaused {
+                    host.toggleBlinkPause()
+                }
+                activity.append(.live(
+                    kind: "set_blink",
+                    summary: "Adjusted the blink session",
+                    origin: .external(clientID: "set_blink")))
+                return nil
+            }
+        })
+    }
+
+    private func makeStopBlinkTool() -> StopBlinkTool {
+        let activity = agentsService.activityStore
+        return StopBlinkTool(stop: { [weak self] in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                let host = self.fitsTabHost
+                guard host.isBlinking else { return "No blink session is running" }
+                host.stopBlink()
+                activity.append(.live(
+                    kind: "stop_blink",
+                    summary: "Stopped the blink session",
+                    origin: .external(clientID: "stop_blink")))
+                return nil
+            }
+        })
+    }
+
+    private func makeBlinkFITSTabsTool() -> BlinkFITSTabsTool {
+        BlinkFITSTabsTool(apply: { [weak self] args in
+            guard let self else { return .rejected("App state unavailable") }
+            return await MainActor.run {
+                let host = self.fitsTabHost
+                let action = args.action ?? (args.partnerTab == nil ? "start" : "start")
+                if let interval = args.intervalSeconds { host.blinkInterval = interval }
+                switch action {
+                case "stop":
+                    guard host.isBlinking else { return .rejected("No blink session is running") }
+                    host.stopBlink()
+                case "pause":
+                    guard host.isBlinking else { return .rejected("No blink session is running") }
+                    if !host.isBlinkPaused { host.toggleBlinkPause() }
+                case "resume":
+                    guard host.isBlinking else { return .rejected("No blink session is running") }
+                    if host.isBlinkPaused { host.toggleBlinkPause() }
+                case "start":
+                    guard host.tabs.count >= 2 else { return .rejected("Blink needs at least 2 open FITS tabs") }
+                    let partner = args.partnerTab ?? (host.activeTabIndex == 0 ? 1 : 0)
+                    guard host.tabs.indices.contains(partner), partner != host.activeTabIndex else {
+                        return .rejected("partnerTab must identify a different open FITS tab")
+                    }
+                    self.navigateTo(.fitsViewer)
+                    host.startBlink(tabA: host.activeTabIndex, tabB: partner)
+                default: return .rejected("Unknown action '\(action)'")
+                }
+                return .applied(.init(applied: true, isBlinking: host.isBlinking, paused: host.isBlinkPaused))
+            }
+        })
+    }
+
+    private func makeSwitchFITSTabTool() -> SwitchFITSTabTool {
+        SwitchFITSTabTool(apply: { [weak self] index in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                let host = self.fitsTabHost
+                guard host.tabs.indices.contains(index) else { return "index \(index) out of range 0…\(max(0, host.tabs.count - 1))" }
+                self.navigateTo(.fitsViewer)
+                host.activeTabIndex = index
+                return nil
+            }
+        })
+    }
+
+    private func makeSetTabSyncTool() -> SetTabSyncTool {
+        let activity = agentsService.activityStore
+        return SetTabSyncTool(apply: { [weak self] args in
+            guard let self else { return .rejected("App state unavailable") }
+            return await MainActor.run {
+                let host = self.fitsTabHost
+                guard host.hasMultipleTabs else {
+                    return .rejected("Tab sync needs at least 2 open FITS tabs")
+                }
+                if let link = args.linkCrosshair {
+                    let wasOff = !host.linkedState.linkCrosshair
+                    host.linkedState.linkCrosshair = link
+                    if link && wasOff {
+                        // The UI toggle norths-up unrotated tabs on enable so
+                        // linked crosshairs land on consistently oriented views.
+                        for tab in host.tabs where tab.viewport.rotation == 0 {
+                            tab.applyNorthUp()
+                        }
+                    }
+                }
+                if let zoom = args.syncZoom { host.linkedState.linkZoom = zoom }
+                activity.append(.live(
+                    kind: "set_tab_sync",
+                    summary: "Adjusted tab sync (crosshair: \(host.linkedState.linkCrosshair), zoom: \(host.linkedState.linkZoom))",
+                    origin: .external(clientID: "set_tab_sync")))
+                return .applied(.init(
+                    linkCrosshair: host.linkedState.linkCrosshair,
+                    syncZoom: host.linkedState.linkZoom,
+                    usesImpreciseWCS: host.syncUsesImpreciseWCS))
+            }
+        })
+    }
+
+    private func makeSearchAtCrosshairTool() -> SearchAtCrosshairTool {
+        let activity = agentsService.activityStore
+        return SearchAtCrosshairTool(run: { [weak self] in
+            guard let self else { return .rejected("App state unavailable") }
+            return await MainActor.run {
+                guard let tab = self.fitsTabHost.activeTab,
+                      let ra = tab.crosshairRADeg, let dec = tab.crosshairDecDeg else {
+                    return .rejected("No crosshair with sky coordinates — place one with fits_goto_coordinate")
+                }
+                self.dispatch(.searchCoordinates(ra: ra, dec: dec))
+                activity.append(.live(
+                    kind: "search_at_crosshair",
+                    summary: String(format: "Searching at crosshair (%.4f°, %+0.4f°)", ra, dec),
+                    origin: .external(clientID: "search_at_crosshair")))
+                return .applied(raDeg: ra, decDeg: dec)
+            }
+        })
+    }
+
+    // MARK: - Cube viewer control
+
+    private nonisolated static func closedCubeView() -> GetCubeViewTool.Output {
+        GetCubeViewTool.Output(
+            isOpen: false, fileName: nil, nx: nil, ny: nil, nz: nil, channel: nil,
+            viewMode: nil, colormap: nil, stretch: nil, windowLo: nil, windowHi: nil,
+            density: nil, maxIntensityProjection: nil, autoOrbit: nil, isPlaying: nil,
+            background: nil, spectralScale: nil, quality: nil, showSlicePlane: nil,
+            playbackFPS: nil, opacityCurve: nil, camera: nil)
+    }
+
+    private func makeGetCubeViewTool() -> GetCubeViewTool {
+        GetCubeViewTool(snapshot: { [weak self] in
+            guard let self else { return Self.closedCubeView() }
+            return await MainActor.run {
+                let model = self.cubeViewer
+                guard model.hasData else { return Self.closedCubeView() }
+                return GetCubeViewTool.Output(
+                    isOpen: true,
+                    fileName: model.fileName,
+                    nx: model.nx, ny: model.ny, nz: model.nz,
+                    channel: model.channel,
+                    viewMode: model.viewMode == .slice ? "slice" : "volume",
+                    colormap: model.colormap.rawValue,
+                    stretch: model.stretch.rawValue,
+                    windowLo: Double(model.windowLo),
+                    windowHi: Double(model.windowHi),
+                    density: Double(model.density),
+                    maxIntensityProjection: model.mip,
+                    autoOrbit: model.autoOrbit,
+                    isPlaying: model.isPlaying,
+                    background: model.background.rawValue,
+                    spectralScale: Double(model.spectralScale),
+                    quality: Double(model.volumeSteps),
+                    showSlicePlane: model.showSlicePlane,
+                    playbackFPS: model.playbackFPS,
+                    opacityCurve: model.transferFunction.map { [Double($0.x), Double($0.y)] },
+                    camera: .init(
+                        azimuthDeg: Double(model.cameraAzimuth) * 180 / .pi,
+                        elevationDeg: Double(model.cameraElevation) * 180 / .pi,
+                        distance: Double(model.cameraDistance)))
+            }
+        })
+    }
+
+    private func makeSetCubeViewTool() -> SetCubeViewTool {
+        let activity = agentsService.activityStore
+        return SetCubeViewTool(apply: { [weak self] args in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                let model = self.cubeViewer
+                guard model.hasData else { return "No cube is open in the Cube Viewer" }
+                if let mode = args.viewMode {
+                    switch mode {
+                    case "slice": model.viewMode = .slice
+                    case "volume": model.viewMode = .volume
+                    default: return "Unknown viewMode '\(mode)'"
+                    }
+                }
+                if let ch = args.channel {
+                    guard ch >= 0 && ch < model.nz else {
+                        return "channel \(ch) out of range 0…\(model.nz - 1)"
+                    }
+                    model.setChannel(ch)
+                }
+                if let c = args.colormap {
+                    guard let map = FITSRenderParams.ColormapType(rawValue: c) else { return "Unknown colormap '\(c)'" }
+                    model.colormap = map
+                }
+                if let s = args.stretch {
+                    guard let mode = FITSRenderParams.StretchMode(rawValue: s) else { return "Unknown stretch '\(s)'" }
+                    model.stretch = mode
+                }
+                if args.windowLo != nil || args.windowHi != nil {
+                    let lo = args.windowLo.map(Float.init) ?? model.windowLo
+                    let hi = args.windowHi.map(Float.init) ?? model.windowHi
+                    guard lo < hi else { return "windowLo must be < windowHi" }
+                    model.windowLo = lo
+                    model.windowHi = hi
+                }
+                if let d = args.density {
+                    guard d >= 0 else { return "density must be ≥ 0" }
+                    model.density = Float(d)
+                }
+                if let mip = args.maxIntensityProjection { model.mip = mip }
+                if let orbit = args.autoOrbit { model.autoOrbit = orbit }
+                if let playing = args.playing {
+                    if playing { model.startPlayback() } else { model.stopPlayback() }
+                }
+                if let bg = args.background {
+                    guard let value = CubeBackground(rawValue: bg) else { return "Unknown background '\(bg)'" }
+                    model.background = value
+                }
+                if let scale = args.spectralScale {
+                    guard (0.5...4).contains(scale) else { return "spectralScale must be 0.5–4" }
+                    model.spectralScale = Float(scale)
+                }
+                if let quality = args.quality {
+                    guard (96...768).contains(quality) else { return "quality must be 96–768" }
+                    model.volumeSteps = Float(quality)
+                }
+                if let marker = args.showSlicePlane { model.showSlicePlane = marker }
+                if let fps = args.playbackFPS {
+                    guard (0.5...60).contains(fps) else { return "playbackFPS must be 0.5–60" }
+                    model.playbackFPS = fps
+                }
+                if let curve = args.opacityCurve {
+                    if let error = SetCubeViewTool.validateOpacityCurve(curve) { return error }
+                    model.transferFunction = curve.map { SIMD2(Float($0[0]), Float($0[1])) }
+                }
+                if let auto = args.autoWindow {
+                    switch auto {
+                    case "percentile": model.autoWindowPercentile()
+                    case "full": model.autoWindowFullRange()
+                    default: return "Unknown autoWindow '\(auto)' — use percentile or full"
+                    }
+                }
+                // The UI's bindings request a slice re-render on every
+                // slice-affecting change; tool-driven mutations must too,
+                // or the slice pane goes stale until the next interaction.
+                if args.colormap != nil || args.stretch != nil
+                    || args.windowLo != nil || args.windowHi != nil {
+                    model.requestSliceRender()
+                }
+                if args.reveal == true { self.navigateTo(.cubeViewer) }
+                activity.append(.live(
+                    kind: "set_cube_view", summary: "Adjusted the Cube view",
+                    origin: .external(clientID: "set_cube_view")))
+                return nil
+            }
+        })
+    }
+
+    private func makeSetCubeCameraTool() -> SetCubeCameraTool {
+        let activity = agentsService.activityStore
+        return SetCubeCameraTool(apply: { [weak self] args in
+            guard let self else { return .rejected("App state unavailable") }
+            return await MainActor.run {
+                let model = self.cubeViewer
+                guard model.hasData else { return .rejected("No cube is open in the Cube Viewer") }
+                if let z = args.zoomFactor, z <= 0 { return .rejected("zoomFactor must be > 0") }
+
+                let degToRad = Float.pi / 180
+                var azimuth = args.azimuthDeg.map { Float($0) * degToRad } ?? model.cameraAzimuth
+                var elevation = args.elevationDeg.map { Float($0) * degToRad } ?? model.cameraElevation
+                var distance = args.distance.map(Float.init) ?? model.cameraDistance
+                if let d = args.orbitByAzimuthDeg { azimuth += Float(d) * degToRad }
+                if let d = args.orbitByElevationDeg { elevation += Float(d) * degToRad }
+                if let z = args.zoomFactor { distance /= Float(z) }
+                elevation = min(max(elevation, -1.4), 1.4)
+                distance = min(max(distance, 0.5), 8)
+
+                // The camera only exists in volume mode — switch so the
+                // user actually sees the move.
+                if model.viewMode != .volume { model.viewMode = .volume }
+                if args.reveal == true { self.navigateTo(.cubeViewer) }
+
+                let duration = (self.reduceMotion || args.animated == false) ? 0 : 0.6
+                model.animateCamera(
+                    azimuth: azimuth, elevation: elevation, distance: distance,
+                    duration: duration)
+
+                activity.append(.live(
+                    kind: "set_cube_camera", summary: "Moved the Cube camera",
+                    origin: .external(clientID: "set_cube_camera")))
+                return .applied(SetCubeCameraTool.Pose(
+                    azimuthDeg: Double(azimuth) * 180 / .pi,
+                    elevationDeg: Double(elevation) * 180 / .pi,
+                    distance: Double(distance)))
+            }
+        })
+    }
+
+    private func makeProbeCubeSpectrumTool() -> ProbeCubeSpectrumTool {
+        ProbeCubeSpectrumTool(probe: { [weak self] x, y in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            return try await self.probeCubeSpectrum(x: x, y: y)
+        })
+    }
+
+    private func makeListRecentCubesTool() -> ListRecentCubesTool {
+        ListRecentCubesTool(snapshot: { [weak self] in
+            guard let self else { return [] }
+            return await MainActor.run {
+                self.cubeViewer.recents.map { .init(name: $0.name, path: $0.path) }
+            }
+        })
+    }
+
+    private func makeShowCubeSpectrumTool() -> ShowCubeSpectrumTool {
+        ShowCubeSpectrumTool(apply: { [weak self] visible in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                guard self.cubeViewer.hasData else { return "No cube is open in the Cube Viewer" }
+                self.cubeViewer.showSpectrumPanel = visible
+                self.navigateTo(.cubeViewer)
+                return nil
+            }
+        })
+    }
+
+    private func makeGetCubeChannelProfileTool() -> GetCubeChannelProfileTool {
+        GetCubeChannelProfileTool(profile: { [weak self] in
+            guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
+            return try await MainActor.run {
+                let cube = self.cubeViewer
+                guard cube.hasData else { throw ToolFailureReason.targetNotResolved("No cube is open in the Cube Viewer") }
+                let means = cube.channelProfile ?? []
+                return GetCubeChannelProfileTool.Output(
+                    channelCount: cube.nz,
+                    means: means.map { $0.isFinite ? Double($0) : nil },
+                    spectralAxis: (0..<cube.nz).map { cube.wcs?.spectral.format(channel: $0).primary })
+            }
+        })
+    }
+
+    private func makeSetCubeTransferTool() -> SetCubeTransferTool {
+        SetCubeTransferTool(apply: { [weak self] args in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                let cube = self.cubeViewer
+                guard cube.hasData else { return "No cube is open in the Cube Viewer" }
+                if args.reset == true {
+                    cube.transferFunction = [SIMD2(0, 0), SIMD2(0.45, 0.05), SIMD2(0.75, 0.45), SIMD2(1, 1)]
+                } else if let curve = args.opacityCurve {
+                    if let error = SetCubeViewTool.validateOpacityCurve(curve) { return error }
+                    cube.transferFunction = curve.map { SIMD2(Float($0[0]), Float($0[1])) }
+                } else { return "Pass opacityCurve or reset: true" }
+                self.navigateTo(.cubeViewer)
+                return nil
+            }
+        })
+    }
+
+    private func makeSwitchCubeTabTool() -> SwitchCubeTabTool {
+        SwitchCubeTabTool(apply: { [weak self] index in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                guard self.cubeTabHost.tabs.indices.contains(index) else {
+                    return "index \(index) out of range 0…\(max(0, self.cubeTabHost.tabs.count - 1))"
+                }
+                self.cubeTabHost.activeTabIndex = index
+                self.navigateTo(.cubeViewer)
+                return nil
+            }
+        })
+    }
+
+    private func probeCubeSpectrum(x: Int, y: Int) async throws -> ProbeCubeSpectrumTool.Output {
+        let model = cubeViewer
+        guard model.hasData else {
+            throw ToolFailureReason.targetNotResolved("No cube is open in the Cube Viewer")
+        }
+        guard x >= 0, y >= 0, x < model.nx, y < model.ny else {
+            throw ToolFailureReason.invalidArgument("pixel (\(x), \(y)) outside \(model.nx)×\(model.ny)")
+        }
+        await model.probe(x: x, y: y)
+        guard let spectrum = model.probeSpectrum else {
+            throw ToolFailureReason.backendError(model.probeUnavailableReason ?? "spectrum unavailable")
+        }
+        return ProbeCubeSpectrumTool.Output(
+            x: x, y: y,
+            channelCount: model.nz,
+            spectrum: spectrum.prefix(8192).map { $0.isFinite ? Double($0) : nil },
+            blankedChannels: spectrum.prefix(8192).enumerated().compactMap { $0.element.isFinite ? nil : $0.offset },
+            truncated: spectrum.count > 8192)
     }
 }

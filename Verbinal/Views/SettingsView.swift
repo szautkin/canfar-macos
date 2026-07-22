@@ -42,6 +42,10 @@ struct SettingsView: View {
                 .environment(appState)
                 .tabItem { Label("MCP Clients", systemImage: "network") }
 
+            EndpointsSettingsTab()
+                .environment(appState)
+                .tabItem { Label("Endpoints", systemImage: "server.rack") }
+
             AboutSettingsTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
@@ -504,6 +508,13 @@ private struct AgentsSettingsTab: View {
         )
     }
 
+    private var showActivitySnackbar: Binding<Bool> {
+        Binding(
+            get: { appState.agentsService.liveActivity.isEnabled },
+            set: { appState.agentsService.liveActivity.setEnabled($0) }
+        )
+    }
+
     var body: some View {
         Form {
             Section {
@@ -527,11 +538,14 @@ private struct AgentsSettingsTab: View {
                         .toggleStyle(.switch)
                     Toggle("Follow agent activity", isOn: followAgentActivity)
                         .toggleStyle(.switch)
+                    Toggle("Show activity snackbar", isOn: showActivitySnackbar)
+                        .toggleStyle(.switch)
                 } header: {
                     Text("Autonomy")
                 } footer: {
                     Text("Auto-apply on: agent writes apply immediately; off: each one queues to the proposal strip for your Apply click. " +
-                         "Follow agent activity jumps the window to where an auto-applied change is visible (the explicit `navigate_to` tool ignores this toggle).")
+                         "Follow agent activity jumps the window to where an auto-applied change is visible (the explicit `navigate_to` tool ignores this toggle). " +
+                         "Activity snackbar flashes a banner at the top of the window whenever an agent uses a tool.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -609,41 +623,42 @@ private struct AgentsSettingsTab: View {
     }
 
     private var auditList: some View {
-        let entries = appState.agentsService.recentAuditEntries(limit: 20)
+        // Plain Form rows (no nested ScrollView-in-Form): the 5 most recent
+        // calls, newest first, with a caption noting the truncation.
+        let entries = appState.agentsService.recentAuditEntries(limit: 5)
         return Group {
             if entries.isEmpty {
                 Text("No agent calls yet.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                ScrollView(.vertical) {
-                    LazyVStack(alignment: .leading, spacing: 4) {
-                        ForEach(entries.reversed(), id: \.requestID) { entry in
-                            HStack(spacing: 8) {
-                                Image(systemName: icon(for: entry))
-                                    .foregroundStyle(color(for: entry))
-                                    .accessibilityLabel(accessibilityLabel(for: entry))
-                                Text(entry.toolName)
-                                    .font(.caption.monospaced())
-                                Text(entry.outcome.tag)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                if !entry.originLabel.isEmpty, entry.originLabel != "user" {
-                                    Text(entry.originLabel)
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                        .help("client \(entry.origin.tag)")
-                                }
-                                Spacer()
-                                Text("\(entry.durationMS) ms")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
+                ForEach(entries.reversed(), id: \.requestID) { entry in
+                    HStack(spacing: 8) {
+                        Image(systemName: icon(for: entry))
+                            .foregroundStyle(color(for: entry))
+                            .accessibilityLabel(accessibilityLabel(for: entry))
+                        Text(entry.toolName)
+                            .font(.caption.monospaced())
+                        Text(entry.outcome.tag)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        if !entry.originLabel.isEmpty, entry.originLabel != "user" {
+                            Text(entry.originLabel)
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .help("client \(entry.origin.tag)")
                         }
+                        Spacer()
+                        Text("\(entry.durationMS) ms")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                     }
-                    .padding(.vertical, 4)
                 }
-                .frame(maxHeight: 160)
+                if entries.count == 5 {
+                    Text("Showing the 5 most recent")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
     }
