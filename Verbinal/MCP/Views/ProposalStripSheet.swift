@@ -75,7 +75,7 @@ struct ProposalStripSheet: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: "wand.and.rays")
+            Image.agentRobot
                 .font(.title3)
                 .foregroundStyle(.tint)
             VStack(alignment: .leading, spacing: 2) {
@@ -121,7 +121,7 @@ struct ProposalStripSheet: View {
 
     private func historyRow(_ entry: AgentActivityEntry) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: outcomeIcon(entry.outcome))
+            Image(symbol: outcomeIcon(entry.outcome))
                 .foregroundStyle(outcomeColor(entry.outcome))
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 2) {
@@ -152,7 +152,7 @@ struct ProposalStripSheet: View {
         case .applied:    return "checkmark.circle.fill"
         case .rejected:   return "xmark.circle.fill"
         case .withdrawn:  return "arrow.uturn.backward.circle.fill"
-        case .live:       return "wand.and.rays"
+        case .live:       return "robot"
         }
     }
 

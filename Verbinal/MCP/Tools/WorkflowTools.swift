@@ -62,11 +62,14 @@ struct WorkflowApplier: ProposalApplier {
     let kind: String; let store: WorkflowStore; let activity: AgentActivityStore
     func apply(_ proposal: PendingProposal) async throws {
         try await MainActor.run {
+            // Robot-badge provenance: agent-created working copies carry the
+            // same attribution stamp as saved queries / notes / downloads.
+            let attribution = AgentAttribution.from(proposal: proposal)
             switch kind {
-            case "save_workflow": let p = try JSONDecoder().decode(SaveWorkflowTool.Payload.self, from: proposal.payload); _ = try store.saveNew(name: p.name, text: p.text)
+            case "save_workflow": let p = try JSONDecoder().decode(SaveWorkflowTool.Payload.self, from: proposal.payload); _ = try store.saveNew(name: p.name, text: p.text, attribution: attribution)
             case "update_workflow": let p = try JSONDecoder().decode(UpdateWorkflowTool.Payload.self, from: proposal.payload); try store.updateText(p.id, text: p.text)
             case "set_workflow_step": let p = try JSONDecoder().decode(SetWorkflowStepTool.Payload.self, from: proposal.payload); try store.setStepDone(p.id, index: p.index, done: p.done)
-            case "use_workflow": let p = try JSONDecoder().decode(UseWorkflowTool.Payload.self, from: proposal.payload); _ = try store.useWorkflow(p.id, name: p.name)
+            case "use_workflow": let p = try JSONDecoder().decode(UseWorkflowTool.Payload.self, from: proposal.payload); _ = try store.useWorkflow(p.id, name: p.name, attribution: attribution)
             case "delete_workflow": let p = try JSONDecoder().decode(DeleteWorkflowTool.Payload.self, from: proposal.payload); try store.delete(p.id)
             // A kind we're registered for but don't handle means the switch
             // and the registration list in AppState+AgentTools drifted —

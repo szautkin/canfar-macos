@@ -152,8 +152,10 @@ final class SessionLogFetchTests: XCTestCase {
         let text = SessionDisplay.logResultText(result, emptyFallback: "No events available")
 
         XCTAssertNotEqual(text, "No events available")
-        XCTAssertTrue(text.hasPrefix("Failed to load:"))
-        XCTAssertTrue(text.contains(NetworkError.unauthorized.localizedDescription))
+        // The prefix is localized ("Échec du chargement :" in French), so
+        // compare against the same catalog-routed template the code uses.
+        XCTAssertEqual(text, String(format: String(localized: "Failed to load: %@"),
+                                    NetworkError.unauthorized.localizedDescription))
     }
 
     func testLogResultTextEmptySuccessFallsBack() {

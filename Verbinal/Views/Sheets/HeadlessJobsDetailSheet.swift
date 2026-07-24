@@ -28,12 +28,14 @@ struct HeadlessJobsDetailSheet: View {
     /// they're metadata-only removal (no live container to stop).
     @State private var deleteConfirmJob: HeadlessJob?
 
+    // Labels routed through the catalog — tuple Strings interpolated
+    // into Text are NOT auto-localized like Text literals are.
     private var tabs: [(id: String, label: String, count: Int, color: Color)] {
         [
-            ("running", "Running", model.runningCount, .green),
-            ("pending", "Pending", model.pendingCount, .orange),
-            ("completed", "Completed", model.completedCount, .blue),
-            ("failed", "Failed", model.failedCount, .red),
+            ("running", String(localized: "Running"), model.runningCount, .green),
+            ("pending", String(localized: "Pending"), model.pendingCount, .orange),
+            ("completed", String(localized: "Completed"), model.completedCount, .blue),
+            ("failed", String(localized: "Failed"), model.failedCount, .red),
         ]
     }
 
@@ -116,7 +118,7 @@ struct HeadlessJobsDetailSheet: View {
             // Job list
             if filteredJobs.isEmpty {
                 Spacer()
-                Text("No \(selectedTab) jobs")
+                Text(emptyStateText)
                     .foregroundStyle(.secondary)
                 Spacer()
             } else {
@@ -332,6 +334,18 @@ struct HeadlessJobsDetailSheet: View {
 
     // MARK: - Helpers
 
+    /// Whole sentences per tab (not "No \(tab) jobs") so French gets
+    /// correct grammar: « Aucune tâche en cours », not a raw English
+    /// tab id interpolated into a template.
+    private var emptyStateText: String {
+        switch selectedTab {
+        case "running":   return String(localized: "No running jobs")
+        case "pending":   return String(localized: "No pending jobs")
+        case "completed": return String(localized: "No completed jobs")
+        default:          return String(localized: "No failed jobs")
+        }
+    }
+
     private func statusColor(for job: HeadlessJob) -> Color {
         switch job.status.lowercased() {
         case "running": return .green
@@ -358,8 +372,8 @@ struct HeadlessJobsDetailSheet: View {
     private func showEvents(for job: HeadlessJob) async {
         async let events = model.getEvents(id: job.id)
         async let logs = model.getLogs(id: job.id)
-        eventsText = SessionDisplay.logResultText(await events, emptyFallback: "No events available")
-        logsText = SessionDisplay.logResultText(await logs, emptyFallback: "No logs available")
+        eventsText = SessionDisplay.logResultText(await events, emptyFallback: String(localized: "No events available"))
+        logsText = SessionDisplay.logResultText(await logs, emptyFallback: String(localized: "No logs available"))
         eventsSheetJob = job
     }
 }

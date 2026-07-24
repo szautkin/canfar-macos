@@ -17,7 +17,14 @@ struct WorkflowsView: View {
                 }
                 Section(String(localized: "Wf_MyWorkflowsHeader")) {
                     ForEach(store.listLocal()) { item in
-                        Text("\(item.document.title) (\(item.document.doneCount)/\(item.document.steps.count))").tag(item.id)
+                        HStack(spacing: 5) {
+                            #if os(macOS)
+                            if let attribution = item.agentAttribution {
+                                AgentAttributionBadge(attribution: attribution)
+                            }
+                            #endif
+                            Text("\(item.document.title) (\(item.document.doneCount)/\(item.document.steps.count))")
+                        }.tag(item.id)
                     }
                 }
             }
@@ -42,7 +49,14 @@ struct WorkflowsView: View {
     private func workflowDetail(_ item: WorkflowInfo) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text(item.document.title).font(.title.bold())
+                HStack(spacing: 8) {
+                    Text(item.document.title).font(.title.bold())
+                    #if os(macOS)
+                    if let attribution = item.agentAttribution {
+                        AgentAttributionBadge(attribution: attribution)
+                    }
+                    #endif
+                }
                 if !item.document.description.isEmpty { Text(item.document.description).foregroundStyle(.secondary) }
                 ProgressView(value: Double(item.document.doneCount), total: Double(max(1, item.document.steps.count)))
                 ForEach(item.document.steps) { step in

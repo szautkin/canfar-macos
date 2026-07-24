@@ -32,48 +32,64 @@ struct FileListView: View {
 
             Divider()
 
-            // File rows
-            List(model.sortedNodes, selection: Binding(
-                get: { model.selectedNode?.id },
-                set: { newID in
-                    model.selectedNode = model.sortedNodes.first { $0.id == newID }
-                }
-            )) {
-                node in
-                fileRow(node)
-                    .tag(node.id)
-                    .onTapGesture(count: 2) {
-                        Task { await model.openNode(node) }
-                    }
-                    #if os(macOS)
-                    .contextMenu {
-                        if !node.isContainer {
-                            Button("Download") { Task {
+            // Manual selection — SwiftUI `List(..., selection:)` is unreliable
+            // on macOS with custom row content + gestures, which left Delete
+            // permanently disabled. Single-click selects; double-click opens
+            // folders (and is a no-op for files — use Download / context menu).
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(model.sortedNodes) { node in
+                        fileRow(node)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 5)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .background(rowBackground(for: node))
+                            .onTapGesture(count: 2) {
+                                Task { await model.openNode(node) }
+                            }
+                            .onTapGesture(count: 1) {
                                 model.selectedNode = node
-                                await model.downloadSelected()
-                            }}
-                            if node.isFITS {
-                                Button("Open in FITS Viewer") {
-                                    Task {
+                            }
+                            #if os(macOS)
+                            .contextMenu {
+                                if node.isContainer {
+                                    Button("Open") {
                                         model.selectedNode = node
-                                        await model.openInFITSViewer(node)
+                                        Task { await model.openNode(node) }
+                                    }
+                                } else {
+                                    Button("Download") {
+                                        model.selectedNode = node
+                                        Task { await model.downloadSelected() }
+                                    }
+                                    if node.isFITS {
+                                        Button("Open in FITS Viewer") {
+                                            model.selectedNode = node
+                                            Task { await model.openInFITSViewer(node) }
+                                        }
                                     }
                                 }
+                                Button("Copy Path") {
+                                    let uri = model.vospaceURI(for: node)
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(uri, forType: .string)
+                                }
+                                Divider()
+                                Button("Delete", role: .destructive) {
+                                    model.selectedNode = node
+                                    nodeToDelete = node
+                                }
                             }
-                        }
-                        Button("Copy Path") {
-                            let uri = model.vospaceURI(for: node)
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(uri, forType: .string)
-                        }
-                        Divider()
-                        Button("Delete", role: .destructive) {
-                            nodeToDelete = node
-                        }
+                            #endif
+                            .accessibilityAddTraits(model.selectedNode?.id == node.id ? .isSelected : [])
+                            .accessibilityAction(named: "Delete") {
+                                model.selectedNode = node
+                                nodeToDelete = node
+                            }
                     }
-                    #endif
+                }
             }
-            .listStyle(.plain)
             .confirmationDialog("Delete \(nodeToDelete?.name ?? "")?", isPresented: Binding(
                 get: { nodeToDelete != nil },
                 set: { if !$0 { nodeToDelete = nil } }
@@ -91,6 +107,13 @@ struct FileListView: View {
                      : "This file will be permanently deleted from VOSpace.")
             }
         }
+    }
+
+    private func rowBackground(for node: VOSpaceNode) -> some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(model.selectedNode?.id == node.id
+                  ? Color.accentColor.opacity(0.18)
+                  : Color.clear)
     }
 
     private func sortableHeader(_ title: LocalizedStringKey, key: StorageBrowserModel.SortKey) -> some View {

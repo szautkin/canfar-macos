@@ -197,6 +197,39 @@ final class SimpleXMLParserTests: XCTestCase {
 
     // MARK: - Empty / malformed input
 
+    /// `parentsScopedTo` restricts parent matches to DIRECT children of the
+    /// wrapper — the VOSpace container-listing shape where the folder itself
+    /// is the document root `<node>` and real children live under `<nodes>`.
+    func testNestedElements_parentsScopedTo_excludesRootOutsideWrapper() {
+        let xml = """
+        <node uri="vos://example/folder">
+          <property uri="#date">2026-01-01</property>
+          <nodes>
+            <node uri="vos://example/folder/child">
+              <property uri="#length">42</property>
+            </node>
+          </nodes>
+        </node>
+        """
+
+        let unscoped = SimpleXML.nestedElements(
+            parentLocalName: "node",
+            childLocalName: "property",
+            in: xml
+        )
+        XCTAssertEqual(unscoped.count, 2, "unscoped matches root + child")
+
+        let scoped = SimpleXML.nestedElements(
+            parentLocalName: "node",
+            childLocalName: "property",
+            in: xml,
+            parentsScopedTo: "nodes"
+        )
+        XCTAssertEqual(scoped.count, 1)
+        XCTAssertEqual(scoped[0].parentAttributes["uri"], "vos://example/folder/child")
+        XCTAssertEqual(scoped[0].children.map(\.text), ["42"])
+    }
+
     func testNestedElements_emptyString_returnsEmpty() {
         XCTAssertTrue(
             SimpleXML.nestedElements(parentLocalName: "node", childLocalName: "property", in: "")

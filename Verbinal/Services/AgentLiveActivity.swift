@@ -49,22 +49,32 @@ final class AgentLiveActivity {
 
     private var lastCallAt: Date?
     private var hideTask: Task<Void, Never>?
+    /// False for test instances (`enabledOverride:`) so `setEnabled`
+    /// stays in-memory. The tests run inside the Verbinal app as host —
+    /// a persisting test instance was writing `showActivitySnackbar =
+    /// false` into the REAL app preferences on every test run, silently
+    /// killing the user's snackbar.
+    private let persistsToDefaults: Bool
 
     private static let enabledKey = "com.codebg.Verbinal.agents.showActivitySnackbar"
 
     init(enabledOverride: Bool? = nil) {
         if let enabledOverride {
             self.isEnabled = enabledOverride
+            self.persistsToDefaults = false
         } else {
             // Default ON — the whole point is visibility of agent action.
             UserDefaults.standard.register(defaults: [Self.enabledKey: true])
             self.isEnabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
+            self.persistsToDefaults = true
         }
     }
 
     func setEnabled(_ value: Bool) {
         isEnabled = value
-        UserDefaults.standard.set(value, forKey: Self.enabledKey)
+        if persistsToDefaults {
+            UserDefaults.standard.set(value, forKey: Self.enabledKey)
+        }
         if !value {
             hideTask?.cancel()
             banner = nil

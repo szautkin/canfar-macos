@@ -6,6 +6,38 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-07-23
+
+Storage browser reliability pass: navigation, selection, transfer progress
+with cancel, and French strings that were still missing after 1.3.2.
+
+### Fixed
+- Storage browser navigation: VOSpace container listings were including
+  the folder itself as a child (Windows parser only walks `<vos:nodes>`),
+  so every folder appeared to contain itself and each open appended a
+  duplicate breadcrumb segment. List selection was also broken — a
+  high-priority double-click gesture stole the single-click that drives
+  Delete. Failed navigations now keep the previous folder on screen and
+  surface the backend error in an always-visible orange status bar
+  (previously errors only showed when the list was empty).
+- Storage uploads and downloads share one determinate progress path in the
+  status bar ("Uploading/Downloading name — 12 MB of 48 MB" + bar +
+  cancel) via a single `StorageTransfer` model and
+  `URLSession.upload` / `download` task delegates. Downloads stream to a
+  temp file instead of buffering the whole body in `Data`. Save panel
+  opens before the transfer (canceling the panel skips the download).
+  Download progress uses a dedicated `URLSessionDownloadDelegate` session
+  (async `download(for:delegate:)` suppresses `didWriteData`, so the bar
+  never moved). Listing `#length` / `Content-Length` seed the “X of Y”
+  total. Listings now request `detail=max` (Windows parity) so Modified/Size
+  populate from `#date`/`#mtime`/`#length`, with robust date parsing for
+  ARC's mixed ISO shapes.
+- Missed French translations and minor localization polish for Storage
+  transfer chrome and related strings.
+
+### Changed
+- Marketing version 1.3.3 (build 15).
+
 ## [1.3.2] - 2026-07-21
 
 Windows wire/UI parity (skip Notebook): MCP tool names aligned with the
@@ -27,6 +59,12 @@ strings for all new chrome. Notebook remains the VerbinalPi addon.
   `list_recent_cubes`.
 - **FITS Image Info** panel and **2D vs 3D viewer choice** for NAXIS≥3 files.
 - **Cube multi-tab** host (agent `switch_cube_tab` / `list_open_tabs`).
+- **Robot icon parity** — custom `robot` SF Symbol matching the Windows
+  Fluent glyph on every agent surface: the tool-call snackbar, per-item
+  "created by AI agent" badges, the proposals sheet/toolbar button, Settings
+  tab, setup wizard, welcome sheet, and landing tile. Agent-created workflow
+  copies now carry the badge too (attribution sidecar keeps `.workflow.md`
+  bytes Windows-compatible).
 - Carries forward the 1.3.1-era WIP: offline auth, Settings ▸ Endpoints +
   registry resolution, full agent↔UI search/viewer parity, concurrent MCP
   dispatch + hard deadlines, agent activity snackbar, sandbox folder grants,
@@ -46,6 +84,42 @@ strings for all new chrome. Notebook remains the VerbinalPi addon.
 - Workflow templates ship under `Resources/Workflows/` (Bundle subdirectory)
   so built-in checklists load; sidecar probe is time-boxed so a wedged App
   Group cannot freeze Settings or the test host.
+- Agent-activity snackbar was silently disabled: the unit-test suite (which
+  runs hosted inside the app) persisted `showActivitySnackbar = false` into
+  the real app preferences on every test run. Test instances no longer write
+  to UserDefaults. The snackbar also now pulses at dispatch START (Windows
+  `onAgentDispatchStart` parity) so it is visible during slow calls, not
+  only after they complete.
+- Snackbar headline is now the generic "AI agent is working…" (Windows
+  `MainWindow_AgentWorking` parity) instead of the raw MCP client id; the
+  specific client remains in the proposals history and audit log. FR added.
+- Settings cog now appears in every toolbar (landing, module, Portal) —
+  it used to vanish when navigating into a module.
+- Workflow UI strings (`Wf_*` keys) shipped French-only — the English UI
+  showed raw key IDs like "Wf_MyWorkflowsHeader". English source values
+  added to the catalog.
+- Localization completeness pass, verified against the compiler's extracted
+  string list (SWIFT_EMIT_LOC_STRINGS): every user-facing string in the app
+  now has French — not just the 1.3.2 chrome (proposals sheet, attribution
+  badge, snackbar, setup wizard, Endpoints) but ~380 older gaps across
+  Search/results export menus, FITS + Cube viewer controls and tooltips,
+  Image Discovery, Storage browser, headless jobs, and the iOS views.
+  Translations reuse the Windows client's fr-FR resources where the same
+  string exists (94 strings), keeping cross-platform terminology identical
+  (AD/Déc, "sans interface", "points d'accès", "Visionneuse Cube").
+  Pure-format strings ("%@ / %@" and friends) are marked do-not-translate.
+- Strings that bypassed the catalog at runtime (invisible to the compiler
+  audit because they were built as plain Swift strings) now route through
+  `String(localized:)`: the Batch Jobs dialog's Running/Pending/Completed/
+  Failed filter tabs and empty-state line, the "No events/logs available" +
+  "Failed to load:" log fallbacks, the auth status line ("Please log in",
+  "Validating session...", offline/expired messages, "Welcome"), Storage
+  browser transfer status ("Uploading/Downloading/Saved …"), Image
+  Discovery's relative timestamps ("just now", "42s ago"), and the mode
+  chrome titles (Storage → Stockage, etc.). Locale-sensitive unit tests
+  (byte units, date formats, status prompts) were rewritten to assert
+  against the same catalog/formatter output so the suite passes
+  regardless of the app's language override.
 
 ### Changed
 - Marketing version 1.3.2 (build 14). French localization for all new UI

@@ -296,17 +296,20 @@ struct ContentView: View {
         case .portal:
             makePortalToolbar(showAbout: $showAbout)
         case .search:
-            makeModeToolbar(title: "Search", showAbout: $showAbout)
+            // Titles are plain Strings rendered via Text(title) — they must
+            // go through String(localized:) or the chrome stays English
+            // under a French language override (Storage → Stockage, etc.).
+            makeModeToolbar(title: String(localized: "Search"), showAbout: $showAbout)
         case .research:
-            makeModeToolbar(title: "Research", showAbout: $showAbout)
+            makeModeToolbar(title: String(localized: "Research"), showAbout: $showAbout)
         case .storage:
-            makeModeToolbar(title: "Storage", showAbout: $showAbout)
+            makeModeToolbar(title: String(localized: "Storage"), showAbout: $showAbout)
         case .fitsViewer:
-            makeModeToolbar(title: "FITS Viewer", showAbout: $showAbout)
+            makeModeToolbar(title: String(localized: "FITS Viewer"), showAbout: $showAbout)
         case .cubeViewer:
-            makeModeToolbar(title: "Cube Viewer", showAbout: $showAbout)
+            makeModeToolbar(title: String(localized: "Cube Viewer"), showAbout: $showAbout)
         case .aiGuide:
-            makeModeToolbar(title: "AI Guide", showAbout: $showAbout)
+            makeModeToolbar(title: String(localized: "AI Guide"), showAbout: $showAbout)
         case .workflows:
             makeModeToolbar(title: String(localized: "Wf_PageTitle"), showAbout: $showAbout)
         }

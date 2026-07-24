@@ -119,7 +119,8 @@ enum SessionDisplay {
                 ? emptyFallback
                 : content
         case .failure(let error):
-            return "Failed to load: \(error.localizedDescription)"
+            return String(format: String(localized: "Failed to load: %@"),
+                          error.localizedDescription)
         }
     }
 

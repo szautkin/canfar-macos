@@ -194,5 +194,223 @@ final class StorageBrowserSortTests: XCTestCase {
         // currentPath is still empty at root
         let uri = model.vospaceURI(for: model.nodes[0])
         XCTAssertTrue(uri.contains("testuser"))
+        _ = prevPath
     }
+
+    func testNodeIdentityIsPathStable() {
+        let a = VOSpaceNode(name: "folder", path: "run_code_test", type: .container)
+        let b = VOSpaceNode(name: "folder", path: "run_code_test", type: .container)
+        XCTAssertEqual(a.id, b.id)
+        XCTAssertEqual(a.id, "run_code_test")
+    }
+}
+
+@MainActor
+final class StorageBrowserNavigationTests: XCTestCase {
+
+    override func tearDown() {
+        MockURLProtocol.requestHandler = nil
+        super.tearDown()
+    }
+
+    private func makeModel(
+        handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
+    ) -> StorageBrowserModel {
+        MockURLProtocol.requestHandler = { req in try handler(req) }
+        let network = NetworkClient(session: MockURLProtocol.mockSession())
+        let service = VOSpaceBrowserService(network: network)
+        return StorageBrowserModel(service: service, username: "testuser")
+    }
+
+    private func okListingXML(childName: String) -> Data {
+        Data("""
+        <?xml version="1.0" encoding="UTF-8"?>
+        <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  uri="vos://cadc.nrc.ca~arc/home/testuser"
+                  xsi:type="vos:ContainerNode">
+          <vos:nodes>
+            <vos:node uri="vos://cadc.nrc.ca~arc/home/testuser/\(childName)"
+                      xsi:type="vos:ContainerNode">
+              <vos:properties/>
+            </vos:node>
+          </vos:nodes>
+        </vos:node>
+        """.utf8)
+    }
+
+    func testListNodesRequestIncludesDetailMax() async throws {
+        var seenURL: String?
+        let model = makeModel { request in
+            seenURL = request.url?.absoluteString
+            let url = request.url!
+            return (HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    self.okListingXML(childName: "keep_me"))
+        }
+        await model.loadCurrentFolder()
+        let url = try XCTUnwrap(seenURL)
+        XCTAssertTrue(url.contains("detail=max"),
+                      "listings must request detail=max for #date/#length; got \(url)")
+        XCTAssertTrue(url.contains("limit="), "got \(url)")
+    }
+
+    /// Failed navigation must keep the previous path and listing, and
+    /// surface the error in `statusMessage` (the status bar) — not only
+    /// in the center pane that only appears when `nodes` is empty.
+    func testNavigateFailureKeepsPathAndSurfacesStatusError() async {
+        var calls = 0
+        let model = makeModel { request in
+            calls += 1
+            let url = request.url!
+            if calls == 1 {
+                return (HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                        self.okListingXML(childName: "keep_me"))
+            }
+            return (HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!,
+                    Data("not found".utf8))
+        }
+
+        await model.loadCurrentFolder()
+        XCTAssertEqual(model.currentPath, "")
+        XCTAssertEqual(model.nodes.map(\.name), ["keep_me"])
+        XCTAssertFalse(model.hasError)
+
+        await model.navigateTo("missing_folder")
+
+        XCTAssertEqual(model.currentPath, "",
+                       "failed nav must not advance the breadcrumb")
+        XCTAssertEqual(model.nodes.map(\.name), ["keep_me"],
+                       "failed nav must keep the previous listing")
+        XCTAssertTrue(model.hasError)
+        XCTAssertFalse(model.errorMessage.isEmpty)
+        XCTAssertEqual(model.statusMessage, model.errorMessage,
+                       "status bar must show the same error")
+    }
+
+    func testNavigateSuccessCommitsPath() async {
+        var calls = 0
+        let model = makeModel { request in
+            calls += 1
+            let url = request.url!
+            let body = calls == 1
+                ? self.okListingXML(childName: "folder_a")
+                : Data("""
+                <?xml version="1.0" encoding="UTF-8"?>
+                <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0"
+                          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                          uri="vos://cadc.nrc.ca~arc/home/testuser/folder_a"
+                          xsi:type="vos:ContainerNode">
+                  <vos:nodes/>
+                </vos:node>
+                """.utf8)
+            return (HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    body)
+        }
+
+        await model.loadCurrentFolder()
+        await model.navigateTo("folder_a")
+
+        XCTAssertEqual(model.currentPath, "folder_a")
+        XCTAssertTrue(model.nodes.isEmpty, "empty folder listing")
+        XCTAssertFalse(model.hasError)
+        XCTAssertTrue(model.statusMessage.contains("0") || model.statusMessage.lowercased().contains("item"),
+                      "empty folder should report item count; got \(model.statusMessage)")
+    }
+
+    #if os(macOS)
+    /// Cancelling mid-upload must clear the determinate progress state and
+    /// land on the localized "Upload cancelled" status — not a red error
+    /// banner (cancellation is intentional, not a backend failure).
+    func testCancelUploadClearsProgressAndSetsCancelledStatus() async throws {
+        let started = expectation(description: "upload request started")
+        started.assertForOverFulfill = false
+
+        let model = makeModel { request in
+            if request.httpMethod == "PUT" {
+                started.fulfill()
+                Thread.sleep(forTimeInterval: 5)
+            }
+            let url = request.url ?? URL(string: "https://ws-uv.canfar.net/")!
+            return (HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data())
+        }
+
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cancel-upload-\(UUID().uuidString).bin")
+        try Data(repeating: 0x42, count: 64_000).write(to: fileURL)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let upload = Task { @MainActor in
+            await model.uploadDroppedFile(fileURL)
+        }
+
+        await fulfillment(of: [started], timeout: 5)
+        XCTAssertTrue(model.isTransferring, "progress UI should be active once the PUT starts")
+        XCTAssertEqual(model.activeTransfer?.kind, .upload)
+
+        model.cancelTransfer()
+        await upload.value
+
+        XCTAssertFalse(model.isTransferring)
+        XCTAssertNil(model.activeTransfer)
+        XCTAssertFalse(model.hasError, "cancel must not surface as a backend error")
+        XCTAssertEqual(model.statusMessage, String(localized: "Upload cancelled"))
+    }
+
+    /// Same cancel contract for downloads — shared `activeTransfer` / × control.
+    func testCancelDownloadClearsProgressAndSetsCancelledStatus() async throws {
+        let started = expectation(description: "download request started")
+        started.assertForOverFulfill = false
+
+        let model = makeModel { request in
+            let url = request.url ?? URL(string: "https://ws-uv.canfar.net/")!
+            // Hang on the binary GET (files/home/…/cube.fits), not listings.
+            if url.path.contains("/files/"), url.lastPathComponent == "cube.fits" {
+                started.fulfill()
+                Thread.sleep(forTimeInterval: 5)
+                return (HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
+                                        headerFields: ["Content-Length": "4096"])!,
+                        Data(repeating: 0x11, count: 4_096))
+            }
+            return (HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data())
+        }
+
+        let node = VOSpaceNode(
+            name: "cube.fits",
+            path: "cube.fits",
+            type: .dataNode,
+            sizeBytes: 4_096
+        )
+        // Explicit MainActor hop — the test method already owns the actor,
+        // and unstructured Tasks can otherwise race the expectation wait.
+        let download = Task { @MainActor in
+            await model.openInFITSViewer(node)
+        }
+
+        await fulfillment(of: [started], timeout: 5)
+        XCTAssertTrue(model.isTransferring, "status=\(model.statusMessage)")
+        XCTAssertEqual(model.activeTransfer?.kind, .download)
+
+        model.cancelTransfer()
+        await download.value
+
+        XCTAssertFalse(model.isTransferring)
+        XCTAssertNil(model.activeTransfer)
+        XCTAssertFalse(model.hasError)
+        XCTAssertEqual(model.statusMessage, String(localized: "Download cancelled"))
+    }
+
+    func testCancelTransferWhenIdleIsNoOp() {
+        let model = makeModel { request in
+            let url = request.url ?? URL(string: "https://ws-uv.canfar.net/")!
+            return (HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data())
+        }
+        model.statusMessage = "3 items"
+        model.cancelTransfer()
+        XCTAssertEqual(model.statusMessage, "3 items")
+        XCTAssertFalse(model.isTransferring)
+    }
+    #endif
 }

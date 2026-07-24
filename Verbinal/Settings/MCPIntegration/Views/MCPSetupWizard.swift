@@ -107,7 +107,7 @@ struct MCPSetupWizard: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                Image(systemName: "wand.and.rays")
+                Image.agentRobot
                     .font(.title2)
                     .foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 2) {

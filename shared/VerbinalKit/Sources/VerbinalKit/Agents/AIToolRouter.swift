@@ -38,12 +38,18 @@ public actor AIToolRouter {
     /// Test seam: overrides `dispatchCeiling(for:)` for every verb class
     /// so the hard-deadline path can be exercised in milliseconds.
     private let dispatchCeilingOverride: TimeInterval?
+    /// Fired when an EXTERNAL agent call starts dispatching — before the
+    /// tool runs, so a UI "agent is working" indicator shows during slow
+    /// and failing calls too (Windows `onAgentDispatchStart` parity).
+    /// Best-effort and synchronous; hosts hop to their own actor.
+    private let onDispatchStart: (@Sendable (_ toolName: String, _ originLabel: String) -> Void)?
 
     public init(
         tools: [any AITool],
         auditSink: any AuditSink = LoggingAuditSink(),
         autoApplyHook: AutoApplyHook? = nil,
-        dispatchCeilingOverride: TimeInterval? = nil
+        dispatchCeilingOverride: TimeInterval? = nil,
+        onDispatchStart: (@Sendable (_ toolName: String, _ originLabel: String) -> Void)? = nil
     ) {
         var table: [String: any AITool] = [:]
         var metadata: [String: ToolMetadata] = [:]
@@ -68,6 +74,7 @@ public actor AIToolRouter {
         self.auditSink = auditSink
         self.autoApplyHook = autoApplyHook
         self.dispatchCeilingOverride = dispatchCeilingOverride
+        self.onDispatchStart = onDispatchStart
     }
 
     /// Manifest as seen by an external (MCP) client. Filters out tools
@@ -109,6 +116,12 @@ public actor AIToolRouter {
         rawArguments: Data,
         context: AIToolContext
     ) async -> ToolResult {
+        // Pulse the "agent is working" indicator at dispatch START —
+        // matching Windows — so the user sees activity during a slow or
+        // ultimately-failing call, not only after it completes.
+        if case .external = context.origin {
+            onDispatchStart?(name, context.origin.label)
+        }
         let verbClass = metadata[name]?.verbClass ?? .read
         let ceiling = dispatchCeilingOverride ?? Self.dispatchCeiling(for: verbClass)
         let deadlineHit = DeadlineFlag()

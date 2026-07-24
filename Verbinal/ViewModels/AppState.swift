@@ -735,6 +735,6 @@ final class AppState {
         // Tear down auth state via the controller (also cancels any
         // in-flight reauth and asks AuthService to clear the token).
         await auth.clear()
-        statusMessage = "Logged out"
+        statusMessage = String(localized: "Logged out")
     }
 }

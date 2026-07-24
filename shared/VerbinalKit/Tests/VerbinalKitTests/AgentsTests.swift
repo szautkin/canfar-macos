@@ -59,6 +59,20 @@ private struct UserOnlyTool: AITool {
     }
 }
 
+/// Thread-safe recorder for the router's `onDispatchStart` callback.
+private final class DispatchStartBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var calls: [(tool: String, label: String)] = []
+    func append(tool: String, label: String) {
+        lock.lock(); defer { lock.unlock() }
+        calls.append((tool, label))
+    }
+    func snapshot() -> [(tool: String, label: String)] {
+        lock.lock(); defer { lock.unlock() }
+        return calls
+    }
+}
+
 // MARK: - Router tests
 
 final class AIToolRouterTests: XCTestCase {
@@ -87,6 +101,35 @@ final class AIToolRouterTests: XCTestCase {
             return XCTFail("expected .data, got \(result)")
         }
         XCTAssertEqual(String(data: bytes, encoding: .utf8), #"{"x":1}"#)
+    }
+
+    func testExternalDispatchFiresDispatchStartEvenWhenCallFails() async {
+        // Windows RouterTests parity: the "agent is working" pulse fires
+        // at dispatch START for external callers — including calls that
+        // ultimately fail (unknown tool here).
+        let started = CapturingAuditSink() // reuse as a thread-safe flag store
+        let box = DispatchStartBox()
+        let router = AIToolRouter(
+            tools: [EchoReadTool()],
+            auditSink: started,
+            onDispatchStart: { tool, label in box.append(tool: tool, label: label) }
+        )
+        _ = await router.dispatch(name: "nope", rawArguments: Data("{}".utf8), context: ctx())
+        _ = await router.dispatch(name: "echo", rawArguments: Data("{}".utf8), context: ctx())
+        XCTAssertEqual(box.snapshot().map(\.tool), ["nope", "echo"])
+        XCTAssertEqual(box.snapshot().first?.label, "test")
+    }
+
+    func testUserOriginDoesNotFireDispatchStart() async {
+        let box = DispatchStartBox()
+        let router = AIToolRouter(
+            tools: [EchoReadTool()],
+            auditSink: CapturingAuditSink(),
+            onDispatchStart: { tool, label in box.append(tool: tool, label: label) }
+        )
+        _ = await router.dispatch(name: "echo", rawArguments: Data("{}".utf8),
+                                  context: ctx(.user))
+        XCTAssertTrue(box.snapshot().isEmpty, "in-app calls must not pulse the agent indicator")
     }
 
     func testUnknownToolReturnsUnknownTarget() async {

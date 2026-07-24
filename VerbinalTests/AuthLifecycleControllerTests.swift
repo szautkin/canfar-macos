@@ -17,6 +17,14 @@ import VerbinalKit
 @MainActor
 final class AuthLifecycleControllerTests: XCTestCase {
 
+    /// The two offline status messages the controller can set, routed through
+    /// the catalog so the asserts hold in any host locale (the app's language
+    /// override applies to the hosted test runner too).
+    private let offlineMessages = [
+        String(localized: "You're offline. Verbinal will sign you in when the connection returns."),
+        String(localized: "You appear to be offline. Verbinal will reconnect automatically."),
+    ]
+
     private func makeController(handler: @escaping (URLRequest) -> (HTTPURLResponse, Data)) -> AuthLifecycleController {
         MockURLProtocol.requestHandler = { req in handler(req) }
         let session = MockURLProtocol.mockSession()
@@ -60,7 +68,7 @@ final class AuthLifecycleControllerTests: XCTestCase {
     func testValidateStoredTokenWithNoTokenSetsLoginPrompt() async {
         let controller = makeController { _ in self.okResponse(Data()) }
         await controller.validateStoredToken()
-        XCTAssertEqual(controller.statusMessage, "Please log in")
+        XCTAssertEqual(controller.statusMessage, String(localized: "Please log in"))
         XCTAssertFalse(controller.isAuthenticated)
     }
 
@@ -91,10 +99,14 @@ final class AuthLifecycleControllerTests: XCTestCase {
         let controller = makeController { _ in self.errorResponse(401) }
         await controller.validateStoredToken()
         XCTAssertFalse(controller.isAuthenticated)
-        XCTAssertTrue(
-            controller.statusMessage.lowercased().contains("session expired") ||
-            controller.statusMessage.lowercased().contains("log in")
-        )
+        // Status messages are localized — match against the catalog-routed
+        // values instead of English substrings.
+        let prompts = [
+            String(localized: "Session expired. Please log in again."),
+            String(localized: "Please log in"),
+        ]
+        XCTAssertTrue(prompts.contains(controller.statusMessage),
+                      "Expected a login prompt, got '\(controller.statusMessage)'")
     }
 
     // MARK: - apply / onAuthenticated
@@ -191,7 +203,8 @@ final class AuthLifecycleControllerTests: XCTestCase {
         XCTAssertTrue(controller.awaitingConnectivity)
         XCTAssertFalse(controller.isLoading, "The spinner must never engage offline")
         XCTAssertFalse(controller.isAuthenticated)
-        XCTAssertTrue(controller.statusMessage.lowercased().contains("offline"))
+        XCTAssertTrue(offlineMessages.contains(controller.statusMessage),
+                      "Expected an offline status, got '\(controller.statusMessage)'")
     }
 
     func testUnknownConnectivityStillAttemptsValidation() async {
@@ -304,7 +317,8 @@ final class AuthLifecycleControllerTests: XCTestCase {
         XCTAssertTrue(controller.awaitingConnectivity)
         let (token, _) = KeychainStorage.loadToken()
         XCTAssertEqual(token, "valid-token", "Offline must not clear the stored token")
-        XCTAssertTrue(controller.statusMessage.lowercased().contains("offline"))
+        XCTAssertTrue(offlineMessages.contains(controller.statusMessage),
+                      "Expected an offline status, got '\(controller.statusMessage)'")
     }
 
     func testHandleTokenExpiredExpiredTokenStillFiresSessionExpired() async throws {

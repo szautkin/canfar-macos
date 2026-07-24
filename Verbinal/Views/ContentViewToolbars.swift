@@ -57,13 +57,7 @@ extension ContentView {
 
             fileBrowserToolbarItem
 
-            // Settings — SettingsLink (macOS 14+) opens the Settings scene.
-            SettingsLink {
-                Image(systemName: "gearshape")
-            }
-            .buttonStyle(.borderless)
-            .help("Open Settings (⌘,)")
-            .accessibilityLabel("Settings")
+            settingsToolbarItem
 
             Button {
                 showAbout.wrappedValue = true
@@ -83,6 +77,18 @@ extension ContentView {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(.bar)
+    }
+
+    /// Settings cog, shared by every toolbar — landing, mode, and Portal —
+    /// so the affordance never disappears when the user navigates into a
+    /// module. `SettingsLink` (macOS 14+) opens the Settings scene.
+    private var settingsToolbarItem: some View {
+        SettingsLink {
+            Image(systemName: "gearshape")
+        }
+        .buttonStyle(.borderless)
+        .help("Open Settings (⌘,)")
+        .accessibilityLabel("Settings")
     }
 
     /// File-browser toggle, shared by every mode toolbar. The panel itself
@@ -176,6 +182,8 @@ extension ContentView {
 
             fileBrowserToolbarItem
 
+            settingsToolbarItem
+
             Button {
                 showAbout.wrappedValue = true
             } label: {
@@ -201,12 +209,12 @@ extension ContentView {
                 appState.activeSheet = .agentProposals
             } label: {
                 ZStack(alignment: .topTrailing) {
-                    Image(systemName: "wand.and.rays")
+                    Image.agentRobot
                         // One-shot bounce when the count arrives/changes — the
                         // app's "an agent did something" heartbeat. `value:`
                         // fires it exactly once per change (never repeating).
                         // RM nils the value (no glyph motion) but keeps a static
-                        // wand.
+                        // glyph.
                         .symbolEffect(.bounce, value: reduceMotion ? 0 : count)
                     if count > 0 {
                         Text("\(count)")
@@ -270,6 +278,8 @@ extension ContentView {
             Spacer()
 
             fileBrowserToolbarItem
+
+            settingsToolbarItem
 
             Button {
                 showAbout.wrappedValue = true

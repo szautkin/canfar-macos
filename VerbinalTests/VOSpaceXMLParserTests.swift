@@ -9,6 +9,59 @@ import XCTest
 
 final class VOSpaceXMLParserTests: XCTestCase {
 
+    // MARK: - Date parsing
+
+    func testParseVOSpaceDateFractionalZ() {
+        let date = VOSpaceXMLParser.parseVOSpaceDate("2024-03-15T10:30:45.123Z")
+        XCTAssertNotNil(date)
+    }
+
+    func testParseVOSpaceDatePlainZ() {
+        // The old fractional-only ISO formatter rejected this shape — the
+        // Modified column stayed blank for most ARC listings.
+        let date = VOSpaceXMLParser.parseVOSpaceDate("2024-03-15T10:30:45Z")
+        XCTAssertNotNil(date)
+    }
+
+    func testParseVOSpaceDateWithoutTimezone() {
+        let date = VOSpaceXMLParser.parseVOSpaceDate("2024-03-15T10:30:45")
+        XCTAssertNotNil(date)
+    }
+
+    func testParseNodeListReadsDateAndMtime() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  uri="vos://cadc.nrc.ca~arc/home/u/folder"
+                  xsi:type="vos:ContainerNode">
+          <vos:nodes>
+            <vos:node uri="vos://cadc.nrc.ca~arc/home/u/folder/a.fits"
+                      xsi:type="vos:DataNode">
+              <vos:properties>
+                <vos:property uri="ivo://ivoa.net/vospace/core#length">100</vos:property>
+                <vos:property uri="ivo://ivoa.net/vospace/core#date">2024-03-15T10:30:45Z</vos:property>
+              </vos:properties>
+            </vos:node>
+            <vos:node uri="vos://cadc.nrc.ca~arc/home/u/folder/b.fits"
+                      xsi:type="vos:DataNode">
+              <vos:properties>
+                <vos:property uri="ivo://ivoa.net/vospace/core#date">2020-01-01T00:00:00Z</vos:property>
+                <vos:property uri="ivo://ivoa.net/vospace/core#mtime">2024-06-01T12:00:00Z</vos:property>
+              </vos:properties>
+            </vos:node>
+          </vos:nodes>
+        </vos:node>
+        """
+        let nodes = VOSpaceXMLParser.parseNodeList(xml)
+        XCTAssertEqual(nodes.count, 2)
+        XCTAssertNotNil(nodes[0].lastModified, "#date must populate Modified")
+        XCTAssertNotNil(nodes[1].lastModified)
+        // #mtime wins over the older #date on the same node.
+        let expected = VOSpaceXMLParser.parseVOSpaceDate("2024-06-01T12:00:00Z")
+        XCTAssertEqual(nodes[1].lastModified, expected)
+    }
+
     func testExtractPathFromURI() {
         let uri = "vos://cadc.nrc.ca~arc/home/testuser/folder/file.fits"
         let path = VOSpaceXMLParser.extractPath(uri)
@@ -104,6 +157,59 @@ final class VOSpaceXMLParserTests: XCTestCase {
         XCTAssertNil(nodes[0].contentType)
         XCTAssertNil(nodes[0].lastModified)
         XCTAssertFalse(nodes[0].isPublic)
+    }
+
+    /// Regression: a container GET wraps children in `<vos:nodes>` under
+    /// the folder's own `<vos:node>`. The folder itself must NOT appear
+    /// as a child — that made every folder look like it contained itself
+    /// (`run_code_test` inside `run_code_test`) and each click appended
+    /// another duplicate breadcrumb segment.
+    func testParseNodeListExcludesRootContainerFromChildren() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  uri="vos://cadc.nrc.ca~arc/home/u/run_code_test"
+                  xsi:type="vos:ContainerNode">
+          <vos:properties/>
+          <vos:nodes>
+            <vos:node uri="vos://cadc.nrc.ca~arc/home/u/run_code_test/index.html"
+                      xsi:type="vos:DataNode">
+              <vos:properties>
+                <vos:property uri="ivo://ivoa.net/vospace/core#length">42</vos:property>
+              </vos:properties>
+            </vos:node>
+            <vos:node uri="vos://cadc.nrc.ca~arc/home/u/run_code_test/nested"
+                      xsi:type="vos:ContainerNode">
+              <vos:properties/>
+            </vos:node>
+          </vos:nodes>
+        </vos:node>
+        """
+
+        let nodes = VOSpaceXMLParser.parseNodeList(xml)
+        XCTAssertEqual(nodes.map(\.name), ["index.html", "nested"],
+                       "root container must not be listed as its own child")
+        XCTAssertEqual(nodes[0].sizeBytes, 42)
+        XCTAssertTrue(nodes[1].isContainer)
+    }
+
+    /// An empty folder's listing has a root container with an empty
+    /// `<vos:nodes/>` — the result must be an empty array, not the
+    /// folder itself as a phantom child.
+    func testParseNodeListEmptyContainerReturnsNoChildren() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  uri="vos://cadc.nrc.ca~arc/home/u/empty_folder"
+                  xsi:type="vos:ContainerNode">
+          <vos:properties/>
+          <vos:nodes/>
+        </vos:node>
+        """
+
+        XCTAssertTrue(VOSpaceXMLParser.parseNodeList(xml).isEmpty)
     }
 }
 

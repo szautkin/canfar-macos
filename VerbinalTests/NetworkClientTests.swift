@@ -442,4 +442,268 @@ final class NetworkClientTests: XCTestCase {
             "HTTP 404: Not Found"
         )
     }
+
+    // MARK: - putFile (Storage upload path)
+
+    private func makeTempFile(contents: Data, name: String = "upload-test.bin") throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        if FileManager.default.fileExists(atPath: url.path) {
+            try FileManager.default.removeItem(at: url)
+        }
+        try contents.write(to: url)
+        return url
+    }
+
+    func testPutFileUsesPUTAndStreamsFileBody() async throws {
+        let client = makeClient()
+        await client.setToken("tok-upload")
+        await client.setTrustedAuthHostSuffixes(["canfar.net"])
+        let payload = Data(repeating: 0xAB, count: 4_096)
+        let fileURL = try makeTempFile(contents: payload)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertEqual(
+                request.value(forHTTPHeaderField: "Content-Type"),
+                "application/octet-stream"
+            )
+            XCTAssertEqual(
+                request.value(forHTTPHeaderField: "Authorization"),
+                "Bearer tok-upload"
+            )
+            let body = request.httpBody ?? Data()
+            XCTAssertEqual(body, payload, "upload must stream the file bytes")
+            return self.okResponse(
+                url: request.url?.absoluteString ?? "https://ws-uv.canfar.net/arc/files/home/u/f.bin"
+            )
+        }
+
+        let (_, response) = try await client.putFile(
+            "https://ws-uv.canfar.net/arc/files/home/u/f.bin",
+            fileURL: fileURL,
+            contentType: "application/octet-stream"
+        )
+        XCTAssertEqual(response.statusCode, 200)
+    }
+
+    func testPutFileWithProgressCompletesAndReportsMonotonicBytes() async throws {
+        let client = makeClient()
+        let payload = Data(repeating: 0xCD, count: 16_384)
+        let fileURL = try makeTempFile(contents: payload, name: "progress.bin")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            return self.okResponse(url: request.url?.absoluteString ?? "https://example.com/f")
+        }
+
+        let lock = NSLock()
+        var samples: [(Int64, Int64)] = []
+        let (_, response) = try await client.putFile(
+            "https://example.com/f",
+            fileURL: fileURL,
+            contentType: "application/octet-stream",
+            onProgress: { sent, total in
+                lock.lock()
+                samples.append((sent, total))
+                lock.unlock()
+            }
+        )
+        XCTAssertEqual(response.statusCode, 200)
+
+        lock.lock()
+        let seen = samples
+        lock.unlock()
+
+        // MockURLProtocol finishes instantly, so Progress may only fire
+        // once — but every sample must be well-formed and non-decreasing.
+        for (sent, total) in seen {
+            XCTAssertGreaterThanOrEqual(sent, 0)
+            XCTAssertGreaterThanOrEqual(total, sent)
+        }
+        for i in 1..<seen.count {
+            XCTAssertGreaterThanOrEqual(seen[i].0, seen[i - 1].0,
+                                        "bytesSent must be monotonic")
+        }
+    }
+
+    func testPutFileHTTPErrorPropagatesStatus() async {
+        let client = makeClient()
+        let fileURL: URL
+        do {
+            fileURL = try makeTempFile(contents: Data("x".utf8), name: "fail.bin")
+        } catch {
+            return XCTFail("temp file setup failed: \(error)")
+        }
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        MockURLProtocol.requestHandler = { _ in
+            self.errorResponse(statusCode: 507, body: "Insufficient Storage")
+        }
+
+        do {
+            _ = try await client.putFile(
+                "https://example.com/f",
+                fileURL: fileURL,
+                contentType: "application/octet-stream",
+                onProgress: { _, _ in }
+            )
+            XCTFail("Expected httpError")
+        } catch let error as NetworkError {
+            guard case .httpError(let code, let body) = error else {
+                return XCTFail("Expected httpError, got \(error)")
+            }
+            XCTAssertEqual(code, 507)
+            XCTAssertEqual(body, "Insufficient Storage")
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
+        }
+    }
+
+    func testPutFileCancelThrowsCancellationError() async throws {
+        let client = makeClient()
+        let fileURL = try makeTempFile(contents: Data(repeating: 0xEF, count: 8_192),
+                                       name: "cancel.bin")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        // Hold the request open long enough for the test to cancel.
+        MockURLProtocol.requestHandler = { request in
+            Thread.sleep(forTimeInterval: 3)
+            return self.okResponse(url: request.url?.absoluteString ?? "https://example.com/f")
+        }
+
+        let upload = Task {
+            try await client.putFile(
+                "https://example.com/f",
+                fileURL: fileURL,
+                contentType: "application/octet-stream",
+                onProgress: { _, _ in }
+            )
+        }
+
+        // Let the task start the upload before cancelling.
+        try await Task.sleep(for: .milliseconds(50))
+        upload.cancel()
+
+        do {
+            _ = try await upload.value
+            XCTFail("Expected CancellationError")
+        } catch is CancellationError {
+            // Expected — Storage UI maps this to "Upload cancelled".
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+    }
+
+    // MARK: - downloadFile (Storage download path)
+
+    func testDownloadFileStreamsToTempURL() async throws {
+        let client = makeClient()
+        await client.setToken("tok-dl")
+        await client.setTrustedAuthHostSuffixes(["canfar.net"])
+        let payload = Data(repeating: 0x55, count: 2_048)
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(
+                request.value(forHTTPHeaderField: "Authorization"),
+                "Bearer tok-dl"
+            )
+            return (
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: ["Content-Length": "\(payload.count)"]
+                )!,
+                payload
+            )
+        }
+
+        let (tempURL, response) = try await client.downloadFile(
+            "https://ws-uv.canfar.net/arc/files/home/u/cube.fits",
+            expectedTotal: Int64(payload.count)
+        )
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(try Data(contentsOf: tempURL), payload)
+    }
+
+    func testDownloadFileCancelThrowsCancellationError() async throws {
+        let client = makeClient()
+
+        MockURLProtocol.requestHandler = { request in
+            Thread.sleep(forTimeInterval: 3)
+            return (
+                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(repeating: 0x66, count: 1_024)
+            )
+        }
+
+        let download = Task {
+            try await client.downloadFile(
+                "https://example.com/big.fits",
+                expectedTotal: 1_024,
+                onProgress: { _, _ in }
+            )
+        }
+
+        try await Task.sleep(for: .milliseconds(50))
+        download.cancel()
+
+        do {
+            _ = try await download.value
+            XCTFail("Expected CancellationError")
+        } catch is CancellationError {
+            // Expected — Storage UI maps this to "Download cancelled".
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+    }
+
+    func testDownloadFileWithProgressReportsTotalAndBytes() async throws {
+        let client = makeClient()
+        let payload = Data(repeating: 0x77, count: 8_192)
+
+        MockURLProtocol.requestHandler = { request in
+            (
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: ["Content-Length": "\(payload.count)"]
+                )!,
+                payload
+            )
+        }
+
+        let lock = NSLock()
+        var samples: [(Int64, Int64)] = []
+        let (tempURL, _) = try await client.downloadFile(
+            "https://example.com/progress.fits",
+            expectedTotal: Int64(payload.count),
+            onProgress: { transferred, total in
+                lock.lock()
+                samples.append((transferred, total))
+                lock.unlock()
+            }
+        )
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        lock.lock()
+        let seen = samples
+        lock.unlock()
+
+        XCTAssertFalse(seen.isEmpty, "progress delegate must fire")
+        XCTAssertTrue(
+            seen.contains(where: { $0.1 == Int64(payload.count) }),
+            "total must stay at expected/Content-Length; got \(seen)"
+        )
+        XCTAssertTrue(
+            seen.contains(where: { $0.0 > 0 }),
+            "must report transferred bytes > 0; got \(seen)"
+        )
+    }
 }

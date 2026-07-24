@@ -44,7 +44,10 @@ actor VOSpaceBrowserService {
 
     func listNodes(username: String, path: String = "", limit: Int = 500) async throws -> [VOSpaceNode] {
         let basePath = path.isEmpty ? Self.encodeSegment(username) : "\(Self.encodeSegment(username))/\(Self.encodePath(path))"
-        let urlString = "\(nodesBase)/\(basePath)?limit=\(limit)"
+        // `detail=max` matches the Windows client (`StorageNodeListUrl`) —
+        // without it ARC returns bare nodes and the Modified/Size columns
+        // stay empty because `#date` / `#length` properties are omitted.
+        let urlString = "\(nodesBase)/\(basePath)?detail=max&limit=\(limit)"
         let (data, _) = try await network.get(urlString, accept: "text/xml")
         guard let xml = String(data: data, encoding: .utf8) else {
             throw VOSpaceError.invalidResponse
@@ -54,16 +57,45 @@ actor VOSpaceBrowserService {
 
     // MARK: - Download
 
+    /// Protocol / agent-facing entry — no progress. The Storage UI uses the
+    /// overload below so large FITS downloads can drive the shared transfer bar.
     func downloadFile(username: String, path: String) async throws -> (tempURL: URL, filename: String) {
+        try await downloadFile(username: username, path: path, expectedTotal: 0, onProgress: nil)
+    }
+
+    /// Streams to a temp file (not an in-memory `Data` buffer). `expectedTotal`
+    /// seeds progress when the server omits `Content-Length` — typically the
+    /// listing's `#length` property.
+    func downloadFile(
+        username: String,
+        path: String,
+        expectedTotal: Int64,
+        onProgress: NetworkClient.TransferProgressHandler?
+    ) async throws -> (tempURL: URL, filename: String) {
         let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
-        let (data, _) = try await network.get(urlString)
         let filename = URL(fileURLWithPath: (path as NSString).lastPathComponent).lastPathComponent
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-        if FileManager.default.fileExists(atPath: tempURL.path) {
-            try FileManager.default.removeItem(at: tempURL)
+        do {
+            let (location, _) = try await network.downloadFile(
+                urlString,
+                timeout: 300,
+                expectedTotal: expectedTotal,
+                onProgress: onProgress
+            )
+            // URLSession's download location is ephemeral — move it under a
+            // stable name in our temp directory before the system reaps it.
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+            if FileManager.default.fileExists(atPath: tempURL.path) {
+                try FileManager.default.removeItem(at: tempURL)
+            }
+            try FileManager.default.moveItem(at: location, to: tempURL)
+            return (tempURL, filename)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
+        } catch {
+            throw VOSpaceError.operationFailed("Download failed: \(error.localizedDescription)")
         }
-        try data.write(to: tempURL)
-        return (tempURL, filename)
     }
 
     // MARK: - Bounded read into memory
@@ -133,7 +165,18 @@ actor VOSpaceBrowserService {
 
     // MARK: - Upload
 
+    /// Protocol / agent-facing entry — no progress. The Storage UI uses the
+    /// overload below so large FITS uploads can drive a determinate bar.
     func uploadFile(username: String, remotePath: String, fileURL: URL) async throws {
+        try await uploadFile(username: username, remotePath: remotePath, fileURL: fileURL, onProgress: nil)
+    }
+
+    func uploadFile(
+        username: String,
+        remotePath: String,
+        fileURL: URL,
+        onProgress: NetworkClient.TransferProgressHandler?
+    ) async throws {
         let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(remotePath))"
 
         // Sandbox: the source file came from an NSOpenPanel pick by the user,
@@ -145,14 +188,19 @@ actor VOSpaceBrowserService {
 
         // Stream the file from disk rather than buffering the whole payload
         // in memory — important for FITS / data-cube uploads that easily
-        // exceed available RAM.
+        // exceed available RAM. Progress is reported via `onProgress`.
         do {
             _ = try await network.putFile(
                 urlString,
                 fileURL: fileURL,
                 contentType: "application/octet-stream",
-                timeout: 300
+                timeout: 300,
+                onProgress: onProgress
             )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
         } catch {
             throw VOSpaceError.operationFailed("Upload failed: \(error.localizedDescription)")
         }

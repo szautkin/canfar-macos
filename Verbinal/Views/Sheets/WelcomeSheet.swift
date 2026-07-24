@@ -57,7 +57,7 @@ struct WelcomeSheet: View {
                 pillar(icon: "shippingbox.and.arrow.backward",
                        title: "Image Discovery",
                        line: "See exactly what's inside a session image before you launch it.")
-                pillar(icon: "wand.and.rays",
+                pillar(icon: "robot",
                        title: "AI assistant",
                        line: "Connect Claude Desktop or Claude Code (~60 tools) to drive Verbinal for you.")
             }
@@ -73,7 +73,7 @@ struct WelcomeSheet: View {
                     // idiom FeaturesSheet already uses).
                     appState.activeSheet = .mcpSetupWizard
                 } label: {
-                    Label("Set up the AI assistant", systemImage: "wand.and.rays")
+                    Label("Set up the AI assistant", image: "robot")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -95,7 +95,7 @@ struct WelcomeSheet: View {
 
     private func pillar(icon: String, title: LocalizedStringKey, line: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
+            Image(symbol: icon)
                 .font(.title3)
                 .foregroundStyle(.tint)
                 .frame(width: 28)

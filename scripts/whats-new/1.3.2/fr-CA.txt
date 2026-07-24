@@ -1,0 +1,18 @@
+NOUVEAU — Flux de travail
+Suivez des protocoles de recherche réutilisables sous forme de listes de contrôle étape par étape. Sept modèles intégrés sont fournis avec l'application (imagerie CFHT, cinématique des cubes JCMT, photométrie d'étoiles variables, appariement de catalogues, et plus), et vous pouvez rédiger les vôtres en Markdown. Votre assistant IA peut aussi créer, suivre et cocher les flux de travail.
+
+ASSISTANT IA
+• Une bannière robot apparaît maintenant en haut de la fenêtre chaque fois qu'un agent IA connecté utilise l'application — vous savez toujours quand l'assistant travaille.
+• Les éléments créés par l'agent — requêtes enregistrées, notes, téléchargements, signets, flux de travail — portent un badge robot; cliquez dessus pour voir quand et pourquoi.
+• Des dizaines de nouvelles capacités pour l'assistant : extraction de spectres et de profils de canaux des cubes, clignotement des onglets FITS, gestion des flux de travail, et plus.
+
+VISIONNEUSES
+• Le nouveau panneau Infos image de la visionneuse FITS résume d'un coup d'œil les dimensions, les coordonnées célestes et les points saillants de l'en-tête.
+• L'ouverture d'un cube de données 3D offre maintenant un choix : visionneuse FITS 2D ou visionneuse de cubes 3D.
+• La visionneuse de cubes prend en charge plusieurs onglets — gardez plusieurs cubes ouverts côte à côte.
+
+RÉGLAGES ET FINITION
+• Le nouvel onglet Points d'accès permet aux utilisateurs avancés de diriger Verbinal vers d'autres points d'accès des services CANFAR.
+• Le bouton Réglages est maintenant accessible depuis chaque écran.
+• La connexion sur un réseau instable ne supprime plus vos identifiants enregistrés.
+• De nombreux correctifs de fiabilité et une localisation française complète de toutes les nouveautés.

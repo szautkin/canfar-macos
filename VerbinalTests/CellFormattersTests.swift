@@ -141,25 +141,28 @@ final class CellFormattersTests: XCTestCase {
 
     // MARK: - Calibration Level
 
+    // Labels are localized (French catalog has "Brut", "Produit", …), so the
+    // expected values route through the same catalog lookup as the formatter.
+
     func testCalLevelRaw() {
-        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "0"), "Raw")
+        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "0"), String(localized: "Raw"))
     }
 
     func testCalLevelCal() {
-        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "1"), "Cal")
+        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "1"), String(localized: "Cal"))
     }
 
     func testCalLevelProduct() {
-        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "2"), "Product")
+        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "2"), String(localized: "Product"))
     }
 
     func testCalLevelComposite() {
-        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "3"), "Composite")
+        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "3"), String(localized: "Composite"))
     }
 
     func testCalLevelAnalysis() {
         // CAOM2 level 4 — added in refactor
-        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "4"), "Analysis")
+        XCTAssertEqual(CellFormatters.format(key: "callev", raw: "4"), String(localized: "Analysis"))
     }
 
     func testCalLevelUnknownPassthrough() {

@@ -601,19 +601,19 @@ final class ImageDiscoveryModel {
     nonisolated static func timeAgo(_ date: Date, now: Date = Date()) -> String {
         let elapsed = now.timeIntervalSince(date)
         // Future / clock skew → just show "now"
-        if elapsed < 30 { return "just now" }
-        if elapsed < 60 { return "\(Int(elapsed))s ago" }
+        if elapsed < 30 { return String(localized: "just now") }
+        if elapsed < 60 { return String(localized: "\(Int(elapsed))s ago") }
         if elapsed < 3_600 {
             let m = Int(elapsed / 60)
-            return "\(m)m ago"
+            return String(localized: "\(m)m ago")
         }
         if elapsed < 86_400 {
             let h = Int(elapsed / 3_600)
-            return "\(h)h ago"
+            return String(localized: "\(h)h ago")
         }
         if elapsed < 14 * 86_400 {
             let d = Int(elapsed / 86_400)
-            return "\(d)d ago"
+            return String(localized: "\(d)d ago")
         }
         // Falls back to a short absolute date format for older
         // timestamps. Locale-respecting via DateFormatter.

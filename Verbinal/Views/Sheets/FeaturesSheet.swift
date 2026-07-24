@@ -69,7 +69,7 @@ struct FeaturesSheet: View {
 
                     section("AI") {
                         FeatureRow(
-                            icon: "wand.and.rays",
+                            icon: "robot",
                             title: "AI Agent / MCP",
                             line: "MCP-compatible AI clients (Claude Desktop, Claude Code) can drive Verbinal, which runs as a local MCP server. macOS only.",
                             actionLabel: "Set Up"
@@ -204,7 +204,7 @@ private struct FeatureRow<Action: View>: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
+            Image(symbol: icon)
                 .font(.title3)
                 .foregroundStyle(.tint)
                 .frame(width: 26)

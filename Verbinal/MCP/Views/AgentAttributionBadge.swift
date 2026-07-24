@@ -7,8 +7,8 @@
 import SwiftUI
 import VerbinalKit
 
-/// Small wand icon shown next to entries that originated from an
-/// MCP-connected AI agent. Hover/click reveals a popover with the
+/// Small robot icon (Windows E99A parity) shown next to entries that
+/// originated from an MCP-connected AI agent. Hover/click reveals a popover with the
 /// fields stamped on the entity at apply time:
 ///
 ///   * Agent label    (e.g. `claude-ai/0.1.0`)
@@ -30,7 +30,7 @@ struct AgentAttributionBadge: View {
         Button {
             isPresented.toggle()
         } label: {
-            Image(systemName: "wand.and.rays")
+            Image.agentRobot
                 .font(.caption2)
                 .foregroundStyle(.tint)
         }
@@ -50,7 +50,7 @@ private struct AgentAttributionPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: "wand.and.rays")
+                Image.agentRobot
                     .foregroundStyle(.tint)
                 Text("Created by AI agent")
                     .font(.callout.bold())

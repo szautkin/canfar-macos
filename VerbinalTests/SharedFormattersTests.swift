@@ -128,33 +128,43 @@ final class SharedFormattersTests: XCTestCase {
 
     // MARK: - Bytes
 
+    /// Unit text is locale-dependent ("MB" in English, "Mo" in French), so
+    /// asserting English substrings breaks when the test host runs under a
+    /// French language override. Instead, render the expected string with a
+    /// formatter pinned to the single unit we expect — if `bytes(_:)` picks a
+    /// different unit, the strings won't match in any locale.
+    private func expectedBytes(_ count: Int64, unit: ByteCountFormatter.Units) -> String {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        f.allowedUnits = unit
+        return f.string(fromByteCount: count)
+    }
+
     func testBytesZero() {
-        // Unit text is locale-dependent; assert the unit suffix like the other
-        // byte tests rather than the exact localized "Zero KB" string.
-        XCTAssertTrue(SharedFormatters.bytes(0).contains("KB"))
+        XCTAssertEqual(SharedFormatters.bytes(0), expectedBytes(0, unit: .useKB))
     }
 
     func testBytesMegabyte() {
-        // 1 MB (file/decimal style) → "1 MB".
-        let mb = SharedFormatters.bytes(1_000_000)
-        XCTAssertTrue(mb.contains("MB"), "Expected MB unit, got \(mb)")
+        // 1 MB (file/decimal style) → the MB unit.
+        XCTAssertEqual(SharedFormatters.bytes(1_000_000),
+                       expectedBytes(1_000_000, unit: .useMB))
     }
 
     func testBytesGigabyte() {
-        let gb = SharedFormatters.bytes(1_000_000_000)
-        XCTAssertTrue(gb.contains("GB"), "Expected GB unit, got \(gb)")
+        XCTAssertEqual(SharedFormatters.bytes(1_000_000_000),
+                       expectedBytes(1_000_000_000, unit: .useGB))
     }
 
     func testBytesTerabyte() {
-        let tb = SharedFormatters.bytes(1_000_000_000_000)
-        XCTAssertTrue(tb.contains("TB"), "Expected TB unit, got \(tb)")
+        XCTAssertEqual(SharedFormatters.bytes(1_000_000_000_000),
+                       expectedBytes(1_000_000_000_000, unit: .useTB))
     }
 
     func testBytesUsesAllowedUnitsNotBytes() {
         // The formatter only allows KB/MB/GB/TB — a small count must not render
         // in raw "bytes"; it rounds up to the smallest allowed unit (KB).
-        let small = SharedFormatters.bytes(2_048)
-        XCTAssertTrue(small.contains("KB"), "Expected KB (allowedUnits excludes bytes), got \(small)")
+        XCTAssertEqual(SharedFormatters.bytes(2_048),
+                       expectedBytes(2_048, unit: .useKB))
     }
 
     func testBytesConvenienceMatchesUnderlyingFormatter() {

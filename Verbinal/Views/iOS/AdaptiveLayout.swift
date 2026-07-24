@@ -424,8 +424,8 @@ private struct iPadSessionsDetail: View {
         Task {
             async let e = model.getSessionEvents(id: session.id)
             async let l = model.getSessionLogs(id: session.id)
-            eventsText = SessionDisplay.logResultText(await e, emptyFallback: "No events available")
-            logsText = SessionDisplay.logResultText(await l, emptyFallback: "No logs available")
+            eventsText = SessionDisplay.logResultText(await e, emptyFallback: String(localized: "No events available"))
+            logsText = SessionDisplay.logResultText(await l, emptyFallback: String(localized: "No logs available"))
             isLoadingEvents = false
         }
     }

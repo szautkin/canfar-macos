@@ -46,19 +46,29 @@ public enum SimpleXML {
     ///     `<property>`) is not supported; the iOS SAX path drops outer text
     ///     accumulated past the inner close. The macOS XPath path returns the
     ///     full descendant set in document order with no flattening.
+    ///
+    /// `parentsScopedTo`: when non-nil, only elements that sit INSIDE an
+    /// element with this local name count as parents. This matters for
+    /// documents whose root element shares the parent's local name — a
+    /// VOSpace container GET returns the folder itself as the root
+    /// `<vos:node>` with the actual children nested under `<vos:nodes>`;
+    /// without scoping, the folder shows up as a child of itself.
     public static func nestedElements(
         parentLocalName: String,
         childLocalName: String,
-        in xmlString: String
+        in xmlString: String,
+        parentsScopedTo wrapperLocalName: String? = nil
     ) -> [(parentAttributes: [String: String], children: [(attributes: [String: String], text: String)])] {
         guard let data = xmlString.data(using: .utf8) else { return [] }
         #if os(macOS)
         return macOSNestedElements(parentLocalName: parentLocalName,
                                    childLocalName: childLocalName,
+                                   wrapperLocalName: wrapperLocalName,
                                    data: data)
         #else
         return saxNestedElements(parentLocalName: parentLocalName,
                                  childLocalName: childLocalName,
+                                 wrapperLocalName: wrapperLocalName,
                                  data: data)
         #endif
     }
@@ -80,10 +90,16 @@ public enum SimpleXML {
     private static func macOSNestedElements(
         parentLocalName: String,
         childLocalName: String,
+        wrapperLocalName: String?,
         data: Data
     ) -> [(parentAttributes: [String: String], children: [(attributes: [String: String], text: String)])] {
+        // Scoped form matches only DIRECT children of the wrapper — same
+        // contract as the Windows client's `nodesElement.Elements(node)`.
+        let parentXPath = wrapperLocalName.map {
+            "//*[local-name()='\($0)']/*[local-name()='\(parentLocalName)']"
+        } ?? "//*[local-name()='\(parentLocalName)']"
         guard let doc = try? XMLDocument(data: data),
-              let parents = try? doc.nodes(forXPath: "//*[local-name()='\(parentLocalName)']") else {
+              let parents = try? doc.nodes(forXPath: parentXPath) else {
             return []
         }
         return parents.compactMap { node in
@@ -125,9 +141,12 @@ public enum SimpleXML {
     private static func saxNestedElements(
         parentLocalName: String,
         childLocalName: String,
+        wrapperLocalName: String?,
         data: Data
     ) -> [(parentAttributes: [String: String], children: [(attributes: [String: String], text: String)])] {
-        let delegate = NestedSAXDelegate(parentLocalName: parentLocalName, childLocalName: childLocalName)
+        let delegate = NestedSAXDelegate(parentLocalName: parentLocalName,
+                                         childLocalName: childLocalName,
+                                         wrapperLocalName: wrapperLocalName)
         let parser = XMLParser(data: data)
         parser.delegate = delegate
         parser.parse()
@@ -137,24 +156,38 @@ public enum SimpleXML {
     private final class NestedSAXDelegate: NSObject, XMLParserDelegate {
         let parentLocalName: String
         let childLocalName: String
+        /// When non-nil, parent elements only count while inside this
+        /// wrapper. This also fixes root-wrapped documents on the SAX
+        /// path: without it, a root element sharing the parent's local
+        /// name swallowed the whole document into one entry.
+        let wrapperLocalName: String?
         var results: [(parentAttributes: [String: String], children: [(attributes: [String: String], text: String)])] = []
         private var parentDepth = 0
+        private var wrapperDepth = 0
         private var currentParentAttrs: [String: String] = [:]
         private var currentChildren: [(attributes: [String: String], text: String)] = []
         private var inChild = false
         private var currentChildAttrs: [String: String] = [:]
         private var currentChildText = ""
 
-        init(parentLocalName: String, childLocalName: String) {
+        init(parentLocalName: String, childLocalName: String, wrapperLocalName: String? = nil) {
             self.parentLocalName = parentLocalName
             self.childLocalName = childLocalName
+            self.wrapperLocalName = wrapperLocalName
+        }
+
+        private var insideWrapper: Bool {
+            wrapperLocalName == nil || wrapperDepth > 0
         }
 
         func parser(_ parser: XMLParser, didStartElement elementName: String,
                      namespaceURI: String?, qualifiedName: String?,
                      attributes: [String: String]) {
             let local = elementName.split(separator: ":").last.map(String.init) ?? elementName
-            if local == parentLocalName {
+            if local == wrapperLocalName {
+                wrapperDepth += 1
+            }
+            if local == parentLocalName && (insideWrapper || parentDepth > 0) {
                 if parentDepth == 0 {
                     currentParentAttrs = attributes
                     currentChildren = []
@@ -186,6 +219,9 @@ public enum SimpleXML {
                 if parentDepth == 0 {
                     results.append((parentAttributes: currentParentAttrs, children: currentChildren))
                 }
+            }
+            if local == wrapperLocalName && wrapperDepth > 0 {
+                wrapperDepth -= 1
             }
         }
     }

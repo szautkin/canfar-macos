@@ -17,50 +17,58 @@ final class RowStateLabelTests: XCTestCase {
 
     // MARK: - timeAgo
 
+    // The relative forms are localized ("il y a 42 s" in French), so the
+    // expected values route through the same catalog interpolation keys the
+    // formatter uses — the asserts hold in any host locale while still
+    // pinning which bucket (s/m/h/d) each elapsed time lands in.
+
     func testTimeAgoJustNow() {
         let now = Date()
-        XCTAssertEqual(ImageDiscoveryModel.timeAgo(now, now: now), "just now")
+        XCTAssertEqual(ImageDiscoveryModel.timeAgo(now, now: now),
+                       String(localized: "just now"))
     }
 
     func testTimeAgoSeconds() {
         let now = Date()
         let past = now.addingTimeInterval(-42)
-        XCTAssertEqual(ImageDiscoveryModel.timeAgo(past, now: now), "42s ago")
+        XCTAssertEqual(ImageDiscoveryModel.timeAgo(past, now: now),
+                       String(localized: "\(42)s ago"))
     }
 
     func testTimeAgoMinutes() {
         let now = Date()
         let past = now.addingTimeInterval(-5 * 60)
-        XCTAssertEqual(ImageDiscoveryModel.timeAgo(past, now: now), "5m ago")
+        XCTAssertEqual(ImageDiscoveryModel.timeAgo(past, now: now),
+                       String(localized: "\(5)m ago"))
     }
 
     func testTimeAgoHours() {
         let now = Date()
         let past = now.addingTimeInterval(-3 * 3_600)
-        XCTAssertEqual(ImageDiscoveryModel.timeAgo(past, now: now), "3h ago")
+        XCTAssertEqual(ImageDiscoveryModel.timeAgo(past, now: now),
+                       String(localized: "\(3)h ago"))
     }
 
     func testTimeAgoDays() {
         let now = Date()
         let past = now.addingTimeInterval(-2 * 86_400)
-        XCTAssertEqual(ImageDiscoveryModel.timeAgo(past, now: now), "2d ago")
+        XCTAssertEqual(ImageDiscoveryModel.timeAgo(past, now: now),
+                       String(localized: "\(2)d ago"))
     }
 
     /// Past the 14-day window the formatter falls back to a short
-    /// absolute date. Pin the format pattern (`MMM d`) — we don't
-    /// want "yesterday at 8:34 AM" verbosity in a sidebar-density
-    /// row.
+    /// absolute date. Pin the `MMM d` pattern by rendering the
+    /// expected string with the same locale-respecting formatter —
+    /// we don't want "yesterday at 8:34 AM" verbosity in a
+    /// sidebar-density row.
     func testTimeAgoOlderThanTwoWeeksUsesAbsoluteDate() {
         let now = Date()
         let past = now.addingTimeInterval(-30 * 86_400)
         let label = ImageDiscoveryModel.timeAgo(past, now: now)
-        // Should NOT contain "ago"
-        XCTAssertFalse(label.contains("ago"),
-                       "older-than-14d should switch to absolute date; got '\(label)'")
-        // Should match "MMM d" — short month abbreviation + day number.
-        let regex = #/^[A-Z][a-z]{2} \d{1,2}$/#
-        XCTAssertNotNil(try? regex.firstMatch(in: label),
-                        "absolute fallback should match 'MMM d' pattern; got '\(label)'")
+        let expected = DateFormatter()
+        expected.dateFormat = "MMM d"
+        XCTAssertEqual(label, expected.string(from: past),
+                       "older-than-14d should switch to the 'MMM d' absolute date; got '\(label)'")
     }
 
     /// Future timestamps (clock skew, server time ahead of client)
@@ -69,7 +77,8 @@ final class RowStateLabelTests: XCTestCase {
     func testTimeAgoFutureClockSkewReadsAsJustNow() {
         let now = Date()
         let future = now.addingTimeInterval(30)
-        XCTAssertEqual(ImageDiscoveryModel.timeAgo(future, now: now), "just now")
+        XCTAssertEqual(ImageDiscoveryModel.timeAgo(future, now: now),
+                       String(localized: "just now"))
     }
 
     // MARK: - categoryLabel

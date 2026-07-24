@@ -14,6 +14,9 @@ final class MockURLProtocol: URLProtocol {
     static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
+    /// Download / upload tasks consult the task-based entry point on some
+    /// OS versions; without it, `URLSession.download` can bypass the mock.
+    override class func canInit(with task: URLSessionTask) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {

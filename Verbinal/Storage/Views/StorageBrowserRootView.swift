@@ -47,6 +47,11 @@ struct StorageBrowserRootView: View {
                     Text("Empty folder")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    Text("Upload a file or create a new folder to get started.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } error: {
@@ -57,6 +62,8 @@ struct StorageBrowserRootView: View {
                     Text(model.errorMessage)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
                     Button("Retry") { Task { await model.refresh() } }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -97,81 +104,101 @@ struct StorageBrowserRootView: View {
     // MARK: - Toolbar
 
     private var storageToolbar: some View {
-        HStack(spacing: 8) {
-            Button { Task { await model.goUp() } } label: {
-                Image(systemName: "chevron.up")
-            }
-            .buttonStyle(.borderless)
-            .disabled(model.currentPath.isEmpty)
-            .help("Navigate to parent folder")
-            .accessibilityLabel("Go up one folder")
-
-            Button { Task { await model.refresh() } } label: {
-                Image(systemName: "arrow.clockwise")
-            }
-            .buttonStyle(.borderless)
-            .help("Refresh folder contents")
-            .keyboardShortcut("r", modifiers: .command)
-            .accessibilityLabel("Refresh")
-
-            Divider().frame(height: 16)
-
-            #if os(macOS)
-            Button { Task { await model.uploadWithPicker() } } label: {
-                Label("Upload", systemImage: "arrow.up.doc")
-                    .font(.caption)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .disabled(model.isUploading)
-            .help("Upload a file to the current folder")
-            .accessibilityLabel("Upload file")
-
-            Button { Task { await model.downloadSelected() } } label: {
-                Label("Download", systemImage: "arrow.down.doc")
-                    .font(.caption)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .disabled(model.selectedNode == nil || model.selectedNode?.isContainer == true)
-            .help("Download the selected file")
-            .accessibilityLabel("Download selected file")
-            #endif
-
-            Button { showNewFolder = true } label: {
-                Label("New Folder", systemImage: "folder.badge.plus")
-                    .font(.caption)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .keyboardShortcut("n", modifiers: [.command, .shift])
-            .help("Create a new folder")
-            .accessibilityLabel("New folder")
-
-            Button { showDeleteConfirm = true } label: {
-                Label("Delete", systemImage: "trash")
-                    .font(.caption)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .disabled(model.selectedNode == nil)
-            .confirmationDialog("Delete \(model.selectedNode?.name ?? "")?", isPresented: $showDeleteConfirm) {
-                Button("Delete", role: .destructive) {
-                    Task { await model.deleteSelected() }
+        // Horizontal scroll so Delete isn't clipped when the Storage
+        // pane is narrow (Windows keeps the same actions icon+label;
+        // we match that order: New / Upload / Download / Delete).
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Button { Task { await model.goUp() } } label: {
+                    Image(systemName: "chevron.up")
                 }
-            } message: {
-                Text("This cannot be undone.")
-            }
+                .buttonStyle(.borderless)
+                .disabled(model.currentPath.isEmpty)
+                .help("Navigate to parent folder")
+                .accessibilityLabel("Go up one folder")
 
-            Spacer()
+                Button { Task { await model.refresh() } } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .help("Refresh folder contents")
+                .keyboardShortcut("r", modifiers: .command)
+                .accessibilityLabel("Refresh")
 
-            if model.isLoading || model.isUploading {
-                ProgressView()
-                    .scaleEffect(0.7)
+                Divider().frame(height: 16)
+
+                Button { showNewFolder = true } label: {
+                    Label("New Folder", systemImage: "folder.badge.plus")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+                .help("Create a new folder")
+                .accessibilityLabel("New folder")
+
+                #if os(macOS)
+                Button { Task { await model.uploadWithPicker() } } label: {
+                    Label("Upload", systemImage: "arrow.up.doc")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(model.isTransferring)
+                .help("Upload a file to the current folder")
+                .accessibilityLabel("Upload file")
+
+                Button { Task { await model.downloadSelected() } } label: {
+                    Label("Download", systemImage: "arrow.down.doc")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(model.isTransferring
+                          || model.selectedNode == nil
+                          || model.selectedNode?.isContainer == true)
+                .help(model.selectedNode == nil
+                      ? "Select a file to download"
+                      : "Download the selected file")
+                .accessibilityLabel("Download selected file")
+                #endif
+
+                Button { showDeleteConfirm = true } label: {
+                    Label("Delete", systemImage: "trash")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(model.selectedNode == nil)
+                .keyboardShortcut(.delete, modifiers: [.command])
+                .help(model.selectedNode == nil
+                      ? "Select a file or folder to delete"
+                      : "Delete the selected item")
+                .accessibilityLabel("Delete selected item")
+                .confirmationDialog(
+                    "Delete \(model.selectedNode?.name ?? "")?",
+                    isPresented: $showDeleteConfirm
+                ) {
+                    Button("Delete", role: .destructive) {
+                        Task { await model.deleteSelected() }
+                    }
+                } message: {
+                    Text(model.selectedNode?.isContainer == true
+                         ? "This folder and its contents will be permanently deleted."
+                         : "This cannot be undone.")
+                }
+
+                if model.isLoading || model.isTransferring {
+                    // Fixed 16×16 frame — `scaleEffect` would still reserve
+                    // the default ProgressView layout size and jump the row.
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 16, height: 16)
+                }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
     }
 
     // MARK: - Breadcrumb
@@ -202,17 +229,74 @@ struct StorageBrowserRootView: View {
     // MARK: - Status Bar
 
     private var statusBar: some View {
-        // Errors surface once, in the center error pane — no duplicated
-        // red copy down here.
-        HStack {
-            Text(model.statusMessage)
+        // Always-visible feedback strip. Backend failures used to set
+        // `hasError` but only the center pane (visible when the list is
+        // empty) rendered them — a 404 while browsing looked like nothing
+        // happened. Errors now tint the status line orange so they're
+        // readable over a populated listing too.
+        HStack(spacing: 6) {
+            if model.hasError {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                Text(model.errorMessage.isEmpty ? model.statusMessage : model.errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+                Spacer()
+                Button("Dismiss") {
+                    model.hasError = false
+                    model.errorMessage = ""
+                    let count = model.nodes.count
+                    model.statusMessage = count == 1
+                        ? String(localized: "1 item")
+                        : String(localized: "\(count) items")
+                }
+                .buttonStyle(.borderless)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-
-            Spacer()
+            } else if let transfer = model.activeTransfer {
+                // Shared upload/download chrome — cancel sits immediately
+                // after the bar (not after a Spacer on the trailing edge).
+                if let fraction = transfer.fraction {
+                    ProgressView(value: fraction)
+                        .frame(width: 120)
+                        .controlSize(.small)
+                        .accessibilityValue(Text("\(Int(fraction * 100)) percent"))
+                } else {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 16, height: 16)
+                }
+                Button {
+                    model.cancelTransfer()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help(transfer.cancelAccessibilityLabel)
+                .accessibilityLabel(transfer.cancelAccessibilityLabel)
+                Text(model.statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer()
+            } else {
+                Text(model.statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer()
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
+        .background(model.hasError ? Color.orange.opacity(0.08) : Color.clear)
+        .accessibilityLabel(model.hasError
+                            ? "Error: \(model.errorMessage)"
+                            : model.statusMessage)
     }
 
 }

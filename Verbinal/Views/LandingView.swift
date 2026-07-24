@@ -189,7 +189,7 @@ struct LandingView: View {
                 // AI Guide tile, which presumes the agent is already connected.
                 // Opening it presents the guided "Connect your AI agent" sheet.
                 LandingTile(
-                    icon: "wand.and.rays",
+                    icon: "robot",
                     fallbackIcon: "sparkles",
                     title: "AI Assistant",
                     subtitle: "Connect Claude to drive Verbinal"
@@ -348,7 +348,7 @@ private struct LandingTile: View {
             // bands are fixed-height; the subtitle fills the remainder.
             VStack(spacing: 16) {
                 // Icon band — fixed height keeps every title's baseline aligned.
-                Image(systemName: iconName)
+                Image(symbol: iconName)
                     .font(.system(size: 48))
                     .foregroundStyle(isHovering ? .primary : .secondary)
                     .frame(height: 56)
@@ -371,11 +371,13 @@ private struct LandingTile: View {
                     .truncationMode(.tail)
                     .frame(maxHeight: .infinity, alignment: .top)
             }
-            // Horizontal inset only — wrapped titles/subtitles must not
-            // touch the rounded border. Vertical stays untouched: the
-            // three bands are sized to fill the 180pt height exactly.
-            .padding(.horizontal, 12)
-            .frame(width: 200, height: 180)
+            // Even breathing room on all sides — the icon band must not
+            // sit flush against the rounded border. The tile height is
+            // the three fixed bands (56 + 56 + 36) + two 16pt gaps + the
+            // 16pt insets top and bottom.
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .frame(width: 200, height: 212)
             .opacity(dashedBorder || locked ? 0.7 : 1.0)
             .background(
                 RoundedRectangle(cornerRadius: 16)
@@ -434,13 +436,15 @@ private struct LandingTile: View {
     }
 
     private var iconName: String {
-        // Check if the primary SF Symbol exists, otherwise use fallback
+        // Keep the primary icon when it resolves as a system SF Symbol or
+        // a custom catalog symbol (e.g. "robot"); otherwise use fallback.
         #if os(macOS)
-        if NSImage(systemSymbolName: icon, accessibilityDescription: nil) != nil {
+        if NSImage(systemSymbolName: icon, accessibilityDescription: nil) != nil
+            || NSImage(named: icon) != nil {
             return icon
         }
         #else
-        if UIImage(systemName: icon) != nil {
+        if UIImage(systemName: icon) != nil || UIImage(named: icon) != nil {
             return icon
         }
         #endif

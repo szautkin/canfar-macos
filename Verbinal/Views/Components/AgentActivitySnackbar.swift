@@ -33,13 +33,17 @@ struct AgentActivitySnackbar: View {
     @ViewBuilder
     private func content(_ banner: AgentLiveActivity.Banner) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "wand.and.rays")
+            Image.agentRobot
                 .foregroundStyle(.tint)
                 .font(.callout.weight(.semibold))
                 .symbolEffect(.pulse, options: .repeating, isActive: true)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(banner.originLabel)
+                // Generic on purpose (Windows `MainWindow_AgentWorking`
+                // parity) — the user cares that *an AI agent* is driving
+                // the app, not which client binary. The specific client
+                // stays available in the proposals history / audit log.
+                Text("AI agent is working…")
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
                 Text(subtitle(banner))
@@ -65,7 +69,8 @@ struct AgentActivitySnackbar: View {
         .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
         .padding(.top, 8)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(banner.originLabel) used \(banner.latestTool)")
+        .accessibilityLabel(String(
+            format: String(localized: "AI agent used %@"), banner.latestTool))
     }
 
     private func subtitle(_ banner: AgentLiveActivity.Banner) -> String {

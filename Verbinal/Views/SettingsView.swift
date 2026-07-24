@@ -28,7 +28,7 @@ struct SettingsView: View {
             // external-client setup that talks to the server.
             AgentsSettingsTab()
                 .environment(appState)
-                .tabItem { Label("AI Agent", systemImage: "wand.and.rays") }
+                .tabItem { Label("AI Agent", image: "robot") }
 
             ImageDiscoverySettingsTab()
                 .environment(appState)

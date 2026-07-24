@@ -12,8 +12,11 @@ enum VOSpaceNodeType: String {
     case linkNode
 }
 
-struct VOSpaceNode: Identifiable, Equatable {
-    let id = UUID()
+struct VOSpaceNode: Identifiable, Equatable, Hashable {
+    /// Stable identity from the VOSpace path so List selection survives
+    /// a refresh (a random UUID regenerated on every parse made the
+    /// selected row lose its highlight the moment the listing reloaded).
+    var id: String { path.isEmpty ? name : path }
     var name: String
     var path: String
     var type: VOSpaceNodeType

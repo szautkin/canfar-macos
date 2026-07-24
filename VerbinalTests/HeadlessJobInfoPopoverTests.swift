@@ -98,26 +98,32 @@ final class HeadlessJobInfoPopoverTests: XCTestCase {
         XCTAssertEqual(HeadlessJobInfoPopover.formatTime(""), "—")
     }
 
+    /// Renders the expected output through the same
+    /// `.formatted(date: .abbreviated, time: .shortened)` path the popover
+    /// uses, so the assert holds in any host locale ("May 19, 2026" vs
+    /// "19 mai 2026") and time zone.
+    private func expectedAbbreviated(_ iso: String) -> String {
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withInternetDateTime]
+        guard let date = parser.date(from: iso) else {
+            XCTFail("Setup parse failed for \(iso)")
+            return ""
+        }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
     func testFormatTimeParsesISO8601() {
-        // 2026-05-19T15:30:00Z → "May 19, 2026 HH:MM" in the
-        // tester's local time zone. We can't pin the exact hour
-        // (CDT = "10:30", JST = "00:30", UTC = "15:30") so we
-        // assert the date stays + a colon-separated time renders.
         let result = HeadlessJobInfoPopover.formatTime("2026-05-19T15:30:00Z")
-        XCTAssertTrue(result.contains("May 19, 2026"),
-                      "must include the date; got '\(result)'")
-        // Loose match for a HH:MM time component.
-        let timeRegex = #/\d{1,2}:\d{2}/#
-        XCTAssertNotNil(try? timeRegex.firstMatch(in: result),
-                        "must include a HH:MM time; got '\(result)'")
+        XCTAssertEqual(result, expectedAbbreviated("2026-05-19T15:30:00Z"))
     }
 
     func testFormatTimeParsesFractionalSeconds() {
         // Skaha sometimes returns timestamps with ms precision.
-        // The formatter should accept both shapes.
+        // The formatter should accept both shapes (the fraction is
+        // dropped by the shortened time style, so the expected
+        // rendering matches the fraction-less instant).
         let result = HeadlessJobInfoPopover.formatTime("2026-05-19T15:30:00.123Z")
-        XCTAssertTrue(result.contains("May 19, 2026"),
-                      "must accept fractional seconds; got '\(result)'")
+        XCTAssertEqual(result, expectedAbbreviated("2026-05-19T15:30:00Z"))
     }
 
     func testFormatTimeUnparseableEchoesRaw() {

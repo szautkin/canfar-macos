@@ -1,4 +1,5 @@
 import XCTest
+import VerbinalKit
 @testable import Verbinal
 
 final class WorkflowFormatTests: XCTestCase {
@@ -23,6 +24,30 @@ final class WorkflowFormatTests: XCTestCase {
         let id = try store.useWorkflow("builtin:sample")
         try store.setStepDone(id, index: 0, done: true)
         XCTAssertEqual(store.get(id)?.document.doneCount, 1)
+    }
+
+    @MainActor func testAgentAttributionSidecarRoundTrip() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WorkflowStore(directory: directory, builtins: { [] })
+        let attribution = AgentAttribution(
+            proposalID: UUID(), originFingerprint: "abc123",
+            originLabel: "claude-ai/0.1.0", appliedAt: Date(), summary: "Save workflow: Robot")
+
+        let id = try store.saveNew(name: "Robot", text: "# Robot\n- [ ] **Step**\n", attribution: attribution)
+        XCTAssertEqual(store.get(id)?.agentAttribution?.originLabel, "claude-ai/0.1.0")
+        XCTAssertEqual(store.listLocal().first?.agentAttribution?.originFingerprint, "abc123")
+        // The .workflow.md bytes stay clean — attribution lives in the sidecar only.
+        let raw = store.get(id)!.rawText
+        XCTAssertFalse(raw.contains("claude-ai"))
+
+        // User-authored copies carry no badge.
+        let plain = try store.saveNew(name: "Mine", text: "# Mine\n- [ ] **Step**\n")
+        XCTAssertNil(store.get(plain)?.agentAttribution)
+
+        // Deleting the workflow scrubs its sidecar entry.
+        try store.delete(id)
+        XCTAssertFalse(store.listLocal().contains { $0.agentAttribution != nil })
     }
 
     func testWorkflowToolsUseWindowsWireNames() {

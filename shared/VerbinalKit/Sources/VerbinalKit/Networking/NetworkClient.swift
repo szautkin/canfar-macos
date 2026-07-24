@@ -254,20 +254,142 @@ public actor NetworkClient {
         return try await execute(request)
     }
 
+    /// Byte-progress callback shared by streaming uploads and downloads.
+    /// `bytesTotal` may be a caller-supplied fallback when the session
+    /// reports `NSURLSessionTransferSizeUnknown`.
+    public typealias TransferProgressHandler = @Sendable (_ bytesTransferred: Int64, _ bytesTotal: Int64) -> Void
+
+    /// Backward-compatible alias — prefer `TransferProgressHandler`.
+    public typealias UploadProgressHandler = TransferProgressHandler
+
     /// Stream a file from disk via `PUT`. Uses `URLSession.upload(for:fromFile:)`
     /// so the body is read incrementally instead of being materialised into
-    /// memory — the right path for FITS-sized uploads where the in-memory
-    /// `put(_:body:)` would peak at the file size.
+    /// memory. Progress uses the async overload's per-request task delegate
+    /// (`didSendBodyData`). Task cancellation cancels the transfer.
     public func putFile(
         _ urlString: String,
         fileURL: URL,
         contentType: String,
-        timeout: TimeInterval = 300
+        timeout: TimeInterval = 300,
+        onProgress: TransferProgressHandler? = nil
     ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "PUT", timeout: timeout)
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
 
-        let (data, response) = try await session.upload(for: request, fromFile: fileURL)
+        let fileSize: Int64 = {
+            if let size = try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize {
+                return Int64(size)
+            }
+            return (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? NSNumber)?
+                .int64Value ?? 0
+        }()
+
+        if let onProgress, fileSize > 0 {
+            onProgress(0, fileSize)
+        }
+
+        let delegate = onProgress.map {
+            TransferProgressTaskDelegate(fallbackTotal: fileSize, onProgress: $0)
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            if let delegate {
+                (data, response) = try await session.upload(
+                    for: request,
+                    fromFile: fileURL,
+                    delegate: delegate
+                )
+            } else {
+                (data, response) = try await session.upload(for: request, fromFile: fileURL)
+            }
+        } catch {
+            throw mapTransferCancellation(error)
+        }
+
+        return try validateTransferResponse(data: data, response: response)
+    }
+
+    /// Stream a remote file to a temporary URL via `URLSessionDownloadTask`.
+    /// Avoids buffering the whole payload in RAM (the old `get` + `Data.write`
+    /// path). When `onProgress` is set, uses a dedicated session + download
+    /// delegate so `didWriteData` actually fires — the async convenience
+    /// `download(for:delegate:)` suppresses those callbacks (and KVO on
+    /// `task.progress` often only jumps at completion).
+    /// `expectedTotal` seeds the bar when `Content-Length` is missing
+    /// (e.g. VOSpace `#length` from the listing).
+    public func downloadFile(
+        _ urlString: String,
+        timeout: TimeInterval = 300,
+        expectedTotal: Int64 = 0,
+        onProgress: TransferProgressHandler? = nil
+    ) async throws -> (tempURL: URL, response: HTTPURLResponse) {
+        let request = try makeRequest(urlString, method: "GET", timeout: timeout)
+
+        let location: URL
+        let response: URLResponse
+        do {
+            if let onProgress {
+                if expectedTotal > 0 { onProgress(0, expectedTotal) }
+                (location, response) = try await downloadWithProgressDelegate(
+                    request,
+                    expectedTotal: expectedTotal,
+                    onProgress: onProgress
+                )
+            } else {
+                (location, response) = try await session.download(for: request)
+            }
+        } catch {
+            throw mapTransferCancellation(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        if http.statusCode == 401 {
+            throw NetworkError.unauthorized
+        }
+        if http.statusCode >= 400 {
+            // Error body (if any) landed in the downloaded temp file.
+            let body = (try? String(contentsOf: location, encoding: .utf8)).map { String($0.prefix(500)) } ?? ""
+            throw NetworkError.httpError(http.statusCode, body)
+        }
+        return (location, http)
+    }
+
+    /// Classic download-task session — required for live `didWriteData`.
+    /// Copies `protocolClasses` from the client's session so unit tests'
+    /// `MockURLProtocol` still intercepts.
+    private func downloadWithProgressDelegate(
+        _ request: URLRequest,
+        expectedTotal: Int64,
+        onProgress: @escaping TransferProgressHandler
+    ) async throws -> (URL, URLResponse) {
+        let protocolClasses = session.configuration.protocolClasses
+        let timeout = request.timeoutInterval
+        let controller = ProgressDownloadController(
+            fallbackTotal: expectedTotal,
+            onProgress: onProgress,
+            protocolClasses: protocolClasses,
+            timeout: timeout
+        )
+        return try await withTaskCancellationHandler {
+            try await controller.start(request)
+        } onCancel: {
+            controller.cancel()
+        }
+    }
+
+    private func mapTransferCancellation(_ error: Error) -> Error {
+        if error is CancellationError { return CancellationError() }
+        if let urlError = error as? URLError, urlError.code == .cancelled {
+            return CancellationError()
+        }
+        return error
+    }
+
+    private func validateTransferResponse(data: Data, response: URLResponse) throws -> (Data, HTTPURLResponse) {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
@@ -331,6 +453,193 @@ public actor NetworkClient {
             throw NetworkError.httpError(httpResponse.statusCode, body)
         }
         return (data, httpResponse)
+    }
+}
+
+/// Per-request delegate for async `upload(for:fromFile:delegate:)`.
+/// Upload still delivers `didSendBodyData` on many OS versions; KVO on
+/// `task.progress` covers the cases where it does not.
+private final class TransferProgressTaskDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    private let fallbackTotal: Int64
+    private let onProgress: NetworkClient.TransferProgressHandler
+    private var progressObservation: NSKeyValueObservation?
+
+    init(fallbackTotal: Int64, onProgress: @escaping NetworkClient.TransferProgressHandler) {
+        self.fallbackTotal = fallbackTotal
+        self.onProgress = onProgress
+    }
+
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        progressObservation = task.progress.observe(
+            \.completedUnitCount,
+            options: [.new]
+        ) { [weak self] progress, _ in
+            guard let self else { return }
+            let completed = progress.completedUnitCount
+            let progressTotal = progress.totalUnitCount
+            let expected =
+                (progressTotal > 0 && progressTotal < Int64.max / 4)
+                ? progressTotal
+                : self.fallbackTotal
+            self.report(transferred: completed, expected: expected)
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didSendBodyData bytesSent: Int64,
+        totalBytesSent: Int64,
+        totalBytesExpectedToSend: Int64
+    ) {
+        report(transferred: totalBytesSent, expected: totalBytesExpectedToSend)
+    }
+
+    private func report(transferred: Int64, expected: Int64) {
+        let total = expected > 0 ? expected : fallbackTotal
+        onProgress(transferred, total > 0 ? max(total, transferred) : 0)
+    }
+}
+
+/// Owns a one-shot ephemeral `URLSession` + download task so
+/// `didWriteData` is delivered (unlike `URLSession.download(for:delegate:)`).
+private final class ProgressDownloadController: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let fallbackTotal: Int64
+    private let onProgress: NetworkClient.TransferProgressHandler
+    private let protocolClasses: [AnyClass]?
+    private let timeout: TimeInterval
+
+    private let lock = NSLock()
+    private var session: URLSession?
+    private var task: URLSessionDownloadTask?
+    private var continuation: CheckedContinuation<(URL, URLResponse), Error>?
+    private var movedURL: URL?
+    private var finished = false
+
+    init(
+        fallbackTotal: Int64,
+        onProgress: @escaping NetworkClient.TransferProgressHandler,
+        protocolClasses: [AnyClass]?,
+        timeout: TimeInterval
+    ) {
+        self.fallbackTotal = fallbackTotal
+        self.onProgress = onProgress
+        self.protocolClasses = protocolClasses
+        self.timeout = timeout
+    }
+
+    func start(_ request: URLRequest) async throws -> (URL, URLResponse) {
+        try await withCheckedThrowingContinuation { continuation in
+            self.lock.lock()
+            self.continuation = continuation
+            self.lock.unlock()
+
+            let config = URLSessionConfiguration.ephemeral
+            config.protocolClasses = protocolClasses
+            config.timeoutIntervalForRequest = timeout
+            config.timeoutIntervalForResource = timeout
+            // `delegateQueue: nil` → URLSession creates a serial queue; callbacks
+            // are not on MainActor (UI hop happens in StorageBrowserModel).
+            let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+            let task = session.downloadTask(with: request)
+
+            self.lock.lock()
+            self.session = session
+            self.task = task
+            self.lock.unlock()
+
+            task.resume()
+        }
+    }
+
+    func cancel() {
+        lock.lock()
+        let task = self.task
+        let session = self.session
+        lock.unlock()
+        task?.cancel()
+        session?.invalidateAndCancel()
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        let expected = totalBytesExpectedToWrite > 0
+            ? totalBytesExpectedToWrite
+            : fallbackTotal
+        onProgress(totalBytesWritten, expected > 0 ? max(expected, totalBytesWritten) : 0)
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didFinishDownloadingTo location: URL
+    ) {
+        // Temp download location is deleted when this callback returns —
+        // move it under our control first.
+        let dest = FileManager.default.temporaryDirectory
+            .appendingPathComponent("verbinal-dl-\(UUID().uuidString)")
+        do {
+            if FileManager.default.fileExists(atPath: dest.path) {
+                try FileManager.default.removeItem(at: dest)
+            }
+            try FileManager.default.moveItem(at: location, to: dest)
+            lock.lock()
+            movedURL = dest
+            lock.unlock()
+        } catch {
+            finish(.failure(error))
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didCompleteWithError error: Error?
+    ) {
+        if let error {
+            finish(.failure(error))
+            return
+        }
+        lock.lock()
+        let fileURL = movedURL
+        lock.unlock()
+        guard let fileURL else {
+            finish(.failure(NetworkError.invalidResponse))
+            return
+        }
+        guard let response = task.response else {
+            finish(.failure(NetworkError.invalidResponse))
+            return
+        }
+        finish(.success((fileURL, response)))
+    }
+
+    private func finish(_ result: Result<(URL, URLResponse), Error>) {
+        lock.lock()
+        guard !finished else {
+            lock.unlock()
+            return
+        }
+        finished = true
+        let cont = continuation
+        continuation = nil
+        let session = self.session
+        self.session = nil
+        self.task = nil
+        lock.unlock()
+
+        session?.finishTasksAndInvalidate()
+        switch result {
+        case .success(let value):
+            cont?.resume(returning: value)
+        case .failure(let error):
+            cont?.resume(throwing: error)
+        }
     }
 }
 

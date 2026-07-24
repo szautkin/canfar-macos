@@ -76,7 +76,7 @@ final class AuthLifecycleController {
         let (storedToken, storedUsername) = KeychainStorage.loadToken()
 
         guard let token = storedToken, !token.isEmpty else {
-            statusMessage = "Please log in"
+            statusMessage = String(localized: "Please log in")
             return
         }
 
@@ -86,12 +86,12 @@ final class AuthLifecycleController {
         // up automatically.
         guard connectivityProvider() != .unsatisfied else {
             awaitingConnectivity = true
-            statusMessage = "You're offline. Verbinal will sign you in when the connection returns."
+            statusMessage = String(localized: "You're offline. Verbinal will sign you in when the connection returns.")
             return
         }
 
         isLoading = true
-        statusMessage = "Validating session..."
+        statusMessage = String(localized: "Validating session...")
 
         switch await authService.validateToken(token) {
         case .valid(let validatedUsername):
@@ -106,14 +106,14 @@ final class AuthLifecycleController {
                 return
             case .offline:
                 awaitingConnectivity = true
-                statusMessage = "You're offline. Verbinal will sign you in when the connection returns."
+                statusMessage = String(localized: "You're offline. Verbinal will sign you in when the connection returns.")
             case .sessionExpired:
                 awaitingConnectivity = false
-                statusMessage = "Session expired. Please log in again."
+                statusMessage = String(localized: "Session expired. Please log in again.")
             }
         case .networkError(let message):
             awaitingConnectivity = true
-            statusMessage = "Cannot connect: \(message). Verbinal will retry when the network returns."
+            statusMessage = String(localized: "Cannot connect: \(message). Verbinal will retry when the network returns.")
         }
 
         isLoading = false
@@ -141,7 +141,7 @@ final class AuthLifecycleController {
         let displayName = [userInfo?.firstName, userInfo?.lastName]
             .compactMap { $0 }
             .joined(separator: " ")
-        self.statusMessage = "Welcome, \(displayName.isEmpty ? username : displayName)"
+        self.statusMessage = String(localized: "Welcome, \(displayName.isEmpty ? username : displayName)")
         onAuthenticated?()
     }
 
@@ -163,9 +163,9 @@ final class AuthLifecycleController {
                 // token, skip the login sheet, and let the connectivity
                 // retry path restore the session when the network returns.
                 self.awaitingConnectivity = true
-                self.statusMessage = "You appear to be offline. Verbinal will reconnect automatically."
+                self.statusMessage = String(localized: "You appear to be offline. Verbinal will reconnect automatically.")
             case .sessionExpired:
-                self.statusMessage = "Session expired. Please log in again."
+                self.statusMessage = String(localized: "Session expired. Please log in again.")
                 self.onSessionExpired?()
             }
         }
@@ -214,7 +214,7 @@ final class AuthLifecycleController {
         // the caller must not mistake the failure for real expiry.
         guard connectivityProvider() != .unsatisfied else { return .offline }
 
-        statusMessage = "Renewing session..."
+        statusMessage = String(localized: "Renewing session...")
         isLoading = true
 
         // Stage 1: try the stored token.
@@ -236,7 +236,7 @@ final class AuthLifecycleController {
         // password is in the Keychain; try a fresh login.
         let (_, storedPassword) = KeychainStorage.loadCredentials()
         if let password = storedPassword, !password.isEmpty {
-            statusMessage = "Re-authenticating…"
+            statusMessage = String(localized: "Re-authenticating…")
             let result = await authService.login(
                 username: storedUser,
                 password: password,
@@ -280,6 +280,6 @@ final class AuthLifecycleController {
         username = ""
         userInfo = nil
         isAuthenticated = false
-        statusMessage = "Please log in"
+        statusMessage = String(localized: "Please log in")
     }
 }

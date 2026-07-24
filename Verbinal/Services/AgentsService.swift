@@ -303,21 +303,19 @@ final class AgentsService {
         // Build the router *now* (so any pending tool registration is
         // captured). Audit entries fan out to our capturing sink AND
         // the os.log sink for system-wide visibility.
-        // Push sink → live snackbar. Fires on every dispatch (reads
-        // included) from an external agent; hops to the main actor to
-        // update the @Observable feed. `.user`-origin calls (rare
-        // in-app router use) are skipped — the snackbar is about
-        // external agents touching the app.
+        let multiSink = MultiplexAuditSink(sinks: [auditSink, LoggingAuditSink()])
+        // Live snackbar feed: the router pulses at dispatch START for
+        // every external agent call (reads included) — Windows
+        // `onAgentDispatchStart` parity — so the banner is up while a
+        // slow call runs instead of only flashing after it completes.
+        // The router fires this only for `.external` origins; hop to
+        // the main actor to update the @Observable feed.
         let liveActivity = self.liveActivity
-        let pushSink = ClosureAuditSink { entry in
-            guard case .external = entry.origin else { return }
-            let label = entry.originLabel
-            let tool = entry.toolName
+        let onDispatchStart: @Sendable (String, String) -> Void = { tool, label in
             Task { @MainActor in
                 liveActivity.record(originLabel: label, toolName: tool)
             }
         }
-        let multiSink = MultiplexAuditSink(sinks: [auditSink, LoggingAuditSink(), pushSink])
         let hook = AutoApplyHook(
             // Windows AutoApplyPolicy: destructive writes never auto-apply
             // even when the user has autonomy on — deletes/teardowns always
@@ -335,7 +333,8 @@ final class AgentsService {
                 try await self.applyProposal(id, autoApplied: true)
             }
         )
-        let router = AIToolRouter(tools: tools, auditSink: multiSink, autoApplyHook: hook)
+        let router = AIToolRouter(tools: tools, auditSink: multiSink,
+                                  autoApplyHook: hook, onDispatchStart: onDispatchStart)
         self.router = router
 
         // Compute a fresh socket path for this app instance. Including

@@ -1,0 +1,18 @@
+NEW — Workflows
+Follow reusable research protocols as step-by-step checklists. Seven built-in templates ship with the app (CFHT imaging, JCMT cube kinematics, variable-star photometry, cross-matching, and more), and you can write your own in plain Markdown. Your AI assistant can create, follow, and check off workflows too.
+
+AI ASSISTANT
+• A robot banner now appears at the top of the window whenever a connected AI agent uses the app, so you always know when the assistant is working.
+• Items created by the agent — saved queries, notes, downloads, bookmarks, workflows — carry a robot badge; click it to see when and why.
+• Dozens of new assistant capabilities: spectrum and channel-profile extraction from cubes, FITS tab blinking, workflow management, and more.
+
+VIEWERS
+• New Image Info panel in the FITS viewer summarizes dimensions, world coordinates, and header highlights at a glance.
+• Opening a 3D data cube now offers a choice: 2D FITS viewer or the 3D Cube viewer.
+• The Cube viewer supports multiple tabs, so you can keep several cubes open side by side.
+
+SETTINGS & POLISH
+• New Endpoints tab lets advanced users point Verbinal at alternative CANFAR service endpoints.
+• The Settings button is now available from every screen.
+• Signing in on a flaky network no longer discards your saved credentials.
+• Many reliability fixes and full French localization for everything new.

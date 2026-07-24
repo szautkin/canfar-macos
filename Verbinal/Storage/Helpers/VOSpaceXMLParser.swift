@@ -12,18 +12,48 @@ enum VOSpaceXMLParser {
 
     // ISO8601DateFormatter is documented thread-safe; the
     // strict-concurrency check can't infer that for a static.
-    nonisolated(unsafe) private static let isoDateFormatter: ISO8601DateFormatter = {
+    // Fractional and non-fractional variants are both needed —
+    // ARC emits either `…T10:30:45Z` or `…T10:30:45.123Z`.
+    nonisolated(unsafe) private static let isoFractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
 
-    private static let fallbackDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        f.timeZone = TimeZone(identifier: "UTC")
+    nonisolated(unsafe) private static let isoPlain: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
         return f
     }()
+
+    nonisolated(unsafe) private static let fallbackDateFormatters: [DateFormatter] = {
+        let formats = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX",
+            "yyyy-MM-dd'T'HH:mm:ssXXXXX",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss",
+        ]
+        return formats.map { format in
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.timeZone = TimeZone(identifier: "UTC")
+            f.dateFormat = format
+            return f
+        }
+    }()
+
+    /// Parse a VOSpace `#date` / `#mtime` / `#btime` property value.
+    static func parseVOSpaceDate(_ value: String) -> Date? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if let d = isoFractional.date(from: trimmed) { return d }
+        if let d = isoPlain.date(from: trimmed) { return d }
+        for formatter in fallbackDateFormatters {
+            if let d = formatter.date(from: trimmed) { return d }
+        }
+        return nil
+    }
 
     /// Parse a VOSpace container listing XML into child nodes.
     static func parseNodeList(_ xml: String) -> [VOSpaceNode] {
@@ -31,10 +61,20 @@ enum VOSpaceXMLParser {
         // a flat `elements(localName: "property", …)` over the whole
         // document made every node share the LAST property of each
         // kind (so size always read 5772, etc.).
+        //
+        // `parentsScopedTo: "nodes"` restricts matches to the children
+        // inside the `<vos:nodes>` list. A container GET returns the
+        // folder ITSELF as the document root `<vos:node>`; unscoped, it
+        // was parsed as an extra child, so every folder appeared to
+        // contain itself ("run_code_test" inside "run_code_test") and
+        // clicking that phantom grew the path one duplicate segment per
+        // click. Mirrors the Windows client's VoSpaceParser, which
+        // iterates `nodesElement.Elements(node)` only.
         let scoped = SimpleXML.nestedElements(
             parentLocalName: "node",
             childLocalName: "property",
-            in: xml
+            in: xml,
+            parentsScopedTo: "nodes"
         )
 
         return scoped.compactMap { entry -> VOSpaceNode? in
@@ -190,9 +230,19 @@ enum VOSpaceXMLParser {
 
             if propURI.hasSuffix("#length"), let size = Int64(value) {
                 node.sizeBytes = size
-            } else if propURI.hasSuffix("#date") {
-                node.lastModified = isoDateFormatter.date(from: value)
-                    ?? fallbackDateFormatter.date(from: value)
+            } else if propURI.hasSuffix("#mtime") || propURI.hasSuffix("#date") {
+                // Prefer `#mtime` (data modification) when both are present;
+                // `#date` is the IVOA lifecycle date ARC still emits widely.
+                if propURI.hasSuffix("#mtime") || node.lastModified == nil {
+                    if let parsed = parseVOSpaceDate(value) {
+                        node.lastModified = parsed
+                    }
+                }
+            } else if propURI.hasSuffix("#btime") {
+                // Birth/creation time — only used when no mtime/date arrived.
+                if node.lastModified == nil, let parsed = parseVOSpaceDate(value) {
+                    node.lastModified = parsed
+                }
             } else if propURI.hasSuffix("#type") {
                 node.contentType = value
             } else if propURI.hasSuffix("#ispublic") {
