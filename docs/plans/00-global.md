@@ -14,6 +14,7 @@
 | **Cube Intel** | 2019 Intel: no volume / cube frame | Metal path silently early-returns; volume **and** wireframe share one guard. Half-float already Intel-safe. Need logs + UI error + possible downsample / decouple frame. |
 | **Workflows** | No edit, add, delete | **Add exists** (`+` toolbar). **Edit + Delete missing** in UI though store/MCP support them. |
 | **Research** | Import folder / FITS·fz under project/collection | Archive is CADC-download-only; group by `collection` only (no project entity). Local open elsewhere does not ingest. |
+| **Auth scope** | “Whole app” Login Required wall | Design already gates **only Portal + Storage**. Full-window lock appears when left on those modes after logout/expiry (no chrome) — feels global. |
 
 ---
 
@@ -63,6 +64,7 @@ flowchart LR
 | 2 | [Cube Intel volume](./02-cube-intel-volume.md) | S diagnose + M fix |
 | 3 | [Workflows CRUD UI](./03-workflows-crud.md) | S–M |
 | 4 | [Research local import](./04-research-local-import.md) | M–L |
+| 5 | [Auth scope / login wall UX](./05-auth-scope.md) | S |
 
 ---
 
@@ -100,5 +102,6 @@ flowchart LR
 1. ~~**03-workflows-crud**~~ done.  
 2. ~~**01-storage** Phase A~~ done (bulk delete still open).  
 3. ~~**02-cube** Phase B~~ done (error banner + wireframe decoupling); still need Intel Mac Phase A logs.  
-4. Confirm product answers above.  
-5. Spec/implement **04-research** local import.
+4. **05-auth-scope** — bounce to Landing on logout/expiry when on Portal/Storage (P0 UX).  
+5. Spec/implement **04-research** local import.  
+6. Confirm remaining product answers above.
