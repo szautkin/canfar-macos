@@ -26,6 +26,21 @@ final class WorkflowFormatTests: XCTestCase {
         XCTAssertEqual(store.get(id)?.document.doneCount, 1)
     }
 
+    @MainActor func testStoreUpdateTextAndDeleteLocal() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WorkflowStore(directory: directory, builtins: { [] })
+        let id = try store.saveNew(name: "Draft", text: "# Draft\n- [ ] **One**\n")
+        try store.updateText(id, text: "# Revised\n- [x] **One**\n- [ ] **Two**\n")
+        let updated = try XCTUnwrap(store.get(id))
+        XCTAssertEqual(updated.document.title, "Revised")
+        XCTAssertEqual(updated.document.steps.count, 2)
+        XCTAssertEqual(updated.document.doneCount, 1)
+        try store.delete(id)
+        XCTAssertNil(store.get(id))
+        XCTAssertTrue(store.listLocal().isEmpty)
+    }
+
     @MainActor func testAgentAttributionSidecarRoundTrip() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -6,6 +6,20 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - Unreleased
+
+Post–1.3.3 polish: Workflows local Edit/Delete, Storage recursive folder
+delete, Cube Intel volume hardening, Research local FITS import (see
+`docs/plans/`).
+
+### Added
+- Dev plans under `docs/plans/` for the 1.3.4 backlog.
+- Workflows UI: Edit and Delete for local working copies; clearer
+  “New Workflow” toolbar control (store/MCP already supported these).
+
+### Changed
+- Marketing version 1.3.4 (build 16).
+
 ## [1.3.3] - 2026-07-23
 
 Storage browser reliability pass: navigation, selection, transfer progress
