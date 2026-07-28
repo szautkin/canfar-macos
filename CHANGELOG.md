@@ -17,6 +17,12 @@ delete, Cube Intel volume hardening, Research local FITS import (see
 - Workflows UI: Edit and Delete for local working copies; clearer
   “New Workflow” toolbar control (store/MCP already supported these).
 
+### Fixed
+- Storage: deleting a non-empty folder now walks children first (shared
+  with MCP `delete_vospace_node` recursive path, 100-node safety cap)
+  so ARC no longer rejects the UI DELETE. Status bar shows delete
+  progress; clearer HTTP errors for 403/404/409.
+
 ### Changed
 - Marketing version 1.3.4 (build 16).
 

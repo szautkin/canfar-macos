@@ -1,6 +1,6 @@
 # Dev plan — Storage: non-empty folder delete & bulk delete
 
-**Status:** review complete · not started  
+**Status:** Phase A done on `release/1.3.4` (bulk delete still P1)  
 **Surface:** Storage browser (macOS) + MCP `delete_vospace_node`  
 **Related:** [Global plan](./00-global.md)
 

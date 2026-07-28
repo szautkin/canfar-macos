@@ -3665,6 +3665,46 @@
         }
       }
     },
+    "Deleted %lld items" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld éléments supprimés"
+          }
+        }
+      }
+    },
+    "Delete cancelled" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suppression annulée"
+          }
+        }
+      }
+    },
+    "Deleting %@…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suppression de %@…"
+          }
+        }
+      }
+    },
+    "Deleting folder %@…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suppression du dossier %@…"
+          }
+        }
+      }
+    },
     "Deleting Session" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3672,6 +3712,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suppression de la session"
+          }
+        }
+      }
+    },
+    "Deleting… %lld items" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suppression… %lld éléments"
           }
         }
       }
@@ -5328,6 +5378,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nom du dossier"
+          }
+        }
+      }
+    },
+    "Folder delete stopped after %lld items (safety limit of %lld). Retry to continue from “%@”." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suppression du dossier arrêtée après %lld éléments (limite de sécurité de %lld). Réessayez pour continuer à partir de « %@ »."
+          }
+        }
+      }
+    },
+    "Folder is not empty: %@. Try deleting again to remove contents first." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le dossier n’est pas vide : %@. Réessayez pour supprimer d’abord le contenu."
           }
         }
       }
@@ -7913,6 +7983,16 @@
         }
       }
     },
+    "Not found: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Introuvable : %@"
+          }
+        }
+      }
+    },
     "Not resolved yet — using configured values." : {
       "localizations" : {
         "fr" : {
@@ -8869,6 +8949,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Plan : %@"
+          }
+        }
+      }
+    },
+    "Permission denied deleting %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission refusée pour supprimer %@"
           }
         }
       }

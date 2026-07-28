@@ -221,13 +221,8 @@ struct DeleteVOSpaceNodeTool: JSONWriteTool {
         let recursive: Bool
     }
 
-    /// Hard cap on nodes touched in a single recursive delete.
-    /// 2026-05-15 QA report explicitly named recursive cleanup
-    /// of `__pycache__` (3 calls for one logical action) as a
-    /// pain point; 100 is enough for that and most other
-    /// realistic cleanups, while still bounding catastrophic
-    /// misclicks ("delete my whole home").
-    static let recursiveDeleteCap: Int = 100
+    /// Cap shared with `VOSpaceBrowserService.recursiveDeleteCap`.
+    static var recursiveDeleteCap: Int { VOSpaceBrowserService.recursiveDeleteCap }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_vospace_node",
@@ -251,7 +246,7 @@ struct DeleteVOSpaceNodeTool: JSONWriteTool {
         }
         let recursive = args.recursive ?? false
         let summary = recursive
-            ? "Recursively delete from VOSpace: \(args.path)/ (and everything beneath, up to \(Self.recursiveDeleteCap) nodes)"
+            ? "Recursively delete from VOSpace: \(args.path)/ (and everything beneath, up to \(VOSpaceBrowserService.recursiveDeleteCap) nodes)"
             : "Delete from VOSpace: \(args.path)"
         return try ProposalPlan.encoding(
             kind: "delete_vospace_node",
@@ -338,9 +333,11 @@ struct ClearUserSiteApplier: ProposalApplier {
                 let target = ".local/lib/\(dir.name)/site-packages"
                 // Best-effort: a missing site-packages under a
                 // given python version is fine, just skip it.
+                // site-packages trees are never empty — must walk children.
                 _ = try? await service.deleteNode(
                     username: username,
-                    path: target
+                    path: target,
+                    recursive: true
                 )
             }
         }
@@ -584,7 +581,6 @@ struct DeleteVOSpaceNodeApplier: ProposalApplier {
         // a sleepy VOSpace, so the watchdog needs more headroom
         // than the single-node path's 60s.
         let timeout: TimeInterval = 300
-        let cap = DeleteVOSpaceNodeTool.recursiveDeleteCap
         try await context.runAuthenticated(
             proposal,
             kind: kind,
@@ -592,61 +588,19 @@ struct DeleteVOSpaceNodeApplier: ProposalApplier {
             operationLabel: "delete",
             timeout: timeout
         ) { username, payload in
-            if payload.recursive {
-                _ = try await Self.deleteRecursive(
+            do {
+                _ = try await service.deleteNode(
                     username: username,
                     path: payload.path,
-                    service: service,
-                    runningCount: 0,
-                    cap: cap
+                    recursive: payload.recursive
                 )
-            } else {
-                try await service.deleteNode(username: username, path: payload.path)
+            } catch let error as VOSpaceError {
+                // Surface service errors (incl. cap) as typed apply failures.
+                throw ProposalApplyError.backendError(
+                    error.localizedDescription ?? String(describing: error)
+                )
             }
         }
-    }
-
-    /// Post-order recursive delete. Descends through every
-    /// container child first (so the parent is empty when its
-    /// turn comes — VOSpace's DELETE refuses non-empty
-    /// containers), then deletes the current node.
-    ///
-    /// `listNodes` failure is treated as "this is a leaf"; the
-    /// subsequent `deleteNode` either succeeds (it's a file) or
-    /// surfaces the real reason. Avoids an extra round-trip per
-    /// file just to learn the type.
-    ///
-    /// Throws when the cumulative count crosses `cap`, naming
-    /// how many were already removed so the caller can decide
-    /// whether to retry (the deleted ones don't come back).
-    private static func deleteRecursive(
-        username: String,
-        path: String,
-        service: VOSpaceBrowserService,
-        runningCount: Int,
-        cap: Int
-    ) async throws -> Int {
-        var count = runningCount
-        let children: [VOSpaceNode] = (try? await service.listNodes(
-            username: username, path: path, limit: 500
-        )) ?? []
-        for child in children {
-            count = try await deleteRecursive(
-                username: username,
-                path: child.path,
-                service: service,
-                runningCount: count,
-                cap: cap
-            )
-        }
-        try await service.deleteNode(username: username, path: path)
-        count += 1
-        if count > cap {
-            throw ProposalApplyError.backendError(
-                "Recursive delete cap (\(cap)) exceeded after deleting '\(path)' — \(count) nodes removed in total. The cap is a safety bound against runaway deletes; retry with the same path to continue, or break the deletion into smaller subtrees."
-            )
-        }
-        return count
     }
 }
 

@@ -144,7 +144,7 @@ struct StorageBrowserRootView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(model.isTransferring)
+                .disabled(model.isBusy)
                 .help("Upload a file to the current folder")
                 .accessibilityLabel("Upload file")
 
@@ -154,7 +154,7 @@ struct StorageBrowserRootView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(model.isTransferring
+                .disabled(model.isBusy
                           || model.selectedNode == nil
                           || model.selectedNode?.isContainer == true)
                 .help(model.selectedNode == nil
@@ -169,7 +169,7 @@ struct StorageBrowserRootView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(model.selectedNode == nil)
+                .disabled(model.selectedNode == nil || model.isBusy)
                 .keyboardShortcut(.delete, modifiers: [.command])
                 .help(model.selectedNode == nil
                       ? "Select a file or folder to delete"
@@ -188,7 +188,7 @@ struct StorageBrowserRootView: View {
                          : "This cannot be undone.")
                 }
 
-                if model.isLoading || model.isTransferring {
+                if model.isBusy {
                     // Fixed 16×16 frame — `scaleEffect` would still reserve
                     // the default ProgressView layout size and jump the row.
                     ProgressView()

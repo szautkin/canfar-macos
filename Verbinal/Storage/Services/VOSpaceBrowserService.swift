@@ -268,27 +268,134 @@ actor VOSpaceBrowserService {
 
     // MARK: - Delete
 
-    func deleteNode(username: String, path: String) async throws {
+    /// Hard cap on nodes touched in one recursive delete (UI + MCP).
+    /// Bounds catastrophic misclicks while covering typical cleanups
+    /// (`__pycache__`, small project trees). Retry the same path to continue.
+    static let recursiveDeleteCap: Int = 100
+
+    /// Progress for recursive deletes: `deletedCount` so far, `path` just removed.
+    typealias DeleteProgressHandler = @Sendable (_ deletedCount: Int, _ path: String) -> Void
+
+    /// Delete a single node. For non-empty folders use `recursive: true`
+    /// (VOSpace refuses DELETE on containers that still have children).
+    @discardableResult
+    func deleteNode(
+        username: String,
+        path: String,
+        recursive: Bool = false,
+        onProgress: DeleteProgressHandler? = nil
+    ) async throws -> Int {
+        if recursive {
+            return try await deleteRecursive(
+                username: username,
+                path: path,
+                runningCount: 0,
+                onProgress: onProgress
+            )
+        }
+        try await deleteNodeOnce(username: username, path: path)
+        onProgress?(1, path)
+        return 1
+    }
+
+    /// One-shot HTTP DELETE — used by the recursive walker and by file deletes.
+    private func deleteNodeOnce(username: String, path: String) async throws {
         let urlString = "\(nodesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
-        let response = try await network.delete(urlString)
-        guard (200...299).contains(response.statusCode) else {
-            throw VOSpaceError.operationFailed("Delete failed (HTTP \(response.statusCode))")
+        do {
+            let response = try await network.delete(urlString)
+            guard (200...299).contains(response.statusCode) else {
+                throw Self.mapDeleteHTTPError(status: response.statusCode, path: path)
+            }
+        } catch let error as VOSpaceError {
+            throw error
+        } catch let error as NetworkError {
+            if case .httpError(let code, _) = error {
+                throw Self.mapDeleteHTTPError(status: code, path: path)
+            }
+            throw VOSpaceError.operationFailed("Delete failed: \(error.localizedDescription)")
+        } catch {
+            throw VOSpaceError.operationFailed("Delete failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Post-order walk: empty each container, then delete it. Listing failure
+    /// is treated as “leaf” (file or empty) so we don't add a type probe per node.
+    private func deleteRecursive(
+        username: String,
+        path: String,
+        runningCount: Int,
+        onProgress: DeleteProgressHandler?
+    ) async throws -> Int {
+        try Task.checkCancellation()
+        var count = runningCount
+        let children: [VOSpaceNode] = (try? await listNodes(
+            username: username, path: path, limit: 500
+        )) ?? []
+        for child in children {
+            count = try await deleteRecursive(
+                username: username,
+                path: child.path,
+                runningCount: count,
+                onProgress: onProgress
+            )
+        }
+        if count >= Self.recursiveDeleteCap {
+            throw VOSpaceError.recursiveDeleteCapExceeded(
+                deleted: count,
+                path: path
+            )
+        }
+        try await deleteNodeOnce(username: username, path: path)
+        count += 1
+        onProgress?(count, path)
+        return count
+    }
+
+    private static func mapDeleteHTTPError(status: Int, path: String) -> VOSpaceError {
+        switch status {
+        case 403:
+            return .operationFailed(
+                String(format: String(localized: "Permission denied deleting %@"), path)
+            )
+        case 404:
+            return .operationFailed(
+                String(format: String(localized: "Not found: %@"), path)
+            )
+        case 409, 412:
+            // ARC commonly refuses DELETE on non-empty containers.
+            return .operationFailed(
+                String(
+                    format: String(localized: "Folder is not empty: %@. Try deleting again to remove contents first."),
+                    path
+                )
+            )
+        default:
+            return .operationFailed("Delete failed (HTTP \(status))")
         }
     }
 }
 
 // MARK: - Errors
 
-enum VOSpaceError: LocalizedError {
+enum VOSpaceError: LocalizedError, Equatable {
     case invalidResponse
     case invalidPath
     case operationFailed(String)
+    /// Recursive walk hit the safety cap; `deleted` nodes are already gone.
+    case recursiveDeleteCapExceeded(deleted: Int, path: String)
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse: return "Invalid VOSpace response"
         case .invalidPath: return "Invalid path"
         case .operationFailed(let msg): return msg
+        case .recursiveDeleteCapExceeded(let deleted, let path):
+            return String(
+                format: String(localized: "Folder delete stopped after %lld items (safety limit of %lld). Retry to continue from “%@”."),
+                deleted,
+                Int64(VOSpaceBrowserService.recursiveDeleteCap),
+                path
+            )
         }
     }
 }

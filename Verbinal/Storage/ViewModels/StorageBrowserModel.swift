@@ -25,6 +25,8 @@ final class StorageBrowserModel {
     var currentPath = ""
     var selectedNode: VOSpaceNode?
     var isLoading = false
+    /// True while a (possibly recursive) delete is in flight.
+    var isDeleting = false
     /// In-flight upload or download — drives the shared status-bar progress /
     /// cancel control. Nil when idle.
     var activeTransfer: StorageTransfer?
@@ -36,6 +38,8 @@ final class StorageBrowserModel {
 
     /// True while any byte-streaming transfer is running (upload or download).
     var isTransferring: Bool { activeTransfer != nil }
+    /// Busy chrome: listing, transfer, or delete.
+    var isBusy: Bool { isLoading || isTransferring || isDeleting }
 
     enum SortKey: String, CaseIterable { case name, size, date }
     enum SortOrder { case ascending, descending }
@@ -141,14 +145,49 @@ final class StorageBrowserModel {
     }
 
     func deleteSelected() async {
-        guard let node = selectedNode else { return }
+        guard let node = selectedNode, !isDeleting else { return }
         let path = currentPath.isEmpty ? node.name : "\(currentPath)/\(node.name)"
+        // Folders always walk children first — ARC refuses DELETE on
+        // non-empty containers (matches confirm copy + MCP recursive).
+        let recursive = node.isContainer
+        isDeleting = true
+        hasError = false
+        statusMessage = recursive
+            ? String(format: String(localized: "Deleting folder %@…"), node.name)
+            : String(format: String(localized: "Deleting %@…"), node.name)
+        defer { isDeleting = false }
         do {
-            try await service.deleteNode(username: username, path: path)
+            let count = try await service.deleteNode(
+                username: username,
+                path: path,
+                recursive: recursive
+            ) { [weak self] deleted, _ in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.statusMessage = String(
+                        format: String(localized: "Deleting… %lld items"),
+                        Int64(deleted)
+                    )
+                }
+            }
             selectedNode = nil
-            statusMessage = String(localized: "Deleted \(node.name)")
+            let doneMessage = count == 1
+                ? String(localized: "Deleted \(node.name)")
+                : String(
+                    format: String(localized: "Deleted %lld items"),
+                    Int64(count)
+                )
             await loadCurrentFolder()
+            // Refresh replaces status with the item count — restore the
+            // delete summary so the user sees what just happened.
+            statusMessage = doneMessage
+        } catch is CancellationError {
+            hasError = false
+            errorMessage = ""
+            await loadCurrentFolder()
+            statusMessage = String(localized: "Delete cancelled")
         } catch {
+            await loadCurrentFolder()
             reportError(error.localizedDescription)
         }
     }
