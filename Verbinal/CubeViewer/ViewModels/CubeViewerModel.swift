@@ -42,6 +42,9 @@ final class CubeViewerModel: Identifiable {
     private(set) var ny = 0
     private(set) var nz = 0
     private(set) var isStreamed = false
+    /// Metal volume path failure (pipeline / texture). Nil when healthy.
+    /// Wireframe may still draw; slice mode remains available.
+    var volumeRenderError: String?
     var object = ""
     var telescope = ""
     var instrument = ""

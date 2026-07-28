@@ -35,6 +35,7 @@ struct CubeVolumeView: NSViewRepresentable {
             view.delegate = renderer
             context.coordinator.renderer = renderer
             let model = self.model
+            model.volumeRenderError = renderer.lastError
             view.onOrbit = { dx, dy in MainActor.assumeIsolated { model.orbitCamera(dx: Float(dx), dy: Float(dy)) } }
             view.onZoom = { delta in MainActor.assumeIsolated { model.zoomCamera(Float(delta)) } }
             view.onInteractStart = { renderer.interacting = true }
@@ -49,6 +50,10 @@ struct CubeVolumeView: NSViewRepresentable {
             model.volumeSnapshot = { [weak renderer] width, height, background in
                 renderer?.snapshot(width: width, height: height, distanceScale: CubeViewerConstants.exportDistanceScale, background: background)
             }
+        } else {
+            model.volumeRenderError = String(
+                localized: "No Metal GPU available for volume rendering. Use slice mode instead."
+            )
         }
         return view
     }
@@ -66,6 +71,7 @@ struct CubeVolumeView: NSViewRepresentable {
             coordinator.volumeSignature = signature
             coordinator.appliedColormap = model.colormap
             coordinator.appliedTransfer = model.transferFunction
+            model.volumeRenderError = renderer.lastError
         }
 
         // Push live render parameters.

@@ -154,9 +154,17 @@ struct CubeViewerView: View {
             CubeSliceView(model: model)
         case .volume:
             #if os(macOS)
-            ZStack {
+            ZStack(alignment: .top) {
                 CubeVolumeView(model: model)
                 CubeAxisCaptions(model: model)
+                if let error = model.volumeRenderError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.yellow.opacity(0.92))
+                }
             }
             .background(model.background.color)
             #else

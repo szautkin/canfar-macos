@@ -22,6 +22,9 @@ delete, Cube Intel volume hardening, Research local FITS import (see
   with MCP `delete_vospace_node` recursive path, 100-node safety cap)
   so ARC no longer rejects the UI DELETE. Status bar shows delete
   progress; clearer HTTP errors for 403/404/409.
+- Cube Viewer: volume Metal failures no longer blank the whole view —
+  wireframe can draw without the volume texture, and a banner explains
+  pipeline/texture/GPU problems (Intel Mac diagnosis aid).
 
 ### Changed
 - Marketing version 1.3.4 (build 16).

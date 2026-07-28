@@ -3277,6 +3277,26 @@
         }
       }
     },
+    "Could not allocate %lld×%lld×%lld volume texture. Try slice mode or a smaller cube." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’allouer une texture de volume %lld×%lld×%lld. Essayez le mode coupe ou un cube plus petit."
+          }
+        }
+      }
+    },
+    "Cube wireframe pipeline failed: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec du pipeline du cadre du cube : %@"
+          }
+        }
+      }
+    },
     "Cube Viewer" : {
       "localizations" : {
         "fr" : {
@@ -7123,6 +7143,16 @@
         }
       }
     },
+    "Metal shader library unavailable on this GPU." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliothèque de shaders Metal indisponible sur ce GPU."
+          }
+        }
+      }
+    },
     "Median" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7616,6 +7646,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun téléchargement pour le moment"
+          }
+        }
+      }
+    },
+    "No Metal GPU available for volume rendering. Use slice mode instead." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun GPU Metal disponible pour le rendu volumique. Utilisez plutôt le mode coupe."
           }
         }
       }
@@ -13736,6 +13776,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Volume"
+          }
+        }
+      }
+    },
+    "Volume render pipeline failed: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec du pipeline de rendu volumique : %@"
+          }
+        }
+      }
+    },
+    "Volume shaders missing from the Metal library." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shaders de volume absents de la bibliothèque Metal."
           }
         }
       }

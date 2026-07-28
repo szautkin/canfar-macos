@@ -82,8 +82,15 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
         super.init()
     }
 
+    /// Last Metal setup / texture failure (nil when volume path is healthy).
+    private(set) var lastError: String?
+
     func makePipeline(colorFormat: MTLPixelFormat) {
-        guard let library = device.makeDefaultLibrary() else { return }
+        lastError = nil
+        guard let library = device.makeDefaultLibrary() else {
+            lastError = String(localized: "Metal shader library unavailable on this GPU.")
+            return
+        }
         if let vfn = library.makeFunction(name: "vertex_cube"),
            let ffn = library.makeFunction(name: "fragment_cube") {
             let desc = MTLRenderPipelineDescriptor()
@@ -100,7 +107,16 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
                 attachment.sourceAlphaBlendFactor = .one
                 attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
             }
-            pipeline = try? device.makeRenderPipelineState(descriptor: desc)
+            do {
+                pipeline = try device.makeRenderPipelineState(descriptor: desc)
+            } catch {
+                lastError = String(
+                    format: String(localized: "Volume render pipeline failed: %@"),
+                    error.localizedDescription
+                )
+            }
+        } else {
+            lastError = String(localized: "Volume shaders missing from the Metal library.")
         }
 
         if let vfn = library.makeFunction(name: "vertex_overlay"),
@@ -118,13 +134,31 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
                 attachment.sourceAlphaBlendFactor = .sourceAlpha
                 attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
             }
-            overlayPipeline = try? device.makeRenderPipelineState(descriptor: desc)
+            do {
+                overlayPipeline = try device.makeRenderPipelineState(descriptor: desc)
+            } catch {
+                // Overlay is independent — keep volume error if any, else note this.
+                if lastError == nil {
+                    lastError = String(
+                        format: String(localized: "Cube wireframe pipeline failed: %@"),
+                        error.localizedDescription
+                    )
+                }
+            }
             let edges = Self.unitBoxEdges()
-            boxEdgeBuffer = device.makeBuffer(bytes: edges, length: MemoryLayout<SIMD3<Float>>.stride * edges.count, options: [])
+            boxEdgeBuffer = device.makeBuffer(
+                bytes: edges,
+                length: MemoryLayout<SIMD3<Float>>.stride * edges.count,
+                options: []
+            )
         }
     }
 
-    var isReady: Bool { pipeline != nil }
+    /// Volume ray-march ready (pipeline + all three textures).
+    var isReady: Bool {
+        pipeline != nil && dataTexture != nil && colormapTexture != nil && transferTexture != nil
+    }
+    private var canDrawOverlay: Bool { overlayPipeline != nil && boxEdgeBuffer != nil }
 
     // MARK: - GPU resources
 
@@ -136,7 +170,19 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
         desc.height = volume.ny
         desc.depth = volume.nz
         desc.usage = .shaderRead
-        guard let texture = device.makeTexture(descriptor: desc) else { return }
+        guard let texture = device.makeTexture(descriptor: desc) else {
+            dataTexture = nil
+            lastError = String(
+                format: String(localized: "Could not allocate %lld×%lld×%lld volume texture. Try slice mode or a smaller cube."),
+                Int64(volume.nx), Int64(volume.ny), Int64(volume.nz)
+            )
+            // Still set CPU dims so the wireframe aspect is correct.
+            volumeCPU = volume.data
+            volDims = SIMD3(volume.nx, volume.ny, volume.nz)
+            volBinZ = volume.binZ
+            applyBoxScale()
+            return
+        }
         volume.data.withUnsafeBytes { raw in
             guard let base = raw.baseAddress else { return }
             texture.replace(
@@ -149,6 +195,9 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
             )
         }
         dataTexture = texture
+        // Texture upload recovered — drop a prior texture-allocation error.
+        // Keep pipeline/library failures so the banner still explains them.
+        if pipeline != nil { lastError = nil }
         volumeCPU = volume.data
         volDims = SIMD3(volume.nx, volume.ny, volume.nz)
         volBinZ = volume.binZ
@@ -275,9 +324,9 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     }
 
     func draw(in view: MTKView) {
-        guard let pipeline,
-              let dataTexture, let colormapTexture, let transferTexture,
-              let descriptor = view.currentRenderPassDescriptor,
+        // Clear + present even when the volume path failed so the MTKView
+        // isn't a dead black hole; wireframe can still draw independently.
+        guard let descriptor = view.currentRenderPassDescriptor,
               let drawable = view.currentDrawable,
               let commandBuffer = queue.makeCommandBuffer(),
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else { return }
@@ -286,26 +335,29 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
         let (model, viewProj) = currentMatrices()
         let mvp = viewProj * model
 
-        var uniforms = CubeUniforms(
-            invViewProj: viewProj.inverse,
-            inverseModel: model.inverse,
-            window: SIMD2(windowLo, windowHi),
-            steps: interacting ? min(160, baseSteps) : baseSteps,
-            density: density,
-            jitter: jitter,
-            stretch: stretch,
-            mip: mip ? 1 : 0,
-            pad0: 0
-        )
+        if isReady, let pipeline, let dataTexture, let colormapTexture, let transferTexture {
+            var uniforms = CubeUniforms(
+                invViewProj: viewProj.inverse,
+                inverseModel: model.inverse,
+                window: SIMD2(windowLo, windowHi),
+                steps: interacting ? min(160, baseSteps) : baseSteps,
+                density: density,
+                jitter: jitter,
+                stretch: stretch,
+                mip: mip ? 1 : 0,
+                pad0: 0
+            )
+            encoder.setRenderPipelineState(pipeline)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<CubeUniforms>.stride, index: 0)
+            encoder.setFragmentTexture(dataTexture, index: 0)
+            encoder.setFragmentTexture(colormapTexture, index: 1)
+            encoder.setFragmentTexture(transferTexture, index: 2)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
 
-        encoder.setRenderPipelineState(pipeline)
-        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<CubeUniforms>.stride, index: 0)
-        encoder.setFragmentTexture(dataTexture, index: 0)
-        encoder.setFragmentTexture(colormapTexture, index: 1)
-        encoder.setFragmentTexture(transferTexture, index: 2)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-
-        drawOverlay(encoder, mvp: mvp)
+        if canDrawOverlay {
+            drawOverlay(encoder, mvp: mvp)
+        }
 
         encoder.endEncoding()
         commandBuffer.present(drawable)

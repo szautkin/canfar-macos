@@ -1,6 +1,6 @@
 # Dev plan — Cube Viewer: Intel Mac volume / frame missing
 
-**Status:** review complete · not started  
+**Status:** Phase B started on `release/1.3.4` (error banner + decoupled wireframe). Phase A still needs Intel Mac logs.  
 **Surface:** Cube Viewer volume mode (Metal)  
 **Hardware report:** 2019 Intel Mac — SwiftUI chrome OK; **volume figure + cube wireframe missing**  
 **Related:** [Global plan](./00-global.md)
