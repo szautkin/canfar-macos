@@ -97,8 +97,8 @@ flowchart LR
 
 ## Next actions
 
-1. ~~Start **03-workflows-crud** (fast win).~~ — in progress on `release/1.3.4`.  
-2. Confirm product answers above.  
-3. Book Intel Mac time for **02-cube** Phase A logs.  
-4. Implement **01-storage** Phase A (extract recursive delete for UI).  
-5. Spec **04-research** data-model change before UI.
+1. ~~**03-workflows-crud**~~ done.  
+2. ~~**01-storage** Phase A~~ done (bulk delete still open).  
+3. ~~**02-cube** Phase B~~ done (error banner + wireframe decoupling); still need Intel Mac Phase A logs.  
+4. Confirm product answers above.  
+5. Spec/implement **04-research** local import.
