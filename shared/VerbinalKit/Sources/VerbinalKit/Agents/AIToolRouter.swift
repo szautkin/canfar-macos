@@ -58,6 +58,9 @@ public actor AIToolRouter {
         for tool in tools {
             let name = tool.name
             precondition(table[name] == nil, "AIToolRouter: duplicate tool name '\(name)'")
+            if let problem = ToolInputSchema.problems(in: tool.definition.inputSchema).first {
+                preconditionFailure("AIToolRouter[\(name)]: \(problem)")
+            }
             table[name] = tool
             let tty = type(of: tool)
             let meta = ToolMetadata(agentSafe: tty.agentSafe, verbClass: tty.verbClass)
@@ -167,6 +170,19 @@ public actor AIToolRouter {
                       outcome: outcome, verbClass: meta.verbClass,
                       durationMS: msSince(started))
             return .failed(.unknownTarget(name))
+        }
+
+        let unknown = ToolInputSchema.undeclaredArguments(
+            schema: tool.definition.inputSchema, arguments: rawArguments
+        )
+        if !unknown.isEmpty {
+            let declared = ToolInputSchema.propertyNames(tool.definition.inputSchema)
+            let outcome = AuditOutcome.failed(tag: "invalidArgument")
+            emitAudit(name: name, args: rawArguments, context: context,
+                      outcome: outcome, verbClass: meta.verbClass,
+                      durationMS: msSince(started))
+            return .failed(.invalidArgument(
+                "\(name): unknown argument(s) \(unknown); it takes \(declared)"))
         }
 
         let result = await tool.invoke(arguments: rawArguments, context: context)

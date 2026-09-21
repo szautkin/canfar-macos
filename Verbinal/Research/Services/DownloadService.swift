@@ -31,7 +31,8 @@ actor DownloadService {
     /// artifacts (the ESPaDOnS / package-fallback path that otherwise
     /// yields a 0-byte `pkg-*.txt`), then `/caom2ops/pkg`.
     func downloadToTemp(publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
-        if let directURL = await resolveDirectFileURL(publisherID: publisherID) {
+        let datalink = await resolveDataLink(publisherID: publisherID)
+        if let directURL = datalink.bestDirectFileURL {
             Self.logger.info("Using DataLink direct URL: \(directURL.lastPathComponent)")
             return try await fetchToTemp(url: directURL, publisherID: publisherID)
         }
@@ -59,8 +60,11 @@ actor DownloadService {
             return try await fetchToTemp(url: artifact.url, publisherID: publisherID, suggested: artifact.filename)
         }
         try? deleteFile(at: result.tempURL)
+        let faultNote = datalink.faults.isEmpty
+            ? ""
+            : " (DataLink: \(datalink.faults.joined(separator: "; ")))"
         throw SearchError.networkError(
-            "download produced an empty file for \(publisherID) — no DataLink #this and no CAOM-2 science artifact"
+            "download produced an empty file for \(publisherID) — no DataLink #this and no CAOM-2 science artifact\(faultNote)"
         )
     }
 
@@ -167,14 +171,18 @@ actor DownloadService {
     // MARK: - DataLink Resolution
 
     /// Resolve DataLink to find direct FITS file URL (#this semantic).
-    /// Returns nil if DataLink fails or has no direct files.
-    private func resolveDirectFileURL(publisherID: String) async -> URL? {
-        guard var components = URLComponents(string: endpoints.datalinkURL) else { return nil }
+    /// Returns an empty result if DataLink fails.
+    private func resolveDataLink(publisherID: String) async -> DataLinkResult {
+        guard var components = URLComponents(string: endpoints.datalinkURL) else {
+            return DataLinkResult(thumbnails: [], previews: [], directFiles: [])
+        }
         components.queryItems = [
             URLQueryItem(name: "id", value: publisherID),
             URLQueryItem(name: "request", value: "downloads-only"),
         ]
-        guard let url = components.url else { return nil }
+        guard let url = components.url else {
+            return DataLinkResult(thumbnails: [], previews: [], directFiles: [])
+        }
 
         do {
             var request = URLRequest(url: url)
@@ -182,12 +190,13 @@ actor DownloadService {
             let (data, response) = try await session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200,
-                  let xml = String(data: data, encoding: .utf8) else { return nil }
-            let result = DataLinkResult.fromVOTable(xml)
-            return result.bestDirectFileURL
+                  let xml = String(data: data, encoding: .utf8) else {
+                return DataLinkResult(thumbnails: [], previews: [], directFiles: [])
+            }
+            return DataLinkResult.fromVOTable(xml)
         } catch {
             Self.logger.warning("DataLink resolution failed: \(error.localizedDescription)")
-            return nil
+            return DataLinkResult(thumbnails: [], previews: [], directFiles: [])
         }
     }
 

@@ -45,10 +45,10 @@ public struct FITSWCSTransform: Sendable {
         self.isApproximate = isApproximate
     }
 
-    /// Valid only when BOTH diagonal CD elements are non-zero — a half-zero
-    /// matrix (e.g. CDELT1=0, CDELT2≠0) is degenerate and produces unreliable
-    /// pixel↔world transforms.
-    public var isValid: Bool { cd[0][0] != 0 && cd[1][1] != 0 }
+    /// Valid when the CD matrix is invertible. A 90° `CROTA2` / PC rotation
+    /// zeros the diagonal while remaining a perfectly good WCS; a half-zero
+    /// scale (CDELT1=0, CDELT2≠0) has det = 0 and is rejected.
+    public var isValid: Bool { abs(simd_determinant(cd)) > 1e-30 }
 
     /// North angle in degrees (rotation from celestial North).
     /// North angle in degrees. CD matrix is column-major:
@@ -299,6 +299,43 @@ public struct FITSWCSTransform: Sendable {
         return (ra: raDeg, dec: decRad * (180.0 / .pi))
     }
 
+    /// Linear 2×2 CD matrix from a FITS header (Paper I §8.1 / §8.2).
+    ///
+    /// `CD` wins when both forms are present. Otherwise `CDi_j = CDELTi × PCi_j`
+    /// (JWST i2d and other PC+CDELT headers). Else the legacy `CDELT+CROTA2`
+    /// construction. Shared with cube celestial WCS so the two viewers cannot
+    /// disagree on the same header.
+    public static func linearCDMatrix(from header: FITSHeader) -> simd_double2x2 {
+        if header.contains("CD1_1") || header.contains("CD1_2")
+            || header.contains("CD2_1") || header.contains("CD2_2") {
+            return simd_double2x2(columns: (
+                simd_double2(header.double("CD1_1"), header.double("CD2_1")),
+                simd_double2(header.double("CD1_2"), header.double("CD2_2"))
+            ))
+        }
+        if header.contains("PC1_1") || header.contains("PC1_2")
+            || header.contains("PC2_1") || header.contains("PC2_2") {
+            // FITS default CDELT is 1 when the keyword is omitted.
+            let cdelt1 = header.contains("CDELT1") ? header.double("CDELT1") : 1
+            let cdelt2 = header.contains("CDELT2") ? header.double("CDELT2") : 1
+            let pc11 = header.contains("PC1_1") ? header.double("PC1_1") : 1
+            let pc12 = header.double("PC1_2")
+            let pc21 = header.double("PC2_1")
+            let pc22 = header.contains("PC2_2") ? header.double("PC2_2") : 1
+            return simd_double2x2(columns: (
+                simd_double2(cdelt1 * pc11, cdelt2 * pc21),
+                simd_double2(cdelt1 * pc12, cdelt2 * pc22)
+            ))
+        }
+        let cdelt1 = header.double("CDELT1")
+        let cdelt2 = header.double("CDELT2")
+        let crota2 = header.double("CROTA2") * .pi / 180.0
+        return simd_double2x2(columns: (
+            simd_double2(cdelt1 * cos(crota2), cdelt1 * sin(crota2)),
+            simd_double2(-cdelt2 * sin(crota2), cdelt2 * cos(crota2))
+        ))
+    }
+
     /// Extract WCS from a parsed FITS header.
     public static func fromHeader(_ header: FITSHeader) -> FITSWCSTransform? {
         let crpix1 = header.double("CRPIX1")
@@ -310,27 +347,10 @@ public struct FITSWCSTransform: Sendable {
             return nil
         }
 
-        let cd: simd_double2x2
-        if header.contains("CD1_1") {
-            cd = simd_double2x2(columns: (
-                simd_double2(header.double("CD1_1"), header.double("CD2_1")),
-                simd_double2(header.double("CD1_2"), header.double("CD2_2"))
-            ))
-        } else {
-            let cdelt1 = header.double("CDELT1")
-            let cdelt2 = header.double("CDELT2")
-            let crota2 = header.double("CROTA2") * .pi / 180.0
-            cd = simd_double2x2(columns: (
-                simd_double2(cdelt1 * cos(crota2), cdelt1 * sin(crota2)),
-                simd_double2(-cdelt2 * sin(crota2), cdelt2 * cos(crota2))
-            ))
-        }
+        let cd = linearCDMatrix(from: header)
 
-        // Reject degenerate/half-zero CD matrices (e.g. CDELT1=0 with CDELT2≠0).
-        // AND instead of OR — a half-zero matrix is non-invertible for WCS purposes.
-        guard cd[0][0] != 0 && cd[1][1] != 0 else {
-            // No CD matrix or CDELT — try to construct approximate WCS
-            // from non-standard RA/DEC header keywords (common in old observatory files)
+        // Non-invertible (missing scale, half-zero CDELT, …) — try legacy RA/DEC.
+        guard abs(simd_determinant(cd)) > 1e-30 else {
             return fromLegacyHeader(header)
         }
 

@@ -57,6 +57,10 @@ struct GetDataLinksTool: JSONReadTool {
         let previews: [String]
         let files: [FileOut]
         let bestDirectFileURL: String?
+        /// DataLink `error_message` / unauthorized rows. Empty when every
+        /// advertised #this row was usable. When `files[]` is empty this
+        /// is why — auth, NotFound, embargo — not a silent miss.
+        let faults: [String]
         /// Artefact URIs from the CAOM-2 record. Populated *only* when
         /// DataLink returned no direct files — DataLink's URL-bearing
         /// rows take precedence whenever they exist.
@@ -116,7 +120,8 @@ struct GetDataLinksTool: JSONReadTool {
         previews: [URL],
         files: [(url: URL, contentType: String, filename: String, isUncompressedFITS: Bool)],
         artifacts: [(uri: String, productType: String?, contentType: String?, contentLength: Int64?, filename: String, downloadURL: URL?)],
-        packageDownloadURL: URL?
+        packageDownloadURL: URL?,
+        faults: [String]
     )
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
@@ -129,7 +134,10 @@ struct GetDataLinksTool: JSONReadTool {
                 isUncompressedFITS: $0.isUncompressedFITS
             )
         }
-        let best = files.first(where: { $0.isUncompressedFITS })?.url ?? files.first?.url
+        let ranked = DataLinkFile.preferred(in: r.files.map {
+            DataLinkFile(url: $0.url, contentType: $0.contentType, filename: $0.filename)
+        })
+        let best = ranked?.url.absoluteString
         // Always surface the CAOM-2 inventory regardless of whether
         // DataLink also returned downloadable rows. `files` and
         // `caom2Artifacts` are complementary views: DataLink #this
@@ -154,6 +162,7 @@ struct GetDataLinksTool: JSONReadTool {
             previews: r.previews.map(\.absoluteString),
             files: files,
             bestDirectFileURL: best,
+            faults: r.faults,
             caom2Artifacts: artifacts,
             packageDownloadURL: r.packageDownloadURL?.absoluteString
         )

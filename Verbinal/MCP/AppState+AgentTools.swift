@@ -383,23 +383,17 @@ extension AppState {
             // entry so the user sees the breadcrumb even though no
             // proposal was queued.
             let origin: OperationOrigin = .external(clientID: "open_fits_file")
-            await MainActor.run {
-                // Bug from the 2026-04-30 astronomer workflow review:
-                // setting `pendingFITSURL` alone wasn't enough — the
-                // task that consumes it only fires while the FITS
-                // viewer is mounted, so a user on Landing/Search never
-                // saw the file appear. Navigate explicitly so the
-                // agent's "open this file" intent is honoured even
-                // when the user is on a different mode.
-                if self.currentMode != .fitsViewer {
-                    self.navigateTo(.fitsViewer)
+            do {
+                try await self.loadFITSNow(url: url)
+                await MainActor.run {
+                    activity.append(.live(
+                        kind: "open_fits_file",
+                        summary: "Opened FITS file: \(obs.observationID) (\(obs.collection))",
+                        origin: origin
+                    ))
                 }
-                self.pendingFITSURL = url
-                activity.append(.live(
-                    kind: "open_fits_file",
-                    summary: "Opened FITS file: \(obs.observationID) (\(obs.collection))",
-                    origin: origin
-                ))
+            } catch let e as AstronomyOpenError {
+                throw ToolFailureReason.backendError("failed to open FITS: \(e.message)")
             }
             return (observationID: obs.observationID, localPath: obs.localPath)
         })
@@ -417,16 +411,17 @@ extension AppState {
             }
             let url = try Self.resolveAccessibleFileURL(for: obs).url
             let origin: OperationOrigin = .external(clientID: "open_cube")
-            await MainActor.run {
-                if self.currentMode != .cubeViewer {
-                    self.navigateTo(.cubeViewer)
+            do {
+                try await self.loadCubeNow(url: url)
+                await MainActor.run {
+                    activity.append(.live(
+                        kind: "open_cube",
+                        summary: "Opened cube: \(obs.observationID) (\(obs.collection))",
+                        origin: origin
+                    ))
                 }
-                self.pendingCubeURL = url
-                activity.append(.live(
-                    kind: "open_cube",
-                    summary: "Opened cube: \(obs.observationID) (\(obs.collection))",
-                    origin: origin
-                ))
+            } catch let e as AstronomyOpenError {
+                throw ToolFailureReason.backendError("failed to open cube: \(e.message)")
             }
             return (observationID: obs.observationID, localPath: obs.localPath)
         })
@@ -436,45 +431,57 @@ extension AppState {
         let activity = agentsService.activityStore
         return ChooseViewerTool(choose: { [weak self] viewer in
             guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
-            return try await MainActor.run {
-                guard let url = self.pendingViewerChoiceURL else {
-                    throw ToolFailureReason.invalidArgument(
-                        "No Open as… sheet is showing. Call get_current_view — pendingViewerChoice is set when a NAXIS≥3 file needs a 2D vs 3D pick.")
+            guard let url = await self.pendingViewerChoiceURL else {
+                throw ToolFailureReason.invalidArgument(
+                    "No Open as… sheet is showing. Call get_current_view — pendingViewerChoice is set when a NAXIS≥3 file needs a 2D vs 3D pick.")
+            }
+            let path = LocalFolderAccessStore.userFacingPath(for: url)
+            let name = url.lastPathComponent
+            await MainActor.run { self.pendingViewerChoiceURL = nil }
+            switch viewer {
+            case "fits":
+                do {
+                    try await self.loadFITSNow(url: url)
+                } catch let e as AstronomyOpenError {
+                    throw ToolFailureReason.backendError(e.message)
                 }
-                let path = LocalFolderAccessStore.userFacingPath(for: url)
-                let name = url.lastPathComponent
-                switch viewer {
-                case "fits":
-                    self.openPendingViewerChoiceAsFITS()
+                await MainActor.run {
                     activity.append(.live(
                         kind: "choose_viewer",
                         summary: "Opened \(name) in FITS Viewer",
                         origin: .external(clientID: "choose_viewer")))
-                    return ChooseViewerTool.Output(
-                        applied: true, viewer: "fits", path: path,
-                        note: "Opened in the 2D FITS Viewer.")
-                case "cube":
-                    self.openPendingViewerChoiceAsCube()
+                }
+                return ChooseViewerTool.Output(
+                    applied: true, viewer: "fits", path: path,
+                    note: "Opened in the 2D FITS Viewer.")
+            case "cube":
+                do {
+                    try await self.loadCubeNow(url: url)
+                } catch let e as AstronomyOpenError {
+                    throw ToolFailureReason.backendError(e.message)
+                }
+                await MainActor.run {
                     activity.append(.live(
                         kind: "choose_viewer",
                         summary: "Opened \(name) in Cube Viewer",
                         origin: .external(clientID: "choose_viewer")))
-                    return ChooseViewerTool.Output(
-                        applied: true, viewer: "cube", path: path,
-                        note: "Opened in the 3D Cube Viewer.")
-                case "dismiss":
-                    self.pendingViewerChoiceURL = nil
+                }
+                return ChooseViewerTool.Output(
+                    applied: true, viewer: "cube", path: path,
+                    note: "Opened in the 3D Cube Viewer.")
+            case "dismiss":
+                await MainActor.run {
                     activity.append(.live(
                         kind: "choose_viewer",
                         summary: "Dismissed Open as… for \(name)",
                         origin: .external(clientID: "choose_viewer")))
-                    return ChooseViewerTool.Output(
-                        applied: true, viewer: "dismiss", path: path,
-                        note: "Closed the Open as… sheet without opening the file.")
-                default:
-                    throw ToolFailureReason.invalidArgument(
-                        "viewer must be 'fits', 'cube', or 'dismiss'")
                 }
+                return ChooseViewerTool.Output(
+                    applied: true, viewer: "dismiss", path: path,
+                    note: "Closed the Open as… sheet without opening the file.")
+            default:
+                throw ToolFailureReason.invalidArgument(
+                    "viewer must be 'fits', 'cube', or 'dismiss'")
             }
         })
     }
@@ -703,7 +710,7 @@ extension AppState {
                 let user = await self.username
                 guard !user.isEmpty else { throw ProposalApplyError.backendError("Sign in to CADC first") }
                 let (tempURL, _) = try await vospace.downloadFile(username: user, path: path)
-                let outcome = await self.openAstronomyFITSAwaitingChoice(url: tempURL)
+                let outcome = try await self.openAstronomyFITSAwaitingChoice(url: tempURL)
                 if case .awaitingViewerChoice = outcome {
                     return AppState.viewerChoiceAgentNote(filename: tempURL.lastPathComponent)
                 }
@@ -1605,7 +1612,8 @@ extension AppState {
                 previews: r.previews,
                 files: files,
                 artifacts: artifacts,
-                packageDownloadURL: TAPClient.downloadURL(publisherID: id)
+                packageDownloadURL: TAPClient.downloadURL(publisherID: id),
+                faults: r.faults
             )
         })
     }
@@ -1937,7 +1945,12 @@ extension AppState {
                     "'\(displayPath)' is outside the app sandbox — ask the user to grant its folder in Storage, or move it to ~/Downloads.")
             }
             let choice = viewer.flatMap { AppState.AstronomyViewerChoice(rawValue: $0) }
-            let outcome = await self.openAstronomyFITSAwaitingChoice(url: url, viewer: choice)
+            let outcome: AppState.AstronomyOpenOutcome
+            do {
+                outcome = try await self.openAstronomyFITSAwaitingChoice(url: url, viewer: choice)
+            } catch let e as AppState.AstronomyOpenError {
+                throw ToolFailureReason.backendError(e.message)
+            }
             let name = url.lastPathComponent
             switch outcome {
             case .openedFITS:

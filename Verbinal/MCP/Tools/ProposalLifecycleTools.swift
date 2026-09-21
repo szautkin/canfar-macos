@@ -73,7 +73,14 @@ struct GetProposalStateTool: AITool {
     static let agentSafe: Bool = true
 
     struct Args: Decodable, Sendable {
-        let id: String
+        let id: String?
+        let proposalId: String?
+
+        var resolvedID: String? {
+            let raw = id ?? proposalId
+            let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmed.isEmpty ? nil : trimmed
+        }
     }
 
     struct Output: Encodable, Sendable {
@@ -83,12 +90,14 @@ struct GetProposalStateTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_proposal_state",
-        description: "Look up the lifecycle state of a proposal by id (pending, applied, rejected, withdrawn, unknown). Tombstones live ~5 min after resolution.",
+        description: "Look up the lifecycle state of a proposal by `id` or `proposalId` (pending, applied, rejected, withdrawn, failed, unknown). `failed` means the last apply threw and the item is still in the strip for retry. Tombstones live ~5 min after resolution.",
         schema: #"""
         {
           "type": "object",
-          "required": ["id"],
-          "properties": { "id": { "type": "string" } },
+          "properties": {
+            "id": { "type": "string", "description": "Proposal UUID." },
+            "proposalId": { "type": "string", "description": "Alias of id (same UUID)." }
+          },
           "additionalProperties": false
         }
         """#
@@ -101,12 +110,15 @@ struct GetProposalStateTool: AITool {
         } catch {
             return .failed(.invalidArgument("\(error)"))
         }
-        guard let uuid = UUID(uuidString: args.id) else {
+        guard let raw = args.resolvedID else {
+            return .failed(.invalidArgument("pass id or proposalId"))
+        }
+        guard let uuid = UUID(uuidString: raw) else {
             return .failed(.invalidArgument("id is not a UUID"))
         }
         let state = await context.proposals.state(uuid)
         do {
-            let bytes = try JSONEncoder().encode(Output(id: args.id, state: state.rawValue))
+            let bytes = try JSONEncoder().encode(Output(id: raw, state: state.rawValue))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))

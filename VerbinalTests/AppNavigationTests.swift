@@ -96,12 +96,15 @@ final class AppNavigationTests: XCTestCase {
 
     func testOpenAstronomyFITSWithExplicitViewerSkipsSheet() async {
         let state = AppState()
-        let url = URL(fileURLWithPath: "/tmp/cube.fits")
-        let outcome = await state.openAstronomyFITSAwaitingChoice(url: url, viewer: .cube)
-        XCTAssertEqual(outcome, .openedCube)
-        XCTAssertNil(state.pendingViewerChoiceURL)
-        XCTAssertEqual(state.currentMode, .cubeViewer)
-        XCTAssertEqual(state.pendingCubeURL, url)
+        let url = URL(fileURLWithPath: "/tmp/cube-\(UUID().uuidString).fits")
+        do {
+            _ = try await state.openAstronomyFITSAwaitingChoice(url: url, viewer: .cube)
+            XCTFail("missing file must not report opened")
+        } catch {
+            XCTAssertNil(state.pendingViewerChoiceURL)
+            XCTAssertEqual(state.currentMode, .cubeViewer)
+            XCTAssertNil(state.pendingCubeURL)
+        }
     }
 
     func testViewerChoiceAgentNoteNamesChooseViewer() {

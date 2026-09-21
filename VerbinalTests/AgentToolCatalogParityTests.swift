@@ -55,6 +55,19 @@ final class AgentToolCatalogParityTests: XCTestCase {
     }
 
     @MainActor
+    func testEveryAdvertisedInputSchemaIsAnObject() {
+        let tools = AppState().makeAgentTools()
+        var broken: [String] = []
+        for tool in tools {
+            let problems = ToolInputSchema.problems(in: tool.definition.inputSchema)
+            if !problems.isEmpty {
+                broken.append("\(tool.name): \(problems.joined(separator: "; "))")
+            }
+        }
+        XCTAssertTrue(broken.isEmpty, "malformed inputSchema:\n\(broken.joined(separator: "\n"))")
+    }
+
+    @MainActor
     func testDescribeAppBacktickToolNamesAreRegistered() {
         let registered = Set(AppState().makeAgentTools().map(\.name))
         XCTAssertTrue(registered.contains("delete_saved_query"),

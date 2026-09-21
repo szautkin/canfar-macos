@@ -28,7 +28,7 @@ final class DataLinkBestDirectFileTests: XCTestCase {
         XCTAssertEqual(result.bestDirectFileURL, URL(string: "https://h/b.fits"))
     }
 
-    func testFallsBackToFirstWhenNoUncompressedFITS() {
+    func testFallsBackToCompressedFITSBeforeNonFITS() {
         let result = DataLinkResult(
             thumbnails: [], previews: [],
             directFiles: [
@@ -36,12 +36,39 @@ final class DataLinkBestDirectFileTests: XCTestCase {
                 file("https://h/b.fits.gz", "application/fits", "b.fits.gz"),
             ]
         )
-        XCTAssertEqual(result.bestDirectFileURL, URL(string: "https://h/a.tar"))
+        XCTAssertEqual(result.bestDirectFileURL, URL(string: "https://h/b.fits.gz"))
     }
 
     func testNilWhenNoDirectFiles() {
         let result = DataLinkResult(thumbnails: [], previews: [], directFiles: [])
         XCTAssertNil(result.bestDirectFileURL)
+    }
+
+    func testPrefersI2dOverAssociationJSONAndSiblingFITS() {
+        let result = DataLinkResult(
+            thumbnails: [], previews: [],
+            directFiles: [
+                file("https://h/jwst_asn.json", "application/json", "jw01147_asn.json"),
+                file("https://h/cat.fits", "application/fits", "jw01147_cat.fits"),
+                file("https://h/i2d.fits", "application/fits", "jw01147_nircam_f200w_i2d.fits"),
+            ]
+        )
+        XCTAssertEqual(
+            result.bestDirectFileURL,
+            URL(string: "https://h/i2d.fits"),
+            "JWST #this lists asn.json + catalogs + i2d; pick the calibrated 2D product"
+        )
+    }
+
+    func testSkipsAssociationJSONWhenAnyFITSExists() {
+        let result = DataLinkResult(
+            thumbnails: [], previews: [],
+            directFiles: [
+                file("https://h/jwst_asn.json", "application/json", "jwst_asn.json"),
+                file("https://h/sci.fits.gz", "application/fits", "sci.fits.gz"),
+            ]
+        )
+        XCTAssertEqual(result.bestDirectFileURL, URL(string: "https://h/sci.fits.gz"))
     }
 
     func testCompressedFITSIsNotUncompressed() {

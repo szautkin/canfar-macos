@@ -16,6 +16,35 @@ struct DataLinkFile {
     var isUncompressedFITS: Bool {
         contentType.contains("fits") && !filename.hasSuffix(".fz") && !filename.hasSuffix(".gz")
     }
+
+    /// JWST calibrated 2D product (`*_i2d.fits`). Preferred over
+    /// association JSON and sibling catalogs when several #this rows exist.
+    var isI2d: Bool {
+        filename.lowercased().contains("i2d")
+    }
+
+    /// Association tables and other non-image products that DataLink
+    /// sometimes lists as #this alongside the science FITS.
+    var isAssociationOrAuxiliary: Bool {
+        let n = filename.lowercased()
+        let t = contentType.lowercased()
+        return n.hasSuffix(".json") || n.hasSuffix(".xml") || n.hasSuffix(".html")
+            || t.contains("json") || t.contains("xml") || t.contains("html")
+    }
+
+    /// Science-product pick: i2d FITS, then any uncompressed FITS, then
+    /// any FITS, skipping association JSON when a real file exists.
+    static func preferred(in files: [DataLinkFile]) -> DataLinkFile? {
+        let science = files.filter { !$0.isAssociationOrAuxiliary }
+        let pool = science.isEmpty ? files : science
+        return pool.first(where: { $0.isUncompressedFITS && $0.isI2d })
+            ?? pool.first(where: \.isUncompressedFITS)
+            ?? pool.first(where: {
+                $0.contentType.lowercased().contains("fits")
+                    || $0.filename.lowercased().contains(".fit")
+            })
+            ?? pool.first
+    }
 }
 
 /// Result from the CADC DataLink service — thumbnails, previews, and direct file URLs.
@@ -24,13 +53,27 @@ struct DataLinkResult {
     let previews: [URL]
     /// Direct download URLs for science data files (#this semantic).
     let directFiles: [DataLinkFile]
+    /// `error_message` / unauthorized rows that were skipped. Empty when
+    /// every advertised #this row was usable.
+    let faults: [String]
+
+    init(
+        thumbnails: [URL],
+        previews: [URL],
+        directFiles: [DataLinkFile],
+        faults: [String] = []
+    ) {
+        self.thumbnails = thumbnails
+        self.previews = previews
+        self.directFiles = directFiles
+        self.faults = faults
+    }
 
     var firstThumbnail: URL? { thumbnails.first }
     var firstPreview: URL? { previews.first }
-    /// Best direct file URL — prefer uncompressed FITS, then any direct file.
-    var bestDirectFileURL: URL? {
-        directFiles.first(where: \.isUncompressedFITS)?.url ?? directFiles.first?.url
-    }
+    /// Best direct file URL — prefer JWST i2d, then uncompressed FITS,
+    /// then any science file. Association JSON loses to a FITS sibling.
+    var bestDirectFileURL: URL? { DataLinkFile.preferred(in: directFiles)?.url }
     var isEmpty: Bool { thumbnails.isEmpty && previews.isEmpty && directFiles.isEmpty }
     var bestImage: URL? { previews.first ?? thumbnails.first }
 }
@@ -44,6 +87,7 @@ extension DataLinkResult {
         var thumbnails: [URL] = []
         var previews: [URL] = []
         var directFiles: [DataLinkFile] = []
+        var faults: [String] = []
 
         // Extract FIELD names to determine column indices
         let fieldPattern = try! NSRegularExpression(pattern: #"<FIELD[^>]*name="([^"]*)"[^>]*/?>"#, options: .caseInsensitive)
@@ -75,15 +119,20 @@ extension DataLinkResult {
                 return String(rowContent[cellRange]).trimmingCharacters(in: .whitespaces)
             }
 
-            // Skip rows with errors or unauthorized
-            if let errorIdx, errorIdx < cells.count, !cells[errorIdx].isEmpty { continue }
+            let accessUrl = accessUrlIdx < cells.count ? cells[accessUrlIdx] : ""
+            let semantics = semanticsIdx < cells.count ? cells[semanticsIdx] : ""
+
+            if let errorIdx, errorIdx < cells.count, !cells[errorIdx].isEmpty {
+                faults.append(cells[errorIdx])
+                continue
+            }
             if let readableIdx, readableIdx < cells.count, cells[readableIdx] != "true" && !cells[readableIdx].isEmpty {
+                let label = accessUrl.isEmpty ? semantics : accessUrl
+                faults.append("not authorized (\(label))")
                 continue
             }
 
             guard accessUrlIdx < cells.count, semanticsIdx < cells.count else { continue }
-            let accessUrl = cells[accessUrlIdx]
-            let semantics = cells[semanticsIdx]
             guard !accessUrl.isEmpty,
                   let url = URL(string: accessUrl),
                   let scheme = url.scheme?.lowercased(),
@@ -112,6 +161,9 @@ extension DataLinkResult {
             }
         }
 
-        return DataLinkResult(thumbnails: thumbnails, previews: previews, directFiles: directFiles)
+        return DataLinkResult(
+            thumbnails: thumbnails, previews: previews,
+            directFiles: directFiles, faults: faults
+        )
     }
 }

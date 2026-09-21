@@ -8,7 +8,7 @@ import Foundation
 
 /// Who initiated the call. Drives the proposal-budget bucket and the
 /// permission gate matrix.
-public enum OperationOrigin: Hashable, Sendable {
+public enum OperationOrigin: Hashable, Sendable, Codable {
     /// In-app human operating the GUI directly. No budget cap; calls
     /// don't go through MCP at all (we still classify them so audit and
     /// proposal flows are uniform).
@@ -19,4 +19,28 @@ public enum OperationOrigin: Hashable, Sendable {
     /// accounting and audit. External agents must not be able to call
     /// `.user`-only tools.
     case external(clientID: String)
+
+    private enum CodingKeys: String, CodingKey { case kind, clientID }
+    private enum Kind: String, Codable { case user, external }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        switch try c.decode(Kind.self, forKey: .kind) {
+        case .user:
+            self = .user
+        case .external:
+            self = .external(clientID: try c.decode(String.self, forKey: .clientID))
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .user:
+            try c.encode(Kind.user, forKey: .kind)
+        case .external(let id):
+            try c.encode(Kind.external, forKey: .kind)
+            try c.encode(id, forKey: .clientID)
+        }
+    }
 }

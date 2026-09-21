@@ -65,6 +65,7 @@ final class DataLinkResultTests: XCTestCase {
         """
         let result = DataLinkResult.fromVOTable(xml)
         XCTAssertTrue(result.isEmpty, "Rows with error_message should be skipped")
+        XCTAssertEqual(result.faults, ["NotFound"])
     }
 
     func testParseVOTableSkipsUnauthorized() {
@@ -81,6 +82,8 @@ final class DataLinkResultTests: XCTestCase {
         """
         let result = DataLinkResult.fromVOTable(xml)
         XCTAssertTrue(result.isEmpty, "Rows with link_authorized=false should be skipped")
+        XCTAssertEqual(result.faults.count, 1)
+        XCTAssertTrue(result.faults[0].contains("not authorized"), result.faults[0])
     }
 
     func testParseVOTableEmpty() {

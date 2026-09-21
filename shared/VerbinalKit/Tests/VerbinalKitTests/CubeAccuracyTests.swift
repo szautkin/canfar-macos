@@ -26,6 +26,27 @@ final class CubeAccuracyTests: XCTestCase {
         XCTAssertEqual(ref?.lat ?? .nan, 2, accuracy: 1e-9)
     }
 
+    func testCelestialWCSReadsPCTimesCDELT() {
+        var header = FITSHeader()
+        header.add(FITSCard(keyword: "CTYPE1", value: "RA---TAN", comment: ""))
+        header.add(FITSCard(keyword: "CRVAL1", value: "80", comment: ""))
+        header.add(FITSCard(keyword: "CRVAL2", value: "-69", comment: ""))
+        header.add(FITSCard(keyword: "CRPIX1", value: "1", comment: ""))
+        header.add(FITSCard(keyword: "CRPIX2", value: "1", comment: ""))
+        header.add(FITSCard(keyword: "CDELT1", value: "-0.001", comment: ""))
+        header.add(FITSCard(keyword: "CDELT2", value: "0.001", comment: ""))
+        let angle = 10.0 * .pi / 180.0
+        header.add(FITSCard(keyword: "PC1_1", value: "\(cos(angle))", comment: ""))
+        header.add(FITSCard(keyword: "PC1_2", value: "\(-sin(angle))", comment: ""))
+        header.add(FITSCard(keyword: "PC2_1", value: "\(sin(angle))", comment: ""))
+        header.add(FITSCard(keyword: "PC2_2", value: "\(cos(angle))", comment: ""))
+        let wcs = CelestialWCS.from(header: header)
+        XCTAssertEqual(wcs.cd11, -0.001 * cos(angle), accuracy: 1e-12)
+        XCTAssertEqual(wcs.cd12, -0.001 * -sin(angle), accuracy: 1e-12)
+        XCTAssertEqual(wcs.cd21, 0.001 * sin(angle), accuracy: 1e-12)
+        XCTAssertEqual(wcs.cd22, 0.001 * cos(angle), accuracy: 1e-12)
+    }
+
     func testTANOffsetMatchesInverseGnomonic() throws {
         let wcs = CelestialWCS(valid: true, projection: .tan, frame: .equatorial,
                                crval1: 150, crval2: 2, crpix1: 1, crpix2: 1,

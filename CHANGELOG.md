@@ -54,6 +54,19 @@ delete, Cube Intel volume hardening, Research local FITS import (see
   `save_workflow` documents the `- [ ]` requirement; cube export/probe
   errors name `navigate_to(mode: cubeViewer)` and the streamed-cube
   limit; `resolve_target` caveats noisy Simbad types.
+- FITS WCS: PC+CDELT headers (JWST i2d) apply rotation instead of
+  ignoring PC; a 90° CROTA2/PC is valid (`|det(CD)|` instead of
+  diagonal-only). Cube celestial WCS uses the same matrix builder.
+- Pending proposals journal to disk and rehydrate under their original
+  ids; a failed apply reports `failed` rather than looking like a
+  rejection. `get_proposal_state` accepts `proposalId` as an alias of
+  `id`.
+- MCP router refuses undeclared arguments when the schema sets
+  `additionalProperties: false`. `open_fits_file` / `open_cube` /
+  `open_local_file` wait for the viewer load and report the real
+  outcome. DataLink surfaces `error_message` / unauthorized rows as
+  `faults` and prefers JWST `*_i2d.fits` over `asn.json` among `#this`
+  products.
 
 ### Changed
 - Marketing version 1.3.4 (build 16).

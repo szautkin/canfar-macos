@@ -172,21 +172,23 @@ public struct CelestialWCS: Sendable {
         let valid = ctype1.hasPrefix("RA-") || ctype1.hasPrefix("GLON")
         let projection: Projection = ctype1.contains("-CAR") ? .car : .tan
         let frame: Frame = ctype1.hasPrefix("GLON") ? .galactic : .equatorial
-        let cdelt1 = h.double("CDELT1", fallback: 1)
-        let cdelt2 = h.double("CDELT2", fallback: 1)
-
-        var cd11 = h.contains("CD1_1") ? h.double("CD1_1") : Double.nan
-        var cd12 = h.double("CD1_2", fallback: 0)
-        var cd21 = h.double("CD2_1", fallback: 0)
-        var cd22 = h.contains("CD2_2") ? h.double("CD2_2") : Double.nan
-        if cd11.isNaN || cd22.isNaN {
-            // Fall back to PC·CDELT (or plain CDELT when PC absent).
-            let pc11 = h.double("PC1_1", fallback: 1)
-            let pc12 = h.double("PC1_2", fallback: 0)
-            let pc21 = h.double("PC2_1", fallback: 0)
-            let pc22 = h.double("PC2_2", fallback: 1)
-            cd11 = pc11 * cdelt1; cd12 = pc12 * cdelt1
-            cd21 = pc21 * cdelt2; cd22 = pc22 * cdelt2
+        let m = FITSWCSTransform.linearCDMatrix(from: h)
+        // Column-major simd: column 0 = (CD1_1, CD2_1), column 1 = (CD1_2, CD2_2).
+        var cd11 = m.columns.0.x, cd12 = m.columns.1.x
+        var cd21 = m.columns.0.y, cd22 = m.columns.1.y
+        // Radio cubes often omit CD/PC and state only CDELT; the shared
+        // builder then treats missing CDELT as 0 (so 2D WCS can fall through
+        // to legacy RA/DEC). Restore the cube default of 1°/px.
+        let hasLinear = h.contains("CD1_1") || h.contains("CD1_2")
+            || h.contains("CD2_1") || h.contains("CD2_2")
+            || h.contains("PC1_1") || h.contains("PC1_2")
+            || h.contains("PC2_1") || h.contains("PC2_2")
+            || h.contains("CDELT1") || h.contains("CDELT2")
+        if !hasLinear {
+            cd11 = h.double("CDELT1", fallback: 1)
+            cd12 = 0
+            cd21 = 0
+            cd22 = h.double("CDELT2", fallback: 1)
         }
 
         return CelestialWCS(valid: valid, projection: projection, frame: frame,

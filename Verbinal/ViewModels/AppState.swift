@@ -549,23 +549,67 @@ final class AppState {
     /// clicks; MCP callers use `openAstronomyFITSAwaitingChoice` so they
     /// can tell the agent when the sheet is up.
     func openAstronomyFITS(url: URL, viewer: AstronomyViewerChoice? = nil) {
-        Task { await openAstronomyFITSAwaitingChoice(url: url, viewer: viewer) }
+        Task { try? await openAstronomyFITSAwaitingChoice(url: url, viewer: viewer) }
+    }
+
+    #if os(macOS)
+    /// Load a FITS file into the viewer and wait until parse finishes.
+    /// Agent tools use this so `opened: true` means the pixels are there.
+    func loadFITSNow(url: URL) async throws {
+        pendingFITSURL = nil
+        navigateTo(.fitsViewer)
+        await fitsTabHost.openFile(url: url)
+        if let err = fitsTabHost.activeTab?.loadError, !err.isEmpty {
+            throw AstronomyOpenError(message: err)
+        }
+        guard fitsTabHost.activeTab?.file != nil else {
+            throw AstronomyOpenError(message: "FITS file did not load")
+        }
+    }
+
+    /// Load a cube and wait until ingest finishes.
+    func loadCubeNow(url: URL) async throws {
+        pendingCubeURL = nil
+        navigateTo(.cubeViewer)
+        await cubeTabHost.openFile(url: url)
+        if let err = cubeTabHost.activeTab.loadError, !err.isEmpty {
+            throw AstronomyOpenError(message: err)
+        }
+        guard cubeTabHost.activeTab.hasData else {
+            throw AstronomyOpenError(message: "cube did not load")
+        }
+    }
+    #endif
+
+    /// Error from a viewer load that failed after the file was handed off.
+    struct AstronomyOpenError: Error, LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
     }
 
     /// Same routing as `openAstronomyFITS`, but waits for the header-only
-    /// cube detection so MCP tools can return `pendingViewerChoice`.
+    /// cube detection so MCP tools can return `pendingViewerChoice`, and
+    /// waits for the actual FITS/cube load so `opened: true` is honest.
     @discardableResult
     func openAstronomyFITSAwaitingChoice(
         url: URL,
         viewer: AstronomyViewerChoice? = nil
-    ) async -> AstronomyOpenOutcome {
+    ) async throws -> AstronomyOpenOutcome {
         if let viewer {
             switch viewer {
             case .fits:
+                #if os(macOS)
+                try await loadFITSNow(url: url)
+                #else
                 dispatch(.openFITS(url: url))
+                #endif
                 return .openedFITS
             case .cube:
+                #if os(macOS)
+                try await loadCubeNow(url: url)
+                #else
                 dispatch(.openCube(url: url))
+                #endif
                 return .openedCube
             }
         }
@@ -573,7 +617,11 @@ final class AppState {
             pendingViewerChoiceURL = url
             return .awaitingViewerChoice
         }
+        #if os(macOS)
+        try await loadFITSNow(url: url)
+        #else
         dispatch(.openFITS(url: url))
+        #endif
         return .openedFITS
     }
 

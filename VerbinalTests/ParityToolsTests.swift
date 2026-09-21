@@ -447,6 +447,33 @@ final class ParityToolsTests: XCTestCase {
         guard case .failed = result else { return XCTFail("expected .failed, got \(result)") }
     }
 
+    // MARK: - get_proposal_state
+
+    func testGetProposalStateAcceptsProposalIdAlias() async throws {
+        let store = InMemoryProposalStore()
+        let proposal = await store.enqueue(PendingProposal(
+            toolName: "t", kind: "k", summary: "s",
+            payload: Data("{}".utf8), origin: .user
+        ))
+        let tool = GetProposalStateTool()
+        let result = await tool.invoke(
+            arguments: argsData(["proposalId": proposal.id.uuidString]),
+            context: AIToolContext(origin: .external(clientID: "test"),
+                                   proposals: store, budget: ProposalBudget(limit: 9))
+        )
+        let json = try decodeJSON(result)
+        XCTAssertEqual(json["state"] as? String, "pending")
+        XCTAssertEqual(json["id"] as? String, proposal.id.uuidString)
+    }
+
+    func testGetProposalStateRequiresAnId() async {
+        let tool = GetProposalStateTool()
+        let result = await tool.invoke(arguments: argsData([:]), context: ctx())
+        guard case .failed(.invalidArgument) = result else {
+            return XCTFail("expected invalidArgument, got \(result)")
+        }
+    }
+
     // MARK: - helpers
 
     private actor Box {

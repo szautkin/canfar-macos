@@ -21,6 +21,7 @@ public enum AgentEvent: Sendable, Equatable {
     case proposalApplied(id: UUID, kind: String)
     case proposalRejected(id: UUID, kind: String)
     case proposalWithdrawn(id: UUID, kind: String)
+    case proposalFailed(id: UUID, kind: String)
 }
 
 /// One record in the event log.

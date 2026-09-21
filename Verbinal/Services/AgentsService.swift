@@ -149,7 +149,12 @@ final class AgentsService {
         // arrivals/applications/rejections/withdrawals to it.
         let log = EventLog()
         self.eventLog = log
-        self.proposals = InMemoryProposalStore(eventLog: log)
+        let journal = DiskPersistence<ProposalJournal>(
+            subdirectory: "Verbinal",
+            fileName: "pending_proposals.json",
+            logger: Logger(subsystem: "com.codebg.Verbinal.agent", category: "proposals")
+        )
+        self.proposals = InMemoryProposalStore(eventLog: log, journal: journal)
         self.isEnabled = UserDefaults.standard.bool(forKey: Self.userDefaultsKey)
         // First-launch default for the autonomy toggle: ON. Subsequent
         // launches honour whatever the user last set. UserDefaults
@@ -212,8 +217,12 @@ final class AgentsService {
                 extra = nil
             }
         } catch let pa as ProposalApplyError {
+            _ = await proposals.markApplyFailed(id)
+            await refreshPending()
             throw pa
         } catch {
+            _ = await proposals.markApplyFailed(id)
+            await refreshPending()
             throw ProposalApplyError.backendError("\(error)")
         }
         _ = await proposals.markApplied(id)
@@ -301,6 +310,7 @@ final class AgentsService {
     /// Apply persisted state at app launch. Call once after init from
     /// the AppState bootstrap.
     func bootstrap() {
+        Task { await refreshPending() }
         if isEnabled { startServer() }
     }
 

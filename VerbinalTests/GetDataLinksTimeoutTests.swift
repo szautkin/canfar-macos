@@ -38,9 +38,10 @@ final class GetDataLinksTimeoutTests: XCTestCase {
         previews: [URL],
         files: [(url: URL, contentType: String, filename: String, isUncompressedFITS: Bool)],
         artifacts: [(uri: String, productType: String?, contentType: String?, contentLength: Int64?, filename: String, downloadURL: URL?)],
-        packageDownloadURL: URL?
+        packageDownloadURL: URL?,
+        faults: [String]
     ) {
-        { _ in (thumbnails: [], previews: [], files: [], artifacts: [], packageDownloadURL: nil) }
+        { _ in (thumbnails: [], previews: [], files: [], artifacts: [], packageDownloadURL: nil, faults: []) }
     }
 
     // MARK: - Documented value

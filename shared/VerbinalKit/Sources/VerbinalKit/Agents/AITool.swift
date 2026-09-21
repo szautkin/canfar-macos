@@ -28,6 +28,9 @@ public struct AIToolDefinition: Sendable {
         }
         do {
             let parsed = try JSONDecoder().decode(JSONValue.self, from: bytes)
+            if let problem = ToolInputSchema.problems(in: parsed).first {
+                preconditionFailure("AIToolDefinition[\(name)]: \(problem)")
+            }
             return AIToolDefinition(
                 name: name,
                 description: description,

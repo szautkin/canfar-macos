@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import XCTest
+import os.log
 @testable import VerbinalKit
 @testable import MCPCore
 
@@ -18,6 +19,27 @@ private struct EchoReadTool: AITool {
 
     func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         return .data(arguments)
+    }
+}
+
+private struct StrictReadTool: AITool {
+    static let verbClass: VerbClass = .read
+    static let agentSafe: Bool = true
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "strict",
+        description: "Rejects undeclared arguments",
+        schema: #"""
+        {
+          "type": "object",
+          "properties": { "foo_bar": { "type": "string" } },
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
+        .data(arguments)
     }
 }
 
@@ -143,6 +165,38 @@ final class AIToolRouterTests: XCTestCase {
             return XCTFail("expected unknownTarget, got \(result)")
         }
         XCTAssertEqual(what, "nope")
+    }
+
+    func testAdditionalPropertiesFalseRejectsUnknownArguments() async {
+        let router = makeRouter([StrictReadTool()])
+        let rejected = await router.dispatch(
+            name: "strict",
+            rawArguments: Data(#"{"foo":"ok","typo":1}"#.utf8),
+            context: ctx()
+        )
+        guard case .failed(.invalidArgument(let msg)) = rejected else {
+            return XCTFail("expected invalidArgument, got \(rejected)")
+        }
+        XCTAssertTrue(msg.contains("typo"), msg)
+        XCTAssertTrue(msg.contains("strict"), msg)
+
+        let aliased = await router.dispatch(
+            name: "strict",
+            rawArguments: Data(#"{"fooBar":"ok"}"#.utf8),
+            context: ctx()
+        )
+        guard case .data = aliased else {
+            return XCTFail("camelCase of a declared snake_case name must pass the gate, got \(aliased)")
+        }
+
+        let ok = await router.dispatch(
+            name: "strict",
+            rawArguments: Data(#"{"foo_bar":"ok"}"#.utf8),
+            context: ctx()
+        )
+        guard case .data = ok else {
+            return XCTFail("declared name must pass, got \(ok)")
+        }
     }
 
     func testUserOnlyToolHiddenFromExternal() async {
@@ -470,6 +524,66 @@ final class InMemoryProposalStoreTests: XCTestCase {
         XCTAssertTrue(firstApplied)
         let secondApplied = await store.markApplied(p.id)
         XCTAssertFalse(secondApplied)
+    }
+
+    func testFailedApplyStaysPendingAndIsNotRejected() async {
+        let store = InMemoryProposalStore()
+        let p = await store.enqueue(makeProposal())
+        let marked = await store.markApplyFailed(p.id)
+        XCTAssertTrue(marked)
+        let state = await store.state(p.id)
+        XCTAssertEqual(state, .failed)
+        let list = await store.list(origin: nil)
+        XCTAssertEqual(list.map(\.id), [p.id], "failed apply must remain in the strip for retry")
+        let applied = await store.markApplied(p.id)
+        XCTAssertTrue(applied)
+        let after = await store.state(p.id)
+        XCTAssertEqual(after, .applied)
+    }
+
+    func testJournalRehydratesPendingUnderOriginalIDs() async {
+        let logger = Logger(subsystem: "com.codebg.Verbinal.tests", category: "ProposalJournal")
+        let persistence = DiskPersistence<ProposalJournal>(
+            subdirectory: "VerbinalProposalJournalTests-\(UUID().uuidString)",
+            fileName: "journal.json",
+            logger: logger
+        )
+        let originalID = UUID()
+        let first = InMemoryProposalStore(journal: persistence)
+        _ = await first.enqueue(PendingProposal(
+            id: originalID,
+            toolName: "tool",
+            kind: "kind",
+            summary: "summary",
+            payload: Data(#"{"x":1}"#.utf8),
+            origin: .external(clientID: "c")
+        ))
+        _ = await first.markRejected(UUID()) // no-op, different id
+        let second = InMemoryProposalStore(journal: persistence)
+        let restored = await second.list(origin: nil)
+        XCTAssertEqual(restored.map(\.id), [originalID])
+        XCTAssertEqual(restored.first?.summary, "summary")
+        let state = await second.state(originalID)
+        XCTAssertEqual(state, .pending)
+    }
+
+    func testJournalTombstoneSurvivesRelaunch() async {
+        let logger = Logger(subsystem: "com.codebg.Verbinal.tests", category: "ProposalJournal")
+        let persistence = DiskPersistence<ProposalJournal>(
+            subdirectory: "VerbinalProposalJournalTests-\(UUID().uuidString)",
+            fileName: "journal.json",
+            logger: logger
+        )
+        let first = InMemoryProposalStore(journal: persistence)
+        let p = await first.enqueue(makeProposal())
+        _ = await first.markApplied(p.id)
+        let second = InMemoryProposalStore(journal: persistence)
+        let state = await second.state(p.id)
+        XCTAssertEqual(state, .applied)
+        let appliedAgain = await second.markApplied(p.id)
+        XCTAssertFalse(appliedAgain, "resolved id must not apply twice after relaunch")
+        let pending = await second.list(origin: nil)
+        XCTAssertTrue(pending.isEmpty)
     }
 }
 
