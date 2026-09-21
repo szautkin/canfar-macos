@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (C) 2025-2026 Serhii Zautkin
+
 import SwiftUI
 
 struct WorkflowsView: View {
@@ -15,6 +21,25 @@ struct WorkflowsView: View {
 
     private var store: WorkflowStore { appState.workflowStore }
     private var selected: WorkflowInfo? { selectedID.flatMap(store.get) }
+
+    /// Advisory parse issues for the live editor (localized; not hard-blocks).
+    private var editorWarnings: [String] {
+        let doc = WorkflowFormat.parse(editorText)
+        var messages: [String] = []
+        let hasTitleLine = editorText
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .contains { line in
+                let t = line.trimmingCharacters(in: .whitespaces)
+                return t.hasPrefix("# ") && !t.hasPrefix("##")
+            }
+        if !hasTitleLine {
+            messages.append(String(localized: "Wf_Warn_NoTitle"))
+        }
+        if doc.steps.isEmpty {
+            messages.append(String(localized: "Wf_Warn_NoSteps"))
+        }
+        return messages
+    }
 
     var body: some View {
         // Touch changeID so check-off / save / delete refresh the split view.
@@ -44,12 +69,20 @@ struct WorkflowsView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        editorText = WorkflowFormat.skeleton(String(localized: "Wf_NewWorkflowTitle"))
-                        editorMode = .creating
+                        startCreating()
                     } label: {
                         Label(String(localized: "Wf_New"), systemImage: "plus")
                     }
                     .help(String(localized: "Wf_New"))
+                }
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        selectedID = nil
+                    } label: {
+                        Label(String(localized: "Wf_ClearSelection"), systemImage: "sidebar.squares.left")
+                    }
+                    .help(String(localized: "Wf_ClearSelection"))
+                    .disabled(selectedID == nil || editorMode != nil)
                 }
             }
         } detail: {
@@ -58,10 +91,7 @@ struct WorkflowsView: View {
             } else if let item = selected {
                 workflowDetail(item)
             } else {
-                ContentUnavailableView(
-                    String(localized: "Wf_EmptyState"),
-                    systemImage: "checklist"
-                )
+                emptyOverview
             }
         }
         .confirmationDialog(
@@ -93,9 +123,67 @@ struct WorkflowsView: View {
         }
     }
 
+    private var emptyOverview: some View {
+        ContentUnavailableView {
+            Label(String(localized: "Wf_EmptyState"), systemImage: "checklist")
+        } description: {
+            Text(String(localized: "Wf_EmptyStateDescription"))
+        } actions: {
+            Button {
+                startCreating()
+            } label: {
+                Label(String(localized: "Wf_New"), systemImage: "plus")
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    /// Opens the create editor from overview intent: clear list selection so
+    /// Cancel returns to the empty workarea, not a previously selected detail.
+    private func startCreating() {
+        selectedID = nil
+        editorText = WorkflowFormat.skeleton(String(localized: "Wf_NewWorkflowTitle"))
+        editorMode = .creating
+    }
+
     @ViewBuilder
     private func editorPane(mode: EditorMode) -> some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(
+                    mode == .creating
+                        ? String(localized: "Wf_EditorCreatingTitle")
+                        : String(localized: "Wf_EditorEditingTitle")
+                )
+                .font(.headline)
+
+                Text(String(localized: "Wf_FormatHint_Intro"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    formatHintRow(String(localized: "Wf_FormatHint_Title"))
+                    formatHintRow(String(localized: "Wf_FormatHint_Description"))
+                    formatHintRow(String(localized: "Wf_FormatHint_Steps"))
+                    formatHintRow(String(localized: "Wf_FormatHint_Attachments"))
+                }
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+
+                if !editorWarnings.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(editorWarnings, id: \.self) { warning in
+                            Label(warning, systemImage: "exclamationmark.triangle")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+            }
+
             TextEditor(text: $editorText)
                 .fontDesign(.monospaced)
             HStack {
@@ -109,6 +197,10 @@ struct WorkflowsView: View {
             }
         }
         .padding()
+    }
+
+    private func formatHintRow(_ text: String) -> some View {
+        Text("• \(text)")
     }
 
     private func saveEditor(mode: EditorMode) {
@@ -134,6 +226,12 @@ struct WorkflowsView: View {
                     }
                     #endif
                     Spacer(minLength: 8)
+                    Button {
+                        selectedID = nil
+                    } label: {
+                        Text(String(localized: "Wf_ClearSelection"))
+                    }
+                    .help(String(localized: "Wf_ClearSelection"))
                     if item.source == .local {
                         Button(String(localized: "Wf_Edit")) {
                             editorText = item.rawText

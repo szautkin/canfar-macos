@@ -812,6 +812,9 @@
     "•" : {
       "shouldTranslate" : false
     },
+    "• %@" : {
+
+    },
     "•••••••• (set)" : {
       "localizations" : {
         "fr" : {
@@ -3062,6 +3065,17 @@
         }
       }
     },
+    "Could not allocate %lld×%lld×%lld volume texture. Try slice mode or a smaller cube." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’allouer une texture de volume %lld×%lld×%lld. Essayez le mode coupe ou un cube plus petit."
+          }
+        }
+      }
+    },
     "Couldn't load this folder: %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3277,26 +3291,6 @@
         }
       }
     },
-    "Could not allocate %lld×%lld×%lld volume texture. Try slice mode or a smaller cube." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossible d’allouer une texture de volume %lld×%lld×%lld. Essayez le mode coupe ou un cube plus petit."
-          }
-        }
-      }
-    },
-    "Cube wireframe pipeline failed: %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Échec du pipeline du cadre du cube : %@"
-          }
-        }
-      }
-    },
     "Cube Viewer" : {
       "localizations" : {
         "fr" : {
@@ -3340,6 +3334,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Guide de la visionneuse Cube"
+          }
+        }
+      }
+    },
+    "Cube wireframe pipeline failed: %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec du pipeline du cadre du cube : %@"
           }
         }
       }
@@ -3600,6 +3605,17 @@
         }
       }
     },
+    "Delete cancelled" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suppression annulée"
+          }
+        }
+      }
+    },
     "Delete in progress" : {
       "localizations" : {
         "fr" : {
@@ -3686,6 +3702,7 @@
       }
     },
     "Deleted %lld items" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3695,17 +3712,8 @@
         }
       }
     },
-    "Delete cancelled" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suppression annulée"
-          }
-        }
-      }
-    },
     "Deleting %@…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3716,6 +3724,7 @@
       }
     },
     "Deleting folder %@…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3737,6 +3746,7 @@
       }
     },
     "Deleting… %lld items" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5391,18 +5401,8 @@
         }
       }
     },
-    "Folder name" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nom du dossier"
-          }
-        }
-      }
-    },
     "Folder delete stopped after %lld items (safety limit of %lld). Retry to continue from “%@”." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5413,11 +5413,23 @@
       }
     },
     "Folder is not empty: %@. Try deleting again to remove contents first." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le dossier n’est pas vide : %@. Réessayez pour supprimer d’abord le contenu."
+          }
+        }
+      }
+    },
+    "Folder name" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nom du dossier"
           }
         }
       }
@@ -7143,16 +7155,6 @@
         }
       }
     },
-    "Metal shader library unavailable on this GPU." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliothèque de shaders Metal indisponible sur ce GPU."
-          }
-        }
-      }
-    },
     "Median" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7170,6 +7172,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Métadonnées"
+          }
+        }
+      }
+    },
+    "Metal shader library unavailable on this GPU." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliothèque de shaders Metal indisponible sur ce GPU."
           }
         }
       }
@@ -7650,16 +7663,6 @@
         }
       }
     },
-    "No Metal GPU available for volume rendering. Use slice mode instead." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun GPU Metal disponible pour le rendu volumique. Utilisez plutôt le mode coupe."
-          }
-        }
-      }
-    },
     "No events available" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7803,6 +7806,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun résultat"
+          }
+        }
+      }
+    },
+    "No Metal GPU available for volume rendering. Use slice mode instead." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun GPU Metal disponible pour le rendu volumique. Utilisez plutôt le mode coupe."
           }
         }
       }
@@ -8024,6 +8038,7 @@
       }
     },
     "Not found: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8853,6 +8868,17 @@
         }
       }
     },
+    "Permission denied deleting %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission refusée pour supprimer %@"
+          }
+        }
+      }
+    },
     "PI" : {
       "localizations" : {
         "fr" : {
@@ -8989,16 +9015,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Plan : %@"
-          }
-        }
-      }
-    },
-    "Permission denied deleting %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Permission refusée pour supprimer %@"
           }
         }
       }
@@ -13780,7 +13796,19 @@
         }
       }
     },
+    "Volume = qualitative: GPU ray-march, emission or max-intensity." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volume = qualitatif : lancer de rayons GPU, émission ou intensité maximale."
+          }
+        }
+      }
+    },
     "Volume render pipeline failed: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -13791,22 +13819,12 @@
       }
     },
     "Volume shaders missing from the Metal library." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shaders de volume absents de la bibliothèque Metal."
-          }
-        }
-      }
-    },
-    "Volume = qualitative: GPU ray-march, emission or max-intensity." : {
       "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Volume = qualitatif : lancer de rayons GPU, émission ou intensité maximale."
+            "value" : "Shaders de volume absents de la bibliothèque Metal."
           }
         }
       }
@@ -13937,6 +13955,22 @@
         }
       }
     },
+    "Wf_ClearSelection" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overview"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu"
+          }
+        }
+      }
+    },
     "Wf_Delete" : {
       "localizations" : {
         "en" : {
@@ -14001,6 +14035,38 @@
         }
       }
     },
+    "Wf_EditorCreatingTitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New workflow"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau flux de travail"
+          }
+        }
+      }
+    },
+    "Wf_EditorEditingTitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit workflow"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier le flux de travail"
+          }
+        }
+      }
+    },
     "Wf_EmptyState" : {
       "localizations" : {
         "en" : {
@@ -14013,6 +14079,102 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sélectionnez un flux de travail pour voir ses étapes — ou partez d’un modèle."
+          }
+        }
+      }
+    },
+    "Wf_EmptyStateDescription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick a template on the left, or create a local checklist with New Workflow."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez un modèle à gauche, ou créez une liste de contrôle locale avec Nouveau flux de travail."
+          }
+        }
+      }
+    },
+    "Wf_FormatHint_Attachments" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional indented Tool: / View: / Note:"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En option, indenté Tool: / View: / Note:"
+          }
+        }
+      }
+    },
+    "Wf_FormatHint_Description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "> One-line description"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "> Description en une ligne"
+          }
+        }
+      }
+    },
+    "Wf_FormatHint_Intro" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown checklist format (.workflow.md):"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Format de liste de contrôle Markdown (.workflow.md) :"
+          }
+        }
+      }
+    },
+    "Wf_FormatHint_Steps" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "## Steps then - [ ] **Step title** — body"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "## Steps puis - [ ] **Titre d’étape** — corps"
+          }
+        }
+      }
+    },
+    "Wf_FormatHint_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "# Title"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "# Titre"
           }
         }
       }
@@ -14125,6 +14287,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Utiliser ce flux de travail"
+          }
+        }
+      }
+    },
+    "Wf_Warn_NoSteps" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No checklist steps yet — add lines like - [ ] **Step title** — description."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune étape pour l’instant — ajoutez des lignes comme - [ ] **Titre d’étape** — description."
+          }
+        }
+      }
+    },
+    "Wf_Warn_NoTitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No # Title line — will save as “Untitled workflow”."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune ligne # Titre — enregistrement sous « Untitled workflow »."
           }
         }
       }

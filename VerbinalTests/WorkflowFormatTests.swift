@@ -9,6 +9,22 @@ final class WorkflowFormatTests: XCTestCase {
         XCTAssertEqual(document.tags, ["one", "two"])
         XCTAssertEqual(document.steps.first?.title, "First")
         XCTAssertTrue(document.steps.first!.done)
+        XCTAssertTrue(document.warnings.isEmpty)
+    }
+
+    func testSkeletonHasTitleAndStepsWithoutWarnings() {
+        let text = WorkflowFormat.skeleton("New workflow")
+        let document = WorkflowFormat.parse(text)
+        XCTAssertEqual(document.title, "New workflow")
+        XCTAssertFalse(document.steps.isEmpty)
+        XCTAssertTrue(document.warnings.isEmpty)
+    }
+
+    func testMissingTitleAndStepsProduceWarnings() {
+        let document = WorkflowFormat.parse("Tags: alone\n")
+        XCTAssertEqual(document.title, "Untitled workflow")
+        XCTAssertTrue(document.steps.isEmpty)
+        XCTAssertEqual(document.warnings.count, 2)
     }
 
     func testCheckboxFlipPreservesCRLFBytes() throws {
@@ -79,5 +95,38 @@ final class WorkflowFormatTests: XCTestCase {
             ["list_workflows", "get_workflow", "save_workflow", "update_workflow",
              "set_workflow_step", "use_workflow", "delete_workflow"]
         )
+    }
+
+    func testSaveWorkflowPlanRequiresChecklistStep() async {
+        let ctx = AIToolContext(
+            origin: .external(clientID: "test"),
+            proposals: InMemoryProposalStore(),
+            budget: ProposalBudget(limit: 8)
+        )
+        do {
+            _ = try await SaveWorkflowTool().plan(
+                .init(name: "Notes", text: "# Notes\nJust a document.", location: nil),
+                context: ctx)
+            XCTFail("expected invalidArgument")
+        } catch let f as ToolFailureReason {
+            guard case .invalidArgument(let msg) = f else {
+                return XCTFail("wrong case: \(f)")
+            }
+            XCTAssertTrue(msg.contains("- [ ]"), "must name the checklist syntax; got \(msg)")
+        } catch {
+            XCTFail("unexpected: \(error)")
+        }
+    }
+
+    func testSaveWorkflowPlanAcceptsChecklist() async throws {
+        let ctx = AIToolContext(
+            origin: .external(clientID: "test"),
+            proposals: InMemoryProposalStore(),
+            budget: ProposalBudget(limit: 8)
+        )
+        let plan = try await SaveWorkflowTool().plan(
+            .init(name: "Plan", text: "# Plan\n- [ ] **Step**\n", location: nil),
+            context: ctx)
+        XCTAssertEqual(plan.kind, "save_workflow")
     }
 }
