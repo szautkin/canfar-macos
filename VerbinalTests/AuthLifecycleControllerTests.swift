@@ -119,6 +119,9 @@ final class AuthLifecycleControllerTests: XCTestCase {
         XCTAssertEqual(fired, 1)
         XCTAssertTrue(controller.isAuthenticated)
         XCTAssertEqual(controller.username, "alice")
+        // Re-apply while already authenticated must not re-fire.
+        controller.apply(username: "alice", userInfo: nil)
+        XCTAssertEqual(fired, 1)
     }
 
     func testApplyUsesDisplayNameWhenAvailable() {
@@ -143,6 +146,32 @@ final class AuthLifecycleControllerTests: XCTestCase {
         controller.onSessionExpired = { sessionExpiredFires += 1 }
         controller.handleTokenExpired()
         XCTAssertEqual(sessionExpiredFires, 0)
+    }
+
+    func testHandleTokenExpiredSuccessfulReauthKeepsAuthenticated() async throws {
+        KeychainStorage.saveToken("valid-token", username: "alice")
+        let controller = makeController { request in
+            if request.url?.path.contains("/whoami") == true {
+                return self.okResponse(Data("alice".utf8))
+            }
+            return self.okResponse(Data())
+        }
+        controller.connectivityProvider = { .satisfied }
+        controller.apply(username: "alice", userInfo: nil)
+
+        var sessionExpiredFires = 0
+        var authFires = 0
+        controller.onSessionExpired = { sessionExpiredFires += 1 }
+        controller.onAuthenticated = { authFires += 1 }
+
+        controller.handleTokenExpired()
+        // Still authenticated during the in-flight silent reauth.
+        XCTAssertTrue(controller.isAuthenticated)
+        try await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertTrue(controller.isAuthenticated)
+        XCTAssertEqual(sessionExpiredFires, 0)
+        XCTAssertEqual(authFires, 0, "Silent reauth must not re-fire onAuthenticated")
     }
 
     func testHandleTokenExpiredCoalescesConcurrentCalls() async throws {
@@ -314,11 +343,36 @@ final class AuthLifecycleControllerTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(200))
 
         XCTAssertEqual(sessionExpiredFires, 0, "Offline must not masquerade as session expiry")
+        XCTAssertTrue(controller.isAuthenticated, "Mid-session offline must keep the live session")
         XCTAssertTrue(controller.awaitingConnectivity)
         let (token, _) = KeychainStorage.loadToken()
         XCTAssertEqual(token, "valid-token", "Offline must not clear the stored token")
         XCTAssertTrue(offlineMessages.contains(controller.statusMessage),
                       "Expected an offline status, got '\(controller.statusMessage)'")
+    }
+
+    func testRetryAfterMidSessionOfflineSoftValidates() async throws {
+        KeychainStorage.saveToken("valid-token", username: "alice")
+        var connectivity = NetworkPathMonitor.Connectivity.unsatisfied
+        let controller = makeController { request in
+            if request.url?.path.contains("/whoami") == true {
+                return self.okResponse(Data("alice".utf8))
+            }
+            return self.okResponse(Data())
+        }
+        controller.connectivityProvider = { connectivity }
+        controller.apply(username: "alice", userInfo: nil)
+
+        controller.handleTokenExpired()
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertTrue(controller.awaitingConnectivity)
+        XCTAssertTrue(controller.isAuthenticated)
+
+        connectivity = .satisfied
+        await controller.retryValidationIfConnectivityRestored()
+
+        XCTAssertTrue(controller.isAuthenticated)
+        XCTAssertFalse(controller.awaitingConnectivity)
     }
 
     func testHandleTokenExpiredExpiredTokenStillFiresSessionExpired() async throws {

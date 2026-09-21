@@ -55,12 +55,14 @@ final class AuthLifecycleController {
 
     // MARK: Hooks
 
-    /// Called immediately after the controller's state transitions to
-    /// authenticated (login OR successful silent reauth). `AppState`
-    /// hooks navigation, headless monitor, and Portal-cache prewarm here.
+    /// Called when the controller transitions from signed-out to
+    /// authenticated (cold login / launch validate). Silent reauth that
+    /// refreshes an already-live session does **not** fire this — so
+    /// `AppState` does not rebuild monitors mid-flight.
     var onAuthenticated: (@MainActor () -> Void)?
     /// Called when the controller has decided the session is gone and
-    /// the user must re-enter credentials. `AppState` shows the login sheet.
+    /// the user must re-enter credentials. `AppState` leaves Portal /
+    /// Storage and shows the login sheet.
     var onSessionExpired: (@MainActor () -> Void)?
 
     init(authService: AuthService) {
@@ -123,18 +125,38 @@ final class AuthLifecycleController {
     /// Call on every path transition; the guards make it a no-op unless a
     /// previous validation was deferred/failed for network reasons and the
     /// path is now satisfied. `awaitingConnectivity` is consumed *before*
-    /// the attempt so a failure re-arms it (via `validateStoredToken`'s
-    /// offline branches) rather than looping.
+    /// the attempt so a failure re-arms it rather than looping.
+    ///
+    /// Mid-session offline (still authenticated) soft-validates the token;
+    /// cold launch / signed-out deferral runs full `validateStoredToken`.
     func retryValidationIfConnectivityRestored() async {
-        guard awaitingConnectivity, !isAuthenticated, !isLoading,
+        guard awaitingConnectivity, !isLoading,
               connectivityProvider() == .satisfied else { return }
         awaitingConnectivity = false
-        await validateStoredToken()
+        if isAuthenticated {
+            let (storedToken, _) = KeychainStorage.loadToken()
+            guard let token = storedToken else {
+                handleTokenExpired()
+                return
+            }
+            switch await authService.validateToken(token) {
+            case .valid:
+                return
+            case .expired:
+                handleTokenExpired()
+            case .networkError:
+                awaitingConnectivity = true
+            }
+        } else {
+            await validateStoredToken()
+        }
     }
 
-    /// Mark the session authenticated and fire `onAuthenticated`. Called
-    /// by both successful login and silent reauth paths.
+    /// Mark the session authenticated. Fires `onAuthenticated` only on the
+    /// signed-out → signed-in transition so silent reauth does not rebuild
+    /// AppState session resources.
     func apply(username: String, userInfo: UserInfo?) {
+        let wasAuthenticated = isAuthenticated
         self.username = username
         self.userInfo = userInfo
         self.isAuthenticated = true
@@ -142,15 +164,18 @@ final class AuthLifecycleController {
             .compactMap { $0 }
             .joined(separator: " ")
         self.statusMessage = String(localized: "Welcome, \(displayName.isEmpty ? username : displayName)")
-        onAuthenticated?()
+        if !wasAuthenticated {
+            onAuthenticated?()
+        }
     }
 
     /// Called when any service detects a 401 mid-session. Coalesces
     /// concurrent expirations so two races don't both run reauth.
+    /// Keeps `isAuthenticated` true until silent reauth confirms expiry
+    /// so Portal/Storage chrome does not flash the login wall mid-flight.
     func handleTokenExpired() {
         guard isAuthenticated else { return }
         if let task = tokenExpiryTask, !task.isCancelled { return }
-        isAuthenticated = false
 
         tokenExpiryTask = Task { [weak self] in
             guard let self else { return }
@@ -159,12 +184,11 @@ final class AuthLifecycleController {
             case .success:
                 return
             case .offline:
-                // Being offline is not session expiry: keep the Keychain
-                // token, skip the login sheet, and let the connectivity
-                // retry path restore the session when the network returns.
+                // Keep the session live; connectivity retry soft-validates.
                 self.awaitingConnectivity = true
                 self.statusMessage = String(localized: "You appear to be offline. Verbinal will reconnect automatically.")
             case .sessionExpired:
+                // `silentReauth` already cleared auth state.
                 self.statusMessage = String(localized: "Session expired. Please log in again.")
                 self.onSessionExpired?()
             }
@@ -208,7 +232,12 @@ final class AuthLifecycleController {
     /// stored credentials and defer to the connectivity retry path.
     private func silentReauth() async -> ReauthOutcome {
         let (storedToken, storedUsername) = KeychainStorage.loadToken()
-        guard let token = storedToken, let storedUser = storedUsername else { return .sessionExpired }
+        guard let token = storedToken, let storedUser = storedUsername else {
+            username = ""
+            userInfo = nil
+            isAuthenticated = false
+            return .sessionExpired
+        }
 
         // Definitely offline — nothing to gain from a doomed request, and
         // the caller must not mistake the failure for real expiry.

@@ -220,16 +220,8 @@ struct LandingView: View {
 
     // MARK: - Auth-gated navigation
 
-    /// Navigates to `mode` if the user is signed in. Otherwise remembers the
-    /// intent in `pendingModeAfterLogin` and opens the login sheet —
-    /// `AppState.updateAuthState` will complete the navigation on success.
     private func navigateOrPromptLogin(_ mode: AppMode) {
-        if appState.isAuthenticated {
-            appState.navigateTo(mode)
-        } else {
-            appState.pendingModeAfterLogin = mode
-            appState.showLoginSheet = true
-        }
+        appState.navigateOrPromptLogin(mode)
     }
 
     // MARK: - Addon slot (sixth landing tile)

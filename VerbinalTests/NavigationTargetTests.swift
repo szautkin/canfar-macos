@@ -21,6 +21,7 @@ final class NavigationTargetTests: XCTestCase {
     func testSingleCounterpartsUnchanged() {
         XCTAssertEqual(AgentsService.navigationTarget(forKind: "delete_session"), .portal)
         XCTAssertEqual(AgentsService.navigationTarget(forKind: "upload_to_vospace"), .storage)
+        XCTAssertEqual(AgentsService.navigationTarget(forKind: "upload_file_to_vospace"), .storage)
         XCTAssertEqual(AgentsService.navigationTarget(forKind: "save_query"), .search)
         XCTAssertEqual(AgentsService.navigationTarget(forKind: "download_observation"), .research)
     }

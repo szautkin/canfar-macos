@@ -81,22 +81,12 @@ struct VerbinalApp: App {
                 Divider()
 
                 Button("Portal") {
-                    if appState.isAuthenticated {
-                        appState.navigateTo(.portal)
-                    } else {
-                        appState.pendingModeAfterLogin = .portal
-                        appState.showLoginSheet = true
-                    }
+                    appState.navigateOrPromptLogin(.portal)
                 }
                 .keyboardShortcut("5", modifiers: .command)
 
                 Button("Storage") {
-                    if appState.isAuthenticated {
-                        appState.navigateTo(.storage)
-                    } else {
-                        appState.pendingModeAfterLogin = .storage
-                        appState.showLoginSheet = true
-                    }
+                    appState.navigateOrPromptLogin(.storage)
                 }
                 .keyboardShortcut("6", modifiers: .command)
 

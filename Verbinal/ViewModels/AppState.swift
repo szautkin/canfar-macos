@@ -24,6 +24,14 @@ enum AppMode: Equatable {
     case cubeViewer
     case aiGuide
     case workflows
+
+    /// Portal and Storage require a CADC session; all other modes are open.
+    var requiresAuthentication: Bool {
+        switch self {
+        case .portal, .storage: return true
+        default: return false
+        }
+    }
 }
 
 @Observable
@@ -262,7 +270,12 @@ final class AppState {
             self?.afterAuthenticated()
         }
         auth.onSessionExpired = { [weak self] in
-            self?.showLoginSheet = true
+            guard let self else { return }
+            // Confirmed expiry only — tear down session resources, leave
+            // Portal/Storage, and prompt for credentials.
+            self.tearDownAuthenticatedSessionResources()
+            self.leaveAuthGatedModesIfNeeded(rememberForRelogin: true)
+            self.showLoginSheet = true
         }
         auth.connectivityProvider = { [weak self] in
             self?.networkPath.connectivity ?? .unknown
@@ -371,6 +384,11 @@ final class AppState {
     var reduceMotion = false
 
     func navigateTo(_ mode: AppMode) {
+        // Free-module navigation cancels a stale post-login destination so
+        // a later auth success cannot hijack the user back to Portal/Storage.
+        if !mode.requiresAuthentication {
+            pendingModeAfterLogin = nil
+        }
         // Record direction *before* the animated mutation so the iOS
         // directional-slide transition (keyed on `navDirection`) resolves the
         // right edge in the same transaction.
@@ -392,6 +410,30 @@ final class AppState {
         }
     }
 
+    /// If the user is on an auth-gated mode, return to Landing so the
+    /// chrome-less "Login Required" body never fills the window.
+    /// When `rememberForRelogin` is true, stash the mode so a successful
+    /// login returns them there via `afterAuthenticated`.
+    func leaveAuthGatedModesIfNeeded(rememberForRelogin: Bool) {
+        guard currentMode.requiresAuthentication else { return }
+        if rememberForRelogin {
+            pendingModeAfterLogin = currentMode
+        }
+        navigateBack()
+    }
+
+    /// Navigate to an auth-gated mode, or remember the intent and open the
+    /// login sheet when signed out (Landing tiles / ⌘5 / ⌘6).
+    func navigateOrPromptLogin(_ mode: AppMode) {
+        assert(mode.requiresAuthentication, "navigateOrPromptLogin is only for Portal/Storage")
+        if isAuthenticated {
+            navigateTo(mode)
+        } else {
+            pendingModeAfterLogin = mode
+            showLoginSheet = true
+        }
+    }
+
     // Cross-module actions
     var pendingFITSURL: URL?
 
@@ -405,6 +447,10 @@ final class AppState {
     /// ADQL editor) instead of the pending-handoff bridges alone. Cheap at
     /// init: no network until a search or data-train load runs.
     let searchModel = SearchFormModel()
+    /// Hoisted research archive — same rationale as `searchModel`: MCP
+    /// FITS tools and the Research UI must share one store so ids
+    /// survive relaunch and in-session downloads are visible both ways.
+    let researchModel = ResearchModel()
 
     #if os(macOS)
     /// Hoisted viewer state. Previously each viewer root view owned its
@@ -477,17 +523,58 @@ final class AppState {
     /// (Windows 1.3.1 parity). Presented as a sheet from ContentView.
     var pendingViewerChoiceURL: URL?
 
+    /// Explicit 2D vs 3D pick — skips the "Open as…" sheet.
+    enum AstronomyViewerChoice: String, Sendable {
+        case fits
+        case cube
+    }
+
+    /// Result of routing a FITS file: opened immediately, or waiting on
+    /// the NAXIS≥3 "Open as…" sheet.
+    enum AstronomyOpenOutcome: Equatable, Sendable {
+        case openedFITS
+        case openedCube
+        case awaitingViewerChoice
+    }
+
+    /// Agent-facing copy when the "Open as…" sheet is showing. Shared by
+    /// `get_current_view`, `open_local_file`, and `open_vospace_file`.
+    nonisolated static func viewerChoiceAgentNote(filename: String) -> String {
+        "An Open as… sheet is showing for \(filename). Call choose_viewer(viewer: \"fits\") for the 2D FITS Viewer, choose_viewer(viewer: \"cube\") for the 3D Cube Viewer, or choose_viewer(viewer: \"dismiss\") to close the sheet."
+    }
+
     /// Open a FITS file in the right viewer. Plain 2D images go to the FITS
     /// Viewer; NAXIS≥3 files prompt for 2D vs Cube (spectral cubes default
-    /// to Cube). Detection reads only the header.
-    func openAstronomyFITS(url: URL) {
-        Task {
-            if await Self.fitsIsCube(url) {
-                await MainActor.run { pendingViewerChoiceURL = url }
-            } else {
+    /// to Cube). Detection reads only the header. Fire-and-forget for UI
+    /// clicks; MCP callers use `openAstronomyFITSAwaitingChoice` so they
+    /// can tell the agent when the sheet is up.
+    func openAstronomyFITS(url: URL, viewer: AstronomyViewerChoice? = nil) {
+        Task { await openAstronomyFITSAwaitingChoice(url: url, viewer: viewer) }
+    }
+
+    /// Same routing as `openAstronomyFITS`, but waits for the header-only
+    /// cube detection so MCP tools can return `pendingViewerChoice`.
+    @discardableResult
+    func openAstronomyFITSAwaitingChoice(
+        url: URL,
+        viewer: AstronomyViewerChoice? = nil
+    ) async -> AstronomyOpenOutcome {
+        if let viewer {
+            switch viewer {
+            case .fits:
                 dispatch(.openFITS(url: url))
+                return .openedFITS
+            case .cube:
+                dispatch(.openCube(url: url))
+                return .openedCube
             }
         }
+        if await Self.fitsIsCube(url) {
+            pendingViewerChoiceURL = url
+            return .awaitingViewerChoice
+        }
+        dispatch(.openFITS(url: url))
+        return .openedFITS
     }
 
     func openPendingViewerChoiceAsFITS() {
@@ -595,8 +682,19 @@ final class AppState {
     /// prewarm the Portal image cache.
     private func afterAuthenticated() {
         if let pending = pendingModeAfterLogin {
-            navigateTo(pending)
+            // Only honor return-intent while still on Landing. If the user
+            // already moved to a free module, do not steal them back.
+            if currentMode == .landing {
+                navigateTo(pending)
+            }
             pendingModeAfterLogin = nil
+        }
+
+        // Idempotent: silent reauth no longer fires this hook, but guard
+        // against any future double-apply so we don't stack monitors.
+        guard headlessMonitor == nil else {
+            prewarmPortalCache()
+            return
         }
 
         let monitor = HeadlessMonitorModel(headlessService: headlessService)
@@ -706,24 +804,24 @@ final class AppState {
 
     /// Pass-through to the controller for callers that detected a 401
     /// directly (e.g., `HeadlessMonitorModel.onAuthFailure`). The controller
-    /// owns the coalescing + reauth attempt; we tear down the headless
-    /// monitor here because that's an AppState-owned dependency.
+    /// owns coalescing + silent reauth; session resources are torn down only
+    /// when expiry is confirmed (`onSessionExpired`).
     func handleTokenExpired() {
-        guard auth.isAuthenticated else { return }
-        headlessMonitor?.stopMonitoring()
-        headlessMonitor = nil
-        imageDiscoveryCoordinator = nil
-        imageDiscoveryModel = nil
-        canfarImagesModel = nil
         auth.handleTokenExpired()
     }
 
-    func logout() async {
+    /// Stop headless monitoring and drop user-scoped discovery models.
+    /// Shared by confirmed session expiry and voluntary logout.
+    private func tearDownAuthenticatedSessionResources() {
         headlessMonitor?.stopMonitoring()
         headlessMonitor = nil
         imageDiscoveryCoordinator = nil
         imageDiscoveryModel = nil
         canfarImagesModel = nil
+    }
+
+    func logout() async {
+        tearDownAuthenticatedSessionResources()
 
         // Cancel any in-flight prewarm so it cannot repopulate the cache after clear().
         prewarmTask?.cancel()
@@ -735,6 +833,9 @@ final class AppState {
         // Tear down auth state via the controller (also cancels any
         // in-flight reauth and asks AuthService to clear the token).
         await auth.clear()
+        // Voluntary logout: leave Portal/Storage without re-entry intent.
+        pendingModeAfterLogin = nil
+        leaveAuthGatedModesIfNeeded(rememberForRelogin: false)
         statusMessage = String(localized: "Logged out")
     }
 }

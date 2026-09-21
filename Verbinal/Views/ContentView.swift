@@ -28,7 +28,7 @@ struct ContentView: View {
     /// App-owned (hoisted onto `AppState` so the search-control agent
     /// tools steer the same live instance the UI renders).
     private var searchModel: SearchFormModel { appState.searchModel }
-    @State private var researchModel = ResearchModel()
+    private var researchModel: ResearchModel { appState.researchModel }
     #if os(macOS)
     // StorageBrowserModel, FileBrowserModel, and FileBrowserPanel live in
     // feature dirs excluded from the iOS target. The shell that hosts the
@@ -273,12 +273,10 @@ struct ContentView: View {
     /// is a standalone prompt with its own buttons — wrapping it in a back-arrow
     /// mode toolbar would be redundant and was never done before the hoist.
     private var showsModeChrome: Bool {
-        switch appState.currentMode {
-        case .portal, .storage:
+        if appState.currentMode.requiresAuthentication {
             return appState.isAuthenticated
-        default:
-            return true
         }
+        return true
     }
 
     /// The persistent macOS mode toolbar, chosen by `currentMode`. It lives
