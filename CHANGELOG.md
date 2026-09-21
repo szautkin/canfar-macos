@@ -14,8 +14,14 @@ delete, Cube Intel volume hardening, Research local FITS import (see
 
 ### Added
 - Dev plans under `docs/plans/` for the 1.3.4 backlog.
+- MCP `choose_viewer` resolves the NAXIS≥3 "Open as…" sheet;
+  `get_current_view.pendingViewerChoice` reports it; `open_local_file`
+  accepts optional `viewer` (`fits` / `cube`) to skip the sheet.
 - Workflows UI: Edit and Delete for local working copies; clearer
   “New Workflow” toolbar control (store/MCP already supported these).
+- Workflows overview: empty-state description + New CTA; Overview
+  clears selection back to the empty workarea; New/Edit editor shows
+  `.workflow.md` format hints and live advisory warnings (EN/FR).
 
 ### Fixed
 - Storage: deleting a non-empty folder now walks children first (shared
@@ -25,6 +31,29 @@ delete, Cube Intel volume hardening, Research local FITS import (see
 - Cube Viewer: volume Metal failures no longer blank the whole view —
   wireframe can draw without the volume texture, and a banner explains
   pipeline/texture/GPU problems (Intel Mac diagnosis aid).
+- Auth: logout and confirmed session expiry leave Portal/Storage for
+  Landing (login sheet on expiry). Silent reauth keeps the session live
+  so Portal does not flash the chrome-less wall. Post-login pending
+  restore only applies while still on Landing.
+- Auth: `AppMode.requiresAuthentication` + `navigateOrPromptLogin` are
+  the single policy for Portal/Storage gating (Landing tiles / ⌘5 / ⌘6).
+- MCP tool surface (QA 2026-08-28): `upload_file_to_vospace` accepts a
+  local path, copies it into app temp, and PUTs a real body (small files
+  in-memory) so the MCP call does not wait and CADC does not get a
+  0-byte node; 401 retry on PUT/GET; package-fallback downloads pull
+  CAOM-2 science artifacts and unique filenames; VizieR cone posts
+  `REQUEST=doQuery` to TAPVizieR (`tapvizier.cds.unistra.fr`); FITS tools
+  try the security-scoped bookmark and sandbox path twins before
+  `observationNotFound`, and accept a unique hex id prefix;
+  `save_query` returns the new id; bulk download partial-success
+  envelope; `export_search_results` can omit `adql`; publisher-id
+  forms (`ivo://…/COLL/id`, `COLL?id`) normalize; VOSpace paths strip
+  `/home/<user>` once; `list_local_folder` expands `~` and lists the
+  first readable Downloads twin; `request_folder_access` does not hang
+  MCP clients; `delete_saved_query` stays on the live surface;
+  `save_workflow` documents the `- [ ]` requirement; cube export/probe
+  errors name `navigate_to(mode: cubeViewer)` and the streamed-cube
+  limit; `resolve_target` caveats noisy Simbad types.
 
 ### Changed
 - Marketing version 1.3.4 (build 16).

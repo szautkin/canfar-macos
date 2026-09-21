@@ -12,9 +12,9 @@
 |------|----------|---------|
 | **Storage delete** | Non-empty folder; async endpoint?; bulk delete? | Sync DELETE only — **no async job API**. Non-empty folders often fail with one-shot DELETE; MCP already has recursive walk (cap 100). UI is single-select — no bulk. |
 | **Cube Intel** | 2019 Intel: no volume / cube frame | Metal path silently early-returns; volume **and** wireframe share one guard. Half-float already Intel-safe. Need logs + UI error + possible downsample / decouple frame. |
-| **Workflows** | No edit, add, delete | **Add exists** (`+` toolbar). **Edit + Delete missing** in UI though store/MCP support them. |
+| **Workflows** | No edit, add, delete | CRUD + UX polish done ([03](./03-workflows-crud.md), [06](./06-workflows-ux.md)). VOSpace publish still deferred. |
 | **Research** | Import folder / FITS·fz under project/collection | Archive is CADC-download-only; group by `collection` only (no project entity). Local open elsewhere does not ingest. |
-| **Auth scope** | “Whole app” Login Required wall | Design already gates **only Portal + Storage**. Full-window lock appears when left on those modes after logout/expiry (no chrome) — feels global. |
+| **Auth scope** | “Whole app” Login Required wall | Fixed: expiry/logout leave Portal/Storage; silent reauth keeps auth live; `requiresAuthentication` + `navigateOrPromptLogin` single policy. |
 
 ---
 
@@ -63,8 +63,10 @@ flowchart LR
 | 1 | [Storage delete & bulk](./01-storage-delete.md) | M (+ M–L bulk) |
 | 2 | [Cube Intel volume](./02-cube-intel-volume.md) | S diagnose + M fix |
 | 3 | [Workflows CRUD UI](./03-workflows-crud.md) | S–M |
+| 3b | [Workflows UX polish](./06-workflows-ux.md) | S |
 | 4 | [Research local import](./04-research-local-import.md) | M–L |
 | 5 | [Auth scope / login wall UX](./05-auth-scope.md) | S |
+| 7 | [MCP tool-surface fixes](./07-mcp-tool-fixes.md) | M |
 
 ---
 
@@ -100,8 +102,9 @@ flowchart LR
 ## Next actions
 
 1. ~~**03-workflows-crud**~~ done.  
-2. ~~**01-storage** Phase A~~ done (bulk delete still open).  
-3. ~~**02-cube** Phase B~~ done (error banner + wireframe decoupling); still need Intel Mac Phase A logs.  
-4. **05-auth-scope** — bounce to Landing on logout/expiry when on Portal/Storage (P0 UX).  
-5. Spec/implement **04-research** local import.  
-6. Confirm remaining product answers above.
+2. ~~**06-workflows-ux**~~ done (overview / format hints).  
+3. ~~**01-storage** Phase A~~ done (bulk delete still open).  
+4. ~~**02-cube** Phase B~~ done (error banner + wireframe decoupling); still need Intel Mac Phase A logs.  
+5. ~~**05-auth-scope**~~ done (leave Portal/Storage on expiry/logout; silent reauth keeps session).  
+6. Spec/implement **04-research** local import.  
+7. Confirm remaining product answers above.

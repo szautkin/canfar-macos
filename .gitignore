@@ -51,3 +51,4 @@ Packages/
 *.ipa
 *.xcodeproj
 dev_info
+*.profraw
