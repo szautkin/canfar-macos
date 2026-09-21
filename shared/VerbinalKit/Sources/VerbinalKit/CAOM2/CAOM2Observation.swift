@@ -369,7 +369,9 @@ extension CAOM2Observation {
         }
 
         guard let url = URL(string: trimmed),
-              let scheme = url.scheme?.lowercased(), scheme == "ivo" else { return nil }
+              let scheme = url.scheme?.lowercased(), scheme == "ivo" else {
+            return observationURI(fromBarePublisher: trimmed)
+        }
         // Path may carry a `/mirror` segment for HST / JWST mirror
         // entries — strip it so the collection comes out right.
         let pieces = url.path
@@ -378,12 +380,33 @@ extension CAOM2Observation {
             .filter { $0.lowercased() != "mirror" }
         guard let collection = pieces.first, !collection.isEmpty else { return nil }
 
-        // observationID is the URL "query" part of the publisher URI;
-        // productID (if present) follows a `/` after it. Strip the
-        // productID for an observation-level URI.
-        let queryPart = url.query ?? ""
-        let observationID = queryPart.split(separator: "/", maxSplits: 1).first.map(String.init) ?? queryPart
-        guard !observationID.isEmpty else { return nil }
+        // observationID is the URL "query" part of the publisher URI
+        // (`ivo://cadc.nrc.ca/CFHT?22803`). Some TAP rows and agent
+        // transcripts emit a slash form instead (`ivo://cadc.nrc.ca/CFHT/22803`
+        // or even `CFHT?22803` with no scheme). Accept all three so
+        // `search_observations` → `get_preview_image` / `get_data_links`
+        // chaining doesn't 400 on the publisher form the search tool itself
+        // returns.
+        if let queryPart = url.query, !queryPart.isEmpty {
+            let observationID = queryPart.split(separator: "/", maxSplits: 1).first.map(String.init) ?? queryPart
+            return "caom:\(collection)/\(observationID)"
+        }
+        // Slash form: `ivo://cadc.nrc.ca/COLLECTION/observationID`.
+        if pieces.count >= 2, !pieces[1].isEmpty {
+            return "caom:\(collection)/\(pieces[1])"
+        }
+        return nil
+    }
+
+    /// Bare `COLLECTION?observationID` (no scheme) — a form agents paste
+    /// from table cells that stripped the `ivo://cadc.nrc.ca/` prefix.
+    public static func observationURI(fromBarePublisher publisherID: String) -> String? {
+        let trimmed = publisherID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let q = trimmed.firstIndex(of: "?") else { return nil }
+        let collection = String(trimmed[..<q])
+        let rest = String(trimmed[trimmed.index(after: q)...])
+        let observationID = rest.split(separator: "/", maxSplits: 1).first.map(String.init) ?? rest
+        guard !collection.isEmpty, !observationID.isEmpty else { return nil }
         return "caom:\(collection)/\(observationID)"
     }
 }

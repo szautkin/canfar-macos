@@ -228,6 +228,7 @@ final class AIToolRouterTests: XCTestCase {
             apply: { id in
                 try await counter.bumpAndRecord(id)
                 _ = await store.markApplied(id)
+                return nil
             }
         )
         let router = AIToolRouter(
@@ -275,7 +276,7 @@ final class AIToolRouterTests: XCTestCase {
         let counter = ApplyCallCounter()
         let hook = AutoApplyHook(
             shouldAutoApply: { _, _ in false },
-            apply: { id in try await counter.bumpAndRecord(id) }
+            apply: { id in try await counter.bumpAndRecord(id); return nil }
         )
         let router = AIToolRouter(
             tools: [WriteSentinelTool()],
@@ -303,7 +304,7 @@ final class AIToolRouterTests: XCTestCase {
         await counter.setShouldThrow(true)
         let hook = AutoApplyHook(
             shouldAutoApply: { _, _ in true },
-            apply: { id in try await counter.bumpAndRecord(id) }
+            apply: { id in try await counter.bumpAndRecord(id); return nil }
         )
         let router = AIToolRouter(
             tools: [WriteSentinelTool()],
@@ -668,6 +669,33 @@ final class MCPBridgeServiceTests: XCTestCase {
         await serverSide.close()
         await clientSide.close()
         _ = await serveTask.value
+    }
+
+    func testAutoAppliedAckMergesExtraEnvelopeAndPayloadId() throws {
+        let payload = try JSONSerialization.data(withJSONObject: ["id": "payload-uuid"])
+        let proposal = PendingProposal(
+            toolName: "save_query",
+            kind: "save_query",
+            summary: "Save query",
+            payload: payload,
+            origin: .external(clientID: "test")
+        )
+        let extra = try JSONEncoder().encode(
+            AutoAppliedAck.Extra(
+                succeeded: ["ok-1"],
+                failed: [.init(id: "ivo://x", error: "timeout")]
+            )
+        )
+        let ack = AutoAppliedAck(proposal: proposal, extraJSON: extra)
+        XCTAssertEqual(ack.id, "payload-uuid")
+        XCTAssertEqual(ack.succeeded, ["ok-1"])
+        XCTAssertEqual(ack.failed, [.init(id: "ivo://x", error: "timeout")])
+
+        let withNote = try JSONEncoder().encode(AutoAppliedAck.Extra(note: "poll list_vospace_path"))
+        XCTAssertEqual(AutoAppliedAck(proposal: proposal, extraJSON: withNote).note, "poll list_vospace_path")
+
+        let extraWins = try JSONEncoder().encode(AutoAppliedAck.Extra(id: "extra-uuid"))
+        XCTAssertEqual(AutoAppliedAck(proposal: proposal, extraJSON: extraWins).id, "extra-uuid")
     }
 
     // MARK: - Helpers

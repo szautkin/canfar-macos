@@ -79,7 +79,7 @@ final class ResolvedFITSSendableTests: XCTestCase {
         let id = UUID()
 
         let tool = GetFITSHeaderTool(resolve: { @Sendable requested in
-            XCTAssertEqual(requested, id)
+            XCTAssertEqual(requested, id.uuidString)
             return resolved
         })
 

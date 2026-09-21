@@ -49,6 +49,18 @@ struct GetCurrentViewTool: JSONReadTool {
         /// showing.
         let openFITSPaths: [String]
 
+        /// Set when the "Open as…" sheet is showing for an NAXIS≥3
+        /// file. Call `choose_viewer` before FITS/cube steering tools —
+        /// nothing is open in either viewer until the user (or you)
+        /// picks 2D vs 3D.
+        let pendingViewerChoice: PendingViewerChoice?
+
+        struct PendingViewerChoice: Encodable, Sendable {
+            let path: String
+            let filename: String
+            let note: String
+        }
+
         // ── Cross-mode signals ───────────────────────────────────
 
         /// Live count of pending agent proposals in the strip — useful
@@ -99,7 +111,7 @@ struct GetCurrentViewTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_current_view",
-        description: "Return what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer/cubeViewer/aiGuide), auth state, the Search sub-tab and loaded-results counts, search-form focus when set, open FITS files when in FITS Viewer, pending-proposal count, plus the two autonomy toggles: `autoApplyEnabled` (do writes return applied results, or queue for strip review?) and `followAgentActivityEnabled` (does the app auto-navigate to the relevant view after a write, so you don't need a redundant `navigate_to`?).",
+        description: "Return what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer/cubeViewer/aiGuide), auth state, the Search sub-tab and loaded-results counts, search-form focus when set, open FITS files when in FITS Viewer, `pendingViewerChoice` when the Open as… (2D FITS vs 3D Cube) sheet is showing — call `choose_viewer` to dismiss it — pending-proposal count, plus the two autonomy toggles: `autoApplyEnabled` (do writes return applied results, or queue for strip review?) and `followAgentActivityEnabled` (does the app auto-navigate to the relevant view after a write, so you don't need a redundant `navigate_to`?).",
         schema: #"""
         {
           "type": "object",

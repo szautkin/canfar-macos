@@ -42,8 +42,19 @@ actor VOSpaceBrowserService {
 
     // MARK: - List
 
+    /// Strip `/home/<user>` (and `..`) so MCP and the Storage UI share one
+    /// path contract: relative-from-home, absolute home prefixes accepted.
+    private func relativePath(_ path: String, username: String) throws -> String {
+        do {
+            return try VOSpaceRelativePath.normalize(path, username: username)
+        } catch VOSpaceRelativePath.Error.traversal {
+            throw VOSpaceError.invalidPath
+        }
+    }
+
     func listNodes(username: String, path: String = "", limit: Int = 500) async throws -> [VOSpaceNode] {
-        let basePath = path.isEmpty ? Self.encodeSegment(username) : "\(Self.encodeSegment(username))/\(Self.encodePath(path))"
+        let relative = try relativePath(path, username: username)
+        let basePath = relative.isEmpty ? Self.encodeSegment(username) : "\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
         // `detail=max` matches the Windows client (`StorageNodeListUrl`) —
         // without it ARC returns bare nodes and the Modified/Size columns
         // stay empty because `#date` / `#length` properties are omitted.
@@ -72,8 +83,9 @@ actor VOSpaceBrowserService {
         expectedTotal: Int64,
         onProgress: NetworkClient.TransferProgressHandler?
     ) async throws -> (tempURL: URL, filename: String) {
-        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
-        let filename = URL(fileURLWithPath: (path as NSString).lastPathComponent).lastPathComponent
+        let relative = try relativePath(path, username: username)
+        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
+        let filename = URL(fileURLWithPath: (relative as NSString).lastPathComponent).lastPathComponent
         do {
             let (location, _) = try await network.downloadFile(
                 urlString,
@@ -137,7 +149,8 @@ actor VOSpaceBrowserService {
         guard offset >= 0 else {
             throw VOSpaceError.operationFailed("fetchBytes offset must be >= 0; got \(offset)")
         }
-        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
+        let relative = try relativePath(path, username: username)
+        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
         let rangeEnd = offset + maxBytes - 1
         let headers = ["Range": "bytes=\(offset)-\(rangeEnd)"]
         let (data, response) = try await network.get(urlString, additionalHeaders: headers)
@@ -177,7 +190,8 @@ actor VOSpaceBrowserService {
         fileURL: URL,
         onProgress: NetworkClient.TransferProgressHandler?
     ) async throws {
-        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(remotePath))"
+        let relative = try relativePath(remotePath, username: username)
+        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
 
         // Sandbox: the source file came from an NSOpenPanel pick by the user,
         // possibly in an earlier transaction. Re-grant access for the read
@@ -186,17 +200,35 @@ actor VOSpaceBrowserService {
         let didStart = fileURL.startAccessingSecurityScopedResource()
         defer { if didStart { fileURL.stopAccessingSecurityScopedResource() } }
 
-        // Stream the file from disk rather than buffering the whole payload
-        // in memory — important for FITS / data-cube uploads that easily
-        // exceed available RAM. Progress is reported via `onProgress`.
+        let fileSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init)
+            ?? (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? NSNumber)?.int64Value
+            ?? 0
+
         do {
-            _ = try await network.putFile(
-                urlString,
-                fileURL: fileURL,
-                contentType: "application/octet-stream",
-                timeout: 300,
-                onProgress: onProgress
-            )
+            // Small files: in-memory PUT so CADC gets a real Content-Length
+            // body (same shape as `upload_text_to_vospace`). `upload(fromFile:)`
+            // on a sandbox-invisible URL was creating 0-byte nodes.
+            let smallFileCap: Int64 = 32 * 1024 * 1024
+            if fileSize > 0, fileSize <= smallFileCap {
+                let data = try Data(contentsOf: fileURL)
+                guard !data.isEmpty else {
+                    throw VOSpaceError.operationFailed("Upload failed: local file is empty")
+                }
+                _ = try await network.put(
+                    urlString,
+                    body: data,
+                    contentType: "application/octet-stream",
+                    timeout: 300
+                )
+            } else {
+                _ = try await network.putFile(
+                    urlString,
+                    fileURL: fileURL,
+                    contentType: "application/octet-stream",
+                    timeout: 300,
+                    onProgress: onProgress
+                )
+            }
         } catch is CancellationError {
             throw CancellationError()
         } catch let error as URLError where error.code == .cancelled {
@@ -209,7 +241,8 @@ actor VOSpaceBrowserService {
     // MARK: - Create Folder
 
     func createFolder(username: String, parentPath: String, folderName: String) async throws {
-        let fullPath = parentPath.isEmpty ? "\(username)/\(folderName)" : "\(username)/\(parentPath)/\(folderName)"
+        let parent = try relativePath(parentPath, username: username)
+        let fullPath = parent.isEmpty ? "\(username)/\(folderName)" : "\(username)/\(parent)/\(folderName)"
         let nodeURI = "\(Self.vosPrefix)/\(fullPath)"
         let xml = VOSpaceXMLParser.buildContainerNodeXml(nodeURI: nodeURI)
 
@@ -240,7 +273,8 @@ actor VOSpaceBrowserService {
         groupWrite: [String]?,
         isPublic: Bool?
     ) async throws {
-        let fullPath = path.isEmpty ? username : "\(username)/\(path)"
+        let relative = try relativePath(path, username: username)
+        let fullPath = relative.isEmpty ? username : "\(username)/\(relative)"
         let urlString = "\(nodesBase)/\(Self.encodePath(fullPath))"
 
         let (data, _) = try await network.get("\(urlString)?detail=min", accept: "text/xml")
@@ -300,7 +334,8 @@ actor VOSpaceBrowserService {
 
     /// One-shot HTTP DELETE — used by the recursive walker and by file deletes.
     private func deleteNodeOnce(username: String, path: String) async throws {
-        let urlString = "\(nodesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(path))"
+        let relative = try relativePath(path, username: username)
+        let urlString = "\(nodesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
         do {
             let response = try await network.delete(urlString)
             guard (200...299).contains(response.statusCode) else {

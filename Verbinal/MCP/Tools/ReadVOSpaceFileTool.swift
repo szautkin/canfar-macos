@@ -72,13 +72,13 @@ struct ReadVOSpaceFileTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "read_vospace_file",
-        description: "Read a bounded slice of a VOSpace file into the tool result — the agent-visible counterpart to `download_from_vospace` (which only writes to the user's Mac and is invisible to you). The 2026-05-15 QA report named this as a recurring pain point: three of eight Skaha jobs in a real workflow existed only to `cat` files back through stdout because the agent couldn't see what it had just written. This tool replaces that pattern with a single round-trip. `path` is the VOSpace path inside the user's home (no leading slash; `compact-groups/v1/results.fits` not `/home/me/...`). `offset` defaults to 0 and `maxBytes` defaults to 262144 (256 KB); hard cap is 1048576 (1 MB) per call — beyond that, split into multiple calls or use `download_from_vospace` to land the file on disk for the user. The response includes `totalBytes` (when the server reports it via Content-Range) and `truncated` (true when more data exists past the returned slice). `encoding` is `\"utf8\"` for textual files whose bytes round-trip cleanly (extensions: .txt, .csv, .tsv, .json, .xml, .yaml, .yml, .py, .sh, .md, .log) and `\"base64\"` for everything else (FITS, .gz, .png, .jpg) — base64 always when in doubt.",
+        description: "Read a bounded slice of a VOSpace file into the tool result — the agent-visible counterpart to `download_vospace_file` (which only writes to the user's Mac and is invisible to you). The 2026-05-15 QA report named this as a recurring pain point: three of eight Skaha jobs in a real workflow existed only to `cat` files back through stdout because the agent couldn't see what it had just written. This tool replaces that pattern with a single round-trip. `path` is relative to the user's home (`compact-groups/v1/results.fits`); absolute `/home/<user>/…` is accepted and stripped. `offset` defaults to 0 and `maxBytes` defaults to 262144 (256 KB); hard cap is 1048576 (1 MB) per call — beyond that, split into multiple calls or use `download_vospace_file` to land the file on disk for the user. The response includes `totalBytes` (when the server reports it via Content-Range) and `truncated` (true when more data exists past the returned slice). `encoding` is `\"utf8\"` for textual files whose bytes round-trip cleanly (extensions: .txt, .csv, .tsv, .json, .xml, .yaml, .yml, .py, .sh, .md, .log) and `\"base64\"` for everything else (FITS, .gz, .png, .jpg) — base64 always when in doubt.",
         schema: #"""
         {
           "type": "object",
           "required": ["path"],
           "properties": {
-            "path":     { "type": "string", "minLength": 1, "description": "VOSpace path inside the user's home (no leading slash)." },
+            "path":     { "type": "string", "minLength": 1, "description": "VOSpace path relative to the user's home; `/home/<user>/…` is accepted." },
             "offset":   { "type": "integer", "minimum": 0, "description": "Byte offset to start reading from. Default 0." },
             "maxBytes": { "type": "integer", "minimum": 1, "maximum": 1048576, "description": "Maximum bytes to return this call. Default 262144 (256 KB); hard cap 1048576 (1 MB)." }
           },
@@ -113,6 +113,8 @@ struct ReadVOSpaceFileTool: JSONReadTool {
         let result: ReadVOSpaceFetchResult
         do {
             result = try await fetch(args.path, offset, requestedMax)
+        } catch VOSpaceError.invalidPath {
+            throw ToolFailureReason.invalidArgument("path must not contain '..' segments")
         } catch {
             let message = "\(error)"
             if message.lowercased().contains("auth") {

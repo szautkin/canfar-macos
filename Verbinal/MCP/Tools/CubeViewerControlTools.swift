@@ -438,7 +438,7 @@ struct ProbeCubeSpectrumTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "probe_cube_spectrum",
-        description: "Extract the spectrum at one spatial pixel of the cube open in the Cube Viewer: per-channel values in the cube's native flux units (see the FITS BUNIT header), ordered by channel. (x, y) are 0-based spatial pixel coordinates (0…nx-1, 0…ny-1 from get_cube_view). The spectrum is capped at 8192 values; `truncated` is true when the cube has more channels, and `channelCount` always reports the full nz. Fails if no cube is open or the pixel is out of bounds.",
+        description: "Extract the spectrum at one spatial pixel of the cube open in the Cube Viewer: per-channel values in the cube's native flux units (see the FITS BUNIT header), ordered by channel. (x, y) are 0-based spatial pixel coordinates (0…nx-1, 0…ny-1 from get_cube_view). The spectrum is capped at 8192 values; `truncated` is true when the cube has more channels, and `channelCount` always reports the full nz. Streamed cubes (too large to hold in RAM) cannot be probed — use get_cube_view / get_cube_channel_profile instead; there is no loadFullCube (OOM risk). Fails if no cube is open or the pixel is out of bounds.",
         schema: #"""
         {
           "type": "object",

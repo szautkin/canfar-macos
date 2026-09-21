@@ -51,17 +51,39 @@ final class LocalFolderAccessStore {
     /// bookmark required. Included in access checks so the browser and
     /// tools treat it as granted. `nonisolated` — pure FileManager lookup,
     /// callable from the router's off-actor tool closures.
+    ///
+    /// In the App Sandbox this is often the *container* Downloads
+    /// (`…/Containers/<bundle>/Data/Downloads`). Agents and `list_open_tabs`
+    /// also emit the *user-facing* path (`/Users/<name>/Downloads`). Both
+    /// must resolve as the same granted location.
     nonisolated static var downloadsRoot: URL {
         FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
     }
 
-    /// True when `url` sits inside Downloads or any granted root — i.e.
-    /// the app can enumerate/read it without a fresh grant.
+    /// The real user's Downloads (`/Users/<name>/Downloads`), even when
+    /// the process is sandboxed and `FileManager` reports the container.
+    nonisolated static var userFacingDownloadsRoot: URL {
+        realUserHome().appendingPathComponent("Downloads", isDirectory: true)
+    }
+
+    /// POSIX home from the passwd database — not the container home.
+    nonisolated static func realUserHome() -> URL {
+        if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
+            return URL(fileURLWithPath: String(cString: dir), isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    /// True when `url` sits inside Downloads (container *or* user-facing)
+    /// or any granted root — i.e. the app can enumerate/read it without
+    /// a fresh grant.
     func hasAccess(to url: URL) -> Bool {
         let target = url.standardizedFileURL.path
-        if Self.isDescendant(target, of: Self.downloadsRoot.standardizedFileURL.path) {
-            return true
+        for root in Self.downloadsRoots {
+            if Self.isDescendant(target, of: root.standardizedFileURL.path) {
+                return true
+            }
         }
         return grantedRoots.contains { root in
             Self.isDescendant(target, of: root.standardizedFileURL.path)
@@ -71,9 +93,114 @@ final class LocalFolderAccessStore {
     /// The granted root (or Downloads) that contains `url`, if any.
     func accessRoot(for url: URL) -> URL? {
         let target = url.standardizedFileURL.path
-        let downloads = Self.downloadsRoot
-        if Self.isDescendant(target, of: downloads.standardizedFileURL.path) { return downloads }
+        for root in Self.downloadsRoots {
+            if Self.isDescendant(target, of: root.standardizedFileURL.path) { return root }
+        }
         return grantedRoots.first { Self.isDescendant(target, of: $0.standardizedFileURL.path) }
+    }
+
+    /// Map a user-facing Downloads path onto the container Downloads
+    /// (the location the sandbox can actually read), and vice versa.
+    /// Other paths pass through unchanged.
+    nonisolated static func resolveSandboxPath(_ url: URL) -> URL {
+        let target = url.standardizedFileURL.path
+        let user = userFacingDownloadsRoot.standardizedFileURL.path
+        let container = downloadsRoot.standardizedFileURL.path
+        if user != container {
+            if target == user || target.hasPrefix(user.hasSuffix("/") ? user : user + "/") {
+                let rest = String(target.dropFirst(user.count))
+                return URL(fileURLWithPath: container + rest, isDirectory: url.hasDirectoryPath)
+            }
+        }
+        return url.standardizedFileURL
+    }
+
+    /// Path to show agents / the UI: prefer the user-facing Downloads
+    /// form when the file actually lives under either Downloads root.
+    nonisolated static func userFacingPath(for url: URL) -> String {
+        let target = url.standardizedFileURL.path
+        let user = userFacingDownloadsRoot.standardizedFileURL.path
+        let container = downloadsRoot.standardizedFileURL.path
+        if user != container, target == container || target.hasPrefix(container.hasSuffix("/") ? container : container + "/") {
+            let rest = String(target.dropFirst(container.count))
+            return user + rest
+        }
+        return target
+    }
+
+    /// Expand `~` against the **real** user home (`/Users/<name>`), not the
+    /// sandbox container home. `NSString.expandingTildeInPath` in a
+    /// sandboxed process maps `~/Downloads` onto the container, which is
+    /// why `list_local_folder` returned `notReadable` on the same path
+    /// `open_local_file` could open (2026-08-28 re-test).
+    nonisolated static func expandedPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed == "~" { return realUserHome().path }
+        if trimmed.hasPrefix("~/") {
+            return realUserHome().appendingPathComponent(String(trimmed.dropFirst(2))).path
+        }
+        return (trimmed as NSString).expandingTildeInPath
+    }
+
+    /// Unique URLs that might be the same file/folder from opposite sides
+    /// of the sandbox (user-facing Downloads ↔ container Downloads), plus
+    /// Downloads-relative legacy `DownloadedObservation.localPath` values.
+    nonisolated static func candidateURLs(for path: String, isDirectory: Bool) -> [URL] {
+        let expanded = expandedPath(path)
+        var urls: [URL] = []
+        func add(_ url: URL) {
+            let standardized = url.standardizedFileURL
+            if !urls.contains(where: { $0.path == standardized.path }) {
+                urls.append(standardized)
+            }
+        }
+        add(URL(fileURLWithPath: expanded, isDirectory: isDirectory))
+        add(resolveSandboxPath(URL(fileURLWithPath: expanded, isDirectory: isDirectory)))
+        add(URL(fileURLWithPath: userFacingPath(for: URL(fileURLWithPath: expanded, isDirectory: isDirectory)), isDirectory: isDirectory))
+        if !expanded.hasPrefix("/") {
+            for root in downloadsRoots {
+                add(root.appendingPathComponent(expanded, isDirectory: isDirectory))
+            }
+        }
+        return urls
+    }
+
+    /// First candidate that exists as a file (`directory: false`) or folder.
+    nonisolated static func readableURL(for path: String, directory: Bool) -> URL? {
+        for url in candidateURLs(for: path, isDirectory: directory) {
+            var isDir: ObjCBool = false
+            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
+               isDir.boolValue == directory {
+                return url
+            }
+        }
+        return nil
+    }
+
+    /// First candidate `contentsOfDirectory` can actually enumerate.
+    /// Listing the container Downloads can fail while the user-facing
+    /// path (or vice versa) succeeds.
+    nonisolated static func listableDirectory(at path: String) -> URL? {
+        for url in candidateURLs(for: path, isDirectory: true) {
+            var isDir: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
+                  isDir.boolValue else { continue }
+            if (try? FileManager.default.contentsOfDirectory(
+                at: url,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+            )) != nil {
+                return url
+            }
+        }
+        return nil
+    }
+
+    nonisolated private static var downloadsRoots: [URL] {
+        let a = downloadsRoot.standardizedFileURL
+        let b = userFacingDownloadsRoot.standardizedFileURL
+        if a.path == b.path { return [a] }
+        return [a, b]
     }
 
     /// Present a folder picker; on OK, persist an app-scoped bookmark,

@@ -24,7 +24,10 @@ final class VizierFallbackTests: XCTestCase {
     /// canonical VizieR TAP endpoint. Ordering is load-bearing:
     /// the fallback chain assumes try-primary-first semantics.
     func testFirstMirrorIsCDSUnistra() {
-        XCTAssertEqual(TAPClient.vizierEndpoints.first?.host, "tap.cds.unistra.fr")
+        XCTAssertEqual(TAPClient.vizierEndpoints.first?.host, "tapvizier.cds.unistra.fr")
+        XCTAssertTrue(
+            TAPClient.vizierEndpoints.first?.syncURL.contains("TAPVizieR") == true,
+            "primary must be TAPVizieR — tap.cds.unistra.fr/tap/sync is DNS-dead")
     }
 
     /// Four mirrors total. Fewer than this and we've lost
@@ -51,7 +54,7 @@ final class VizierFallbackTests: XCTestCase {
     /// non-Strasbourg fallback.
     func testMirrorChainContainsStrasbourgAndESAC() {
         let hosts = TAPClient.vizierEndpoints.map(\.host)
-        XCTAssertTrue(hosts.contains("tap.cds.unistra.fr"))
+        XCTAssertTrue(hosts.contains("tapvizier.cds.unistra.fr"))
         XCTAssertTrue(hosts.contains("tapvizier.u-strasbg.fr"))
         XCTAssertTrue(hosts.contains("tapvizier.esac.esa.int"))
     }

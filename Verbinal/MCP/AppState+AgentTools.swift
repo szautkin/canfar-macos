@@ -42,9 +42,10 @@ extension AppState {
         tools.append(makeListSavedQueriesTool(store: savedStore))
         tools.append(makeGetSavedQueryTool(store: savedStore))
 
-        // Research domain
-        let observationStore = ObservationStore(spotlight: nil)  // tools don't drive Spotlight
-        let noteStore = ObservationNoteStore()
+        // Research domain — live store shared with the Research UI so
+        // ids downloaded last session (or via the UI) resolve after relaunch.
+        let observationStore = researchModel.observationStore
+        let noteStore = researchModel.noteStore
         tools.append(makeListDownloadedObservationsTool(store: observationStore))
         tools.append(makeGetDownloadedObservationTool(store: observationStore))
         tools.append(makeGetObservationNotesTool(store: noteStore))
@@ -184,6 +185,7 @@ extension AppState {
         // View-state tools — live-applied, no proposal.
         tools.append(makeOpenFITSFileTool(store: observationStore))
         tools.append(makeOpenCubeTool(store: observationStore))
+        tools.append(makeChooseViewerTool())
         tools.append(makeSetSearchFocusTool())
         tools.append(makeNavigateToTool())
         let loadSavedSearch = makeLoadSavedSearchTool(savedStore: savedStore, recentStore: recentStore)
@@ -367,31 +369,13 @@ extension AppState {
 
     private func makeOpenFITSFileTool(store: ObservationStore) -> OpenFITSFileTool {
         let activity = agentsService.activityStore
-        return OpenFITSFileTool(openFITS: { [weak self] id in
+        return OpenFITSFileTool(openFITS: { [weak self] rawID in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
-            let obs = await MainActor.run { store.observations.first(where: { $0.id == id }) }
+            let obs = await MainActor.run { store.observation(matching: rawID) }
             guard let obs else {
-                throw ToolFailureReason.unknownTarget("downloaded_observation \(id)")
+                throw ToolFailureReason.observationNotFound(id: rawID, localPath: nil)
             }
-            guard obs.fileExists else {
-                throw ToolFailureReason.backendError("local file missing: \(obs.localPath)")
-            }
-            // Resolve via security-scoped bookmark when present, then
-            // publish onto AppState — `open(fitsURL:)` already exists
-            // and routes the URL into the FITS viewer tab host.
-            let url: URL
-            if let bookmark = obs.bookmarkData {
-                var stale = false
-                do {
-                    url = try URL(resolvingBookmarkData: bookmark,
-                                  options: .withSecurityScope,
-                                  bookmarkDataIsStale: &stale)
-                } catch {
-                    throw ToolFailureReason.backendError("bookmark: \(error.localizedDescription)")
-                }
-            } else {
-                url = obs.localURL
-            }
+            let url = try Self.resolveAccessibleFileURL(for: obs).url
             // View-state ops don't run through the proposal flow, so
             // we don't have an `OperationOrigin` from a context. Fall
             // back to a synthetic external origin tagged with the
@@ -425,28 +409,13 @@ extension AppState {
     /// observation's URL and routes it into the Cube Viewer (its own mode).
     private func makeOpenCubeTool(store: ObservationStore) -> OpenCubeTool {
         let activity = agentsService.activityStore
-        return OpenCubeTool(openCube: { [weak self] id in
+        return OpenCubeTool(openCube: { [weak self] rawID in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
-            let obs = await MainActor.run { store.observations.first(where: { $0.id == id }) }
+            let obs = await MainActor.run { store.observation(matching: rawID) }
             guard let obs else {
-                throw ToolFailureReason.unknownTarget("downloaded_observation \(id)")
+                throw ToolFailureReason.observationNotFound(id: rawID, localPath: nil)
             }
-            guard obs.fileExists else {
-                throw ToolFailureReason.backendError("local file missing: \(obs.localPath)")
-            }
-            let url: URL
-            if let bookmark = obs.bookmarkData {
-                var stale = false
-                do {
-                    url = try URL(resolvingBookmarkData: bookmark,
-                                  options: .withSecurityScope,
-                                  bookmarkDataIsStale: &stale)
-                } catch {
-                    throw ToolFailureReason.backendError("bookmark: \(error.localizedDescription)")
-                }
-            } else {
-                url = obs.localURL
-            }
+            let url = try Self.resolveAccessibleFileURL(for: obs).url
             let origin: OperationOrigin = .external(clientID: "open_cube")
             await MainActor.run {
                 if self.currentMode != .cubeViewer {
@@ -460,6 +429,53 @@ extension AppState {
                 ))
             }
             return (observationID: obs.observationID, localPath: obs.localPath)
+        })
+    }
+
+    private func makeChooseViewerTool() -> ChooseViewerTool {
+        let activity = agentsService.activityStore
+        return ChooseViewerTool(choose: { [weak self] viewer in
+            guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
+            return try await MainActor.run {
+                guard let url = self.pendingViewerChoiceURL else {
+                    throw ToolFailureReason.invalidArgument(
+                        "No Open as… sheet is showing. Call get_current_view — pendingViewerChoice is set when a NAXIS≥3 file needs a 2D vs 3D pick.")
+                }
+                let path = LocalFolderAccessStore.userFacingPath(for: url)
+                let name = url.lastPathComponent
+                switch viewer {
+                case "fits":
+                    self.openPendingViewerChoiceAsFITS()
+                    activity.append(.live(
+                        kind: "choose_viewer",
+                        summary: "Opened \(name) in FITS Viewer",
+                        origin: .external(clientID: "choose_viewer")))
+                    return ChooseViewerTool.Output(
+                        applied: true, viewer: "fits", path: path,
+                        note: "Opened in the 2D FITS Viewer.")
+                case "cube":
+                    self.openPendingViewerChoiceAsCube()
+                    activity.append(.live(
+                        kind: "choose_viewer",
+                        summary: "Opened \(name) in Cube Viewer",
+                        origin: .external(clientID: "choose_viewer")))
+                    return ChooseViewerTool.Output(
+                        applied: true, viewer: "cube", path: path,
+                        note: "Opened in the 3D Cube Viewer.")
+                case "dismiss":
+                    self.pendingViewerChoiceURL = nil
+                    activity.append(.live(
+                        kind: "choose_viewer",
+                        summary: "Dismissed Open as… for \(name)",
+                        origin: .external(clientID: "choose_viewer")))
+                    return ChooseViewerTool.Output(
+                        applied: true, viewer: "dismiss", path: path,
+                        note: "Closed the Open as… sheet without opening the file.")
+                default:
+                    throw ToolFailureReason.invalidArgument(
+                        "viewer must be 'fits', 'cube', or 'dismiss'")
+                }
+            }
         })
     }
 
@@ -630,8 +646,9 @@ extension AppState {
             renew: { id in try await sessionSvc.renewSession(id: id) },
             activity: activity))
         appliers.append(ExportSearchResultsApplier(
-            run: { format, adql, maxRecords in
-                try await Self.runSearchExport(format: format, adql: adql, maxRecords: maxRecords)
+            run: { [weak self] format, adql, maxRecords in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                return try await self.runSearchExport(format: format, adql: adql, maxRecords: maxRecords)
             },
             activity: activity))
         appliers.append(UploadFileToVOSpaceApplier(
@@ -686,7 +703,11 @@ extension AppState {
                 let user = await self.username
                 guard !user.isEmpty else { throw ProposalApplyError.backendError("Sign in to CADC first") }
                 let (tempURL, _) = try await vospace.downloadFile(username: user, path: path)
-                await MainActor.run { self.openAstronomyFITS(url: tempURL) }
+                let outcome = await self.openAstronomyFITSAwaitingChoice(url: tempURL)
+                if case .awaitingViewerChoice = outcome {
+                    return AppState.viewerChoiceAgentNote(filename: tempURL.lastPathComponent)
+                }
+                return nil
             },
             activity: activity))
         appliers.append(SetVOSpaceACLApplier(
@@ -703,7 +724,8 @@ extension AppState {
             run: { [weak self] scale in
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
                 return try await MainActor.run {
-                    try exportCubeFigureHeadless(model: self.cubeViewer, scale: CGFloat(scale)).path
+                    self.navigateTo(.cubeViewer)
+                    return try exportCubeFigureHeadless(model: self.cubeViewer, scale: CGFloat(scale)).path
                 }
             },
             activity: activity))
@@ -808,17 +830,49 @@ extension AppState {
 
     // MARK: - Parity-batch helpers (search export, research bundle)
 
-    /// Server-side TAP export for `export_search_results`. The agent side
-    /// has no view of the UI's live query, so `adql` is effectively
-    /// required here — the tool schema keeps it optional for parity, and
-    /// this surfaces the guidance instead of a silent empty file.
-    private nonisolated static func runSearchExport(
+    /// Export current in-app results (when `adql` is omitted) or a
+    /// caller-supplied TAP query. Matches `get_search_results` for the
+    /// omit-adql path so agents can dump what the user is looking at.
+    private func runSearchExport(
         format: String, adql: String?, maxRecords: Int?
     ) async throws -> String {
-        guard let adql, !adql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw ProposalApplyError.backendError(
-                "Pass `adql` — the agent-side export runs its own query (take one from list_recent_searches or get_saved_query).")
+        let custom = adql?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let custom, !custom.isEmpty {
+            return try await Self.exportServerADQL(format: format, adql: custom, maxRecords: maxRecords)
         }
+        let snapshot: (rows: [SearchResult], columns: SearchResultColumns, liveADQL: String) = await MainActor.run {
+            let model = self.searchModel.resultsModel
+            return (model.fullFilteredSortedResults, model.columns, model.adqlQuery)
+        }
+        guard !snapshot.rows.isEmpty else {
+            throw ProposalApplyError.backendError(
+                "No current search results to export — run a search or pass `adql`."
+            )
+        }
+        let capped = maxRecords.map { Array(snapshot.rows.prefix($0)) } ?? snapshot.rows
+        switch format {
+        case "csv":
+            let temp = try ResultExportService.exportClientSide(rows: capped, columns: snapshot.columns, format: .csv)
+            return try Self.moveExportToDownloads(tempURL: temp, ext: "csv")
+        case "tsv":
+            let temp = try ResultExportService.exportClientSide(rows: capped, columns: snapshot.columns, format: .tsv)
+            return try Self.moveExportToDownloads(tempURL: temp, ext: "tsv")
+        case "votable":
+            let live = snapshot.liveADQL.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !live.isEmpty else {
+                throw ProposalApplyError.backendError(
+                    "VOTable export of the current table needs the live ADQL (none loaded). Pass `adql`, or export csv/tsv."
+                )
+            }
+            return try await Self.exportServerADQL(format: format, adql: live, maxRecords: maxRecords ?? capped.count)
+        default:
+            throw ProposalApplyError.backendError("unsupported format '\(format)'")
+        }
+    }
+
+    private nonisolated static func exportServerADQL(
+        format: String, adql: String, maxRecords: Int?
+    ) async throws -> String {
         let ext: String
         switch format {
         case "csv": ext = "csv"
@@ -838,6 +892,10 @@ extension AppState {
         }
         let temp = try await ResultExportService.exportServerSide(
             url: url, ext: ext, session: ResultExportService.makeExportSession())
+        return try moveExportToDownloads(tempURL: temp, ext: ext)
+    }
+
+    private nonisolated static func moveExportToDownloads(tempURL: URL, ext: String) throws -> String {
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         let formatter = DateFormatter()
@@ -846,7 +904,7 @@ extension AppState {
         let dest = downloads.appendingPathComponent(
             "verbinal-results-\(formatter.string(from: Date())).\(ext)")
         try? FileManager.default.removeItem(at: dest)
-        try FileManager.default.moveItem(at: temp, to: dest)
+        try FileManager.default.moveItem(at: tempURL, to: dest)
         return dest.path
     }
 
@@ -1124,37 +1182,49 @@ extension AppState {
     }
 
     /// Open the local FITS file for a downloaded observation, parse it,
-    /// and return the snapshot. Honours the security-scoped bookmark if
-    /// present so a sandboxed app can read user-selected paths.
-    private static func resolveFITS(id: UUID, store: ObservationStore) async throws -> ResolvedFITS? {
-        guard let obs = await MainActor.run(body: { store.observations.first(where: { $0.id == id }) }) else {
-            return nil
+    /// and return the snapshot. Tries the security-scoped bookmark
+    /// *before* `fileExists` on the stored path — a sandbox miss on the
+    /// user-facing Downloads string is not "file gone" (2026-08-28 re-test).
+    nonisolated private static func resolveFITS(id: String, store: ObservationStore) async throws -> ResolvedFITS? {
+        let obs = await MainActor.run { store.observation(matching: id) }
+        guard let obs else {
+            throw ToolFailureReason.observationNotFound(id: id, localPath: nil)
         }
-        guard obs.fileExists else {
-            throw ToolFailureReason.backendError("local file missing: \(obs.localPath)")
-        }
-        let url: URL
-        var didStart = false
-        if let bookmark = obs.bookmarkData {
-            var stale = false
-            do {
-                url = try URL(resolvingBookmarkData: bookmark, options: .withSecurityScope, bookmarkDataIsStale: &stale)
-                didStart = url.startAccessingSecurityScopedResource()
-            } catch {
-                throw ToolFailureReason.backendError("bookmark resolution: \(error.localizedDescription)")
-            }
-        } else {
-            url = obs.localURL
-        }
+        let access = try resolveAccessibleFileURL(for: obs)
         defer {
-            if didStart { url.stopAccessingSecurityScopedResource() }
+            if access.didStart { access.url.stopAccessingSecurityScopedResource() }
         }
         do {
-            let file = try FITSParser.parse(url: url)
+            let file = try FITSParser.parse(url: access.url)
             return ResolvedFITS(observationID: obs.observationID, file: file)
         } catch {
             throw ToolFailureReason.backendError("FITS parse: \(error.localizedDescription)")
         }
+    }
+
+    /// Bookmark first, then sandbox-mapped path candidates. Never require
+    /// `DownloadedObservation.fileExists` before attempting the bookmark.
+    nonisolated private static func resolveAccessibleFileURL(for obs: DownloadedObservation) throws -> (url: URL, didStart: Bool) {
+        if let bookmark = obs.bookmarkData {
+            var stale = false
+            do {
+                let url = try URL(
+                    resolvingBookmarkData: bookmark,
+                    options: .withSecurityScope,
+                    bookmarkDataIsStale: &stale)
+                let didStart = url.startAccessingSecurityScopedResource()
+                if FileManager.default.fileExists(atPath: url.path) {
+                    return (url, didStart)
+                }
+                if didStart { url.stopAccessingSecurityScopedResource() }
+            } catch {
+                // Stale bookmark — fall through to path candidates.
+            }
+        }
+        if let url = obs.resolvedReadableURL {
+            return (url, false)
+        }
+        throw ToolFailureReason.observationNotFound(id: obs.id.uuidString, localPath: obs.localPath)
     }
 
     // MARK: - VOSpace domain
@@ -1223,8 +1293,8 @@ extension AppState {
     }
 
     private func makeGetDownloadedObservationTool(store: ObservationStore) -> GetDownloadedObservationTool {
-        GetDownloadedObservationTool(lookup: { @MainActor id in
-            store.observations.first(where: { $0.id == id }).map { Self.flatten($0) }
+        GetDownloadedObservationTool(lookup: { @MainActor raw in
+            store.observation(matching: raw).map { Self.flatten($0) }
         })
     }
 
@@ -1291,6 +1361,12 @@ extension AppState {
             // that hasn't been consumed by the viewer yet).
             openFITSPaths: fitsTabHost.tabs.compactMap { $0.fileURL?.path }
                 + (pendingFITSURL.map { [$0.path] } ?? []),
+            pendingViewerChoice: pendingViewerChoiceURL.map { url in
+                GetCurrentViewTool.Output.PendingViewerChoice(
+                    path: LocalFolderAccessStore.userFacingPath(for: url),
+                    filename: url.lastPathComponent,
+                    note: Self.viewerChoiceAgentNote(filename: url.lastPathComponent))
+            },
             pendingProposalsCount: agentsService.pendingProposals.count,
             agentsEnabled: agentsService.isEnabled,
             autoApplyEnabled: agentsService.autoApplyWrites,
@@ -1309,6 +1385,7 @@ extension AppState {
         searchResultsTotal: nil,
         searchResultsFiltered: nil,
         openFITSPaths: [],
+        pendingViewerChoice: nil,
         pendingProposalsCount: 0,
         agentsEnabled: false,
         autoApplyEnabled: false,
@@ -1456,7 +1533,8 @@ extension AppState {
                 decString: r.coordsDec,
                 coordsys: r.coordsys,
                 objectType: r.objectType,
-                morphologyType: r.morphologyType
+                morphologyType: r.morphologyType,
+                note: r.objectType == nil ? nil : ResolveTargetTool.objectTypeCaveat
             )
         })
     }
@@ -1762,32 +1840,59 @@ extension AppState {
 
     private func makeListLocalFolderTool() -> ListLocalFolderTool {
         ListLocalFolderTool(list: { [weak self] args in
-            let path = args.path ?? LocalFolderAccessStore.downloadsRoot.path
-            let url = URL(fileURLWithPath: path, isDirectory: true)
-            // Sandbox reach: only Downloads and user-granted folders are
-            // readable. Fail with actionable guidance rather than a raw
-            // permission error the agent can't interpret (F14).
-            if let self, await !self.localFolderAccess.hasAccess(to: url) {
-                throw ToolFailureReason.backendError(
-                    "'\(path)' is outside the app sandbox's reach. Only ~/Downloads and folders the user has granted are readable. Ask the user to grant this folder (call `request_folder_access`), or point them at ~/Downloads.")
+            let requested = args.path ?? LocalFolderAccessStore.userFacingDownloadsRoot.path
+            let candidates = LocalFolderAccessStore.candidateURLs(for: requested, isDirectory: true)
+            let displayPath = LocalFolderAccessStore.userFacingPath(
+                for: candidates.first ?? URL(fileURLWithPath: LocalFolderAccessStore.expandedPath(requested), isDirectory: true))
+            var allowed: [URL] = []
+            if let self {
+                for url in candidates {
+                    if await self.localFolderAccess.hasAccess(to: url) {
+                        allowed.append(url)
+                    }
+                }
+                if allowed.isEmpty {
+                    throw ToolFailureReason.notReadable(
+                        "'\(displayPath)' is outside the app sandbox. Only ~/Downloads and folders the user has granted are readable. Ask the user to grant this folder in Storage, then retry — `request_folder_access` cannot show a picker from an MCP client.")
+                }
+            } else {
+                allowed = candidates
             }
-            var isDir: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else {
-                throw ToolFailureReason.unknownTarget("no folder at '\(path)'")
+            var listedURL: URL?
+            var byName: [String: URL] = [:]
+            var lastListError: Error?
+            var sawMissing = true
+            for url in allowed {
+                var isDir: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else { continue }
+                sawMissing = false
+                guard isDir.boolValue else {
+                    throw ToolFailureReason.invalidArgument("'\(displayPath)' is a file, not a folder")
+                }
+                do {
+                    let items = try FileManager.default.contentsOfDirectory(
+                        at: url,
+                        includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey],
+                        options: [.skipsHiddenFiles])
+                    if listedURL == nil { listedURL = url }
+                    for item in items where byName[item.lastPathComponent] == nil {
+                        byName[item.lastPathComponent] = item
+                    }
+                } catch {
+                    lastListError = error
+                }
             }
-            guard isDir.boolValue else {
-                throw ToolFailureReason.invalidArgument("'\(path)' is a file, not a folder")
+            guard listedURL != nil || !byName.isEmpty else {
+                if let lastListError {
+                    throw ToolFailureReason.notReadable(
+                        "cannot read '\(displayPath)': \(lastListError.localizedDescription)")
+                }
+                if sawMissing {
+                    throw ToolFailureReason.unknownTarget("no folder at '\(displayPath)'")
+                }
+                throw ToolFailureReason.notReadable("cannot read '\(displayPath)'")
             }
-            let contents: [URL]
-            do {
-                contents = try FileManager.default.contentsOfDirectory(
-                    at: url,
-                    includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey],
-                    options: [.skipsHiddenFiles])
-            } catch {
-                throw ToolFailureReason.backendError(
-                    "cannot read '\(path)': \(error.localizedDescription)")
-            }
+            let contents = Array(byName.values)
             let sorted = contents.sorted {
                 $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent)
                     == .orderedAscending
@@ -1806,35 +1911,65 @@ extension AppState {
                     sizeBytes: (values?.fileSize).map(Int64.init),
                     isFITS: fits))
             }
-            return .init(path: url.path, entries: entries, truncated: truncated)
+            return .init(
+                path: listedURL.map { LocalFolderAccessStore.userFacingPath(for: $0) } ?? displayPath,
+                entries: entries,
+                truncated: truncated)
         })
     }
 
     private func makeOpenLocalFileTool() -> OpenLocalFileTool {
         let activity = agentsService.activityStore
-        return OpenLocalFileTool(open: { [weak self] path in
-            guard let self else { return "App state unavailable" }
-            let url = URL(fileURLWithPath: path)
+        return OpenLocalFileTool(open: { [weak self] path, viewer in
+            guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
+            let url = LocalFolderAccessStore.readableURL(for: path, directory: false)
+                ?? LocalFolderAccessStore.resolveSandboxPath(
+                    URL(fileURLWithPath: LocalFolderAccessStore.expandedPath(path)))
+            let displayPath = LocalFolderAccessStore.userFacingPath(for: url)
             guard FileManager.default.fileExists(atPath: url.path) else {
-                return "No file at '\(path)'"
+                throw ToolFailureReason.unknownTarget("No file at '\(displayPath)'")
             }
             guard FileHelper.isFITS(url.pathExtension) else {
-                return "'\(url.lastPathComponent)' is not a FITS file"
+                throw ToolFailureReason.invalidArgument("'\(url.lastPathComponent)' is not a FITS file")
             }
-            // The file's folder must be granted (or Downloads); otherwise
-            // the viewer's read will hit the sandbox wall even though
-            // fileExists passed.
             if await !self.localFolderAccess.hasAccess(to: url) {
-                return "'\(path)' is outside the app sandbox's reach — ask the user to grant its folder (call `request_folder_access`), or move it to ~/Downloads."
+                throw ToolFailureReason.notReadable(
+                    "'\(displayPath)' is outside the app sandbox — ask the user to grant its folder in Storage, or move it to ~/Downloads.")
             }
-            await MainActor.run {
-                self.openAstronomyFITS(url: url)
-                activity.append(.live(
-                    kind: "open_local_file",
-                    summary: "Opened \(url.lastPathComponent)",
-                    origin: .external(clientID: "open_local_file")))
+            let choice = viewer.flatMap { AppState.AstronomyViewerChoice(rawValue: $0) }
+            let outcome = await self.openAstronomyFITSAwaitingChoice(url: url, viewer: choice)
+            let name = url.lastPathComponent
+            switch outcome {
+            case .openedFITS:
+                await MainActor.run {
+                    activity.append(.live(
+                        kind: "open_local_file",
+                        summary: "Opened \(name) in FITS Viewer",
+                        origin: .external(clientID: "open_local_file")))
+                }
+                return .init(applied: true, path: displayPath, viewer: "fits",
+                             pendingViewerChoice: false, note: nil)
+            case .openedCube:
+                await MainActor.run {
+                    activity.append(.live(
+                        kind: "open_local_file",
+                        summary: "Opened \(name) in Cube Viewer",
+                        origin: .external(clientID: "open_local_file")))
+                }
+                return .init(applied: true, path: displayPath, viewer: "cube",
+                             pendingViewerChoice: false, note: nil)
+            case .awaitingViewerChoice:
+                await MainActor.run {
+                    activity.append(.live(
+                        kind: "open_local_file",
+                        summary: "Asked how to open \(name)",
+                        origin: .external(clientID: "open_local_file")))
+                }
+                return .init(
+                    applied: true, path: displayPath, viewer: nil,
+                    pendingViewerChoice: true,
+                    note: AppState.viewerChoiceAgentNote(filename: name))
             }
-            return nil
         })
     }
 
@@ -3167,10 +3302,15 @@ extension AppState {
     private func probeCubeSpectrum(x: Int, y: Int) async throws -> ProbeCubeSpectrumTool.Output {
         let model = cubeViewer
         guard model.hasData else {
-            throw ToolFailureReason.targetNotResolved("No cube is open in the Cube Viewer")
+            throw ToolFailureReason.targetNotResolved(
+                "No cube is open in the Cube Viewer — call navigate_to(mode: cubeViewer) after open_cube, or open a cube first.")
         }
         guard x >= 0, y >= 0, x < model.nx, y < model.ny else {
             throw ToolFailureReason.invalidArgument("pixel (\(x), \(y)) outside \(model.nx)×\(model.ny)")
+        }
+        if model.isStreamed {
+            throw ToolFailureReason.invalidArgument(
+                "Spectrum probe needs the whole cube in RAM. This cube is streamed (too large to load fully). Use get_cube_view / get_cube_channel_profile instead — do not request a full in-memory load (OOM risk).")
         }
         await model.probe(x: x, y: y)
         guard let spectrum = model.probeSpectrum else {

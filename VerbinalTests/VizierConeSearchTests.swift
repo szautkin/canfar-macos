@@ -130,4 +130,38 @@ final class VizierConeSearchTests: XCTestCase {
         )
         XCTAssertFalse(out.probablyTruncated)
     }
+
+    func testGaiaCatalogueDefaultsToICRSColumns() async throws {
+        let spy = Spy()
+        let tool = makeTool(spy: spy)
+        _ = try await tool.handle(
+            .init(catalogue: "I/355/gaiadr3", raDeg: 10.68, decDeg: 41.27,
+                  radiusArcsec: 30, raColumn: nil, decColumn: nil, maxRec: nil),
+            context: ctx()
+        )
+        XCTAssertEqual(spy.lastRaCol, "RA_ICRS")
+        XCTAssertEqual(spy.lastDecCol, "DE_ICRS")
+    }
+
+    func testVizierConeADQLOmitsSelectTop() {
+        let adql = TAPClient.vizierConeADQL(
+            catalogue: "I/355/gaiadr3",
+            raDeg: 10.68, decDeg: 41.27, radiusDeg: 0.01,
+            raColumn: "RA_ICRS", decColumn: "DE_ICRS")
+        XCTAssertFalse(adql.uppercased().contains("SELECT TOP"),
+                       "VizieR TAP 1.1 rejects SELECT TOP when MAXREC is also posted")
+        XCTAssertTrue(adql.contains("CIRCLE('ICRS'"))
+        XCTAssertEqual(TAPClient.canonicalVizierCatalogue("V/97/catalog"), "V/97/variabls")
+        XCTAssertEqual(TAPClient.canonicalVizierCatalogue("I/355/gaiadr3"), "I/355/gaiadr3")
+        XCTAssertEqual(TAPClient.vizierDefaultPositionColumns(catalogue: "I/355/gaiadr3").ra, "RA_ICRS")
+    }
+
+    func testTAPSyncPOSTIncludesRequestDoQuery() {
+        let fields = TAPClient.tapPOSTFields(adql: "SELECT 1", maxRec: 10)
+        XCTAssertEqual(fields["REQUEST"], "doQuery",
+                       "VizieR TAP 1.1 returns HTTP 400 unless REQUEST=doQuery is posted")
+        XCTAssertEqual(fields["LANG"], "ADQL")
+        XCTAssertEqual(fields["MAXREC"], "10")
+        XCTAssertEqual(fields["QUERY"], "SELECT 1")
+    }
 }

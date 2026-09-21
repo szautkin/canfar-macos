@@ -71,12 +71,14 @@ struct DescribeAppTool: JSONReadTool {
       * `get_current_view` — what mode the user is in, what's open, AND
         the current autonomy mode (`autoApplyEnabled`). Call this once
         at the start of a session to ground yourself, and re-call if
-        you suspect the user has changed settings.
+        you suspect the user has changed settings. When
+        `pendingViewerChoice` is set, the Open as… sheet is up — call
+        `choose_viewer` before FITS or cube steering tools.
       * `search_observations` — TAP/ADQL query against CADC's archive.
         Accepts target name (resolved server-side), RA/Dec + radius, or
         free-form ADQL. Always cap maxRec sensibly.
       * `vizier_cone_search` — TAP cone-search against any VizieR
-        catalogue at CDS (Clement+2001 V/97 for globular-cluster
+        catalogue at CDS (Clement+2001 `V/97/variabls` for globular-cluster
         variables, OGLE/ASAS-SN/ZTF for general transients, etc.).
         Public, no auth, returns parsed rows.
       * `resolve_target` — name → coordinates via the CADC resolver.
@@ -85,9 +87,10 @@ struct DescribeAppTool: JSONReadTool {
       * `get_data_links` — preview / thumbnail / file URLs for an
         observation.
       * `list_recent_searches`, `list_saved_queries`, `get_saved_query`.
+      * `list_workflows`, `get_workflow`.
       * `list_downloaded_observations`, `get_downloaded_observation`,
         `get_observation_notes`.
-      * `list_vospace_path`, `get_vospace_node`.
+      * `list_vospace_path`, `get_vospace_node`, `read_vospace_file`.
       * `list_sessions`, `get_session`, `list_session_types`,
         `list_session_images` (call before `launch_session` AND
         `launch_headless_job`!), `list_recent_launches`.
@@ -139,6 +142,9 @@ struct DescribeAppTool: JSONReadTool {
     ### Tools (same set, both modes)
 
       * `save_query`, `update_saved_query`, `delete_saved_query`.
+      * `save_workflow` (requires at least one `- [ ]` checklist step),
+        `update_workflow`, `set_workflow_step`, `use_workflow`,
+        `delete_workflow`.
       * `download_observation` (single), `download_observations_bulk`
         (many → one proposal envelope).
       * `update_observation_note`, `bulk_update_observation_notes`
@@ -146,7 +152,8 @@ struct DescribeAppTool: JSONReadTool {
       * `upload_to_vospace` (file from downloaded-observation id),
         `upload_text_to_vospace` (arbitrary in-conversation text up
         to 1 MB — use this to stage scripts/configs without local
-        files), `download_from_vospace`, `vospace_mkdir`,
+        files), `upload_file_to_vospace` (path only — the app streams the
+        PUT; poll `list_vospace_path` for size > 0), `download_vospace_file`, `vospace_mkdir`,
         `delete_vospace_node`, `clear_user_site` (wipe
         ~/.local/lib/python3.*/site-packages after a `pip install
         --user` poisoned subsequent jobs).
@@ -181,7 +188,12 @@ struct DescribeAppTool: JSONReadTool {
         the in-app viewer AND navigates the user's window to the
         viewer mode immediately (so they actually see what you
         opened — no silent action). `open_cube` is the 3D twin for
-        spectral cubes.
+        spectral cubes. Prefer these (or `open_local_file` with
+        `viewer`) when you already know 2D vs 3D, so the Open as…
+        sheet never appears.
+      * `choose_viewer` — pick 2D FITS vs 3D Cube, or dismiss, when
+        the Open as… sheet is showing (`get_current_view.pendingViewerChoice`).
+        Viewer steering tools fail until this sheet is resolved.
       * Viewer steering — once something is open you can read and
         drive both viewers live: `get_fits_view` / `set_fits_view`
         (stretch, colormap, cuts, zoom, fit, north-up, tab switch),
@@ -213,7 +225,8 @@ struct DescribeAppTool: JSONReadTool {
         user sees (their live sort/filter/pagination applied);
         `set_results_view` sorts, filters, paginates, shows/hides
         columns, and switches display units; `open_observation_detail`
-        opens a row's detail sheet.
+        opens a row's detail sheet; `export_search_results` writes the
+        current table (omit `adql`) or a custom TAP query to Downloads.
       * **Recent searches**: `rename_recent_search`,
         `remove_recent_search`, `clear_recent_searches` (writes).
       * **FITS viewer**: `select_hdu`, `fits_auto_cut`, the blink
@@ -227,10 +240,15 @@ struct DescribeAppTool: JSONReadTool {
       * **Image discovery diagnostics**: `list_probe_failures`,
         `get_probe_logs`, `get_image_manifest`,
         `clear_probe_failures` (write).
-      * **Storage**: `open_vospace_file` (write — download + open in
-        the right viewer).
-      * **Local files**: `list_local_folder`, `open_local_file` (the
-        file-browser panel as tools).
+      * **Storage**: `open_vospace_file` (write — download + open;
+        NAXIS≥3 shows Open as… and the ack `note` tells you to call
+        `choose_viewer`).
+      * **Local files**: `list_local_folder`, `open_local_file`
+        (optional `viewer: fits|cube` skips the Open as… sheet;
+        NAXIS≥3 without `viewer` returns `pendingViewerChoice` and
+        you call `choose_viewer`),
+        `request_folder_access` (MCP clients get `granted: false` —
+        the user grants folders in Storage).
       * **Settings, read-only**: `get_endpoints`,
         `get_compute_config`. Changing settings stays a user decision.
 

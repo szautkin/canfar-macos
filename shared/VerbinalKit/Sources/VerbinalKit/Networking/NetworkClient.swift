@@ -288,10 +288,27 @@ public actor NetworkClient {
             onProgress(0, fileSize)
         }
 
+        return try await retryUnauthorized(original: request) {
+            try await self.putFileOnce(
+                request: $0,
+                fileURL: fileURL,
+                fileSize: fileSize,
+                onProgress: onProgress
+            )
+        }
+    }
+
+    /// Single PUT attempt — extracted so a 401 can restamp the bearer
+    /// token and retry without duplicating the stream/progress setup.
+    private func putFileOnce(
+        request: URLRequest,
+        fileURL: URL,
+        fileSize: Int64,
+        onProgress: TransferProgressHandler?
+    ) async throws -> (Data, HTTPURLResponse) {
         let delegate = onProgress.map {
             TransferProgressTaskDelegate(fallbackTotal: fileSize, onProgress: $0)
         }
-
         let data: Data
         let response: URLResponse
         do {
@@ -307,7 +324,6 @@ public actor NetworkClient {
         } catch {
             throw mapTransferCancellation(error)
         }
-
         return try validateTransferResponse(data: data, response: response)
     }
 
@@ -326,7 +342,20 @@ public actor NetworkClient {
         onProgress: TransferProgressHandler? = nil
     ) async throws -> (tempURL: URL, response: HTTPURLResponse) {
         let request = try makeRequest(urlString, method: "GET", timeout: timeout)
+        return try await retryUnauthorized(original: request) {
+            try await self.downloadFileOnce(
+                request: $0,
+                expectedTotal: expectedTotal,
+                onProgress: onProgress
+            )
+        }
+    }
 
+    private func downloadFileOnce(
+        request: URLRequest,
+        expectedTotal: Int64,
+        onProgress: TransferProgressHandler?
+    ) async throws -> (tempURL: URL, response: HTTPURLResponse) {
         let location: URL
         let response: URLResponse
         do {
@@ -351,7 +380,6 @@ public actor NetworkClient {
             throw NetworkError.unauthorized
         }
         if http.statusCode >= 400 {
-            // Error body (if any) landed in the downloaded temp file.
             let body = (try? String(contentsOf: location, encoding: .utf8)).map { String($0.prefix(500)) } ?? ""
             throw NetworkError.httpError(http.statusCode, body)
         }
@@ -403,6 +431,36 @@ public actor NetworkClient {
         return (data, httpResponse)
     }
 
+    /// Restamp Authorization from the current token and retry `operation`
+    /// once after the host's `onUnauthorized` handler refreshes credentials.
+    /// Streaming PUT/GET bypass `execute`, so they share this helper instead
+    /// of duplicating the 401 interceptor.
+    private func retryUnauthorized<T>(
+        original request: URLRequest,
+        allowAuthRetry: Bool = true,
+        operation: (URLRequest) async throws -> T
+    ) async throws -> T {
+        do {
+            return try await operation(request)
+        } catch let error as NetworkError where error.isUnauthorized && allowAuthRetry {
+            if let handler = onUnauthorized, await handler() {
+                return try await operation(restamped(request))
+            }
+            throw error
+        }
+    }
+
+    private func restamped(_ request: URLRequest) -> URLRequest {
+        var retried = request
+        if let url = retried.url, isTrustedAuthHost(url.host),
+           let token, !token.isEmpty {
+            retried.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            retried.setValue(nil, forHTTPHeaderField: "Authorization")
+        }
+        return retried
+    }
+
     // MARK: - Private
 
     private func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = 60) throws -> URLRequest {
@@ -434,17 +492,7 @@ public actor NetworkClient {
             // (or surface a re-login UI) before we propagate the failure.
             // The handler returns true if a retry is worth attempting.
             if allowAuthRetry, let handler = onUnauthorized, await handler() {
-                // Re-stamp the Authorization header off the freshly-set token
-                // and retry once. `allowAuthRetry: false` prevents an
-                // infinite loop if the refresh itself somehow yields 401.
-                var retried = request
-                if let url = retried.url, isTrustedAuthHost(url.host),
-                   let token, !token.isEmpty {
-                    retried.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                } else {
-                    retried.setValue(nil, forHTTPHeaderField: "Authorization")
-                }
-                return try await execute(retried, allowAuthRetry: false)
+                return try await execute(restamped(request), allowAuthRetry: false)
             }
             throw NetworkError.unauthorized
         }

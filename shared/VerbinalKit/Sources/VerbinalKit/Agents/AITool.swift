@@ -148,6 +148,17 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
     /// Fetched bytes did not match the declared/expected media type — e.g. a
     /// 403 "host_not_allowed" body returned where image bytes were expected.
     case contentTypeMismatch(String)
+    /// A local file/folder exists but the sandbox (or permissions) cannot
+    /// read it. The message should name the path and the grant/workaround.
+    case notReadable(String)
+    /// A downloaded observation id is not in the research archive (or the
+    /// on-disk file is gone). Carries the id and the last-known local path
+    /// so the agent can tell "never downloaded" from "file was deleted".
+    case observationNotFound(id: String, localPath: String?)
+    /// A payload exceeded a documented size cap (MCP message, inline text
+    /// upload, etc.). `bytes` is the actual size; the message names the
+    /// limit and the streaming/path-based workaround.
+    case payloadTooLarge(bytes: Int, message: String)
 
     /// Bound a user- or server-supplied string before it goes onto the wire
     /// description, so an overlong or noisy value (a giant URI, a verbose
@@ -167,7 +178,7 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         case .targetNotResolved(let name):
             return "targetNotResolved: '\(Self.clip(name, max: 120))' did not resolve via SIMBAD/NED. Try a different spelling, or pass `ra`+`dec` directly."
         case .unsupportedIdScheme(let id):
-            return "unsupportedIdScheme: '\(Self.clip(id, max: 120))' must use the ivo:// scheme."
+            return "unsupportedIdScheme: '\(Self.clip(id, max: 120))' must be ivo://cadc.nrc.ca/<COLL>?<id>, ivo://cadc.nrc.ca/<COLL>/<id>, caom:<COLL>/<id>, or <COLL>?<id>."
         case .planePublisherIdNotSupported(let id):
             return "planePublisherIdNotSupported: '\(Self.clip(id, max: 120))' looks like a Plane publisher_id; couldn't reduce to an Observation URI."
         case .authRequired: return "authRequired"
@@ -178,6 +189,14 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         case .previewTooLarge(let bytes): return "previewTooLarge: \(bytes) bytes exceeds the max_bytes cap"
         case .upstreamTimeout(let msg): return "upstreamTimeout: \(Self.clip(msg))"
         case .contentTypeMismatch(let msg): return "contentTypeMismatch: \(Self.clip(msg))"
+        case .notReadable(let msg): return "notReadable: \(Self.clip(msg))"
+        case .observationNotFound(let id, let path):
+            if let path, !path.isEmpty {
+                return "observationNotFound: '\(Self.clip(id, max: 80))' (last known path: \(Self.clip(path, max: 120)))"
+            }
+            return "observationNotFound: '\(Self.clip(id, max: 80))'"
+        case .payloadTooLarge(let bytes, let message):
+            return "payloadTooLarge: \(bytes) bytes — \(Self.clip(message))"
         }
     }
 
@@ -197,6 +216,9 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         case .previewTooLarge: return "previewTooLarge"
         case .upstreamTimeout: return "upstreamTimeout"
         case .contentTypeMismatch: return "contentTypeMismatch"
+        case .notReadable: return "notReadable"
+        case .observationNotFound: return "observationNotFound"
+        case .payloadTooLarge: return "payloadTooLarge"
         }
     }
 }

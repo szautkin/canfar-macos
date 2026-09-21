@@ -73,6 +73,58 @@ final class ObservationStore {
         observations.contains { $0.publisherID == publisherID }
     }
 
+    /// Re-read the persisted archive. MCP tools and the Research UI
+    /// must see ids downloaded in a previous session (or by the other
+    /// store instance before they were unified).
+    @discardableResult
+    func reload() -> [DownloadedObservation] {
+        observations = persistence.read() ?? observations
+        return observations
+    }
+
+    /// Look up by id, reloading from disk once on a miss so a stale
+    /// in-memory snapshot doesn't report `unknownTarget` for an archive
+    /// row that `list_downloaded_observations` (or the UI) already shows.
+    func observation(id: UUID) -> DownloadedObservation? {
+        if let hit = observations.first(where: { $0.id == id }) { return hit }
+        reload()
+        return observations.first(where: { $0.id == id })
+    }
+
+    /// Resolve a downloaded-observation id from a full UUID (with or
+    /// without hyphens) or a unique 8+ hex prefix. Agents often paste
+    /// the truncated form from logs (`966B5ED7`). Ambiguous prefixes
+    /// return nil.
+    func observation(matching raw: String) -> DownloadedObservation? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let uuid = Self.parseUUID(trimmed) {
+            return observation(id: uuid)
+        }
+        let hex = trimmed.replacingOccurrences(of: "-", with: "")
+        guard hex.count >= 8, hex.count < 32, hex.allSatisfy(\.isHexDigit) else {
+            return nil
+        }
+        let prefix = hex.uppercased()
+        reload()
+        let matches = observations.filter {
+            $0.id.uuidString.replacingOccurrences(of: "-", with: "").uppercased().hasPrefix(prefix)
+        }
+        return matches.count == 1 ? matches[0] : nil
+    }
+
+    /// Canonical UUID from hyphenated or 32-char hex form.
+    static func parseUUID(_ raw: String) -> UUID? {
+        if let uuid = UUID(uuidString: raw) { return uuid }
+        let hex = raw.replacingOccurrences(of: "-", with: "")
+        guard hex.count == 32, hex.allSatisfy(\.isHexDigit) else { return nil }
+        let s = hex.uppercased()
+        let i8 = s.index(s.startIndex, offsetBy: 8)
+        let i12 = s.index(s.startIndex, offsetBy: 12)
+        let i16 = s.index(s.startIndex, offsetBy: 16)
+        let i20 = s.index(s.startIndex, offsetBy: 20)
+        return UUID(uuidString: "\(s[..<i8])-\(s[i8..<i12])-\(s[i12..<i16])-\(s[i16..<i20])-\(s[i20...])")
+    }
+
     func updateFileSize(_ observation: DownloadedObservation, size: Int64) {
         if let idx = observations.firstIndex(where: { $0.id == observation.id }) {
             observations[idx].fileSize = size

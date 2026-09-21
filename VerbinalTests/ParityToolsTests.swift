@@ -109,6 +109,39 @@ final class ParityToolsTests: XCTestCase {
         XCTAssertEqual(payload.maxRecords, 50)
     }
 
+    func testExportSearchResultsPlanAllowsOmittingAdql() async throws {
+        let plan = try await ExportSearchResultsTool()
+            .plan(.init(format: "csv", adql: nil, maxRecords: 10), context: ctx())
+        let payload = try JSONDecoder().decode(ExportSearchResultsTool.Payload.self, from: plan.payload)
+        XCTAssertNil(payload.adql)
+        XCTAssertEqual(payload.format, "csv")
+    }
+
+    func testSaveQueryPlanEmitsStableId() async throws {
+        let plan = try await SaveQueryTool().plan(
+            .init(name: "M31 cone", adql: "SELECT 1", description: nil, tags: nil),
+            context: ctx())
+        let payload = try JSONDecoder().decode(SaveQueryTool.Payload.self, from: plan.payload)
+        XCTAssertNotNil(UUID(uuidString: payload.id))
+        XCTAssertEqual(payload.name, "M31 cone")
+    }
+
+    func testRequestFolderAccessExternalReturnsDeniedWithoutCallingPicker() async throws {
+        final class Spy: @unchecked Sendable {
+            var called = false
+        }
+        let spy = Spy()
+        let tool = RequestFolderAccessTool(request: { _ in
+            spy.called = true
+            return .granted("/tmp")
+        })
+        let result = await tool.invoke(arguments: Data("{}".utf8), context: ctx())
+        XCTAssertFalse(spy.called, "MCP clients must not present NSOpenPanel")
+        let json = try decodeJSON(result)
+        XCTAssertEqual(json["granted"] as? Bool, false)
+        XCTAssertNotNil(json["note"] as? String)
+    }
+
     // MARK: - load_saved_search
 
     func testLoadSavedSearchRequiresExactlyOneTarget() async {
@@ -157,6 +190,48 @@ final class ParityToolsTests: XCTestCase {
             .plan(.init(localPath: temp.path, remotePath: "exports/x.bin"), context: ctx())
         let payload = try JSONDecoder().decode(UploadFileToVOSpaceTool.Payload.self, from: plan.payload)
         XCTAssertEqual(payload.remotePath, "exports/x.bin")
+    }
+
+    @MainActor
+    func testUploadFileApplierReturnsWithoutWaitingForPUT() async throws {
+        let applier = UploadFileToVOSpaceApplier(
+            upload: { _, _ in try await Task.sleep(for: .seconds(2)) },
+            activity: AgentActivityStore(fileName: "test-activity-upload-\(UUID().uuidString).json"))
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("parity-up-\(UUID().uuidString).bin")
+        try Data([1, 2, 3]).write(to: temp)
+        defer { try? FileManager.default.removeItem(at: temp) }
+        let plan = try await UploadFileToVOSpaceTool()
+            .plan(.init(localPath: temp.path, remotePath: "exports/x.bin"), context: ctx())
+        let proposal = PendingProposal(
+            toolName: "upload_file_to_vospace", kind: plan.kind, summary: plan.summary,
+            payload: plan.payload, origin: .external(clientID: "test"), requestID: UUID())
+        let started = ContinuousClock.now
+        let extra = try await applier.applyReturningResult(proposal)
+        let elapsed = started.duration(to: .now)
+        XCTAssertLessThan(elapsed, Duration.milliseconds(500),
+                          "MCP must not wait on the PUT; elapsed \(elapsed)")
+        let ack = try JSONDecoder().decode(AutoAppliedAck.Extra.self, from: extra)
+        XCTAssertEqual(ack.id, "exports/x.bin")
+        XCTAssertTrue(ack.note?.contains("list_vospace_path") == true)
+        try await Task.sleep(for: .seconds(2.2))
+    }
+
+    func testStageCopyForUploadPreservesBytesAndRejectsEmpty() throws {
+        let source = FileManager.default.temporaryDirectory
+            .appendingPathComponent("parity-stage-\(UUID().uuidString).png")
+        let payload = Data(repeating: 0x89, count: 128)
+        try payload.write(to: source)
+        defer { try? FileManager.default.removeItem(at: source) }
+        let staged = try UploadFileToVOSpaceTool.stageCopyForUpload(source)
+        defer { try? FileManager.default.removeItem(at: staged) }
+        XCTAssertEqual(try Data(contentsOf: staged), payload)
+        XCTAssertNotEqual(staged.path, source.path)
+
+        let empty = FileManager.default.temporaryDirectory
+            .appendingPathComponent("parity-stage-empty-\(UUID().uuidString).bin")
+        try Data().write(to: empty)
+        defer { try? FileManager.default.removeItem(at: empty) }
+        XCTAssertThrowsError(try UploadFileToVOSpaceTool.stageCopyForUpload(empty))
     }
 
     // MARK: - export_research_bundle
@@ -274,6 +349,94 @@ final class ParityToolsTests: XCTestCase {
         XCTAssertNotNil(
             SetCubeViewTool.validateOpacityCurve(Array(repeating: [0.5, 0.5], count: 17)),
             "too many points")
+    }
+
+    // MARK: - Open as… sheet
+
+    func testChooseViewerAppliesCube() async throws {
+        let tool = ChooseViewerTool(choose: { viewer in
+            XCTAssertEqual(viewer, "cube")
+            return .init(applied: true, viewer: "cube", path: "/tmp/c.fits",
+                         note: "Opened in the 3D Cube Viewer.")
+        })
+        let result = await tool.invoke(arguments: argsData(["viewer": "CUBE"]), context: ctx())
+        let json = try decodeJSON(result)
+        XCTAssertEqual(json["applied"] as? Bool, true)
+        XCTAssertEqual(json["viewer"] as? String, "cube")
+        XCTAssertEqual(json["path"] as? String, "/tmp/c.fits")
+    }
+
+    func testChooseViewerRejectsUnknownViewer() async {
+        let tool = ChooseViewerTool(choose: { _ in
+            XCTFail("should not choose")
+            return .init(applied: true, viewer: "fits", path: nil, note: "")
+        })
+        let result = await tool.invoke(arguments: argsData(["viewer": "carta"]), context: ctx())
+        guard case .failed(let reason) = result, case .invalidArgument = reason else {
+            return XCTFail("expected invalidArgument, got \(result)")
+        }
+    }
+
+    func testChooseViewerSurfacesNoSheetError() async {
+        let tool = ChooseViewerTool(choose: { _ in
+            throw ToolFailureReason.invalidArgument("No Open as… sheet is showing")
+        })
+        let result = await tool.invoke(arguments: argsData(["viewer": "fits"]), context: ctx())
+        guard case .failed(let reason) = result, case .invalidArgument(let msg) = reason else {
+            return XCTFail("expected invalidArgument, got \(result)")
+        }
+        XCTAssertTrue(msg.contains("Open as"))
+    }
+
+    func testOpenLocalFileRejectsBadViewer() async {
+        let tool = OpenLocalFileTool(open: { _, _ in
+            XCTFail("should not open")
+            return .init(applied: true, path: "/tmp/a.fits", viewer: nil,
+                         pendingViewerChoice: false, note: nil)
+        })
+        let result = await tool.invoke(
+            arguments: argsData(["path": "/tmp/a.fits", "viewer": "carta"]), context: ctx())
+        guard case .failed(let reason) = result, case .invalidArgument = reason else {
+            return XCTFail("expected invalidArgument, got \(result)")
+        }
+    }
+
+    func testOpenLocalFileReturnsPendingViewerChoice() async throws {
+        let tool = OpenLocalFileTool(open: { path, viewer in
+            XCTAssertEqual(path, "/tmp/cube.fits")
+            XCTAssertNil(viewer)
+            return .init(applied: true, path: path, viewer: nil,
+                         pendingViewerChoice: true,
+                         note: AppState.viewerChoiceAgentNote(filename: "cube.fits"))
+        })
+        let result = await tool.invoke(
+            arguments: argsData(["path": "/tmp/cube.fits"]), context: ctx())
+        let json = try decodeJSON(result)
+        XCTAssertEqual(json["pendingViewerChoice"] as? Bool, true)
+        XCTAssertTrue((json["note"] as? String)?.contains("choose_viewer") == true)
+    }
+
+    func testGetCurrentViewEncodesPendingViewerChoice() throws {
+        let out = GetCurrentViewTool.Output(
+            mode: "landing", modeTitle: "Landing",
+            isAuthenticated: false, username: "",
+            searchFocusRA: nil, searchFocusDec: nil,
+            searchTab: nil,
+            searchResultsTotal: nil,
+            searchResultsFiltered: nil,
+            openFITSPaths: [],
+            pendingViewerChoice: .init(
+                path: "/tmp/cube.fits", filename: "cube.fits",
+                note: AppState.viewerChoiceAgentNote(filename: "cube.fits")),
+            pendingProposalsCount: 0,
+            agentsEnabled: true,
+            autoApplyEnabled: true,
+            followAgentActivityEnabled: true)
+        let json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(out)) as? [String: Any])
+        let pending = try XCTUnwrap(json["pendingViewerChoice"] as? [String: Any])
+        XCTAssertEqual(pending["filename"] as? String, "cube.fits")
+        XCTAssertTrue((pending["note"] as? String)?.contains("choose_viewer") == true)
     }
 
     // MARK: - tabs

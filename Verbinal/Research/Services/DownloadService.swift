@@ -14,38 +14,62 @@ actor DownloadService {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Downloads")
     private let session: URLSession
     private let endpoints: APIEndpoints
+    private let caom2: CAOM2Service
 
-    // Default to the launch-configured archive endpoints (TAPConfig) rather
-    // than a fresh APIEndpoints() — otherwise an overridden or registry-
-    // resolved archive base would still download from the hardcoded CADC host.
-    init(session: URLSession = .shared, endpoints: APIEndpoints = TAPConfig.endpoints) {
+    init(
+        session: URLSession = .shared,
+        endpoints: APIEndpoints = TAPConfig.endpoints,
+        caom2: CAOM2Service = CAOM2Service()
+    ) {
         self.session = session
         self.endpoints = endpoints
+        self.caom2 = caom2
     }
 
     /// Download an observation file to a temporary location.
-    /// Uses DataLink #this semantic for direct FITS (no tar), falls back to /pkg endpoint.
+    /// Prefers DataLink `#this`, then CAOM-2 `productType: science`
+    /// artifacts (the ESPaDOnS / package-fallback path that otherwise
+    /// yields a 0-byte `pkg-*.txt`), then `/caom2ops/pkg`.
     func downloadToTemp(publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
-        // Step 1: Try DataLink to get direct file URL (matches Windows approach)
-        let directURL = await resolveDirectFileURL(publisherID: publisherID)
-
-        // Step 2: Use direct URL if available, otherwise fall back to /pkg (tar archive)
-        let url: URL
-        if let directURL {
+        if let directURL = await resolveDirectFileURL(publisherID: publisherID) {
             Self.logger.info("Using DataLink direct URL: \(directURL.lastPathComponent)")
-            url = directURL
-        } else {
-            guard var components = URLComponents(string: endpoints.caom2PkgURL) else {
-                throw SearchError.networkError("Invalid download URL")
-            }
-            components.queryItems = [URLQueryItem(name: "ID", value: publisherID)]
-            guard let pkgURL = components.url else {
-                throw SearchError.networkError("Invalid download URL")
-            }
-            Self.logger.info("DataLink unavailable, falling back to /pkg")
-            url = pkgURL
+            return try await fetchToTemp(url: directURL, publisherID: publisherID)
         }
+        if let artifact = await resolveScienceArtifact(publisherID: publisherID) {
+            Self.logger.info("Using CAOM-2 science artifact: \(artifact.filename)")
+            return try await fetchToTemp(url: artifact.url, publisherID: publisherID, suggested: artifact.filename)
+        }
+        guard var components = URLComponents(string: endpoints.caom2PkgURL) else {
+            throw SearchError.networkError("Invalid download URL")
+        }
+        components.queryItems = [URLQueryItem(name: "ID", value: publisherID)]
+        guard let pkgURL = components.url else {
+            throw SearchError.networkError("Invalid download URL")
+        }
+        Self.logger.info("DataLink and CAOM-2 artifacts unavailable, falling back to /pkg")
+        let result = try await fetchToTemp(url: pkgURL, publisherID: publisherID, requireNonEmpty: false)
+        if (fileSize(at: result.tempURL) ?? 0) > 0 {
+            return result
+        }
+        // Empty pkg body — try artifacts once more in case CAOM-2 was
+        // briefly unavailable on the first pass.
+        if let artifact = await resolveScienceArtifact(publisherID: publisherID) {
+            try? deleteFile(at: result.tempURL)
+            Self.logger.info("pkg was 0 bytes; retrying CAOM-2 science artifact: \(artifact.filename)")
+            return try await fetchToTemp(url: artifact.url, publisherID: publisherID, suggested: artifact.filename)
+        }
+        try? deleteFile(at: result.tempURL)
+        throw SearchError.networkError(
+            "download produced an empty file for \(publisherID) — no DataLink #this and no CAOM-2 science artifact"
+        )
+    }
 
+    private func fetchToTemp(
+        url: URL,
+        publisherID: String,
+        suggested: String? = nil,
+        requireNonEmpty: Bool = true
+    ) async throws -> (tempURL: URL, suggestedFilename: String) {
         let request = URLRequest(url: url)
         let (tempURL, response) = try await session.download(for: request)
 
@@ -54,18 +78,56 @@ actor DownloadService {
             throw SearchError.networkError("Download failed (HTTP \(code))")
         }
 
-        // Extract filename from Content-Disposition header or URL
-        let suggestedFilename = extractFilename(from: httpResponse, publisherID: publisherID)
+        var name = suggested ?? extractFilename(from: httpResponse, publisherID: publisherID)
+        name = Self.uniqueSuggestedFilename(publisherID: publisherID, suggested: name)
 
-        // Move temp file to a location that won't be cleaned up immediately
-        let stableTemp = FileManager.default.temporaryDirectory.appendingPathComponent(suggestedFilename)
+        let stableTemp = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         if FileManager.default.fileExists(atPath: stableTemp.path) {
             try FileManager.default.removeItem(at: stableTemp)
         }
         try FileManager.default.moveItem(at: tempURL, to: stableTemp)
 
-        Self.logger.info("Downloaded to temp: \(suggestedFilename)")
-        return (stableTemp, suggestedFilename)
+        let size = fileSize(at: stableTemp) ?? 0
+        if requireNonEmpty, size <= 0 {
+            try? deleteFile(at: stableTemp)
+            throw SearchError.networkError("download of \(name) was 0 bytes")
+        }
+
+        Self.logger.info("Downloaded to temp: \(name) (\(size) bytes)")
+        return (stableTemp, name)
+    }
+
+    /// Prefer uncompressed FITS science artifacts, then any science product.
+    private func resolveScienceArtifact(publisherID: String) async -> (url: URL, filename: String)? {
+        guard let obs = try? await caom2.fetch(publisherID: publisherID) else { return nil }
+        var science: [(url: URL, filename: String, length: Int64, uncompressed: Bool)] = []
+        for plane in obs.planes {
+            for a in plane.artifacts {
+                let type = (a.productType ?? "").lowercased()
+                guard type == "science" else { continue }
+                guard let url = endpoints.dataPubURL(forArtifactURI: a.uri) else { continue }
+                let filename = (a.uri as NSString).lastPathComponent
+                let lower = filename.lowercased()
+                let uncompressed = lower.hasSuffix(".fits") || lower.hasSuffix(".fit") || lower.hasSuffix(".fts")
+                science.append((url, filename, a.contentLength ?? 0, uncompressed))
+            }
+        }
+        let best = science.first(where: \.uncompressed) ?? science.max(by: { $0.length < $1.length })
+        return best.map { ($0.url, $0.filename) }
+    }
+
+    /// Make pkg-fallback names unique per observation so bulk downloads
+    /// don't collide on a shared `pkg.txt`.
+    static func uniqueSuggestedFilename(publisherID: String, suggested: String) -> String {
+        let safe = sanitizeFilename(suggested)
+        let generic = safe.isEmpty
+            || safe.lowercased().hasPrefix("pkg")
+            || safe.lowercased() == "unknown"
+        let derived = filename(fromPublisherID: publisherID, contentType: generic ? "application/fits" : "")
+        if generic {
+            return derived.isEmpty ? "observation.fits" : derived
+        }
+        return safe
     }
 
     /// Delete a file at a given URL.

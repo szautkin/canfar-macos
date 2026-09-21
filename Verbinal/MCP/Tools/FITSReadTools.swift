@@ -45,17 +45,13 @@ struct GetFITSHeaderTool: JSONReadTool {
         """#
     )
 
-    /// Closure resolves the observation id to a *security-scoped*
-    /// FITSFile snapshot. Implementation lives in AppState+AgentTools so
-    /// the tool stays pure.
-    let resolve: @Sendable (_ id: UUID) async throws -> ResolvedFITS?
+    /// Closure resolves the observation id (full UUID or unique hex
+    /// prefix) to a *security-scoped* FITSFile snapshot.
+    let resolve: @Sendable (_ id: String) async throws -> ResolvedFITS?
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        guard let uuid = UUID(uuidString: args.downloaded_observation_id) else {
-            throw ToolFailureReason.invalidArgument("downloaded_observation_id is not a UUID")
-        }
-        guard let resolved = try await resolve(uuid) else {
-            throw ToolFailureReason.unknownTarget("downloaded_observation \(args.downloaded_observation_id)")
+        guard let resolved = try await resolve(args.downloaded_observation_id) else {
+            throw ToolFailureReason.observationNotFound(id: args.downloaded_observation_id, localPath: nil)
         }
         let hduIndex: Int
         let hdu: FITSHDUnit
@@ -127,14 +123,11 @@ struct GetFITSWCSTool: JSONReadTool {
         """#
     )
 
-    let resolve: @Sendable (_ id: UUID) async throws -> ResolvedFITS?
+    let resolve: @Sendable (_ id: String) async throws -> ResolvedFITS?
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        guard let uuid = UUID(uuidString: args.downloaded_observation_id) else {
-            throw ToolFailureReason.invalidArgument("downloaded_observation_id is not a UUID")
-        }
-        guard let resolved = try await resolve(uuid) else {
-            throw ToolFailureReason.unknownTarget("downloaded_observation \(args.downloaded_observation_id)")
+        guard let resolved = try await resolve(args.downloaded_observation_id) else {
+            throw ToolFailureReason.observationNotFound(id: args.downloaded_observation_id, localPath: nil)
         }
         let hdu: FITSHDUnit
         let hduIndex: Int

@@ -22,6 +22,7 @@ struct SaveQueryTool: JSONWriteTool {
 
     /// Encoded as the proposal payload; the applier reads it back.
     struct Payload: Codable, Sendable {
+        let id: String
         let name: String
         let adql: String
         let description: String
@@ -30,7 +31,7 @@ struct SaveQueryTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "save_query",
-        description: "Save an ADQL query under a name. Strongly encouraged: include a `description` explaining why the query matters and tags grouping it with related work — six months from now you'll thank yourself. Persisted immediately when auto-apply is on; otherwise queues to the proposal strip.",
+        description: "Save an ADQL query under a name. Returns the new query `id` (UUID) on auto-apply so you can chain `get_saved_query` / `update_saved_query` without re-listing. Strongly encouraged: include a `description` explaining why the query matters and tags grouping it with related work. Persisted immediately when auto-apply is on; otherwise queues to the proposal strip.",
         schema: #"""
         {
           "type": "object",
@@ -53,10 +54,12 @@ struct SaveQueryTool: JSONWriteTool {
         guard !args.adql.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw ToolFailureReason.invalidArgument("adql is empty")
         }
+        let id = UUID()
         return try ProposalPlan.encoding(
             kind: "save_query",
             summary: "Save query: \(args.name)",
             payload: Payload(
+                id: id.uuidString,
                 name: args.name,
                 adql: args.adql,
                 description: args.description ?? "",
@@ -182,7 +185,9 @@ struct SaveQueryApplier: ProposalApplier {
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(SaveQueryTool.Payload.self, from: proposal.payload)
         let attribution = AgentAttribution.from(proposal: proposal)
+        let queryID = UUID(uuidString: payload.id) ?? UUID()
         let query = SavedQuery(
+            id: queryID,
             name: payload.name,
             adql: payload.adql,
             description: payload.description,

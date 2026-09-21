@@ -103,14 +103,11 @@ struct GetDownloadedObservationTool: JSONReadTool {
         """#
     )
 
-    let lookup: @Sendable (_ id: UUID) async -> DownloadedObservationOut?
+    let lookup: @Sendable (_ id: String) async -> DownloadedObservationOut?
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        guard let uuid = UUID(uuidString: args.id) else {
-            throw ToolFailureReason.invalidArgument("id is not a UUID")
-        }
-        guard let obs = await lookup(uuid) else {
-            throw ToolFailureReason.unknownTarget("downloaded_observation \(args.id)")
+        guard let obs = await lookup(args.id) else {
+            throw ToolFailureReason.observationNotFound(id: args.id, localPath: nil)
         }
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime]

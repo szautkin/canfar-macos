@@ -55,6 +55,21 @@ final class CAOM2ParserTests: XCTestCase {
         XCTAssertNil(CAOM2Observation.observationURI(fromPublisherID: "caom:CFHT/"))
     }
 
+    func testObservationURIAcceptsSlashIVOFormAndBareCollectionQuery() {
+        XCTAssertEqual(
+            CAOM2Observation.observationURI(fromPublisherID: "ivo://cadc.nrc.ca/CFHT/22803"),
+            "caom:CFHT/22803"
+        )
+        XCTAssertEqual(
+            CAOM2Observation.observationURI(fromPublisherID: "CFHT?22803"),
+            "caom:CFHT/22803"
+        )
+        XCTAssertEqual(
+            CAOM2Observation.observationURI(fromPublisherID: "ivo://cadc.nrc.ca/CFHT?22803"),
+            "caom:CFHT/22803"
+        )
+    }
+
     // MARK: - Parser — minimal observation
 
     func testParseMinimalObservation() throws {

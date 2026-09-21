@@ -24,12 +24,12 @@ struct SaveWorkflowTool: JSONWriteTool {
     static let verbClass: VerbClass = .semanticWrite
     struct Args: Decodable, Sendable { let name, text: String; let location: String? }
     struct Payload: Codable, Sendable { let name, text: String }
-    let definition = AIToolDefinition.withStaticSchema(name: "save_workflow", description: "Create a new LOCAL workflow from full .workflow.md text. VOSpace publication is not available through this tool.", schema: #"{"type":"object","required":["name","text"],"properties":{"name":{"type":"string","minLength":1},"text":{"type":"string","minLength":1},"location":{"type":"string","enum":["local","vospace"]}},"additionalProperties":false}"#)
+    let definition = AIToolDefinition.withStaticSchema(name: "save_workflow", description: "Create a new LOCAL workflow from full .workflow.md text. `text` must include at least one checklist step (`- [ ] Title` or `- [x] Title`). VOSpace publication is not available through this tool.", schema: #"{"type":"object","required":["name","text"],"properties":{"name":{"type":"string","minLength":1},"text":{"type":"string","minLength":1,"description":"Full .workflow.md body. Must contain at least one `- [ ]` / `- [x]` checklist step."},"location":{"type":"string","enum":["local","vospace"]}},"additionalProperties":false}"#)
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
         // Reject rather than silently downgrade: reporting a local save as
         // success for a requested VOSpace publish would mislead the agent.
         if let location = args.location, location != "local" { throw ToolFailureReason.invalidArgument("location '\(location)' is not supported — this tool saves locally only (omit location or pass \"local\"); publish to VOSpace from the Workflows page") }
-        guard !args.name.trimmingCharacters(in: .whitespaces).isEmpty, !args.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, WorkflowFormat.parse(args.text).steps.count > 0 else { throw ToolFailureReason.invalidArgument("name, text, and at least one checklist step are required") }
+        guard !args.name.trimmingCharacters(in: .whitespaces).isEmpty, !args.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, WorkflowFormat.parse(args.text).steps.count > 0 else { throw ToolFailureReason.invalidArgument("name, text, and at least one `- [ ]` / `- [x]` checklist step are required") }
         return try ProposalPlan.encoding(kind: "save_workflow", summary: "Save workflow: \(args.name)", payload: Payload(name: args.name, text: args.text))
     }
 }

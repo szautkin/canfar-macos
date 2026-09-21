@@ -126,6 +126,7 @@ enum AIGuideCatalog {
         "get_fits_header": "fits",
         "get_fits_wcs": "fits",
         "open_fits_file": "fits",
+        "choose_viewer": "fits",
         "get_fits_view": "fits",
         "set_fits_view": "fits",
         "fits_goto_coordinate": "fits",

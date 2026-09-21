@@ -180,4 +180,40 @@ final class ObservationStoreTests: XCTestCase {
             try? FileManager.default.removeItem(at: dir.appendingPathComponent(fileName))
         }
     }
+
+    func testObservationLookupReloadsFromDiskOnMiss() {
+        let fileName = "test_observations_\(UUID().uuidString).json"
+        let stale = ObservationStore(fileName: fileName, spotlight: nil)
+        XCTAssertTrue(stale.observations.isEmpty)
+
+        let writer = ObservationStore(fileName: fileName, spotlight: nil)
+        let obs = makeObservation(publisherID: "ivo://cadc.nrc.ca/CFHT?reload")
+        writer.save(obs)
+
+        XCTAssertEqual(stale.observation(id: obs.id)?.publisherID, obs.publisherID)
+    }
+
+    func testObservationMatchingAcceptsHyphenlessUUIDAndUniquePrefix() {
+        let store = makeStore()
+        let obs = makeObservation(publisherID: "ivo://cadc.nrc.ca/CFHT?prefix")
+        store.save(obs)
+        let compact = obs.id.uuidString.replacingOccurrences(of: "-", with: "")
+        XCTAssertEqual(store.observation(matching: compact)?.id, obs.id)
+        XCTAssertEqual(store.observation(matching: String(compact.prefix(8)))?.id, obs.id)
+        XCTAssertEqual(store.observation(matching: "  \(obs.id.uuidString)  ")?.id, obs.id)
+        XCTAssertNil(store.observation(matching: "not-an-id"))
+    }
+
+    func testFileExistsFollowsTildeAndExistingPath() {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("verbinal-obs-\(UUID().uuidString).fits")
+        FileManager.default.createFile(atPath: url.path, contents: Data([0x53]), attributes: nil)
+        defer { try? FileManager.default.removeItem(at: url) }
+        var obs = makeObservation()
+        obs.localPath = url.path
+        XCTAssertTrue(obs.fileExists)
+        XCTAssertEqual(obs.resolvedReadableURL?.standardizedFileURL.path, url.standardizedFileURL.path)
+        obs.localPath = "/tmp/verbinal-missing-\(UUID().uuidString).fits"
+        XCTAssertFalse(obs.fileExists)
+    }
 }

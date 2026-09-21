@@ -127,7 +127,7 @@ struct DownloadObservationsBulkTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_observations_bulk",
-        description: "Download up to 50 observations as one proposal envelope. The applier downloads each in sequence; first failure aborts the rest. Note: total in-flight time can exceed the MCP request timeout for large batches — prefer staging in groups of ~10 if the items are big FITS files.",
+        description: "Download up to 50 observations as one proposal envelope. Each item lands under a unique filename (observation id + artifact name) so a shared `pkg.txt` cannot abort the batch. The applier continues after per-item failures and returns `succeeded[]` / `failed[]`. Total in-flight time can exceed the MCP request timeout for large batches — prefer groups of ~10 for big FITS files.",
         schema: #"""
         {
           "type": "object",
@@ -215,16 +215,20 @@ private let downloadLogger = Logger(subsystem: "com.codebg.Verbinal.agent", cate
 
 /// Apply a single download proposal: fetch via DownloadService, move
 /// into Downloads, register in ObservationStore.
-struct DownloadObservationApplier: ProposalApplier {
+struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
     let kind = "download_observation"
     let downloadService: DownloadService
     let observationStore: ObservationStore
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(DownloadObservationTool.Payload.self, from: proposal.payload)
         let attribution = AgentAttribution.from(proposal: proposal)
-        try await Self.runOne(
+        let id = try await Self.runOne(
             payload,
             attribution: attribution,
             downloadService: downloadService,
@@ -233,6 +237,8 @@ struct DownloadObservationApplier: ProposalApplier {
         await MainActor.run {
             activity.append(.applied(proposal: proposal, kind: kind))
         }
+        let extra = AutoAppliedAck.Extra(id: id.uuidString)
+        return (try? JSONEncoder().encode(extra)) ?? Data()
     }
 
     static func runOne(
@@ -240,7 +246,7 @@ struct DownloadObservationApplier: ProposalApplier {
         attribution: AgentAttribution?,
         downloadService: DownloadService,
         observationStore: ObservationStore
-    ) async throws {
+    ) async throws -> UUID {
         let result: (tempURL: URL, suggestedFilename: String)
         do {
             // 10-minute wall-clock deadline. A genuinely large FITS
@@ -289,7 +295,7 @@ struct DownloadObservationApplier: ProposalApplier {
             dec: payload.dec,
             startDate: payload.startDate,
             calLevel: payload.calLevel,
-            localPath: finalURL.path,
+            localPath: LocalFolderAccessStore.userFacingPath(for: finalURL),
             fileSize: size,
             thumbnailURL: payload.thumbnailURL,
             previewURL: payload.previewURL,
@@ -300,31 +306,50 @@ struct DownloadObservationApplier: ProposalApplier {
             observationStore.save(observation)
         }
         downloadLogger.notice("agent download applied: \(payload.publisherID, privacy: .public)")
+        return observation.id
     }
 }
 
-/// Apply a bulk download proposal: run each item sequentially. First
-/// failure aborts the remainder.
-struct DownloadObservationsBulkApplier: ProposalApplier {
+/// Apply a bulk download proposal: run each item sequentially. Per-item
+/// failures are collected; the batch does not abort on the first error.
+struct DownloadObservationsBulkApplier: ProposalApplier, ResultReportingApplier {
     let kind = "download_observations_bulk"
     let downloadService: DownloadService
     let observationStore: ObservationStore
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(DownloadObservationsBulkTool.Payload.self, from: proposal.payload)
         let attribution = AgentAttribution.from(proposal: proposal)
+        var succeeded: [String] = []
+        var failed: [AutoAppliedAck.FailedItem] = []
         for item in payload.items {
-            try await DownloadObservationApplier.runOne(
-                item,
-                attribution: attribution,
-                downloadService: downloadService,
-                observationStore: observationStore
-            )
+            do {
+                let id = try await DownloadObservationApplier.runOne(
+                    item,
+                    attribution: attribution,
+                    downloadService: downloadService,
+                    observationStore: observationStore
+                )
+                succeeded.append(id.uuidString)
+            } catch {
+                failed.append(.init(id: item.publisherID, error: error.localizedDescription))
+            }
         }
         await MainActor.run {
             activity.append(.applied(proposal: proposal, kind: kind))
         }
+        if succeeded.isEmpty, !failed.isEmpty {
+            throw ProposalApplyError.backendError(
+                "all \(failed.count) bulk downloads failed: \(failed.map(\.error).joined(separator: "; "))"
+            )
+        }
+        let extra = AutoAppliedAck.Extra(succeeded: succeeded, failed: failed.isEmpty ? nil : failed)
+        return (try? JSONEncoder().encode(extra)) ?? Data()
     }
 }
 

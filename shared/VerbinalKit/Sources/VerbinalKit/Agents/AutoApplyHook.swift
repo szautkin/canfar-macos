@@ -29,11 +29,14 @@ public struct AutoApplyHook: Sendable {
 
     /// Run the apply. Throws on backend failure — the router withdraws
     /// the optimistic auto-apply and surfaces the error to the agent.
-    public let apply: @Sendable (_ proposalID: UUID) async throws -> Void
+    /// Returns optional extra JSON merged into `AutoAppliedAck` (new
+    /// entity `id`, bulk `succeeded`/`failed`, …). `nil` is the common
+    /// "applied, no extra fields" case.
+    public let apply: @Sendable (_ proposalID: UUID) async throws -> Data?
 
     public init(
         shouldAutoApply: @escaping @Sendable (_ verbClass: VerbClass, _ proposal: PendingProposal) async -> Bool,
-        apply: @escaping @Sendable (_ proposalID: UUID) async throws -> Void
+        apply: @escaping @Sendable (_ proposalID: UUID) async throws -> Data?
     ) {
         self.shouldAutoApply = shouldAutoApply
         self.apply = apply
@@ -43,16 +46,92 @@ public struct AutoApplyHook: Sendable {
 /// What the agent sees after a successful auto-apply: the same proposal
 /// envelope it would have gotten from `.proposed`, plus an explicit
 /// flag so the agent can branch on "applied" vs "queued for review".
+/// Optional `id` / bulk envelopes let write tools return the entity
+/// they just created so agents can chain without re-listing.
 public struct AutoAppliedAck: Codable, Sendable {
     public let applied: Bool
     public let proposalID: UUID
     public let kind: String
     public let summary: String
+    /// Domain entity id when the write created one (saved query, download).
+    public let id: String?
+    /// Partial-success envelope for bulk writes. Absent on single-item kinds.
+    public let succeeded: [String]?
+    public let failed: [FailedItem]?
+    /// Optional agent-facing guidance (e.g. poll a read tool because
+    /// the write continues app-side after this ack).
+    public let note: String?
 
-    public init(proposal: PendingProposal) {
+    public struct FailedItem: Codable, Sendable, Equatable {
+        public let id: String
+        public let error: String
+        public init(id: String, error: String) {
+            self.id = id
+            self.error = error
+        }
+    }
+
+    public init(proposal: PendingProposal, extraJSON: Data? = nil) {
         self.applied = true
         self.proposalID = proposal.id
         self.kind = proposal.kind
         self.summary = proposal.summary
+        let extra = extraJSON.flatMap { try? JSONDecoder().decode(Extra.self, from: $0) }
+        let payloadID = Self.stringField("id", in: proposal.payload)
+        self.id = extra?.id ?? payloadID
+        self.succeeded = extra?.succeeded
+        self.failed = extra?.failed
+        self.note = extra?.note
+    }
+
+    /// Encode extra ack fields from an applier. Keep this the single
+    /// shape `ResultReportingApplier` returns so the router stays
+    /// schema-free.
+    public struct Extra: Codable, Sendable {
+        public var id: String?
+        public var succeeded: [String]?
+        public var failed: [FailedItem]?
+        public var note: String?
+        public init(id: String? = nil, succeeded: [String]? = nil, failed: [FailedItem]? = nil, note: String? = nil) {
+            self.id = id
+            self.succeeded = succeeded
+            self.failed = failed
+            self.note = note
+        }
+    }
+
+    private static func stringField(_ key: String, in data: Data) -> String? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return obj[key] as? String
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case applied, proposalID, kind, summary, id, succeeded, failed, note
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(applied, forKey: .applied)
+        try c.encode(proposalID, forKey: .proposalID)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(summary, forKey: .summary)
+        try c.encodeIfPresent(id, forKey: .id)
+        try c.encodeIfPresent(succeeded, forKey: .succeeded)
+        try c.encodeIfPresent(failed, forKey: .failed)
+        try c.encodeIfPresent(note, forKey: .note)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        applied = try c.decode(Bool.self, forKey: .applied)
+        proposalID = try c.decode(UUID.self, forKey: .proposalID)
+        kind = try c.decode(String.self, forKey: .kind)
+        summary = try c.decode(String.self, forKey: .summary)
+        id = try c.decodeIfPresent(String.self, forKey: .id)
+        succeeded = try c.decodeIfPresent([String].self, forKey: .succeeded)
+        failed = try c.decodeIfPresent([FailedItem].self, forKey: .failed)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
     }
 }

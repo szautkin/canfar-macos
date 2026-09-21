@@ -62,12 +62,9 @@ actor TAPClient {
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
             request.timeoutInterval = 120
 
-            let params = [
-                "LANG": "ADQL",
-                "FORMAT": TAPConfig.format,
-                "QUERY": adql,
-                "MAXREC": String(maxRec),
-            ]
+            // TAP 1.1 requires REQUEST=doQuery on /sync. CADC accepts it;
+            // VizieR TAPVizieR returns HTTP 400 without it (2026-08-28 QA).
+            let params = Self.tapPOSTFields(adql: adql, maxRec: maxRec)
 
             request.httpBody = params
                 .map { key, value in
@@ -99,6 +96,18 @@ actor TAPClient {
         }
     }
 
+    /// Form fields for a TAP `/sync` POST. Exposed for tests so we pin
+    /// `REQUEST=doQuery` without hitting the network.
+    static func tapPOSTFields(adql: String, maxRec: Int) -> [String: String] {
+        [
+            "REQUEST": "doQuery",
+            "LANG": "ADQL",
+            "FORMAT": TAPConfig.format,
+            "QUERY": adql,
+            "MAXREC": String(maxRec),
+        ]
+    }
+
     /// Execute a TAP query and parse results into rows.
     func tapQueryRows(adql: String, maxRec: Int = TAPConfig.maxRecords) async throws -> (headers: [String], rows: [[String]]) {
         let csv = try await tapQuery(adql: adql, maxRec: maxRec)
@@ -128,9 +137,50 @@ actor TAPClient {
     /// globally" or "your query is wrong" situation.
     ///
     /// `catalogue` is the VizieR catalogue identifier (e.g.
-    /// `"V/97/catalog"` for Clement+2001 variables-in-globular-
-    /// clusters). Defaults (`"RAJ2000"` / `"DEJ2000"`) cover the
-    /// majority of VizieR holdings.
+    /// `"V/97/variabls"` for Clement+2001 variables-in-globular-
+    /// clusters — TAP_SCHEMA lists `variabls`, not `catalog`). Defaults
+    /// (`"RAJ2000"` / `"DEJ2000"`) cover the majority of VizieR holdings.
+    /// Build the VizieR TAP ADQL for a cone search. `TOP` is intentionally
+    /// omitted — VizieR TAP 1.1 rejects `SELECT TOP N` when `MAXREC` is
+    /// also posted (HTTP 400 on every catalogue, 2026-08-28 QA). Row
+    /// capping is `MAXREC` only. Position columns are qualified; Gaia DR3
+    /// (`I/355/…`) defaults to `RA_ICRS`/`DE_ICRS` rather than `RAJ2000`.
+    static func vizierConeADQL(
+        catalogue: String,
+        raDeg: Double,
+        decDeg: Double,
+        radiusDeg: Double,
+        raColumn: String,
+        decColumn: String
+    ) -> String {
+        """
+        SELECT *
+        FROM "\(catalogue)"
+        WHERE 1 = CONTAINS(
+            POINT('ICRS', \(raColumn), \(decColumn)),
+            CIRCLE('ICRS', \(raDeg), \(decDeg), \(radiusDeg))
+        )
+        """
+    }
+
+    /// Clement+2001 globular-cluster variables live in TAP_SCHEMA as
+    /// `V/97/variabls`. Agents still pass the QA example `V/97/catalog`.
+    static func canonicalVizierCatalogue(_ catalogue: String) -> String {
+        switch catalogue.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "V/97", "V/97/catalog": return "V/97/variabls"
+        default: return catalogue
+        }
+    }
+
+    /// Default RA/Dec column names for a VizieR catalogue identifier.
+    static func vizierDefaultPositionColumns(catalogue: String) -> (ra: String, dec: String) {
+        let lower = catalogue.lowercased()
+        if lower.hasPrefix("i/355") || lower.contains("gaiadr3") || lower.contains("gaia_dr3") {
+            return ("RA_ICRS", "DE_ICRS")
+        }
+        return ("RAJ2000", "DEJ2000")
+    }
+
     func vizierConeSearch(
         catalogue: String,
         raDeg: Double,
@@ -140,26 +190,24 @@ actor TAPClient {
         decColumn: String = "DEJ2000",
         maxRec: Int = 500
     ) async throws -> (headers: [String], rows: [[String]]) {
-        let adql = """
-        SELECT TOP \(maxRec) *
-        FROM "\(catalogue)"
-        WHERE 1 = CONTAINS(
-            POINT('ICRS', \(raColumn), \(decColumn)),
-            CIRCLE('ICRS', \(raDeg), \(decDeg), \(radiusDeg))
+        let adql = Self.vizierConeADQL(
+            catalogue: Self.canonicalVizierCatalogue(catalogue),
+            raDeg: raDeg,
+            decDeg: decDeg,
+            radiusDeg: radiusDeg,
+            raColumn: raColumn,
+            decColumn: decColumn
         )
-        """
         var attempts: [(host: String, error: Error)] = []
         for endpoint in Self.queryableVizierEndpoints {
             do {
                 let csv = try await tapQueryAt(endpoint: endpoint.syncURL, adql: adql, maxRec: maxRec)
                 return CSVParser.parse(csv)
             } catch {
+                let body = (error as? SearchError).map { "\($0)" } ?? error.localizedDescription
                 if !Self.isHostFailoverWorthy(error) {
-                    // 4xx / parse / catalogue-not-found: failing on this
-                    // mirror means failing on all of them. Don't waste
-                    // budget trying further hosts.
                     throw SearchError.networkError(
-                        "vizier_cone_search at \(endpoint.host): \(error.localizedDescription) — not retrying other mirrors (looks like a query problem, not a host problem)."
+                        "vizier_cone_search at \(endpoint.host): HTTP/query error — \(body). ADQL sent: \(adql.replacingOccurrences(of: "\n", with: " ")). Not retrying other mirrors (looks like a query problem, not a host problem)."
                     )
                 }
                 attempts.append((endpoint.host, error))
@@ -182,20 +230,17 @@ actor TAPClient {
         let syncURL: String
     }
 
-    /// Ordered fallback list of VizieR TAP mirrors. Try primary CDS
-    /// first, fall back through CDS's legacy alias (different DNS
-    /// zone — survives the exact failure mode the 2026-05-15 QA
-    /// report observed on `cds.unistra.fr`), then ESAC (geographically
-    /// distinct, separate operator), then the China-VO HTTP mirror
-    /// (last-resort fallback for the case where TLS itself is what's
-    /// broken). All four mirror the same VizieR catalogue corpus so a
-    /// cone search returns equivalent data regardless of which one
-    /// answers — modulo at-most-hours of replication lag on ESAC /
-    /// China-VO for newly-ingested catalogues.
+    /// Ordered fallback list of VizieR TAP mirrors. Primary is CDS's
+    /// TAPVizieR service (`tapvizier.cds.unistra.fr`) — the older
+    /// `tap.cds.unistra.fr/tap/sync` host is DNS-dead and is not a
+    /// TAPVizieR endpoint. Then the Strasbourg `u-strasbg.fr` alias
+    /// (separate DNS zone), then ESAC, then the China-VO HTTP mirror
+    /// (last-resort when TLS itself is broken). All four mirror the
+    /// same VizieR catalogue corpus.
     static let vizierEndpoints: [VizierEndpoint] = [
         VizierEndpoint(
-            host: "tap.cds.unistra.fr",
-            syncURL: "https://tap.cds.unistra.fr/tap/sync"
+            host: "tapvizier.cds.unistra.fr",
+            syncURL: "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync"
         ),
         VizierEndpoint(
             host: "tapvizier.u-strasbg.fr",

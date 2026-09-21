@@ -48,7 +48,7 @@ struct OpenFITSFileTool: AITool {
         """#
     )
 
-    let openFITS: @Sendable (_ id: UUID) async throws -> (observationID: String, localPath: String)
+    let openFITS: @Sendable (_ id: String) async throws -> (observationID: String, localPath: String)
 
     func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         let args: Args
@@ -57,11 +57,8 @@ struct OpenFITSFileTool: AITool {
         } catch {
             return .failed(.invalidArgument("\(error)"))
         }
-        guard let uuid = UUID(uuidString: args.downloaded_observation_id) else {
-            return .failed(.invalidArgument("downloaded_observation_id is not a UUID"))
-        }
         do {
-            let result = try await openFITS(uuid)
+            let result = try await openFITS(args.downloaded_observation_id)
             let body = Output(opened: true, observationID: result.observationID, localPath: result.localPath)
             let bytes = try JSONEncoder().encode(body)
             return .data(bytes)
@@ -106,7 +103,7 @@ struct OpenCubeTool: AITool {
         """#
     )
 
-    let openCube: @Sendable (_ id: UUID) async throws -> (observationID: String, localPath: String)
+    let openCube: @Sendable (_ id: String) async throws -> (observationID: String, localPath: String)
 
     func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         let args: Args
@@ -115,11 +112,8 @@ struct OpenCubeTool: AITool {
         } catch {
             return .failed(.invalidArgument("\(error)"))
         }
-        guard let uuid = UUID(uuidString: args.downloaded_observation_id) else {
-            return .failed(.invalidArgument("downloaded_observation_id is not a UUID"))
-        }
         do {
-            let result = try await openCube(uuid)
+            let result = try await openCube(args.downloaded_observation_id)
             let body = Output(opened: true, observationID: result.observationID, localPath: result.localPath)
             let bytes = try JSONEncoder().encode(body)
             return .data(bytes)
@@ -181,6 +175,72 @@ struct SetSearchFocusTool: AITool {
             let body = Output(applied: true, raDeg: args.raDeg, decDeg: args.decDeg)
             let bytes = try JSONEncoder().encode(body)
             return .data(bytes)
+        } catch {
+            return .failed(.backendError("\(error)"))
+        }
+    }
+}
+
+// MARK: - choose_viewer
+
+/// Dismiss the NAXIS≥3 "Open as…" sheet by picking 2D FITS, 3D Cube,
+/// or closing it. Live-applied. The sheet is the same one the user
+/// sees after dropping a cube or clicking a local/VOSpace FITS with
+/// a third axis — `get_current_view.pendingViewerChoice` is set
+/// while it is up.
+struct ChooseViewerTool: AITool {
+    static let verbClass: VerbClass = .viewState
+    static let agentSafe: Bool = true
+
+    struct Args: Decodable, Sendable {
+        let viewer: String
+    }
+
+    struct Output: Encodable, Sendable {
+        let applied: Bool
+        let viewer: String
+        let path: String?
+        let note: String
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "choose_viewer",
+        description: "Pick 2D vs 3D for the Open as… sheet that appears when a FITS file has NAXIS≥3. Pass viewer 'fits' (2D FITS Viewer), 'cube' (3D Cube Viewer), or 'dismiss' (close the sheet without opening). Live-applied; no proposal. Call this when `get_current_view.pendingViewerChoice` is set — FITS/cube steering tools will fail until the sheet is resolved. Prefer `open_fits_file` / `open_cube` / `open_local_file(viewer:)` when you already know which viewer you want, so the sheet never appears.",
+        schema: #"""
+        {
+          "type": "object",
+          "required": ["viewer"],
+          "properties": {
+            "viewer": {
+              "type": "string",
+              "enum": ["fits", "cube", "dismiss"],
+              "description": "fits = 2D FITS Viewer; cube = 3D Cube Viewer; dismiss = close the sheet."
+            }
+          },
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    let choose: @Sendable (_ viewer: String) async throws -> Output
+
+    func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
+        let args: Args
+        do {
+            args = try JSONDecoder().decode(Args.self, from: arguments)
+        } catch {
+            return .failed(.invalidArgument("\(error)"))
+        }
+        let viewer = args.viewer.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard ["fits", "cube", "dismiss"].contains(viewer) else {
+            return .failed(.invalidArgument("viewer must be 'fits', 'cube', or 'dismiss'"))
+        }
+        do {
+            let body = try await choose(viewer)
+            let bytes = try JSONEncoder().encode(body)
+            return .data(bytes)
+        } catch let f as ToolFailureReason {
+            return .failed(f)
         } catch {
             return .failed(.backendError("\(error)"))
         }

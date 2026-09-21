@@ -24,7 +24,7 @@ struct ExportCubeFigureTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "export_cube_figure",
-        description: "Export the Cube Viewer's current view (slice or 3D volume) as an annotated publication figure PNG in the user's Downloads folder, using the export style the user last configured. `scale` is the raster multiplier 1-4 (default 2). Requires a cube to be open. Proposal-gated.",
+        description: "Export the Cube Viewer's current view (slice or 3D volume) as an annotated publication figure PNG in the user's Downloads folder, using the export style the user last configured. `scale` is the raster multiplier 1-4 (default 2). Requires a cube to be open; the export navigates to the Cube Viewer so the render can land. If nothing is open, call `open_cube` then `navigate_to(mode: cubeViewer)`. Proposal-gated.",
         schema: #"""
         {
           "type": "object",

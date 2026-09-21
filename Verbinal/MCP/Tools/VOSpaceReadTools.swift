@@ -38,7 +38,7 @@ struct ListVOSpacePathTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_vospace_path",
-        description: "List contents of a VOSpace path (root is empty string). Optional `limit` (default 200, max 500). The VOSpace REST endpoint doesn't always honour `?limit=` server-side, so the tool truncates client-side too — the response is always ≤ the requested limit. Requires auth.",
+        description: "List contents of a VOSpace path relative to the user's home (empty string is the root). Absolute `/home/<user>/…` and `/arc/home/<user>/…` prefixes are stripped so they are not double-prepended. Optional `limit` (default 200, max 500). The VOSpace REST endpoint doesn't always honour `?limit=` server-side, so the tool truncates client-side too — the response is always ≤ the requested limit. Requires auth.",
         schema: #"""
         {
           "type": "object",
@@ -80,6 +80,9 @@ struct ListVOSpacePathTool: JSONReadTool {
                 }
             )
         } catch {
+            if error is VOSpaceError, (error as? VOSpaceError) == .invalidPath {
+                throw ToolFailureReason.invalidArgument("path must not contain '..' segments")
+            }
             let message = "\(error)"
             if message.lowercased().contains("auth") {
                 throw ToolFailureReason.authRequired
@@ -102,7 +105,7 @@ struct GetVOSpaceNodeTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_vospace_node",
-        description: "Fetch metadata for one VOSpace node by absolute path.",
+        description: "Fetch metadata for one VOSpace node. `path` is relative to the user's home (`folder/file.txt`); absolute `/home/<user>/…` is accepted and stripped. Requires auth.",
         schema: #"""
         {
           "type": "object",
@@ -141,6 +144,8 @@ struct GetVOSpaceNodeTool: JSONReadTool {
             )
         } catch let f as ToolFailureReason {
             throw f
+        } catch VOSpaceError.invalidPath {
+            throw ToolFailureReason.invalidArgument("path must not contain '..' segments")
         } catch {
             throw ToolFailureReason.backendError("\(error)")
         }

@@ -204,12 +204,12 @@ public actor AIToolRouter {
                 if let hook = autoApplyHook,
                    await hook.shouldAutoApply(meta.verbClass, proposal) {
                     do {
-                        try await hook.apply(proposal.id)
+                        let extra = try await hook.apply(proposal.id)
                         emitAudit(name: name, args: rawArguments, context: context,
                                   outcome: .applied(proposal.id),
                                   verbClass: meta.verbClass,
                                   durationMS: msSince(started))
-                        let ack = AutoAppliedAck(proposal: proposal)
+                        let ack = AutoAppliedAck(proposal: proposal, extraJSON: extra)
                         let body = (try? JSONEncoder().encode(ack)) ?? Data()
                         return .data(body)
                     } catch {

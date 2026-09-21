@@ -447,7 +447,8 @@ struct CubeExportView: View {
 @MainActor
 func exportCubeFigureHeadless(model: CubeViewerModel, scale: CGFloat) throws -> URL {
     guard model.hasData else {
-        throw ToolFailureReason.targetNotResolved("No cube is open in the Cube Viewer")
+        throw ToolFailureReason.targetNotResolved(
+            "No cube is open in the Cube Viewer — call open_cube, then navigate_to(mode: cubeViewer).")
     }
     let d = UserDefaults.standard
     let style = CubeExportStyle(
@@ -468,7 +469,7 @@ func exportCubeFigureHeadless(model: CubeViewerModel, scale: CGFloat) throws -> 
     }
     guard let content else {
         throw ToolFailureReason.backendError(
-            "No rendered image is available yet — open the Cube Viewer so the render lands first")
+            "No rendered image is available yet — call navigate_to(mode: cubeViewer) so the render lands, then retry export_cube_figure.")
     }
 
     let plate = CubeExportPlate(

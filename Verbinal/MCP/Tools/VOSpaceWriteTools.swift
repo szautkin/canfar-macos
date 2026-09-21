@@ -110,8 +110,9 @@ struct UploadTextToVOSpaceTool: JSONWriteTool {
         let byteSize = args.content.utf8.count
         let cap = 1024 * 1024
         guard byteSize <= cap else {
-            throw ToolFailureReason.invalidArgument(
-                "content is \(byteSize) bytes; upload_text_to_vospace caps at \(cap) bytes (1 MB). For larger payloads, write locally and re-upload via upload_to_vospace."
+            throw ToolFailureReason.payloadTooLarge(
+                bytes: byteSize,
+                message: "upload_text_to_vospace caps at \(cap) bytes (1 MB). For larger payloads, write a local file and use upload_file_to_vospace (streaming PUT)."
             )
         }
         return try ProposalPlan.encoding(
@@ -138,13 +139,13 @@ struct DownloadFromVOSpaceTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_vospace_file",
-        description: "Download a VOSpace file to the user's Downloads folder. Synchronous with a 10-min applier deadline; a stuck transfer surfaces as `backendError` with the deadline named, not a silent hang. For files > ~100 MB on slow links: the underlying transfer can outlast the MCP transport timeout — on `Request timed out` re-check the Downloads folder before retrying, the bytes are often there.",
+        description: "Download a VOSpace file to the user's Downloads folder. `vospace_path` is relative to the user's home; absolute `/home/<user>/…` is accepted and stripped. Synchronous with a 10-min applier deadline; a stuck transfer surfaces as `backendError` with the deadline named, not a silent hang. For files > ~100 MB on slow links: the underlying transfer can outlast the MCP transport timeout — on `Request timed out` re-check the Downloads folder before retrying, the bytes are often there.",
         schema: #"""
         {
           "type": "object",
           "required": ["vospace_path"],
           "properties": {
-            "vospace_path": { "type": "string" }
+            "vospace_path": { "type": "string", "description": "Path relative to the user's VOSpace home; `/home/<user>/…` is accepted." }
           },
           "additionalProperties": false
         }

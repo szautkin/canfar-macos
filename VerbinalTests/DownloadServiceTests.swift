@@ -123,4 +123,17 @@ final class DownloadServiceTests: XCTestCase {
         let name = await service.extractFilename(from: resp, publisherID: "ivo://x?y/z")
         XCTAssertEqual(name, "NGC1234.fits")
     }
+
+    func testUniqueSuggestedFilenameReplacesGenericPkgNames() {
+        let unique = DownloadService.uniqueSuggestedFilename(
+            publisherID: "ivo://cadc.nrc.ca/CFHT?1525350",
+            suggested: "pkg.txt")
+        XCTAssertNotEqual(unique, "pkg.txt")
+        XCTAssertFalse(unique.lowercased().hasPrefix("pkg"))
+        XCTAssertEqual(
+            DownloadService.uniqueSuggestedFilename(
+                publisherID: "ivo://cadc.nrc.ca/CFHT?1525350/1525350i",
+                suggested: "1525350i.fits"),
+            "1525350i.fits")
+    }
 }

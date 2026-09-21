@@ -75,6 +75,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Link Crosshair / Sync Zoom toggles | `set_tab_sync` | live |
 | Search Here (⌘⇧L) | `search_at_crosshair` | live |
 | Export Figure sheet (NEW in UI too) | `export_fits_figure` | write |
+| "Open as…" 2D vs 3D sheet (NAXIS≥3) | `choose_viewer`; `get_current_view.pendingViewerChoice` | live/read |
 
 ## Cube viewer
 
@@ -120,7 +121,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Navigate between modes (now incl. AI Guide) | `navigate_to` (`aiGuide` added) | live |
 | Current view incl. Search sub-tab + result counts | `get_current_view` (enriched) | read |
 | Local file-browser panel: browse | `list_local_folder` | read |
-| Local file-browser panel: open file | `open_local_file` | live |
+| Local file-browser panel: open file | `open_local_file` (optional `viewer` skips Open as…) | live |
 | Settings ▸ Endpoints (effective URLs) | `get_endpoints` | read |
 | Settings ▸ AI Compute | `get_compute_config` | read |
 | Research module (downloads, notes, open in viewer, export) | pre-existing batch | mixed |

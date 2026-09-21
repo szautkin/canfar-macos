@@ -27,6 +27,13 @@ public protocol ProposalApplier: Sendable {
     func apply(_ proposal: PendingProposal) async throws
 }
 
+/// Appliers that return extra JSON for the auto-apply ack (new entity
+/// `id`, bulk `succeeded`/`failed`, …). The host prefers this when the
+/// applier conforms; otherwise it calls `apply` and the ack has no extra.
+public protocol ResultReportingApplier: ProposalApplier {
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data
+}
+
 /// Registry of appliers, keyed by `kind`. Held by AgentsService so the
 /// strip UI can dispatch without reaching into AppState directly.
 public actor ProposalApplierRegistry {

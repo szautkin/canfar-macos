@@ -27,11 +27,14 @@ struct ResolveTargetTool: JSONReadTool {
         let coordsys: String?
         let objectType: String?
         let morphologyType: String?
+        /// Present when `objectType` is a Simbad/NED passthrough — those
+        /// labels are noisy (M31 often comes back as AGN). Prefer coordinates.
+        let note: String?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "resolve_target",
-        description: "Look up a target name (e.g. 'M31', 'NGC 1234', 'HD 209458') and return its coordinates plus type/morphology. Service defaults to 'all'.",
+        description: "Look up a target name (e.g. 'M31', 'NGC 1234', 'HD 209458') and return its coordinates plus type/morphology. `objectType` is a noisy Simbad/NED passthrough (M31 is often labelled AGN) — prefer `raDeg`/`decDeg`. Service defaults to 'all'.",
         schema: #"""
         {
           "type": "object",
@@ -48,6 +51,9 @@ struct ResolveTargetTool: JSONReadTool {
     /// Closure that runs the resolver and returns a flat output the tool
     /// can encode without owning the service type.
     let resolve: @Sendable (_ name: String, _ service: String) async throws -> Output
+
+    static let objectTypeCaveat =
+        "objectType is a noisy Simbad/NED classification passthrough (e.g. M31 is often labelled AGN). Prefer raDeg/decDeg; treat objectType as a hint, not a canonical type."
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let svc = args.service ?? "all"

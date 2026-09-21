@@ -190,6 +190,12 @@ final class AgentsService {
     /// the activity feed entry can be tagged for the wand badge — the
     /// applier itself is unchanged.
     func applyProposal(_ id: UUID, autoApplied: Bool = false) async throws {
+        _ = try await applyProposalReturningResult(id, autoApplied: autoApplied)
+    }
+
+    /// Same as `applyProposal`, but returns extra JSON for the auto-apply
+    /// ack when the applier is a `ResultReportingApplier`.
+    func applyProposalReturningResult(_ id: UUID, autoApplied: Bool = false) async throws -> Data? {
         let pending = await proposals.list(origin: nil)
         guard let proposal = pending.first(where: { $0.id == id }) else {
             throw ProposalApplyError.backendError("proposal not pending: \(id)")
@@ -197,8 +203,14 @@ final class AgentsService {
         guard let applier = await applierRegistry.applier(for: proposal.kind) else {
             throw ProposalApplyError.noApplierForKind(proposal.kind)
         }
+        let extra: Data?
         do {
-            try await applier.apply(proposal)
+            if let reporting = applier as? any ResultReportingApplier {
+                extra = try await reporting.applyReturningResult(proposal)
+            } else {
+                try await applier.apply(proposal)
+                extra = nil
+            }
         } catch let pa as ProposalApplyError {
             throw pa
         } catch {
@@ -206,14 +218,7 @@ final class AgentsService {
         }
         _ = await proposals.markApplied(id)
         if autoApplied {
-            // Patch the activity entry the applier just appended — the
-            // applier doesn't have visibility into how it was invoked.
             activityStore.markAutoApplied(forProposal: id)
-            // Follow-on navigation: jump the user to the section where
-            // the just-applied change is visible. Gated by the
-            // followAgentActivity toggle so power users can stay
-            // focused. Skipped when the host hasn't wired a navigator
-            // (pre-bootstrap, tests).
             if followAgentActivity,
                let target = Self.navigationTarget(forKind: proposal.kind),
                let nav = navigator {
@@ -221,6 +226,7 @@ final class AgentsService {
             }
         }
         await refreshPending()
+        return extra
     }
 
     /// Map a proposal `kind` to the AppMode whose view will reflect the
@@ -235,7 +241,8 @@ final class AgentsService {
              "download_observation", "download_observations_bulk",
              "delete_downloaded_observation", "clear_research_archive":
             return .research
-        case "upload_to_vospace", "upload_text_to_vospace", "download_from_vospace",
+        case "upload_to_vospace", "upload_text_to_vospace", "upload_file_to_vospace",
+             "download_from_vospace",
              "vospace_mkdir", "delete_vospace_node":
             return .storage
         case "launch_session", "delete_session", "delete_sessions_bulk",
@@ -330,7 +337,7 @@ final class AgentsService {
                 guard let self else {
                     throw ProposalApplyError.backendError("AgentsService deallocated")
                 }
-                try await self.applyProposal(id, autoApplied: true)
+                return try await self.applyProposalReturningResult(id, autoApplied: true)
             }
         )
         let router = AIToolRouter(tools: tools, auditSink: multiSink,

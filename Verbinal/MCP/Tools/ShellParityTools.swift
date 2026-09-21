@@ -30,7 +30,7 @@ struct OpenVOSpaceFileTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "open_vospace_file",
-        description: "Download a FITS file from VOSpace (path relative to the user's home, from `list_vospace_path`) and open it in the right viewer — 2D images route to the FITS Viewer, spectral cubes (NAXIS≥3) to the Cube Viewer. The Storage browser's \"Open in FITS Viewer\" action. Downloads to a temporary location; proposal-gated like other VOSpace transfers.",
+        description: "Download a FITS file from VOSpace (path relative to the user's home, from `list_vospace_path`) and open it in the right viewer — 2D images route to the FITS Viewer; NAXIS≥3 files show the Open as… sheet (`get_current_view.pendingViewerChoice`) and this ack's `note` tells you to call `choose_viewer`. The Storage browser's \"Open in FITS Viewer\" action. Downloads to a temporary location; proposal-gated like other VOSpace transfers.",
         schema: #"""
         {
           "type": "object",
@@ -59,16 +59,23 @@ struct OpenVOSpaceFileTool: JSONWriteTool {
     }
 }
 
-struct OpenVOSpaceFileApplier: ProposalApplier {
+struct OpenVOSpaceFileApplier: ProposalApplier, ResultReportingApplier {
     let kind = "open_vospace_file"
     /// Downloads the file and routes it into the appropriate viewer.
-    let openFile: @Sendable (String) async throws -> Void
+    /// Returns an agent note when the Open as… sheet is showing.
+    let openFile: @Sendable (String) async throws -> String?
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(OpenVOSpaceFileTool.Payload.self, from: proposal.payload)
-        try await openFile(payload.path)
+        let note = try await openFile(payload.path)
         await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
+        let extra = AutoAppliedAck.Extra(note: note)
+        return (try? JSONEncoder().encode(extra)) ?? Data()
     }
 }
 
@@ -98,12 +105,12 @@ struct ListLocalFolderTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_local_folder",
-        description: "List a local folder (absolute `path`; defaults to the user's home) — the file-browser panel's view. Entries carry name, directory flag, size, and whether the file is FITS-openable (`open_local_file`). `supportedOnly: true` mirrors the panel's supported-types filter. Sandboxed locations the app cannot read surface as errors. Capped at 500 entries.",
+        description: "List a local folder the app can read. Omit `path` to list the user's Downloads (`/Users/<name>/Downloads` — the same path `list_open_tabs` reports). Only ~/Downloads and folders granted via `request_folder_access` (or the Storage file browser) are readable. Unreadable paths return typed `notReadable`. `supportedOnly: true` lists FITS-openable files (directories always listed). Capped at 500 entries.",
         schema: #"""
         {
           "type": "object",
           "properties": {
-            "path":          { "type": "string", "description": "Absolute folder path (default: the user's home)." },
+            "path":          { "type": "string", "description": "Absolute folder path (default: the user's Downloads)." },
             "supportedOnly": { "type": "boolean", "description": "Only FITS-openable files (directories always listed)." }
           },
           "additionalProperties": false
@@ -135,6 +142,8 @@ struct RequestFolderAccessTool: AITool {
     struct Output: Encodable, Sendable {
         let granted: Bool
         let path: String?
+        /// Guidance when the grant did not happen (non-interactive agent, cancel).
+        let note: String?
     }
 
     enum Result_: Sendable {
@@ -144,7 +153,7 @@ struct RequestFolderAccessTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "request_folder_access",
-        description: "Open a folder-picker so the USER can grant Verbinal read access to a local folder outside the sandbox default (Pictures, Documents, an external drive…). Needed before `list_local_folder`/`open_local_file` can reach files there — the macOS App Sandbox only grants ~/Downloads and folders the user explicitly picks. `startingPath` pre-targets the picker. Returns `granted:false` if the user cancels. Live-applied; no proposal.",
+        description: "Ask the USER to grant Verbinal read access to a local folder outside the sandbox default (Pictures, Documents, an external drive…). Needed before `list_local_folder`/`open_local_file` can reach files there — the macOS App Sandbox only grants ~/Downloads and folders the user explicitly picks. MCP clients cannot show the macOS folder picker: from an agent this returns `granted: false` immediately with guidance to grant the folder in Storage. In the in-app AI Guide, `startingPath` pre-targets the picker. Live-applied; no proposal.",
         schema: #"""
         {
           "type": "object",
@@ -165,10 +174,25 @@ struct RequestFolderAccessTool: AITool {
         } catch {
             return .failed(.invalidArgument("\(error)"))
         }
+        if case .external = context.origin {
+            let body = Output(
+                granted: false,
+                path: nil,
+                note: "MCP clients cannot show the macOS folder picker. Ask the user to grant the folder in Storage (file browser ▸ Grant Access), then retry list_local_folder / open_local_file."
+            )
+            do {
+                let bytes = try JSONEncoder().encode(body)
+                return .data(bytes)
+            } catch {
+                return .failed(.backendError("\(error)"))
+            }
+        }
         let body: Output
         switch await request(args.startingPath) {
-        case .granted(let path): body = Output(granted: true, path: path)
-        case .cancelled: body = Output(granted: false, path: nil)
+        case .granted(let path): body = Output(granted: true, path: path, note: nil)
+        case .cancelled: body = Output(
+            granted: false, path: nil,
+            note: "The user cancelled the folder picker.")
         }
         do {
             let bytes = try JSONEncoder().encode(body)
@@ -189,30 +213,42 @@ struct OpenLocalFileTool: AITool {
 
     struct Args: Decodable, Sendable {
         let path: String
+        /// Skip the Open as… sheet: `"fits"` or `"cube"`.
+        let viewer: String?
     }
 
     struct Output: Encodable, Sendable {
         let applied: Bool
         let path: String
+        /// `"fits"` or `"cube"` when the file is already open; nil when
+        /// the Open as… sheet is waiting (`pendingViewerChoice` true).
+        let viewer: String?
+        let pendingViewerChoice: Bool
+        let note: String?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "open_local_file",
-        description: "Open a local FITS file (absolute path, e.g. from `list_local_folder`) in the right viewer — 2D images route to the FITS Viewer, spectral cubes to the Cube Viewer; the file-browser panel's click. For files the research archive already tracks, prefer `open_fits_file` / `open_cube` by observation id. Live-applied; no proposal.",
+        description: "Open a local FITS file (absolute path, e.g. from `list_local_folder`) in the right viewer. 2D images go to the FITS Viewer. NAXIS≥3 files show the same Open as… sheet the UI uses — this call then returns `pendingViewerChoice: true` and you must call `choose_viewer` (fits / cube / dismiss). Pass `viewer` ('fits' or 'cube') to skip the sheet. For files the research archive already tracks, prefer `open_fits_file` / `open_cube` by observation id. Live-applied; no proposal.",
         schema: #"""
         {
           "type": "object",
           "required": ["path"],
           "properties": {
-            "path": { "type": "string", "minLength": 1, "description": "Absolute path to a FITS file." }
+            "path": { "type": "string", "minLength": 1, "description": "Absolute path to a FITS file." },
+            "viewer": {
+              "type": "string",
+              "enum": ["fits", "cube"],
+              "description": "Skip the Open as… sheet and open in this viewer. Omit to detect NAXIS≥3 and prompt via choose_viewer."
+            }
           },
           "additionalProperties": false
         }
         """#
     )
 
-    /// Returns an error message on failure, or nil when routed to a viewer.
-    let open: @Sendable (String) async -> String?
+    /// Throws `ToolFailureReason` on failure.
+    let open: @Sendable (_ path: String, _ viewer: String?) async throws -> Output
 
     func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         let args: Args
@@ -221,12 +257,16 @@ struct OpenLocalFileTool: AITool {
         } catch {
             return .failed(.invalidArgument("\(error)"))
         }
-        if let message = await open(args.path) {
-            return .failed(.invalidArgument(message))
+        let viewer = args.viewer?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if let viewer, !["fits", "cube"].contains(viewer) {
+            return .failed(.invalidArgument("viewer must be 'fits' or 'cube'"))
         }
         do {
-            let bytes = try JSONEncoder().encode(Output(applied: true, path: args.path))
+            let body = try await open(args.path, viewer)
+            let bytes = try JSONEncoder().encode(body)
             return .data(bytes)
+        } catch let f as ToolFailureReason {
+            return .failed(f)
         } catch {
             return .failed(.backendError("\(error)"))
         }

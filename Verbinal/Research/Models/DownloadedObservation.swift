@@ -78,14 +78,41 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
         return "\(safeCollection)/\(safeProduct)"
     }
 
-    /// Full local file URL.
+    /// Full local file URL. Prefers a sandbox-readable candidate
+    /// (tilde expansion, container ↔ user-facing Downloads) so FITS
+    /// tools and the research archive agree on whether the file is there.
     var localURL: URL {
-        URL(fileURLWithPath: localPath)
+        resolvedReadableURL ?? URL(fileURLWithPath: expandedLocalPath)
     }
 
-    /// Whether the local file still exists on disk.
+    /// Whether the local file still exists on disk — including the
+    /// sandbox-mapped Downloads twin of `localPath`. Do not treat a
+    /// raw-string miss as "file gone"; the bookmark may still open it.
     var fileExists: Bool {
-        FileManager.default.fileExists(atPath: localPath)
+        resolvedReadableURL != nil
+    }
+
+    /// First existing file URL for `localPath`, or `nil` if none of the
+    /// sandbox/tilde candidates exist. Bookmark resolution is separate
+    /// (FITS tools try the bookmark even when this is nil).
+    var resolvedReadableURL: URL? {
+        #if os(macOS)
+        return LocalFolderAccessStore.readableURL(for: localPath, directory: false)
+        #else
+        var isDir: ObjCBool = false
+        let path = expandedLocalPath
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir),
+              !isDir.boolValue else { return nil }
+        return URL(fileURLWithPath: path)
+        #endif
+    }
+
+    private var expandedLocalPath: String {
+        #if os(macOS)
+        return LocalFolderAccessStore.expandedPath(localPath)
+        #else
+        return (localPath as NSString).expandingTildeInPath
+        #endif
     }
 
     /// Display filename extracted from the local path.

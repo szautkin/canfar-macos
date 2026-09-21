@@ -115,12 +115,8 @@ struct GetObservationCAOM2Tool: JSONReadTool {
         // so requiring `ivo://` here forced agents to round-trip
         // through a translator that doesn't always exist.
         let trimmed = args.publisher_id.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lower = trimmed.lowercased()
-        if !lower.hasPrefix("ivo://") && !lower.hasPrefix("caom:") {
-            throw ToolFailureReason.unsupportedIdScheme(args.publisher_id)
-        }
         if CAOM2Observation.observationURI(fromPublisherID: trimmed) == nil {
-            throw ToolFailureReason.planePublisherIdNotSupported(args.publisher_id)
+            throw ToolFailureReason.unsupportedIdScheme(args.publisher_id)
         }
 
         do {
