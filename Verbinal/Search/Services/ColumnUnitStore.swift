@@ -49,14 +49,3 @@ struct UserDefaultsColumnUnitStore: ColumnUnitStore, @unchecked Sendable {
         }
     }
 }
-
-/// In-memory store — useful in unit tests and previews.
-final class InMemoryColumnUnitStore: ColumnUnitStore, @unchecked Sendable {
-    private var storage: [String: String] = [:]
-
-    init() {}
-
-    func selectedUnit(forColumnID columnID: String) -> String? { storage[columnID] }
-    func setSelectedUnit(_ unitID: String, forColumnID columnID: String) { storage[columnID] = unitID }
-    func clearAll() { storage.removeAll() }
-}

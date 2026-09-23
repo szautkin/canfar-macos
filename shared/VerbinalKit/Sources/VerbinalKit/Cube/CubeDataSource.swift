@@ -6,10 +6,11 @@
 
 import Foundation
 
-/// A random-access byte source for a spectral cube: local (memory-mapped) or
-/// remote (HTTP range reads). Mirrors the `DataSource` abstraction in the
-/// v-cube web viewer so the same streaming ingest works whether the cube lives
-/// on disk or behind a URL — we never need the whole file resident in RAM.
+/// A random-access byte source for a spectral cube. Mirrors the `DataSource`
+/// abstraction in the v-cube web viewer so ingest streams planes instead of
+/// holding the whole file in RAM. The app ships the local memory-mapped
+/// source; a remote (HTTP range-read) source can conform without touching
+/// the parser.
 public protocol CubeDataSource: Sendable {
     var name: String { get }
     var size: Int { get }
@@ -41,33 +42,5 @@ public struct LocalFileCubeSource: CubeDataSource {
         let end = Swift.min(offset + length, data.count)
         // subdata copies just the requested pages out of the mmap.
         return data.subdata(in: (data.startIndex + offset)..<(data.startIndex + end))
-    }
-}
-
-/// Remote source backed by HTTP range reads. The transport is injected so
-/// `VerbinalKit` stays free of the app's `NetworkClient`: the app supplies a
-/// closure that issues `Range: bytes=…` GETs. `size` comes from a prior HEAD /
-/// Content-Length probe.
-public struct RemoteCubeSource: CubeDataSource {
-    public let name: String
-    public let size: Int
-    private let rangeReader: @Sendable (_ offset: Int, _ length: Int) async throws -> Data
-
-    public init(
-        name: String,
-        size: Int,
-        rangeReader: @escaping @Sendable (_ offset: Int, _ length: Int) async throws -> Data
-    ) {
-        self.name = name
-        self.size = size
-        self.rangeReader = rangeReader
-    }
-
-    public func read(offset: Int, length: Int) async throws -> Data {
-        guard offset >= 0, length >= 0, offset <= size else {
-            throw FITSError.invalidFile("Read out of bounds at offset \(offset)")
-        }
-        let clamped = Swift.min(length, size - offset)
-        return try await rangeReader(offset, clamped)
     }
 }

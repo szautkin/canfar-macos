@@ -209,13 +209,8 @@ func exportFITSFigureHeadless(model: FITSViewerModel, scale: CGFloat) throws -> 
         throw ToolFailureReason.backendError("Figure rendering failed")
     }
 
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyyMMdd-HHmmss"
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-        ?? FileManager.default.temporaryDirectory
-    let dest = downloads.appendingPathComponent(
-        "\(FITSExportPlate.baseName(for: model))-\(formatter.string(from: Date())).png")
+    let dest = FileHelper.timestampedDownloadsURL(
+        stem: FITSExportPlate.baseName(for: model), ext: "png")
     try data.write(to: dest)
     return dest
 }

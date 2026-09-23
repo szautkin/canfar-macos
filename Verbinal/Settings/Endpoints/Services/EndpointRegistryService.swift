@@ -135,7 +135,8 @@ final class EndpointRegistryService {
 
         let resourceCaps: [String: String]
         do {
-            resourceCaps = try await client.fetchResourceCaps(from: "\(registry)/resource-caps")
+            resourceCaps = try await client.fetchResourceCaps(
+                from: APIEndpoints(registryBaseURL: registry).resourceCapsURL)
         } catch {
             Self.logger.warning("resource-caps fetch failed: \(error.localizedDescription, privacy: .public)")
             refreshState = .failed("Could not reach the registry: \(error.localizedDescription)")

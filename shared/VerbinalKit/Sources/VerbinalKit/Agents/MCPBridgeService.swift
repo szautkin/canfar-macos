@@ -37,15 +37,9 @@ public actor MCPBridgeService {
         }
     }
 
-    public enum BridgeError: Error, Equatable {
-        case notInitialized
-        case transportClosed
-    }
-
     /// Pluggable approval gate. Returns `true` if the connecting client
-    /// is permitted to proceed beyond `initialize`. Default
-    /// implementations: `.allowAll` (dev), `.deny` (Settings off),
-    /// `.userApproval` (sheet — wired in Phase 3).
+    /// is permitted to proceed beyond `initialize`. The app passes
+    /// `.allowAll` — the Agents toggle upstream is the gate today.
     public struct ApprovalGate: Sendable {
         public let permit: @Sendable (_ clientID: String, _ clientInfo: ClientInfo?) async -> Bool
 
@@ -54,7 +48,6 @@ public actor MCPBridgeService {
         }
 
         public static let allowAll = ApprovalGate { _, _ in true }
-        public static let deny = ApprovalGate { _, _ in false }
     }
 
     private let router: AIToolRouter

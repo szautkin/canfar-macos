@@ -93,13 +93,12 @@ final class DataLinkResultTests: XCTestCase {
         XCTAssertEqual(result.previews.count, 0)
     }
 
-    func testBestImagePrefersPreview() {
+    func testParsesPreviewLink() {
         let result = DataLinkResult.fromVOTable(sampleVOTable)
-        XCTAssertEqual(result.bestImage?.absoluteString, "https://example.com/preview.png",
-                       "bestImage should prefer preview over thumbnail")
+        XCTAssertEqual(result.firstPreview?.absoluteString, "https://example.com/preview.png")
     }
 
-    func testBestImageFallsBackToThumbnail() {
+    func testParsesThumbnailOnlyResult() {
         let xml = """
         <VOTABLE><RESOURCE><TABLE>
         <FIELD name="access_url" datatype="char"/>
@@ -112,6 +111,7 @@ final class DataLinkResultTests: XCTestCase {
         </TABLE></RESOURCE></VOTABLE>
         """
         let result = DataLinkResult.fromVOTable(xml)
-        XCTAssertEqual(result.bestImage?.absoluteString, "https://example.com/thumb.jpg")
+        XCTAssertEqual(result.firstThumbnail?.absoluteString, "https://example.com/thumb.jpg")
+        XCTAssertNil(result.firstPreview)
     }
 }

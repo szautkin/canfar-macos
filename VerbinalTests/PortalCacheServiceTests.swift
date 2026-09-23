@@ -79,7 +79,7 @@ final class PortalCacheServiceTests: XCTestCase {
     func testPortalSettingsIsEmptyWhenAllNil() {
         let s = PortalSettings(username: "alice")
         XCTAssertTrue(s.isEmpty)
-        XCTAssertFalse(s.hasResourceDefaults)
+        XCTAssertNil(s.defaultResourceType)
     }
 
     func testPortalSettingsNotEmptyWithProject() {
@@ -93,7 +93,6 @@ final class PortalCacheServiceTests: XCTestCase {
             defaultResourceType: "fixed",
             defaultCores: 4, defaultRam: 16, defaultGpus: 0
         )
-        XCTAssertTrue(s.hasResourceDefaults)
         XCTAssertFalse(s.isEmpty)
     }
 
@@ -126,7 +125,6 @@ final class PortalCacheServiceTests: XCTestCase {
         XCTAssertEqual(settings?.defaultCores, 4)
         XCTAssertEqual(settings?.defaultRam, 16)
         XCTAssertEqual(settings?.defaultGpus, 1)
-        XCTAssertTrue(settings?.hasResourceDefaults ?? false)
     }
 
     func testSetDefaultResourcesFlexible() {

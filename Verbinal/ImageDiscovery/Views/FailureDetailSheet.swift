@@ -23,13 +23,6 @@ struct FailureDetailSheet: View {
     let detail: ImageDiscoveryModel.FailureDetail
     @Environment(\.dismiss) private var dismiss
 
-    private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .medium
-        return f
-    }()
-
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -62,7 +55,7 @@ struct FailureDetailSheet: View {
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
                 HStack(spacing: 8) {
-                    Text(Self.timeFormatter.string(from: detail.attemptedAt))
+                    Text(SharedFormatters.userMediumDateTime.string(from: detail.attemptedAt))
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                     if let jobID = detail.jobID {

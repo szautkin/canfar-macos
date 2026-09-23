@@ -198,30 +198,6 @@ final class SearchResultsModelTests: XCTestCase {
         XCTAssertNil(model.exportURL(format: "csv"))
     }
 
-    func testHasClientSideAdjustmentsWhenFilterActive() {
-        let model = makeModel()
-        model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "Q", maxRec: 30000)
-        XCTAssertFalse(model.hasClientSideAdjustments)
-        model.setFilter("collection", text: "JWST")
-        XCTAssertTrue(model.hasClientSideAdjustments)
-    }
-
-    // MARK: - Clear
-
-    func testClearResults() {
-        let model = makeModel()
-        model.loadResults(headers: sampleHeaders, rows: sampleRows, query: "SELECT *", maxRec: 30000)
-        XCTAssertEqual(model.results.count, 2)
-
-        model.clearResults()
-        XCTAssertEqual(model.results.count, 0)
-        XCTAssertEqual(model.columns.count, 0)
-        XCTAssertEqual(model.totalRows, 0)
-        XCTAssertFalse(model.maxRecordReached)
-        XCTAssertEqual(model.adqlQuery, "")
-        XCTAssertEqual(model.displayedRows.count, 0)
-    }
-
     // MARK: - ADQL Query Storage
 
     func testADQLQueryStoredOnLoad() {

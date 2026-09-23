@@ -90,15 +90,6 @@ final class LocalFolderAccessStore {
         }
     }
 
-    /// The granted root (or Downloads) that contains `url`, if any.
-    func accessRoot(for url: URL) -> URL? {
-        let target = url.standardizedFileURL.path
-        for root in Self.downloadsRoots {
-            if Self.isDescendant(target, of: root.standardizedFileURL.path) { return root }
-        }
-        return grantedRoots.first { Self.isDescendant(target, of: $0.standardizedFileURL.path) }
-    }
-
     /// Map a user-facing Downloads path onto the container Downloads
     /// (the location the sandbox can actually read), and vice versa.
     /// Other paths pass through unchanged.
@@ -171,25 +162,6 @@ final class LocalFolderAccessStore {
             var isDir: ObjCBool = false
             if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
                isDir.boolValue == directory {
-                return url
-            }
-        }
-        return nil
-    }
-
-    /// First candidate `contentsOfDirectory` can actually enumerate.
-    /// Listing the container Downloads can fail while the user-facing
-    /// path (or vice versa) succeeds.
-    nonisolated static func listableDirectory(at path: String) -> URL? {
-        for url in candidateURLs(for: path, isDirectory: true) {
-            var isDir: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
-                  isDir.boolValue else { continue }
-            if (try? FileManager.default.contentsOfDirectory(
-                at: url,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            )) != nil {
                 return url
             }
         }

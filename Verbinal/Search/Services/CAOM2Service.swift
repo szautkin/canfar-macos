@@ -75,7 +75,7 @@ actor CAOM2Service {
             return cached
         }
 
-        guard var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.metaPath)") else {
+        guard var components = URLComponents(string: TAPConfig.metaURL) else {
             throw CAOM2ServiceError.transport(URLError(.badURL))
         }
         components.queryItems = [URLQueryItem(name: "ID", value: observationURI)]

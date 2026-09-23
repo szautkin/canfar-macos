@@ -72,6 +72,10 @@ delete, Cube Intel volume hardening, Research local FITS import (see
   true only when an image HDU actually loaded — a PDF renamed `.fits`
   no longer stays as an active dead document. `openTabPaths` keeps
   one entry per tab, index-aligned with `activeTabIndex`.
+- Search: MJD date cells and the ADQL date literals (public-only,
+  data-release) use a fixed Gregorian/POSIX formatter. On a Mac set to
+  a non-Gregorian calendar (e.g. Buddhist) they had rendered the year
+  as 2569 and queried the wrong release date.
 - Image Discovery inspector: POSIX `mktemp` (BusyBox Alpine hosts
   reject GNU `--suffix=.py` — live job `wzvbjl5j`); syft unpacks to
   `/scratch` when present; inspector job size is 2 CPU / 8 GB so

@@ -25,10 +25,7 @@ enum MiscBuilder {
     /// Build public-only clause: `Plane.dataRelease <= '<today ISO>'`
     static func buildPublicOnlyClause(_ publicOnly: Bool) -> String? {
         guard publicOnly else { return nil }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        let today = formatter.string(from: Date())
+        let today = SharedFormatters.yyyyMMddUTC.string(from: Date())
         return "Plane.dataRelease <= '\(today)'"
     }
 
@@ -66,9 +63,9 @@ enum MiscBuilder {
         case .equals:
             guard let valueRaw = raw.valueRaw else { return nil }
             if let expanded = try? expandSingleDateToRange(valueRaw) {
-                let lowerDate = Date(timeIntervalSince1970: (expanded.lower - 40587) * 86400)
-                let upperDate = Date(timeIntervalSince1970: (expanded.upper - 40587) * 86400)
-                return "\(column) >= '\(formatISO(lowerDate))' AND \(column) <= '\(formatISO(upperDate))'"
+                let lower = formatISO(mjdToDate(expanded.lower))
+                let upper = formatISO(mjdToDate(expanded.upper))
+                return "\(column) >= '\(lower)' AND \(column) <= '\(upper)'"
             }
             return "\(column) = '\(toTimestamp(valueRaw))'"
         }
@@ -80,22 +77,26 @@ enum MiscBuilder {
         let trimmed = dateStr.trimmingCharacters(in: .whitespaces)
 
         // If numeric (MJD/JD), convert to ISO
-        if let num = Double(trimmed), trimmed.range(of: #"^[0-9.]+$"#, options: .regularExpression) != nil {
-            if let mjd = try? dateToMJDValue(trimmed) {
-                let date = Date(timeIntervalSince1970: (mjd - 40587) * 86400)
-                return formatISO(date)
-            }
-            let _ = num // suppress unused warning
+        if Double(trimmed) != nil, trimmed.range(of: #"^[0-9.]+$"#, options: .regularExpression) != nil,
+           let mjd = try? dateToMJDValue(trimmed) {
+            return formatISO(mjdToDate(mjd))
         }
 
         // Already ISO-like; normalize separator
         return trimmed.replacingOccurrences(of: "T", with: " ")
     }
 
+    /// ADQL timestamp literal. POSIX locale: a fixed format must not
+    /// follow the user's calendar (a Buddhist-calendar Mac would emit 2569).
+    private static let isoFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        f.timeZone = TimeZone(identifier: "UTC")
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
     private static func formatISO(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        return formatter.string(from: date)
+        isoFormatter.string(from: date)
     }
 }

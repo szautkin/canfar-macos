@@ -146,15 +146,6 @@ struct ReadVOSpaceFileTool: JSONReadTool {
         )
     }
 
-    /// File extensions that are reliably textual. The decision to
-    /// return UTF-8 vs base64 also requires the bytes to round-trip
-    /// as valid UTF-8 — having the extension here just opts the
-    /// file into the *attempt*.
-    static let textualExtensions: Set<String> = [
-        "txt", "csv", "tsv", "json", "xml", "yaml", "yml",
-        "py", "sh", "md", "log", "ini", "conf", "toml",
-    ]
-
     /// Map file extension to a coarse content-type. Doesn't peek at
     /// the bytes — the encoding decision (`encodeContent`) does.
     static func inferContentType(path: String) -> String {
@@ -179,21 +170,17 @@ struct ReadVOSpaceFileTool: JSONReadTool {
         }
     }
 
-    /// Decide UTF-8 vs base64. Textual extensions get a UTF-8 try
+    /// Decide UTF-8 vs base64. Textual content types get a UTF-8 try
     /// first; if the bytes don't round-trip as valid UTF-8 we fall
     /// back to base64 (so a `.csv` with embedded null bytes or
     /// latin-1 garbage doesn't surface as nonsense). Everything
     /// else rides base64 directly.
     static func encodeContent(_ data: Data, contentType: String) -> (encoding: String, content: String) {
-        let ext = contentType.split(separator: "/").last.map(String.init) ?? ""
-        // Map content-type's subtype back to extension list when
-        // possible; otherwise rely on the prefix.
         let looksTextual = contentType.hasPrefix("text/")
             || contentType == "application/json"
             || contentType == "application/xml"
             || contentType == "application/yaml"
             || contentType == "application/x-sh"
-            || ext == "x-python"
         if looksTextual, let s = String(data: data, encoding: .utf8) {
             return ("utf8", s)
         }

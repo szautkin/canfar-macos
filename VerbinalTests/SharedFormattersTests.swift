@@ -97,16 +97,22 @@ final class SharedFormattersTests: XCTestCase {
 
     // MARK: - User-locale display formatters
 
-    func testUserMediumDateProducesNonEmptyOutput() {
+    func testUserMediumDateShortTimeProducesNonEmptyOutput() {
         // Locale-dependent rendering; assert it produces something rather than
         // a fixed English string so the test is locale-agnostic.
         let now = Date(timeIntervalSince1970: 1_710_499_845) // 2024-03-15T10:30:45Z
-        XCTAssertFalse(SharedFormatters.userMediumDate.string(from: now).isEmpty)
+        XCTAssertFalse(SharedFormatters.userMediumDateShortTime.string(from: now).isEmpty)
+        XCTAssertFalse(SharedFormatters.userMediumDateTime.string(from: now).isEmpty)
     }
 
-    func testUserMediumDateShortTimeProducesNonEmptyOutput() {
-        let now = Date(timeIntervalSince1970: 1_710_499_845)
-        XCTAssertFalse(SharedFormatters.userMediumDateShortTime.string(from: now).isEmpty)
+    func testFileNameStampIsSortableAndPOSIX() throws {
+        let f = SharedFormatters.fileNameStamp
+        XCTAssertEqual(f.locale.identifier, "en_US_POSIX")
+        // Local wall-clock components, matching the formatter's local zone.
+        let date = try XCTUnwrap(DateComponents(
+            calendar: Calendar(identifier: .gregorian),
+            year: 2026, month: 9, day: 3, hour: 7, minute: 5, second: 9).date)
+        XCTAssertEqual(f.string(from: date), "20260903-070509")
     }
 
     func testMonthDayShortTimeMatchesCustomPattern() {

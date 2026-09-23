@@ -7,32 +7,16 @@
 import SwiftUI
 import os.log
 
-/// Passes the crosshair's actual screen position from the image transform chain
-/// up to the canvas overlay, so H/V lines are always at the correct position.
-private struct CrosshairScreenPosKey: PreferenceKey {
-    // `defaultValue` is read on the main actor by SwiftUI; the
-    // immutable `nil` literal is trivially safe across actors,
-    // but the strict-concurrency check still flags `static var`.
-    // `static let` for true immutability isn't allowed by the
-    // PreferenceKey protocol (it requires `var`), so we mark
-    // unsafe-nonisolated and rely on SwiftUI's actor semantics.
-    nonisolated(unsafe) static var defaultValue: CGPoint? = nil
-    static func reduce(value: inout CGPoint?, nextValue: () -> CGPoint?) {
-        value = value ?? nextValue()
-    }
-}
-
 /// Displays the rendered FITS image with zoom, pan, and crosshair interaction.
 ///
-/// Crosshair rendering uses a two-layer approach:
-/// 1. An invisible marker inside the image transform chain (tracks the pixel exactly)
-/// 2. H/V lines in canvas space at the marker's actual screen position (always horizontal/vertical)
+/// The crosshair is drawn as H/V lines in canvas space at the crosshair
+/// pixel's screen position (`imageToScreen`), so the lines stay horizontal
+/// and vertical under any image rotation.
 struct FITSImageView: View {
     var model: FITSViewerModel
     var tabHost: FITSTabHostModel?
 
     @Environment(\.fitsToast) private var toast
-    @State private var crosshairScreenPos: CGPoint?
 
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "FITSImageView")
 

@@ -160,7 +160,7 @@ actor ImageDiscoveryCoordinator {
 
     /// Whether we've uploaded `probe-<scriptHash>.sh` to the user's
     /// VOSpace this session. Once true, subsequent probes skip the
-    /// upload. Cleared by `setProbeScriptNotUploaded()` for tests.
+    /// upload.
     private var probeScriptUploaded: Bool = false
 
     /// Same as `probeScriptUploaded` but for the inspector path.
@@ -1115,12 +1115,6 @@ actor ImageDiscoveryCoordinator {
         for cont in inFlightContinuations.values {
             cont.yield(count)
         }
-    }
-
-    /// Test hook: pretend we haven't uploaded the probe script yet,
-    /// so the next `discover` re-runs the upload path.
-    func setProbeScriptNotUploaded() {
-        probeScriptUploaded = false
     }
 
     /// Test hook: number of live `inFlightCountChanges()` subscribers

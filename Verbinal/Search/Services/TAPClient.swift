@@ -38,7 +38,7 @@ actor TAPClient {
     /// surfacing the failure. 4xx (bad ADQL etc.) is *not* retried.
     func tapQuery(adql: String, maxRec: Int = TAPConfig.maxRecords) async throws -> String {
         try await tapQueryAt(
-            endpoint: "\(TAPConfig.baseURL)\(TAPConfig.syncPath)",
+            endpoint: TAPConfig.syncURL,
             adql: adql,
             maxRec: maxRec
         )
@@ -317,7 +317,7 @@ actor TAPClient {
 
     /// Resolve a target name to coordinates using the CADC target resolver.
     func resolveTarget(name: String, service: String = "all") async throws -> ResolverResult {
-        guard var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.resolverPath)") else {
+        guard var components = URLComponents(string: TAPConfig.resolverURL) else {
             throw SearchError.networkError("Invalid resolver URL")
         }
         components.queryItems = [
@@ -372,7 +372,7 @@ actor TAPClient {
             return cached
         }
 
-        guard var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.datalinkPath)") else {
+        guard var components = URLComponents(string: TAPConfig.datalinkURL) else {
             throw SearchError.networkError("Invalid DataLink URL")
         }
         components.queryItems = [
@@ -417,7 +417,7 @@ actor TAPClient {
 
     /// Build single-file download URL for an observation.
     static func downloadURL(publisherID: String) -> URL? {
-        var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.downloadPath)")
+        var components = URLComponents(string: TAPConfig.downloadURL)
         components?.queryItems = [URLQueryItem(name: "ID", value: publisherID)]
         return components?.url
     }

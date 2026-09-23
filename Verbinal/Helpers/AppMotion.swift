@@ -82,12 +82,6 @@ extension AnyTransition {
     /// cross-fade with no spatial movement.
     static var appFade: AnyTransition { .opacity }
 
-    /// Scale-from-origin hero, lifted verbatim from AI Guide's proven
-    /// tile→panel expand. Pass the captured tile-frame anchor.
-    static func appHeroScale(anchor: UnitPoint) -> AnyTransition {
-        .scale(scale: 0.3, anchor: anchor).combined(with: .opacity)
-    }
-
     /// Whole-screen transition. macOS = opacity + a *tiny* (≤1.5%) scale so
     /// the content settles without "breathing"; iOS = pure opacity here
     /// (the directional slide is `appScreenDirectional` below). Callers must

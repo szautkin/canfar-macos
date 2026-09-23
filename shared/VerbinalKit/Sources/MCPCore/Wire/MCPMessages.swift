@@ -146,30 +146,6 @@ public struct ListResourcesResult: Codable, Sendable, Equatable {
     }
 }
 
-// MARK: - resources/read
-
-public struct ReadResourceParams: Codable, Sendable, Equatable {
-    public let uri: String
-    public init(uri: String) { self.uri = uri }
-}
-
-public struct ResourceContents: Codable, Sendable, Equatable {
-    public let uri: String
-    public let mimeType: String?
-    public let text: String?
-
-    public init(uri: String, mimeType: String? = nil, text: String? = nil) {
-        self.uri = uri
-        self.mimeType = mimeType
-        self.text = text
-    }
-}
-
-public struct ReadResourceResult: Codable, Sendable, Equatable {
-    public let contents: [ResourceContents]
-    public init(contents: [ResourceContents]) { self.contents = contents }
-}
-
 // MARK: - tools/call
 
 public struct CallToolParams: Codable, Sendable {

@@ -229,6 +229,7 @@ final class ExportService {
     private static func bundleName() -> String {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd_HHmmss"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return "Verbinal-Export-\(f.string(from: Date()))"
     }
 

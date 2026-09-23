@@ -75,7 +75,6 @@ struct DataLinkResult {
     /// then any science file. Association JSON loses to a FITS sibling.
     var bestDirectFileURL: URL? { DataLinkFile.preferred(in: directFiles)?.url }
     var isEmpty: Bool { thumbnails.isEmpty && previews.isEmpty && directFiles.isEmpty }
-    var bestImage: URL? { previews.first ?? thumbnails.first }
 }
 
 // MARK: - VOTable Parsing

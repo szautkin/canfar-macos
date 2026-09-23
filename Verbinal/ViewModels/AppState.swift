@@ -351,13 +351,11 @@ final class AppState {
     // Navigation state
     var currentMode: AppMode = .landing
     var pendingModeAfterLogin: AppMode?
-    private(set) var navigationStack: [AppMode] = []
-    var canGoBack: Bool { !navigationStack.isEmpty }
 
     /// Direction of the last mode change, used by the iOS-only directional
     /// slide transition (forward pushes from the trailing edge, back pulls
-    /// from the leading edge). `navigationStack` is wiped on `navigateBack`,
-    /// so there is no depth to infer direction from — this flag carries it.
+    /// from the leading edge). Navigation keeps no history (Back always
+    /// returns to Landing), so this flag carries the direction.
     /// macOS ignores it (the desktop mode swap stays a subtle cross-fade; a
     /// directional slide of a full dashboard reads heavy there).
     enum NavDirection { case forward, back }
@@ -397,7 +395,6 @@ final class AppState {
         // `.transition(.appScreen)` on `ContentView.mainContent` runs. Under
         // Reduce Motion `withAppAnimation` nils the animation → instant cut.
         withAppAnimation(AppMotion.screen, reduceMotion: reduceMotion) {
-            navigationStack.append(currentMode)
             currentMode = mode
         }
     }
@@ -405,7 +402,6 @@ final class AppState {
     func navigateBack() {
         navDirection = .back
         withAppAnimation(AppMotion.screen, reduceMotion: reduceMotion) {
-            navigationStack.removeAll()
             currentMode = .landing
         }
     }

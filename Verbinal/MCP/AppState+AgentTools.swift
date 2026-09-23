@@ -887,7 +887,7 @@ extension AppState {
         case "votable": ext = "xml"
         default: throw ProposalApplyError.backendError("unsupported format '\(format)'")
         }
-        var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.syncPath)")
+        var components = URLComponents(string: TAPConfig.syncURL)
         components?.queryItems = [
             URLQueryItem(name: "LANG", value: "ADQL"),
             URLQueryItem(name: "FORMAT", value: format),
@@ -903,15 +903,8 @@ extension AppState {
     }
 
     private nonisolated static func moveExportToDownloads(tempURL: URL, ext: String) throws -> String {
-        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmmss"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        let dest = downloads.appendingPathComponent(
-            "verbinal-results-\(formatter.string(from: Date())).\(ext)")
-        try? FileManager.default.removeItem(at: dest)
-        try FileManager.default.moveItem(at: tempURL, to: dest)
+        let dest = FileHelper.timestampedDownloadsURL(stem: "verbinal-results", ext: ext)
+        try FileHelper.moveReplacing(from: tempURL, to: dest)
         return dest.path
     }
 

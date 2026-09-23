@@ -488,13 +488,7 @@ func exportCubeFigureHeadless(model: CubeViewerModel, scale: CGFloat) throws -> 
 
     let base = (model.object.isEmpty || model.object == "—") ? "cube" : model.object
     let mode = model.viewMode == .slice ? "ch\(model.channel + 1)" : "volume"
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyyMMdd-HHmmss"
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-        ?? FileManager.default.temporaryDirectory
-    let dest = downloads.appendingPathComponent(
-        "\(base)_\(mode)-\(formatter.string(from: Date())).png")
+    let dest = FileHelper.timestampedDownloadsURL(stem: "\(base)_\(mode)", ext: "png")
     try data.write(to: dest)
     return dest
 }

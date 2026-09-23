@@ -7,59 +7,55 @@
 import XCTest
 @testable import Verbinal
 
+/// `parseRangeRaw` is the single range parser behind every Search
+/// constraint builder (spatial, spectral, temporal, misc).
 final class RangeParserTests: XCTestCase {
 
     func testParseEquals() {
-        let result = parseRange("25")
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.value, 25.0)
+        let result = parseRangeRaw("25")
+        XCTAssertEqual(result?.valueRaw, "25")
         XCTAssertEqual(result?.operand, .equals)
     }
 
     func testParseRange() {
-        let result = parseRange("20..30")
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.lower, 20.0)
-        XCTAssertEqual(result?.upper, 30.0)
+        let result = parseRangeRaw("20..30")
+        XCTAssertEqual(result?.lowerRaw, "20")
+        XCTAssertEqual(result?.upperRaw, "30")
         XCTAssertEqual(result?.operand, .range)
     }
 
     func testParseLessThan() {
-        let result = parseRange("< 25")
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.upper, 25.0)
+        let result = parseRangeRaw("< 25")
+        XCTAssertEqual(result?.upperRaw, "25")
         XCTAssertEqual(result?.operand, .lessThan)
-        XCTAssertNil(result?.lower)
+        XCTAssertNil(result?.lowerRaw)
     }
 
     func testParseLessThanEquals() {
-        let result = parseRange("<= 100")
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.upper, 100.0)
+        let result = parseRangeRaw("<= 100")
+        XCTAssertEqual(result?.upperRaw, "100")
         XCTAssertEqual(result?.operand, .lessThanEquals)
     }
 
     func testParseGreaterThan() {
-        let result = parseRange("> 50")
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.lower, 50.0)
+        let result = parseRangeRaw("> 50")
+        XCTAssertEqual(result?.lowerRaw, "50")
         XCTAssertEqual(result?.operand, .greaterThan)
-        XCTAssertNil(result?.upper)
+        XCTAssertNil(result?.upperRaw)
     }
 
     func testParseGreaterThanEquals() {
-        let result = parseRange(">= 10")
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.lower, 10.0)
+        let result = parseRangeRaw(">= 10")
+        XCTAssertEqual(result?.lowerRaw, "10")
         XCTAssertEqual(result?.operand, .greaterThanEquals)
     }
 
     func testParseEmpty() {
-        XCTAssertNil(parseRange(""))
+        XCTAssertNil(parseRangeRaw(""))
     }
 
     func testParseWhitespace() {
-        XCTAssertNil(parseRange("   "))
+        XCTAssertNil(parseRangeRaw("   "))
     }
 
     func testParseRawRange() {
@@ -71,16 +67,15 @@ final class RangeParserTests: XCTestCase {
     }
 
     func testParseDecimalValue() {
-        let result = parseRange("3.14")
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result!.value!, 3.14, accuracy: 0.001)
+        let result = parseRangeRaw("3.14")
+        XCTAssertEqual(result?.valueRaw, "3.14")
         XCTAssertEqual(result?.operand, .equals)
     }
 
-    func testParseNegativeValue() {
-        let result = parseRange("-12.5")
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.value, -12.5)
+    func testParseNegativeValueIsNotARange() {
+        // A leading minus must stay a value, not an operator or separator.
+        let result = parseRangeRaw("-12.5")
+        XCTAssertEqual(result?.valueRaw, "-12.5")
         XCTAssertEqual(result?.operand, .equals)
     }
 }

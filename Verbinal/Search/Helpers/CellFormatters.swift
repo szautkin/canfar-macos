@@ -213,12 +213,6 @@ enum CellFormatterRegistry {
     }
 }
 
-// MARK: - Passthrough
-
-struct PassthroughFormatter: ColumnFormatter {
-    func format(_ raw: String) -> String { raw }
-}
-
 // MARK: - Numeric guard helper (DRY for finite-double parsing)
 
 /// Parse a string to a finite `Double`, returning `nil` on non-numeric,
@@ -268,8 +262,7 @@ struct MJDFormatter: ColumnFormatter {
 
     func format(_ raw: String) -> String {
         guard let mjd = finiteDouble(raw) else { return raw }
-        let unixSeconds = (mjd - 40_587.0) * 86_400.0
-        let date = Date(timeIntervalSince1970: unixSeconds)
+        let date = mjdToDate(mjd)
 
         let includeTime: Bool
         switch style {
@@ -279,22 +272,9 @@ struct MJDFormatter: ColumnFormatter {
             let fractional = mjd - mjd.rounded(.towardZero)
             includeTime = abs(fractional) > 1e-6
         }
-        return (includeTime ? Self.dateTimeFormatter : Self.dateOnlyFormatter).string(from: date)
+        let formatter = includeTime ? SharedFormatters.yyyyMMddHHmmssUTC : SharedFormatters.yyyyMMddUTC
+        return formatter.string(from: date)
     }
-
-    private static let dateOnlyFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.timeZone = TimeZone(identifier: "UTC")
-        return f
-    }()
-
-    private static let dateTimeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        f.timeZone = TimeZone(identifier: "UTC")
-        return f
-    }()
 }
 
 // MARK: - ISO-8601 timestamp
@@ -391,37 +371,6 @@ struct DMSFormatter: ColumnFormatter {
 
 // MARK: - Duration (integration time)
 
-/// Seconds → localized short-unit duration string.
-///
-/// Uses `Duration.FormatStyle.units` so the unit suffixes ("h"/"m"/"s") are
-/// auto-localized by the OS. For sub-second values, falls back to
-/// `"%.2f s"` so a 0.05 s exposure doesn't round to `"0.1s"`.
-///
-/// Negative or zero seconds return empty — exposure time must be positive.
-struct DurationFormatter: ColumnFormatter {
-    func format(_ raw: String) -> String {
-        // Non-numeric → passthrough (defensive: caller may surface whatever the
-        // server sent, e.g. "N/A"); only zero / negative reject silently.
-        guard let seconds = finiteDouble(raw) else { return raw }
-        guard seconds > 0 else { return "" }
-
-        if seconds < 1.0 {
-            let formatted = String(format: "%.2f", seconds)
-            return "\(formatted) s"
-        }
-
-        // Bias towards the biggest sensible unit.
-        let duration = Duration.seconds(seconds)
-        if seconds >= 3600 {
-            return duration.formatted(.units(allowed: [.hours, .minutes], width: .narrow))
-        }
-        if seconds >= 60 {
-            return duration.formatted(.units(allowed: [.minutes, .seconds], width: .narrow))
-        }
-        return duration.formatted(.units(allowed: [.seconds], width: .narrow))
-    }
-}
-
 /// Fixed-unit duration formatter — CCDA parity for user-selectable units on
 /// the integration-time column. Input is seconds (the TAP native unit);
 /// output is `"%.3f <suffix>"` in the chosen unit, matching CCDA's
@@ -496,81 +445,7 @@ struct BooleanFormatter: ColumnFormatter {
     }
 }
 
-// MARK: - Wavelength (metres → nm/μm/mm/m)
-
-/// CAOM2 `minwavelength`/`maxwavelength` are in metres. Raw scientific
-/// notation (e.g., `5.0E-7`) is unreadable; convert to the most readable
-/// SI prefix based on magnitude.
-struct WavelengthFormatter: ColumnFormatter {
-    func format(_ raw: String) -> String {
-        guard let metres = finiteDouble(raw), metres > 0 else { return raw }
-
-        // Pick the unit where the value is between 1 and 1000 if possible.
-        let candidates: [(divisor: Double, suffix: String)] = [
-            (1e-10, " Å"),
-            (1e-9, " nm"),
-            (1e-6, " \u{03BC}m"),   // μm
-            (1e-3, " mm"),
-            (1, " m"),
-        ]
-        // Walk largest-divisor-first (longest wavelengths first); pick the
-        // first unit where magnitude drops below 1000, but default to the
-        // smallest unit if the value is tiny.
-        for (divisor, suffix) in candidates.reversed() {
-            let scaled = metres / divisor
-            if scaled >= 1 && scaled < 1000 {
-                return formatScaled(scaled) + suffix
-            }
-        }
-        // Below 1 Å — use Å anyway with scientific notation.
-        let scaled = metres / 1e-10
-        return String(format: "%.3g", scaled) + " Å"
-    }
-
-    private func formatScaled(_ v: Double) -> String {
-        if v >= 100 { return String(format: "%.0f", v) }
-        if v >= 10 { return String(format: "%.1f", v) }
-        return String(format: "%.2f", v)
-    }
-}
-
-// MARK: - Angle (degrees → arcsec / arcmin / deg)
-
-/// Angular values come from CADC in degrees. For pixel scale and field of
-/// view, degrees are the worst unit to show — convert to arcseconds or
-/// arcminutes based on the intended semantics. Retained as a single-formatter
-/// fallback; per-column unit switching is provided by ``FixedAngleFormatter``.
-struct AngleFormatter: ColumnFormatter {
-    enum Mode {
-        case arcsecPerPixel       // pixel scale: always arcseconds, "″/px"
-        case arcminOrDegrees      // field of view: arcmin below 1°, degrees otherwise
-    }
-
-    let mode: Mode
-
-    func format(_ raw: String) -> String {
-        guard let degrees = finiteDouble(raw) else { return raw }
-
-        switch mode {
-        case .arcsecPerPixel:
-            let arcsec = degrees * 3600.0
-            if arcsec >= 10 { return String(format: "%.1f\u{2033}/px", arcsec) }
-            if arcsec >= 1 { return String(format: "%.2f\u{2033}/px", arcsec) }
-            return String(format: "%.3f\u{2033}/px", arcsec)
-
-        case .arcminOrDegrees:
-            if abs(degrees) >= 1 {
-                return String(format: "%.3g\u{00B0}", degrees)
-            }
-            let arcmin = degrees * 60.0
-            if abs(arcmin) >= 1 {
-                return String(format: "%.2f\u{2032}", arcmin)
-            }
-            let arcsec = degrees * 3600.0
-            return String(format: "%.1f\u{2033}", arcsec)
-        }
-    }
-}
+// MARK: - Angle (degrees → mas / arcsec / arcmin / deg)
 
 /// Explicit angular-unit formatter used by the pixel-scale / position-
 /// resolution unit-switch menu. Input is degrees (CADC's native storage for
@@ -683,49 +558,14 @@ enum CellFormatters {
     /// The checkmark glyph boolean-true cells render as. Preserved for tests.
     static let checkmark = "\u{2713}"
 
-    // MARK: - Legacy type-level helpers (kept for test API compat)
+    // MARK: - Type-level helpers for non-table call sites
 
     static func formatMJDDate(_ raw: String) -> String {
         MJDFormatter().format(raw.trimmingCharacters(in: .whitespaces))
-    }
-
-    static func formatCoordinate(_ raw: String, decimalPlaces: Int) -> String {
-        let f = CoordinateFormatter(decimals: decimalPlaces, signMode: .negativeOnly)
-        return f.format(raw.trimmingCharacters(in: .whitespaces))
-    }
-
-    static func formatIntegrationTime(_ raw: String) -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return "" }
-        return DurationFormatter().format(trimmed)
     }
 
     static func formatCalibrationLevel(_ raw: String) -> String {
         CalLevelFormatter().format(raw.trimmingCharacters(in: .whitespaces))
     }
 
-    static func formatBoolean(_ raw: String) -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return "" }
-        return BooleanFormatter().format(trimmed)
-    }
-
-    static func formatWavelength(_ raw: String) -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return "" }
-        return WavelengthFormatter().format(trimmed)
-    }
-
-    static func formatScientific(_ raw: String, decimalPlaces: Int) -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        guard let value = finiteDouble(trimmed) else { return trimmed }
-        if abs(value) < 0.001 || abs(value) > 1e6 {
-            return String(format: "%.\(decimalPlaces)E", value)
-        }
-        return String(format: "%.\(decimalPlaces)g", value)
-    }
-
-    static func formatTimestamp(_ raw: String) -> String {
-        ISOTimestampFormatter().format(raw.trimmingCharacters(in: .whitespaces))
-    }
 }

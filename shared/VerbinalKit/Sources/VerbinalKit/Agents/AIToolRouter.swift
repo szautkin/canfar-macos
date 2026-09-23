@@ -86,11 +86,6 @@ public actor AIToolRouter {
         externalManifest
     }
 
-    /// Manifest including user-only tools — for in-app surfaces.
-    public func fullManifestList() -> [AIToolDefinition] {
-        manifest
-    }
-
     /// Hard per-dispatch ceiling by verb class. Deliberately ABOVE every
     /// inner watchdog (`withToolTimeout` reads top out at 120s,
     /// `withApplierTimeout` writes at 600s) so the inner, better-worded

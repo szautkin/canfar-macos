@@ -113,12 +113,6 @@ final class DataTrainModel {
         formState.clearDataTrainCascade(after: columnIndex)
     }
 
-    /// Clear downstream selections. Retained for callers that need an explicit
-    /// reset without a toggle.
-    func clearDownstream(from columnIndex: Int, formState: SearchFormState) {
-        formState.clearDataTrainCascade(after: columnIndex)
-    }
-
     // MARK: - Private
 
     private func performLoad() async {

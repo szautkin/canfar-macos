@@ -66,17 +66,3 @@ struct UserDefaultsColumnVisibilityStore: ColumnVisibilityStore, @unchecked Send
         }
     }
 }
-
-/// In-memory store — useful in unit tests and previews. Not thread-safe;
-/// ``SearchResultColumns`` callers operate on `@MainActor`, so this is fine
-/// for their use case.
-final class InMemoryColumnVisibilityStore: ColumnVisibilityStore, @unchecked Sendable {
-    private var storage: [String: Bool] = [:]
-
-    init() {}
-
-    func isVisibilitySet(forID id: String) -> Bool { storage[id] != nil }
-    func visibility(forID id: String) -> Bool { storage[id] ?? false }
-    func setVisible(_ visible: Bool, forID id: String) { storage[id] = visible }
-    func clearAll() { storage.removeAll() }
-}

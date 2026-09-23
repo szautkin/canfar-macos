@@ -18,13 +18,6 @@ enum Operand: String {
     case greaterThanEquals
 }
 
-struct ParsedRange {
-    var lower: Double?
-    var upper: Double?
-    var value: Double?
-    var operand: Operand
-}
-
 struct ParsedRangeRaw {
     var lowerRaw: String?
     var upperRaw: String?

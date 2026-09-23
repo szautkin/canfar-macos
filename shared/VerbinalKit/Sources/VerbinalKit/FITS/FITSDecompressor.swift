@@ -230,12 +230,6 @@ enum RiceDecoder {
         }
     }
 
-    // Constants matching cfitsio for BYTEPIX=2
-    private static let bytepix = 2
-    // Maximum encodable value for BYTEPIX=2: 2^15 - 1
-    private static let valueMax: Int32 = 32767
-    private static let valueMin: Int32 = -32768
-
     /// Decode a Rice-compressed tile.
     ///
     /// - Parameters:
@@ -332,12 +326,6 @@ enum RiceDecoder {
         } else {
             return -((n + 1) >> 1) // odd: negative
         }
-    }
-
-    /// Clamp to signed 16-bit range to prevent overflow.
-    @inline(__always)
-    private static func clamp(_ v: Int32) -> Int32 {
-        min(max(v, valueMin), valueMax)
     }
 }
 

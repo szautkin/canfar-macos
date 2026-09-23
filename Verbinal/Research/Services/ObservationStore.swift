@@ -21,11 +21,6 @@ final class ObservationStore {
     private let spotlight: ObservationSpotlightIndexer?
     private(set) var observations: [DownloadedObservation] = []
 
-    /// Observations grouped by collection.
-    var groupedByCollection: [String: [DownloadedObservation]] {
-        Dictionary(grouping: observations, by: \.collection)
-    }
-
     init(
         fileName: String = "downloaded_observations.json",
         spotlight: ObservationSpotlightIndexer? = ObservationSpotlightIndexer()
@@ -123,12 +118,5 @@ final class ObservationStore {
         let i16 = s.index(s.startIndex, offsetBy: 16)
         let i20 = s.index(s.startIndex, offsetBy: 20)
         return UUID(uuidString: "\(s[..<i8])-\(s[i8..<i12])-\(s[i12..<i16])-\(s[i16..<i20])-\(s[i20...])")
-    }
-
-    func updateFileSize(_ observation: DownloadedObservation, size: Int64) {
-        if let idx = observations.firstIndex(where: { $0.id == observation.id }) {
-            observations[idx].fileSize = size
-            persistence.write(observations)
-        }
     }
 }

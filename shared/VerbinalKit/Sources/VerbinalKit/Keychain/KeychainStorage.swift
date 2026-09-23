@@ -107,11 +107,6 @@ public enum KeychainStorage {
         return (username, password)
     }
 
-    /// Returns true if stored credentials include a password (user chose "Remember me").
-    public static var hasStoredPassword: Bool {
-        load(account: passwordAccount) != nil
-    }
-
     public static func clearToken() {
         delete(account: tokenAccount)
         delete(account: usernameAccount)

@@ -151,18 +151,6 @@ final class ObservationStoreTests: XCTestCase {
         XCTAssertFalse(store.contains(publisherID: "ivo://other"))
     }
 
-    func testGroupedByCollection() {
-        let store = makeStore()
-        store.save(makeObservation(publisherID: "ivo://a", collection: "JWST"))
-        store.save(makeObservation(publisherID: "ivo://b", collection: "HST"))
-        store.save(makeObservation(publisherID: "ivo://c", collection: "JWST"))
-
-        let grouped = store.groupedByCollection
-        XCTAssertEqual(grouped.keys.count, 2)
-        XCTAssertEqual(grouped["JWST"]?.count, 2)
-        XCTAssertEqual(grouped["HST"]?.count, 1)
-    }
-
     func testDiskPersistence() {
         let fileName = "test_observations_persist_\(UUID().uuidString).json"
 

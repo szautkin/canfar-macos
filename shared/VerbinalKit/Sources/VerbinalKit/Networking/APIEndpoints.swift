@@ -13,7 +13,7 @@ public struct APIEndpoints: Sendable, Equatable {
     public var storageBaseURL: String
     /// IVOA registry service base. Serves `resource-caps` (the map from
     /// `ivo://` resource IDs to VOSI capabilities documents) plus the
-    /// registry's own capabilities/availability endpoints.
+    /// registry's own availability endpoint.
     public var registryBaseURL: String
     /// CADC archive base — TAP, CAOM2 metadata, DataLink, packaging.
     /// Single root means changing CADC's host name happens in one place.
@@ -48,8 +48,6 @@ public struct APIEndpoints: Sendable, Equatable {
 
     /// Plain-text map of `ivo://` resource IDs → capabilities URLs.
     public var resourceCapsURL: String { "\(registryBaseURL)/resource-caps" }
-    /// VOSI capabilities of the registry service itself.
-    public var registryCapabilitiesURL: String { "\(registryBaseURL)/capabilities" }
     /// VOSI availability of the registry service.
     public var registryAvailabilityURL: String { "\(registryBaseURL)/availability" }
 

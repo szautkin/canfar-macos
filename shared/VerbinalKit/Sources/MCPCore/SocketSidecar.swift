@@ -46,7 +46,6 @@ public enum SocketSidecar {
     public static let fileName = "mcp.sock-path"
 
     public enum Error: Swift.Error, Equatable {
-        case applicationSupportUnavailable
         case sidecarMissing
         case malformedSidecar
         case ioFailure(String)

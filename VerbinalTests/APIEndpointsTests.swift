@@ -29,7 +29,6 @@ final class APIEndpointsTests: XCTestCase {
     func testRegistryURLs() {
         XCTAssertEqual(endpoints.registryBaseURL, "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg")
         XCTAssertEqual(endpoints.resourceCapsURL, "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg/resource-caps")
-        XCTAssertEqual(endpoints.registryCapabilitiesURL, "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg/capabilities")
         XCTAssertEqual(endpoints.registryAvailabilityURL, "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg/availability")
     }
 

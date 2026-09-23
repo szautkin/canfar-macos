@@ -11,7 +11,7 @@
 import Foundation
 
 /// Streaming FITS reader for spectral cubes: parses the HDU table over a
-/// `CubeDataSource` (local mmap or remote range reads alike), finds cube HDUs,
+/// `CubeDataSource` (any conforming byte source), finds cube HDUs,
 /// extracts individual channel planes, and reads WAVE-TAB lookup columns.
 public enum FITSCube {
     static let blockSize = 2880

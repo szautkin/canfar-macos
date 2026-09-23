@@ -61,19 +61,29 @@ enum SharedFormatters {
         return f
     }()
 
-    /// User-locale medium-style date (e.g., "Apr 27, 2026"). For UI display.
-    static let userMediumDate: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .none
-        return f
-    }()
-
     /// User-locale medium date + short time (e.g., "Apr 27, 2026 at 10:30 AM").
     static let userMediumDateShortTime: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .medium
         f.timeStyle = .short
+        return f
+    }()
+
+    /// User-locale medium date + medium time (e.g., "Apr 27, 2026 at
+    /// 10:30:45 AM"). For detail sheets where seconds matter.
+    static let userMediumDateTime: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .medium
+        return f
+    }()
+
+    /// `yyyyMMdd-HHmmss` in the local zone, POSIX locale — a sortable stamp
+    /// for exported file names (e.g., `verbinal-results-20260923-143015.csv`).
+    nonisolated(unsafe) static let fileNameStamp: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyyMMdd-HHmmss"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 

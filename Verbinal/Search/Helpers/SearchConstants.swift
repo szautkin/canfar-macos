@@ -12,10 +12,10 @@ import VerbinalKit
 /// CADC archive endpoints used by the Search module.
 ///
 /// **DRY policy**: the canonical home for these URLs is
-/// ``APIEndpoints`` in `VerbinalKit`. This enum is a thin namespaced
-/// re-export so existing call sites in Search/ can keep their short
-/// forms without each one having to construct an `APIEndpoints` instance.
-/// New callers in other modules should depend on `APIEndpoints` directly.
+/// ``APIEndpoints`` in `VerbinalKit`. This enum only forwards to the
+/// configured instance so Search/ call sites needn't carry one around;
+/// it must never spell a path itself. New callers in other modules
+/// should depend on `APIEndpoints` directly.
 enum TAPConfig {
     /// Shared instance — single source of truth for archive URLs. Configured
     /// once at launch from the effective endpoint settings (`AppState.init`,
@@ -32,12 +32,11 @@ enum TAPConfig {
         Self.endpoints = endpoints
     }
 
-    static var baseURL: String { endpoints.archiveBaseURL }
-    static var syncPath: String { "/argus/sync" }
-    static var resolverPath: String { "/cadc-target-resolver/find" }
-    static var datalinkPath: String { "/caom2ops/datalink" }
-    static var downloadPath: String { "/caom2ops/pkg" }
-    static var metaPath: String { "/caom2ops/meta" }
+    static var syncURL: String { endpoints.tapSyncURL }
+    static var resolverURL: String { endpoints.targetResolverURL }
+    static var datalinkURL: String { endpoints.datalinkURL }
+    static var downloadURL: String { endpoints.caom2PkgURL }
+    static var metaURL: String { endpoints.caom2MetaURL }
     static var maxRecords: Int { endpoints.tapMaxRecords }
     static let format = "csv"
 }

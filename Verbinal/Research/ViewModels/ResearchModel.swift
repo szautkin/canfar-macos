@@ -31,7 +31,6 @@ final class ResearchModel {
     /// inside `filteredObservations`'s body evaluation.
     private(set) var noteMatchedPublisherIDs: Set<String> = []
     private var noteSearchTask: Task<Void, Never>?
-    var storageUsed: Int64 = 0
     var lastError: String?
     var lastSuccess: String?
 
@@ -204,68 +203,6 @@ final class ResearchModel {
             }
         }
     }
-
-    // MARK: - Export
-
-    /// Run an export bundle containing this module's data. Presents a folder picker,
-    /// writes a Claude-friendly bundle, and reveals it in Finder on success.
-    #if os(macOS)
-    func presentExportFlow() async {
-        guard let destination = await pickExportDestination() else { return }
-        let exporter = ResearchExporter(
-            observationStore: observationStore,
-            noteStore: noteStore
-        )
-        if let bundleURL = await exportService.exportAll(to: destination, modules: [exporter]) {
-            let summary = exportSummary()
-            lastSuccess = String(localized: "Exported \(summary)")
-            NSWorkspace.shared.selectFile(
-                bundleURL.path,
-                inFileViewerRootedAtPath: destination.path
-            )
-            NotificationService.sendExportCompleted(
-                bundleName: bundleURL.lastPathComponent,
-                moduleSummary: summary
-            )
-            scheduleStatusDismiss(after: 4) { [weak self] in self?.lastSuccess = nil }
-        } else if let err = exportService.lastError {
-            lastError = String(localized: "Export failed: \(err)")
-            scheduleStatusDismiss(after: 6) { [weak self] in self?.lastError = nil }
-        }
-    }
-
-    private func exportSummary() -> String {
-        ResearchExporter.itemCountLabel(
-            observations: observationStore.observations.count,
-            notes: noteStore.notes.count
-        )
-    }
-
-    @MainActor
-    private func pickExportDestination() async -> URL? {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.title = String(localized: "Choose Export Destination")
-        panel.message = String(localized: "A timestamped folder will be created inside the selected directory.")
-        panel.prompt = String(localized: "Export Here")
-
-        // Default to iCloud Drive/Verbinal if it exists, else ~/Documents
-        let fm = FileManager.default
-        let iCloud = fm.url(forUbiquityContainerIdentifier: nil)?
-            .appendingPathComponent("Documents/Verbinal")
-        let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first
-        if let iCloud, fm.fileExists(atPath: iCloud.path) {
-            panel.directoryURL = iCloud
-        } else {
-            panel.directoryURL = docs
-        }
-
-        return panel.runModal() == .OK ? panel.url : nil
-    }
-    #endif
 
     #if os(macOS)
     func revealInFinder(_ observation: DownloadedObservation) {

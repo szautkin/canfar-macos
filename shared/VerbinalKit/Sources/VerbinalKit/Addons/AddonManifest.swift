@@ -131,17 +131,3 @@ public enum AddonTrust: Codable, Sendable, Equatable {
     case community(homepageURL: URL?)
 }
 
-// MARK: - UTType bridging convenience
-
-public extension AddonCapability {
-    /// Returns the file-type identifiers declared by a `viewer`/`exporter`
-    /// capability, or an empty array for other cases.
-    var declaredFileTypes: [String] {
-        switch self {
-        case .viewer(let fileTypes), .exporter(let fileTypes):
-            return fileTypes
-        case .analyzer, .producer, .serviceClient:
-            return []
-        }
-    }
-}

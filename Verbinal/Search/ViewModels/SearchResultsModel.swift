@@ -306,22 +306,6 @@ final class SearchResultsModel {
         columns.persistVisibility()
     }
 
-    /// Clear all loaded rows and state.
-    func clearResults() {
-        results = []
-        columns = SearchResultColumns()
-        totalRows = 0
-        maxRecordReached = false
-        adqlQuery = ""
-        sortColumnID = nil
-        columnFilters = [:]
-        selectedUnits = [:]
-        currentPage = 0
-        displayedRows = []
-        filteredCount = 0
-        totalPages = 1
-    }
-
     // MARK: - Refresh pipeline
 
     /// Run the full filter → sort → paginate pipeline once. The only entry
@@ -530,7 +514,7 @@ final class SearchResultsModel {
     /// the *raw* result, not client filters or column visibility.
     func exportURL(format: String) -> URL? {
         guard !adqlQuery.isEmpty else { return nil }
-        var components = URLComponents(string: "\(TAPConfig.baseURL)\(TAPConfig.syncPath)")
+        var components = URLComponents(string: TAPConfig.syncURL)
         components?.queryItems = [
             URLQueryItem(name: "LANG", value: "ADQL"),
             URLQueryItem(name: "FORMAT", value: format),
@@ -541,14 +525,6 @@ final class SearchResultsModel {
     }
 
     // MARK: - Export (client-side)
-
-    /// Whether any client-side filter, sort, or column-hide is active — if so,
-    /// server-side export would include more rows/columns than the user sees.
-    var hasClientSideAdjustments: Bool {
-        !columnFilters.isEmpty
-            || sortColumnID != nil
-            || columns.list.contains { !$0.visible }
-    }
 
     /// Rows currently matching the filter + sort, ignoring pagination.
     /// Used by the client-side exporter so export is consistent whether the

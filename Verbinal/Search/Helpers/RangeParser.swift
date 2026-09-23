@@ -8,42 +8,15 @@ import Foundation
 
 private let rangeSeparator = ".."
 
-/// Parse a numeric range/comparison from user input.
+/// Parse a range/comparison from user input, keeping raw string sides so
+/// each builder converts them (numbers, dates like "2018-09-22 21:45", …).
 /// Returns nil if input is empty or whitespace-only.
 ///
 /// Examples:
-///   "25"       → ParsedRange(value: 25, operand: .equals)
-///   "< 25"     → ParsedRange(upper: 25, operand: .lessThan)
-///   ">= 25"    → ParsedRange(lower: 25, operand: .greaterThanEquals)
-///   "20..30"   → ParsedRange(lower: 20, upper: 30, operand: .range)
-func parseRange(_ input: String) -> ParsedRange? {
-    guard let raw = parseRangeRaw(input) else { return nil }
-
-    if raw.operand == .range {
-        return ParsedRange(
-            lower: raw.lowerRaw.flatMap { Double($0) },
-            upper: raw.upperRaw.flatMap { Double($0) },
-            operand: raw.operand
-        )
-    }
-
-    if let valueRaw = raw.valueRaw {
-        return ParsedRange(value: Double(valueRaw), operand: raw.operand)
-    }
-
-    if let lowerRaw = raw.lowerRaw {
-        return ParsedRange(lower: Double(lowerRaw), operand: raw.operand)
-    }
-
-    if let upperRaw = raw.upperRaw {
-        return ParsedRange(upper: Double(upperRaw), operand: raw.operand)
-    }
-
-    return nil
-}
-
-/// Parse a range/comparison from user input, keeping raw string sides.
-/// Needed for date ranges where sides like "2018-09-22 21:45" can't be parsed as numbers.
+///   "25"       → valueRaw "25", `.equals`
+///   "< 25"     → upperRaw "25", `.lessThan`
+///   ">= 25"    → lowerRaw "25", `.greaterThanEquals`
+///   "20..30"   → lowerRaw "20", upperRaw "30", `.range`
 func parseRangeRaw(_ input: String) -> ParsedRangeRaw? {
     let trimmed = input.trimmingCharacters(in: .whitespaces)
     guard !trimmed.isEmpty else { return nil }

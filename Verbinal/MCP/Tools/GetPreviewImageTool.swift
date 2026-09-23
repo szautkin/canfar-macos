@@ -33,7 +33,6 @@ struct GetPreviewImageTool: AITool {
     /// metadata envelope — stays comfortably under that limit. Previews are
     /// typically 300–530 KB, so real previews pass through; a mis-resolved
     /// giant file is refused with `previewTooLarge`.
-    static let mcpResponseByteLimit = 1_048_576   // 1 MB
     static let defaultMaxBytes = 680 * 1024       // ≈ 696 KB raw → ~928 KB base64
 
     /// A candidate preview artifact resolved from CAOM-2/DataLink.

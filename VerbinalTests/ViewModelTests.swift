@@ -26,14 +26,13 @@ final class DataTrainModelTests: XCTestCase {
         XCTAssertEqual(options.count, 0)
     }
 
-    func testClearDownstreamClearsAll() {
-        let model = makeModel()
+    func testClearDataTrainCascadeClearsDownstreamColumns() {
         let state = SearchFormState()
         state.selectedCollections = ["JWST"]
         state.selectedInstruments = ["NIRCam"]
         state.selectedFilters = ["F200W"]
 
-        model.clearDownstream(from: 1, formState: state) // clear from column 1 (collection)
+        state.clearDataTrainCascade(after: 1) // clear after column 1 (collection)
 
         XCTAssertEqual(state.selectedInstruments, [], "Instruments should be cleared")
         XCTAssertEqual(state.selectedFilters, [], "Filters should be cleared")

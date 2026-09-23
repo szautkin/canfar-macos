@@ -61,8 +61,6 @@ enum EndpointField: String, CaseIterable, Identifiable, Codable, Sendable {
         case .acBaseURL, .externalBaseURL, .registryBaseURL: return nil
         }
     }
-
-    var isResolvable: Bool { resourceID != nil }
 }
 
 /// User-entered endpoint overrides. An absent entry means "use the

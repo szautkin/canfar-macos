@@ -25,13 +25,6 @@ struct ManifestDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var didCopyJSON: Bool = false
 
-    private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .medium
-        return f
-    }()
-
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -76,7 +69,7 @@ struct ManifestDetailSheet: View {
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
                 HStack(spacing: 8) {
-                    Text("Probed \(Self.timeFormatter.string(from: manifest.capturedAt))")
+                    Text("Probed \(SharedFormatters.userMediumDateTime.string(from: manifest.capturedAt))")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                     Text("•").font(.caption2).foregroundStyle(.tertiary)
@@ -101,7 +94,7 @@ struct ManifestDetailSheet: View {
         section(title: "Identity", count: nil) {
             row(label: "Image ID", value: manifest.imageID)
             row(label: "Content hash", value: manifest.contentHash)
-            row(label: "Probed at", value: Self.timeFormatter.string(from: manifest.capturedAt))
+            row(label: "Probed at", value: SharedFormatters.userMediumDateTime.string(from: manifest.capturedAt))
         }
     }
 

@@ -40,10 +40,7 @@ struct SearchFormSnapshot: Codable, Equatable {
     /// date formatting + catalog-resolved fallback label so recent-search
     /// chips render in the user's language.
     func autoName() -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        let timestamp = formatter.string(from: Date())
+        let timestamp = SharedFormatters.userMediumDateShortTime.string(from: Date())
 
         if let first = selectedCollections.first, !first.isEmpty {
             return "\(first) \u{2014} \(timestamp)"

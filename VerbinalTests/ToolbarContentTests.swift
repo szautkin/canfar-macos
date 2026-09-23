@@ -7,11 +7,8 @@
 import XCTest
 @testable import Verbinal
 
-/// Covers the conditional-rendering rules used by the Portal/Landing
-/// toolbars: omit an empty status caption, and omit a blank account-menu
-/// email row when the signed-in user has no email. Mirrors the
-/// `if !statusMessage.isEmpty` / `if let email` guards in the landing
-/// toolbar and `iOSAccountTab`.
+/// Covers the conditional-rendering rules the Portal/Landing toolbars call:
+/// omit an empty status caption.
 final class ToolbarContentTests: XCTestCase {
 
     // MARK: - Status message
@@ -28,23 +25,5 @@ final class ToolbarContentTests: XCTestCase {
         // Whitespace is non-empty: behaviour-preserving with the existing
         // `!isEmpty` guard, which does not trim.
         XCTAssertTrue(ToolbarContent.showsStatusMessage(" "))
-    }
-
-    // MARK: - Account-menu email row
-
-    func testAccountEmailHiddenWhenNil() {
-        XCTAssertFalse(ToolbarContent.showsAccountEmail(nil))
-    }
-
-    func testAccountEmailShownWhenPresent() {
-        XCTAssertTrue(ToolbarContent.showsAccountEmail("jane@example.org"))
-    }
-
-    func testAccountEmailShownEvenWhenEmptyString() {
-        // An explicit empty-string email is still rendered (matches the
-        // `if let email = info.email` guard, which only checks for nil),
-        // documenting that the fix targets the nil case from the prior
-        // `info.email ?? ""` fallback.
-        XCTAssertTrue(ToolbarContent.showsAccountEmail(""))
     }
 }

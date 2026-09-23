@@ -50,12 +50,6 @@ struct PackageQuery: Equatable, Sendable {
     /// "image has GPU runtime wired up".
     var capabilities: Set<String> = []
 
-    /// True when every populated constraint must be satisfied
-    /// (intersection). v1 only supports `true`; the field is here
-    /// for forward compatibility. Setting it to `false` is treated
-    /// as `true` in v1.
-    var requireAll: Bool = true
-
     /// True when no constraint is set — the caller wants every
     /// known image. The UI's right pane uses this to render the
     /// full catalogue when no checkbox is ticked.

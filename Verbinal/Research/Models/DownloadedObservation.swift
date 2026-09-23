@@ -63,21 +63,6 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
         )
     }
 
-    /// Build the expected local file path from observation metadata.
-    static func buildLocalPath(collection: String, observationID: String, publisherID: String) -> String {
-        // Extract productID from publisherID: ivo://cadc.nrc.ca/COLLECTION?OBSID/PRODUCTID
-        let productID: String
-        if let lastSlash = publisherID.lastIndex(of: "/") {
-            productID = String(publisherID[publisherID.index(after: lastSlash)...])
-        } else {
-            productID = observationID
-        }
-
-        let safeCollection = collection.replacingOccurrences(of: "/", with: "_")
-        let safeProduct = productID.replacingOccurrences(of: "/", with: "_")
-        return "\(safeCollection)/\(safeProduct)"
-    }
-
     /// Full local file URL. Prefers a sandbox-readable candidate
     /// (tilde expansion, container ↔ user-facing Downloads) so FITS
     /// tools and the research archive agree on whether the file is there.

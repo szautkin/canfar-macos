@@ -750,32 +750,4 @@ final class SessionLaunchModel {
             return false
         }
     }
-
-    /// Applies a recent launch's settings to the form.
-    func applyRecentLaunch(_ launch: RecentLaunch) {
-        selectedType = launch.type
-
-        if launch.resourceType == "fixed" {
-            resourceType = "fixed"
-            cores = launch.cores
-            ram = launch.ram
-            gpus = launch.gpus
-        } else {
-            resourceType = "flexible"
-        }
-
-        // Try to find the image in standard list
-        if let project = imagesByTypeAndProject[launch.type.lowercased()]?
-            .first(where: { $0.value.contains(where: { $0.id == launch.image }) })?.key {
-            selectedProject = project
-            selectedImage = images.first(where: { $0.id == launch.image })
-            useCustomImage = false
-        } else {
-            // Fall back to custom image
-            useCustomImage = true
-            customImageUrl = launch.image
-        }
-
-        sessionName = launch.name
-    }
 }

@@ -29,11 +29,6 @@ enum CSVParser {
         return (headers, rows)
     }
 
-    /// Parse headers from the first line of CSV, cleaning up quotes and whitespace.
-    static func parseHeaders(_ headerLine: String) -> [String] {
-        parseLine(headerLine).map { cleanHeader($0) }
-    }
-
     /// Clean a header string: remove quotes, dots, spaces, and lowercase.
     static func cleanHeader(_ header: String) -> String {
         header

@@ -126,7 +126,7 @@ func dateToMJD(_ date: Date) -> Double {
 }
 
 /// Convert MJD to a Date (UTC).
-private func mjdToDate(_ mjd: Double) -> Date {
+func mjdToDate(_ mjd: Double) -> Date {
     return Date(timeIntervalSince1970: (mjd - mjdUnixEpoch) * secondsPerDay)
 }
 

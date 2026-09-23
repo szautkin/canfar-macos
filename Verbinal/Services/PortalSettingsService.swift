@@ -53,10 +53,6 @@ struct PortalSettings: Codable, Equatable {
             && defaultSessionType == nil
             && defaultResourceType == nil
     }
-
-    var hasResourceDefaults: Bool {
-        defaultResourceType != nil
-    }
 }
 
 // MARK: - Service

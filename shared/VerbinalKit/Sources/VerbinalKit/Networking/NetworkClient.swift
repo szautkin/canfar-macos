@@ -259,9 +259,6 @@ public actor NetworkClient {
     /// reports `NSURLSessionTransferSizeUnknown`.
     public typealias TransferProgressHandler = @Sendable (_ bytesTransferred: Int64, _ bytesTotal: Int64) -> Void
 
-    /// Backward-compatible alias — prefer `TransferProgressHandler`.
-    public typealias UploadProgressHandler = TransferProgressHandler
-
     /// Stream a file from disk via `PUT`. Uses `URLSession.upload(for:fromFile:)`
     /// so the body is read incrementally instead of being materialised into
     /// memory. Progress uses the async overload's per-request task delegate

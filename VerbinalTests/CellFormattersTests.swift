@@ -61,7 +61,7 @@ final class CellFormattersTests: XCTestCase {
     }
 
     func testTimestampShortInputIsSafe() {
-        XCTAssertEqual(CellFormatters.formatTimestamp("short"), "short")
+        XCTAssertEqual(ISOTimestampFormatter().format("short"), "short")
     }
 
     // MARK: - Coordinate Formatting
@@ -132,7 +132,7 @@ final class CellFormattersTests: XCTestCase {
     }
 
     func testCoordinateNonNumericPassthrough() {
-        XCTAssertEqual(CellFormatters.formatCoordinate("abc", decimalPlaces: 5), "abc")
+        XCTAssertEqual(CoordinateFormatter(decimals: 5, signMode: .negativeOnly).format("abc"), "abc")
     }
 
     func testCoordinateNaNPassesThrough() {
@@ -191,16 +191,7 @@ final class CellFormattersTests: XCTestCase {
     }
 
     func testIntegrationTimeNonNumericPassthrough() {
-        // Both the registry path and the legacy direct API passthrough on non-numeric.
         XCTAssertEqual(CellFormatters.format(key: "inttime", raw: "unknown"), "unknown")
-        XCTAssertEqual(CellFormatters.formatIntegrationTime("unknown"), "unknown")
-    }
-
-    func testLegacyDurationFormatterStillAutoPicks() {
-        // The legacy DurationFormatter API (used by some callers and tests)
-        // continues to auto-pick hours/minutes/seconds; the registry default
-        // changed to CCDA's fixed seconds, but direct callers are unaffected.
-        XCTAssertTrue(DurationFormatter().format("3600").contains("1"))
     }
 
     // MARK: - Boolean
@@ -309,14 +300,6 @@ final class CellFormattersTests: XCTestCase {
         let out = CellFormatters.format(key: "fieldofview", raw: "2.5")
         XCTAssertTrue(out.hasPrefix("2.500"))
         XCTAssertTrue(out.hasSuffix("sq deg"))
-    }
-
-    func testLegacyAngleFormatterStillAvailable() {
-        // The original auto-formatter remains reachable for callers that
-        // want the "arcsec/px" compound suffix.
-        let raw = String(0.2 / 3600.0)
-        let out = AngleFormatter(mode: .arcsecPerPixel).format(raw)
-        XCTAssertTrue(out.contains("/px"))
     }
 
     // MARK: - Default passthrough

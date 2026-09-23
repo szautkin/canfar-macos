@@ -26,24 +26,17 @@ final class AppNavigationTests: XCTestCase {
         XCTAssertEqual(state.currentMode, .landing)
     }
 
-    func testCanGoBackFalseAtRoot() {
-        let state = AppState()
-        XCTAssertFalse(state.canGoBack)
-    }
-
-    func testNavigateToPushesStack() {
+    func testNavigateToSwitchesMode() {
         let state = AppState()
         state.navigateTo(.search)
         XCTAssertEqual(state.currentMode, .search)
-        XCTAssertTrue(state.canGoBack)
     }
 
-    func testNavigateBackPopsStack() {
+    func testNavigateBackReturnsToLanding() {
         let state = AppState()
         state.navigateTo(.search)
         state.navigateBack()
         XCTAssertEqual(state.currentMode, .landing)
-        XCTAssertFalse(state.canGoBack)
     }
 
     func testNavigateBackAtRootNoOp() {
@@ -59,10 +52,9 @@ final class AppNavigationTests: XCTestCase {
         state.navigateTo(.fitsViewer)
         XCTAssertEqual(state.currentMode, .fitsViewer)
 
-        // navigateBack() always goes home and clears the stack
+        // navigateBack() always goes home, however deep the user went.
         state.navigateBack()
         XCTAssertEqual(state.currentMode, .landing)
-        XCTAssertFalse(state.canGoBack)
     }
 
     func testDispatchOpenFITS() {
@@ -71,7 +63,6 @@ final class AppNavigationTests: XCTestCase {
         state.dispatch(.openFITS(url: url))
         XCTAssertEqual(state.currentMode, .fitsViewer)
         XCTAssertEqual(state.pendingFITSURL, url)
-        XCTAssertTrue(state.canGoBack)
     }
 
     func testOpenPendingViewerChoiceAsFITSClearsSheetAndNavigates() {
