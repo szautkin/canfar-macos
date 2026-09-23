@@ -1366,7 +1366,7 @@ extension AppState {
             searchResultsFiltered: hasResults ? searchModel.resultsModel.filteredCount : nil,
             // Real open tabs from the app-owned host (plus a pending open
             // that hasn't been consumed by the viewer yet).
-            openFITSPaths: fitsTabHost.tabs.compactMap { $0.fileURL?.path }
+            openFITSPaths: fitsTabHost.tabs.filter(\.isLoaded).compactMap { $0.fileURL?.path }
                 + (pendingFITSURL.map { [$0.path] } ?? []),
             pendingViewerChoice: pendingViewerChoiceURL.map { url in
                 GetCurrentViewTool.Output.PendingViewerChoice(
@@ -2708,11 +2708,9 @@ extension AppState {
             }
             return await MainActor.run {
                 let host = self.fitsTabHost
-                let tabs = host.tabs.enumerated().map { index, tab in
+                let tabs = host.tabPaths.enumerated().map { index, path in
                     ListOpenTabsTool.Output.Tab(
-                        index: index,
-                        path: tab.fileURL?.path ?? "",
-                        isActive: index == host.activeTabIndex)
+                        index: index, path: path, isActive: index == host.activeTabIndex)
                 }
                 let cube = self.cubeViewer
                 return ListOpenTabsTool.Output(
@@ -2745,32 +2743,33 @@ extension AppState {
         })
     }
 
-    private nonisolated static func emptyFITSView() -> GetFITSViewTool.Output {
+    /// `isOpen: false` snapshot. Tabs whose load failed still list their
+    /// paths so `openTabPaths` stays index-aligned with `activeTabIndex`.
+    private nonisolated static func emptyFITSView(
+        openTabPaths: [String] = [], activeTabIndex: Int? = nil
+    ) -> GetFITSViewTool.Output {
         GetFITSViewTool.Output(
             isOpen: false, filePath: nil, hduIndex: nil, imageWidth: nil, imageHeight: nil,
             stretch: nil, colormap: nil, minCut: nil, maxCut: nil, zoom: nil,
-            rotationRadians: nil, crosshair: nil, openTabPaths: [], activeTabIndex: nil)
+            rotationRadians: nil, crosshair: nil,
+            openTabPaths: openTabPaths, activeTabIndex: activeTabIndex)
     }
 
     private func fitsViewSnapshot() -> GetFITSViewTool.Output {
         let host = fitsTabHost
-        let paths = host.tabs.compactMap { $0.fileURL?.path }
-        guard let tab = host.activeTab, let hdu = tab.selectedHDU else {
-            var empty = Self.emptyFITSView()
-            if !host.tabs.isEmpty {
-                empty = GetFITSViewTool.Output(
-                    isOpen: true, filePath: host.activeTab?.fileURL?.path,
-                    hduIndex: host.activeTab?.selectedHDUIndex,
-                    imageWidth: nil, imageHeight: nil, stretch: nil, colormap: nil,
-                    minCut: nil, maxCut: nil, zoom: nil, rotationRadians: nil,
-                    crosshair: nil, openTabPaths: paths, activeTabIndex: host.activeTabIndex)
-            }
-            return empty
+        let paths = host.tabPaths
+        guard let tab = host.activeTab, tab.isLoaded, let hdu = tab.selectedHDU else {
+            return Self.emptyFITSView(
+                openTabPaths: paths,
+                activeTabIndex: host.tabs.isEmpty ? nil : host.activeTabIndex)
         }
         var crosshair: GetFITSViewTool.Output.Crosshair?
-        if let px = tab.crosshairPixel {
+        if let point = tab.crosshairPixel {
+            // Same array indices `probe_fits_pixel` takes, so an agent can
+            // probe the pixel under the crosshair without converting.
+            let pixel = FITSViewerModel.arrayPixel(atDisplay: point, naxis2: hdu.header.naxis2)
             crosshair = .init(
-                x: px.x, y: px.y,
+                x: pixel.x, y: pixel.y,
                 raDeg: tab.crosshairRADeg, decDeg: tab.crosshairDecDeg,
                 value: tab.crosshairValue)
         }

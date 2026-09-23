@@ -111,13 +111,23 @@ final class FITSTabHostModel {
         closeTab(at: activeTabIndex)
     }
 
-    func openFile(url: URL) async {
+    /// Opens `url` in a new tab. The UI keeps a failed tab so the error
+    /// (and Retry) stay visible; agent callers use
+    /// `openFileDiscardingFailure(url:)` so a bad file cannot remain the
+    /// active document.
+    @discardableResult
+    func openFile(url: URL) async -> FITSViewerModel {
         let model = addTab()
         await model.open(url: url)
+        return model
     }
 
     var tabCount: Int { tabs.count }
     var hasMultipleTabs: Bool { tabs.count > 1 }
+
+    /// One path per tab, index-aligned with `activeTabIndex` (a tab whose
+    /// load failed still has its path; a tab never opened has "").
+    var tabPaths: [String] { tabs.map { $0.fileURL?.path ?? "" } }
 
     /// True when a sync mode (linked crosshair or linked zoom) is active and
     /// any open tab has missing / invalid / approximate WCS — meaning the
@@ -270,9 +280,8 @@ final class FITSTabHostModel {
         tab.crosshairDec = String(format: "py %.0f", pixel.y)
         tab.isLinkedCrosshair = true
 
-        let pixelIdx = FITSViewerModel.pixelIndex(x: pixel.x, y: pixel.y, width: naxis1)
-        if pixelIdx >= 0 && pixelIdx < tab.pixels.count {
-            tab.crosshairValue = String(format: "%.4g", tab.pixels[pixelIdx])
+        if let text = tab.pixelValueText(atDisplay: pixel) {
+            tab.crosshairValue = text
         }
         // Center on crosshair so it's visible after tab switch
         tab.centerOnPixel(pixel, canvasSize: tab.lastCanvasSize)
@@ -512,3 +521,5 @@ final class FITSTabHostModel {
         blinkFadeDirection = -1
     }
 }
+
+extension FITSTabHostModel: ViewerTabHosting {}

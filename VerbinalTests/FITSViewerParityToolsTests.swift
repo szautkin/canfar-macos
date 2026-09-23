@@ -10,7 +10,8 @@ import VerbinalKit
 
 /// Unit coverage for the FITS-viewer parity batch (select_hdu,
 /// fits_auto_cut, blink suite, set_tab_sync, search_at_crosshair,
-/// export_fits_figure). Stub closures — no viewer models.
+/// export_fits_figure). Stub closures — no viewer models — except the
+/// get_fits_view snapshot test, which drives AppState's registry.
 final class FITSViewerParityToolsTests: XCTestCase {
 
     private func ctx() -> AIToolContext {
@@ -29,6 +30,39 @@ final class FITSViewerParityToolsTests: XCTestCase {
             return [:]
         }
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+
+    // MARK: - get_fits_view (AppState snapshot)
+
+    @MainActor
+    func testGetFITSViewKeepsTabPathsAlignedAndReportsArrayCrosshair() async throws {
+        let state = AppState()
+        let host = state.fitsTabHost
+        let loaded = host.addTab()
+        FITSTestFixtures.loadRamp(into: loaded, path: "/tmp/loaded.fits")
+        let failed = host.addTab()
+        failed.fileURL = URL(fileURLWithPath: "/tmp/failed.fits")
+        failed.loadError = "not a FITS file"
+        let tool = try XCTUnwrap(state.makeAgentTools().first { $0.name == "get_fits_view" })
+
+        // Active tab failed to load: not open, yet openTabPaths still has
+        // one entry per tab so activeTabIndex / tabIndex line up.
+        var json = try decodeJSON(await tool.invoke(arguments: Data("{}".utf8), context: ctx()))
+        XCTAssertEqual(json["isOpen"] as? Bool, false)
+        XCTAssertNil(json["filePath"] as? String)
+        XCTAssertEqual(json["openTabPaths"] as? [String], ["/tmp/loaded.fits", "/tmp/failed.fits"])
+        XCTAssertEqual(json["activeTabIndex"] as? Int, 1)
+
+        // Crosshair at the canvas top-left is FITS array row naxis2-1 —
+        // the pixel probe_fits_pixel(x, y) reads.
+        host.activeTabIndex = 0
+        loaded.placeCrosshair(at: CGPoint(x: 2, y: 0))
+        json = try decodeJSON(await tool.invoke(arguments: Data("{}".utf8), context: ctx()))
+        XCTAssertEqual(json["isOpen"] as? Bool, true)
+        let crosshair = try XCTUnwrap(json["crosshair"] as? [String: Any])
+        XCTAssertEqual(crosshair["x"] as? Int, 2)
+        XCTAssertEqual(crosshair["y"] as? Int, 99)
+        XCTAssertEqual(crosshair["value"] as? String, loaded.pixelValueText(atDisplay: CGPoint(x: 2, y: 0)))
     }
 
     // MARK: - select_hdu

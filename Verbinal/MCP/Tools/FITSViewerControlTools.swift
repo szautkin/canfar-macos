@@ -34,9 +34,11 @@ struct GetFITSViewTool: JSONReadTool {
         let openTabPaths: [String]
         let activeTabIndex: Int?
 
+        /// `x`/`y` are the 0-based FITS array indices of the pixel under
+        /// the crosshair — the convention `probe_fits_pixel` takes.
         struct Crosshair: Encodable, Sendable {
-            let x: Double
-            let y: Double
+            let x: Int
+            let y: Int
             let raDeg: Double?
             let decDeg: Double?
             let value: String
@@ -45,7 +47,7 @@ struct GetFITSViewTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_fits_view",
-        description: "Read the active FITS-viewer tab's full render/view state: file path, HDU, image dimensions in pixels, stretch, colormap, cut levels (normalized 0-1), zoom factor, rotation (radians), crosshair position (pixel + RA/Dec in degrees when a WCS is present), and the list of open tabs. `isOpen` is false when no FITS image is open.",
+        description: "Read the active FITS-viewer tab's full render/view state: file path, HDU, image dimensions in pixels, stretch, colormap, cut levels (normalized 0-1), zoom factor, rotation (radians), crosshair position (0-based FITS array pixel, same convention as probe_fits_pixel, + RA/Dec in degrees when a WCS is present), and the list of open tabs. `openTabPaths` has one entry per tab, index-aligned with `activeTabIndex` and set_fits_view `tabIndex`. `isOpen` is false when the active tab has no loaded image.",
         schema: #"""
         {
           "type": "object",
@@ -220,14 +222,14 @@ struct ProbeFITSPixelTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "probe_fits_pixel",
-        description: "Read one pixel of the active FITS image by 0-based (x, y) image coordinate. Returns the pixel value (nil for blank/NaN pixels or out-of-bounds coordinates) and the RA/Dec in degrees when a WCS solution is present.",
+        description: "Read one pixel of the active FITS image by 0-based FITS array coordinate (same convention as astropy all_pix2world origin=0). x is the column, y is the stored image row (y=0 is the first row in the file, not the top of the displayed canvas). Returns the pixel value (nil for blank/NaN) and RA/Dec in degrees when a WCS solution is present. Out-of-bounds coordinates fail.",
         schema: #"""
         {
           "type": "object",
           "required": ["x", "y"],
           "properties": {
-            "x": { "type": "integer", "minimum": 0, "description": "0-based image pixel column." },
-            "y": { "type": "integer", "minimum": 0, "description": "0-based image pixel row." }
+            "x": { "type": "integer", "minimum": 0, "description": "0-based FITS array column (NAXIS1)." },
+            "y": { "type": "integer", "minimum": 0, "description": "0-based FITS array row (NAXIS2); y=0 is the first stored row." }
           },
           "additionalProperties": false
         }

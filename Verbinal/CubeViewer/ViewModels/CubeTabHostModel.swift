@@ -16,11 +16,15 @@ final class CubeTabHostModel {
         tabs[min(max(activeTabIndex, 0), tabs.count - 1)]
     }
 
-    func openFile(url: URL) async {
+    /// Opens `url` in a new tab. The UI keeps a failed tab so its error
+    /// stays visible; agent callers use `openFileDiscardingFailure(url:)`.
+    @discardableResult
+    func openFile(url: URL) async -> CubeViewerModel {
         let model = CubeViewerModel()
         tabs.append(model)
         activeTabIndex = tabs.count - 1
         await model.open(url: url)
+        return model
     }
 
     func closeTab(at index: Int) {
@@ -28,4 +32,11 @@ final class CubeTabHostModel {
         tabs.remove(at: index)
         activeTabIndex = min(activeTabIndex, tabs.count - 1)
     }
+}
+
+extension CubeTabHostModel: ViewerTabHosting {}
+
+extension CubeViewerModel: ViewerDocument {
+    static var documentKind: String { "cube" }
+    var isLoaded: Bool { hasData }
 }

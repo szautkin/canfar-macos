@@ -81,6 +81,64 @@ final class FITSViewerModelTests: XCTestCase {
         XCTAssertEqual(model.crosshairValue, "42", "Should show pixel value")
     }
 
+    func testProbePixelUsesFITSArrayCoordinatesNotDisplayY() throws {
+        // QA 1.2: probe_fits_pixel must match astropy origin=0. Applying the
+        // canvas Y-flip here puts the far corner ~naxis2 pixels off (~130″ on
+        // a JWST i2d) while get_fits_wcs (header path) stays correct.
+        let angle = 61.47 * .pi / 180.0
+        let model = FITSViewerModel()
+        FITSTestFixtures.loadRamp(into: model, wcsCards: [
+            ("CRPIX1", "51"), ("CRPIX2", "51"),
+            ("CRVAL1", "80.0"), ("CRVAL2", "-69.0"),
+            ("CDELT1", "-8.6e-6"), ("CDELT2", "8.6e-6"),
+            ("PC1_1", "\(cos(angle))"), ("PC1_2", "\(-sin(angle))"),
+            ("PC2_1", "\(sin(angle))"), ("PC2_2", "\(cos(angle))"),
+            ("CTYPE1", "'RA---TAN'"), ("CTYPE2", "'DEC--TAN'"),
+        ])
+        let wcs = try XCTUnwrap(model.wcs)
+
+        let probe = try XCTUnwrap(model.probePixel(x: 0, y: 0))
+        let expected = wcs.pixelToWorld(x: 0, y: 0)
+        let displayFlipped = wcs.pixelToWorld(x: 0, y: 99)
+        XCTAssertEqual(probe.ra!, expected.ra, accuracy: 1e-12)
+        XCTAssertEqual(probe.dec!, expected.dec, accuracy: 1e-12)
+        XCTAssertGreaterThan(abs(probe.ra! - displayFlipped.ra), 1e-8,
+                             "probe must not apply the canvas Y-flip")
+        XCTAssertEqual(probe.value, 0, "value is the FITS-order buffer at (0,0)")
+
+        let centre = try XCTUnwrap(model.probePixel(x: 50, y: 50))
+        XCTAssertEqual(centre.ra!, 80.0, accuracy: 1e-10)
+        XCTAssertEqual(centre.dec!, -69.0, accuracy: 1e-10)
+    }
+
+    func testArrayPixelFlipsTheDisplayRow() {
+        // Display row 0 is drawn from the LAST stored row; fractional
+        // positions inside a drawn pixel resolve to that pixel.
+        XCTAssertTrue(FITSViewerModel.arrayPixel(atDisplay: CGPoint(x: 0, y: 0), naxis2: 100) == (0, 99))
+        XCTAssertTrue(FITSViewerModel.arrayPixel(atDisplay: CGPoint(x: 7.9, y: 10.7), naxis2: 100) == (7, 89))
+        XCTAssertTrue(FITSViewerModel.arrayPixel(atDisplay: CGPoint(x: 99.5, y: 99.5), naxis2: 100) == (99, 0))
+    }
+
+    func testCanvasReadoutsShowTheDrawnPixelNotTheMirroredRow() {
+        // The renderer draws buffer row `naxis2 - 1 - displayRow`. The
+        // crosshair / hover values must read that row — before, they read
+        // buffer row `displayRow` while RA/Dec used the flipped row.
+        let model = FITSViewerModel()
+        FITSTestFixtures.loadRamp(into: model)
+        let topLeft = CGPoint(x: 2, y: 0)
+        let drawn = FITSViewerModel.formatPixelValue(FITSTestFixtures.rampValue(x: 2, y: 99))
+
+        model.placeCrosshair(at: topLeft)
+        XCTAssertEqual(model.crosshairValue, drawn)
+
+        model.updateCursorInfo(at: topLeft)
+        XCTAssertEqual(model.cursorPixelValue, drawn)
+
+        let probe = model.probePixel(x: 2, y: 99)
+        XCTAssertEqual(probe?.value.map { Float($0) }, FITSTestFixtures.rampValue(x: 2, y: 99),
+                       "canvas and probe_fits_pixel agree on the same pixel")
+    }
+
     func testRenderImageWithPixels() {
         let model = FITSViewerModel()
         var header = FITSHeader()

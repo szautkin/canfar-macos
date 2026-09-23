@@ -347,9 +347,33 @@ final class FITSViewerModel: Identifiable {
         Double(naxis2 - 1) - displayY
     }
 
-    /// Compute linear pixel index from (x, y) position and image width.
-    static func pixelIndex(x: Double, y: Double, width: Int) -> Int {
-        Int(y) * width + Int(x)
+    /// 0-based FITS array indices of the pixel drawn under a display-space
+    /// point. `pixels` is stored in file order (row 0 first) and the
+    /// renderer draws buffer row `naxis2 - 1 - displayRow`, so the row
+    /// flips. This is the convention `probe_fits_pixel` takes.
+    static func arrayPixel(atDisplay point: CGPoint, naxis2: Int) -> (x: Int, y: Int) {
+        let displayRow = Int(point.y.rounded(.down))
+        return (Int(point.x.rounded(.down)), naxis2 - 1 - displayRow)
+    }
+
+    /// Readout text for one sample: 4 significant digits, "NaN" for blanks.
+    static func formatPixelValue(_ value: Float) -> String {
+        value.isFinite ? String(format: "%.4g", value) : "NaN"
+    }
+
+    /// Raw sample at 0-based FITS array indices; nil outside the image.
+    func sample(x: Int, y: Int) -> Float? {
+        guard let hdu = selectedHDU,
+              x >= 0, y >= 0, x < hdu.header.naxis1, y < hdu.header.naxis2 else { return nil }
+        let index = y * hdu.header.naxis1 + x
+        return pixels.indices.contains(index) ? pixels[index] : nil
+    }
+
+    /// Readout text for the pixel drawn under a display-space point.
+    func pixelValueText(atDisplay point: CGPoint) -> String? {
+        guard let hdu = selectedHDU else { return nil }
+        let pixel = Self.arrayPixel(atDisplay: point, naxis2: hdu.header.naxis2)
+        return sample(x: pixel.x, y: pixel.y).map(Self.formatPixelValue)
     }
 
     /// Apply a linked crosshair from the shared store (marks crosshair as linked).
@@ -377,10 +401,8 @@ final class FITSViewerModel: Identifiable {
         crosshairPixel = point
         isLinkedCrosshair = false
 
-        let pixelIdx = Self.pixelIndex(x: point.x, y: point.y, width: hdu.header.naxis1)
-        if pixelIdx >= 0 && pixelIdx < pixels.count {
-            let val = pixels[pixelIdx]
-            crosshairValue = val.isFinite ? String(format: "%.4g", val) : "NaN"
+        if let text = pixelValueText(atDisplay: point) {
+            crosshairValue = text
         }
 
         // Clear out-of-bounds state when user places a new crosshair
@@ -409,10 +431,8 @@ final class FITSViewerModel: Identifiable {
     /// Update cursor readout (no permanent crosshair).
     func updateCursorInfo(at point: CGPoint) {
         guard let hdu = selectedHDU else { return }
-        let pixelIdx = Self.pixelIndex(x: point.x, y: point.y, width: hdu.header.naxis1)
-        if pixelIdx >= 0 && pixelIdx < pixels.count {
-            let val = pixels[pixelIdx]
-            cursorPixelValue = val.isFinite ? String(format: "%.4g", val) : "NaN"
+        if let text = pixelValueText(atDisplay: point) {
+            cursorPixelValue = text
         }
 
         if let wcs {
@@ -463,20 +483,17 @@ final class FITSViewerModel: Identifiable {
         return true
     }
 
-    /// Read-only pixel probe for the agent tools: value + sky coordinate at
-    /// a 0-based DISPLAY pixel, without moving the crosshair or viewport.
-    /// Returns nil when the pixel is outside the image.
+    /// Read-only pixel probe for the agent tools: value + sky at 0-based
+    /// FITS array indices (astropy `all_pix2world(..., origin=0)`). `y = 0`
+    /// is the first stored row, not the top of the canvas; display-space
+    /// callers convert with ``arrayPixel(atDisplay:naxis2:)``. Returns nil
+    /// when the pixel is outside the image.
     func probePixel(x: Int, y: Int) -> (value: Double?, ra: Double?, dec: Double?)? {
-        guard let hdu = selectedHDU else { return nil }
-        guard x >= 0, y >= 0, x < hdu.header.naxis1, y < hdu.header.naxis2 else { return nil }
-        var value: Double?
-        let idx = Self.pixelIndex(x: Double(x), y: Double(y), width: hdu.header.naxis1)
-        if idx >= 0 && idx < pixels.count, pixels[idx].isFinite {
-            value = Double(pixels[idx])
-        }
+        guard let hdu = selectedHDU,
+              x >= 0, y >= 0, x < hdu.header.naxis1, y < hdu.header.naxis2 else { return nil }
+        let value = sample(x: x, y: y).flatMap { $0.isFinite ? Double($0) : nil }
         guard let wcs else { return (value, nil, nil) }
-        let fitsY = Self.displayToFITSY(Double(y), naxis2: hdu.header.naxis2)
-        let (ra, dec) = wcs.pixelToWorld(x: Double(x), y: fitsY)
+        let (ra, dec) = wcs.pixelToWorld(x: Double(x), y: Double(y))
         return (value, ra, dec)
     }
 
@@ -582,4 +599,9 @@ final class FITSViewerModel: Identifiable {
         await open(url: url)
     }
     #endif
+}
+
+extension FITSViewerModel: ViewerDocument {
+    static var documentKind: String { "FITS file" }
+    var isLoaded: Bool { file != nil }
 }

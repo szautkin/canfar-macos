@@ -102,10 +102,39 @@ enum InspectorScript {
     SAFE_ID=$(printf '%s' "$TARGET_IMAGE" | tr '/:?*<>|"\\' '_')
     OUT="$OUT_DIR/$SAFE_ID.json"
     TMP="$OUT.partial"
-    SYFT_OUT="$(mktemp)"
-    SYFT_ERR="$(mktemp)"
-    TRANSFORMER="$(mktemp --suffix=.py)"
-    cleanup() { rm -f "$SYFT_OUT" "$SYFT_ERR" "$TRANSFORMER" "$TMP"; }
+    # GNU mktemp's suffix flag is not POSIX. The inspector host is Alpine,
+    # so mktemp is BusyBox: it prints usage, the assignment is empty, and
+    # the next `cat > "$TRANSFORMER"` dies with "No such file or directory"
+    # (live: wzvbjl5j on verbinal-inspector:1.0.0). An explicit TEMPLATE
+    # ending in XXXXXX is POSIX; python3 does not need a .py suffix.
+    new_temp() {
+        mktemp "${TMPDIR:-/tmp}/verbinal-$1-XXXXXX" 2>/dev/null
+    }
+    SYFT_OUT="$(new_temp syft-out)"
+    SYFT_ERR="$(new_temp syft-err)"
+    TRANSFORMER="$(new_temp transform)"
+
+    # syft unpacks every target layer to disk. Default /tmp is the
+    # pod overlay (shared ephemeral storage); kubelet then kills the
+    # container with neither logs nor a stub manifest. Skaha's
+    # /scratch is per-session disk. Only use it if the mount already
+    # exists — `mkdir -p /scratch` on a host without the mount would
+    # create a directory on the overlay, which is the bug this avoids.
+    # SYFT_SCRATCH is set only when this run owns the directory, so
+    # cleanup can never `rm -rf` the shared TMPDIR.
+    SYFT_SCRATCH="/scratch/verbinal-syft.$$"
+    if ! { [ -d /scratch ] && mkdir -p "$SYFT_SCRATCH" 2>/dev/null; }; then
+        SYFT_SCRATCH=""
+    fi
+    SYFT_TMPDIR="${SYFT_SCRATCH:-${TMPDIR:-/tmp}}"
+    echo "syft scratch: $SYFT_TMPDIR" >&2
+
+    cleanup() {
+        rm -f "$SYFT_OUT" "$SYFT_ERR" "$TRANSFORMER" "$TMP"
+        if [ -n "$SYFT_SCRATCH" ]; then
+            rm -rf "$SYFT_SCRATCH"
+        fi
+    }
     trap cleanup EXIT
 
     # Helper: write a minimal manifest with a `probeNotes` field set
@@ -123,6 +152,12 @@ enum InspectorScript {
     MINIMAL
         mv "$TMP" "$OUT"
     }
+
+    if [ -z "$SYFT_OUT" ] || [ -z "$SYFT_ERR" ] || [ -z "$TRANSFORMER" ]; then
+        write_minimal "mktemp failed in the inspector image; cannot stage temporary files"
+        echo "mktemp failed; minimal manifest written"
+        exit 0
+    fi
 
     # ---- Install syft (binary, ~80MB) into ~/.local/bin if missing.
     SYFT="$(command -v syft || true)"
@@ -342,7 +377,8 @@ enum InspectorScript {
     # than a silent 0-byte file. `set -o pipefail` makes syft
     # failures abort the pipeline below.
     syft_rc=0
-    "$SYFT" "registry:$TARGET_IMAGE" -o syft-json >"$SYFT_OUT" 2>"$SYFT_ERR" || syft_rc=$?
+    TMPDIR="$SYFT_TMPDIR" "$SYFT" "registry:$TARGET_IMAGE" -o syft-json \
+        >"$SYFT_OUT" 2>"$SYFT_ERR" || syft_rc=$?
 
     if [ "$syft_rc" -ne 0 ]; then
         # Truncate stderr to ~400 chars so the manifest stays small.

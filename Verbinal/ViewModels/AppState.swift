@@ -557,26 +557,20 @@ final class AppState {
     /// Agent tools use this so `opened: true` means the pixels are there.
     func loadFITSNow(url: URL) async throws {
         pendingFITSURL = nil
-        navigateTo(.fitsViewer)
-        await fitsTabHost.openFile(url: url)
-        if let err = fitsTabHost.activeTab?.loadError, !err.isEmpty {
-            throw AstronomyOpenError(message: err)
-        }
-        guard fitsTabHost.activeTab?.file != nil else {
-            throw AstronomyOpenError(message: "FITS file did not load")
-        }
+        try await loadNow(url: url, in: fitsTabHost, mode: .fitsViewer)
     }
 
     /// Load a cube and wait until ingest finishes.
     func loadCubeNow(url: URL) async throws {
         pendingCubeURL = nil
-        navigateTo(.cubeViewer)
-        await cubeTabHost.openFile(url: url)
-        if let err = cubeTabHost.activeTab.loadError, !err.isEmpty {
-            throw AstronomyOpenError(message: err)
-        }
-        guard cubeTabHost.activeTab.hasData else {
-            throw AstronomyOpenError(message: "cube did not load")
+        try await loadNow(url: url, in: cubeTabHost, mode: .cubeViewer)
+    }
+
+    /// Shows `mode` and opens `url` there; a failed load leaves no dead tab.
+    private func loadNow(url: URL, in host: some ViewerTabHosting, mode: AppMode) async throws {
+        navigateTo(mode)
+        if let failure = await host.openFileDiscardingFailure(url: url) {
+            throw AstronomyOpenError(message: failure)
         }
     }
     #endif

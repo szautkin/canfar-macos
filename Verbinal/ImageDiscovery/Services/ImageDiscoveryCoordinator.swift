@@ -99,6 +99,21 @@ actor ImageDiscoveryCoordinator {
         case inspector   // launch a known-good headless image to inspect target
     }
 
+    /// Inspector (syft) job size. syft unpacks the whole target image:
+    /// Ubuntu 1.4.x measured cgroup OOM kills at `ram: 1` on a 12 GB target
+    /// (often with no logs and no stub manifest). 2 CPU / 8 GB is the same
+    /// "normal small job" as a session launch. Trade-off: bigger asks
+    /// schedule slower under cluster pressure (4 GB sat Pending 15+ min on
+    /// 2026-05-19), but a Pending probe times out visibly while an
+    /// OOM-killed one fails silently.
+    static let inspectorProbeCores = 2
+    static let inspectorProbeRamGB = 8
+    /// In-target probe job size: the smallest schedulable shape. The probe
+    /// is bash + python3 over package databases already on disk (Ubuntu
+    /// measured 0 OOMs at 1 GB), so anything bigger only slows placement.
+    static let inTargetProbeCores = 1
+    static let inTargetProbeRamGB = 1
+
     /// Foreground timeout for a single probe job. Default 10
     /// minutes — bumped from the prior 5 min after the
     /// 2026-05-21 observation that inspector-mode probes against
@@ -869,17 +884,8 @@ actor ImageDiscoveryCoordinator {
             cmd: "bash",
             args: scriptPath,
             env: [("TARGET_IMAGE", targetImageID)],
-            // 1c/1g/0gpu — the smallest schedulable shape on the
-            // shared CANFAR cluster. The earlier `ram: 4` ask was
-            // theoretically nicer for syft headroom, but 2026-05-19
-            // observation: 4 GB inspector jobs sit Pending 15+ min
-            // under cluster pressure while 1 GB ones place in <60s.
-            // syft can OOM on truly huge target images, but that's
-            // a structured failure (`probeNotes: "syft failed: out
-            // of memory"`) the user can react to — far better than
-            // an indefinite pending queue.
-            cores: 1,
-            ram: 1,
+            cores: Self.inspectorProbeCores,
+            ram: Self.inspectorProbeRamGB,
             gpus: 0,
             replicas: 1
         )
@@ -915,15 +921,8 @@ actor ImageDiscoveryCoordinator {
             cmd: "bash",
             args: scriptPath,
             env: [("IMAGE_ID", imageID)],
-            // 1c/1g/0gpu — same rationale as the inspector path.
-            // Smallest schedulable shape; the probe script's bash
-            // + python3 footprint is well under 1 GB. Anything
-            // bigger sits Pending under cluster pressure (observed
-            // 2026-05-19) and the user perceives the discovery
-            // feature as broken even when the script itself is
-            // correct.
-            cores: 1,
-            ram: 1,
+            cores: Self.inTargetProbeCores,
+            ram: Self.inTargetProbeRamGB,
             gpus: 0,
             replicas: 1
         )

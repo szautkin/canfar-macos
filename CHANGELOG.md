@@ -57,6 +57,26 @@ delete, Cube Intel volume hardening, Research local FITS import (see
 - FITS WCS: PC+CDELT headers (JWST i2d) apply rotation instead of
   ignoring PC; a 90° CROTA2/PC is valid (`|det(CD)|` instead of
   diagonal-only). Cube celestial WCS uses the same matrix builder.
+- `probe_fits_pixel` uses 0-based FITS array coordinates (astropy
+  `origin=0`). It had been applying the canvas Y-flip, so sky at a
+  rotated JWST i2d corner was off by ~130″ while `get_fits_wcs`
+  north angle was already correct. `get_fits_view.crosshair` reports
+  the same array indices (the pixel under the crosshair), so an agent
+  can probe it without converting.
+- FITS Viewer: the crosshair, hover and linked-crosshair pixel values
+  read the pixel actually drawn under the cursor. They had read the
+  vertically mirrored row (RA/Dec were already right), so the value
+  disagreed with the image except on vertically symmetric data.
+- Failed `open_fits_file` / `open_cube` loads discard the new tab and
+  hand focus back to the tab that had it; `get_fits_view.isOpen` is
+  true only when an image HDU actually loaded — a PDF renamed `.fits`
+  no longer stays as an active dead document. `openTabPaths` keeps
+  one entry per tab, index-aligned with `activeTabIndex`.
+- Image Discovery inspector: POSIX `mktemp` (BusyBox Alpine hosts
+  reject GNU `--suffix=.py` — live job `wzvbjl5j`); syft unpacks to
+  `/scratch` when present; inspector job size is 2 CPU / 8 GB so
+  syft no longer OOM-kills on large targets (Ubuntu 1.4.x). In-target
+  probes stay at 1 CPU / 1 GB.
 - Pending proposals journal to disk and rehydrate under their original
   ids; a failed apply reports `failed` rather than looking like a
   rejection. `get_proposal_state` accepts `proposalId` as an alias of
@@ -69,7 +89,7 @@ delete, Cube Intel volume hardening, Research local FITS import (see
   products.
 
 ### Changed
-- Marketing version 1.3.4 (build 16).
+- Marketing version 1.3.4 (build 17).
 
 ## [1.3.3] - 2026-07-23
 

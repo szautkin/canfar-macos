@@ -631,13 +631,10 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
                       "args must point at the inspector script; got \(call.args ?? "nil")")
         XCTAssertEqual(call.env.first(where: { $0.0 == "TARGET_IMAGE" })?.1, nonHeadlessImage,
                        "target image id must be passed via TARGET_IMAGE env")
-        // 2026-05-19 regression pin: inspector probes MUST request
-        // 1c/1g/0gpu. The earlier 4 GB ask was theoretically nicer
-        // for syft headroom but sat Pending 15+ min under cluster
-        // pressure. Bumping back up trades probe-OOMs (recoverable
-        // via probeNotes) for indefinite stalls (silent UX failure).
-        XCTAssertEqual(call.cores, 1, "inspector probe must request 1 CPU — smallest schedulable shape")
-        XCTAssertEqual(call.ram, 1, "inspector probe must request 1 GB RAM — anything bigger sits Pending under cluster pressure")
+        // Sizing rationale lives on the constants; the values are
+        // pinned in testInspectorScriptInvariants.
+        XCTAssertEqual(call.cores, ImageDiscoveryCoordinator.inspectorProbeCores)
+        XCTAssertEqual(call.ram, ImageDiscoveryCoordinator.inspectorProbeRamGB)
         XCTAssertEqual(call.gpus, 0, "inspector probe must not ask for GPUs")
     }
 
@@ -662,13 +659,10 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
                        "in-target path launches the target image as the probe host")
         XCTAssertTrue(call.args?.contains(ProbeScript.uploadFilename) ?? false,
                       "in-target path uses probe.sh, not inspector.sh")
-        // 2026-05-19 regression pin: in-target probes MUST request
-        // 1c/1g/0gpu. The earlier `ram: 2` ask was unnecessary —
-        // the probe script's bash + python3 footprint is well
-        // under 1 GB — and bumped probes into the slow-scheduling
-        // tier on a shared cluster.
-        XCTAssertEqual(call.cores, 1, "in-target probe must request 1 CPU")
-        XCTAssertEqual(call.ram, 1, "in-target probe must request 1 GB RAM")
+        // Sizing rationale lives on the constants; the values are
+        // pinned in testInspectorScriptInvariants.
+        XCTAssertEqual(call.cores, ImageDiscoveryCoordinator.inTargetProbeCores)
+        XCTAssertEqual(call.ram, ImageDiscoveryCoordinator.inTargetProbeRamGB)
         XCTAssertEqual(call.gpus, 0, "in-target probe must not ask for GPUs")
     }
 
@@ -683,6 +677,15 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertTrue(InspectorScript.body.contains("syft"))
         XCTAssertEqual(InspectorScript.uploadFilename, "inspector-\(InspectorScript.scriptHash).sh")
         XCTAssertEqual(InspectorScript.scriptHash.count, 12)
+        XCTAssertFalse(InspectorScript.body.contains("mktemp --suffix"),
+                       "GNU mktemp suffix flag breaks BusyBox on Alpine inspector images")
+        XCTAssertTrue(InspectorScript.body.contains("XXXXXX"),
+                      "POSIX mktemp TEMPLATE must end in XXXXXX")
+        XCTAssertTrue(InspectorScript.body.contains("/scratch/verbinal-syft"),
+                      "syft must unpack onto Skaha /scratch when the mount exists")
+        XCTAssertGreaterThanOrEqual(ImageDiscoveryCoordinator.inspectorProbeRamGB, 4,
+                                    "syft unpacks whole images; 1 GB is the Ubuntu OOM")
+        XCTAssertEqual(ImageDiscoveryCoordinator.inTargetProbeRamGB, 1)
     }
 
     // MARK: - VOSpace manifest recovery
