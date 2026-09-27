@@ -52,6 +52,51 @@ public struct SpectralWCS: Sendable {
         return crval + (Double(channel) + 1 - crpix) * cdelt
     }
 
+    /// A channel's wavelength in metres — what a cutout's band is written
+    /// in — from a frequency, wavelength, wavenumber or (with a rest
+    /// frequency) velocity axis. Nil when the axis is none of those.
+    public func wavelengthMetres(atChannel channel: Int) -> Double? {
+        let v = value(atChannel: channel)
+        let t = ctype.uppercased()
+        let unit = cunit.trimmingCharacters(in: .whitespaces).lowercased()
+        let c = 299_792_458.0
+        if t.hasPrefix("FREQ") {
+            let scale: Double = unit == "ghz" ? 1e9 : unit == "mhz" ? 1e6 : unit == "khz" ? 1e3 : 1
+            return v != 0 ? c / (v * scale) : nil
+        }
+        if t.hasPrefix("WAVN") {
+            let perMetre = unit.hasPrefix("cm") ? v * 100 : v
+            return perMetre != 0 ? 1 / perMetre : nil
+        }
+        if t.hasPrefix("WAVE") || t.hasPrefix("AWAV") {
+            let scale: Double = switch unit {
+            case "cm": 1e-2
+            case "mm": 1e-3
+            case "um", "µm", "micron", "microns": 1e-6
+            case "nm": 1e-9
+            case "angstrom", "a": 1e-10
+            default: 1
+            }
+            return v * scale
+        }
+        if let rest = restfrq, rest > 0, t.hasPrefix("VRAD") || t.hasPrefix("VOPT") || t.hasPrefix("VELO") {
+            let speed = unit.hasPrefix("km") ? v * 1000 : v
+            if t.hasPrefix("VOPT") { return c / rest * (1 + speed / c) }
+            let frequency = t.hasPrefix("VRAD") ? rest * (1 - speed / c) : rest * ((c - speed) / (c + speed)).squareRoot()
+            return frequency > 0 ? c / frequency : nil
+        }
+        return nil
+    }
+
+    /// The spectral axis (3) of a header, without a lookup table.
+    public static func fromHeader(_ h: FITSHeader) -> SpectralWCS {
+        let restfrq: Double? = h.contains("RESTFRQ") ? h.double("RESTFRQ") : (h.contains("RESTFREQ") ? h.double("RESTFREQ") : nil)
+        return SpectralWCS(ctype: (h.string("CTYPE3") ?? "").trimmingCharacters(in: .whitespaces),
+                           cunit: (h.string("CUNIT3") ?? "").trimmingCharacters(in: .whitespaces),
+                           restfrq: restfrq, table: nil, crval: h.double("CRVAL3"), crpix: h.double("CRPIX3", fallback: 1),
+                           cdelt: h.contains("CDELT3") ? h.double("CDELT3") : h.double("CD3_3", fallback: 1))
+    }
+
     public func format(channel: Int) -> Readout {
         let v = value(atChannel: channel)
         let t = ctype.uppercased()

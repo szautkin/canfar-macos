@@ -166,4 +166,60 @@ final class FITSCutterTests: XCTestCase {
         XCTAssertEqual(result.hdus.count, 2)
         XCTAssertTrue(result.hdus[0].header.bool("EXTEND"))
     }
+
+    // MARK: - Cubes
+
+    /// A 10×8×6 float cube, value z·1000 + y·100 + x, WAVE in metres from 500 nm by 10 nm.
+    private func cube() -> Data {
+        let cards = [card("SIMPLE", "T"), card("BITPIX", "-32"), card("NAXIS", "3"), card("NAXIS1", "10"), card("NAXIS2", "8"),
+                     card("NAXIS3", "6"), card("CTYPE1", "'RA---TAN'"), card("CTYPE2", "'DEC--TAN'"), card("CRVAL1", "150.0"),
+                     card("CRVAL2", "2.0"), card("CRPIX1", "5.5"), card("CRPIX2", "4.5"), card("CD1_1", "-0.000277777778"),
+                     card("CD2_2", "0.000277777778"), card("CTYPE3", "'WAVE'"), card("CUNIT3", "'m'"), card("CRVAL3", "5.0E-07"),
+                     card("CRPIX3", "1.0"), card("CDELT3", "1.0E-08")]
+        var data = Data()
+        for z in 0..<6 {
+            for y in 0..<8 {
+                for x in 0..<10 {
+                    withUnsafeBytes(of: Float(z * 1000 + y * 100 + x).bitPattern.bigEndian) { data.append(contentsOf: $0) }
+                }
+            }
+        }
+        let r = data.count % 2880
+        if r != 0 { data.append(Data(repeating: 0, count: 2880 - r)) }
+        return header(cards) + data
+    }
+
+    func testACubeIsCutToTheChannelsOfABand() throws {
+        let data = cube()
+        let file = try FITSParser.parse(from: data)
+        XCTAssertEqual(FITSCutter.wavelengths(of: file.hdus[0])?.count, 6)
+        let parts = try FITSCutter.plan(file, region: .circle(ra: 150, dec: 2, radius: 1.2 / 3600), band: (5.15e-7, 5.35e-7))
+        XCTAssertEqual(parts.first?.channels, 2..<4, "520 and 530 nm")
+        let cut = try FITSCutter.cut(data, file: file, parts: parts, history: "cut")
+        try assertChecksumsVerify(cut)
+        let result = try FITSParser.parse(from: cut).hdus[0]
+        XCTAssertEqual(result.header.int("NAXIS3"), 2)
+        XCTAssertEqual(result.header.double("CRPIX3"), -1, "channel 2 is the first now")
+        let box = parts[0].box
+        let first = cut[result.dataOffset..<(result.dataOffset + 4)]
+        let value = Float(bitPattern: first.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }.bigEndian)
+        XCTAssertEqual(value, Float(2000 + box.y0 * 100 + box.x0))
+        XCTAssertTrue(String(decoding: cut, as: UTF8.self).contains(",3:4]"), "the channels in the HISTORY section")
+
+        XCTAssertThrowsError(try FITSCutter.plan(file, region: .circle(ra: 150, dec: 2, radius: 0.001), band: (1e-6, 2e-6))) {
+            XCTAssertEqual($0 as? FITSCutter.Failure, .outsideBand)
+        }
+        let whole = try FITSCutter.plan(file, region: .circle(ra: 150, dec: 2, radius: 0.001))
+        XCTAssertNil(whole.first?.channels, "no band keeps every channel")
+    }
+
+    func testSpectralAxesGiveWavelengths() throws {
+        let freq = SpectralWCS(ctype: "FREQ", cunit: "GHz", restfrq: nil, table: nil, crval: 230, crpix: 1, cdelt: 1)
+        XCTAssertEqual(try XCTUnwrap(freq.wavelengthMetres(atChannel: 0)), 299_792_458 / 230e9, accuracy: 1e-12)
+        let wavenumber = SpectralWCS(ctype: "WAVN", cunit: "cm-1", restfrq: nil, table: nil, crval: 1000, crpix: 1, cdelt: 1)
+        XCTAssertEqual(try XCTUnwrap(wavenumber.wavelengthMetres(atChannel: 0)), 1e-5, accuracy: 1e-15)
+        let radio = SpectralWCS(ctype: "VRAD", cunit: "km/s", restfrq: 1e9, table: nil, crval: 0, crpix: 1, cdelt: 1)
+        XCTAssertEqual(try XCTUnwrap(radio.wavelengthMetres(atChannel: 0)), 0.299792458, accuracy: 1e-12, "at rest")
+        XCTAssertNil(SpectralWCS(ctype: "STOKES", cunit: "", restfrq: nil, table: nil, crval: 1, crpix: 1, cdelt: 1).wavelengthMetres(atChannel: 0))
+    }
 }

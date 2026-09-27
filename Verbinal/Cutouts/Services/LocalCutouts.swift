@@ -12,11 +12,12 @@ import VerbinalKit
 /// be asked.
 struct LocalCutoutFile: CutoutFile {
     let artifactID: String
-    let parameters: Set<String> = ["CIRCLE", "POLYGON"]
     let footprint: SkyRegion?
     let boundingCircle: SkyRegion?
-    var bandMin: Double? { nil }
-    var bandMax: Double? { nil }
+    /// A cube's wavelengths, metres — it can then be cut by band.
+    var bandMin: Double? = nil
+    var bandMax: Double? = nil
+    var parameters: Set<String> { bandMin == nil ? ["CIRCLE", "POLYGON"] : ["CIRCLE", "POLYGON", "BAND"] }
     var timeMin: Double? { nil }
     var timeMax: Double? { nil }
     var polStates: [String] { [] }
@@ -62,8 +63,10 @@ struct LocalCutoutSource: CutoutSource {
         let bounding = SkyRegion.circle(ra: centre.ra, dec: centre.dec, radius: max(reach, 1e-6))
         // One image is its own footprint; a mosaic's is the circle round them all.
         let footprint = images.count == 1 ? SkyRegion.polygon(skyCorners(images[0])) : bounding
-        return LocalCutoutSource(url: url, localFile: LocalCutoutFile(artifactID: name, footprint: footprint,
-                                                                      boundingCircle: bounding, images: images.map(FITSCutter.name(of:))),
+        let wavelengths = images.lazy.compactMap(FITSCutter.wavelengths(of:)).first
+        return LocalCutoutSource(url: url, localFile: LocalCutoutFile(artifactID: name, footprint: footprint, boundingCircle: bounding,
+                                                                      bandMin: wavelengths?.min(), bandMax: wavelengths?.max(),
+                                                                      images: images.map(FITSCutter.name(of:))),
                                  fitsFile: fits, wholeFileBytes: size, unavailable: nil)
     }
 
@@ -71,6 +74,7 @@ struct LocalCutoutSource: CutoutSource {
     private static func skyCorners(_ hdu: FITSHDUnit) -> [SkyPoint] {
         guard let wcs = hdu.wcs else { return [] }
         let w = Double(hdu.header.naxis1) - 0.5, h = Double(hdu.header.naxis2) - 0.5
+        // A cube's WCS is read for its first two axes.
         return [(-0.5, -0.5), (w, -0.5), (w, h), (-0.5, h)].map {
             let sky = wcs.pixelToWorld(x: $0.0, y: $0.1)
             return SkyPoint(ra: sky.ra, dec: sky.dec)
@@ -82,7 +86,7 @@ struct LocalCutoutSource: CutoutSource {
         let common = CutoutRules.check(spec, against: localFile)
         guard common.isValid, let fitsFile, let region = spec.region else { return common }
         do {
-            _ = try FITSCutter.plan(fitsFile, region: region, images: spec.extensions)
+            _ = try FITSCutter.plan(fitsFile, region: region, images: spec.extensions, band: (spec.bandMin, spec.bandMax))
             return common
         } catch {
             return CutoutCheck(errors: common.errors + [Self.issue(error)], warnings: common.warnings)
@@ -92,11 +96,14 @@ struct LocalCutoutSource: CutoutSource {
     /// Exact: the boxes' pixels and a header block each (and the primary's).
     func estimatedBytes(_ spec: CutoutSpec) -> Int64? {
         guard let fitsFile, let region = spec.region,
-              let parts = try? FITSCutter.plan(fitsFile, region: region, images: spec.extensions) else { return nil }
+              let parts = try? FITSCutter.plan(fitsFile, region: region, images: spec.extensions,
+                                               band: (spec.bandMin, spec.bandMax)) else { return nil }
         func blocks(_ bytes: Int) -> Int { (bytes + 2879) / 2880 * 2880 }
         let data = parts.reduce(0) { total, part in
-            let bpp = abs(fitsFile.hdus.first { $0.id == part.index }?.header.bitpix ?? 8) / 8
-            return total + 2880 + blocks(part.box.width * part.box.height * bpp)
+            let header = fitsFile.hdus.first { $0.id == part.index }?.header
+            let bpp = abs(header?.bitpix ?? 8) / 8
+            let planes = part.channels?.count ?? (header?.naxis == 3 ? header?.int("NAXIS3") ?? 1 : 1)
+            return total + 2880 + blocks(part.box.width * part.box.height * bpp * planes)
         }
         return Int64(data + (parts.contains { $0.index == 0 } ? 0 : 2880))
     }
@@ -105,6 +112,8 @@ struct LocalCutoutSource: CutoutSource {
         switch failure {
         case .offImage: return .outsideFootprint
         case .unknownImage(let name, let available): return .unknownImage(name, available: available)
+        case .noWavelengths: return .noBand
+        case .outsideBand: return .bandOutside
         case .noImage, .unreadable: return .unreadable(failure.message)
         }
     }
@@ -128,7 +137,7 @@ struct LocalCutoutMaker: CutoutMaker {
             let fits = try FITSParser.parse(from: data, url: url)
             let cut: Data
             do {
-                let parts = try FITSCutter.plan(fits, region: region, images: spec.extensions)
+                let parts = try FITSCutter.plan(fits, region: region, images: spec.extensions, band: (spec.bandMin, spec.bandMax))
                 cut = try FITSCutter.cut(data, file: fits, parts: parts, history: "Verbinal cutout of \(url.lastPathComponent)")
             } catch {
                 throw CutoutFailure.refused((error as? FITSCutter.Failure)?.message ?? error.localizedDescription)

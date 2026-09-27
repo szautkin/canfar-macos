@@ -45,17 +45,23 @@ public struct PixelBox: Equatable, Hashable, Sendable {
 /// as extensions.
 public enum FITSCutter {
 
-    /// One image of the file, and the box of it the cut keeps.
+    /// One image of the file, and the box of it the cut keeps — for a
+    /// cube, the channels too (all of them when nil).
     public struct Part: Equatable, Sendable {
         public let index: Int
         public let name: String
         public let box: PixelBox
+        public var channels: Range<Int>? = nil
     }
 
     public enum Failure: Error, Equatable {
         case noImage
         case offImage
         case unknownImage(String, available: [String])
+        /// A band asked of a cube whose spectral axis says no wavelength.
+        case noWavelengths
+        /// No channel of the cube is in the band.
+        case outsideBand
         case unreadable(String)
 
         /// English, for agents and logs.
@@ -64,14 +70,35 @@ public enum FITSCutter {
             case .noImage: return "the file has no uncompressed 2-D image with sky coordinates to cut"
             case .offImage: return "the region falls on none of the file's images"
             case .unknownImage(let name, let available): return "the file has no image \(name); it has \(available.joined(separator: ", "))"
+            case .noWavelengths: return "the cube's spectral axis gives no wavelengths to cut a band by"
+            case .outsideBand: return "no channel of the cube is in that wavelength range"
             case .unreadable(let why): return "the file could not be cut: \(why)"
             }
         }
     }
 
-    /// The images a local cut can take: 2-D, uncompressed, with a WCS.
+    /// The images a local cut can take: 2-D or cubes, uncompressed, with a WCS.
     public static func images(of file: FITSFile) -> [FITSHDUnit] {
-        file.hdus.filter { $0.isImage && $0.header.naxis == 2 && !$0.header.contains("_COMPRESSED") && $0.wcs != nil }
+        file.hdus.filter { $0.isImage && (2...3).contains($0.header.naxis) && !$0.header.contains("_COMPRESSED") && $0.wcs != nil }
+    }
+
+    /// Each channel's wavelength in metres, for a cube whose axis gives them.
+    public static func wavelengths(of hdu: FITSHDUnit) -> [Double]? {
+        guard hdu.header.naxis == 3 else { return nil }
+        let axis = SpectralWCS.fromHeader(hdu.header)
+        let values = (0..<hdu.header.int("NAXIS3")).compactMap { axis.wavelengthMetres(atChannel: $0) }
+        return values.count == hdu.header.int("NAXIS3") && !values.isEmpty ? values : nil
+    }
+
+    /// The channels of a cube whose wavelengths are in `band` (metres; nil at an open end).
+    static func channels(of hdu: FITSHDUnit, band: (min: Double?, max: Double?)) throws(Failure) -> Range<Int>? {
+        guard hdu.header.naxis == 3, band.min != nil || band.max != nil else { return nil }
+        guard let wavelengths = wavelengths(of: hdu) else { throw .noWavelengths }
+        let inside = wavelengths.indices.filter { i in
+            (band.min.map { wavelengths[i] >= $0 } ?? true) && (band.max.map { wavelengths[i] <= $0 } ?? true)
+        }
+        guard let first = inside.min(), let last = inside.max() else { throw .outsideBand }
+        return first..<(last + 1)
     }
 
     /// How an image is named to a person or an agent: "SCI,1", "ccd07", or
@@ -83,7 +110,8 @@ public enum FITSCutter {
 
     /// The images `region` falls on and their boxes — those named, or
     /// every image it falls on when none are.
-    public static func plan(_ file: FITSFile, region: SkyRegion, images named: [String] = []) throws(Failure) -> [Part] {
+    public static func plan(_ file: FITSFile, region: SkyRegion, images named: [String] = [],
+                            band: (min: Double?, max: Double?) = (nil, nil)) throws(Failure) -> [Part] {
         let candidates = images(of: file)
         guard !candidates.isEmpty else { throw .noImage }
         let chosen: [FITSHDUnit]
@@ -97,10 +125,11 @@ public enum FITSCutter {
                 return hdu
             }
         }
-        let parts = chosen.compactMap { hdu -> Part? in
+        var parts: [Part] = []
+        for hdu in chosen {
             guard let wcs = hdu.wcs,
-                  let box = PixelBox.around(region, wcs: wcs, width: hdu.header.naxis1, height: hdu.header.naxis2) else { return nil }
-            return Part(index: hdu.id, name: name(of: hdu), box: box)
+                  let box = PixelBox.around(region, wcs: wcs, width: hdu.header.naxis1, height: hdu.header.naxis2) else { continue }
+            parts.append(Part(index: hdu.id, name: name(of: hdu), box: box, channels: try channels(of: hdu, band: band)))
         }
         guard !parts.isEmpty else { throw .offImage }
         return parts
@@ -118,9 +147,11 @@ public enum FITSCutter {
         }
         for part in parts.sorted(by: { $0.index < $1.index }) {
             guard let hdu = file.hdus.first(where: { $0.id == part.index }) else { throw .unreadable("no HDU \(part.index)") }
-            var header = rewrite(try cards(of: hdu, in: data), hdu: hdu, box: part.box, history: history)
-            if hdu.id == 0 && !onlyPrimary { header = setting("EXTEND", to: "T", in: header, after: "NAXIS2") }
-            out += try block(cards: header, data: pixels(of: hdu, box: part.box, in: data))
+            var header = rewrite(try cards(of: hdu, in: data), hdu: hdu, box: part.box, channels: part.channels, history: history)
+            if hdu.id == 0 && !onlyPrimary {
+                header = setting("EXTEND", to: "T", in: header, after: hdu.header.naxis == 3 ? "NAXIS3" : "NAXIS2")
+            }
+            out += try block(cards: header, data: pixels(of: hdu, box: part.box, channels: part.channels, in: data))
         }
         return out
     }
@@ -182,7 +213,7 @@ public enum FITSCutter {
 
     /// The header of a cut image: its size, where its reference pixel now
     /// is, how its pixels map back to the whole image, and what was done.
-    static func rewrite(_ original: [String], hdu: FITSHDUnit, box: PixelBox, history: String) -> [String] {
+    static func rewrite(_ original: [String], hdu: FITSHDUnit, box: PixelBox, channels: Range<Int>? = nil, history: String) -> [String] {
         let h = hdu.header
         var cards = original.filter { !["CHECKSUM", "DATASUM"].contains(keyword(of: $0)) }
         cards = setting("NAXIS1", to: "\(box.width)", in: cards)
@@ -199,8 +230,18 @@ public enum FITSCutter {
         cards = setting("LTV2", to: number(h.double("LTV2") - Double(box.y0)), in: cards)
         if !h.contains("LTM1_1") { cards = setting("LTM1_1", to: "1.0", in: cards) }
         if !h.contains("LTM2_2") { cards = setting("LTM2_2", to: "1.0", in: cards) }
-        cards.append("HISTORY \(history) [\(box.x0 + 1):\(box.x1),\(box.y0 + 1):\(box.y1)]".prefix(80)
-            .padding(toLength: 80, withPad: " ", startingAt: 0))
+        var section = "[\(box.x0 + 1):\(box.x1),\(box.y0 + 1):\(box.y1)"
+        if let channels {
+            cards = setting("NAXIS3", to: "\(channels.count)", in: cards)
+            for card in cards where keyword(of: card).hasPrefix("CRPIX3") && keyword(of: card).count <= 7 {
+                let key = keyword(of: card)
+                cards = setting(key, to: number(h.double(key) - Double(channels.lowerBound)), in: cards)
+            }
+            section += ",\(channels.lowerBound + 1):\(channels.upperBound)"
+        } else if h.naxis == 3 {
+            section += ",*"
+        }
+        cards.append("HISTORY \(history) \(section)]".prefix(80).padding(toLength: 80, withPad: " ", startingAt: 0))
         return cards
     }
 
@@ -217,16 +258,21 @@ public enum FITSCutter {
 
     // MARK: - Pixels and blocks
 
-    static func pixels(of hdu: FITSHDUnit, box: PixelBox, in data: Data) throws(Failure) -> Data {
+    static func pixels(of hdu: FITSHDUnit, box: PixelBox, channels: Range<Int>? = nil, in data: Data) throws(Failure) -> Data {
         let bpp = abs(hdu.header.bitpix) / 8
         let rowLength = hdu.header.naxis1 * bpp
-        guard bpp > 0, hdu.dataOffset + rowLength * hdu.header.naxis2 <= data.count else {
+        let planeLength = rowLength * hdu.header.naxis2
+        let depth = hdu.header.naxis == 3 ? hdu.header.int("NAXIS3") : 1
+        guard bpp > 0, hdu.dataOffset + planeLength * depth <= data.count else {
             throw .unreadable("the image's data is shorter than its header says")
         }
-        var out = Data(capacity: box.width * box.height * bpp)
-        for y in box.y0..<box.y1 {
-            let start = hdu.dataOffset + y * rowLength + box.x0 * bpp
-            out.append(data[start..<(start + box.width * bpp)])
+        let planes = channels ?? 0..<depth
+        var out = Data(capacity: box.width * box.height * bpp * planes.count)
+        for z in planes {
+            for y in box.y0..<box.y1 {
+                let start = hdu.dataOffset + z * planeLength + y * rowLength + box.x0 * bpp
+                out.append(data[start..<(start + box.width * bpp)])
+            }
         }
         return out
     }

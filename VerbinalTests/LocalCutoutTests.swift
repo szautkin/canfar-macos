@@ -110,6 +110,29 @@ final class LocalCutoutTests: XCTestCase {
         }
     }
 
+    /// A cube on this computer is cut by band too: 1.000–1.004 GHz is
+    /// 0.29979–0.29860 m, and 0.2987–0.2995 m keeps channels 1…3.
+    func testALocalCubeIsCutByBand() async throws {
+        let url = try FITSTestFixtures.writeCube()
+        files.append(url)
+        let local = LocalCutoutSource.open(url)
+        XCTAssertTrue(local.file.supports("BAND"))
+        XCTAssertEqual(try XCTUnwrap(local.file.bandMax), 299_792_458 / 1e9, accuracy: 1e-9)
+        let spec = CutoutSpec(artifactID: local.file.artifactID, region: .circle(ra: 150, dec: 2, radius: 1.5 / 3600),
+                              bandMin: 0.2987, bandMax: 0.2995, cutBy: .local)
+        XCTAssertTrue(local.check(spec).isValid, "\(local.check(spec).errors)")
+        var off = spec
+        off.bandMin = 0.5
+        off.bandMax = 0.6
+        XCTAssertFalse(local.check(off).isValid)
+
+        let cut = try await LocalCutoutMaker(file: { _ in url }).make(publisherID: "p", spec: spec)
+        files.append(cut)
+        let bytes = try Data(contentsOf: cut)
+        XCTAssertEqual(Int64(bytes.count), local.estimatedBytes(spec))
+        XCTAssertEqual(try FITSParser.parse(from: bytes).hdus[0].header.int("NAXIS3"), 3)
+    }
+
     // MARK: - Choosing the way
 
     private func args(_ json: String) throws -> CutoutArgs {
