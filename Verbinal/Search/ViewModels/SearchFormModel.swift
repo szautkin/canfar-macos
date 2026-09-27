@@ -20,6 +20,9 @@ final class SearchFormModel {
     let savedQueryStore: SavedQueryStore
 
     let tapClient: TAPClient
+    /// The archive's TAP_SCHEMA, shared by the ADQL editor's checker and
+    /// the agent tools.
+    let tapSchema: TapSchemaService
     private let resolverService: TargetResolverService
 
     // Target resolution state
@@ -67,6 +70,7 @@ final class SearchFormModel {
          recentSearchStore: RecentSearchStore? = nil,
          savedQueryStore: SavedQueryStore? = nil) {
         self.tapClient = tapClient
+        self.tapSchema = TapSchemaService(tapClient: tapClient)
         self.recentSearchStore = recentSearchStore ?? RecentSearchStore()
         self.savedQueryStore = savedQueryStore ?? SavedQueryStore()
         self.resolverService = TargetResolverService(tapClient: tapClient)

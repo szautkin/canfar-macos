@@ -221,6 +221,8 @@ extension AppState {
         }))
         tools.append(makeResetSearchFormTool())
         tools.append(makeCancelSearchTool())
+        tools.append(makeDescribeTapSchemaTool())
+        tools.append(makeValidateADQLQueryTool())
         let getConstraints = makeGetDataTrainOptionsTool()
         tools.append(getConstraints)
         tools.append(AliasedToolBox(

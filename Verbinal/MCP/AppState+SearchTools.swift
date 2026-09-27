@@ -477,6 +477,20 @@ extension AppState {
         }
     }
 
+    /// The search model's schema service, fetched on first use.
+    private func tapSchemaSource() -> @Sendable () async throws -> TapSchema {
+        let service = searchModel.tapSchema
+        return { try await service.schema() }
+    }
+
+    func makeDescribeTapSchemaTool() -> DescribeTapSchemaTool {
+        DescribeTapSchemaTool(schema: tapSchemaSource())
+    }
+
+    func makeValidateADQLQueryTool() -> ValidateADQLQueryTool {
+        ValidateADQLQueryTool(schema: tapSchemaSource())
+    }
+
     func makeCancelSearchTool() -> CancelSearchTool {
         let activity = agentsService.activityStore
         return CancelSearchTool(cancel: { [weak self] in

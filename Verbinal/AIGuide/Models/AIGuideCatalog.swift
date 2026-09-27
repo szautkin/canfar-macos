@@ -95,6 +95,8 @@ enum AIGuideCatalog {
         "run_search": "search",
         "reset_search_form": "search",
         "cancel_search": "search",
+        "describe_tap_schema": "search",
+        "validate_adql_query": "search",
         "get_search_constraints": "search",
         "get_data_train_options": "search",
         "set_search_constraints": "search",

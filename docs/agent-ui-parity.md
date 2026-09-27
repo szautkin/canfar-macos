@@ -46,6 +46,8 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Generate from Form | `set_adql_editor` `generateFromForm` | live |
 | Execute (⌘⇧↩) | `set_adql_editor` `execute` | live |
 | Cancel beside the spinner | `cancel_search` | live |
+| The archive's tables, columns and joins | `describe_tap_schema` | read |
+| Check a query without running it | `validate_adql_query` | read |
 | Save Query | `save_query` (pre-existing) | write |
 
 ## Search — results table

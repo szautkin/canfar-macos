@@ -53,6 +53,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (matching the query's words, not the whole phrase), and `man` gives one
   tool's full description and schema, or the nearest names for a typo.
   They read the tool list exactly as the assistant receives it.
+- **The archive's schema for your assistant** — `describe_tap_schema`
+  reads CADC's own TAP_SCHEMA (tables, what each column means with units
+  and UCDs, and the joins it declares; one table, or a search across
+  columns), fetched once an hour. `validate_adql_query` checks a query
+  against it without running it: `LIMIT` (ADQL writes `SELECT TOP n`),
+  unknown tables and columns, and the qualifier CADC rejects as
+  ambiguous — reporting only what it is sure of, with the fix when there
+  is one.
 - **Cancel a search** — a search that takes long could not be stopped:
   Search stayed greyed with a spinner until CADC answered. **Cancel** now
   sits beside the spinner, on the form and in the ADQL editor (Esc), and
