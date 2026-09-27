@@ -106,6 +106,10 @@ final class FITSViewerModel: Identifiable {
 
     // State
     var isLoading = false
+    /// Where an open has got to — "Reading the pixels" — while `isLoading`.
+    var loadStage = ""
+    /// Files opened lately, for the empty screen.
+    @ObservationIgnored var recentFiles = RecentFiles.fits
     var loadError: String?
     var fileURL: URL?
     var lastCanvasSize: CGSize = CGSize(width: 800, height: 600)
@@ -138,19 +142,19 @@ final class FITSViewerModel: Identifiable {
         defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
 
         do {
-            let (fitsFile, image) = try await Task.detached {
+            loadStage = String(localized: "Reading the header")
+            let (data, fitsFile) = try await Task.detached {
                 // Mapped, not read: the file's size is not what memory holds.
                 let data = try Data(contentsOf: url, options: .mappedIfSafe)
-                let fitsFile = try FITSParser.parse(from: data)
-                guard let imageHDU = fitsFile.firstImageHDU else {
-                    throw FITSError.noImageHDU
-                }
-                return (fitsFile, try LoadedImage(data: data, hdu: imageHDU))
+                return (data, try FITSParser.parse(from: data))
             }.value
-
             guard let firstImageHDU = fitsFile.firstImageHDU else {
                 throw FITSError.noImageHDU
             }
+            loadStage = Self.readingStage(of: firstImageHDU)
+            let image = try await Task.detached { try LoadedImage(data: data, hdu: firstImageHDU) }.value
+            loadStage = String(localized: "Drawing")
+
             file = fitsFile
             selectedHDUIndex = firstImageHDU.id
             apply(image)
@@ -158,6 +162,7 @@ final class FITSViewerModel: Identifiable {
 
             await renderImageAsync()
             fitToWindow(canvasSize: lastCanvasSize)
+            recentFiles.add(url)
         } catch {
             Self.logger.error("Failed to open FITS: \(error.localizedDescription, privacy: .public)")
             loadError = error.localizedDescription
@@ -210,6 +215,18 @@ final class FITSViewerModel: Identifiable {
             cuts = FITSParser.autoCut(pixels: pixels)
             range = FITSViewerModel.scanPixelRange(pixels)
         }
+    }
+
+    /// What reading an image's pixels is, for the loading screen: its size,
+    /// and whether its tiles are being uncompressed.
+    nonisolated static func readingStage(of hdu: FITSHDUnit) -> String {
+        let header = hdu.header
+        let width = header.int("ZNAXIS1", fallback: header.naxis1)
+        let height = header.int("ZNAXIS2", fallback: header.naxis2)
+        let size = "\(width.formatted()) × \(height.formatted())"
+        return header.contains("_COMPRESSED")
+            ? String(localized: "Uncompressing \(size) pixels")
+            : String(localized: "Reading \(size) pixels")
     }
 
     private func apply(_ image: LoadedImage) {

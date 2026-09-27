@@ -474,15 +474,28 @@ struct ProbeCubeSpectrumTool: JSONReadTool {
 
 // MARK: - Windows cube parity tools
 
-struct ListRecentCubesTool: JSONReadTool {
+/// A viewer's recently opened files, newest first — what its empty screen offers.
+struct ListRecentFilesTool: JSONReadTool {
     typealias Args = EmptyArgs
     struct Entry: Encodable, Sendable { let name: String; let path: String }
-    let definition = AIToolDefinition.withStaticSchema(
-        name: "list_recent_cubes",
-        description: "List recently opened Cube Viewer files, newest first.",
-        schema: #"{"type":"object","properties":{},"additionalProperties":false}"#)
+    let definition: AIToolDefinition
     let snapshot: @Sendable () async -> [Entry]
     func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> [Entry] { await snapshot() }
+
+    static func cubes(_ snapshot: @escaping @Sendable () async -> [Entry]) -> ListRecentFilesTool {
+        ListRecentFilesTool(definition: definition("list_recent_cubes", "List recently opened Cube Viewer files, newest first — open one with open_cube."),
+                            snapshot: snapshot)
+    }
+
+    static func fits(_ snapshot: @escaping @Sendable () async -> [Entry]) -> ListRecentFilesTool {
+        ListRecentFilesTool(definition: definition("list_recent_fits", "List recently opened FITS Viewer files, newest first — what its empty screen offers; open one with open_fits_file."),
+                            snapshot: snapshot)
+    }
+
+    private static func definition(_ name: String, _ description: String) -> AIToolDefinition {
+        AIToolDefinition.withStaticSchema(name: name, description: description,
+                                          schema: #"{"type":"object","properties":{},"additionalProperties":false}"#)
+    }
 }
 
 struct ShowCubeSpectrumTool: AITool {

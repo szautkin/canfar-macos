@@ -311,6 +311,7 @@ extension AppState {
         tools.append(makeSetCubeCameraTool())
         tools.append(makeProbeCubeSpectrumTool())
         tools.append(makeListRecentCubesTool())
+        tools.append(makeListRecentFITSTool())
         tools.append(makeShowCubeSpectrumTool())
         tools.append(makeGetCubeChannelProfileTool())
         tools.append(makeSetCubeTransferTool())

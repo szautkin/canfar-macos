@@ -218,13 +218,12 @@ extension AppState {
         })
     }
 
-    func makeListRecentCubesTool() -> ListRecentCubesTool {
-        ListRecentCubesTool(snapshot: { [weak self] in
-            guard let self else { return [] }
-            return await MainActor.run {
-                self.cubeViewer.recents.map { .init(name: $0.name, path: $0.path) }
-            }
-        })
+    func makeListRecentCubesTool() -> ListRecentFilesTool {
+        ListRecentFilesTool.cubes { await RecentFiles.cubes.items.map { .init(name: $0.name, path: $0.path) } }
+    }
+
+    func makeListRecentFITSTool() -> ListRecentFilesTool {
+        ListRecentFilesTool.fits { await RecentFiles.fits.items.map { .init(name: $0.name, path: $0.path) } }
     }
 
     func makeShowCubeSpectrumTool() -> ShowCubeSpectrumTool {

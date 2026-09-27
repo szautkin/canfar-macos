@@ -57,8 +57,9 @@ final class CubeViewerModel: Identifiable {
     /// Not observed — it's a transport closure, not UI state.
     @ObservationIgnored var volumeSnapshot: ((Int, Int, SIMD4<Float>?) -> CGImage?)?
 
-    /// Recently opened cubes (security-scoped bookmarks), persisted across launches.
-    var recents: [CubeRecent] = CubeRecents.load()
+    /// Recently opened cubes, kept across launches.
+    @ObservationIgnored var recentFiles = RecentFiles.cubes
+    var recents: [RecentFile] { recentFiles.items }
 
     // MARK: View state (shared by both modes)
     var viewMode: CubeViewMode = .slice {
@@ -191,9 +192,8 @@ final class CubeViewerModel: Identifiable {
     }
 
     /// Re-open a recent cube by resolving its security-scoped bookmark.
-    func openRecent(_ recent: CubeRecent) {
-        guard let url = CubeRecents.resolve(recent) else {
-            recents = CubeRecents.remove(recent)
+    func openRecent(_ recent: RecentFile) {
+        guard let url = recentFiles.resolve(recent) else {
             toast = "“\(recent.name)” is no longer available."
             return
         }
@@ -201,7 +201,7 @@ final class CubeViewerModel: Identifiable {
     }
 
     private func addRecent(_ url: URL) {
-        recents = CubeRecents.add(url: url)
+        recentFiles.add(url)
     }
 
     #if os(macOS)
@@ -554,57 +554,6 @@ final class CubeViewerModel: Identifiable {
     /// to the Metal shader so volume and slice apply the identical stretch.
     var stretchIndex: Int32 {
         Int32(FITSRenderParams.StretchMode.allCases.firstIndex(of: stretch) ?? 0)
-    }
-}
-
-/// A recently opened cube — a security-scoped bookmark so a sandboxed app can
-/// re-open it across launches.
-struct CubeRecent: Codable, Identifiable {
-    let name: String
-    let path: String
-    let bookmark: Data
-    var id: String { path }
-}
-
-/// UserDefaults-backed store of recently opened cubes.
-enum CubeRecents {
-    private static let key = "cubeViewer.recents"
-    private static let limit = 8
-
-    static func load() -> [CubeRecent] {
-        guard let data = UserDefaults.standard.data(forKey: key),
-              let items = try? JSONDecoder().decode([CubeRecent].self, from: data) else { return [] }
-        return items
-    }
-
-    @discardableResult
-    static func add(url: URL) -> [CubeRecent] {
-        guard let bookmark = try? url.bookmarkData(options: [.withSecurityScope],
-                                                   includingResourceValuesForKeys: nil, relativeTo: nil) else {
-            return load()
-        }
-        var items = load().filter { $0.path != url.path }
-        items.insert(CubeRecent(name: url.lastPathComponent, path: url.path, bookmark: bookmark), at: 0)
-        if items.count > limit { items = Array(items.prefix(limit)) }
-        save(items)
-        return items
-    }
-
-    static func resolve(_ recent: CubeRecent) -> URL? {
-        var stale = false
-        return try? URL(resolvingBookmarkData: recent.bookmark, options: [.withSecurityScope],
-                        relativeTo: nil, bookmarkDataIsStale: &stale)
-    }
-
-    @discardableResult
-    static func remove(_ recent: CubeRecent) -> [CubeRecent] {
-        let items = load().filter { $0.id != recent.id }
-        save(items)
-        return items
-    }
-
-    private static func save(_ items: [CubeRecent]) {
-        if let data = try? JSONEncoder().encode(items) { UserDefaults.standard.set(data, forKey: key) }
     }
 }
 

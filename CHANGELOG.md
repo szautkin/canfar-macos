@@ -298,6 +298,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **The FITS viewer offers what you opened lately** — its empty screen
+  has **Open FITS File…** and the files you opened recently, as the cube
+  viewer's has (one list of recent files serves both). While a file
+  loads, it says what it is doing — reading the header, reading or
+  uncompressing so many pixels, drawing — rather than a bare spinner.
+  For assistants: `list_recent_fits`.
 - **Large images open when the Mac can hold them** — the FITS viewer
   refused any file over 4 GB and any image over 500 million pixels,
   whatever was free, and drew every image at full size (a MegaPipe tile

@@ -98,26 +98,7 @@ struct CubeViewerRootView: View {
                     .buttonStyle(.borderedProminent)
                 #endif
             }
-            if !model.recents.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("RECENTLY OPENED").font(.caption2.bold()).tracking(1.5).foregroundStyle(.secondary)
-                    ForEach(model.recents) { recent in
-                        Button { model.openRecent(recent) } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "cube.transparent").foregroundStyle(.secondary)
-                                Text(recent.name).font(.callout).lineLimit(1)
-                                Spacer()
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .padding(8)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-                        .help(recent.path)
-                    }
-                }
-                .frame(maxWidth: 420)
-            }
+            RecentFilesList(recents: model.recentFiles, icon: "cube.transparent") { model.openRecent($0) }
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)

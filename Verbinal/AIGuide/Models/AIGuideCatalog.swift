@@ -183,6 +183,7 @@ enum AIGuideCatalog {
         "set_cube_view": "cube",
         "set_cube_camera": "cube",
         "probe_cube_spectrum": "cube",
+        "list_recent_fits": "fits",
         "list_recent_cubes": "cube",
         "show_cube_spectrum": "cube",
         "get_cube_channel_profile": "cube",

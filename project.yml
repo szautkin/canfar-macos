@@ -114,6 +114,7 @@ targets:
           - "CubeViewer/**"
           - "Storage/**"
           - "RemoteCompute/**"
+          - "RecentFiles/**"
           - "MCP/**"
           # Bundled as a folder resource below so Bundle looks under Workflows/.
           - "Workflows/Resources/**"

@@ -5187,6 +5187,16 @@
         }
       }
     },
+    "Drawing" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dessin"
+          }
+        }
+      }
+    },
     "Drop every cached failure outcome (does not re-run probes)" : {
       "localizations" : {
         "fr" : {
@@ -10018,6 +10028,16 @@
         }
       }
     },
+    "Open FITS File…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir un fichier FITS…"
+          }
+        }
+      }
+    },
     "Open FITS…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -10148,6 +10168,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ouvre une fenêtre contextuelle avec l'id, l'image, les ressources et les délais de la tâche."
+          }
+        }
+      }
+    },
+    "Opens it again" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'ouvre de nouveau"
           }
         }
       }
@@ -11412,6 +11442,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajustez les descriptions que le serveur MCP annonce pour chaque outil et rédigez vos propres outils d'instructions en lecture seule. macOS seulement."
+          }
+        }
+      }
+    },
+    "Reading %@ pixels" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lecture de %@ pixels"
+          }
+        }
+      }
+    },
+    "Reading the header" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lecture de l'en-tête"
           }
         }
       }
@@ -15507,6 +15557,16 @@
         }
       }
     },
+    "Uncompressing %@ pixels" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décompression de %@ pixels"
+          }
+        }
+      }
+    },
     "Unexpected registry response" : {
       "localizations" : {
         "fr" : {
@@ -17155,6 +17215,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajuster à la fenêtre"
+          }
+        }
+      }
+    },
+    "“%@” is no longer available." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "« %@ » n'est plus disponible."
           }
         }
       }

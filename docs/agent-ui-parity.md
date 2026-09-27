@@ -96,6 +96,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 
 | UI interaction | Tool | Kind |
 |---|---|---|
+| Empty screen: recently opened files | `list_recent_fits`, then `open_fits_file` | read |
 | Open file / tabs / stretch / colormap / cuts / zoom / fit / north-up / goto / probe / bookmarks / close tab | pre-existing control batch (`open_fits_file`, `set_fits_view` incl. `tabIndex`, `fits_goto_coordinate`, `probe_fits_pixel`, `*_fits_bookmark`, `list_open_tabs`, `close_tab` — FITS or cube, by index — with `close_active_tab` as its alias) | mixed |
 | HDU list selection | `select_hdu` | live |
 | Auto cut button | `fits_auto_cut` | live |

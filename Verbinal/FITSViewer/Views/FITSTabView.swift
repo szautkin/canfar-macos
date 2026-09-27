@@ -228,7 +228,12 @@ struct FITSTabView: View {
                     VStack(spacing: 0) {
                         if activeModel.isLoading {
                             Spacer()
-                            ProgressView("Loading FITS...")
+                            VStack(spacing: 8) {
+                                ProgressView()
+                                Text(activeModel.loadStage).font(.caption.monospaced())
+                                Text(activeModel.fileURL?.lastPathComponent ?? "").font(.caption2).foregroundStyle(.tertiary)
+                            }
+                            .accessibilityElement(children: .combine)
                             Spacer()
                         } else if let error = activeModel.loadError {
                             Spacer()
@@ -416,10 +421,29 @@ struct FITSTabView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView(
-            "No FITS file open",
-            systemImage: "star.circle",
-            description: Text("Open a FITS file or drag one here.")
-        )
+        VStack(spacing: 20) {
+            ContentUnavailableView {
+                Label("No FITS file open", systemImage: "star.circle")
+            } description: {
+                Text("Open a FITS file or drag one here.")
+            } actions: {
+                #if os(macOS)
+                Button("Open FITS File…") { Task { await (tabHost.activeTab ?? tabHost.addTab()).openWithPicker() } }
+                    .buttonStyle(.borderedProminent)
+                #endif
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            RecentFilesList(recents: RecentFiles.fits, icon: "star.circle") { recent in
+                Task {
+                    guard let url = RecentFiles.fits.resolve(recent) else {
+                        toast?.show(String(localized: "“\(recent.name)” is no longer available."))
+                        return
+                    }
+                    await tabHost.openFile(url: url)
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
