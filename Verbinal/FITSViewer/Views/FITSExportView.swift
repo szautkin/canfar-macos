@@ -48,28 +48,66 @@ struct FITSExportStyle: Equatable {
     var annotate = true
     var transparent = false
     var textColor: TextColor = .auto
+    /// Draw the image's marks on the figure.
+    var marks = true
+
+    /// Where the sheet keeps each choice; the agent's exports read them too.
+    enum Key {
+        static let theme = "fitsExport.theme"
+        static let font = "fitsExport.font"
+        static let scale = "fitsExport.scale"
+        static let annotate = "fitsExport.annotate"
+        static let transparent = "fitsExport.transparent"
+        static let textColor = "fitsExport.textColor"
+        static let marks = "fitsExport.marks"
+    }
+
+    /// The style last set in the Export Figure sheet.
+    static func stored(_ defaults: UserDefaults = .standard) -> FITSExportStyle {
+        FITSExportStyle(
+            theme: Theme(rawValue: defaults.string(forKey: Key.theme) ?? "") ?? .light,
+            font: FontKind(rawValue: defaults.string(forKey: Key.font) ?? "") ?? .sans,
+            scale: defaults.object(forKey: Key.scale) as? Double ?? 1.0,
+            annotate: defaults.object(forKey: Key.annotate) as? Bool ?? true,
+            transparent: defaults.object(forKey: Key.transparent) as? Bool ?? false,
+            textColor: TextColor(rawValue: defaults.string(forKey: Key.textColor) ?? "") ?? .auto,
+            marks: defaults.object(forKey: Key.marks) as? Bool ?? true)
+    }
 }
 
-/// Export sheet — style controls, a live preview, and PNG/PDF output.
-/// The FITS twin of `CubeExportView` (same layout, same persisted-style
-/// idiom, `fitsExport.*` keys).
+/// Export sheet — region, style controls, a live preview, and PNG/PDF
+/// output. The FITS twin of `CubeExportView` (same layout, same
+/// persisted-style idiom, `fitsExport.*` keys).
 struct FITSExportView: View {
     let model: FITSViewerModel
+    /// The image's marks, drawn on the figure.
+    var marks: [Mark] = []
+    /// The region the sheet opens on.
+    var initialRegion: FITSFigureRegion = .image
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("fitsExport.theme") private var themeRaw = FITSExportStyle.Theme.light.rawValue
-    @AppStorage("fitsExport.font") private var fontRaw = FITSExportStyle.FontKind.sans.rawValue
-    @AppStorage("fitsExport.scale") private var scale = 1.0
-    @AppStorage("fitsExport.annotate") private var annotate = true
-    @AppStorage("fitsExport.transparent") private var transparent = false
-    @AppStorage("fitsExport.textColor") private var textColorRaw = FITSExportStyle.TextColor.auto.rawValue
-    @State private var content: CGImage?
+    @AppStorage(FITSExportStyle.Key.theme) private var themeRaw = FITSExportStyle.Theme.light.rawValue
+    @AppStorage(FITSExportStyle.Key.font) private var fontRaw = FITSExportStyle.FontKind.sans.rawValue
+    @AppStorage(FITSExportStyle.Key.scale) private var scale = 1.0
+    @AppStorage(FITSExportStyle.Key.annotate) private var annotate = true
+    @AppStorage(FITSExportStyle.Key.transparent) private var transparent = false
+    @AppStorage(FITSExportStyle.Key.textColor) private var textColorRaw = FITSExportStyle.TextColor.auto.rawValue
+    @AppStorage(FITSExportStyle.Key.marks) private var showMarks = true
+    @State private var region: FITSFigureRegion = .image
     @State private var previewImage: NSImage?
+    /// Why the figure cannot be made, or the last save's outcome.
+    @State private var message: String?
 
     private var style: FITSExportStyle {
         FITSExportStyle(theme: FITSExportStyle.Theme(rawValue: themeRaw) ?? .light,
                         font: FITSExportStyle.FontKind(rawValue: fontRaw) ?? .sans,
                         scale: scale, annotate: annotate, transparent: transparent,
-                        textColor: FITSExportStyle.TextColor(rawValue: textColorRaw) ?? .auto)
+                        textColor: FITSExportStyle.TextColor(rawValue: textColorRaw) ?? .auto,
+                        marks: showMarks)
+    }
+
+    /// The figure of the chosen region, or why there is none.
+    private var figure: Result<FITSFigure, FITSFigureProblem> {
+        Result { () throws(FITSFigureProblem) in try model.figure(region, marks: marks) }
     }
 
     var body: some View {
@@ -82,6 +120,13 @@ struct FITSExportView: View {
 
             preview
 
+            Picker("Region", selection: $region) {
+                Text("Whole image").tag(FITSFigureRegion.image)
+                Text("View on screen").tag(FITSFigureRegion.view)
+                if case .mark(let id) = initialRegion, let mark = marks.first(where: { $0.id == id }) {
+                    Text("Around \(MarkSummary.title(mark))").tag(initialRegion)
+                }
+            }
             Picker("Theme", selection: $themeRaw) {
                 Text("Journal light").tag(FITSExportStyle.Theme.light.rawValue)
                 Text("Cockpit dark").tag(FITSExportStyle.Theme.dark.rawValue)
@@ -104,21 +149,28 @@ struct FITSExportView: View {
                 Text(String(format: "%.2f×", scale)).font(.callout.monospacedDigit()).foregroundStyle(.secondary)
             }
             Toggle("Annotations (header + legend)", isOn: $annotate)
+            Toggle("Marks", isOn: $showMarks)
+                .disabled(marks.isEmpty)
             Toggle("Transparent background", isOn: $transparent)
 
             HStack(spacing: 10) {
-                Button("PNG 2×") { exportPNG(2) }
-                Button("PNG 4×") { exportPNG(4) }
-                Button("PDF…") { exportPDF() }
+                Button("PNG 2×") { save(.png, scale: 2) }
+                Button("PNG 4×") { save(.png, scale: 4) }
+                Button("PDF…") { save(.pdf, scale: 1) }
                 Spacer()
             }
             .buttonStyle(.borderedProminent)
-            .disabled(content == nil)
+            .disabled(previewImage == nil)
+
+            if let message {
+                Text(message).font(.callout).foregroundStyle(.secondary)
+            }
         }
         .padding(20)
         .frame(width: 560)
-        .onAppear { content = model.renderedImage; rebuildPreview() }
+        .onAppear { region = initialRegion; rebuildPreview() }
         .onChange(of: style) { rebuildPreview() }
+        .onChange(of: region) { rebuildPreview() }
     }
 
     @ViewBuilder
@@ -141,77 +193,46 @@ struct FITSExportView: View {
     }
 
     private func rebuildPreview() {
-        guard let content else { previewImage = nil; return }
-        let renderer = ImageRenderer(content: FITSExportPlate.make(model: model, content: content, style: style))
-        renderer.scale = 1
-        previewImage = renderer.nsImage
-    }
-
-    private func exportPNG(_ factor: CGFloat) {
-        guard let content else { return }
-        let renderer = ImageRenderer(content: FITSExportPlate.make(model: model, content: content, style: style))
-        renderer.scale = factor
-        guard let nsImage = renderer.nsImage else { return }
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png]
-        panel.nameFieldStringValue = "\(FITSExportPlate.baseName(for: model)).png"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        if let tiff = nsImage.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
-           let data = rep.representation(using: .png, properties: [:]) {
-            try? data.write(to: url)
+        switch figure {
+        case .success(let figure):
+            message = nil
+            let renderer = ImageRenderer(content: FITSExportPlate.make(model: model, figure: figure, style: style))
+            renderer.scale = 1
+            previewImage = renderer.nsImage
+        case .failure(let problem):
+            previewImage = nil
+            message = problem.message
         }
     }
 
-    private func exportPDF() {
-        guard let content else { return }
-        let renderer = ImageRenderer(content: FITSExportPlate.make(model: model, content: content, style: style))
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.pdf]
-        panel.nameFieldStringValue = "\(FITSExportPlate.baseName(for: model)).pdf"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        renderer.render { size, renderInContext in
-            var mediaBox = CGRect(origin: .zero, size: size)
-            guard let consumer = CGDataConsumer(url: url as CFURL),
-                  let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return }
-            context.beginPDFPage(nil)
-            renderInContext(context)
-            context.endPDFPage()
-            context.closePDF()
+    private func save(_ format: FigureFile.Format, scale: CGFloat) {
+        guard case .success(let figure) = figure else { return }
+        let plate = FITSExportPlate.make(model: model, figure: figure, style: style)
+        switch FigureFile.save(plate, as: format, scale: scale, name: FITSExportPlate.baseName(for: model)) {
+        case .success(let url)?:
+            message = String(localized: "Saved \(url.lastPathComponent)")
+        case .failure(let error)?:
+            message = String(localized: "Could not save the figure: \(error.localizedDescription)")
+        case nil:
+            break
         }
     }
 }
 
 /// Headless figure export for the `export_fits_figure` agent tool — the
-/// PNG happy path of `FITSExportView` with no sheet and no save panel.
-/// Reuses the sheet's persisted style defaults (same `fitsExport.*`
-/// keys) so agent exports match what the user last configured.
-/// Returns the written file URL (in ~/Downloads).
+/// sheet's output with no sheet and no save panel, in the sheet's last
+/// style unless the request says otherwise. Returns the file written (in
+/// ~/Downloads).
 @MainActor
-func exportFITSFigureHeadless(model: FITSViewerModel, scale: CGFloat) throws -> URL {
-    guard let content = model.renderedImage else {
-        throw ToolFailureReason.targetNotResolved("No rendered FITS image is open in the viewer")
-    }
-    let d = UserDefaults.standard
-    let style = FITSExportStyle(
-        theme: FITSExportStyle.Theme(rawValue: d.string(forKey: "fitsExport.theme") ?? "") ?? .light,
-        font: FITSExportStyle.FontKind(rawValue: d.string(forKey: "fitsExport.font") ?? "") ?? .sans,
-        scale: d.object(forKey: "fitsExport.scale") as? Double ?? 1.0,
-        annotate: d.object(forKey: "fitsExport.annotate") as? Bool ?? true,
-        transparent: d.object(forKey: "fitsExport.transparent") as? Bool ?? false,
-        textColor: FITSExportStyle.TextColor(rawValue: d.string(forKey: "fitsExport.textColor") ?? "") ?? .auto)
-
-    let renderer = ImageRenderer(content: FITSExportPlate.make(model: model, content: content, style: style))
-    renderer.scale = scale
-    guard let nsImage = renderer.nsImage,
-          let tiff = nsImage.tiffRepresentation,
-          let rep = NSBitmapImageRep(data: tiff),
-          let data = rep.representation(using: .png, properties: [:]) else {
-        throw ToolFailureReason.backendError("Figure rendering failed")
-    }
-
-    let dest = FileHelper.timestampedDownloadsURL(
-        stem: FITSExportPlate.baseName(for: model), ext: "png")
-    try data.write(to: dest)
+func exportFITSFigureHeadless(model: FITSViewerModel, request: FITSFigureRequest, marks: [Mark]) throws -> URL {
+    let figure = try model.figure(request.region, marks: marks)
+    var style = FITSExportStyle.stored()
+    if let showMarks = request.marks { style.marks = showMarks }
+    if let annotate = request.annotate { style.annotate = annotate }
+    if let dark = request.dark { style.theme = dark ? .dark : .light }
+    let plate = FITSExportPlate.make(model: model, figure: figure, style: style)
+    let dest = FileHelper.timestampedDownloadsURL(stem: FITSExportPlate.baseName(for: model), ext: request.format.rawValue)
+    try FigureFile.write(plate, as: request.format, scale: request.scale, to: dest)
     return dest
 }
 
@@ -223,15 +244,14 @@ private struct FITSExportPlate: View {
     let subtitle: String
     let fileName: String
     let date: String
-    let content: CGImage
+    let figure: FITSFigure
     let stops: [Color]
     let style: FITSExportStyle
-    let legend: [(String, String)]
 
     /// Assemble the plate from the live model (main-actor reads happen
     /// here, once, so the View itself stays a value snapshot).
     @MainActor
-    static func make(model: FITSViewerModel, content: CGImage, style: FITSExportStyle) -> FITSExportPlate {
+    static func make(model: FITSViewerModel, figure: FITSFigure, style: FITSExportStyle) -> FITSExportPlate {
         let header = model.selectedHDU?.header
         let object = header?.string("OBJECT") ?? ""
         let telescope = header?.string("TELESCOP") ?? ""
@@ -239,27 +259,14 @@ private struct FITSExportPlate: View {
         let dateObs = header?.string("DATE-OBS") ?? ""
         let subtitleParts = [telescope, instrument, dateObs].filter { !$0.isEmpty }
 
-        var legend: [(String, String)] = []
-        legend.append(("Stretch", model.renderParams.stretch.rawValue))
-        legend.append(("Cuts", String(format: "%.4g – %.4g",
-                                      model.renderParams.minCut, model.renderParams.maxCut)))
-        if let header {
-            legend.append(("Size", "\(header.naxis1) × \(header.naxis2) px"))
-        }
-        if let wcs = model.wcs {
-            legend.append(("Center", "\(Sexagesimal.readoutHMS(degrees: wcs.crval1)) \(Sexagesimal.readoutDMS(degrees: wcs.crval2))"))
-            legend.append(("Scale", String(format: "%.3g″/px", wcs.pixelScaleArcsec)))
-        }
-
         return FITSExportPlate(
             title: object.isEmpty ? (model.fileURL?.deletingPathExtension().lastPathComponent ?? "FITS image") : object,
             subtitle: subtitleParts.joined(separator: " · "),
             fileName: model.fileURL?.lastPathComponent ?? "",
             date: Date.now.formatted(date: .abbreviated, time: .shortened),
-            content: content,
+            figure: figure,
             stops: colormapPreviewStops(model.renderParams.colormap),
-            style: style,
-            legend: legend)
+            style: style)
     }
 
     @MainActor
@@ -277,9 +284,18 @@ private struct FITSExportPlate: View {
                 headerView.padding(16)
                 Rectangle().fill(style.theme.line).frame(height: 1)
             }
-            Image(decorative: content, scale: 1)
+            Image(decorative: figure.content, scale: 1)
                 .resizable()
                 .scaledToFit()
+                .overlay {
+                    if style.marks, !figure.marks.isEmpty {
+                        GeometryReader { geo in
+                            if let projection = figure.markProjection(width: geo.size.width) {
+                                MarkOverlay(marks: figure.marks, selectedID: nil, projection: projection, showsGrips: false)
+                            }
+                        }
+                    }
+                }
                 .padding(style.annotate ? 14 : 0)
             if style.annotate {
                 Rectangle().fill(style.theme.line).frame(height: 1)
@@ -323,7 +339,7 @@ private struct FITSExportPlate: View {
                 .frame(width: 120, height: 10)
                 .clipShape(RoundedRectangle(cornerRadius: 3))
                 .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(style.theme.line))
-            ForEach(legend, id: \.0) { entry in
+            ForEach(figure.legend, id: \.0) { entry in
                 VStack(alignment: .leading, spacing: 1) {
                     Text(entry.0)
                         .font(.system(size: 8.5 * style.scale, weight: .medium))

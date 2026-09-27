@@ -198,7 +198,7 @@ struct FITSTabView: View {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 0) {
                                 hduList(activeModel)
-                                FITSRenderControlsView(model: activeModel)
+                                FITSRenderControlsView(model: activeModel, marks: appState.marks)
                                 if showHeader {
                                     Divider()
                                     FITSImageInfoPanel(model: activeModel)

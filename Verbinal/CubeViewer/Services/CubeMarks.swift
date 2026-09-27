@@ -105,6 +105,8 @@ struct CubeMarkCommands: MarkCommandHost {
             cube.centreSlice(onVoxel: mark.anchor.x, mark.anchor.y, channel: Int(mark.anchor.z.rounded()))
         case .searchHere:
             if let sky = cube.sky(of: mark) { search(sky.ra, sky.dec) }
+        case .exportFigure:
+            break   // not offered: a cube figure is of the whole slice or volume
         case .export(let format):
             export(format)
         case .delete:

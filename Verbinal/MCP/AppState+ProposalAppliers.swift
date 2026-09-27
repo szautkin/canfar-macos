@@ -218,13 +218,14 @@ extension AppState {
             },
             activity: activity))
         appliers.append(ExportFITSFigureApplier(
-            run: { [weak self] scale in
+            run: { [weak self] request in
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
                 return try await MainActor.run {
                     guard let tab = self.fitsTabHost.activeTab else {
                         throw ProposalApplyError.backendError("No FITS tab is open")
                     }
-                    return try exportFITSFigureHeadless(model: tab, scale: CGFloat(scale)).path
+                    let marks = tab.markTarget.map { self.marks.marks(on: $0) } ?? []
+                    return try exportFITSFigureHeadless(model: tab, request: request, marks: marks).path
                 }
             },
             activity: activity))

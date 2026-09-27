@@ -14,6 +14,8 @@ enum MarkCommand: Hashable, Sendable {
     case copyPosition
     case centre
     case searchHere
+    /// A publication figure framed on the mark.
+    case exportFigure
     case export(MarkExport.Format)
     case delete
 }
@@ -28,6 +30,12 @@ protocol MarkCommandHost {
     func perform(_ command: MarkCommand, on mark: Mark)
     /// Save the marks on screen to a file.
     func export(_ format: MarkExport.Format)
+    /// This viewer makes a figure framed on one mark.
+    var canExportFigure: Bool { get }
+}
+
+extension MarkCommandHost {
+    var canExportFigure: Bool { false }
 }
 
 /// A mark's menu, as data: the canvas renders it as an NSMenu, the list as
@@ -47,12 +55,16 @@ struct MarkMenuItem: Identifiable, Equatable {
     @MainActor
     static func items(for mark: Mark, host: MarkCommandHost) -> [MarkMenuItem] {
         let onSky = host.canLocateOnSky(mark)
+        let figure = host.canExportFigure
+            ? [MarkMenuItem(command: .exportFigure, title: String(localized: "Export Figure Around Mark…"), systemImage: "photo")]
+            : []
         return [
             MarkMenuItem(command: .editLabel, title: String(localized: "Edit Label"), systemImage: "character.cursor.ibeam"),
             MarkMenuItem(command: .copyPosition, title: String(localized: "Copy Position"), systemImage: "doc.on.doc"),
             MarkMenuItem(command: .centre, title: String(localized: "Centre on Mark"), systemImage: "scope"),
             MarkMenuItem(command: .searchHere, title: String(localized: "Search Here"), systemImage: "magnifyingglass",
                          enabled: onSky, disabledReason: onSky ? nil : String(localized: "This image has no sky coordinates")),
+        ] + figure + [
             MarkMenuItem(command: .export(.ds9), title: String(localized: "Export Marks as DS9 Regions…"),
                          systemImage: "square.and.arrow.up"),
             MarkMenuItem(command: .export(.json), title: String(localized: "Export Marks as JSON…"),

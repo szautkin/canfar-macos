@@ -105,7 +105,8 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Windows-shaped blink command / activate tab | `blink_fits_tabs`, `switch_fits_tab` | live |
 | Link Crosshair / Sync Zoom toggles | `set_tab_sync` | live |
 | Search Here (⌘⇧L) | `search_at_crosshair` | live |
-| Export Figure sheet (NEW in UI too) | `export_fits_figure` | write |
+| Export Figure sheet: region (whole image / view / around a mark), marks, style, PNG/PDF | `export_fits_figure` (`region` also box and sky) | write |
+| Mark menu ▸ Export Figure Around Mark… | `export_fits_figure` `region: mark` | write |
 | "Open as…" 2D vs 3D sheet (NAXIS≥3) | `choose_viewer`; `get_current_view.pendingViewerChoice` | live/read |
 | Draw a mark (Marks panel ▸ Draw, click or drag the image) | `annotate_fits` | live |
 | Move, resize (grip), rename (double-click, Edit Label), restyle (panel colour/bold/size/outline) | `update_annotation` | live |

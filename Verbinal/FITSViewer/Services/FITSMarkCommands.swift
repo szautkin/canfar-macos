@@ -25,6 +25,8 @@ struct FITSMarkCommands: MarkCommandHost {
 
     func canLocateOnSky(_ mark: Mark) -> Bool { sky(of: mark) != nil }
 
+    var canExportFigure: Bool { true }
+
     func perform(_ command: MarkCommand, on mark: Mark) {
         switch command {
         case .editLabel:
@@ -38,6 +40,8 @@ struct FITSMarkCommands: MarkCommandHost {
             if let point = tab.displayPoint(mark.anchor) { tab.centerOnPixel(point, canvasSize: tab.lastCanvasSize) }
         case .searchHere:
             if let sky = sky(of: mark) { tab.onSearchAtPosition?(sky.ra, sky.dec) }
+        case .exportFigure:
+            tab.figureRegion = .mark(id: mark.id)
         case .export(let format):
             export(format)
         case .delete:

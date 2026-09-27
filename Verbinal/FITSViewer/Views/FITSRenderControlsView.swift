@@ -9,9 +9,10 @@ import VerbinalKit
 
 struct FITSRenderControlsView: View {
     var model: FITSViewerModel
+    /// Where the image's marks are kept, for the figure.
+    var marks: MarkStore?
     @State private var goToRA: String = ""
     @State private var goToDec: String = ""
-    @State private var showExport = false
     @Environment(\.fitsToast) private var toast
 
     var body: some View {
@@ -288,7 +289,7 @@ struct FITSRenderControlsView: View {
             #if os(macOS)
             // Export — publication figure with header + colorbar legend
             // (the Cube panel's exporter, for 2D images).
-            Button { showExport = true } label: {
+            Button { model.figureRegion = .image } label: {
                 Label("Export Figure…", systemImage: "square.and.arrow.up")
             }
             .disabled(model.renderedImage == nil)
@@ -296,8 +297,10 @@ struct FITSRenderControlsView: View {
         }
         .padding(8)
         #if os(macOS)
-        .sheet(isPresented: $showExport) {
-            FITSExportView(model: model)
+        .sheet(isPresented: Binding(get: { model.figureRegion != nil }, set: { if !$0 { model.figureRegion = nil } })) {
+            FITSExportView(model: model,
+                           marks: model.markTarget.map { marks?.marks(on: $0) ?? [] } ?? [],
+                           initialRegion: model.figureRegion ?? .image)
         }
         #endif
     }

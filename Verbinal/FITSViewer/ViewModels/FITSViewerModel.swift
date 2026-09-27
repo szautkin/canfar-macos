@@ -72,6 +72,9 @@ final class FITSViewerModel: Identifiable {
     var outOfBoundsDec: String = ""
     /// Pending toast message for the view layer to display. Consumed once shown.
     var pendingToast: String?
+    /// The Export Figure sheet is open on this region (a mark's menu opens
+    /// it framed on the mark); nil when it is closed.
+    var figureRegion: FITSFigureRegion?
 
     // Mouse readout
     var cursorRA: String = ""

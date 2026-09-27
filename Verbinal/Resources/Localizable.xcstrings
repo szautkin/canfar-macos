@@ -1479,7 +1479,6 @@
       }
     },
     "Annotations (header + legend)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1580,6 +1579,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arguments"
+          }
+        }
+      }
+    },
+    "Around %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autour de %@"
           }
         }
       }
@@ -3361,6 +3370,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Impossible d’allouer une texture de volume %lld×%lld×%lld. Essayez le mode coupe ou un cube plus petit."
+          }
+        }
+      }
+    },
+    "Could not save the figure: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d'enregistrer la figure : %@"
           }
         }
       }
@@ -5313,6 +5332,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Exporter la figure"
+          }
+        }
+      }
+    },
+    "Export Figure Around Mark…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporter une figure autour de la marque…"
           }
         }
       }
@@ -10508,6 +10537,16 @@
         }
       }
     },
+    "Region" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Région"
+          }
+        }
+      }
+    },
     "Registry" : {
       "localizations" : {
         "fr" : {
@@ -11546,7 +11585,6 @@
       }
     },
     "Saved %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14462,6 +14500,16 @@
         }
       }
     },
+    "View on screen" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vue à l'écran"
+          }
+        }
+      }
+    },
     "View probe logs" : {
       "localizations" : {
         "fr" : {
@@ -15095,6 +15143,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Blanc"
+          }
+        }
+      }
+    },
+    "Whole image" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image entière"
           }
         }
       }

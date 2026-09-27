@@ -91,6 +91,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   marks — open or not — as a DS9 region file (sky in fk5 with sizes in
   arcseconds, pixels 1-based as DS9 counts them) or as JSON grouped by
   extension.
+- **Figures of part of an image, with its marks** — the FITS viewer's
+  Export Figure draws the image's marks and labels (a **Marks** toggle)
+  and shows the whole image or the view on screen; a mark's menu has
+  **Export Figure Around Mark…**. The legend gives the figure's own
+  centre and field of view. For assistants, `export_fits_figure` takes
+  `region` — the view on screen (the default), the whole image, a pixel
+  box, a circle on the sky, or around a mark — and `format` (PNG or PDF),
+  `marks`, `annotate` and `dark`.
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across
@@ -173,6 +181,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
   probed its neighbour, and the sky read-out was half a pixel out. One map
   from the screen to the cube's voxels now serves the probe, the read-out
   and marks.
+- **A figure's "Center"** was the WCS reference point (CRVAL), which is
+  often not the middle of the image; it is now the centre of what the
+  figure shows. A figure that could not be written said nothing; the
+  sheet now says so.
 - **`get_fits_wcs` without an HDU** reads the HDU on screen when the file
   is open, otherwise the first HDU with a WCS, and says which
   (`hduChosenBy`).
