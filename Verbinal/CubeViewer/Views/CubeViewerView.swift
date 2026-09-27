@@ -180,6 +180,14 @@ struct CubeViewerView: View {
             #if os(macOS)
             ZStack(alignment: .top) {
                 CubeVolumeView(model: model)
+                if let target = model.markTarget {
+                    GeometryReader { geo in
+                        if let projection = model.volumeMarkProjection(canvasSize: geo.size) {
+                            MarkOverlay(editor: marks, target: target, projection: projection, showsGrips: false)
+                        }
+                    }
+                    .allowsHitTesting(false)
+                }
                 CubeAxisCaptions(model: model)
                 if let error = model.volumeRenderError {
                     Text(error)

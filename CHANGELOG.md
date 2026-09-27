@@ -81,7 +81,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   view, and are kept with the file and extension — however its path is
   spelled — so they are there when you open it again. Cubes have marks
   too, in the Cube Viewer's panel: a cube mark lives on a channel — drawn
-  on the slice showing it, and Centre on Mark goes to that channel. Your
+  on the slice showing it, and Centre on Mark goes to that channel — and
+  the volume shows every channel's marks where they sit in the cube. Your
   assistant can mark too, and its marks say so: `annotate_fits` and
   `list_fits_annotations`, `annotate_cube` and `list_cube_annotations`,
   and for either viewer `update_annotation`, `select_annotation` (picks

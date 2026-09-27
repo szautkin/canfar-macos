@@ -253,23 +253,15 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     }
 
     private func applyBoxScale() {
-        let m = Float(max(volDims.x, volDims.y))
-        guard m > 0 else { return }
-        boxScale = SIMD3(Float(volDims.x) / m, Float(volDims.y) / m, spectralScale)
+        guard max(volDims.x, volDims.y) > 0 else { return }
+        boxScale = CubeCamera.boxScale(nx: volDims.x, ny: volDims.y, spectralScale: spectralScale)
     }
 
     // MARK: - Camera interaction
 
-    private func cameraPosition() -> SIMD3<Float> {
-        let ce = cos(cameraElevation), se = sin(cameraElevation)
-        return SIMD3(cameraDistance * ce * sin(cameraAzimuth), cameraDistance * se, cameraDistance * ce * cos(cameraAzimuth))
-    }
-
     private func currentMatrices() -> (model: simd_float4x4, viewProj: simd_float4x4) {
-        let model = simd_float4x4(diagonal: SIMD4(boxScale.x, boxScale.y, boxScale.z, 1))
-        let view = makeLookAt(eye: cameraPosition(), center: .zero, up: SIMD3(0, 1, 0))
-        let proj = makePerspective(fovyRadians: 38 * .pi / 180, aspect: viewportAspect, near: 0.01, far: 50)
-        return (model, proj * view)
+        CubeCamera(azimuth: cameraAzimuth, elevation: cameraElevation, distance: cameraDistance,
+                   boxScale: boxScale, aspect: viewportAspect).matrices
     }
 
     /// Ray-pick: march the CPU volume from the click ray, jump to the brightest
@@ -483,29 +475,4 @@ final class CubeVolumeRenderer: NSObject, MTKViewDelegate {
     }
 }
 
-// MARK: - Matrix helpers (column-major, Metal NDC z ∈ [0,1])
-
-func makePerspective(fovyRadians fovy: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
-    let ys = 1 / tan(fovy * 0.5)
-    let xs = ys / max(aspect, 0.0001)
-    let zs = far / (near - far)
-    return simd_float4x4(columns: (
-        SIMD4(xs, 0, 0, 0),
-        SIMD4(0, ys, 0, 0),
-        SIMD4(0, 0, zs, -1),
-        SIMD4(0, 0, zs * near, 0)
-    ))
-}
-
-func makeLookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
-    let z = normalize(eye - center)
-    let x = normalize(cross(up, z))
-    let y = cross(z, x)
-    return simd_float4x4(columns: (
-        SIMD4(x.x, y.x, z.x, 0),
-        SIMD4(x.y, y.y, z.y, 0),
-        SIMD4(x.z, y.z, z.z, 0),
-        SIMD4(-dot(x, eye), -dot(y, eye), -dot(z, eye), 1)
-    ))
-}
 #endif

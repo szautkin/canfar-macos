@@ -100,6 +100,38 @@ final class CubeMarkTests: XCTestCase {
         XCTAssertEqual(cube.cursorValue, "211 Jy")
     }
 
+    // MARK: - Marks in the volume
+
+    /// The camera looks at the cube's centre: the middle voxel is the
+    /// middle of the view, whatever the orbit.
+    func testTheVolumeCameraLooksAtTheMiddleOfTheCube() async throws {
+        let cube = try await openCube()
+        let size = CGSize(width: 600, height: 400)
+        for azimuth: Float in [0, 0.7, 2.1] {
+            cube.cameraAzimuth = azimuth
+            let camera = try XCTUnwrap(cube.camera(for: size))
+            let middle = try XCTUnwrap(camera.screen(ofBoxPoint: CubeCamera.boxPoint(voxelX: 1.5, 1, 2, nx: 4, ny: 3, nz: 5), in: size))
+            XCTAssertEqual(middle.x, 300, accuracy: 1e-3)
+            XCTAssertEqual(middle.y, 200, accuracy: 1e-3)
+        }
+    }
+
+    /// The volume shows every channel's marks, larger as the camera comes closer.
+    func testTheVolumeShowsEveryChannelsMarks() async throws {
+        let cube = try await openCube()
+        let size = CGSize(width: 600, height: 400)
+        let projection = try XCTUnwrap(cube.volumeMarkProjection(canvasSize: size))
+        XCTAssertNotNil(projection.point(Mark.Anchor(space: .data, x: 0, y: 0, z: 0)))
+        XCTAssertNotNil(projection.point(Mark.Anchor(space: .data, x: 3, y: 2, z: 4)))
+        XCTAssertNil(projection.anchor(CGPoint(x: 300, y: 200), nil), "marks are placed on the slice, not in the volume")
+
+        let middle = Mark.Anchor(space: .data, x: 1.5, y: 1, z: 2)
+        let far = try XCTUnwrap(projection.halfSize(.square(1), middle)).width
+        cube.cameraDistance /= 2
+        let near = try XCTUnwrap(cube.volumeMarkProjection(canvasSize: size)?.halfSize(.square(1), middle)).width
+        XCTAssertGreaterThan(near, far * 1.5)
+    }
+
     // MARK: - Tools
 
     private func ctx() -> AIToolContext {

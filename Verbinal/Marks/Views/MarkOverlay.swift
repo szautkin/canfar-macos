@@ -14,6 +14,8 @@ struct MarkOverlay: View {
     /// The mark whose words are being typed: its field shows them instead.
     var namingID: String?
     let projection: MarkProjection
+    /// Off where marks cannot be resized (the cube's volume).
+    var showsGrips = true
 
     var body: some View {
         Canvas { context, _ in
@@ -62,7 +64,7 @@ struct MarkOverlay: View {
             }
         }
 
-        if selected {
+        if selected && showsGrips {
             for grip in MarkGeometry.handles(of: mark, frame: frame) {
                 let r = MarkGeometry.handleRadius
                 let dot = Path(ellipseIn: CGRect(x: grip.x - r, y: grip.y - r, width: 2 * r, height: 2 * r))

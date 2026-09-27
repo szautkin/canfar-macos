@@ -12,10 +12,10 @@ import SwiftUI
 
 extension MarkOverlay {
     /// The editor's marks on `target`, as they are being drawn.
-    init(editor: MarkEditor, target: MarkStore.Target, projection: MarkProjection) {
+    init(editor: MarkEditor, target: MarkStore.Target, projection: MarkProjection, showsGrips: Bool = true) {
         self.init(marks: editor.marks(on: target), selectedID: editor.selectedID(on: target),
                   namingID: editor.naming?.target == target ? editor.naming?.mark.id : nil,
-                  projection: projection)
+                  projection: projection, showsGrips: showsGrips)
     }
 }
 

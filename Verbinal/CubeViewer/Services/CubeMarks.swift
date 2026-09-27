@@ -38,6 +38,41 @@ extension CubeViewerModel {
             })
     }
 
+    /// Marks in the volume: every channel's, where the camera sees them.
+    /// Drawn only — marks are placed and moved on the slice.
+    func volumeMarkProjection(canvasSize: CGSize) -> MarkProjection? {
+        guard nz > 0, let camera = camera(for: canvasSize) else { return nil }
+        let (nx, ny, nz) = (self.nx, self.ny, self.nz)
+        func screen(_ x: Double, _ y: Double, _ z: Double) -> CGPoint? {
+            camera.screen(ofBoxPoint: CubeCamera.boxPoint(voxelX: x, y, z, nx: nx, ny: ny, nz: nz), in: canvasSize)
+        }
+        // How the cube's x axis runs on screen, at its centre.
+        let middle = (x: Double(nx) / 2, y: Double(ny) / 2, z: Double(nz) / 2)
+        var rotation = 0.0
+        if let a = screen(middle.x, middle.y, middle.z), let b = screen(middle.x + 1, middle.y, middle.z) {
+            rotation = atan2(b.y - a.y, b.x - a.x)
+        }
+        return MarkProjection(
+            point: { anchor in anchor.space == .data ? screen(anchor.x, anchor.y, anchor.z) : nil },
+            halfSize: { extent, anchor in
+                guard anchor.space == .data, let centre = screen(anchor.x, anchor.y, anchor.z),
+                      let across = screen(anchor.x + extent.halfWidth, anchor.y, anchor.z),
+                      let up = screen(anchor.x, anchor.y + extent.halfHeight, anchor.z) else { return nil }
+                return CGSize(width: hypot(across.x - centre.x, across.y - centre.y),
+                              height: hypot(up.x - centre.x, up.y - centre.y))
+            },
+            rotation: rotation)
+    }
+
+    /// The orbit camera on a view of `size`; `distanceScale` pulls it back
+    /// (figure export).
+    func camera(for size: CGSize, distanceScale: Float = 1) -> CubeCamera? {
+        guard nx > 0, ny > 0, size.width > 1, size.height > 1 else { return nil }
+        return CubeCamera(azimuth: cameraAzimuth, elevation: cameraElevation, distance: cameraDistance * distanceScale,
+                          boxScale: CubeCamera.boxScale(nx: nx, ny: ny, spectralScale: spectralScale),
+                          aspect: Float(size.width / size.height))
+    }
+
     /// The mark's place on the sky, when the cube's WCS is equatorial —
     /// galactic ℓ/b is not a position Search reads.
     func sky(of mark: Mark) -> (ra: Double, dec: Double)? {

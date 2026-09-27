@@ -182,21 +182,10 @@ struct CubeAxisCaptions: View {
     }
 
     private func captions(in size: CGSize) -> [Caption] {
-        guard model.nz > 0, size.width > 1, size.height > 1 else { return [] }
-        let m = Float(max(model.nx, model.ny))
-        guard m > 0 else { return [] }
-        let boxScale = SIMD3<Float>(Float(model.nx) / m, Float(model.ny) / m, model.spectralScale)
-        let modelMatrix = simd_float4x4(diagonal: SIMD4(boxScale.x, boxScale.y, boxScale.z, 1))
-        let view = makeLookAt(eye: cameraEye(), center: .zero, up: SIMD3(0, 1, 0))
-        let proj = makePerspective(fovyRadians: 38 * .pi / 180, aspect: Float(size.width / size.height), near: 0.01, far: 50)
-        let mvp = proj * view * modelMatrix
-
-        func project(_ p: SIMD3<Float>) -> CGPoint? {
-            let clip = mvp * SIMD4(p, 1)
-            guard clip.w > 0.0001 else { return nil }
-            let x = clip.x / clip.w, y = clip.y / clip.w
-            return CGPoint(x: CGFloat(x * 0.5 + 0.5) * size.width, y: CGFloat(1 - (y * 0.5 + 0.5)) * size.height)
+        guard model.nz > 0, max(model.nx, model.ny) > 0, let camera = model.camera(for: size, distanceScale: distanceScale) else {
+            return []
         }
+        func project(_ p: SIMD3<Float>) -> CGPoint? { camera.screen(ofBoxPoint: p, in: size) }
 
         let frame = model.wcs?.celestial.frame
         let lon = frame == .galactic ? "GLON" : "RA"
@@ -220,12 +209,6 @@ struct CubeAxisCaptions: View {
                                   y: min(max(point.y, 8), size.height - 8))
             return Caption(text: text, point: clamped, accent: accent)
         }
-    }
-
-    private func cameraEye() -> SIMD3<Float> {
-        let d = model.cameraDistance * distanceScale
-        let ce = cos(model.cameraElevation), se = sin(model.cameraElevation)
-        return SIMD3(d * ce * sin(model.cameraAzimuth), d * se, d * ce * cos(model.cameraAzimuth))
     }
 
     private func xEndpoint(_ px: Int) -> String {
