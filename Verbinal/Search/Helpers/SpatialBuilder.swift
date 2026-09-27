@@ -22,6 +22,26 @@ enum SpatialBuilder {
         var pixelScale: String
     }
 
+    /// The cone a search looks in, degrees: a typed position (with its
+    /// radius), or a resolved target at the default or given radius. Nil for
+    /// a name match or a coordinate range. What the query searches and what
+    /// a cutout of a result starts from.
+    static func circle(_ params: Params) -> (ra: Double, dec: Double, radius: Double)? {
+        let target = params.target.trimmingCharacters(in: .whitespaces)
+        guard !target.isEmpty, parseCoordRange(target) == nil else { return nil }
+        // A pasted position is a cone search, whatever the resolver says.
+        if let pair = parseCoordinatePair(target) { return pair }
+        guard let coords = params.resolverCoords, let ra = Double(coords.ra), let dec = Double(coords.dec) else { return nil }
+        // A radius after the target's name: "M31 0.5deg".
+        var radius = ADQL.defaultSearchRadius
+        let parts = target.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        if parts.count > 1, let lastPart = parts.last {
+            let parsed = parseRadius(lastPart)
+            if parsed > 0 { radius = parsed }
+        }
+        return (ra, dec, radius)
+    }
+
     static func buildWhere(_ params: Params) -> [String] {
         var clauses: [String] = []
         let targetTrimmed = params.target.trimmingCharacters(in: .whitespaces)
@@ -32,35 +52,11 @@ enum SpatialBuilder {
                 clauses.append(
                     "INTERSECTS( RANGE_S2D(\(range.raLo), \(range.raHi), \(range.decLo), \(range.decHi)), \(SpatialTAPColumns.positionBounds) ) = 1"
                 )
-            } else if let (ra, dec, radius) = parseCoordinatePair(targetTrimmed) {
-                // Direct coordinate pair: "10.68 41.27" or "10.68 41.27 0.5deg"
-                // Detected before name-match so that pasted/injected coordinates always
-                // produce a cone search, regardless of the resolver setting.
+            } else if let (ra, dec, radius) = circle(params) {
                 clauses.append(
                     "INTERSECTS( CIRCLE('ICRS', \(ra), \(dec), \(radius)), \(SpatialTAPColumns.positionBounds) ) = 1"
                 )
-            } else if let coords = params.resolverCoords {
-                // Resolved target mode
-                guard let ra = Double(coords.ra), let dec = Double(coords.dec) else {
-                    let escaped = escapeSql(targetTrimmed.lowercased())
-                    clauses.append("lower(\(SpatialTAPColumns.targetName)) LIKE '%\(escaped)%'")
-                    return clauses
-                }
-
-                // Check for custom radius after target name
-                var radius = ADQL.defaultSearchRadius
-                let parts = targetTrimmed.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-                if parts.count > 1, let lastPart = parts.last {
-                    let parsed = parseRadius(lastPart)
-                    if parsed > 0 {
-                        radius = parsed
-                    }
-                }
-
-                clauses.append(
-                    "INTERSECTS( CIRCLE('ICRS', \(ra), \(dec), \(radius)), \(SpatialTAPColumns.positionBounds) ) = 1"
-                )
-            } else if !targetTrimmed.isEmpty {
+            } else {
                 // Name match mode — plain text target name substring search
                 let escaped = escapeSql(targetTrimmed.lowercased())
                 clauses.append(

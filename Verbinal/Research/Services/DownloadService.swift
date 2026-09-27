@@ -68,6 +68,12 @@ actor DownloadService {
         )
     }
 
+    /// Download `url` — a cutout, or any file CADC serves — to a temporary
+    /// file named `suggestedFilename`.
+    func downloadToTemp(url: URL, suggestedFilename: String, publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
+        try await fetchToTemp(url: url, publisherID: publisherID, suggested: suggestedFilename)
+    }
+
     private func fetchToTemp(
         url: URL,
         publisherID: String,

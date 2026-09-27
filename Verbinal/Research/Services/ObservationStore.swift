@@ -42,13 +42,13 @@ final class ObservationStore {
     }
 
     /// Keeps `observation`, replacing Research's record of the same
-    /// publisher ID — as the same record (its id), so a download into a
-    /// record without a file, or a re-download, is still the record an
-    /// agent or a link knows. Returns what is stored.
+    /// observation and cutout — as the same record (its id), so a download
+    /// into a record without a file, or a re-download, is still the record
+    /// an agent or a link knows. Returns what is stored.
     @discardableResult
     func save(_ observation: DownloadedObservation) -> DownloadedObservation {
         var stored = observation
-        if let idx = observations.firstIndex(where: { $0.publisherID == observation.publisherID }) {
+        if let idx = observations.firstIndex(where: { $0.recordKey == observation.recordKey }) {
             stored.id = observations[idx].id
             observations[idx] = stored
         } else {
@@ -62,7 +62,7 @@ final class ObservationStore {
     /// Keeps an observation without its file. One Research already has is
     /// left as it is. Returns the record, and whether it is new.
     func keep(_ observation: DownloadedObservation) -> (record: DownloadedObservation, added: Bool) {
-        if let existing = observations.first(where: { $0.publisherID == observation.publisherID }) {
+        if let existing = observations.first(where: { $0.recordKey == observation.recordKey }) {
             return (existing, false)
         }
         return (save(observation.withoutFile()), true)
@@ -91,8 +91,14 @@ final class ObservationStore {
         spotlight?.deindexAll()
     }
 
+    /// Research keeps the complete observation (its cutouts aside).
     func contains(publisherID: String) -> Bool {
-        observations.contains { $0.publisherID == publisherID }
+        observations.contains { $0.publisherID == publisherID && !$0.isCutout }
+    }
+
+    /// The complete observation's record, when Research keeps it.
+    func whole(publisherID: String) -> DownloadedObservation? {
+        observations.first { $0.publisherID == publisherID && !$0.isCutout }
     }
 
     /// Re-read the persisted archive. MCP tools and the Research UI
@@ -141,8 +147,8 @@ final class ObservationStore {
         let wanted = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !wanted.isEmpty else { return nil }
         if let byID = observation(matching: wanted) { return byID }
-        if let byPublisher = observations.first(where: { $0.publisherID == wanted }) { return byPublisher }
-        let byObservation = observations.filter { $0.observationID == wanted }
+        if let byPublisher = whole(publisherID: wanted) { return byPublisher }
+        let byObservation = observations.filter { $0.observationID == wanted && !$0.isCutout }
         return byObservation.count == 1 ? byObservation[0] : nil
     }
 

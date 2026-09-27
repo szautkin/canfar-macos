@@ -64,11 +64,8 @@ extension AppState {
             SaveObservationToResearchApplier(save: { [weak self] payload, attribution in
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
                 return await MainActor.run {
-                    // The search row has the fullest details, when it is there.
-                    let results = self.searchModel.resultsModel
-                    var record = results.result(publisherID: payload.publisherId).map {
-                        DownloadedObservation.from(result: $0, columns: results.columns, localPath: "")
-                    } ?? SaveObservationToResearchTool.record(from: payload)
+                    var record = self.observationDetails(publisherID: payload.publisherId,
+                                                         fallback: SaveObservationToResearchTool.record(from: payload))
                     record.agentAttribution = attribution
                     let kept = self.researchModel.observationStore.keep(record)
                     return (kept.record.id, kept.added)
@@ -101,7 +98,8 @@ extension AppState {
             localPath: obs.localPath,
             fileExists: obs.fileExists,
             fileSize: obs.fileSize,
-            downloadedAt: obs.downloadedAt
+            downloadedAt: obs.downloadedAt,
+            cutout: obs.cutout
         )
     }
 

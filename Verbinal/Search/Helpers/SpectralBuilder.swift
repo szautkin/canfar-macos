@@ -47,40 +47,39 @@ enum SpectralBuilder {
 
     // MARK: - Coverage (Overlap Semantics)
 
-    private static func buildCoverageClause(_ value: String) -> String? {
+    /// The wavelengths a coverage entry asks for, in metres; nil at an
+    /// open end. What the query searches and what a cutout starts from.
+    static func coverageInterval(_ value: String) -> (min: Double?, max: Double?)? {
         let trimmed = value.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return nil }
-
-        let lowerCol = SpectralTAPColumns.boundsLower
-        let upperCol = SpectralTAPColumns.boundsUpper
-        guard let raw = parseRangeRaw(trimmed) else { return nil }
+        guard !trimmed.isEmpty, let raw = parseRangeRaw(trimmed) else { return nil }
 
         switch raw.operand {
         case .range:
             guard let lowerRaw = raw.lowerRaw, let upperRaw = raw.upperRaw else { return nil }
-            let lSuffix = extractSpectralSuffix(lowerRaw).suffix
-            let uSuffix = extractSpectralSuffix(upperRaw).suffix
-            let inherited = lSuffix ?? uSuffix
+            let inherited = extractSpectralSuffix(lowerRaw).suffix ?? extractSpectralSuffix(upperRaw).suffix
             guard let valA = try? normalizeToMetres(lowerRaw, inheritedSuffix: inherited),
                   let valB = try? normalizeToMetres(upperRaw, inheritedSuffix: inherited) else { return nil }
-            let lowerM = min(valA, valB)
-            let upperM = max(valA, valB)
-            return "\(lowerCol) <= \(upperM) AND \(lowerM) <= \(upperCol)"
-
+            return (min(valA, valB), max(valA, valB))
         case .lessThan, .lessThanEquals:
-            guard let upperRaw = raw.upperRaw,
-                  let upperM = try? normalizeToMetres(upperRaw) else { return nil }
-            return "\(lowerCol) <= \(upperM)"
-
+            guard let upperRaw = raw.upperRaw, let upper = try? normalizeToMetres(upperRaw) else { return nil }
+            return (nil, upper)
         case .greaterThan, .greaterThanEquals:
-            guard let lowerRaw = raw.lowerRaw,
-                  let lowerM = try? normalizeToMetres(lowerRaw) else { return nil }
-            return "\(lowerM) <= \(upperCol)"
-
+            guard let lowerRaw = raw.lowerRaw, let lower = try? normalizeToMetres(lowerRaw) else { return nil }
+            return (lower, nil)
         case .equals:
-            guard let valueRaw = raw.valueRaw,
-                  let m = try? normalizeToMetres(valueRaw) else { return nil }
-            return "\(lowerCol) <= \(m) AND \(m) <= \(upperCol)"
+            guard let valueRaw = raw.valueRaw, let m = try? normalizeToMetres(valueRaw) else { return nil }
+            return (m, m)
+        }
+    }
+
+    private static func buildCoverageClause(_ value: String) -> String? {
+        let lowerCol = SpectralTAPColumns.boundsLower
+        let upperCol = SpectralTAPColumns.boundsUpper
+        switch coverageInterval(value) {
+        case (let lower?, let upper?)?: return "\(lowerCol) <= \(upper) AND \(lower) <= \(upperCol)"
+        case (nil, let upper?)?: return "\(lowerCol) <= \(upper)"
+        case (let lower?, nil)?: return "\(lower) <= \(upperCol)"
+        default: return nil
         }
     }
 

@@ -3741,6 +3741,36 @@
         }
       }
     },
+    "Cutout" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découpe"
+          }
+        }
+      }
+    },
+    "Cutout of %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découpe de %@"
+          }
+        }
+      }
+    },
+    "Cutout: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découpe : %@"
+          }
+        }
+      }
+    },
     "Cuts" : {
       "localizations" : {
         "fr" : {
@@ -9248,6 +9278,16 @@
         }
       }
     },
+    "Original Observation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Observation d'origine"
+          }
+        }
+      }
+    },
     "OS family" : {
       "localizations" : {
         "fr" : {
@@ -12526,6 +12566,16 @@
         }
       }
     },
+    "Show the complete observation this was cut from" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher l'observation complète dont ceci a été découpé"
+          }
+        }
+      }
+    },
     "Show the full failure message" : {
       "localizations" : {
         "fr" : {
@@ -13502,6 +13552,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La commande exécutée par le conteneur. Obligatoire."
+          }
+        }
+      }
+    },
+    "The complete observation is not in Research" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'observation complète n'est pas dans Recherche"
           }
         }
       }

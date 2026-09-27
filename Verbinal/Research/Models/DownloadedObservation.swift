@@ -41,6 +41,15 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// download themselves through the in-app UI. Drives the wand
     /// badge in research observation rows.
     var agentAttribution: AgentAttribution? = nil
+    /// Set for a cutout — part of one of the observation's files — kept
+    /// beside the complete observation, never as the whole of it.
+    var cutout: CutoutSpec? = nil
+
+    var isCutout: Bool { cutout != nil }
+
+    /// What makes a record the one it is in Research: the observation,
+    /// and which cutout of it (none for the complete observation).
+    var recordKey: String { cutout.map { "\(publisherID)#\($0.key)" } ?? publisherID }
 
     /// Create from a SearchResult row using its column metadata.
     static func from(

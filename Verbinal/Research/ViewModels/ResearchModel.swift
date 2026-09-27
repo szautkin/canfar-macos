@@ -16,6 +16,8 @@ import AppKit
 final class ResearchModel {
     let observationStore: ObservationStore
     let downloadService: DownloadService
+    /// Cuts part of an observation's file on CADC's side.
+    let cutoutService: CutoutService
     let noteStore: ObservationNoteStore
     #if os(macOS)
     let exportService = ExportService()
@@ -56,6 +58,7 @@ final class ResearchModel {
         self.observationStore = observationStore ?? ObservationStore()
         self.downloadService = downloadService
         self.noteStore = noteStore ?? ObservationNoteStore()
+        self.cutoutService = CutoutService(downloads: downloadService)
     }
 
     var filteredObservations: [DownloadedObservation] {
@@ -113,10 +116,14 @@ final class ResearchModel {
         lastSuccess = nil
 
         do {
-            // Step 1: Download to temp
-            let (tempURL, suggestedFilename) = try await downloadService.downloadToTemp(
-                publisherID: record.publisherID
-            )
+            // Step 1: Download to temp — a cutout is cut again, not fetched whole.
+            let tempURL: URL, suggestedFilename: String
+            if let spec = record.cutout {
+                tempURL = try await SodaCutoutMaker(service: cutoutService).make(publisherID: record.publisherID, spec: spec)
+                suggestedFilename = spec.fileName
+            } else {
+                (tempURL, suggestedFilename) = try await downloadService.downloadToTemp(publisherID: record.publisherID)
+            }
 
             activeDownloads[downloadID]?.state = .completed
 
@@ -147,7 +154,7 @@ final class ResearchModel {
             observation.downloadedAt = Date()
 
             let stored = observationStore.save(observation)
-            if selectedObservation?.publisherID == stored.publisherID { selectedObservation = stored }
+            if selectedObservation?.recordKey == stored.recordKey { selectedObservation = stored }
             lastSuccess = String(localized: "Saved: \(suggestedFilename)")
 
             // Clean up active download indicator
@@ -199,7 +206,7 @@ final class ResearchModel {
 
     /// Research has this observation's file.
     func isDownloaded(publisherID: String) -> Bool {
-        observationStore.observations.contains { $0.publisherID == publisherID && $0.isDownloaded }
+        observationStore.whole(publisherID: publisherID)?.isDownloaded ?? false
     }
 
     /// Research keeps this observation, with its file or without.

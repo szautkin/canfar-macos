@@ -162,16 +162,27 @@ final class SearchFormModel {
 
     // MARK: - Search (from form)
 
+    /// The resolved target's position, when the resolver found one.
+    var resolverCoords: (ra: String, dec: String)? {
+        guard let result = resolverResult, !result.coordsRA.isEmpty else { return nil }
+        return (ra: result.coordsRA, dec: result.coordsDec)
+    }
+
+    /// What the search asks for that a cutout of one of its results can
+    /// start from: its circle and its wavelengths, read by the builders
+    /// that write the query.
+    var cutoutHints: CutoutHints? {
+        let circle = SpatialBuilder.circle(SpatialBuilder.Params(
+            target: formState.target, resolver: formState.resolver,
+            resolverCoords: resolverCoords, pixelScale: formState.pixelScale))
+        let band = SpectralBuilder.coverageInterval(formState.spectralCoverage)
+        guard circle != nil || band != nil else { return nil }
+        return CutoutHints(ra: circle?.ra, dec: circle?.dec, radius: circle?.radius, bandMin: band?.min, bandMax: band?.max)
+    }
+
     @discardableResult
     func executeSearch() async -> SearchOutcome {
         let attribution = takeAttribution()
-
-        let resolverCoords: (ra: String, dec: String)?
-        if let result = resolverResult, !result.coordsRA.isEmpty {
-            resolverCoords = (ra: result.coordsRA, dec: result.coordsDec)
-        } else {
-            resolverCoords = nil
-        }
 
         let query = ADQLBuilder.buildQuery(
             formState: formState,

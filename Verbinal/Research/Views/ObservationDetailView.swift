@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import VerbinalKit
 
 struct ObservationDetailView: View {
     let observation: DownloadedObservation
@@ -55,6 +56,10 @@ struct ObservationDetailView: View {
                     Text("\(observation.collection) \u{2014} \(observation.observationID)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                }
+
+                if let cutout = observation.cutout {
+                    cutoutBanner(cutout)
                 }
 
                 // Actions
@@ -236,6 +241,27 @@ struct ObservationDetailView: View {
         .frame(height: 200)
         .frame(maxWidth: .infinity)
         .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary))
+    }
+
+    /// A cutout says what it is part of, and leads back to the whole.
+    private func cutoutBanner(_ cutout: CutoutSpec) -> some View {
+        let original = model.observationStore.whole(publisherID: observation.publisherID)
+        return HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "scissors").foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Cutout of \(CutoutSpec.artifactFileName(cutout.artifactID))").font(.callout.bold())
+                Text(cutout.summary).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+            Spacer()
+            Button("Original Observation") {
+                model.selectedObservation = original
+            }
+            .controlSize(.small)
+            .disabled(original == nil)
+            .help(original == nil ? "The complete observation is not in Research" : "Show the complete observation this was cut from")
+        }
+        .padding(8)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
     }
 
     private func metadataRow(_ label: LocalizedStringKey, _ value: String) -> some View {

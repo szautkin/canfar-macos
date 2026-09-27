@@ -29,6 +29,9 @@ struct ListDownloadedObservationsTool: JSONReadTool {
             let calLevel: String
             /// Research keeps a file for it; false for one kept without.
             let downloaded: Bool
+            /// For a cutout: what part of which file it is.
+            let cutout: CutoutSpec?
+            let cutoutSummary: String?
             let localPath: String
             let fileExists: Bool
             let fileSize: Int64?
@@ -44,6 +47,8 @@ struct ListDownloadedObservationsTool: JSONReadTool {
                 filter = obs.filter
                 calLevel = obs.calLevel
                 downloaded = !obs.localPath.isEmpty
+                cutout = obs.cutout
+                cutoutSummary = obs.cutout?.summary
                 localPath = obs.localPath
                 fileExists = obs.fileExists
                 fileSize = obs.fileSize
@@ -192,6 +197,7 @@ struct DownloadedObservationOut: Sendable {
     let fileExists: Bool
     let fileSize: Int64?
     let downloadedAt: Date
+    var cutout: CutoutSpec? = nil
 }
 
 struct ObservationNoteOut: Sendable {

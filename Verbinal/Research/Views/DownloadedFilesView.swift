@@ -315,6 +315,13 @@ struct DownloadedFilesView: View {
 
             Spacer()
 
+            if let cutout = obs.cutout {
+                Image(systemName: "scissors")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help(Text("Cutout: \(cutout.summary)"))
+                    .accessibilityLabel(Text("Cutout"))
+            }
             if !obs.isDownloaded {
                 Image(systemName: "arrow.down.circle.dotted")
                     .font(.caption)

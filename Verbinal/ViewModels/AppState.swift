@@ -467,6 +467,8 @@ final class AppState {
     /// FITS tools and the Research UI must share one store so ids
     /// survive relaunch and in-session downloads are visible both ways.
     let researchModel = ResearchModel()
+    /// What CADC can cut an observation's files by, and the cutouts it cuts.
+    var cutoutService: CutoutService { researchModel.cutoutService }
 
     #if os(macOS)
     /// Hoisted viewer state. Previously each viewer root view owned its

@@ -284,6 +284,8 @@ extension AppState {
         tools.append(SaveObservationToResearchTool())
         tools.append(RemoveDownloadedFileTool())
         tools.append(makeShowResearchObservationTool())
+        tools.append(makeGetCutoutOptionsTool())
+        tools.append(makeDownloadCutoutTool())
         tools.append(makeListFITSBookmarksTool())
         tools.append(makeGetCubeViewTool())
         tools.append(makeGetCubeImageTool())

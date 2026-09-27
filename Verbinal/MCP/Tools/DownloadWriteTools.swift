@@ -195,6 +195,23 @@ private func userDownloadsDirectory() -> URL {
 
 /// Move a temp file into the user's Downloads, deduplicating against
 /// any existing same-named file. Returns the final URL.
+/// A downloaded temporary file moved into Downloads, ready to be a
+/// Research record's file: its path, its size, and a security-scoped
+/// bookmark so a sandboxed relaunch can reopen it. The temporary file is
+/// removed when the move fails.
+func placeInDownloads(tempURL: URL, suggestedFilename: String,
+                      downloadService: DownloadService) async throws -> (localPath: String, size: Int64?, bookmark: Data?) {
+    let finalURL: URL
+    do {
+        finalURL = try moveIntoDownloads(tempURL: tempURL, suggestedFilename: suggestedFilename)
+    } catch {
+        try? await downloadService.deleteFile(at: tempURL)
+        throw ProposalApplyError.backendError("move into Downloads failed: \(error.localizedDescription)")
+    }
+    let bookmark = try? finalURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+    return (LocalFolderAccessStore.userFacingPath(for: finalURL), await downloadService.fileSize(at: finalURL), bookmark)
+}
+
 private func moveIntoDownloads(tempURL: URL, suggestedFilename: String) throws -> URL {
     let dir = userDownloadsDirectory()
     var target = dir.appendingPathComponent(suggestedFilename)
@@ -265,25 +282,8 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
         } catch {
             throw ProposalApplyError.backendError("download failed: \(error.localizedDescription)")
         }
-        let finalURL: URL
-        do {
-            finalURL = try moveIntoDownloads(
-                tempURL: result.tempURL,
-                suggestedFilename: result.suggestedFilename
-            )
-        } catch {
-            // Best-effort cleanup of the temp file.
-            try? await downloadService.deleteFile(at: result.tempURL)
-            throw ProposalApplyError.backendError("move into Downloads failed: \(error.localizedDescription)")
-        }
-        let size = await downloadService.fileSize(at: finalURL)
-        // Capture a security-scoped bookmark so a sandboxed re-launch
-        // can re-open the file later (FITS viewer / get_fits_header).
-        let bookmark = (try? finalURL.bookmarkData(
-            options: .withSecurityScope,
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        ))
+        let placed = try await placeInDownloads(tempURL: result.tempURL, suggestedFilename: result.suggestedFilename,
+                                                downloadService: downloadService)
         let observation = DownloadedObservation(
             publisherID: payload.publisherID,
             collection: payload.collection,
@@ -295,11 +295,11 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
             dec: payload.dec,
             startDate: payload.startDate,
             calLevel: payload.calLevel,
-            localPath: LocalFolderAccessStore.userFacingPath(for: finalURL),
-            fileSize: size,
+            localPath: placed.localPath,
+            fileSize: placed.size,
             thumbnailURL: payload.thumbnailURL,
             previewURL: payload.previewURL,
-            bookmarkData: bookmark,
+            bookmarkData: placed.bookmark,
             agentAttribution: attribution
         )
         // Into Research's record of the observation when it has one (kept

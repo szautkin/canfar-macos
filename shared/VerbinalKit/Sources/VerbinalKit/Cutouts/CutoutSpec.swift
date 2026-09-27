@@ -7,6 +7,12 @@
 import CryptoKit
 import Foundation
 
+/// Who cuts a file: CADC's SODA service, or this computer from the
+/// complete file already downloaded.
+public enum CutoutMethod: String, Codable, Sendable, CaseIterable {
+    case soda, local
+}
+
 /// What a cutout cuts: which file, what part of the sky, and optionally
 /// what part of the spectrum, time or polarization. Units are SODA's own —
 /// metres for wavelength, MJD for time — so what is saved is what was sent.

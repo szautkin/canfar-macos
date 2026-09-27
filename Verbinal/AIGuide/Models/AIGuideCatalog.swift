@@ -130,6 +130,8 @@ enum AIGuideCatalog {
         "save_observation_to_research": "research",
         "remove_downloaded_file": "research",
         "show_research_observation": "research",
+        "get_cutout_options": "downloads",
+        "download_cutout": "downloads",
         "get_observation_notes": "research",
         "update_observation_note": "research",
         "bulk_update_observation_notes": "research",
