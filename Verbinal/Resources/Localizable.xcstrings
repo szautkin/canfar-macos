@@ -1508,6 +1508,16 @@
         }
       }
     },
+    "All projects" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tous les projets"
+          }
+        }
+      }
+    },
     "Allow AI agents" : {
       "localizations" : {
         "fr" : {
@@ -10347,7 +10357,6 @@
       }
     },
     "Project" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {

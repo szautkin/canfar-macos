@@ -119,4 +119,28 @@ final class ListSessionImagesGuidanceTests: XCTestCase {
         XCTAssertFalse(out.schedulingGuidance.tiers.isEmpty,
                        "guidance must surface even with no images visible")
     }
+
+    // MARK: - Projects
+
+    func testImagesCanBeListedByProjectAndSayTheirProject() async throws {
+        let raw: [(id: String, types: [String])] = [
+            ("images.canfar.net/skaha/astroml:24.07", ["notebook"]),
+            ("images.canfar.net/cadc/tool:1.0", ["headless"]),
+            ("images.canfar.net/skaha/carta:4.0", ["carta"]),
+        ]
+        let tool = ListSessionImagesTool(fetch: { raw })
+        let result = await tool.invoke(arguments: Data(#"{"project":"Skaha"}"#.utf8), context: ctx())
+        guard case .data(let bytes) = result else { return XCTFail("\(result)") }
+        let images = try XCTUnwrap((JSONSerialization.jsonObject(with: bytes) as? [String: Any])?["images"] as? [[String: Any]])
+        XCTAssertEqual(images.compactMap { $0["id"] as? String }, ["images.canfar.net/skaha/astroml:24.07", "images.canfar.net/skaha/carta:4.0"])
+        XCTAssertEqual(images.compactMap { $0["project"] as? String }, ["skaha", "skaha"])
+    }
+
+    func testTheProjectRowPutsTheBiggestProjectFirst() {
+        let images = ["images.canfar.net/cadc/a:1", "images.canfar.net/skaha/b:1", "images.canfar.net/skaha/c:1", "plain"]
+            .map { ImageParser.parse(RawImage(id: $0, types: ["notebook"])) }
+        let projects = CanfarImagesModel.projects(in: images)
+        XCTAssertEqual(projects.map(\.name), ["skaha", "cadc"])
+        XCTAssertEqual(projects.map(\.count), [2, 1])
+    }
 }

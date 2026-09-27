@@ -248,6 +248,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
   Session** on Active Sessions opens it in a sheet (as does "Use this
   image"), and it closes when the session is launched. For assistants,
   `show_launch_form` opens it at a tab, with an image, or closes it.
+- **CANFAR images by type and by project** — the images card shows the
+  session types as chips, each with how many images it has, and a row of
+  the type's projects (skaha, cadc, …) to narrow to one; the count of
+  images inspected stays in its header. `list_session_images` takes
+  `project` and says each image's project.
 - **The cube slice moves like the FITS image** — scroll to pan, ⌘-scroll
   to zoom toward the pointer (as well as pinch), drag to pan, double-click
   to reset. The slice's zoom and pan now survive a trip to volume mode.

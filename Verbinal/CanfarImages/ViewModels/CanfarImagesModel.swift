@@ -177,8 +177,28 @@ final class CanfarImagesModel {
     /// Rows the widget renders for the active tab and search text.
     /// Sorted to put discovered rows first within each tab so the
     /// user's eye lands on actionable content, then by label A→Z.
+    /// One project to show; nil — or one the chosen type has none of — for all.
+    var selectedProject: String?
+
+    /// The projects of the images the chosen type shows, most images first
+    /// — the card's project row.
+    var projects: [(name: String, count: Int)] { Self.projects(in: imagesForActiveTab()) }
+
+    /// The projects among `images`, most images first, then by name.
+    nonisolated static func projects(in images: [ParsedImage]) -> [(name: String, count: Int)] {
+        Dictionary(grouping: images.filter { !$0.project.isEmpty }, by: \.project)
+            .map { (name: $0.key, count: $0.value.count) }
+            .sorted { ($0.count, $1.name) > ($1.count, $0.name) }
+    }
+
+    /// The project shown: the one chosen, while the chosen type has it.
+    var effectiveProject: String? {
+        selectedProject.flatMap { chosen in projects.contains { $0.name == chosen } ? chosen : nil }
+    }
+
     var filteredRows: [CanfarImageRow] {
-        let scoped = imagesForActiveTab()
+        let project = effectiveProject
+        let scoped = imagesForActiveTab().filter { project == nil || $0.project == project }
         let needle = searchText.trimmingCharacters(in: .whitespaces).lowercased()
         let hits = needle.isEmpty
             ? scoped

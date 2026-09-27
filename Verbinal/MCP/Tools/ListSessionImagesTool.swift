@@ -29,6 +29,8 @@ struct ListSessionImagesTool: JSONReadTool {
         /// contains this value. One of: "notebook", "desktop",
         /// "firefly", "carta", "contributed", "headless".
         let type: String?
+        /// Optional — keep only images of this project ("skaha", "cadc", …).
+        var project: String? = nil
     }
 
     struct Output: Encodable, Sendable {
@@ -56,6 +58,8 @@ struct ListSessionImagesTool: JSONReadTool {
             /// that run as both `notebook` and `contributed`) are
             /// rare but legal.
             let types: [String]
+            /// The image's project — the second part of its id.
+            var project: String = ""
         }
 
         struct SchedulingGuidance: Encodable, Sendable {
@@ -111,12 +115,13 @@ struct ListSessionImagesTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_session_images",
-        description: "List Skaha container images this user is allowed to launch. Returns full registry-qualified ids — pass one verbatim as `launch_session.image`. Optional `type` filter (notebook/desktop/firefly/carta/contributed/headless). Hand-typed image strings WILL fail with HTTP 400; always pick from this list. Output also carries a `schedulingGuidance` block: per-shape tier hints (fast/warm/slow) you should consult BEFORE picking `cores`/`ram`/`gpus` on `launch_headless_job` or `launch_session`. 1c/1g/0gpu is the fastest schedulable shape and the recommended default; anything bigger frequently queues for 15+ min on the shared cluster.",
+        description: "List Skaha container images this user is allowed to launch. Returns full registry-qualified ids — pass one verbatim as `launch_session.image`. Optional `type` filter (notebook/desktop/firefly/carta/contributed/headless) and `project` filter; each image says its project. Hand-typed image strings WILL fail with HTTP 400; always pick from this list. Output also carries a `schedulingGuidance` block: per-shape tier hints (fast/warm/slow) you should consult BEFORE picking `cores`/`ram`/`gpus` on `launch_headless_job` or `launch_session`. 1c/1g/0gpu is the fastest schedulable shape and the recommended default; anything bigger frequently queues for 15+ min on the shared cluster.",
         schema: #"""
         {
           "type": "object",
           "properties": {
-            "type": { "type": "string", "enum": ["notebook", "desktop", "firefly", "carta", "contributed", "headless"] }
+            "type": { "type": "string", "enum": ["notebook", "desktop", "firefly", "carta", "contributed", "headless"] },
+            "project": { "type": "string", "description": "Only this project's images — the second part of an id, e.g. skaha in images.canfar.net/skaha/astroml:24.07." }
           },
           "additionalProperties": false
         }
@@ -133,9 +138,12 @@ struct ListSessionImagesTool: JSONReadTool {
             throw ToolFailureReason.backendError("Skaha image catalogue: \(error.localizedDescription)")
         }
         let filter = args.type
+        let project = args.project?.trimmingCharacters(in: .whitespaces).lowercased()
         let entries: [Output.Entry] = raw.compactMap { entry in
             if let filter, !entry.types.contains(filter) { return nil }
-            return Output.Entry(id: entry.id, types: entry.types)
+            let own = ImageParser.parse(RawImage(id: entry.id, types: entry.types)).project
+            if let project, !project.isEmpty, own.lowercased() != project { return nil }
+            return Output.Entry(id: entry.id, types: entry.types, project: own)
         }
         return Output(
             images: entries,

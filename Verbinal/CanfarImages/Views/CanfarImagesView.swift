@@ -93,25 +93,21 @@ struct CanfarImagesView: View {
 
     // MARK: - Tabs
 
-    /// Eight tabs don't fit comfortably in a 280pt column as a
-    /// segmented control. Render as a popup-button dropdown
-    /// instead — compact, native macOS, scales to any number of
-    /// type filters we add later.
+    /// The session types as chips, each with how many images it has, and
+    /// — when the type has images from several projects — a row of the
+    /// projects, as Verbinal for Windows has them.
     @ViewBuilder
     private var tabBar: some View {
-        HStack(spacing: 8) {
-            Text("Show")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Picker("", selection: $model.selectedTab) {
-                ForEach(CanfarImagesTab.allCases) { tab in
-                    Text("\(tab.title) (\(model.count(for: tab)))").tag(tab)
-                }
+        VStack(alignment: .leading, spacing: 6) {
+            ChipRow(options: CanfarImagesTab.allCases.map { ($0, "\($0.title) \(model.count(for: $0))") },
+                    selection: $model.selectedTab)
+                .accessibilityLabel(Text("Session type"))
+            let projects = model.projects
+            if projects.count > 1 {
+                ChipRow(options: [(nil, String(localized: "All projects"))] + projects.map { (Optional($0.name), "\($0.name) \($0.count)") },
+                        selection: Binding(get: { model.effectiveProject }, set: { model.selectedProject = $0 }))
+                    .accessibilityLabel(Text("Project"))
             }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .controlSize(.small)
-            Spacer()
         }
     }
 
