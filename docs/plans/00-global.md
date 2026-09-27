@@ -67,6 +67,8 @@ flowchart LR
 | 4 | [Research local import](./04-research-local-import.md) | M–L |
 | 5 | [Auth scope / login wall UX](./05-auth-scope.md) | S |
 | 7 | [MCP tool-surface fixes](./07-mcp-tool-fixes.md) | M |
+| 8 | [Ubuntu catch-up](./08-ubuntu-catchup.md) (Phase 1 done) | — |
+| 10 | [Windows catch-up — 1.4.x](./10-windows-catchup.md) | L |
 
 ---
 

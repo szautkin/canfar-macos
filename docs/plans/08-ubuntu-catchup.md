@@ -4,6 +4,9 @@
 **Baseline:** Verbinal macOS **1.3.4** (`release/1.3.4`, post–QA-audit commits) vs Verbinal Ubuntu **1.4.4**
 **Sources:** `CanfarDesktopUbuntu` CHANGELOG 1.3.3→1.4.4 + `PARITY_REVIEW.md`; verified against this tree
 **Related:** [Global plan](./00-global.md) · [MCP tool fixes](./07-mcp-tool-fixes.md)
+**Status (2026-09-26):** Phase 1 shipped in 1.3.4. Phases 2–4 and the hygiene
+track are superseded by [10 Windows catch-up](./10-windows-catchup.md) —
+Windows 1.4.1 is the newer superset.
 
 Ubuntu shipped nine releases between Aug 14 and Sep 4 (1.3.3→1.4.4). We are
 **not** behind everywhere — macOS already has Image Discovery, ~120 MCP tools
