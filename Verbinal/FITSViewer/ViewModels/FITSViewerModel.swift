@@ -459,28 +459,48 @@ final class FITSViewerModel: Identifiable {
         viewport = FITSViewport()
     }
 
-    /// Navigate viewport to center on a world coordinate (RA/Dec).
-    ///
-    /// - Returns: `true` if the coordinate maps to a pixel within the image bounds,
-    ///   `false` if the coordinate falls outside (crosshair is NOT placed).
+    /// Where a Go To landed — one answer for the viewer and the agent tool.
+    enum GoToOutcome: Equatable {
+        /// Centred there, crosshair placed.
+        case centred
+        /// Off the image (view not moved): the 0-based FITS pixel it maps to.
+        case offImage(x: Double, y: Double)
+        /// No pixel for it here: no WCS, or the far side of the projection.
+        case unplaceable
+    }
+
+    /// Which side of a `width`×`height` image a 0-based FITS pixel lies,
+    /// e.g. "320 px left of and 15 px above the image". Row 0 is drawn at
+    /// the bottom, so `y < 0` is below.
+    static func whereItFalls(x: Double, y: Double, width: Int, height: Int) -> String {
+        var sides: [String] = []
+        if x < 0 { sides.append("\(Int((-x).rounded())) px left of") }
+        if x >= Double(width) { sides.append("\(Int((x - Double(width - 1)).rounded())) px right of") }
+        if y < 0 { sides.append("\(Int((-y).rounded())) px below") }
+        if y >= Double(height) { sides.append("\(Int((y - Double(height - 1)).rounded())) px above") }
+        return sides.isEmpty ? "on the image" : sides.joined(separator: " and ") + " the image"
+    }
+
+    /// Navigate viewport to center on a world coordinate (RA/Dec). Off the
+    /// image the view stays put and the crosshair is not placed.
     @discardableResult
-    func goToCoordinate(ra: Double, dec: Double) -> Bool {
-        guard let wcs, let hdu = selectedHDU else { return false }
-        guard let pixel = wcs.worldToPixel(ra: ra, dec: dec) else { return false }
+    func goToCoordinate(ra: Double, dec: Double) -> GoToOutcome {
+        guard let wcs, let hdu = selectedHDU,
+              let pixel = wcs.worldToPixel(ra: ra, dec: dec) else { return .unplaceable }
 
         let naxis1 = hdu.header.naxis1
         let naxis2 = hdu.header.naxis2
         guard pixel.x >= 0, pixel.x < Double(naxis1),
               pixel.y >= 0, pixel.y < Double(naxis2) else {
             Self.logger.info("goToCoordinate: (\(ra), \(dec)) → pixel (\(pixel.x), \(pixel.y)) outside \(naxis1)×\(naxis2)")
-            return false
+            return .offImage(x: pixel.x, y: pixel.y)
         }
 
         let displayY = Self.displayToFITSY(pixel.y, naxis2: naxis2)
         let imgPoint = CGPoint(x: pixel.x, y: displayY)
         placeCrosshair(at: imgPoint)
         centerOnPixel(imgPoint, canvasSize: lastCanvasSize)
-        return true
+        return .centred
     }
 
     /// Read-only pixel probe for the agent tools: value + sky at 0-based

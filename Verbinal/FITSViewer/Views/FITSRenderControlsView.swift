@@ -239,9 +239,13 @@ struct FITSRenderControlsView: View {
                                 toast?.show(String(localized: "Enter RA and Dec in degrees or sexagesimal"), isError: true)
                                 return
                             }
-                            let inBounds = model.goToCoordinate(ra: ra, dec: dec)
-                            if !inBounds {
-                                toast?.show(String(localized: "Coordinates outside image bounds"), isError: true)
+                            switch model.goToCoordinate(ra: ra, dec: dec) {
+                            case .centred:
+                                break
+                            case .offImage(let x, let y):
+                                toast?.show(String(localized: "Outside the image, at pixel \(Int(x.rounded())), \(Int(y.rounded()))"), isError: true)
+                            case .unplaceable:
+                                toast?.show(String(localized: "That position has no pixel on this image"), isError: true)
                             }
                         }
                         .buttonStyle(.bordered)

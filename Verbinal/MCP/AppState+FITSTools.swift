@@ -20,9 +20,16 @@ extension AppState {
     }
 
     func makeGetFITSWCSTool(store: ObservationStore) -> GetFITSWCSTool {
-        GetFITSWCSTool(resolve: { id in
+        var tool = GetFITSWCSTool(resolve: { id in
             try await Self.resolveFITS(id: id, store: store)
         })
+        tool.onScreenHDU = { [weak self] url in
+            guard let self else { return nil }
+            return await MainActor.run {
+                self.fitsTabHost.tab(showing: url).flatMap { $0.isLoaded ? $0.selectedHDUIndex : nil }
+            }
+        }
+        return tool
     }
 
     /// Open the local FITS file for a downloaded observation, parse it,
@@ -91,8 +98,17 @@ extension AppState {
         FITSGotoCoordinateTool(goTo: { [weak self] ra, dec in
             guard let self else { return nil }
             return await MainActor.run {
-                guard let tab = self.fitsTabHost.activeTab, tab.wcs != nil else { return nil }
-                return tab.goToCoordinate(ra: ra, dec: dec)
+                guard let tab = self.fitsTabHost.activeTab, tab.wcs != nil,
+                      let hdu = tab.selectedHDU else { return nil }
+                switch tab.goToCoordinate(ra: ra, dec: dec) {
+                case .centred:
+                    return .centred
+                case .offImage(let x, let y):
+                    return .offImage(x: x, y: y, whereItFalls: FITSViewerModel.whereItFalls(
+                        x: x, y: y, width: hdu.header.naxis1, height: hdu.header.naxis2))
+                case .unplaceable:
+                    return .unplaceable
+                }
             }
         })
     }

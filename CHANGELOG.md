@@ -76,6 +76,15 @@ Catching up with Verbinal for Windows 1.4.1 (see
   decides it — and it stays there under a description you write for the
   tool in AI Guide.
 
+- **Go To off the image** — the FITS viewer's Go To said only
+  "Coordinates outside image bounds"; it now says which pixel the
+  position falls on, and the assistant's `fits_goto_coordinate` says
+  where it lies ("320 px left of the image") with the pixel, from the
+  same answer the viewer gets.
+- **`get_fits_wcs` without an HDU** reads the HDU on screen when the file
+  is open, otherwise the first HDU with a WCS, and says which
+  (`hduChosenBy`).
+
 ### Changed
 - **Polling follows what is happening** — sessions and batch jobs were
   polled every 15 s and 45 s whatever was going on, so a notification

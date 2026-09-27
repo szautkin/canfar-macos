@@ -282,10 +282,14 @@ final class ParityToolsTests: XCTestCase {
             return XCTFail("expected targetNotResolved, got \(failed)")
         }
 
-        let offImage = FITSGotoCoordinateTool(goTo: { _, _ in false })
+        let offImage = FITSGotoCoordinateTool(goTo: { _, _ in
+            .offImage(x: -320, y: 40, whereItFalls: "320 px left of the image")
+        })
         let json = try decodeJSON(await offImage.invoke(
             arguments: argsData(["raDeg": 10.0, "decDeg": 20.0]), context: ctx()))
         XCTAssertEqual(json["onImage"] as? Bool, false)
+        XCTAssertEqual(json["pixelX"] as? Double, -320)
+        XCTAssertTrue((json["message"] as? String ?? "").contains("320 px left of the image"))
     }
 
     // MARK: - Cube viewer control

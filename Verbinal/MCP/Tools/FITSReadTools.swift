@@ -93,6 +93,8 @@ struct GetFITSWCSTool: JSONReadTool {
     struct Output: Encodable, Sendable {
         let observationID: String
         let hduIndex: Int
+        /// Why this HDU: `requested`, `onScreen`, `firstWithWCS` or `firstImage`.
+        let hduChosenBy: String
         let hasWCS: Bool
         let isApproximate: Bool
         let projection: String?
@@ -109,7 +111,7 @@ struct GetFITSWCSTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_fits_wcs",
-        description: "Return parsed WCS (CRPIX/CRVAL, projection, pixel scale, north angle, parity flip) for one HDU of a previously-downloaded observation. Argument is the `downloaded_observation_id` UUID, not a `publisher_id` — file must already be on disk.",
+        description: "Return parsed WCS (CRPIX/CRVAL, projection, pixel scale, north angle, parity flip) for one HDU of a previously-downloaded observation. Argument is the `downloaded_observation_id` UUID, not a `publisher_id` — file must already be on disk. Without `hduIndex` it reads the HDU on screen when the file is open in the FITS Viewer, otherwise the first HDU with a WCS (an HST file's primary HDU has none); `hduChosenBy` says which.",
         schema: #"""
         {
           "type": "object",
@@ -124,32 +126,47 @@ struct GetFITSWCSTool: JSONReadTool {
     )
 
     let resolve: @Sendable (_ id: String) async throws -> ResolvedFITS?
+    /// The HDU the FITS Viewer shows for this file, when it is open.
+    var onScreenHDU: @Sendable (_ file: URL) async -> Int? = { _ in nil }
+
+    /// Which HDU to read when none is named: the one on screen, else the
+    /// first with a WCS, else the first image.
+    static func defaultHDU(in file: FITSFile, onScreen: Int?) -> (hdu: FITSHDUnit, chosenBy: String)? {
+        if let onScreen, file.hdus.indices.contains(onScreen) {
+            return (file.hdus[onScreen], "onScreen")
+        }
+        if let withWCS = file.hdus.first(where: { $0.wcs != nil }) {
+            return (withWCS, "firstWithWCS")
+        }
+        return file.firstImageHDU.map { ($0, "firstImage") }
+    }
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         guard let resolved = try await resolve(args.downloaded_observation_id) else {
             throw ToolFailureReason.observationNotFound(id: args.downloaded_observation_id, localPath: nil)
         }
         let hdu: FITSHDUnit
-        let hduIndex: Int
+        let chosenBy: String
         if let requested = args.hduIndex {
             guard requested >= 0, requested < resolved.file.hdus.count else {
                 throw ToolFailureReason.invalidArgument(
                     "hduIndex \(requested) out of range [0, \(resolved.file.hdus.count - 1)]"
                 )
             }
-            hdu = resolved.file.hdus[requested]
-            hduIndex = requested
+            (hdu, chosenBy) = (resolved.file.hdus[requested], "requested")
         } else {
-            guard let firstImage = resolved.file.firstImageHDU else {
+            let onScreen = await onScreenHDU(resolved.file.url)
+            guard let chosen = Self.defaultHDU(in: resolved.file, onScreen: onScreen) else {
                 throw ToolFailureReason.backendError("file has no image HDU")
             }
-            hdu = firstImage
-            hduIndex = firstImage.id
+            (hdu, chosenBy) = chosen
         }
+        let hduIndex = hdu.id
         guard let wcs = hdu.wcs else {
             return Output(
                 observationID: resolved.observationID,
                 hduIndex: hduIndex,
+                hduChosenBy: chosenBy,
                 hasWCS: false,
                 isApproximate: false,
                 projection: nil,
@@ -164,6 +181,7 @@ struct GetFITSWCSTool: JSONReadTool {
         return Output(
             observationID: resolved.observationID,
             hduIndex: hduIndex,
+            hduChosenBy: chosenBy,
             hasWCS: true,
             isApproximate: wcs.isApproximate,
             projection: "\(wcs.projection)",

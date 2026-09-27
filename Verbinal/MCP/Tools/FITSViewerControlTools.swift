@@ -148,11 +148,21 @@ struct FITSGotoCoordinateTool: AITool {
         let applied: Bool
         let onImage: Bool
         let message: String?
+        /// 0-based FITS pixel the position maps to, when it has one.
+        var pixelX: Double? = nil
+        var pixelY: Double? = nil
+    }
+
+    /// What the viewer's Go To came to, as the tool reports it.
+    enum Result: Sendable {
+        case centred
+        case offImage(x: Double, y: Double, whereItFalls: String)
+        case unplaceable
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "fits_goto_coordinate",
-        description: "Center the active FITS view on (RA, Dec) in degrees and place the crosshair there. Requires an open image with a WCS solution; returns `onImage: false` when the coordinate falls outside the image footprint. Live-applied; no proposal.",
+        description: "Center the active FITS view on (RA, Dec) in degrees and place the crosshair there — the viewer's Go To, with the same answer. Requires an open image with a WCS solution. Off the image the view does not move and the reply says `onImage: false`, where the position falls (e.g. \"320 px left of the image\") and its pixel. Live-applied; no proposal.",
         schema: #"""
         {
           "type": "object",
@@ -166,9 +176,8 @@ struct FITSGotoCoordinateTool: AITool {
         """#
     )
 
-    /// nil = no viewer/WCS available; false = coordinate off-image (view
-    /// not moved); true = centered and crosshair placed.
-    let goTo: @Sendable (Double, Double) async -> Bool?
+    /// nil = no image with a WCS is open.
+    let goTo: @Sendable (Double, Double) async -> Result?
 
     func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         let args: Args
@@ -177,25 +186,24 @@ struct FITSGotoCoordinateTool: AITool {
         } catch {
             return .failed(.invalidArgument("\(error)"))
         }
-        guard let onImage = await goTo(args.raDeg, args.decDeg) else {
+        guard let result = await goTo(args.raDeg, args.decDeg) else {
             return .failed(.targetNotResolved("No FITS image with a WCS solution is open"))
         }
+        let position = String(format: "(%.4f, %.4f)", args.raDeg, args.decDeg)
         let body: Output
-        if onImage {
+        switch result {
+        case .centred:
             body = Output(applied: true, onImage: true, message: nil)
-        } else {
-            body = Output(
-                applied: false,
-                onImage: false,
-                message: String(
-                    format: "Coordinate (%.4f, %.4f) falls outside the image footprint; view not moved.",
-                    args.raDeg, args.decDeg
-                )
-            )
+        case .offImage(let x, let y, let whereItFalls):
+            body = Output(applied: false, onImage: false,
+                          message: "\(position) falls \(whereItFalls); view not moved.",
+                          pixelX: x, pixelY: y)
+        case .unplaceable:
+            body = Output(applied: false, onImage: false,
+                          message: "\(position) has no pixel on this image (the far side of its projection); view not moved.")
         }
         do {
-            let bytes = try JSONEncoder().encode(body)
-            return .data(bytes)
+            return .data(try JSONEncoder().encode(body))
         } catch {
             return .failed(.backendError("\(error)"))
         }

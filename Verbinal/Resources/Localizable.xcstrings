@@ -8732,6 +8732,16 @@
         }
       }
     },
+    "Outside the image, at pixel %lld, %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hors de l’image, au pixel %lld, %lld"
+          }
+        }
+      }
+    },
     "overridden" : {
       "localizations" : {
         "fr" : {
@@ -12728,6 +12738,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Échelle du texte"
+          }
+        }
+      }
+    },
+    "That position has no pixel on this image" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette position n’a pas de pixel sur cette image"
           }
         }
       }
