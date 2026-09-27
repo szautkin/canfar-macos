@@ -24,6 +24,13 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | One tool's description and full schema | `man` | read |
 | Copy text, or an observation's details | `copy_to_clipboard` | live |
 
+## Seeing the viewers
+
+| Need | Tool | Kind |
+|---|---|---|
+| The FITS canvas as shown, with the map back to file pixels | `get_fits_image` | read |
+| The cube's slice or volume as shown | `get_cube_image` | read |
+
 ## Search — form
 
 | UI interaction | Tool | Kind |

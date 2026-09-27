@@ -7,6 +7,7 @@
 import AppKit
 import Foundation
 import VerbinalKit
+import MCPCore
 
 /// Cube viewer control.
 extension AppState {
@@ -17,6 +18,35 @@ extension AppState {
             density: nil, maxIntensityProjection: nil, autoOrbit: nil, isPlaying: nil,
             background: nil, spectralScale: nil, quality: nil, showSlicePlane: nil,
             playbackFPS: nil, opacityCurve: nil, camera: nil)
+    }
+
+    func makeGetCubeImageTool() -> ViewerImageTool {
+        ViewerImageTool.cube { [weak self] maxSide in
+            guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
+            return try await MainActor.run {
+                let model = self.cubeViewer
+                guard model.hasData else {
+                    throw ToolFailureReason.targetNotResolved("No cube is open in the Cube Viewer — open one first")
+                }
+                let drawn: CGImage?
+                switch model.viewMode {
+                case .slice: drawn = model.sliceImage
+                case .volume: drawn = model.volumeSnapshot?(maxSide, maxSide * 3 / 4, nil)
+                }
+                guard let drawn else {
+                    throw ToolFailureReason.backendError("the Cube Viewer has not drawn its \(model.viewMode.rawValue) yet")
+                }
+                return ViewerPicture(
+                    image: AgentImageEncoding.fitting(drawn, maxSide: maxSide),
+                    caption: [
+                        "file": .string(model.fileURL?.path ?? model.fileName),
+                        "viewMode": .string(model.viewMode.rawValue),
+                        "channel": .int(model.channel),
+                        "channels": .int(model.nz),
+                        "colormap": .string(model.colormap.rawValue),
+                    ])
+            }
+        }
     }
 
     func makeGetCubeViewTool() -> GetCubeViewTool {

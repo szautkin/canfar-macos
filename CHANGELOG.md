@@ -53,6 +53,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (matching the query's words, not the whole phrase), and `man` gives one
   tool's full description and schema, or the nearest names for a typo.
   They read the tool list exactly as the assistant receives it.
+- **Your assistant can see the viewers** — `get_fits_image` returns a
+  picture of the FITS Viewer as you see it (zoom, pan, rotation,
+  colormap, crosshair) with the exact map from a point in the picture to
+  the file's pixel, so an assistant can point at what it sees;
+  `get_cube_image` returns the cube's slice or volume. Pictures are made
+  small enough for the assistant to receive.
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across

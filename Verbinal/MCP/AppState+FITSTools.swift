@@ -7,6 +7,7 @@
 import AppKit
 import Foundation
 import VerbinalKit
+import MCPCore
 
 /// FITS viewer: header/WCS reads, view control, and the parity batch
 /// (HDU, auto-cut, blink, tab sync, search at crosshair).
@@ -111,6 +112,46 @@ extension AppState {
                 }
             }
         })
+    }
+
+    func makeGetFITSImageTool() -> ViewerImageTool {
+        ViewerImageTool.fits { [weak self] maxSide in
+            guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
+            return try await MainActor.run {
+                guard let tab = self.fitsTabHost.activeTab, tab.isLoaded, let hdu = tab.selectedHDU,
+                      let rendered = tab.renderedImage else {
+                    throw ToolFailureReason.targetNotResolved("No image is on screen in the FITS Viewer — open one first")
+                }
+                let viewport = ViewportTransform(
+                    zoom: tab.viewport.zoom, rotation: tab.viewport.rotation, flipX: tab.viewport.flipX,
+                    panX: tab.viewport.panX, panY: tab.viewport.panY,
+                    imageSize: CGSize(width: rendered.width, height: rendered.height), canvasSize: tab.lastCanvasSize)
+                guard let snapshot = FITSViewSnapshot.make(
+                    rendered: rendered, viewport: viewport, naxis2: hdu.header.naxis2,
+                    crosshair: tab.crosshairPixel, maxSide: maxSide) else {
+                    throw ToolFailureReason.backendError("the FITS view could not be drawn")
+                }
+                var caption: [String: JSONValue] = [
+                    "file": .string(tab.fileURL?.path ?? ""),
+                    "hduIndex": .int(tab.selectedHDUIndex),
+                    "fitsSize": .object(["naxis1": .int(hdu.header.naxis1), "naxis2": .int(hdu.header.naxis2)]),
+                    "zoom": .double(tab.viewport.zoom),
+                    "rotationDeg": .double(tab.viewport.rotation * 180 / .pi),
+                    "flipX": .bool(tab.viewport.flipX),
+                    "colormap": .string(tab.renderParams.colormap.rawValue),
+                    "stretch": .string(tab.renderParams.stretch.rawValue),
+                ]
+                let centre = snapshot.fitsPixel(u: Double(snapshot.image.width) / 2, v: Double(snapshot.image.height) / 2)
+                var centreFacts: [String: JSONValue] = ["x": .double(centre.x), "y": .double(centre.y)]
+                if let wcs = tab.wcs {
+                    let sky = wcs.pixelToWorld(x: centre.x, y: centre.y)
+                    centreFacts["raDeg"] = .double(sky.ra)
+                    centreFacts["decDeg"] = .double(sky.dec)
+                }
+                caption["centre"] = .object(centreFacts)
+                return ViewerPicture(image: snapshot.image, caption: caption, toFITSPixel: snapshot.toFITS)
+            }
+        }
     }
 
     func makeProbeFITSPixelTool() -> ProbeFITSPixelTool {

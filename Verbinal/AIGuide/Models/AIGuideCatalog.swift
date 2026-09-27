@@ -140,6 +140,7 @@ enum AIGuideCatalog {
         "set_fits_view": "fits",
         "fits_goto_coordinate": "fits",
         "probe_fits_pixel": "fits",
+        "get_fits_image": "fits",
         "list_fits_bookmarks": "fits",
         "save_fits_bookmark": "fits",
         "delete_fits_bookmark": "fits",
@@ -157,6 +158,7 @@ enum AIGuideCatalog {
         // Cube Viewer
         "open_cube": "cube",
         "get_cube_view": "cube",
+        "get_cube_image": "cube",
         "set_cube_view": "cube",
         "set_cube_camera": "cube",
         "probe_cube_spectrum": "cube",
