@@ -86,6 +86,11 @@ public actor AIToolRouter {
         externalManifest
     }
 
+    /// The verb class a registered tool was declared with.
+    public func verbClass(of name: String) -> VerbClass? {
+        metadata[name]?.verbClass
+    }
+
     /// Hard per-dispatch ceiling by verb class. Deliberately ABOVE every
     /// inner watchdog (`withToolTimeout` reads top out at 120s,
     /// `withApplierTimeout` writes at 600s) so the inner, better-worded

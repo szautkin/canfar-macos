@@ -31,7 +31,7 @@ struct SaveQueryTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "save_query",
-        description: "Save an ADQL query under a name. Returns the new query `id` (UUID) on auto-apply so you can chain `get_saved_query` / `update_saved_query` without re-listing. Strongly encouraged: include a `description` explaining why the query matters and tags grouping it with related work. Persisted immediately when auto-apply is on; otherwise queues to the proposal strip.",
+        description: "Save an ADQL query under a name. Returns the new query `id` (UUID) on auto-apply so you can chain `get_saved_query` / `update_saved_query` without re-listing. Strongly encouraged: include a `description` explaining why the query matters and tags grouping it with related work.",
         schema: #"""
         {
           "type": "object",
@@ -150,7 +150,7 @@ struct DeleteSavedQueryTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_saved_query",
-        description: "Permanently delete a saved query by id. Destructive — runs immediately when auto-apply is on (the user has opted into autonomous deletion); otherwise queues for explicit confirmation in the strip.",
+        description: "Permanently delete a saved query by id.",
         schema: #"""
         {
           "type": "object",

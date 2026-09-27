@@ -43,6 +43,20 @@ final class AgentToolCatalogParityTests: XCTestCase {
                       "catalog entries with no registered tool (remove or wire them): \(stale)")
     }
 
+    /// The apply rule is appended from `AutoApplyPolicy` at tools/list; a
+    /// tool that spells its own copy can contradict it (several said a
+    /// deletion "runs immediately when auto-apply is on").
+    @MainActor
+    func testNoToolSpellsItsOwnAutoApplyRule() {
+        let handWritten = ["when auto-apply is on", "under auto-apply", "queues to the proposal strip",
+                           "queues for confirmation", "queues for explicit confirmation"]
+        let offenders = AppState().makeAgentTools().filter { tool in
+            let text = tool.definition.description.lowercased()
+            return handWritten.contains { text.contains($0) }
+        }.map(\.name)
+        XCTAssertTrue(offenders.isEmpty, "state the rule through AutoApplyPolicy, not by hand: \(offenders)")
+    }
+
     func testCatalogCategoriesAreWellFormed() {
         let ids = AIGuideCatalog.categories.map(\.id)
         XCTAssertEqual(ids.count, Set(ids).count, "duplicate category ids")

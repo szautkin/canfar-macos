@@ -307,6 +307,21 @@ public actor MCPBridgeService {
             }
         }
 
+        // The app's own apply rule ends every proposing tool's description —
+        // after any AI Guide override, so a user's wording cannot drop it.
+        var described: [ToolDefinitionWire] = []
+        for tool in tools {
+            guard let verbClass = await router.verbClass(of: tool.name) else {
+                described.append(tool)
+                continue
+            }
+            described.append(ToolDefinitionWire(
+                name: tool.name,
+                description: AutoApplyPolicy.describe(tool.description, verbClass: verbClass),
+                inputSchema: tool.inputSchema))
+        }
+        tools = described
+
         logger.info("tools/list -> \(tools.count) tool\(tools.count == 1 ? "" : "s")")
         return successResponse(id: request.id, body: ListToolsResult(tools: tools))
     }

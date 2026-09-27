@@ -227,7 +227,7 @@ struct DeleteVOSpaceNodeTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_vospace_node",
-        description: "Permanently delete a VOSpace node (file or folder). Pass `recursive: true` to delete a folder and everything under it in one call — without it, deleting a non-empty folder fails because the VOSpace server requires the container to be empty. The 2026-05-15 QA report flagged this: cleaning `__pycache__` took three calls (list → delete leaves → delete dir) instead of one. Recursive walk is post-order and capped at 100 nodes per call as a safety bound; for larger trees, split into multiple invocations. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
+        description: "Permanently delete a VOSpace node (file or folder). Pass `recursive: true` to delete a folder and everything under it in one call — without it, deleting a non-empty folder fails because the VOSpace server requires the container to be empty. The 2026-05-15 QA report flagged this: cleaning `__pycache__` took three calls (list → delete leaves → delete dir) instead of one. Recursive walk is post-order and capped at 100 nodes per call as a safety bound; for larger trees, split into multiple invocations.",
         schema: #"""
         {
           "type": "object",
@@ -280,7 +280,7 @@ struct ClearUserSiteTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "clear_user_site",
-        description: "Wipe the user's ~/.local/lib/python3.*/site-packages directories in VOSpace. Use when `pip install --user` has poisoned subsequent jobs with incompatible package versions (typical symptom: `numpy` got upgraded across a major version boundary and pandas/erfa/scipy now error out). Doesn't touch ~/.local/bin or ~/.local/share. Doesn't touch system-site or conda envs (those live inside the container image, not in VOSpace). Destructive — runs immediately under auto-apply.",
+        description: "Wipe the user's ~/.local/lib/python3.*/site-packages directories in VOSpace. Use when `pip install --user` has poisoned subsequent jobs with incompatible package versions (typical symptom: `numpy` got upgraded across a major version boundary and pandas/erfa/scipy now error out). Doesn't touch ~/.local/bin or ~/.local/share. Doesn't touch system-site or conda envs (those live inside the container image, not in VOSpace).",
         schema: #"""
         {
           "type": "object",

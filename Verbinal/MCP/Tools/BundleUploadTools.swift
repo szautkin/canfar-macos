@@ -27,7 +27,7 @@ struct UploadFileToVOSpaceTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "upload_file_to_vospace",
-        description: "Upload a local file by path. The MCP call only sends the path (bytes stay on disk). The app starts a streaming PUT immediately and this tool returns without waiting for the transfer — poll `list_vospace_path` until the node size is > 0. `localPath` must be an existing regular file; `remotePath` is inside the user's VOSpace. A 10-minute app-side deadline still applies to the PUT. Runs immediately when auto-apply is on; otherwise queues to the proposal strip.",
+        description: "Upload a local file by path. The MCP call only sends the path (bytes stay on disk). The app starts a streaming PUT immediately and this tool returns without waiting for the transfer — poll `list_vospace_path` until the node size is > 0. `localPath` must be an existing regular file; `remotePath` is inside the user's VOSpace. A 10-minute app-side deadline still applies to the PUT.",
         schema: #"""
         {
           "type": "object",
@@ -193,7 +193,7 @@ struct ExportResearchBundleTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "export_research_bundle",
-        description: "Export the research archive as a portable bundle in the user's Downloads folder. `includeFileCopies` also copies the downloaded data files into the bundle (larger, but self-contained); `uploadToVOSpace` additionally uploads the finished bundle to the user's VOSpace. Both default to false. Runs immediately when auto-apply is on; otherwise queues to the proposal strip.",
+        description: "Export the research archive as a portable bundle in the user's Downloads folder. `includeFileCopies` also copies the downloaded data files into the bundle (larger, but self-contained); `uploadToVOSpace` additionally uploads the finished bundle to the user's VOSpace. Both default to false.",
         schema: #"""
         {
           "type": "object",

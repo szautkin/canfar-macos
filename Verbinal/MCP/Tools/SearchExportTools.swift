@@ -28,7 +28,7 @@ struct ExportSearchResultsTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "export_search_results",
-        description: "Export search results as a file in the user's Downloads folder. Omit `adql` to export the current search results; pass `adql` to run a custom query and export that instead. `maxRecords` caps the row count. Runs immediately when auto-apply is on; otherwise queues to the proposal strip.",
+        description: "Export search results as a file in the user's Downloads folder. Omit `adql` to export the current search results; pass `adql` to run a custom query and export that instead. `maxRecords` caps the row count.",
         schema: #"""
         {
           "type": "object",

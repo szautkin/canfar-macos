@@ -305,7 +305,7 @@ struct SaveFITSBookmarkTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "save_fits_bookmark",
-        description: "Save a labelled sky bookmark at (RA, Dec) in degrees (RA 0-360, Dec -90 to 90). Persisted immediately when auto-apply is on; otherwise queues to the proposal strip.",
+        description: "Save a labelled sky bookmark at (RA, Dec) in degrees (RA 0-360, Dec -90 to 90).",
         schema: #"""
         {
           "type": "object",
@@ -356,7 +356,7 @@ struct DeleteFITSBookmarkTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_fits_bookmark",
-        description: "Permanently delete a saved sky bookmark by id. Destructive — runs immediately when auto-apply is on; otherwise queues for explicit confirmation in the strip.",
+        description: "Permanently delete a saved sky bookmark by id.",
         schema: #"""
         {
           "type": "object",

@@ -746,6 +746,47 @@ final class MCPBridgeServiceTests: XCTestCase {
         _ = await serveTask.value
     }
 
+    /// Every proposing tool's description ends with the app's own apply
+    /// rule — after any AI Guide override — and read tools carry none.
+    func testToolsListEndsProposingToolsWithTheApplyRule() async throws {
+        let router = AIToolRouter(tools: [EchoReadTool(), WriteSentinelTool()], auditSink: CapturingAuditSink())
+        let resolver = AIGuideResolver(
+            adjustments: {
+                AIGuideResolver.Adjustments(
+                    descriptionOverrides: ["write_sentinel": "User wording."], guideTools: [])
+            },
+            guideBody: { _ in nil })
+        let bridge = MCPBridgeService(
+            router: router, identity: .init(name: "Verbinal", version: "1.0.0"),
+            services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8)),
+            approval: .allowAll, aiGuide: resolver)
+        let (clientSide, serverSide) = InMemoryTransport.pair()
+        let serveTask = Task { await bridge.serve(on: serverSide) }
+        try await clientSide.send(makeRPC(method: "initialize", id: .int(1), params: InitializeParams(
+            protocolVersion: "2025-06-18", clientInfo: ClientInfo(name: "test", version: "1.0"))))
+        _ = try await readResponse(from: clientSide)
+
+        try await clientSide.send(makeRPC(method: "tools/list", id: .int(2), params: EmptyArgs()))
+        let response = try await readResponse(from: clientSide)
+        let list = try JSONDecoder().decode(ListToolsResult.self, from: try XCTUnwrap(response.result))
+        let write = try XCTUnwrap(list.tools.first { $0.name == "write_sentinel" })
+        let rule = try XCTUnwrap(AutoApplyPolicy.toolSentence(for: .semanticWrite))
+        XCTAssertEqual(write.description, "User wording. " + rule)
+        XCTAssertEqual(list.tools.first { $0.name == "echo" }?.description, "Returns its arguments verbatim")
+
+        await serverSide.close()
+        await clientSide.close()
+        _ = await serveTask.value
+    }
+
+    func testDestructiveChangesNeverApplyWithoutTheUser() {
+        XCTAssertFalse(AutoApplyPolicy.appliesAtOnce(.destructive, autoApplyOn: true))
+        XCTAssertTrue(AutoApplyPolicy.appliesAtOnce(.semanticWrite, autoApplyOn: true))
+        XCTAssertFalse(AutoApplyPolicy.appliesAtOnce(.semanticWrite, autoApplyOn: false))
+        XCTAssertNil(AutoApplyPolicy.toolSentence(for: .read))
+        XCTAssertTrue(AutoApplyPolicy.toolSentence(for: .destructive)?.contains("always waits") ?? false)
+    }
+
     func testAutoAppliedAckMergesExtraEnvelopeAndPayloadId() throws {
         let payload = try JSONSerialization.data(withJSONObject: ["id": "payload-uuid"])
         let proposal = PendingProposal(

@@ -620,7 +620,7 @@ struct RenameRecentSearchTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "rename_recent_search",
-        description: "Rename a Recent Searches entry (by id from `list_recent_searches`) — the panel's inline rename. Persisted immediately when auto-apply is on; otherwise queues to the proposal strip.",
+        description: "Rename a Recent Searches entry (by id from `list_recent_searches`) — the panel's inline rename.",
         schema: #"""
         {
           "type": "object",
@@ -665,7 +665,7 @@ struct RemoveRecentSearchTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "remove_recent_search",
-        description: "Remove one Recent Searches entry by id. Destructive — runs immediately when auto-apply is on; otherwise queues for explicit confirmation in the strip.",
+        description: "Remove one Recent Searches entry by id.",
         schema: #"""
         {
           "type": "object",
@@ -699,7 +699,7 @@ struct ClearRecentSearchesTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "clear_recent_searches",
-        description: "Remove ALL Recent Searches entries — the panel's Clear All. Destructive — runs immediately when auto-apply is on; otherwise queues for explicit confirmation in the strip.",
+        description: "Remove ALL Recent Searches entries — the panel's Clear All.",
         schema: #"""
         {
           "type": "object",

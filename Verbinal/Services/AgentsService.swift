@@ -340,7 +340,7 @@ final class AgentsService {
             shouldAutoApply: { [weak self] verbClass, _ in
                 guard let self else { return false }
                 return await MainActor.run {
-                    self.autoApplyWrites && verbClass != .destructive
+                    AutoApplyPolicy.appliesAtOnce(verbClass, autoApplyOn: self.autoApplyWrites)
                 }
             },
             apply: { [weak self] id in

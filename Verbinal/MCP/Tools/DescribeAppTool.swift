@@ -120,7 +120,7 @@ struct DescribeAppTool: JSONReadTool {
 
     ### Auto-apply mode (default) — autonomous
 
-    Your write tool call runs the apply synchronously and returns
+    Every write except a destructive one runs the apply synchronously and returns
     `{ applied: true, proposalID, kind, summary }`. The mutation has
     already happened. Confirm the outcome to the user in past tense
     ("Saved your query.", "Notes updated on 5 epochs.", "Launched
@@ -166,10 +166,12 @@ struct DescribeAppTool: JSONReadTool {
         below) — schedules a probe job inside the named image to
         enumerate its packages.
 
-    Destructive tools (`delete_*`, `clear_*`) follow the same toggle as
-    semantic writes — there is no separate confirm step for destructive
-    operations when auto-apply is on. Be deliberate; the user is trusting
-    you with their data.
+    Destructive tools (`delete_*`, `clear_*`, `stop_compute`, …) are the
+    exception to auto-apply. \(AutoApplyPolicy.toolSentence(for: .destructive) ?? "")
+    Each such call returns a `proposalID`; tell the user it is waiting for
+    their approval. Every proposing tool's description ends with the rule
+    that applies to it. Be deliberate; the user is trusting you with their
+    data.
 
     ### Live ops (always run, no proposal either way)
 

@@ -68,6 +68,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   instead of adding a duplicate. `list_open_tabs` gives each cube tab's
   real path.
 
+- **What tools told your assistant about applying changes** — several
+  destructive tools said they "run immediately when auto-apply is on",
+  but destructive changes never auto-apply (they always wait for you), and
+  `describe_app` said the same. Each tool that proposes a change now ends
+  its description with the app's own rule, from the same place that
+  decides it — and it stays there under a description you write for the
+  tool in AI Guide.
+
 ### Changed
 - **Polling follows what is happening** — sessions and batch jobs were
   polled every 15 s and 45 s whatever was going on, so a notification

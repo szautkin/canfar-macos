@@ -154,7 +154,7 @@ struct ClearProbeFailuresTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "clear_probe_failures",
-        description: "Dismiss package-discovery failure records — the sheet's per-row \"Dismiss error\" (pass `image`) or header \"Clear all errors\" (omit it). Successful manifests are untouched; cleared images return to never-probed state. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation.",
+        description: "Dismiss package-discovery failure records — the sheet's per-row \"Dismiss error\" (pass `image`) or header \"Clear all errors\" (omit it). Successful manifests are untouched; cleared images return to never-probed state.",
         schema: #"""
         {
           "type": "object",

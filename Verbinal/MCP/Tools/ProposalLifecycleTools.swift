@@ -147,7 +147,7 @@ struct WithdrawProposalTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "withdraw_proposal",
-        description: "Retract one of your own pending proposals. Only meaningful in strip-confirm mode (auto-apply mode commits writes synchronously, so there's nothing pending to withdraw). Use when you realised mid-flow that the proposal was wrong; the user no longer sees it in the strip. Returns withdrew=false if the id is unknown or already resolved.",
+        description: "Retract one of your own pending proposals. Only meaningful for a proposal still waiting in Pending — every destructive one, and any other while Auto-apply is off (with it on, other writes apply at once, leaving nothing to withdraw). Use when you realised mid-flow that the proposal was wrong; the user no longer sees it in the strip. Returns withdrew=false if the id is unknown or already resolved.",
         schema: #"""
         {
           "type": "object",

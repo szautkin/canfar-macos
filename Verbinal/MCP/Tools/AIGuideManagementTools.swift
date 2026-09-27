@@ -221,7 +221,7 @@ struct DeleteGuideToolTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_guide_tool",
-        description: "Permanently delete a user-authored guide tool by id. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation.",
+        description: "Permanently delete a user-authored guide tool by id.",
         schema: #"""
         {
           "type": "object",

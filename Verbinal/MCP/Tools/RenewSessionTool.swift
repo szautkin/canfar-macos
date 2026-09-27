@@ -23,7 +23,7 @@ struct RenewSessionTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "renew_session",
-        description: "Renew (extend the expiry time of) a running Skaha session by id — interactive or headless. Non-destructive; runs immediately when auto-apply is on, otherwise queues to the proposal strip.",
+        description: "Renew (extend the expiry time of) a running Skaha session by id — interactive or headless.",
         schema: #"""
         {
           "type": "object",

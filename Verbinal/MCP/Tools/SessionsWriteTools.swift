@@ -141,7 +141,7 @@ struct DeleteSessionTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_session",
-        description: "Terminate a running Skaha session by id (interactive OR headless — same endpoint covers both). Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
+        description: "Terminate a running Skaha session by id (interactive OR headless — same endpoint covers both).",
         schema: #"""
         {
           "type": "object",
@@ -209,7 +209,7 @@ struct DeleteSessionsBulkTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_sessions_bulk",
-        description: "Terminate up to 50 Skaha sessions (interactive OR headless) in parallel as one proposal envelope. Partial-success: every id is attempted; output reports `succeeded[]` + `failed[{id, error}]` so a single zombie that's already gone doesn't block the rest. Use this for zombie-cleanup after a launch-storm or to free quota slots after a stress test. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
+        description: "Terminate up to 50 Skaha sessions (interactive OR headless) in parallel as one proposal envelope. Partial-success: every id is attempted; output reports `succeeded[]` + `failed[{id, error}]` so a single zombie that's already gone doesn't block the rest. Use this for zombie-cleanup after a launch-storm or to free quota slots after a stress test.",
         schema: #"""
         {
           "type": "object",
@@ -303,7 +303,7 @@ struct ClearResearchArchiveTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "clear_research_archive",
-        description: "Remove ALL downloaded-observation metadata records. Does not touch local files. Destructive — runs immediately when auto-apply is on; otherwise queues for confirmation in the strip.",
+        description: "Remove ALL downloaded-observation metadata records. Does not touch local files.",
         schema: #"""
         {
           "type": "object",
