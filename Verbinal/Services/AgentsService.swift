@@ -314,6 +314,13 @@ final class AgentsService {
         if isEnabled { startServer() }
     }
 
+    /// The tool list as agents see it (`tools/list`): empty until the
+    /// server has started. The tool-map tools read this.
+    func publishedTools() async -> [ToolDefinitionWire] {
+        guard let router else { return [] }
+        return await PublishedManifest.tools(router: router, aiGuide: aiGuideResolver)
+    }
+
     private func startServer() {
         guard !isRunning else { return }
 

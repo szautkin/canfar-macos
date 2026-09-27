@@ -6,6 +6,7 @@
 
 import Foundation
 import VerbinalKit
+import MCPCore
 
 /// Returns a single prose blob orienting an agent to Verbinal's surface:
 /// what the app does, what tools are available, what the proposal model
@@ -14,30 +15,47 @@ import VerbinalKit
 /// The brief is static, embedded in source. Single source of truth — when
 /// new tools land, edit the brief and the schema together.
 struct DescribeAppTool: JSONReadTool {
-    typealias Args = EmptyArgs
+    struct Args: Decodable, Sendable {
+        /// An area id from `list_apps`; nil for the whole-app brief.
+        var app: String?
+    }
 
     struct Output: Encodable, Sendable {
-        let brief: String
+        let brief: String?
         let serverVersion: String
+        let app: ToolMap.Area?
+        let tools: [ToolMap.Entry]?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "describe_app",
-        description: "Get a prose overview of Verbinal's capabilities, tool surface, and proposal model. Call this once at the start of a session to orient yourself.",
+        description: "Get a prose overview of Verbinal's capabilities, tool surface, and proposal model — call this once at the start of a session. With `app` (an area id from list_apps), get that area's tools with a one-line summary each instead; `man` gives one tool's arguments.",
         schema: #"""
         {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "app": { "type": "string", "description": "An area id from list_apps, e.g. \"fits\"." }
+          },
           "additionalProperties": false
         }
         """#
     )
 
-    func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
-        Output(
-            brief: Self.brief,
-            serverVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        )
+    var published: @Sendable () async -> [ToolDefinitionWire] = { [] }
+
+    func handle(_ args: Args, context: AIToolContext) async throws -> Output {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        guard let wanted = args.app?.trimmingCharacters(in: .whitespacesAndNewlines), !wanted.isEmpty else {
+            return Output(brief: Self.brief, serverVersion: version, app: nil, tools: nil)
+        }
+        let tools = await published()
+        let areas = ToolMap.areas(tools)
+        guard let area = areas.first(where: { $0.id.caseInsensitiveCompare(wanted) == .orderedSame }) else {
+            throw ToolFailureReason.invalidArgument(
+                "no area \"\(wanted)\"; list_apps gives them: \(areas.map(\.id).joined(separator: ", "))")
+        }
+        return Output(brief: nil, serverVersion: version, app: area,
+                      tools: ToolMap.entries(inArea: area.id, tools))
     }
 
     static let brief: String = """

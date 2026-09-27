@@ -7,6 +7,7 @@
 import AppKit
 import Foundation
 import VerbinalKit
+import MCPCore
 
 /// Composes the canfar-mac MCP tool surface from `AppState`'s services.
 ///
@@ -21,8 +22,18 @@ extension AppState {
     func makeAgentTools() -> [any AITool] {
         var tools: [any AITool] = []
 
-        // Foundational
-        tools.append(DescribeAppTool())
+        // Foundational — and the map of everything below: the tool list
+        // exactly as agents get it, read late (the server builds it).
+        let published: @Sendable () async -> [ToolDefinitionWire] = { [weak self] in
+            guard let service = self?.agentsService else { return [] }
+            return await service.publishedTools()
+        }
+        var describeApp = DescribeAppTool()
+        describeApp.published = published
+        tools.append(describeApp)
+        tools.append(ListAppsTool(published: published))
+        tools.append(SearchToolsTool(published: published))
+        tools.append(ManTool(published: published))
         tools.append(makeGetAuthStateTool())
         tools.append(makeGetCurrentViewTool())
 

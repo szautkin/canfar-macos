@@ -47,6 +47,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **A map of the tools for your assistant** — `list_apps` gives the app's
+  areas and how many tools each has, `describe_app` with `app` gives one
+  area's tools a line each, `search_tools` finds a tool by what it does
+  (matching the query's words, not the whole phrase), and `man` gives one
+  tool's full description and schema, or the nearest names for a typo.
+  They read the tool list exactly as the assistant receives it.
 - **Cancel a search** — a search that takes long could not be stopped:
   Search stayed greyed with a spinner until CADC answered. **Cancel** now
   sits beside the spinner, on the form and in the ADQL editor (Esc), and

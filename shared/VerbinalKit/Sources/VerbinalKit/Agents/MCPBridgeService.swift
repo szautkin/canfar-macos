@@ -289,39 +289,7 @@ public actor MCPBridgeService {
 
     private func handleToolsList(_ request: JSONRPCRequest) async -> JSONRPCResponse {
         guard initialized else { return notInitialized(id: request.id) }
-        let manifest = await router.externalManifestList()
-        var tools = manifest.map { $0.wire }
-
-        // AI Guide re-tuning: substitute user description overrides and append
-        // user guide tools. One main-actor hop per request via `adjustments()`.
-        if let aiGuide {
-            let adj = await aiGuide.adjustments()
-            if !adj.descriptionOverrides.isEmpty {
-                tools = manifest.map { def in
-                    guard let override = adj.descriptionOverrides[def.name] else { return def.wire }
-                    return ToolDefinitionWire(name: def.name, description: override, inputSchema: def.inputSchema)
-                }
-            }
-            if !adj.guideTools.isEmpty {
-                tools.append(contentsOf: adj.guideTools.map { $0.wire })
-            }
-        }
-
-        // The app's own apply rule ends every proposing tool's description —
-        // after any AI Guide override, so a user's wording cannot drop it.
-        var described: [ToolDefinitionWire] = []
-        for tool in tools {
-            guard let verbClass = await router.verbClass(of: tool.name) else {
-                described.append(tool)
-                continue
-            }
-            described.append(ToolDefinitionWire(
-                name: tool.name,
-                description: AutoApplyPolicy.describe(tool.description, verbClass: verbClass),
-                inputSchema: tool.inputSchema))
-        }
-        tools = described
-
+        let tools = await PublishedManifest.tools(router: router, aiGuide: aiGuide)
         logger.info("tools/list -> \(tools.count) tool\(tools.count == 1 ? "" : "s")")
         return successResponse(id: request.id, body: ListToolsResult(tools: tools))
     }

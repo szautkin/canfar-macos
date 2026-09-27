@@ -14,6 +14,15 @@ Legend: **live** = view-state tool, applied immediately with a `.live`
 activity entry; **write** = proposal-gated (auto-apply or strip);
 **read** = pure data.
 
+## Finding your way (tool map)
+
+| Need | Tool | Kind |
+|---|---|---|
+| The app's areas and how many tools each has | `list_apps` | read |
+| One area's tools, one line each | `describe_app` `app` | read |
+| A tool by what it does | `search_tools` | read |
+| One tool's description and full schema | `man` | read |
+
 ## Search — form
 
 | UI interaction | Tool | Kind |

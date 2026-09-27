@@ -68,6 +68,9 @@ enum AIGuideCatalog {
     private static let categoryByTool: [String: String] = [
         // Foundational
         "describe_app": "foundational",
+        "list_apps": "foundational",
+        "search_tools": "foundational",
+        "man": "foundational",
         "get_auth_state": "foundational",
         "get_current_view": "foundational",
         "get_service_health": "foundational",
