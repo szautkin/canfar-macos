@@ -61,7 +61,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Columns picker (show/hide/reset) | `set_results_view` `visibleColumns`/`resetColumnVisibility` | live |
 | Per-column unit switch | `set_results_view` `columnUnits` | live |
 | Quick-search cell links | `quick_search` | live |
-| Double-click row → detail sheet | `open_observation_detail` | live |
+| Double-click row → detail sheet | `open_observation_detail` (row id), `show_search_row_detail` (row on the page), `show_observation_detail` (publisher id) | live |
 | Export menu (server-side CSV/TSV/VOTable) | `export_search_results` (pre-existing) | write |
 | Detail sheet's Download | `download_observation` (pre-existing) | write |
 
@@ -78,7 +78,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 
 | UI interaction | Tool | Kind |
 |---|---|---|
-| Open file / tabs / stretch / colormap / cuts / zoom / fit / north-up / goto / probe / bookmarks / close tab | pre-existing control batch (`open_fits_file`, `set_fits_view` incl. `tabIndex`, `fits_goto_coordinate`, `probe_fits_pixel`, `*_fits_bookmark`, `list_open_tabs`, `close_active_tab`) | mixed |
+| Open file / tabs / stretch / colormap / cuts / zoom / fit / north-up / goto / probe / bookmarks / close tab | pre-existing control batch (`open_fits_file`, `set_fits_view` incl. `tabIndex`, `fits_goto_coordinate`, `probe_fits_pixel`, `*_fits_bookmark`, `list_open_tabs`, `close_tab` — FITS or cube, by index — with `close_active_tab` as its alias) | mixed |
 | HDU list selection | `select_hdu` | live |
 | Auto cut button | `fits_auto_cut` | live |
 | Blink (⌘⇧B) start | `start_blink` | live |

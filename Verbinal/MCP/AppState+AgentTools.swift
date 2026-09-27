@@ -252,6 +252,8 @@ extension AppState {
             description: "Alias of `set_search_results_view`.",
             inner: setResults))
         tools.append(makeOpenObservationDetailTool())
+        tools.append(makeShowSearchRowDetailTool())
+        tools.append(makeShowObservationDetailTool())
 
         // Recent-searches writes — the side panel's rename/remove/clear.
         tools.append(RenameRecentSearchTool())
@@ -274,7 +276,12 @@ extension AppState {
         tools.append(makeSetCubeTransferTool())
         tools.append(makeSwitchCubeTabTool())
         tools.append(makeListOpenTabsTool())
-        tools.append(makeCloseActiveTabTool())
+        let closeTab = makeCloseTabTool()
+        tools.append(closeTab)
+        tools.append(AliasedToolBox(
+            name: "close_active_tab",
+            description: "Alias of `close_tab`.",
+            inner: closeTab))
 
         // FITS viewer parity — HDU selection, auto-cut, blink/compare,
         // tab-sync toggles, search-at-crosshair, figure export.

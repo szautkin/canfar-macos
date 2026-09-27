@@ -427,57 +427,6 @@ struct ListOpenTabsTool: JSONReadTool {
     }
 }
 
-// MARK: - close_active_tab
-
-/// Close the active FITS-viewer tab. Live-applied.
-struct CloseActiveTabTool: AITool {
-    static let verbClass: VerbClass = .viewState
-    static let agentSafe: Bool = true
-
-    struct Args: Decodable, Sendable {
-        let kind: String
-    }
-
-    struct Output: Encodable, Sendable {
-        let applied: Bool
-    }
-
-    let definition = AIToolDefinition.withStaticSchema(
-        name: "close_active_tab",
-        description: "Close the active FITS-viewer tab. Only `kind: \"fits\"` is supported — the Cube Viewer has a single implicit document that is not closable. Live-applied; no proposal.",
-        schema: #"""
-        {
-          "type": "object",
-          "required": ["kind"],
-          "properties": {
-            "kind": { "type": "string", "enum": ["fits"], "description": "Which viewer's active tab to close." }
-          },
-          "additionalProperties": false
-        }
-        """#
-    )
-
-    /// Returns an error message on failure, or nil when the tab closed.
-    let close: @Sendable (String) async -> String?
-
-    func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
-        let args: Args
-        do {
-            args = try JSONDecoder().decode(Args.self, from: arguments)
-        } catch {
-            return .failed(.invalidArgument("\(error)"))
-        }
-        if let message = await close(args.kind) {
-            return .failed(.invalidArgument(message))
-        }
-        do {
-            let bytes = try JSONEncoder().encode(Output(applied: true))
-            return .data(bytes)
-        } catch {
-            return .failed(.backendError("\(error)"))
-        }
-    }
-}
 
 // MARK: - Appliers
 

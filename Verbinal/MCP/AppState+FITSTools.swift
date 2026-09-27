@@ -173,21 +173,36 @@ extension AppState {
         })
     }
 
-    func makeCloseActiveTabTool() -> CloseActiveTabTool {
+    func makeCloseTabTool() -> LiveActionTool<ViewerTabActions.CloseArgs> {
         let activity = agentsService.activityStore
-        return CloseActiveTabTool(close: { [weak self] kind in
+        return ViewerTabActions.closeTab { [weak self] args in
             guard let self else { return "App state unavailable" }
             return await MainActor.run {
-                guard kind == "fits" else { return "Unknown tab kind '\(kind)' — only \"fits\" tabs can be closed" }
-                let host = self.fitsTabHost
-                guard !host.tabs.isEmpty else { return "No FITS tabs are open" }
-                host.closeActiveTab()
-                activity.append(.live(
-                    kind: "close_active_tab", summary: "Closed the active FITS tab",
-                    origin: .external(clientID: "close_active_tab")))
-                return nil
+                let reason: String?
+                switch args.kind {
+                case "fits": reason = Self.closeTab(in: self.fitsTabHost, at: args.index)
+                case "cube": reason = Self.closeTab(in: self.cubeTabHost, at: args.index)
+                default: return "kind must be \"fits\" or \"cube\""
+                }
+                if reason == nil {
+                    activity.append(.live(kind: "close_tab", summary: "Closed a \(args.kind) tab",
+                                          origin: .external(clientID: "close_tab")))
+                }
+                return reason
             }
-        })
+        }
+    }
+
+    /// Closes the tab at `index` (or the active one). Returns why not, or nil.
+    @MainActor
+    private static func closeTab<Host: ViewerTabHosting>(in host: Host, at index: Int?) -> String? {
+        let target = index ?? host.activeTabIndex
+        guard host.tabs.indices.contains(target) else {
+            return host.tabs.isEmpty ? "No tabs are open" : "No tab \(target) — list_open_tabs gives 0…\(host.tabs.count - 1)"
+        }
+        let before = host.tabs.count
+        host.closeTab(at: target)
+        return host.tabs.count < before ? nil : "That tab cannot be closed — the Cube Viewer always keeps one"
     }
 
     /// `isOpen: false` snapshot. Tabs whose load failed still list their

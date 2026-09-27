@@ -71,6 +71,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   named by the query, and load back into the editor; for assistants
   `list_recent_searches` marks them `fromEditor`, and an empty
   `set_adql_query` clears the editor.
+- **Tabs and details for your assistant** — `close_tab` closes a FITS or
+  cube tab by its index (or the active one); `close_active_tab`, which
+  could close only FITS tabs, is now its alias. `show_search_row_detail`
+  opens the detail of a row on the results page shown, and
+  `show_observation_detail` that of an observation in the results by its
+  publisher ID.
 - **Cancel a search** — a search that takes long could not be stopped:
   Search stayed greyed with a spinner until CADC answered. **Cancel** now
   sits beside the spinner, on the form and in the ADQL editor (Esc), and

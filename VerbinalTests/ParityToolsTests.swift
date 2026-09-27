@@ -445,10 +445,19 @@ final class ParityToolsTests: XCTestCase {
 
     // MARK: - tabs
 
-    func testCloseActiveTabReportsClosureError() async {
-        let tool = CloseActiveTabTool(close: { _ in "No FITS tabs are open" })
+    func testCloseTabReportsClosureError() async {
+        let tool = ViewerTabActions.closeTab { _ in "No tabs are open" }
         let result = await tool.invoke(arguments: argsData(["kind": "fits"]), context: ctx())
         guard case .failed = result else { return XCTFail("expected .failed, got \(result)") }
+    }
+
+    func testCloseTabPassesKindAndIndex() async throws {
+        let seen = Locked<(String, Int?)?>(nil)
+        let tool = ViewerTabActions.closeTab { args in seen.set((args.kind, args.index)); return nil }
+        let result = await tool.invoke(arguments: argsData(["kind": "cube", "index": 2]), context: ctx())
+        guard case .data = result else { return XCTFail("expected data, got \(result)") }
+        XCTAssertEqual(seen.value?.0, "cube")
+        XCTAssertEqual(seen.value?.1, 2)
     }
 
     // MARK: - get_proposal_state

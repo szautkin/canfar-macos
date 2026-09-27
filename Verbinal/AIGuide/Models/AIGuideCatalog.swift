@@ -110,6 +110,8 @@ enum AIGuideCatalog {
         "set_search_results_view": "search",
         "set_results_view": "search",
         "open_observation_detail": "search",
+        "show_search_row_detail": "search",
+        "show_observation_detail": "search",
         // Saved Queries
         "list_saved_queries": "queries",
         "get_saved_query": "queries",
@@ -217,6 +219,7 @@ enum AIGuideCatalog {
         "navigate_to": "navigation",
         "list_open_tabs": "navigation",
         "close_active_tab": "navigation",
+        "close_tab": "navigation",
         "list_local_folder": "navigation",
         "open_local_file": "navigation",
         "request_folder_access": "navigation",

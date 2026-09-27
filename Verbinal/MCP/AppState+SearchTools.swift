@@ -1075,26 +1075,57 @@ extension AppState {
         })
     }
 
-    func makeOpenObservationDetailTool() -> OpenObservationDetailTool {
-        let activity = agentsService.activityStore
-        return OpenObservationDetailTool(open: { [weak self] rowID in
+    /// Opens the detail sheet for a loaded results row — the one path the
+    /// three detail tools share. Returns why not, or nil.
+    @MainActor
+    private func openObservationDetail(rowID: String, via tool: String) -> String? {
+        let model = searchModel
+        guard model.resultsModel.result(forID: rowID) != nil else {
+            return "No results row with id '\(rowID)' — ids come from get_search_results"
+        }
+        if currentMode != .search { navigateTo(.search) }
+        model.selectedTab = .results
+        model.resultsModel.pendingDetailRequest = .init(rowID: rowID)
+        agentsService.activityStore.append(.live(
+            kind: tool, summary: "Opened observation detail for \(rowID)", origin: .external(clientID: tool)))
+        return nil
+    }
+
+    func makeOpenObservationDetailTool() -> LiveActionTool<ObservationDetailActions.RowIDArgs> {
+        ObservationDetailActions.openByRowID { [weak self] args in
+            guard let self else { return "App state unavailable" }
+            return await self.openObservationDetail(rowID: args.rowID, via: "open_observation_detail")
+        }
+    }
+
+    func makeShowSearchRowDetailTool() -> LiveActionTool<ObservationDetailActions.RowArgs> {
+        ObservationDetailActions.openByRow { [weak self] args in
             guard let self else { return "App state unavailable" }
             return await MainActor.run {
-                let model = self.searchModel
-                guard model.resultsModel.result(forID: rowID) != nil else {
-                    return "No results row with id '\(rowID)' — ids come from get_search_results"
+                let rows = self.searchModel.resultsModel.displayedRows
+                guard rows.indices.contains(args.row) else {
+                    return rows.isEmpty
+                        ? "No results on screen — run a search first"
+                        : "row \(args.row) is not on the page shown (0…\(rows.count - 1))"
                 }
-                if self.currentMode != .search {
-                    self.navigateTo(.search)
-                }
-                model.selectedTab = .results
-                model.resultsModel.pendingDetailRequest = .init(rowID: rowID)
-                activity.append(.live(
-                    kind: "open_observation_detail",
-                    summary: "Opened observation detail for \(rowID)",
-                    origin: .external(clientID: "open_observation_detail")))
-                return nil
+                return self.openObservationDetail(rowID: rows[args.row].id, via: "show_search_row_detail")
             }
-        })
+        }
+    }
+
+    func makeShowObservationDetailTool() -> LiveActionTool<ObservationDetailActions.PublisherArgs> {
+        ObservationDetailActions.openByPublisherID { [weak self] args in
+            guard let self else { return "App state unavailable" }
+            let wanted = args.publisherId.trimmingCharacters(in: .whitespaces)
+            return await MainActor.run {
+                let results = self.searchModel.resultsModel
+                guard let row = results.results.first(where: {
+                    results.columns.value(in: $0, forID: "publisherid") == wanted
+                }) else {
+                    return "\(wanted) is not among the current search results — search for it first (set_search_form with its observationID), then call this again"
+                }
+                return self.openObservationDetail(rowID: row.id, via: "show_observation_detail")
+            }
+        }
     }
 }

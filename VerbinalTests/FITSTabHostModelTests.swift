@@ -283,3 +283,28 @@ final class FITSGoToTests: XCTestCase {
                        "10 px left of and 3 px below the image")
     }
 }
+
+@MainActor
+final class CloseTabTests: XCTestCase {
+
+    func testClosingByIndexClosesThatTabAndTheCubeKeepsOne() async {
+        let state = AppState()
+        let host = state.fitsTabHost
+        _ = host.addTab(); _ = host.addTab(); _ = host.addTab()
+        let tool = state.makeCloseTabTool()
+        let ctx = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(),
+                                budget: ProposalBudget(limit: 9))
+
+        let closed = await tool.invoke(arguments: Data(#"{"kind":"fits","index":0}"#.utf8), context: ctx)
+        guard case .data = closed else { return XCTFail("\(closed)") }
+        XCTAssertEqual(host.tabCount, 2)
+
+        let missing = await tool.invoke(arguments: Data(#"{"kind":"fits","index":7}"#.utf8), context: ctx)
+        guard case .failed = missing else { return XCTFail("an index past the tabs must fail") }
+
+        XCTAssertEqual(state.cubeTabHost.tabs.count, 1)
+        let lastCube = await tool.invoke(arguments: Data(#"{"kind":"cube"}"#.utf8), context: ctx)
+        guard case .failed(let reason) = lastCube else { return XCTFail("the last cube tab must stay") }
+        XCTAssertTrue("\(reason)".contains("keeps one"))
+    }
+}

@@ -156,7 +156,7 @@ final class SearchControlToolsTests: XCTestCase {
     // MARK: - open_observation_detail
 
     func testOpenObservationDetailReportsUnknownRow() async {
-        let tool = OpenObservationDetailTool(open: { _ in "No results row with id 'nope'" })
+        let tool = ObservationDetailActions.openByRowID { _ in "No results row with id 'nope'" }
         let result = await tool.invoke(arguments: argsData(["rowID": "nope"]), context: ctx())
         guard case .failed = result else { return XCTFail("expected .failed, got \(result)") }
     }
