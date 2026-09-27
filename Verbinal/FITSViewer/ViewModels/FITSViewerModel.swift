@@ -13,6 +13,17 @@ import AppKit
 #endif
 import VerbinalKit
 
+/// What the viewer draws of an image: at most `FITSDisplayRaster`'s limits.
+struct FITSPicture: Sendable {
+    let pixels: [Float]
+    let width: Int
+    let height: Int
+
+    nonisolated init(pixels: [Float], width: Int, height: Int) {
+        (self.pixels, self.width, self.height) = FITSDisplayRaster.picture(of: pixels, width: width, height: height)
+    }
+}
+
 /// Per-file FITS viewer state.
 @Observable
 @MainActor
@@ -37,7 +48,19 @@ final class FITSViewerModel: Identifiable {
     /// 400 MB array out of Observation's access tracking keeps its
     /// assignment from contributing main-actor work right when the MCP
     /// tools' `MainActor.run` hops are queued behind a big load (F5).
-    @ObservationIgnored var pixels: [Float] = []
+    @ObservationIgnored var pixels: [Float] = [] {
+        didSet {
+            picture = nil
+            pixelsVersion += 1
+        }
+    }
+    /// Counts changes of `pixels`, so a picture worked out for older ones is not kept.
+    @ObservationIgnored private var pixelsVersion = 0
+    /// What is drawn: `pixels` themselves, or their block average when the
+    /// image is past what a screen or a Metal texture takes
+    /// (`FITSDisplayRaster`); nil until worked out for these pixels. Values
+    /// and coordinates are always read from `pixels` — this is for colouring in.
+    @ObservationIgnored private var picture: FITSPicture?
 
     /// Cached min/max of finite pixel values (for slider range).
     var pixelMin: Float = 0
@@ -115,20 +138,14 @@ final class FITSViewerModel: Identifiable {
         defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
 
         do {
-            let (fitsFile, extractedPixels, cuts, range) = try await Task.detached {
-                let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                guard fileSize <= FITSViewerConstants.maxFileSize else {
-                    throw FITSError.invalidFile("File too large: \(fileSize) bytes exceeds 4 GB limit")
-                }
+            let (fitsFile, image) = try await Task.detached {
+                // Mapped, not read: the file's size is not what memory holds.
                 let data = try Data(contentsOf: url, options: .mappedIfSafe)
                 let fitsFile = try FITSParser.parse(from: data)
                 guard let imageHDU = fitsFile.firstImageHDU else {
                     throw FITSError.noImageHDU
                 }
-                let pixels = try FITSParser.extractPixels(from: data, hdu: imageHDU)
-                let cuts = FITSParser.autoCut(pixels: pixels)
-                let range = Self.scanPixelRange(pixels)
-                return (fitsFile, pixels, cuts, range)
+                return (fitsFile, try LoadedImage(data: data, hdu: imageHDU))
             }.value
 
             guard let firstImageHDU = fitsFile.firstImageHDU else {
@@ -136,13 +153,8 @@ final class FITSViewerModel: Identifiable {
             }
             file = fitsFile
             selectedHDUIndex = firstImageHDU.id
-            pixels = extractedPixels
-            pixelMin = range.min
-            pixelMax = range.max
-            pixelRangeDegenerate = range.degenerate
-            renderParams.minCut = cuts.min
-            renderParams.maxCut = cuts.max
-            Self.logger.info("Loaded \(extractedPixels.count) pixels, cuts=[\(cuts.min), \(cuts.max)], HDUs=\(fitsFile.hdus.count), WCS=\(fitsFile.firstImageHDU?.wcs != nil)")
+            apply(image)
+            Self.logger.info("Loaded \(image.pixels.count) pixels (drawn at \(image.picture.width)×\(image.picture.height)), HDUs=\(fitsFile.hdus.count), WCS=\(fitsFile.firstImageHDU?.wcs != nil)")
 
             await renderImageAsync()
             fitToWindow(canvasSize: lastCanvasSize)
@@ -167,23 +179,10 @@ final class FITSViewerModel: Identifiable {
         defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
 
         do {
-            let (extractedPixels, cuts, range) = try await Task.detached {
-                let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                guard fileSize <= FITSViewerConstants.maxFileSize else {
-                    throw FITSError.invalidFile("File too large: \(fileSize) bytes exceeds 4 GB limit")
-                }
-                let data = try Data(contentsOf: url, options: .mappedIfSafe)
-                let pixels = try FITSParser.extractPixels(from: data, hdu: hdu)
-                let cuts = FITSParser.autoCut(pixels: pixels)
-                let range = Self.scanPixelRange(pixels)
-                return (pixels, cuts, range)
+            let image = try await Task.detached {
+                try LoadedImage(data: Data(contentsOf: url, options: .mappedIfSafe), hdu: hdu)
             }.value
-            pixels = extractedPixels
-            pixelMin = range.min
-            pixelMax = range.max
-            pixelRangeDegenerate = range.degenerate
-            renderParams.minCut = cuts.min
-            renderParams.maxCut = cuts.max
+            apply(image)
             renderImage()
         } catch {
             loadError = error.localizedDescription
@@ -193,6 +192,34 @@ final class FITSViewerModel: Identifiable {
         if let newHDU = selectedHDU {
             reconcileCrosshair(naxis1: newHDU.header.naxis1, naxis2: newHDU.header.naxis2)
         }
+    }
+
+    /// An image's pixels as read, with what the view needs from them —
+    /// found off the main actor, applied on it in one step.
+    struct LoadedImage: Sendable {
+        let pixels: [Float]
+        let picture: FITSPicture
+        let cuts: (min: Float, max: Float)
+        let range: (min: Float, max: Float, degenerate: Bool)
+
+        /// Reads `hdu`'s pixels from `data` — refused before any is read when
+        /// the memory free cannot hold them (`FITSMemoryBudget`).
+        nonisolated init(data: Data, hdu: FITSHDUnit) throws {
+            pixels = try FITSParser.extractPixels(from: data, hdu: hdu)
+            picture = FITSPicture(pixels: pixels, width: hdu.header.naxis1, height: hdu.header.naxis2)
+            cuts = FITSParser.autoCut(pixels: pixels)
+            range = FITSViewerModel.scanPixelRange(pixels)
+        }
+    }
+
+    private func apply(_ image: LoadedImage) {
+        pixels = image.pixels
+        picture = image.picture  // after `pixels`, whose change clears it
+        pixelMin = image.range.min
+        pixelMax = image.range.max
+        pixelRangeDegenerate = image.range.degenerate
+        renderParams.minCut = image.cuts.min
+        renderParams.maxCut = image.cuts.max
     }
 
     // MARK: - Rendering
@@ -261,15 +288,18 @@ final class FITSViewerModel: Identifiable {
     private func renderImageAsync() async {
         guard let hdu = selectedHDU, !pixels.isEmpty else { return }
         isRendering = true
+        let known = picture
+        let version = pixelsVersion
         let px = pixels
-        let w = hdu.header.naxis1
-        let h = hdu.header.naxis2
+        let (w, h) = (hdu.header.naxis1, hdu.header.naxis2)
         let params = renderParams
-        let image = await Task.detached {
-            guard !Task.isCancelled else { return nil as CGImage? }
-            let result = FITSRenderEngine.render(pixels: px, width: w, height: h, params: params)
-            return Task.isCancelled ? nil : result  // Check INSIDE detached task
+        let (image, drawn) = await Task.detached {
+            let drawn = known ?? FITSPicture(pixels: px, width: w, height: h)
+            guard !Task.isCancelled else { return (nil as CGImage?, drawn) }
+            let result = FITSRenderEngine.render(pixels: drawn.pixels, width: drawn.width, height: drawn.height, params: params)
+            return (Task.isCancelled ? nil : result, drawn)  // Check INSIDE detached task
         }.value
+        if picture == nil, version == pixelsVersion { picture = drawn }
         guard !Task.isCancelled, let image else {
             isRendering = false
             return
@@ -546,9 +576,17 @@ final class FITSViewerModel: Identifiable {
         )
     }
 
-    /// The viewport over the rendered image on a canvas; nil before a render.
+    /// The viewport over the image on a canvas; nil before a render. Sized
+    /// by the image's pixels, not the picture's — they differ past
+    /// `FITSDisplayRaster`'s limits, and coordinates are the image's.
     func displayTransform(canvasSize: CGSize) -> ViewportTransform? {
-        renderedImage.map { makeTransform(imgSize: CGSize(width: $0.width, height: $0.height), canvasSize: canvasSize) }
+        guard renderedImage != nil, let size = imageSize else { return nil }
+        return makeTransform(imgSize: size, canvasSize: canvasSize)
+    }
+
+    /// The selected image's size in its own pixels.
+    var imageSize: CGSize? {
+        selectedHDU.map { CGSize(width: $0.header.naxis1, height: $0.header.naxis2) }
     }
 
     /// Image pixel → screen point. See ``ViewportTransform/imageToScreen(_:)``.

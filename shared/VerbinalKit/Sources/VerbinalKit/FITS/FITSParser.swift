@@ -237,8 +237,8 @@ public enum FITSParser {
             throw FITSError.invalidFile("Image dimensions overflow: \(header.naxis1) × \(header.naxis2)")
         }
         guard count > 0 else { throw FITSError.invalidFile("Empty image") }
-        guard count <= FITSLimits.maxPixels else {
-            throw FITSError.invalidFile("Image too large: \(count) pixels exceeds 500 Mpx cap")
+        if let refusal = FITSMemoryBudget.refusal(width: header.naxis1, height: header.naxis2) {
+            throw FITSError.invalidFile(refusal)
         }
 
         let bytesPerPixel = abs(header.bitpix) / 8

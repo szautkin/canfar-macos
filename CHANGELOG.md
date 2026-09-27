@@ -298,6 +298,15 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **Large images open when the Mac can hold them** — the FITS viewer
+  refused any file over 4 GB and any image over 500 million pixels,
+  whatever was free, and drew every image at full size (a MegaPipe tile
+  is a 1.6 GB bitmap, wider than a Metal texture can be). Now the memory
+  actually free decides — an image under 512 MB always opens — and one
+  past 64 million pixels is drawn from a block average of it, so stars a
+  pixel across survive; the readout, WCS, marks, Go To and an assistant's
+  probes still read every pixel. A refusal says how much is needed and
+  how much is free.
 - **The Portal, laid out as on Verbinal for Linux and Windows** —
   platform load, storage and batch jobs across the top, active sessions
   the full width, then CANFAR images beside recent launches; one column

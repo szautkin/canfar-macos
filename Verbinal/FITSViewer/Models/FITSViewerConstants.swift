@@ -24,9 +24,4 @@ enum FITSViewerConstants {
     /// Debounce delay in milliseconds for slider-driven renders.
     static let renderDebounceMs: Int = 80
 
-    // Re-exports of the parser caps so existing call sites (e.g. AppState's
-    // file-size guard) keep working unchanged.
-    static var maxFileSize: Int { FITSLimits.maxFileSize }
-    static var maxPixels: Int { FITSLimits.maxPixels }
-    static var maxTileBytes: Int { FITSLimits.maxTileBytes }
 }

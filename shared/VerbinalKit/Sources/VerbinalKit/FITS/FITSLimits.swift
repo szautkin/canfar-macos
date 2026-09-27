@@ -12,7 +12,8 @@
 public enum FITSLimits {
     /// Maximum FITS file size accepted (4 GB).
     public static let maxFileSize: Int = 4 * 1024 * 1024 * 1024
-    /// Maximum image pixel count accepted (500 Mpx).
+    /// Maximum pixels in one plane of a memory-mapped cube (500 Mpx). A 2-D
+    /// image is limited by the memory free instead (`FITSMemoryBudget`).
     public static let maxPixels: Int = 500_000_000
     /// Maximum decompressed tile size in bytes (64 MB per tile).
     public static let maxTileBytes: Int = 64 * 1024 * 1024

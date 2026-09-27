@@ -23,10 +23,11 @@ struct FITSImageView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            if let cgImage = model.renderedImage {
-                let imgWidth = CGFloat(cgImage.width)
-                let imgHeight = CGFloat(cgImage.height)
-                let imgSize = CGSize(width: imgWidth, height: imgHeight)
+            if let cgImage = model.renderedImage, let imgSize = model.imageSize {
+                // The image's own size, not the picture's: past the display
+                // limits the picture is smaller, and is stretched to fit.
+                let imgWidth = imgSize.width
+                let imgHeight = imgSize.height
 
                 ZStack {
                     Color.clear.onAppear { model.lastCanvasSize = geometry.size }

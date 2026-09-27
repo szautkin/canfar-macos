@@ -127,8 +127,8 @@ public enum FITSDecompressor {
         guard !totalPixelsOverflow else {
             throw FITSError.invalidFile("Compressed FITS: image dimensions overflow (\(area.width)×\(area.height))")
         }
-        guard totalPixels <= FITSLimits.maxPixels else {
-            throw FITSError.invalidFile("Compressed FITS: image too large (\(totalPixels) pixels exceeds 500 Mpx cap)")
+        if let refusal = FITSMemoryBudget.refusal(width: area.width, height: area.height) {
+            throw FITSError.invalidFile(refusal)
         }
         var stored = [Int16](repeating: 0, count: totalPixels)
 
