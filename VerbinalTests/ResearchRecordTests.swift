@@ -104,7 +104,7 @@ final class ResearchRecordTests: XCTestCase {
     func testARecordIsFoundByAnyOfItsNames() {
         let research = store()
         let kept = research.keep(record()).record
-        research.keep(record("ivo://cadc.nrc.ca/CFHT?999/999p"))
+        _ = research.keep(record("ivo://cadc.nrc.ca/CFHT?999/999p"))
         XCTAssertEqual(research.record(identifiedBy: kept.id.uuidString)?.id, kept.id)
         XCTAssertEqual(research.record(identifiedBy: String(kept.id.uuidString.prefix(8)))?.id, kept.id)
         XCTAssertEqual(research.record(identifiedBy: "ivo://cadc.nrc.ca/CFHT?2388466/2388466p")?.id, kept.id)
