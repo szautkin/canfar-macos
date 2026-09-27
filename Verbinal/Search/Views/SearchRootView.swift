@@ -104,8 +104,8 @@ struct SearchRootView: View {
             VStack(spacing: 12) {
                 RecentSearchesView(
                     store: searchModel.recentSearchStore,
-                    onLoad: { snapshot in
-                        searchModel.loadFromSnapshot(snapshot)
+                    onLoad: { recent in
+                        searchModel.load(recent)
                     }
                 )
 

@@ -953,6 +953,36 @@
         }
       }
     },
+    "%@ has no column \"%@\"" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ n’a pas de colonne « %2$@ »"
+          }
+        }
+      }
+    },
+    "%@ is ambiguous — %@ is in %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ est ambigu — %2$@ est dans %3$@"
+          }
+        }
+      }
+    },
+    "%@ — write %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — écrivez %2$@"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -1156,6 +1186,16 @@
     },
     "ADQL" : {
       "shouldTranslate" : false
+    },
+    "ADQL has no LIMIT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ADQL n’a pas de LIMIT"
+          }
+        }
+      }
     },
     "Advanced" : {
       "localizations" : {
@@ -5407,6 +5447,16 @@
         }
       }
     },
+    "Fix the problems listed under the query first" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Corrigez d’abord les problèmes listés sous la requête"
+          }
+        }
+      }
+    },
     "Fixed" : {
       "localizations" : {
         "fr" : {
@@ -8039,6 +8089,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune donnée de stockage pour l'instant"
+          }
+        }
+      }
+    },
+    "no table \"%@\" in this service" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucune table « %@ » dans ce service"
           }
         }
       }
@@ -10761,6 +10821,16 @@
         }
       }
     },
+    "Run from the ADQL editor; loads back into it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancée depuis l’éditeur ADQL ; se recharge dans celui-ci"
+          }
+        }
+      }
+    },
     "Run helper self-test" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11362,6 +11432,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sélectionnez une observation"
+          }
+        }
+      }
+    },
+    "Select it in the query" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le sélectionner dans la requête"
           }
         }
       }

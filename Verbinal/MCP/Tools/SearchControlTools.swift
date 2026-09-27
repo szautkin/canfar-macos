@@ -447,7 +447,7 @@ struct SetADQLEditorTool: AITool {
         {
           "type": "object",
           "properties": {
-            "adql":             { "type": "string", "minLength": 1, "description": "Raw ADQL to place in the editor." },
+            "adql":             { "type": "string", "description": "Raw ADQL to place in the editor; \"\" clears it." },
             "generateFromForm": { "type": "boolean", "description": "Regenerate the editor text from the current form state." },
             "execute":          { "type": "boolean", "description": "Run the editor's content after applying." }
           },

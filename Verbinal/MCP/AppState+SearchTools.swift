@@ -314,7 +314,7 @@ extension AppState {
 
     func makeListRecentSearchesTool(store: RecentSearchStore) -> ListRecentSearchesTool {
         ListRecentSearchesTool(snapshot: { @MainActor in
-            store.searches.map { ($0.id, $0.name, $0.savedAt) }
+            store.searches.map { .init(id: $0.id, name: $0.name, savedAt: $0.savedAt, adql: $0.adql) }
         })
     }
 
@@ -368,11 +368,12 @@ extension AppState {
                           let recent = recentStore.searches.first(where: { $0.id == uuid }) else {
                         return "Recent search not found: \(recentID)"
                     }
-                    self.pendingSearchLoad = AppState.PendingSearchLoad(kind: .snapshot(recent.formSnapshot))
+                    self.pendingSearchLoad = AppState.PendingSearchLoad(
+                    kind: recent.adql.map { .adql($0) } ?? .snapshot(recent.formSnapshot))
                     self.navigateTo(.search)
                     activity.append(.live(
                         kind: "load_saved_search",
-                        summary: "Loaded recent search '\(recent.name)' into the form",
+                        summary: "Loaded recent search '\(recent.name)' into the \(recent.isFromEditor ? "ADQL editor" : "form")",
                         origin: .external(clientID: "load_saved_search")))
                     return nil
                 }
@@ -401,11 +402,12 @@ extension AppState {
                     return "Pass index or recentSearchID"
                 }
                 guard let recent else { return "Recent search not found" }
-                self.pendingSearchLoad = AppState.PendingSearchLoad(kind: .snapshot(recent.formSnapshot))
+                self.pendingSearchLoad = AppState.PendingSearchLoad(
+                    kind: recent.adql.map { .adql($0) } ?? .snapshot(recent.formSnapshot))
                 self.navigateTo(.search)
                 activity.append(.live(
                     kind: "load_recent_search",
-                    summary: "Loaded recent search '\(recent.name)' into the form",
+                    summary: "Loaded recent search '\(recent.name)' into the \(recent.isFromEditor ? "ADQL editor" : "form")",
                     origin: .external(clientID: "load_recent_search")))
                 return nil
             }
@@ -840,7 +842,11 @@ extension AppState {
                 guard !adql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     return .init(error: "The ADQL editor is empty — pass `adql` or `generateFromForm`")
                 }
-                let report = Self.report(await model.executeRawQuery(adql))
+                await MainActor.run {
+                    model.nextSearchAttribution = .forLiveTool(
+                        label: "set_adql_editor", summary: "Ran a query from the ADQL editor")
+                }
+                let report = Self.report(await model.executeRawQuery(adql, fromEditor: true))
                 outcome.executed = true
                 (outcome.resultCount, outcome.searchError, outcome.cancelled) = report
             }

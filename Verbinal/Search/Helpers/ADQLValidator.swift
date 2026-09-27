@@ -8,14 +8,46 @@ import Foundation
 
 /// One thing wrong with a query, and where.
 struct ADQLProblem: Sendable, Equatable {
+    enum Kind: Sendable, Equatable {
+        /// `LIMIT n`; ADQL writes `SELECT TOP n`.
+        case limit
+        case unknownTable(String)
+        case unknownColumn(table: String, column: String)
+        /// `reference` names `column`, which every table in `tables` has.
+        case ambiguous(reference: String, column: String, tables: [String])
+    }
+
     /// Character offsets of the offending text.
     let range: Range<Int>
-    let message: String
+    let kind: Kind
     /// What to write instead, when there is one obvious answer.
     let fix: String?
 
-    /// The words on the editor's list and in an agent's refusal — one place.
+    /// English, for agents (and tests).
+    var message: String {
+        switch kind {
+        case .limit: return "ADQL has no LIMIT"
+        case .unknownTable(let t): return "no table \"\(t)\" in this service"
+        case .unknownColumn(let t, let c): return "\(t) has no column \"\(c)\""
+        case .ambiguous(let r, let c, let ts): return "\(r) is ambiguous — \(c) is in \(ts.joined(separator: " and "))"
+        }
+    }
+
+    /// The words in an agent's refusal: the message and its fix.
     var summary: String { fix.map { "\(message) — write \($0)" } ?? message }
+
+    /// The same, in the person's language, for the editor's list.
+    var localizedSummary: String {
+        let text: String
+        switch kind {
+        case .limit: text = String(localized: "ADQL has no LIMIT")
+        case .unknownTable(let t): text = String(localized: "no table \"\(t)\" in this service")
+        case .unknownColumn(let t, let c): text = String(localized: "\(t) has no column \"\(c)\"")
+        case .ambiguous(let r, let c, let ts):
+            text = String(localized: "\(r) is ambiguous — \(c) is in \(ts.joined(separator: ", "))")
+        }
+        return fix.map { String(localized: "\(text) — write \($0)") } ?? text
+    }
 
     func text(in adql: String) -> String {
         let characters = Array(adql)
@@ -52,7 +84,7 @@ enum ADQLValidator {
         let from = fromEntries(tokens)
         let unknownTables = from.compactMap { entry -> ADQLProblem? in
             guard schema.table(entry.written) == nil else { return nil }
-            return ADQLProblem(range: entry.range, message: "no table \"\(entry.written)\" in this service",
+            return ADQLProblem(range: entry.range, kind: .unknownTable(entry.written),
                                fix: nearest(entry.written, in: schema.tables.map(\.name)))
         }
         // Columns of a table that does not exist are noise.
@@ -71,7 +103,7 @@ enum ADQLValidator {
                 if owners.count > 1 {
                     problems.append(ADQLProblem(
                         range: reference.range,
-                        message: "\(qualifier).\(column) is ambiguous — \(column) is in \(owners.joined(separator: " and "))",
+                        kind: .ambiguous(reference: "\(qualifier).\(column)", column: column, tables: owners),
                         fix: "\(bare.written).\(column)"))
                     continue
                 }
@@ -81,7 +113,7 @@ enum ADQLValidator {
             }
             guard let resolved = schema.table(table), resolved.column(column) == nil else { continue }
             problems.append(ADQLProblem(
-                range: reference.range, message: "\(table) has no column \"\(column)\"",
+                range: reference.range, kind: .unknownColumn(table: table, column: column),
                 fix: nearest(column, in: resolved.columns.map(\.name)).map { "\(qualifier).\($0)" }))
         }
         return problems.sorted { $0.range.lowerBound < $1.range.lowerBound }
@@ -94,7 +126,7 @@ enum ADQLValidator {
         tokens.indices.compactMap { i in
             guard same(tokens[i].text, "limit"), i + 1 < tokens.count, Int(tokens[i + 1].text) != nil else { return nil }
             return ADQLProblem(range: tokens[i].range.lowerBound..<tokens[i + 1].range.upperBound,
-                               message: "ADQL has no LIMIT", fix: "SELECT TOP \(tokens[i + 1].text)")
+                               kind: .limit, fix: "SELECT TOP \(tokens[i + 1].text)")
         }
     }
 

@@ -164,11 +164,7 @@ final class SearchFormModel {
 
     @discardableResult
     func executeSearch() async -> SearchOutcome {
-        // Consume the one-shot agent attribution up front and clear it
-        // unconditionally, so a failed search can't leak the stamp onto a
-        // later user-run search.
-        let attribution = nextSearchAttribution
-        nextSearchAttribution = nil
+        let attribution = takeAttribution()
 
         let resolverCoords: (ra: String, dec: String)?
         if let result = resolverResult, !result.coordsRA.isEmpty {
@@ -277,9 +273,38 @@ final class SearchFormModel {
 
     // MARK: - Execute Raw ADQL
 
+    /// Runs raw ADQL. `fromEditor` — the editor's Execute, by the person or
+    /// an agent — keeps a completed query in Recent Searches; a saved query
+    /// run from its list does not.
     @discardableResult
-    func executeRawQuery(_ adql: String) async -> SearchOutcome {
-        await runQuery(adql)
+    func executeRawQuery(_ adql: String, fromEditor: Bool = false) async -> SearchOutcome {
+        let attribution = takeAttribution()
+        let outcome = await runQuery(adql)
+        if fromEditor, case .completed = outcome {
+            recentSearchStore.save(RecentSearch(
+                name: RecentSearch.name(forQuery: adql), formSnapshot: SearchFormSnapshot(),
+                agentAttribution: attribution, adql: adql))
+        }
+        return outcome
+    }
+
+    /// Puts a recent search back where it came from: an editor query into
+    /// the editor, a form search into the form.
+    func load(_ recent: RecentSearch) {
+        if let adql = recent.adql {
+            resultsModel.adqlQuery = adql
+            searchError = nil
+            selectedTab = .adql
+        } else {
+            loadFromSnapshot(recent.formSnapshot)
+        }
+    }
+
+    /// Consumes the one-shot agent attribution and clears it unconditionally,
+    /// so a failed search cannot leak the stamp onto a later user search.
+    private func takeAttribution() -> AgentAttribution? {
+        defer { nextSearchAttribution = nil }
+        return nextSearchAttribution
     }
 
     // MARK: - Save Query

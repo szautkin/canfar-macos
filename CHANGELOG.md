@@ -61,6 +61,16 @@ Catching up with Verbinal for Windows 1.4.1 (see
   unknown tables and columns, and the qualifier CADC rejects as
   ambiguous — reporting only what it is sure of, with the fix when there
   is one.
+- **ADQL checked as you type** — the ADQL editor checks the query
+  against CADC's own schema while you type, underlines each problem and
+  lists it under the query (click one to select it), and keeps Execute
+  off until the query can run: `LIMIT` (ADQL writes `SELECT TOP n`), a
+  table or column the archive does not have (with the name that exists),
+  a qualifier CADC would call ambiguous. Nothing it cannot be sure of is
+  flagged. Queries run from the editor are kept in Recent Searches,
+  named by the query, and load back into the editor; for assistants
+  `list_recent_searches` marks them `fromEditor`, and an empty
+  `set_adql_query` clears the editor.
 - **Cancel a search** — a search that takes long could not be stopped:
   Search stayed greyed with a spinner until CADC answered. **Cancel** now
   sits beside the spinner, on the form and in the ADQL editor (Esc), and

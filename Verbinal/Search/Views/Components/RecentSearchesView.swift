@@ -8,7 +8,7 @@ import SwiftUI
 
 struct RecentSearchesView: View {
     var store: RecentSearchStore
-    var onLoad: (SearchFormSnapshot) -> Void
+    var onLoad: (RecentSearch) -> Void
     @State private var filterText = ""
     @State private var editingId: UUID?
     @State private var editingName = ""
@@ -97,13 +97,18 @@ struct RecentSearchesView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            Text(search.formSnapshot.filterSummary())
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
+            Label {
+                Text(search.detail)
+            } icon: {
+                if search.isFromEditor { Image(systemName: "curlybraces") }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(2)
+            .help(search.isFromEditor ? String(localized: "Run from the ADQL editor; loads back into it") : "")
 
             HStack {
-                Button("Load") { onLoad(search.formSnapshot) }
+                Button("Load") { onLoad(search) }
                 Spacer()
                 Button("Remove", role: .destructive) { store.remove(search) }
             }

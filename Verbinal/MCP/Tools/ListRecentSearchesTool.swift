@@ -17,12 +17,23 @@ struct ListRecentSearchesTool: JSONReadTool {
             let id: String
             let name: String
             let savedAtISO: String
+            /// Run from the ADQL editor; `load_recent_search` puts it back there.
+            let fromEditor: Bool
+            let adql: String?
         }
+    }
+
+    /// One recent search as the tool reads it.
+    struct Row: Sendable {
+        let id: UUID
+        let name: String
+        let savedAt: Date
+        let adql: String?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_recent_searches",
-        description: "List the user's recent searches (most-recent first). Each entry is a saved form snapshot.",
+        description: "List the user's recent searches (most-recent first). Each is a form search, or — `fromEditor: true`, with its `adql` — a query run from the ADQL editor, which `load_recent_search` puts back into the editor.",
         schema: #"""
         {
           "type": "object",
@@ -32,7 +43,7 @@ struct ListRecentSearchesTool: JSONReadTool {
         """#
     )
 
-    let snapshot: @Sendable () async -> [(id: UUID, name: String, savedAt: Date)]
+    let snapshot: @Sendable () async -> [Row]
 
     func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
         let iso = ISO8601DateFormatter()
@@ -41,7 +52,9 @@ struct ListRecentSearchesTool: JSONReadTool {
             Output.Entry(
                 id: $0.id.uuidString,
                 name: $0.name,
-                savedAtISO: iso.string(from: $0.savedAt)
+                savedAtISO: iso.string(from: $0.savedAt),
+                fromEditor: $0.adql != nil,
+                adql: $0.adql
             )
         }
         return Output(entries: entries)

@@ -17,4 +17,18 @@ struct RecentSearch: Codable, Identifiable, Equatable {
     /// `set_search_form`/`quick_search`/`set_adql_editor` with execute).
     /// `nil` for user-run searches.
     var agentAttribution: AgentAttribution?
+    /// Set for a query run from the ADQL editor, which goes back there when
+    /// loaded; nil for a search run from the form. Absent in older data.
+    var adql: String?
+
+    var isFromEditor: Bool { adql != nil }
+
+    /// What a Recent Searches row shows under its name.
+    var detail: String { adql.map { Self.name(forQuery: $0) } ?? formSnapshot.filterSummary() }
+
+    /// An editor query is named by the query itself, on one line.
+    static func name(forQuery adql: String, limit: Int = 80) -> String {
+        let oneLine = adql.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return oneLine.count <= limit ? oneLine : String(oneLine.prefix(limit - 1)) + "…"
+    }
 }

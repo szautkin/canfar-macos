@@ -136,3 +136,62 @@ final class SearchCancelTests: XCTestCase {
         }
     }
 }
+
+/// Queries run from the ADQL editor are kept in Recent Searches and load
+/// back into the editor (Windows 1.4.1 parity).
+@MainActor
+final class EditorRecentSearchTests: XCTestCase {
+
+    private func makeModel() -> SearchFormModel {
+        let body = Data("observationID\nobs-1\n".utf8)
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, body)
+        }
+        return SearchFormModel(
+            tapClient: TAPClient(session: MockURLProtocol.mockSession()),
+            recentSearchStore: RecentSearchStore(fileName: "test-recent-\(UUID().uuidString).json"),
+            savedQueryStore: SavedQueryStore(fileName: "test-saved-\(UUID().uuidString).json"))
+    }
+
+    override func tearDown() {
+        MockURLProtocol.requestHandler = nil
+        super.tearDown()
+    }
+
+    func testAnEditorQueryIsKeptAndLoadsBackIntoTheEditor() async throws {
+        let model = makeModel()
+        let adql = "SELECT TOP 5\n  observationID\nFROM caom2.Observation"
+        await model.executeRawQuery(adql, fromEditor: true)
+        let recent = try XCTUnwrap(model.recentSearchStore.searches.first)
+        XCTAssertTrue(recent.isFromEditor)
+        XCTAssertEqual(recent.name, "SELECT TOP 5 observationID FROM caom2.Observation", "named by the query, on one line")
+
+        model.resultsModel.adqlQuery = ""
+        model.selectedTab = .search
+        model.load(recent)
+        XCTAssertEqual(model.selectedTab, .adql)
+        XCTAssertEqual(model.resultsModel.adqlQuery, adql)
+    }
+
+    func testASavedQueryRunFromItsListIsNotKeptAsRecent() async {
+        let model = makeModel()
+        await model.executeRawQuery("SELECT TOP 1 * FROM caom2.Plane")
+        XCTAssertTrue(model.recentSearchStore.searches.isEmpty)
+    }
+
+    func testOlderRecentSearchesWithoutAQueryStillDecode() throws {
+        let current = RecentSearch(name: "M31", formSnapshot: SearchFormSnapshot(), adql: "SELECT 1")
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(current)) as? [String: Any])
+        object["adql"] = nil
+        let older = try JSONDecoder().decode(RecentSearch.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertEqual(older.name, "M31")
+        XCTAssertNil(older.adql)
+        XCTAssertFalse(older.isFromEditor)
+    }
+
+    func testLongQueriesAreShortenedForTheirName() {
+        let name = RecentSearch.name(forQuery: String(repeating: "x ", count: 100), limit: 20)
+        XCTAssertEqual(name.count, 20)
+        XCTAssertTrue(name.hasSuffix("…"))
+    }
+}

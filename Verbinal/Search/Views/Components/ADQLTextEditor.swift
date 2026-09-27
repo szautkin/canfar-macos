@@ -8,9 +8,14 @@ import SwiftUI
 
 #if os(macOS)
 /// A plain-text editor that disables smart quotes, smart dashes, autocorrect,
-/// and spell checking — suitable for editing ADQL/SQL code.
+/// and spell checking — suitable for editing ADQL/SQL code. Underlines the
+/// checker's problems and selects one on request.
 struct ADQLTextEditor: NSViewRepresentable {
     @Binding var text: String
+    /// Character ranges to underline in red.
+    var problems: [Range<Int>] = []
+    /// Set to select and reveal that range; cleared once done.
+    var select: Binding<Range<Int>?> = .constant(nil)
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -49,6 +54,30 @@ struct ADQLTextEditor: NSViewRepresentable {
             textView.string = text
             textView.selectedRanges = selection
         }
+        if let layout = textView.layoutManager {
+            let whole = NSRange(location: 0, length: (textView.string as NSString).length)
+            layout.removeTemporaryAttribute(.underlineStyle, forCharacterRange: whole)
+            layout.removeTemporaryAttribute(.underlineColor, forCharacterRange: whole)
+            for range in problems.compactMap({ Self.nsRange($0, in: textView.string) }) {
+                layout.addTemporaryAttributes(
+                    [.underlineStyle: NSUnderlineStyle.thick.rawValue, .underlineColor: NSColor.systemRed],
+                    forCharacterRange: range)
+            }
+        }
+        if let wanted = select.wrappedValue, let range = Self.nsRange(wanted, in: textView.string) {
+            textView.window?.makeFirstResponder(textView)
+            textView.setSelectedRange(range)
+            textView.scrollRangeToVisible(range)
+            DispatchQueue.main.async { select.wrappedValue = nil }
+        }
+    }
+
+    /// Character offsets as the UTF-16 range AppKit uses.
+    static func nsRange(_ range: Range<Int>, in text: String) -> NSRange? {
+        guard let lower = text.index(text.startIndex, offsetBy: range.lowerBound, limitedBy: text.endIndex),
+              let upper = text.index(text.startIndex, offsetBy: range.upperBound, limitedBy: text.endIndex)
+        else { return nil }
+        return NSRange(lower..<upper, in: text)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
@@ -65,9 +94,12 @@ struct ADQLTextEditor: NSViewRepresentable {
     }
 }
 #else
-/// iOS fallback — standard TextEditor with autocorrect disabled.
+/// iOS fallback — standard TextEditor with autocorrect disabled. Problems
+/// are listed under it rather than underlined.
 struct ADQLTextEditor: View {
     @Binding var text: String
+    var problems: [Range<Int>] = []
+    var select: Binding<Range<Int>?> = .constant(nil)
 
     var body: some View {
         TextEditor(text: $text)
