@@ -29,6 +29,26 @@ Thank you for your interest in contributing. This document provides the baseline
      CODE_SIGNING_ALLOWED=NO
    ```
 
+## Gates
+
+Every commit passes all three. `.xcode-version` names the Xcode used for
+development (CI runs the `macos-15` image's default Xcode).
+
+```bash
+# 1. App build + tests (macOS)
+xcodebuild test -project Verbinal.xcodeproj -scheme Verbinal \
+  -destination 'platform=macOS' -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO
+
+# 2. Shared package tests
+(cd shared/VerbinalKit && swift test)
+
+# 3. iOS target, whenever shared code changes
+xcodebuild build -project Verbinal.xcodeproj -scheme VerbinalIOS \
+  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
+```
+
+A change adds no compiler warnings.
+
 ## Code Style
 
 - Keep views thin; prefer services and view models for behavior.

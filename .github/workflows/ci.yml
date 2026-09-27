@@ -36,3 +36,7 @@ jobs:
             -destination 'platform=macOS' \
             -derivedDataPath .derivedData \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Test VerbinalKit
+        working-directory: shared/VerbinalKit
+        run: swift test
