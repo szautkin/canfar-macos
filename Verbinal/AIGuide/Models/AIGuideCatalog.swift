@@ -91,6 +91,7 @@ enum AIGuideCatalog {
         "set_search_form": "search",
         "run_search": "search",
         "reset_search_form": "search",
+        "cancel_search": "search",
         "get_search_constraints": "search",
         "get_data_train_options": "search",
         "set_search_constraints": "search",

@@ -465,6 +465,35 @@ extension AppState {
         }
     }
 
+    /// What an executed search tells the agent — the form and the editor
+    /// tools report it the same way.
+    private nonisolated static func report(
+        _ outcome: SearchFormModel.SearchOutcome
+    ) -> (resultCount: Int?, searchError: String?, cancelled: Bool) {
+        switch outcome {
+        case .completed(let rows): return (rows, nil, false)
+        case .failed(let message): return (nil, message, false)
+        case .cancelled: return (nil, nil, true)
+        }
+    }
+
+    func makeCancelSearchTool() -> CancelSearchTool {
+        let activity = agentsService.activityStore
+        return CancelSearchTool(cancel: { [weak self] in
+            guard let self else { return false }
+            return await MainActor.run {
+                let model = self.searchModel
+                guard model.isSearching else { return false }
+                model.cancelSearch()
+                activity.append(.live(
+                    kind: "cancel_search",
+                    summary: "Cancelled the running search",
+                    origin: .external(clientID: "cancel_search")))
+                return true
+            }
+        })
+    }
+
     /// Inverse of ``intentKey(_:)`` — one mapping, read both ways.
     private nonisolated static func intent(forKey key: String) -> IntentValue? {
         IntentValue.allCases.first { intentKey($0) == key }
@@ -671,13 +700,9 @@ extension AppState {
                     model.nextSearchAttribution = .forLiveTool(
                         label: "set_search_form", summary: "Ran a search from the form")
                 }
-                await model.executeSearch()
+                let report = Self.report(await model.executeSearch())
                 outcome.executed = true
-                let (count, error) = await MainActor.run {
-                    (model.resultsModel.totalRows, model.searchError)
-                }
-                outcome.resultCount = count
-                outcome.searchError = error
+                (outcome.resultCount, outcome.searchError, outcome.cancelled) = report
             } else if targetTouched {
                 // Kick the UI's normal debounced resolution so the form
                 // shows the resolver status the user expects to see.
@@ -801,13 +826,9 @@ extension AppState {
                 guard !adql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     return .init(error: "The ADQL editor is empty — pass `adql` or `generateFromForm`")
                 }
-                await model.executeRawQuery(adql)
+                let report = Self.report(await model.executeRawQuery(adql))
                 outcome.executed = true
-                let (count, error) = await MainActor.run {
-                    (model.resultsModel.totalRows, model.searchError)
-                }
-                outcome.resultCount = count
-                outcome.searchError = error
+                (outcome.resultCount, outcome.searchError, outcome.cancelled) = report
             }
             await MainActor.run {
                 activity.append(.live(

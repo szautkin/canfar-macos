@@ -12243,6 +12243,16 @@
         }
       }
     },
+    "Stop the running search" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter la recherche en cours"
+          }
+        }
+      }
+    },
     "Stopped" : {
       "localizations" : {
         "fr" : {

@@ -30,6 +30,17 @@ final class SearchFormModel {
     var isSearching = false
     var searchError: String?
 
+    /// How a search ended. Agent tools report it: a search the person
+    /// cancelled is neither a result nor an error.
+    enum SearchOutcome: Equatable, Sendable {
+        case completed(rows: Int)
+        case failed(String)
+        case cancelled
+    }
+
+    /// The query in flight; `cancelSearch()` stops it.
+    private var runningQuery: Task<(headers: [String], rows: [[String]]), Error>?
+
     // Tab state
     enum SearchTab: String, CaseIterable, Identifiable {
         case search, results, adql
@@ -147,10 +158,8 @@ final class SearchFormModel {
 
     // MARK: - Search (from form)
 
-    func executeSearch() async {
-        isSearching = true
-        searchError = nil
-
+    @discardableResult
+    func executeSearch() async -> SearchOutcome {
         // Consume the one-shot agent attribution up front and clear it
         // unconditionally, so a failed search can't leak the stamp onto a
         // later user-run search.
@@ -169,28 +178,52 @@ final class SearchFormModel {
             resolverCoords: resolverCoords
         )
 
-        do {
-            let (headers, rows) = try await tapClient.tapQueryRows(adql: query)
-            resultsModel.loadResults(
-                headers: headers,
-                rows: rows,
-                query: query,
-                maxRec: TAPConfig.maxRecords
-            )
-            selectedTab = .results
-
-            // Auto-save to recent searches (attribution captured above).
+        let outcome = await runQuery(query)
+        // Only a search that ran is worth finding again.
+        if case .completed = outcome {
             let snapshot = formState.toSnapshot()
             if snapshot != SearchFormSnapshot() {
-                let name = snapshot.autoName()
                 recentSearchStore.save(RecentSearch(
-                    name: name, formSnapshot: snapshot, agentAttribution: attribution))
+                    name: snapshot.autoName(), formSnapshot: snapshot, agentAttribution: attribution))
             }
-        } catch {
-            searchError = error.localizedDescription
         }
+        return outcome
+    }
 
-        isSearching = false
+    /// The Cancel button beside the spinner. Rows already shown stay; a
+    /// newer search supersedes an older one on its own.
+    func cancelSearch() {
+        runningQuery?.cancel()
+    }
+
+    /// Runs `query` and shows its rows. The one path the form and the ADQL
+    /// editor share, so a cancel or an error means the same in both.
+    private func runQuery(_ query: String) async -> SearchOutcome {
+        runningQuery?.cancel()
+        let client = tapClient
+        let task = Task { try await client.tapQueryRows(adql: query) }
+        runningQuery = task
+        isSearching = true
+        searchError = nil
+        defer {
+            // A newer search owns the spinner now.
+            if runningQuery == task {
+                runningQuery = nil
+                isSearching = false
+            }
+        }
+        do {
+            let (headers, rows) = try await task.value
+            try Task.checkCancellation()
+            guard !task.isCancelled else { return .cancelled }
+            resultsModel.loadResults(headers: headers, rows: rows, query: query, maxRec: TAPConfig.maxRecords)
+            selectedTab = .results
+            return .completed(rows: rows.count)
+        } catch {
+            if task.isCancelled || error is CancellationError { return .cancelled }
+            searchError = error.localizedDescription
+            return .failed(error.localizedDescription)
+        }
     }
 
     // MARK: - Quick search
@@ -240,30 +273,15 @@ final class SearchFormModel {
 
     // MARK: - Execute Raw ADQL
 
-    func executeRawQuery(_ adql: String) async {
-        isSearching = true
-        searchError = nil
-
-        do {
-            let (headers, rows) = try await tapClient.tapQueryRows(adql: adql)
-            resultsModel.loadResults(
-                headers: headers,
-                rows: rows,
-                query: adql,
-                maxRec: TAPConfig.maxRecords
-            )
-            selectedTab = .results
-        } catch {
-            searchError = error.localizedDescription
-        }
-
-        isSearching = false
+    @discardableResult
+    func executeRawQuery(_ adql: String) async -> SearchOutcome {
+        await runQuery(adql)
     }
 
     // MARK: - Save Query
 
     func saveQuery(_ adql: String) {
-        let name = "Query \u{2014} \(formatDate(Date()))"
+        let name = "Query \u{2014} \(SharedFormatters.monthDayShortTime.string(from: Date()))"
         savedQueryStore.save(SavedQuery(name: name, adql: adql))
     }
 
@@ -288,13 +306,5 @@ final class SearchFormModel {
         resolverStatus = .idle
         resolverResult = nil
         searchError = nil
-    }
-
-    // MARK: - Private
-
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, HH:mm"
-        return formatter.string(from: date)
     }
 }

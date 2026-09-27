@@ -17,13 +17,6 @@ struct RunSearchTool: AITool {
     static let verbClass: VerbClass = .viewState
     static let agentSafe: Bool = true
 
-    struct Output: Encodable, Sendable {
-        let applied: Bool
-        let executed: Bool
-        let resultCount: Int?
-        let searchError: String?
-    }
-
     let definition = AIToolDefinition.withStaticSchema(
         name: "run_search",
         description: "Press the Search button: run the current Search form (form → ADQL → Results tab + Recent Searches entry). Equivalent to `set_search_form` with `execute: true` and no field patches. Live-applied; no proposal.",
@@ -44,11 +37,7 @@ struct RunSearchTool: AITool {
             return .failed(.invalidArgument(message))
         }
         do {
-            let bytes = try JSONEncoder().encode(Output(
-                applied: true,
-                executed: outcome.executed,
-                resultCount: outcome.resultCount,
-                searchError: outcome.searchError))
+            let bytes = try JSONEncoder().encode(SetSearchFormTool.Output(outcome))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))
@@ -138,14 +127,6 @@ struct ExecuteADQLQueryTool: AITool {
         var adql: String?
     }
 
-    struct Output: Encodable, Sendable {
-        let applied: Bool
-        let adql: String
-        let executed: Bool
-        let resultCount: Int?
-        let searchError: String?
-    }
-
     let definition = AIToolDefinition.withStaticSchema(
         name: "execute_adql_query",
         description: "Execute ADQL from the editor tab. Optional `adql` replaces the editor text first; omit to run the current editor contents. Switches to the ADQL tab. Live-applied; no proposal.",
@@ -177,12 +158,7 @@ struct ExecuteADQLQueryTool: AITool {
             return .failed(.invalidArgument(message))
         }
         do {
-            let bytes = try JSONEncoder().encode(Output(
-                applied: true,
-                adql: outcome.adql,
-                executed: outcome.executed,
-                resultCount: outcome.resultCount,
-                searchError: outcome.searchError))
+            let bytes = try JSONEncoder().encode(SetADQLEditorTool.Output(outcome))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))

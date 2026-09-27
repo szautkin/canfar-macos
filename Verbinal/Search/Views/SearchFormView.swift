@@ -71,6 +71,8 @@ struct SearchFormView: View {
             .keyboardShortcut(.return, modifiers: .command)
             .help("Execute search (⌘↩)")
 
+            SearchCancelButton(searchModel: searchModel)
+
             Button {
                 searchModel.resetForm()
             } label: {

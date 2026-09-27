@@ -23,6 +23,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Data-train checkbox selections (cascade-clears downstream) | `set_search_form` arrays | live |
 | Press Search (⌘↩) | `set_search_form` `execute: true` | live |
 | Reset button | `reset_search_form` | live |
+| Cancel beside the spinner | `cancel_search` (a waiting `run_search` reports `cancelled`) | live |
 | Read data-train facet options (filtered by upstream) | `get_data_train_options` | read |
 | Data-train refresh button | `refresh_data_train` | live |
 | Target resolution (debounced typing) | automatic in `set_search_form` (immediate on execute) | — |
@@ -35,6 +36,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Edit raw ADQL | `set_adql_editor` | live |
 | Generate from Form | `set_adql_editor` `generateFromForm` | live |
 | Execute (⌘⇧↩) | `set_adql_editor` `execute` | live |
+| Cancel beside the spinner | `cancel_search` | live |
 | Save Query | `save_query` (pre-existing) | write |
 
 ## Search — results table

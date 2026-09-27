@@ -38,6 +38,8 @@ struct ADQLEditorView: View {
                 .disabled(editableQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || searchModel.isSearching)
                 .keyboardShortcut(.return, modifiers: [.command, .shift])
 
+                SearchCancelButton(searchModel: searchModel)
+
                 Spacer()
 
                 Button {

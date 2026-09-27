@@ -144,13 +144,25 @@ struct SetSearchFormTool: AITool {
         var executed: Bool = false
         var resultCount: Int? = nil
         var searchError: String? = nil
+        /// The person pressed Cancel while it ran.
+        var cancelled: Bool = false
     }
 
+    /// Also `run_search`'s reply — the same button, reached two ways.
     struct Output: Encodable, Sendable {
         let applied: Bool
         let executed: Bool
         let resultCount: Int?
         let searchError: String?
+        let cancelled: Bool
+
+        init(_ outcome: Outcome) {
+            applied = true
+            executed = outcome.executed
+            resultCount = outcome.resultCount
+            searchError = outcome.searchError
+            cancelled = outcome.cancelled
+        }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
@@ -208,11 +220,7 @@ struct SetSearchFormTool: AITool {
             return .failed(.invalidArgument(message))
         }
         do {
-            let bytes = try JSONEncoder().encode(Output(
-                applied: true,
-                executed: outcome.executed,
-                resultCount: outcome.resultCount,
-                searchError: outcome.searchError))
+            let bytes = try JSONEncoder().encode(Output(outcome))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))
@@ -250,6 +258,42 @@ struct ResetSearchFormTool: AITool {
         do {
             let bytes = try JSONEncoder().encode(Output(applied: true))
             return .data(bytes)
+        } catch {
+            return .failed(.backendError("\(error)"))
+        }
+    }
+}
+
+// MARK: - cancel_search
+
+/// The Cancel button beside the search spinner (form and ADQL editor).
+struct CancelSearchTool: AITool {
+    static let verbClass: VerbClass = .viewState
+    static let agentSafe: Bool = true
+
+    struct Output: Encodable, Sendable {
+        /// False when no search was running — nothing was stopped.
+        let cancelled: Bool
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "cancel_search",
+        description: "Stop the search that is running — the Cancel button beside the Search spinner, on the form and in the ADQL editor. The results already shown stay, and a cancelled search is not kept in Recent Searches. `cancelled` is false when no search was running. A `run_search` / `execute_adql_query` that was waiting reports `cancelled: true`. Live-applied; no proposal.",
+        schema: #"""
+        {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    let cancel: @Sendable () async -> Bool
+
+    func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
+        let stopped = await cancel()
+        do {
+            return .data(try JSONEncoder().encode(Output(cancelled: stopped)))
         } catch {
             return .failed(.backendError("\(error)"))
         }
@@ -373,14 +417,27 @@ struct SetADQLEditorTool: AITool {
         var executed: Bool = false
         var resultCount: Int? = nil
         var searchError: String? = nil
+        /// The person pressed Cancel while it ran.
+        var cancelled: Bool = false
     }
 
+    /// Also `execute_adql_query`'s reply.
     struct Output: Encodable, Sendable {
         let applied: Bool
         let adql: String
         let executed: Bool
         let resultCount: Int?
         let searchError: String?
+        let cancelled: Bool
+
+        init(_ outcome: Outcome) {
+            applied = true
+            adql = outcome.adql
+            executed = outcome.executed
+            resultCount = outcome.resultCount
+            searchError = outcome.searchError
+            cancelled = outcome.cancelled
+        }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
@@ -419,12 +476,7 @@ struct SetADQLEditorTool: AITool {
             return .failed(.invalidArgument(message))
         }
         do {
-            let bytes = try JSONEncoder().encode(Output(
-                applied: true,
-                adql: outcome.adql,
-                executed: outcome.executed,
-                resultCount: outcome.resultCount,
-                searchError: outcome.searchError))
+            let bytes = try JSONEncoder().encode(Output(outcome))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))

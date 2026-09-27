@@ -46,6 +46,15 @@ Catching up with Verbinal for Windows 1.4.1 (see
   instead of left hanging, and a handshake is never held up by a stalled
   first connection attempt.
 
+### Added
+- **Cancel a search** — a search that takes long could not be stopped:
+  Search stayed greyed with a spinner until CADC answered. **Cancel** now
+  sits beside the spinner, on the form and in the ADQL editor (Esc), and
+  stops it; the results already shown stay, and a cancelled search is not
+  kept as a recent one. For assistants: `cancel_search`, and `run_search`,
+  `set_search_form`, `set_adql_query` and `execute_adql_query` say
+  `cancelled: true` when the person cancelled the search they started.
+
 ## [1.3.4] - Unreleased
 
 Post–1.3.3 polish: Workflows local Edit/Delete, Storage recursive folder

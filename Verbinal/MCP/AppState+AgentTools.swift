@@ -209,6 +209,7 @@ extension AppState {
             return await setSearchForm.apply(args)
         }))
         tools.append(makeResetSearchFormTool())
+        tools.append(makeCancelSearchTool())
         let getConstraints = makeGetDataTrainOptionsTool()
         tools.append(getConstraints)
         tools.append(AliasedToolBox(
