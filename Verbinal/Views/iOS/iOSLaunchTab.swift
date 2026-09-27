@@ -225,6 +225,7 @@ private struct iOSLaunchFormView: View {
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
+                .accessibilityLabel(Text("New session name"))
             }
         }
     }
@@ -268,6 +269,7 @@ private struct iOSLaunchFormView: View {
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
+                .accessibilityLabel(Text("New session name"))
             }
         }
     }
@@ -319,6 +321,7 @@ private struct iOSLaunchFormView: View {
                 Image(systemName: "trash")
                     .font(.caption)
             }
+            .accessibilityLabel(Text("Remove from recent launches"))
             .buttonStyle(.bordered)
             .tint(.red)
         }

@@ -577,12 +577,17 @@ private struct AgentsSettingsTab: View {
                                    screen: "settings.agent")
                     Toggle("Show activity snackbar", isOn: showActivitySnackbar)
                         .toggleStyle(.switch)
+                    Toggle("Play a sound when an agent starts and stops", isOn: Bindable(appState.agentsService.sounds).isEnabled)
+                        .toggleStyle(.switch)
+                        .pointable("settings.agent.sounds", label: String(localized: "Play a sound when an agent starts and stops"),
+                                   screen: "settings.agent")
                 } header: {
                     Text("Autonomy")
                 } footer: {
                     Text("Auto-apply on: agent writes apply immediately; off: each one queues to the proposal strip for your Apply click. " +
                          "Follow agent activity jumps the window to where an auto-applied change is visible (the explicit `navigate_to` tool ignores this toggle). " +
-                         "Activity snackbar flashes a banner at the top of the window whenever an agent uses a tool.")
+                         "Activity snackbar flashes a banner at the top of the window whenever an agent uses a tool; " +
+                         "the sounds mark when one starts and when it has gone quiet, for when you are looking elsewhere.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

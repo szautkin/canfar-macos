@@ -105,10 +105,11 @@ struct LandingView: View {
             )
 
             LazyVGrid(columns: tileColumns, spacing: 20) {
-                // Portal + Storage need the CADC token; lock them when not
-                // signed in. Tapping a locked tile remembers the intended
-                // destination and opens the login sheet — AppState.updateAuthState
-                // navigates there automatically on successful sign-in.
+                // As on Verbinal for Windows: the account's own screens first
+                // (Portal, Remote Compute, Storage — locked until sign-in; a
+                // tap remembers the destination and opens the login sheet),
+                // then the archive, the viewers, the notebook and workflows,
+                // and the AI Guide and AI Assistant last.
                 LandingTile(
                     icon: "desktopcomputer",
                     fallbackIcon: "display",
@@ -117,6 +118,31 @@ struct LandingView: View {
                     locked: !appState.isAuthenticated
                 ) {
                     navigateOrPromptLogin(.portal)
+                }
+
+                #if os(macOS)
+                // Remote Compute — the compute session an assistant's run_code
+                // uses, its runs, and a box to run code yourself. Needs the
+                // CADC session, like Portal and Storage.
+                LandingTile(
+                    icon: "cpu",
+                    fallbackIcon: "cpu",
+                    title: "Remote Compute",
+                    subtitle: "Run code on your CANFAR session",
+                    locked: !appState.isAuthenticated
+                ) {
+                    navigateOrPromptLogin(.remoteCompute)
+                }
+                #endif
+
+                LandingTile(
+                    icon: "externaldrive.fill",
+                    fallbackIcon: "externaldrive.fill",
+                    title: "Storage",
+                    subtitle: "Browse VOSpace files",
+                    locked: !appState.isAuthenticated
+                ) {
+                    navigateOrPromptLogin(.storage)
                 }
 
                 LandingTile(
@@ -138,16 +164,6 @@ struct LandingView: View {
                 }
 
                 LandingTile(
-                    icon: "externaldrive.fill",
-                    fallbackIcon: "externaldrive.fill",
-                    title: "Storage",
-                    subtitle: "Browse VOSpace files",
-                    locked: !appState.isAuthenticated
-                ) {
-                    navigateOrPromptLogin(.storage)
-                }
-
-                LandingTile(
                     icon: "star.circle.fill",
                     fallbackIcon: "star.circle.fill",
                     title: "FITS Viewer",
@@ -165,6 +181,15 @@ struct LandingView: View {
                     appState.navigateTo(.cubeViewer)
                 }
 
+                // The addon slot, where Windows has its Notebook tile.
+                //  - Installed first-party addons get their own tile (e.g.
+                //    Notebook when Verbinal Pi is present).
+                //  - With no addons installed, we show a single generic
+                //    "Addons" placeholder that sends the user to the App Store
+                //    catalog — avoids the graveyard-grid UX where every
+                //    unknown addon claims its own dim tile.
+                addonSlot
+
                 LandingTile(
                     icon: "checklist",
                     fallbackIcon: "checklist",
@@ -174,42 +199,7 @@ struct LandingView: View {
                     appState.navigateTo(.workflows)
                 }
 
-                // Sixth slot is the addon slot.
-                //  - Installed first-party addons get their own tile (e.g.
-                //    Notebook when Verbinal Pi is present).
-                //  - With no addons installed, we show a single generic
-                //    "Addons" placeholder that sends the user to the App Store
-                //    catalog — avoids the graveyard-grid UX where every
-                //    unknown addon claims its own dim tile.
-                addonSlot
-
                 #if os(macOS)
-                // Remote Compute — the compute session an assistant's run_code
-                // uses, its runs, and a box to run code yourself. Needs the
-                // CADC session, like Portal and Storage.
-                LandingTile(
-                    icon: "cpu",
-                    fallbackIcon: "cpu",
-                    title: "Remote Compute",
-                    subtitle: "Run code on your CANFAR session",
-                    locked: !appState.isAuthenticated
-                ) {
-                    navigateOrPromptLogin(.remoteCompute)
-                }
-
-                // AI Assistant — the newcomer-framed entry point to the MCP
-                // setup wizard. Always shown (macOS-only); distinct from the
-                // AI Guide tile, which presumes the agent is already connected.
-                // Opening it presents the guided "Connect your AI agent" sheet.
-                LandingTile(
-                    icon: "robot",
-                    fallbackIcon: "sparkles",
-                    title: "AI Assistant",
-                    subtitle: "Connect Claude to drive Verbinal"
-                ) {
-                    appState.activeSheet = .mcpSetupWizard
-                }
-
                 // AI Guide — inspect/re-tune the MCP tool surface the agent
                 // sees, and author custom instruction tools. macOS-only: the
                 // MCP server (and its tools) exist only on the desktop build.
@@ -224,6 +214,19 @@ struct LandingView: View {
                         appState.navigateTo(.aiGuide)
                     }
                 }
+
+                // AI Assistant — the newcomer-framed entry point to the MCP
+                // setup wizard. Always shown (macOS-only); distinct from the
+                // AI Guide tile, which presumes the agent is already connected.
+                // Opening it presents the guided "Connect your AI agent" sheet.
+                LandingTile(
+                    icon: "robot",
+                    fallbackIcon: "sparkles",
+                    title: "AI Assistant",
+                    subtitle: "Connect Claude to drive Verbinal"
+                ) {
+                    appState.activeSheet = .mcpSetupWizard
+                }
                 #endif
             }
 
@@ -237,7 +240,7 @@ struct LandingView: View {
         appState.navigateOrPromptLogin(mode)
     }
 
-    // MARK: - Addon slot (sixth landing tile)
+    // MARK: - Addon slot
 
     @ViewBuilder
     private var addonSlot: some View {

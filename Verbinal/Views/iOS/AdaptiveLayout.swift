@@ -273,6 +273,7 @@ private struct iPadSessionsDetail: View {
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
+                    .accessibilityLabel(Text("Refresh"))
                 }
             }
         }
@@ -401,6 +402,7 @@ private struct iPadSessionsDetail: View {
                 } label: {
                     Image(systemName: "trash")
                 }
+                .accessibilityLabel(Text("Delete session"))
                 .buttonStyle(.bordered)
                 .tint(.red)
             }
@@ -514,6 +516,7 @@ private struct iOSEventsSheetWrapper: View {
                     } label: {
                         Image(systemName: "doc.on.doc")
                     }
+                    .accessibilityLabel(Text("Copy"))
                     .disabled(isLoading || currentContent.isEmpty)
                 }
             }

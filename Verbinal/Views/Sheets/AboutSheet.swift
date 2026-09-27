@@ -11,6 +11,9 @@ struct AboutSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @State private var showTerms = false
+    @State private var copied = false
+    /// Read once, when About opens — what is running now.
+    private let facts = RuntimeInfo.facts()
 
     var body: some View {
         VStack(spacing: 16) {
@@ -27,7 +30,7 @@ struct AboutSheet: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
+            Text("Version \(RuntimeInfo.appVersion())")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 
@@ -52,14 +55,34 @@ struct AboutSheet: View {
             .font(.caption)
             #endif
 
-            Text(platformVersionString)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-
-            if let url = URL(string: "https://www.canfar.net") {
-                Link("Visit canfar.net", destination: url)
-                    .font(.caption)
+            // What a bug report needs, as text to paste.
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(facts, id: \.name) { fact in
+                    Text("\(fact.name): \(fact.value)")
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
+            .font(.caption2.monospaced())
+            .foregroundStyle(.secondary)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+            .accessibilityElement(children: .combine)
+
+            Button(copied ? "Copied" : "Copy Details") {
+                PlatformClipboard.copy(RuntimeInfo.text(facts))
+                copied = true
+            }
+            .font(.caption)
+            .help("Copy these details, for a bug report")
+
+            HStack(spacing: 16) {
+                Link("verbinal.com", destination: AppLinks.website)
+                Link("Report a Problem", destination: AppLinks.newIssue)
+            }
+            .font(.caption)
 
             Button(LegalText.document(for: locale).termsLink) {
                 showTerms = true
@@ -85,13 +108,5 @@ struct AboutSheet: View {
         .sheet(isPresented: $showTerms) {
             LegalDocumentSheet()
         }
-    }
-
-    private var platformVersionString: String {
-        #if os(macOS)
-        "macOS \(ProcessInfo.processInfo.operatingSystemVersionString)"
-        #else
-        "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
-        #endif
     }
 }

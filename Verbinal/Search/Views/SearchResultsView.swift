@@ -166,6 +166,7 @@ struct SearchResultsView: View {
                         Image(systemName: "chevron.left")
                             .font(.caption2)
                     }
+                    .accessibilityLabel(Text("Previous page"))
                     .buttonStyle(.borderless)
                     .disabled(resultsModel.currentPage == 0)
                     .keyboardShortcut("[", modifiers: [.command])
@@ -183,6 +184,7 @@ struct SearchResultsView: View {
                         Image(systemName: "chevron.right")
                             .font(.caption2)
                     }
+                    .accessibilityLabel(Text("Next page"))
                     .buttonStyle(.borderless)
                     .disabled(resultsModel.currentPage >= resultsModel.totalPages - 1)
                     .keyboardShortcut("]", modifiers: [.command])
@@ -339,6 +341,7 @@ struct SearchResultsView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityLabel(Text("Display unit"))
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()

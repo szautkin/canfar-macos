@@ -48,6 +48,7 @@ struct FITSTabView: View {
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                         }
+                        .accessibilityLabel(Text("New tab"))
                         .buttonStyle(.plain)
                         .keyboardShortcut("t", modifiers: [.command])
                         .help(Text("New tab (⌘T)"))

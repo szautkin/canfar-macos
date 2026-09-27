@@ -167,6 +167,19 @@ Catching up with Verbinal for Windows 1.4.1 (see
   `search_image_registry`, `list_my_images`, `add_registry_image` and
   `remove_registry_image` (which waits for you); `list_session_images`
   includes your images.
+- **A sound when an agent starts and stops** — two short cues (the ones
+  Verbinal for Windows and Linux play), on the first tool call after a
+  quiet spell and when it has gone quiet again, so you notice without
+  watching. Settings ▸ AI Agent turns them off.
+- **About says what is running** — the app's version and build, the
+  macOS build, the Mac, its architecture (and Rosetta), GPU, memory and
+  how it was installed, with **Copy Details** for a bug report; its links
+  go to Verbinal's own site and issue tracker.
+- **`AGENTS.md`** — how an AI assistant connects to Verbinal, written for
+  the assistant: the command (`Verbinal.app/Contents/MacOS/Verbinal mcp`),
+  the name `verbinal-canfar`, and the entry for Claude Code, Claude
+  Desktop, Codex, Cursor, Gemini, Windsurf and VS Code. The setup notes in
+  `docs/MCP-Setup.md` no longer describe the helper that was removed.
 - **What the app is doing, along the bottom of the window** — an activity
   bar says in one line what is running ("Inspect skaha/astroml:24.07 —
   Waiting for job 7f3a…", or "3 tasks running") and how many things went
@@ -298,6 +311,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **The home screen's tiles in Windows' order** — your account's screens
+  first (Portal, Remote Compute, Storage), then Search, Research, the
+  viewers, the notebook, Workflows, and the AI tiles last.
+- **Buttons that are only an icon say what they do** to VoiceOver — the
+  results pager and unit menu, tab close and new tab, bookmark, batch-job
+  details and delete, and the iPhone and iPad refresh, copy and delete
+  buttons.
 - **The FITS viewer offers what you opened lately** — its empty screen
   has **Open FITS File…** and the files you opened recently, as the cube
   viewer's has (one list of recent files serves both). While a file

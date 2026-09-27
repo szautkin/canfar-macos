@@ -69,6 +69,7 @@ struct CubeViewerRootView: View {
                             Button { tabHost.closeTab(at: index) } label: {
                                 Image(systemName: "xmark").font(.caption2)
                             }
+                            .accessibilityLabel(Text("Close tab"))
                             .buttonStyle(.plain)
                         }
                     }

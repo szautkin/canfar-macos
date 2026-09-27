@@ -115,6 +115,8 @@ final class AgentsService {
     /// Fed by a push audit sink on every dispatch (reads included);
     /// distinct from `activityStore` (persistent, writes only).
     let liveActivity = AgentLiveActivity()
+    /// A sound when an agent starts using the app, and one when it stops.
+    let sounds = AgentSounds()
     private let logger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "service")
 
     /// Tools registered with the router. Mutate before the first
@@ -411,9 +413,11 @@ final class AgentsService {
         // The router fires this only for `.external` origins; hop to
         // the main actor to update the @Observable feed.
         let liveActivity = self.liveActivity
+        let sounds = self.sounds
         let onDispatchStart: @Sendable (String, String) -> Void = { tool, label in
             Task { @MainActor in
                 liveActivity.record(originLabel: label, toolName: tool)
+                sounds.agentCalled()
             }
         }
         let hook = AutoApplyHook(

@@ -3691,6 +3691,16 @@
         }
       }
     },
+    "Copy these details, for a bug report" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier ces détails, pour un rapport de bogue"
+          }
+        }
+      }
+    },
     "Copy this observation's details — ID, position, instrument, date — as text" : {
       "localizations" : {
         "fr" : {
@@ -4476,6 +4486,16 @@
     },
     "Delete Session" : {
       "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer la session"
+          }
+        }
+      }
+    },
+    "Delete session" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8796,6 +8816,16 @@
         }
       }
     },
+    "New session name" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau nom de session"
+          }
+        }
+      }
+    },
     "New tab" : {
       "localizations" : {
         "fr" : {
@@ -10743,6 +10773,16 @@
         }
       }
     },
+    "Play a sound when an agent starts and stops" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jouer un son quand un agent commence et s'arrête"
+          }
+        }
+      }
+    },
     "Play through channels (Space)" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11898,6 +11938,16 @@
         }
       }
     },
+    "Remove from recent launches" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer des lancements récents"
+          }
+        }
+      }
+    },
     "Remove Secret" : {
       "localizations" : {
         "fr" : {
@@ -12082,6 +12132,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le nombre de répliques doit être d'au moins 1"
+          }
+        }
+      }
+    },
+    "Report a Problem" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signaler un problème"
           }
         }
       }
@@ -12727,6 +12787,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enregistrer"
+          }
+        }
+      }
+    },
+    "Save a bookmark at the crosshair" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer un signet au réticule"
           }
         }
       }
@@ -16135,6 +16205,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "verbinal-execution sur GitHub"
+          }
+        }
+      }
+    },
+    "verbinal.com" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "verbinal.com"
           }
         }
       }

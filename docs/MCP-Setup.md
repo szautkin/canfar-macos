@@ -8,23 +8,22 @@ user's behalf — under user-confirmed control via the proposal strip.
 ## How it's wired
 
 ```
-┌─────────────────┐    stdio (ndjson)    ┌──────────────┐    AF_UNIX socket    ┌─────────────────┐
-│  Claude Desktop │  ─────────────────►  │  canfar-mcp  │  ───────────────►   │  Verbinal app   │
-│ (or other MCP   │                      │   (helper)   │                      │  (sandboxed)    │
-│  client)        │                      └──────────────┘                      └─────────────────┘
-└─────────────────┘                            ▲                                       │
-                                               │  reads sidecar                        │  writes sidecar
-                                               │  with socket path                     │  on listener open
-                                               ▼                                       ▼
-                                    ~/Library/.../com.codebg.Verbinal/mcp.sock-path
+┌─────────────────┐   stdio (ndjson)   ┌──────────────────────────┐   AF_UNIX socket   ┌───────────────┐
+│  Claude Desktop │  ───────────────►  │  Verbinal mcp            │  ───────────────►  │ Verbinal app  │
+│ (or other MCP   │                    │  (the app's own binary,  │                    │ (sandboxed,   │
+│  client)        │                    │   run as a bridge)       │                    │  running)     │
+└─────────────────┘                    └──────────────────────────┘                    └───────────────┘
 ```
 
-- **Helper binary**: `Verbinal.app/Contents/Resources/canfar-mcp`. Stateless
-  forwarder: reads the sidecar, connects to the app's unix socket, splices
-  bytes between stdio and the socket.
-- **App listener**: `AgentsService` opens an AF_UNIX socket inside the app's
-  Application Support container when "Allow external AI agents" is on
-  (Settings ▸ Agents). Writes the path to a sidecar file the helper reads.
+- **The command** is the app's own executable with the argument `mcp`:
+  `Verbinal.app/Contents/MacOS/Verbinal mcp`. Run that way, it does not open
+  a window: it relays between the client's stdio and the running app's
+  socket (`Verbinal/MCP/MCPStdioBridge.swift`, which says why this is the
+  main binary and not a separate helper — a bundled helper cannot run under
+  Mac App Store signing). The old `canfar-mcp` helper is gone.
+- **The app listener**: `AgentsService` opens an AF_UNIX socket in the app's
+  App Group container when **Allow external AI agents** is on
+  (Settings ▸ AI Agent).
 
 The listener uses POSIX `socket(AF_UNIX, SOCK_STREAM, 0)` directly rather
 than `Network.framework`. `NWParameters.tcp` over a unix endpoint still
@@ -34,56 +33,33 @@ and is permitted by the default sandbox profile.
 
 ## Setup (one-time)
 
-### 1. Enable the server in Verbinal
+`AGENTS.md` at the top of the repository is the setup for any client,
+written for the assistant doing it. In short:
 
-1. Open Verbinal.
-2. **Settings ▸ Agents**.
-3. Toggle "Allow external AI agents" on.
-4. The status row should show "Listening" with a path under
-   `~/Library/Containers/com.codebg.Verbinal/Data/Library/Application Support/com.codebg.Verbinal/mcp-<pid>.sock`.
-
-### 2. Locate the helper binary
-
-Pick whichever one matches the build you're running:
-
-| Build              | Helper path                                                                                                  |
-| ------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Local Debug        | `~/Library/Developer/Xcode/DerivedData/Verbinal-*/Build/Products/Debug/Verbinal.app/Contents/Resources/canfar-mcp` |
-| Local Release      | `~/Library/Developer/Xcode/DerivedData/Verbinal-*/Build/Products/Release/Verbinal.app/Contents/Resources/canfar-mcp` |
-| Installed (MAS)    | `/Applications/Verbinal.app/Contents/Resources/canfar-mcp`                                                   |
-
-Resolve any symlinks first (Claude Desktop wants an absolute path):
-
-```sh
-readlink -f "$(find ~/Library/Developer/Xcode/DerivedData -name canfar-mcp -path '*/Verbinal.app/*' 2>/dev/null | head -1)"
-```
-
-### 3. Configure your MCP client
-
-#### Claude Desktop
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (create
-if absent) and add:
+1. **Settings ▸ AI Agent ▸ Allow external AI agents** — the status row
+   should show it listening.
+2. **Settings ▸ MCP Clients** shows the command for this build (a Debug
+   build from Xcode lives under DerivedData) and copies the
+   `claude mcp add` line; the **AI Assistant** home tile runs a wizard that
+   writes Claude Desktop's config.
+3. Register it under the name `verbinal-canfar` with the command above and
+   the arguments `["mcp"]`, for example in
+   `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "verbinal": {
-      "command": "/absolute/path/to/Verbinal.app/Contents/Resources/canfar-mcp"
+    "verbinal-canfar": {
+      "command": "/Applications/Verbinal.app/Contents/MacOS/Verbinal",
+      "args": ["mcp"]
     }
   }
 }
 ```
 
-Replace the `command` value with the absolute path from step 2. Restart
-Claude Desktop. The Verbinal tool surface (`describe_app`, `search_observations`,
-`launch_session`, etc.) should appear in the tools picker.
-
-#### Other MCP clients
-
-Any client that spawns a subprocess and pipes JSON-RPC over stdio will work.
-Point it at the helper binary; no flags needed. The helper reads the sidecar
-on launch and connects automatically.
+"Could not attach to MCP server verbinal-canfar" almost always means the
+command points at an app that is no longer there (an old DerivedData build,
+a moved app): point it at the one installed now and restart the client.
 
 ## Verifying the connection
 
@@ -94,15 +70,11 @@ From Claude (or any MCP client):
 3. Call `list_pending_proposals` — should return `{"proposals": []}` on a
    fresh session.
 
-If `describe_app` errors with code `-32000` ("Verbinal app is not running"),
-either the toggle in Settings ▸ Agents is off, or the helper can't read the
-sidecar. Check:
-
-```sh
-cat "$HOME/Library/Containers/com.codebg.Verbinal/Data/Library/Application Support/com.codebg.Verbinal/mcp.sock-path"
-```
-
-The path printed should be a `.sock` file that exists and is readable.
+While Verbinal is closed the server still answers, and every tool says the
+app is not running; once it starts, the bridge connects by itself and the
+client is told the tool list changed. If tools keep saying so with the app
+open, **Allow external AI agents** is off (Settings ▸ AI Agent), or the
+bridge cannot reach the socket — its own log says which (below).
 
 ## Watching live activity
 
@@ -116,31 +88,25 @@ tail -F ~/Library/Logs/Claude/mcp-server-verbinal-canfar.log
 ```
 
 This is what Claude Cowork itself records. Every JSON-RPC message in
-both directions is dumped verbatim, plus stderr from the helper. Use
+both directions is dumped verbatim, plus stderr from the bridge. Use
 this when you need to see raw payloads — e.g. a tool's full response
 content or schema validation errors from the client side.
 
-### 2. Helper-side (concise per-frame trace)
+### 2. Bridge-side (concise per-frame trace)
 
-The helper's stderr is folded into the same Cowork log (look for
-`[canfar-mcp]` lines), but the *content* is one line per frame:
+The bridge's stderr is folded into the same Cowork log (look for
+`[verbinal-mcp]` lines), but the *content* is one line per frame:
 
 ```
-2026-04-29T... [canfar-mcp] [info] startup pid=12345
-2026-04-29T... [canfar-mcp] [info] sidecar resolved -> /Users/.../mcp-12345.sock
-2026-04-29T... [canfar-mcp] [info] socket connected
-2026-04-29T... [canfar-mcp] [info] entering forward loop
-2026-04-29T... [canfar-mcp] [debug] stdio→socket 312B method=initialize id=0
-2026-04-29T... [canfar-mcp] [debug] socket→stdio 478B response result id=0
-2026-04-29T... [canfar-mcp] [debug] stdio→socket 56B method=notifications/initialized id=-
-2026-04-29T... [canfar-mcp] [debug] stdio→socket 49B method=tools/list id=1
-2026-04-29T... [canfar-mcp] [debug] socket→stdio 12347B response result id=1
+2026-09-27T... [verbinal-mcp] [info] mcp bridge startup pid=12345
+2026-09-27T... [verbinal-mcp] [info] connected to /Users/.../mcp-6789.sock
+2026-09-27T... [verbinal-mcp] [info] mcp bridge shutting down
 ```
 
-Filter just the helper's own lines:
+Filter just the bridge's own lines:
 
 ```sh
-grep '\[canfar-mcp\]' ~/Library/Logs/Claude/mcp-server-verbinal-canfar.log | tail -F
+grep '\[verbinal-mcp\]' ~/Library/Logs/Claude/mcp-server-verbinal-canfar.log | tail -F
 ```
 
 ### 3. App-side (live `os.log` stream)
@@ -174,20 +140,18 @@ tail -F ~/Library/Logs/Claude/mcp-server-verbinal-canfar.log &
 
 | Symptom                                  | Where to check                                                                                                    |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Cowork says "tools not visible"          | `bridge` log: did `tools/list` even arrive? If not, helper didn't connect.                                        |
+| Cowork says "tools not visible"          | `bridge` log: did `tools/list` even arrive? If not, the bridge didn't connect.                                        |
 | `notifications/initialized` errors       | `bridge` log should say `ignoring notification … (no id)`. If it shows `method not found`, you're on an old build. |
-| Listener fails to start                  | Settings ▸ Agents row shows the real reason (now that `MCPTransportError` conforms to `LocalizedError`).            |
-| Helper can't connect to socket           | `mcp-server-verbinal-canfar.log`: `[canfar-mcp] [error] connect failed —`                                          |
+| Listener fails to start                  | Settings ▸ AI Agent row shows the real reason (now that `MCPTransportError` conforms to `LocalizedError`).            |
+| Bridge can't connect to socket           | `mcp-server-verbinal-canfar.log`: `[verbinal-mcp] [info] connect to … failed —`                                    |
 | Specific tool call fails                 | `bridge`: `tools/call <name> -> failed (<tag>)`. `audit`: same row with the failure tag.                           |
 
 ## Notes for MAS submission
 
-- The helper executable is signed with the host app's signing identity at
-  build time and lives inside the `.app` bundle. No separate notarisation
-  step is needed.
-- The helper does **not** require any sandbox entitlement — it runs in the
-  user's space when spawned by an MCP client.
-- The host app uses POSIX `bind(2)` on a path inside its own
-  `~/Library/Containers/<bundle>/Data/...` Application Support container.
+- The bridge is the app's own executable run with `mcp`, so it carries the
+  bundle's provisioning profile and its full sandbox, and reaches the App
+  Group socket under distribution signing. There is no separate helper to
+  sign or notarise.
+- The host app uses POSIX `bind(2)` on a path inside its own container.
   This requires no `network.server` entitlement and is permitted by the
   default MAS sandbox profile.

@@ -96,6 +96,7 @@ struct MatchingImagesPane: View {
                 .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
                 .contentTransition(.symbolEffect(.replace))
         }
+        .accessibilityLabel(Text("Select this image"))
         .buttonStyle(.borderless)
         .help(isSelected ? "Selected — click \"Use this image\" or press Return" : "Select this image")
         .accessibilityLabel(isSelected ? "Selected" : "Select \(imageID)")

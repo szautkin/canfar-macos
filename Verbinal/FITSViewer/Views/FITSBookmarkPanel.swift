@@ -46,6 +46,7 @@ struct FITSBookmarkPanel: View {
                     Image(systemName: "bookmark.fill")
                         .font(.caption2)
                 }
+                .accessibilityLabel(Text("Save a bookmark at the crosshair"))
                 .buttonStyle(.borderless)
                 .disabled(model.crosshairRA.isEmpty)
                 .help("Save current crosshair position")

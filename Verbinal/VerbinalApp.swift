@@ -156,17 +156,9 @@ struct VerbinalApp: App {
                     appState.activeSheet = .mcpSetupWizard
                 }
                 Divider()
-                Button("Verbinal Help") {
-                    if let url = URL(string: "https://github.com/szautkin/canfar-macos#readme") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-                .keyboardShortcut("?", modifiers: .command)
-                Button("Report an Issue") {
-                    if let url = URL(string: "https://github.com/szautkin/canfar-macos/issues/new") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
+                Button("Verbinal Help") { NSWorkspace.shared.open(AppLinks.help) }
+                    .keyboardShortcut("?", modifiers: .command)
+                Button("Report an Issue") { NSWorkspace.shared.open(AppLinks.newIssue) }
             }
         }
 

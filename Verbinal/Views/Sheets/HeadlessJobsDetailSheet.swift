@@ -288,6 +288,7 @@ struct HeadlessJobsDetailSheet: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
+        .accessibilityLabel(Text("Job details"))
         .buttonStyle(.borderless)
         .controlSize(.small)
         .help("Show job details")
@@ -322,6 +323,7 @@ struct HeadlessJobsDetailSheet: View {
                 Image(systemName: "trash")
                     .font(.callout)
             }
+            .accessibilityLabel(Text("Delete job"))
             .buttonStyle(.borderless)
             .controlSize(.small)
             .foregroundStyle(.secondary)
