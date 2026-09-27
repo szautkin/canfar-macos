@@ -23,6 +23,9 @@ final class SearchFormState {
     var target = ""
     var resolver: ResolverValue = .all
     var pixelScale = ""
+    /// Download only the part of each file within the search's circle —
+    /// as CADC's search page offers. Not a constraint: it shapes downloads.
+    var spatialCutout = false
 
     // Temporal constraints
     var observationDate = ""
@@ -36,6 +39,8 @@ final class SearchFormState {
     var resolvingPower = ""
     var bandpassWidth = ""
     var restFrameEnergy = ""
+    /// Download only the search's wavelengths of each file that has them.
+    var spectralCutout = false
 
     // Data train selections
     var selectedBands: [String] = []

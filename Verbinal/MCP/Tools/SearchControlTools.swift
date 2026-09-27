@@ -36,6 +36,8 @@ struct GetSearchFormTool: JSONReadTool {
         let target: String
         let resolver: String
         let pixelScale: String
+        /// Downloads from the results cut to the search's circle.
+        let spatialCutout: Bool
         let resolverStatus: String
         let resolvedRA: String?
         let resolvedDec: String?
@@ -52,6 +54,8 @@ struct GetSearchFormTool: JSONReadTool {
         let resolvingPower: String
         let bandpassWidth: String
         let restFrameEnergy: String
+        /// Downloads from the results cut to the search's wavelengths.
+        let spectralCutout: Bool
 
         // Data-train (additional constraints) multi-selections
         let bands: [String]
@@ -112,6 +116,7 @@ struct SetSearchFormTool: AITool {
         var target: String?
         var resolver: String?
         var pixelScale: String?
+        var spatialCutout: Bool?
         // Temporal
         var observationDate: String?
         var datePreset: String?
@@ -123,6 +128,7 @@ struct SetSearchFormTool: AITool {
         var resolvingPower: String?
         var bandpassWidth: String?
         var restFrameEnergy: String?
+        var spectralCutout: Bool?
         // Data train
         var bands: [String]?
         var collections: [String]?
@@ -183,6 +189,7 @@ struct SetSearchFormTool: AITool {
             "target":           { "type": "string", "description": "Target name or coordinates, as the user would type them." },
             "resolver":         { "type": "string", "enum": ["all", "simbad", "ned", "vizier", "none"] },
             "pixelScale":       { "type": "string" },
+            "spatialCutout":    { "type": "boolean", "description": "Downloads from the results take only the part of each file within the search's circle (cut on CADC's side), as CADC's search page offers." },
             "observationDate":  { "type": "string" },
             "datePreset":       { "type": "string", "enum": ["none", "past24Hours", "pastWeek", "pastMonth"] },
             "integrationTime":  { "type": "string" },
@@ -192,6 +199,7 @@ struct SetSearchFormTool: AITool {
             "resolvingPower":   { "type": "string" },
             "bandpassWidth":    { "type": "string" },
             "restFrameEnergy":  { "type": "string" },
+            "spectralCutout":   { "type": "boolean", "description": "Downloads from the results take only the search's wavelengths of each file that has them." },
             "bands":       { "type": "array", "items": { "type": "string" } },
             "collections": { "type": "array", "items": { "type": "string" } },
             "instruments": { "type": "array", "items": { "type": "string" } },

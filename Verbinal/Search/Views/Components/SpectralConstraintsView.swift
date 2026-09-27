@@ -24,6 +24,9 @@ struct SpectralConstraintsView: View {
                 .help("Total width of the wavelength range covered by the filter")
             ConstraintField(label: "Rest-frame Energy", value: $formState.restFrameEnergy, hint: "e.g. 5keV")
                 .help("Observation energy in the rest frame. Units: eV, keV, MeV, GeV")
+
+            Toggle("Spectral cutout", isOn: $formState.spectralCutout)
+                .help("Download only the search's wavelengths of each file that has them, cut on CADC's side")
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 8).fill(.background.secondary))

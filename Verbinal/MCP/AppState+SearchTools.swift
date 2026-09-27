@@ -542,11 +542,11 @@ extension AppState {
     private nonisolated static let emptySearchForm = GetSearchFormTool.Output(
         observationID: "", piName: "", proposalID: "", proposalTitle: "",
         proposalKeywords: "", dataRelease: "", publicOnly: false, intent: "any",
-        target: "", resolver: "all", pixelScale: "",
+        target: "", resolver: "all", pixelScale: "", spatialCutout: false,
         resolverStatus: "idle", resolvedRA: nil, resolvedDec: nil,
         observationDate: "", datePreset: "none", integrationTime: "", timeSpan: "",
         spectralCoverage: "", spectralSampling: "", resolvingPower: "",
-        bandpassWidth: "", restFrameEnergy: "",
+        bandpassWidth: "", restFrameEnergy: "", spectralCutout: false,
         bands: [], collections: [], instruments: [], filters: [],
         calLevels: [], dataTypes: [], obsTypes: [],
         selectedTab: "search", isSearching: false, searchError: nil,
@@ -582,6 +582,7 @@ extension AppState {
                     target: state.target,
                     resolver: state.resolver.rawValue.lowercased(),
                     pixelScale: state.pixelScale,
+                    spatialCutout: state.spatialCutout,
                     resolverStatus: statusKey,
                     resolvedRA: resolvedRA,
                     resolvedDec: resolvedDec,
@@ -594,6 +595,7 @@ extension AppState {
                     resolvingPower: state.resolvingPower,
                     bandpassWidth: state.bandpassWidth,
                     restFrameEnergy: state.restFrameEnergy,
+                    spectralCutout: state.spectralCutout,
                     bands: state.selectedBands,
                     collections: state.selectedCollections,
                     instruments: state.selectedInstruments,
@@ -669,6 +671,8 @@ extension AppState {
                 if let v = args.resolvingPower { state.resolvingPower = v }
                 if let v = args.bandpassWidth { state.bandpassWidth = v }
                 if let v = args.restFrameEnergy { state.restFrameEnergy = v }
+                if let v = args.spatialCutout { state.spatialCutout = v }
+                if let v = args.spectralCutout { state.spectralCutout = v }
 
                 // Data-train cascade: apply the provided columns, then
                 // clear every column downstream of the highest provided

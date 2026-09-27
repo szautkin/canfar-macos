@@ -178,6 +178,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Cutout record: Original Observation | `show_research_observation` with its publisher id | live |
 | Cut Out… (Search and Research detail): the editor, its file, region, band, checks, size | `show_cutout_editor`; `get_cutout_options` | live/read |
 | Download Cutout | `download_cutout` | write |
+| Search form: Spatial cutout / Spectral cutout boxes | `set_search_form` `spatialCutout`/`spectralCutout` (read by `get_search_form`) | live |
 | AI Guide content (overrides, guides) | pre-existing batch | mixed |
 
 ## Workflows

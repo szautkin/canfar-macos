@@ -41,6 +41,9 @@ struct SpatialConstraintsView: View {
             }
 
             ConstraintField(label: "Pixel Scale", value: $formState.pixelScale, hint: "e.g. 0.5..2 arcsec")
+
+            Toggle("Spatial cutout", isOn: $formState.spatialCutout)
+                .help("Download only the part of each file within the search's circle, cut on CADC's side")
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 8).fill(.background.secondary))

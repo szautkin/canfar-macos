@@ -112,6 +112,23 @@ final class CutoutToolTests: XCTestCase {
         XCTAssertTrue(plan.summary.contains("about"), "with its size")
     }
 
+    // MARK: - The search's cutout boxes
+
+    /// Ticked, a download is the part the search looked at; unticked, or
+    /// off the file, it is the whole file.
+    func testTheSearchsCutoutBoxesDecideWhatADownloadIs() {
+        let hints = CutoutHints(ra: 10.7, dec: 41.3, radius: 0.02, bandMin: 5e-7, bandMax: 9e-7)
+        let cube = file(band: true)
+        XCTAssertNil(SearchCutout(hints: hints).spec(for: cube.file), "neither box ticked")
+        XCTAssertFalse(SearchCutout(hints: nil, spatial: true).isRequested, "nothing to cut to")
+        XCTAssertEqual(SearchCutout(hints: hints, spatial: true).spec(for: cube.file)?.region, .circle(ra: 10.7, dec: 41.3, radius: 0.02))
+        let spectral = SearchCutout(hints: hints, spectral: true).spec(for: cube.file)
+        XCTAssertNil(spectral?.region)
+        XCTAssertEqual(spectral?.bandMin, 5e-7)
+        XCTAssertNil(SearchCutout(hints: CutoutHints(ra: 50, dec: 0, radius: 0.1), spatial: true).spec(for: cube.file),
+                     "the search's circle is not on this file")
+    }
+
     // MARK: - The search's circle and wavelengths
 
     func testTheSearchSaysWhereItLookedAndWhatItAskedFor() throws {

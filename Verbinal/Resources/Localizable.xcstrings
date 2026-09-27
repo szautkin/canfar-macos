@@ -4626,6 +4626,26 @@
         }
       }
     },
+    "Download only the part of each file within the search's circle, cut on CADC's side" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger seulement la partie de chaque fichier dans le cercle de la recherche, découpée par le CADC"
+          }
+        }
+      }
+    },
+    "Download only the search's wavelengths of each file that has them, cut on CADC's side" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger seulement les longueurs d'onde de la recherche de chaque fichier qui les a, découpées par le CADC"
+          }
+        }
+      }
+    },
     "Download selected file" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13070,6 +13090,16 @@
         }
       }
     },
+    "Spatial cutout" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découpe spatiale"
+          }
+        }
+      }
+    },
     "Spectral" : {
       "localizations" : {
         "fr" : {
@@ -13087,6 +13117,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couverture spectrale"
+          }
+        }
+      }
+    },
+    "Spectral cutout" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découpe spectrale"
           }
         }
       }

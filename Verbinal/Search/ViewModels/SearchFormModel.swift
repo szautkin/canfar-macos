@@ -168,6 +168,11 @@ final class SearchFormModel {
         return (ra: result.coordsRA, dec: result.coordsDec)
     }
 
+    /// The search's cutout boxes, with what they cut to.
+    var searchCutout: SearchCutout {
+        SearchCutout(hints: cutoutHints, spatial: formState.spatialCutout, spectral: formState.spectralCutout)
+    }
+
     /// What the search asks for that a cutout of one of its results can
     /// start from: its circle and its wavelengths, read by the builders
     /// that write the query.

@@ -98,13 +98,23 @@ final class ResearchModel {
     // MARK: - Download
 
     /// Download an observation from Search: fetch to temp, let the person
-    /// choose where it goes, keep it in Research.
+    /// choose where it goes, keep it in Research. With the search's cutout
+    /// boxes ticked, only the part they ask for of the first file CADC can
+    /// cut that way — or the whole file when none can.
     func downloadObservation(
         from result: SearchResult,
         columns: SearchResultColumns,
-        dataLink: DataLinkResult?
+        dataLink: DataLinkResult?,
+        searchCutout: SearchCutout = SearchCutout()
     ) async {
-        await download(DownloadedObservation.from(result: result, columns: columns, localPath: "", dataLink: dataLink))
+        let record = DownloadedObservation.from(result: result, columns: columns, localPath: "", dataLink: dataLink)
+        if searchCutout.isRequested,
+           let spec = await cutoutService.options(publisherID: record.publisherID).sources.lazy
+               .compactMap({ searchCutout.spec(for: $0.file) }).first {
+            await downloadCutout(of: record, spec)
+        } else {
+            await download(record)
+        }
     }
 
     /// Fetch `record`'s file, let the person choose where it goes, and keep

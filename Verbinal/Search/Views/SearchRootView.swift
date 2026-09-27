@@ -88,7 +88,7 @@ struct SearchRootView: View {
                 resultsModel: searchModel.resultsModel,
                 tapClient: searchModel.tapClient,
                 researchModel: researchModel,
-                cutoutHints: searchModel.cutoutHints,
+                searchCutout: searchModel.searchCutout,
                 onQuickSearch: { columnID, value in
                     Task { await searchModel.quickSearch(columnID: columnID, rawValue: value) }
                 }

@@ -42,7 +42,7 @@ struct SearchResultsView: View {
     var tapClient: TAPClient
     var researchModel: ResearchModel?
     /// What the search asked for, for a cutout of one of its results.
-    var cutoutHints: CutoutHints? = nil
+    var searchCutout = SearchCutout()
     /// Invoked when the user clicks a quick-search cell. Called on MainActor
     /// with `(columnID, rawValue)`; wire through to
     /// ``SearchFormModel/quickSearch(columnID:rawValue:)``.
@@ -99,7 +99,7 @@ struct SearchResultsView: View {
                 ),
                 tapClient: tapClient,
                 researchModel: researchModel,
-                cutoutHints: cutoutHints
+                searchCutout: searchCutout
             )
             .iosSheetChrome([.medium, .large])
         }

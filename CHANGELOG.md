@@ -120,7 +120,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
   or box — RA and Dec in degrees or sexagesimal, sizes in arcminutes — and
   for a cube a wavelength range in nanometres, started from what the
   search asked for, checked as you type (off the file, partly off, the
-  wrong shape for this file), with the size it will be. A cutout is kept in
+  wrong shape for this file), with the size it will be. **Spatial
+  cutout** and **Spectral cutout** in the search form, as on CADC's
+  search page, make Download in a result's detail fetch only the part
+  of the file within the search's circle, or its wavelengths — the whole
+  file when the file cannot be cut that way. A cutout is kept in
   Research beside its observation, marked with what it was cut from and
   where, with a way back to the complete observation; downloading it
   again cuts it again. For assistants: `get_cutout_options` (what each
@@ -128,7 +132,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   the last search, with its size — or why CADC offers none) and
   `download_cutout` (a circle, box or polygon, optionally a band, checked
   against the file before it is proposed) and `show_cutout_editor` (the
-  editor on the person's screen, on a region or the suggestion).
+  editor on the person's screen, on a region or the suggestion);
+  `get_search_form` and `set_search_form` read and set the two boxes.
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across

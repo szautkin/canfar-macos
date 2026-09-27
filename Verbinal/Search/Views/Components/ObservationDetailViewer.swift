@@ -33,7 +33,7 @@ struct ObservationDetailViewer: View {
     @State private var selectedTab: Tab = .overview
     @State private var isDownloading = false
     /// What the search asked for, for a cutout.
-    var cutoutHints: CutoutHints? = nil
+    var searchCutout = SearchCutout()
     /// The cutout editor, open over this detail.
     @State private var cutoutEditor: CutoutEditorModel?
     @State private var downloadMessage: String?
@@ -164,6 +164,7 @@ struct ObservationDetailViewer: View {
                             if isDownloading { ProgressView().controlSize(.small) }
                             Label(
                                 isDownloading ? String(localized: "Downloading…")
+                                              : searchCutout.isRequested ? String(localized: "Download Cutout")
                                               : (alreadyDownloaded ? String(localized: "Re-download")
                                                                    : String(localized: "Download")),
                                 systemImage: "arrow.down.circle"
@@ -190,7 +191,7 @@ struct ObservationDetailViewer: View {
                         cutoutEditor = CutoutEditorModel(
                             publisherID: model.publisherID,
                             details: DownloadedObservation.from(result: model.result, columns: model.columns, localPath: "", dataLink: dataLink),
-                            service: research.cutoutService, hints: cutoutHints)
+                            service: research.cutoutService, hints: searchCutout.hints)
                     } label: {
                         Label("Cut Out…", systemImage: "scissors")
                     }
@@ -264,7 +265,8 @@ struct ObservationDetailViewer: View {
             await research.downloadObservation(
                 from: model.result,
                 columns: model.columns,
-                dataLink: dataLink
+                dataLink: dataLink,
+                searchCutout: searchCutout
             )
             isDownloading = false
             if let success = research.lastSuccess {
