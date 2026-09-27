@@ -42,8 +42,10 @@ public struct FITSHeader: Sendable {
     }
 
     public func double(_ key: String, fallback: Double = 0.0) -> Double {
-        guard let card = cards[key], let v = Double(card.value.trimmingCharacters(in: .whitespaces)) else { return fallback }
-        return v
+        guard let card = cards[key] else { return fallback }
+        // FITS writes double precision with a D exponent too (`1.5D-07`).
+        let text = card.value.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "D", with: "E")
+        return Double(text) ?? fallback
     }
 
     public func bool(_ key: String, fallback: Bool = false) -> Bool {

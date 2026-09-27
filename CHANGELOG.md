@@ -25,6 +25,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   magma and plasma are now matplotlib's own 256-entry tables (the other
   three had been 9-point approximations, up to 17/255 off), so a colormap
   looks as it does in astropy and ds9.
+- **Positions on distorted images** — SIP distortion (`-SIP` headers:
+  HST's calibrated frames, many ground-based pipelines) was ignored, so
+  the crosshair, Go To, bookmarks, blink alignment and the agent's sky
+  read-outs were up to ~8 px (0.3″) out toward the corners of a WFC3
+  frame. The polynomial now applies both ways — sky to pixel is solved
+  against it, starting from `AP`/`BP` when the header has them — and
+  agrees with astropy to 1e-9° and 1e-6 px. Header values written with a
+  `D` exponent (`1.5D-07`) are now read.
 
 ## [1.3.4] - Unreleased
 

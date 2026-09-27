@@ -22,6 +22,9 @@ public struct FITSWCSTransform: Sendable {
     /// pixel scale is guessed, no rotation. The user should be warned that spatial
     /// operations (crosshair, Go To, Search Here) may be imprecise.
     public var isApproximate: Bool = false
+    /// Polynomial distortion (`-SIP`), applied between the pixel grid and
+    /// the linear CD matrix in both directions.
+    public var sip: SIPDistortion?
 
     public init(
         crpix1: Double,
@@ -32,7 +35,8 @@ public struct FITSWCSTransform: Sendable {
         cdInv: simd_double2x2,
         ctype1: String,
         ctype2: String,
-        isApproximate: Bool = false
+        isApproximate: Bool = false,
+        sip: SIPDistortion? = nil
     ) {
         self.crpix1 = crpix1
         self.crpix2 = crpix2
@@ -43,6 +47,7 @@ public struct FITSWCSTransform: Sendable {
         self.ctype1 = ctype1
         self.ctype2 = ctype2
         self.isApproximate = isApproximate
+        self.sip = sip
     }
 
     /// Valid when the CD matrix is invertible. A 90° `CROTA2` / PC rotation
@@ -121,11 +126,10 @@ public struct FITSWCSTransform: Sendable {
     /// rigorous spherical deprojection; anything else (or missing CTYPE)
     /// falls back to linear interpolation around the reference pixel.
     public func pixelToWorld(x: Double, y: Double) -> (ra: Double, dec: Double) {
-        let dx = x - crpix1
-        let dy = y - crpix2
-        let pixel = simd_double2(dx, dy)
+        let offset = (u: x - crpix1, v: y - crpix2)
+        let corrected = sip?.correct(u: offset.u, v: offset.v) ?? offset
         // Intermediate world coords in degrees via CD matrix.
-        let inter = cd * pixel
+        let inter = cd * simd_double2(corrected.u, corrected.v)
         let xi  = inter.x
         let eta = inter.y
 
@@ -156,8 +160,9 @@ public struct FITSWCSTransform: Sendable {
             return nil
         }
 
-        let dpixel = cdInv * inter
-        return (x: crpix1 + dpixel.x, y: crpix2 + dpixel.y)
+        let linear = cdInv * inter
+        let offset = sip?.distortedOffsets(U: linear.x, V: linear.y) ?? (u: linear.x, v: linear.y)
+        return (x: crpix1 + offset.u, y: crpix2 + offset.v)
     }
 
     // MARK: - Spherical projection math (zenithal family)
@@ -363,7 +368,8 @@ public struct FITSWCSTransform: Sendable {
             cdInv: simd_inverse(cd),
             ctype1: header.string("CTYPE1") ?? "",
             ctype2: header.string("CTYPE2") ?? "",
-            isApproximate: false
+            isApproximate: false,
+            sip: SIPDistortion.from(header: header)
         )
     }
 
