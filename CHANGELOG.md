@@ -20,6 +20,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
   does: decimal degrees with a point or a comma (a French Mac types
   `10,68`), or sexagesimal. A position it cannot read now says so instead
   of doing nothing.
+- **Viridis is viridis** — the FITS and cube viewers drew a teal-to-orange
+  approximation, and figures went out labelled VIRIDIS. Viridis, inferno,
+  magma and plasma are now matplotlib's own 256-entry tables (the other
+  three had been 9-point approximations, up to 17/255 off), so a colormap
+  looks as it does in astropy and ds9.
 
 ## [1.3.4] - Unreleased
 
