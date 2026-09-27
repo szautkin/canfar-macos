@@ -32,6 +32,8 @@ final class StorageBrowserModel {
     var activeTransfer: StorageTransfer?
     /// In-flight transfer work — cancelled by the status-bar × control.
     @ObservationIgnored private var transferWork: Task<Void, Never>?
+    /// Counts listings asked for, so only the latest one lands.
+    @ObservationIgnored private var loadGeneration = 0
     var hasError = false
     var errorMessage = ""
     var statusMessage = ""
@@ -88,6 +90,14 @@ final class StorageBrowserModel {
         await loadFolder(at: path, commitPath: true)
     }
 
+    /// Opens `path` straight away — even while the first listing is still
+    /// loading, which it then answers too.
+    func show(_ path: String) async {
+        selectedNode = nil
+        currentPath = path
+        await loadFolder(at: path, commitPath: false)
+    }
+
     func goUp() async {
         guard !currentPath.isEmpty else { return }
         let parent: String
@@ -122,11 +132,17 @@ final class StorageBrowserModel {
     /// orphans the breadcrumb. Refresh keeps the path and replaces `nodes`
     /// only on success so a flaky refresh doesn't blank the list.
     private func loadFolder(at path: String, commitPath: Bool) async {
+        // The last listing asked for is the one shown: an earlier one that
+        // answers late must not replace it.
+        loadGeneration += 1
+        let generation = loadGeneration
         isLoading = true
         hasError = false
         errorMessage = ""
+        defer { if generation == loadGeneration { isLoading = false } }
         do {
             let listed = try await service.listNodes(username: username, path: path)
+            guard generation == loadGeneration else { return }
             nodes = listed
             if commitPath { currentPath = path }
             let count = listed.count
@@ -134,6 +150,7 @@ final class StorageBrowserModel {
                 ? String(localized: "1 item")
                 : String(localized: "\(count) items")
         } catch {
+            guard generation == loadGeneration else { return }
             hasError = true
             errorMessage = error.localizedDescription
             // Keep the last successful listing + path; put the failure in
@@ -141,7 +158,6 @@ final class StorageBrowserModel {
             // pane only covers the first-load / wiped-list case).
             statusMessage = error.localizedDescription
         }
-        isLoading = false
     }
 
     func deleteSelected() async {

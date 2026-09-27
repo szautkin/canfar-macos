@@ -167,6 +167,12 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Run history: who sent it, language, status | `list_compute_runs` | read |
 | Start / Stop | `start_compute`, `stop_compute` | write (stop: destructive) |
 | Run code, and its output | `run_code`, `run_code_output` | write/read |
+| Home tile / the screen itself | `navigate_to` `remoteCompute` | live |
+| What the screen shows: tab, selected run, the Run code box | `get_compute_view` | read |
+| Click a run in the list | `show_compute_run` (`executionId`, newest when omitted) | live |
+| Type code in the Run code box (the person presses Run) | `set_compute_snippet` | live |
+| Open Folder in Storage | `show_storage_folder` `.verbinal/exec` | live |
+| Settings (the image is the person's to set) | `open_settings` `aiCompute` | live |
 
 ## Storage (VOSpace)
 
@@ -175,6 +181,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Browse/read/upload/download/mkdir/delete/ACL/quota | pre-existing batch | mixed |
 | "Open in FITS Viewer" context action | `open_vospace_file` | write |
 | Copy Path context action | trivial string op — covered by `list_vospace_path` output | — |
+| Open a folder of your home on screen | `show_storage_folder` | live |
 
 ## Shell / navigation / settings
 

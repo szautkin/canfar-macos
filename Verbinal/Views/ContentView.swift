@@ -175,6 +175,16 @@ struct ContentView: View {
             initResearchModel()
             await appState.initialize()
         }
+        #if os(macOS)
+        // Storage at a folder — Remote Compute's "Open folder in Storage"
+        // and `show_storage_folder`. The model is this view's, so it is applied here.
+        .task(id: appState.storageFolderRequest) {
+            guard let request = appState.storageFolderRequest else { return }
+            appState.storageFolderRequest = nil
+            initStorageModel()
+            await storageBrowserModel?.show(request.path)
+        }
+        #endif
         .task(id: appState.pendingSearchCoordinate) {
             guard let coord = appState.pendingSearchCoordinate else { return }
             appState.pendingSearchCoordinate = nil
@@ -316,6 +326,8 @@ struct ContentView: View {
             makeModeToolbar(title: String(localized: "Cube Viewer"), showAbout: $showAbout)
         case .aiGuide:
             makeModeToolbar(title: String(localized: "AI Guide"), showAbout: $showAbout)
+        case .remoteCompute:
+            makeModeToolbar(title: String(localized: "Remote Compute"), showAbout: $showAbout)
         case .workflows:
             makeModeToolbar(title: String(localized: "Wf_PageTitle"), showAbout: $showAbout)
         }
@@ -371,6 +383,12 @@ struct ContentView: View {
                 WorkflowsView()
                 #else
                 macOSOnlyPlaceholder("Workflows")
+                #endif
+            case .remoteCompute:
+                #if os(macOS)
+                remoteComputeBody
+                #else
+                macOSOnlyPlaceholder("Remote Compute")
                 #endif
             }
         }
@@ -561,6 +579,17 @@ struct ContentView: View {
             }
         } else {
             loginRequiredView(for: .storage)
+        }
+    }
+    #endif
+
+    #if os(macOS)
+    @ViewBuilder
+    private var remoteComputeBody: some View {
+        if appState.isAuthenticated {
+            RemoteComputeView(model: appState.remoteComputeModel)
+        } else {
+            loginRequiredView(for: .remoteCompute)
         }
     }
     #endif

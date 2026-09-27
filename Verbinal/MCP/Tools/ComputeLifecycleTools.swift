@@ -28,7 +28,7 @@ struct StartComputeTool: JSONWriteTool {
     static let verbClass: VerbClass = .semanticWrite
 
     /// Same injection story as `RunCodeTool`: the image + the default
-    /// instance size resolve from Settings ▸ Compute without an
+    /// instance size resolve from Settings ▸ AI Compute without an
     /// `AppState`/MainActor hop, and are stubbable in tests.
     let resolveImage: @Sendable () -> String
     let resolveResources: @Sendable () -> (cores: Int, ram: Int)
@@ -54,7 +54,7 @@ struct StartComputeTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "start_compute",
-        description: "Launch OR reuse the warm `verbinal-compute` contributed session that `run_code` runs on — an OPTIONAL pre-warm/sizing step (run_code self-launches a default-sized instance on its own, so you only need this when you want to control the size or warm the session up before iterating). `cores`/`ram` set the instance size: pass them to size it, otherwise the configured Settings ▸ Compute default is used. IMPORTANT: resources are FIXED once the instance is running — you CANNOT resize a live instance. If one is already running, this no-ops and keeps the current size; to change size you must `stop_compute` first, then `start_compute` again with the new size. Out-of-range values are clamped to 1–64 cores / 1–256 GB; the sizes your CANFAR deployment actually offers may be narrower, and an unavailable size surfaces as a launch error you can then adjust. Requires an AI compute image configured in Settings ▸ Compute.",
+        description: "Launch OR reuse the warm `verbinal-compute` contributed session that `run_code` runs on — an OPTIONAL pre-warm/sizing step (run_code self-launches a default-sized instance on its own, so you only need this when you want to control the size or warm the session up before iterating). `cores`/`ram` set the instance size: pass them to size it, otherwise the configured Settings ▸ AI Compute default is used. IMPORTANT: resources are FIXED once the instance is running — you CANNOT resize a live instance. If one is already running, this no-ops and keeps the current size; to change size you must `stop_compute` first, then `start_compute` again with the new size. Out-of-range values are clamped to 1–64 cores / 1–256 GB; the sizes your CANFAR deployment actually offers may be narrower, and an unavailable size surfaces as a launch error you can then adjust. Requires an AI compute image configured in Settings ▸ AI Compute.",
         schema: #"""
         {
           "type": "object",
@@ -71,7 +71,7 @@ struct StartComputeTool: JSONWriteTool {
         let image = resolveImage().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !image.isEmpty else {
             throw ToolFailureReason.invalidArgument(
-                "start_compute is disabled: set an AI compute image in Settings ▸ Compute first, or use launch_headless_job instead.")
+                "start_compute is disabled: set an AI compute image in Settings ▸ AI Compute first, or use launch_headless_job instead.")
         }
         let resolved = resolveResources()
         let cores = RunCodeContract.clampCores(args.cores ?? resolved.cores)

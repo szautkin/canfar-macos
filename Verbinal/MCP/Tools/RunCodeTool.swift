@@ -44,7 +44,7 @@ struct RunCodeTool: JSONWriteTool {
     /// (when no compute instance is warm). Resources are not a per-call
     /// `run_code` knob — the agent sizes the instance up-front via
     /// `start_compute`; `run_code` only consumes whatever default size
-    /// the user picked in Settings ▸ Compute. Injected for testing.
+    /// the user picked in Settings ▸ AI Compute. Injected for testing.
     let resolveResources: @Sendable () -> (cores: Int, ram: Int)
 
     init(resolveImage: @escaping @Sendable () -> String = { AIComputeImage.resolvedImageID() },
@@ -75,7 +75,7 @@ struct RunCodeTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "run_code",
-        description: "Run a short Python or bash snippet IMMEDIATELY on a warm interactive CANFAR compute session, skipping the headless batch queue (which can sit Pending for hours). Your code is dropped onto the session via the shared /arc filesystem; the running compute image executes it and writes the result back. Returns an `execution_id` — then call `run_code_output` with that id to fetch stdout/stderr/exit_code (poll a few times if still running; the FIRST call may take a minute or two while the session provisions, then subsequent calls are warm). USE FOR: quick checks, REPL-style iteration, inspecting data you just downloaded, sanity-running a snippet before scaling it up. DO NOT USE FOR: long-running, batch, parallel, or multi-hour work, or anything that must survive your disconnection — use `launch_headless_job` for that (queued, durable, poll with get_headless_job_logs). RULE OF THUMB: if you'd wait and watch for the result → run_code; if you'd submit and come back later → launch_headless_job. Requires an AI compute image configured in Settings ▸ Compute; if it is unset this errors and you should fall back to launch_headless_job. Resources come from your Settings ▸ Compute default (or whatever size `start_compute` already gave the running instance); to run heavier code, size the instance up with `start_compute` first, or use `launch_headless_job`.",
+        description: "Run a short Python or bash snippet IMMEDIATELY on a warm interactive CANFAR compute session, skipping the headless batch queue (which can sit Pending for hours). Your code is dropped onto the session via the shared /arc filesystem; the running compute image executes it and writes the result back. Returns an `execution_id` — then call `run_code_output` with that id to fetch stdout/stderr/exit_code (poll a few times if still running; the FIRST call may take a minute or two while the session provisions, then subsequent calls are warm). USE FOR: quick checks, REPL-style iteration, inspecting data you just downloaded, sanity-running a snippet before scaling it up. DO NOT USE FOR: long-running, batch, parallel, or multi-hour work, or anything that must survive your disconnection — use `launch_headless_job` for that (queued, durable, poll with get_headless_job_logs). RULE OF THUMB: if you'd wait and watch for the result → run_code; if you'd submit and come back later → launch_headless_job. Requires an AI compute image configured in Settings ▸ AI Compute; if it is unset this errors and you should fall back to launch_headless_job. Resources come from your Settings ▸ AI Compute default (or whatever size `start_compute` already gave the running instance); to run heavier code, size the instance up with `start_compute` first, or use `launch_headless_job`.",
         schema: #"""
         {
           "type": "object",
@@ -94,7 +94,7 @@ struct RunCodeTool: JSONWriteTool {
         let image = resolveImage().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !image.isEmpty else {
             throw ToolFailureReason.invalidArgument(
-                "run_code is disabled: set an AI compute image in Settings ▸ Compute first, or use launch_headless_job instead.")
+                "run_code is disabled: set an AI compute image in Settings ▸ AI Compute first, or use launch_headless_job instead.")
         }
         guard !args.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ToolFailureReason.invalidArgument("code is empty")

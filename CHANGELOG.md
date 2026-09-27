@@ -12,6 +12,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Storage shows the folder last asked for** — a listing that answered
+  late (a slow folder, then a quick click elsewhere) replaced the newer
+  one, leaving the breadcrumb and the files out of step.
 - **Sexagesimal rounding** — a position just under a whole minute printed
   as `23h59m60.00s` in the FITS and cube viewers, bookmarks and figure
   legends; the carry now happens everywhere a position is written, from
@@ -159,6 +162,15 @@ Catching up with Verbinal for Windows 1.4.1 (see
   `search_image_registry`, `list_my_images`, `add_registry_image` and
   `remove_registry_image` (which waits for you); `list_session_images`
   includes your images.
+- **Remote Compute** — a home tile (it needs you signed in) for the
+  session your assistant's `run_code` uses: its state, size and uptime,
+  **Start Session** and **Stop Session**, every run with its code, output
+  and errors, **Run Again**, and a box to run Python or bash yourself.
+  Until a compute image is set it says what it takes; **Open Folder in
+  Storage** shows the folder the session works in. For assistants:
+  `get_compute_view`, `show_compute_run`, `set_compute_snippet` (fills the
+  box, never runs it), `navigate_to remoteCompute`, and
+  `show_storage_folder` to open Storage at a folder of your home.
 - **Remote compute remembers its runs** — every piece of code sent to
   the compute session, by your assistant (`run_code`) or by you, is kept
   with who sent it, when, and how it ended (ok, error, timeout, no

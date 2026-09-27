@@ -1073,12 +1073,82 @@
         }
       }
     },
+    "%lld cores · %lld GB" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld cœurs · %lld Go"
+          }
+        }
+      }
+    },
+    "1. Get the watcher image: build verbinal-execution from its repository and push it to your project on images.canfar.net." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1. Obtenez l'image de surveillance : construisez verbinal-execution depuis son dépôt et poussez-la dans votre projet sur images.canfar.net."
+          }
+        }
+      }
+    },
+    "2. Open Settings ▸ AI Compute and set the image, the cores and RAM it runs with, and a registry login if the image is private." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2. Ouvrez Réglages ▸ Calcul IA et définissez l'image, les cœurs et la mémoire qu'elle utilise, et un identifiant de registre si l'image est privée."
+          }
+        }
+      }
+    },
+    "3. Come back here and press Start Session. The session takes a minute or two to come up." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3. Revenez ici et appuyez sur Démarrer la session. La session met une minute ou deux à démarrer."
+          }
+        }
+      }
+    },
+    "(none)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(aucune)"
+          }
+        }
+      }
+    },
+    "%@ s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ s"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un compagnon du portail scientifique CANFAR"
+          }
+        }
+      }
+    },
+    "A compute session from another install is on your account, holding your cores. Stop it here, or set an image in Settings ▸ AI Compute to use it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une session de calcul d'une autre installation est sur votre compte et occupe vos cœurs. Arrêtez-la ici, ou définissez une image dans Réglages ▸ Calcul IA pour l'utiliser."
           }
         }
       }
@@ -1764,6 +1834,16 @@
         }
       }
     },
+    "Assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Assistant"
+          }
+        }
+      }
+    },
     "Authenticating…" : {
       "localizations" : {
         "fr" : {
@@ -2393,6 +2473,16 @@
         }
       }
     },
+    "Choose a run to see its code and what came back." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez une exécution pour voir son code et ce qui en est revenu."
+          }
+        }
+      }
+    },
     "Choose destination" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2834,6 +2924,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cockpit sombre"
+          }
+        }
+      }
+    },
+    "Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code"
+          }
+        }
+      }
+    },
+    "Code to run" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code à exécuter"
+          }
+        }
+      }
+    },
+    "Code your AI assistant runs with run_code, and code you run here, goes to one session on your CANFAR account named verbinal-compute. It uses your cores, has no shell and no inbound network, and writes its results to your storage." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le code que votre assistant IA exécute avec run_code, et celui que vous exécutez ici, va à une seule session de votre compte CANFAR nommée verbinal-compute. Elle utilise vos cœurs, n'a ni shell ni réseau entrant, et écrit ses résultats dans votre stockage."
           }
         }
       }
@@ -3324,6 +3444,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier en JSON"
+          }
+        }
+      }
+    },
+    "Copy Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier le code"
           }
         }
       }
@@ -5443,6 +5573,26 @@
         }
       }
     },
+    "error" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "erreur"
+          }
+        }
+      }
+    },
+    "Errors" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erreurs"
+          }
+        }
+      }
+    },
     "Events" : {
       "localizations" : {
         "fr" : {
@@ -5523,6 +5673,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Présent"
+          }
+        }
+      }
+    },
+    "exit %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "code de sortie %lld"
           }
         }
       }
@@ -7261,6 +7421,26 @@
         }
       }
     },
+    "It never reached the session — see the message above." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il n'a jamais atteint la session — voir le message ci-dessus."
+          }
+        }
+      }
+    },
+    "It runs as you, on your session — the same way run_code runs your assistant's code." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il s'exécute en votre nom, sur votre session — comme run_code exécute le code de votre assistant."
+          }
+        }
+      }
+    },
     "IVOA Registry" : {
       "localizations" : {
         "fr" : {
@@ -8624,6 +8804,16 @@
         }
       }
     },
+    "No compute image is set — choose one in Settings ▸ AI Compute." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune image de calcul — choisissez-en une dans Réglages ▸ Calcul IA."
+          }
+        }
+      }
+    },
     "No default" : {
       "localizations" : {
         "fr" : {
@@ -8925,6 +9115,16 @@
         }
       }
     },
+    "no result" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucun résultat"
+          }
+        }
+      }
+    },
     "No results" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9140,6 +9340,26 @@
         }
       }
     },
+    "not sent" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "non envoyé"
+          }
+        }
+      }
+    },
+    "Not set up" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non configuré"
+          }
+        }
+      }
+    },
     "Not tested yet." : {
       "localizations" : {
         "fr" : {
@@ -9177,6 +9397,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Notes"
+          }
+        }
+      }
+    },
+    "Nothing came back in the time it could take. The session may have stopped before it ran; the code is still in the inbox and runs when it starts again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n'est revenu dans le temps prévu. La session s'est peut-être arrêtée avant l'exécution ; le code est toujours dans la boîte de réception et s'exécutera au prochain démarrage."
+          }
+        }
+      }
+    },
+    "Nothing has run yet." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n'a encore été exécuté."
           }
         }
       }
@@ -9363,6 +9603,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "OK"
+          }
+        }
+      }
+    },
+    "ok" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ok"
           }
         }
       }
@@ -9569,6 +9819,16 @@
         }
       }
     },
+    "Open Folder in Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir le dossier dans Stockage"
+          }
+        }
+      }
+    },
     "Open Image Content Discovery" : {
       "localizations" : {
         "fr" : {
@@ -9648,6 +9908,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ouvrir les Réglages (⌘,)"
+          }
+        }
+      }
+    },
+    "Open the Repository" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir le dépôt"
           }
         }
       }
@@ -9782,6 +10052,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Épaisseur du contour"
+          }
+        }
+      }
+    },
+    "Output" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sortie"
+          }
+        }
+      }
+    },
+    "output cut short" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sortie tronquée"
           }
         }
       }
@@ -11247,6 +11537,16 @@
         }
       }
     },
+    "Remote Compute" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calcul à distance"
+          }
+        }
+      }
+    },
     "Remove" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11944,6 +12244,36 @@
         }
       }
     },
+    "Run Again" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécuter de nouveau"
+          }
+        }
+      }
+    },
+    "Run Code" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécuter du code"
+          }
+        }
+      }
+    },
+    "Run code on your CANFAR session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécuter du code sur votre session CANFAR"
+          }
+        }
+      }
+    },
     "Run from the ADQL editor; loads back into it" : {
       "localizations" : {
         "fr" : {
@@ -12055,6 +12385,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Autotest en cours…"
+          }
+        }
+      }
+    },
+    "Runs" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécutions"
           }
         }
       }
@@ -12616,6 +12956,16 @@
         }
       }
     },
+    "Selected Run" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécution choisie"
+          }
+        }
+      }
+    },
     "Selected — click \"Use this image\" or press Return" : {
       "localizations" : {
         "fr" : {
@@ -12901,6 +13251,16 @@
         }
       }
     },
+    "Set up remote compute" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurer le calcul à distance"
+          }
+        }
+      }
+    },
     "Set up the AI assistant" : {
       "localizations" : {
         "fr" : {
@@ -13182,6 +13542,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connectez-vous au CADC pour utiliser Portail, Stockage et les autres services authentifiés"
+          }
+        }
+      }
+    },
+    "Sign in to CANFAR to use remote compute." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous à CANFAR pour utiliser le calcul à distance."
           }
         }
       }
@@ -13519,6 +13889,16 @@
         }
       }
     },
+    "Start Session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrer la session"
+          }
+        }
+      }
+    },
     "Started" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13526,6 +13906,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lancée"
+          }
+        }
+      }
+    },
+    "Starting" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrage"
+          }
+        }
+      }
+    },
+    "Starting — a compute session takes a minute or two to come up." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrage — une session de calcul met une minute ou deux à démarrer."
           }
         }
       }
@@ -13622,6 +14022,26 @@
         }
       }
     },
+    "Stop Session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter la session"
+          }
+        }
+      }
+    },
+    "Stop the compute session?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter la session de calcul ?"
+          }
+        }
+      }
+    },
     "Stop the running search" : {
       "localizations" : {
         "fr" : {
@@ -13638,6 +14058,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arrêtée"
+          }
+        }
+      }
+    },
+    "Stopping" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêt en cours"
+          }
+        }
+      }
+    },
+    "Stopping deletes the session and anything running in it. Code sent but not yet run stays in the inbox and runs when the session starts again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'arrêt supprime la session et tout ce qui s'y exécute. Le code envoyé mais pas encore exécuté reste dans la boîte de réception et s'exécute au prochain démarrage de la session."
           }
         }
       }
@@ -14212,6 +14652,16 @@
         }
       }
     },
+    "The folder the session reads requests from and writes results to" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le dossier où la session lit les demandes et écrit les résultats"
+          }
+        }
+      }
+    },
     "The loop" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -14259,6 +14709,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le registre a refusé ces identifiants. Utilisez votre secret CLI Harbor, pas votre mot de passe CADC."
+          }
+        }
+      }
+    },
+    "The result is no longer in your storage." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le résultat n'est plus dans votre stockage."
           }
         }
       }
@@ -14578,6 +15038,26 @@
         }
       }
     },
+    "timed out" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "délai dépassé"
+          }
+        }
+      }
+    },
+    "Timeout: %lld s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Délai : %lld s"
+          }
+        }
+      }
+    },
     "Timing" : {
       "localizations" : {
         "fr" : {
@@ -14839,6 +15319,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inutilisable"
+          }
+        }
+      }
+    },
+    "up %lld h %lld min" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "active depuis %lld h %lld min"
+          }
+        }
+      }
+    },
+    "up %lld min" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "active depuis %lld min"
           }
         }
       }
@@ -15299,6 +15799,16 @@
         }
       }
     },
+    "verbinal-execution on GitHub" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "verbinal-execution sur GitHub"
+          }
+        }
+      }
+    },
     "Verify" : {
       "localizations" : {
         "fr" : {
@@ -15557,6 +16067,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "voxel %lld, %lld, canal %lld"
+          }
+        }
+      }
+    },
+    "Waiting for the result…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente du résultat…"
           }
         }
       }
@@ -16153,6 +16673,16 @@
         }
       }
     },
+    "With auto-apply on, your assistant's code runs without asking first. Turn auto-apply off in Settings ▸ AI Agent to approve each run." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avec l'application automatique, le code de votre assistant s'exécute sans vous demander. Désactivez-la dans Réglages ▸ Agent IA pour approuver chaque exécution."
+          }
+        }
+      }
+    },
     "Workflows" : {
       "localizations" : {
         "fr" : {
@@ -16181,6 +16711,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Oui"
+          }
+        }
+      }
+    },
+    "You" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous"
           }
         }
       }

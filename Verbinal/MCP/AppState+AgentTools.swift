@@ -175,11 +175,16 @@ extension AppState {
         // via the /arc file-drop. `run_code` is an auto-apply-gated write
         // (drops the request into the inbox); `run_code_output` reads the
         // result back. Disabled until an AI compute image is set in
-        // Settings ▸ Compute.
+        // Settings ▸ AI Compute.
         tools.append(RunCodeTool())
         tools.append(makeRunCodeOutputTool())
         tools.append(makeGetComputeStateTool())
         tools.append(makeListComputeRunsTool())
+        // The Remote Compute screen and Storage, put in front of the person.
+        tools.append(makeGetComputeViewTool())
+        tools.append(makeShowComputeRunTool())
+        tools.append(makeSetComputeSnippetTool())
+        tools.append(makeShowStorageFolderTool())
         // Explicit lifecycle on top of the lazy `run_code`: pre-warm /
         // size the instance (`start_compute`) and tear it down
         // (`stop_compute`). Resources are an instance property set on
@@ -416,33 +421,9 @@ extension AppState {
         followAgentActivityEnabled: false
     )
 
-    private static func modeKey(_ mode: AppMode) -> String {
-        switch mode {
-        case .landing:    return "landing"
-        case .search:     return "search"
-        case .research:   return "research"
-        case .portal:     return "portal"
-        case .storage:    return "storage"
-        case .fitsViewer: return "fitsViewer"
-        case .cubeViewer: return "cubeViewer"
-        case .aiGuide:    return "aiGuide"
-        case .workflows:  return "workflows"
-        }
-    }
+    private static func modeKey(_ mode: AppMode) -> String { mode.key }
 
-    static func modeTitle(_ mode: AppMode) -> String {
-        switch mode {
-        case .landing:    return "Landing"
-        case .search:     return "Search"
-        case .research:   return "Research"
-        case .portal:     return "Portal"
-        case .storage:    return "Storage"
-        case .fitsViewer: return "FITS Viewer"
-        case .cubeViewer: return "Cube Viewer"
-        case .aiGuide:    return "AI Guide"
-        case .workflows:  return "Workflows"
-        }
-    }
+    static func modeTitle(_ mode: AppMode) -> String { mode.title }
 
     private func makeGetAuthStateTool() -> GetAuthStateTool {
         // Same extract-to-method pattern as `makeGetCurrentViewTool`.

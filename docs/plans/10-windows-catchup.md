@@ -97,7 +97,7 @@ twins of theirs, which we keep.
 | B agent experience | done — B1 tool map, B2 TAP schema + ADQL checker, B3 viewer pictures, B4 tabs/details, B5 copy, B6 background applies, B7 UI pointer + Settings | `c647e64` … |
 | C marks | done — QA: [12](./12-qa-windows-phase-c.md). C1 FITS marks: model, store (normalised path, per HDU), overlay, 7 tools, DS9/JSON export; C2 drawing and editing by hand, Marks panel, mark menu; C3a cube marks on the slice, `annotate_cube`, `list_cube_annotations`; C3b marks in the volume (one `CubeCamera`); C4a FITS figures of a region, with marks; C4b cube figures with marks | `178d67f` … `f5d7527` |
 | D Research and cutouts | done — QA: [13](./13-qa-windows-phase-d.md). D1 records without their file; D2 SODA cutouts, the editor, the search's cutout boxes; D3 local cutouts: images, mosaics, cubes by band, fpack tiles, weight maps | `3094375` … `a264cb5` |
-| E portal/compute | in progress — E1 Portal layout, launch form in a sheet, show_launch_form; E2 images card chips and projects; E3 registry search, your images, describe_image, search_packages; E4a compute service, run history, get_compute_state, list_compute_runs | `2a4dfe4`, `ba14192`, `8b4edbc`, E4a |
+| E portal/compute | in progress — E1 Portal layout, launch form in a sheet, show_launch_form; E2 images card chips and projects; E3 registry search, your images, describe_image, search_packages; E4a compute service, run history, get_compute_state, list_compute_runs; E4b Remote Compute screen, its view tools, show_storage_folder | `2a4dfe4`, `ba14192`, `8b4edbc`, `b8376cd`, E4b |
 
 A8 found no message truncation on the Mac (a Windows-only bug) and
 corrected a real one instead: destructive tools told agents they ran

@@ -7,7 +7,7 @@
 #if os(macOS)
 import SwiftUI
 
-/// Settings ▸ Compute — the AI Remote Compute image + the registry
+/// Settings ▸ AI Compute — the AI Remote Compute image + the registry
 /// credentials used to pull it. Mirrors the Image Discovery tab's
 /// registry/credentials block (one-way secret write, explicit Save,
 /// Docker V2 token-auth Test Connection) for the `verbinal-execution`

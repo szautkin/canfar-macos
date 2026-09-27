@@ -190,6 +190,7 @@ enum AIGuideCatalog {
         "export_cube_figure": "cube",
         // Storage (VOSpace)
         "list_vospace_path": "storage",
+        "show_storage_folder": "storage",
         "get_vospace_node": "storage",
         "read_vospace_file": "storage",
         "upload_to_vospace": "storage",
@@ -245,6 +246,9 @@ enum AIGuideCatalog {
         "stop_compute": "compute",
         "get_compute_state": "compute",
         "list_compute_runs": "compute",
+        "get_compute_view": "compute",
+        "show_compute_run": "compute",
+        "set_compute_snippet": "compute",
         // View & Navigation
         "set_search_focus": "navigation",
         "navigate_to": "navigation",

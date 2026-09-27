@@ -9,7 +9,7 @@ import Foundation
 /// Where remote compute stands, as the Remote Compute screen and
 /// `get_compute_state` say it. The raw values are the wire names.
 enum ComputeState: String, Codable, Sendable {
-    /// No compute image in Settings ▸ Compute: nothing can run.
+    /// No compute image in Settings ▸ AI Compute: nothing can run.
     case notSetUp
     /// Set up, with no compute session on the platform.
     case stopped

@@ -41,7 +41,7 @@ enum RemoteComputeError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .signedOut: return String(localized: "Sign in to CANFAR to use remote compute.")
-        case .notSetUp: return String(localized: "No compute image is set — choose one in Settings ▸ Compute.")
+        case .notSetUp: return String(localized: "No compute image is set — choose one in Settings ▸ AI Compute.")
         }
     }
 }

@@ -184,6 +184,19 @@ struct LandingView: View {
                 addonSlot
 
                 #if os(macOS)
+                // Remote Compute — the compute session an assistant's run_code
+                // uses, its runs, and a box to run code yourself. Needs the
+                // CADC session, like Portal and Storage.
+                LandingTile(
+                    icon: "cpu",
+                    fallbackIcon: "cpu",
+                    title: "Remote Compute",
+                    subtitle: "Run code on your CANFAR session",
+                    locked: !appState.isAuthenticated
+                ) {
+                    navigateOrPromptLogin(.remoteCompute)
+                }
+
                 // AI Assistant — the newcomer-framed entry point to the MCP
                 // setup wizard. Always shown (macOS-only); distinct from the
                 // AI Guide tile, which presumes the agent is already connected.

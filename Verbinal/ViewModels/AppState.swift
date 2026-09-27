@@ -14,7 +14,7 @@ import AppKit
 import MetricKit
 #endif
 
-enum AppMode: Equatable {
+enum AppMode: String, CaseIterable, Equatable {
     case landing
     case search
     case portal
@@ -24,12 +24,34 @@ enum AppMode: Equatable {
     case cubeViewer
     case aiGuide
     case workflows
+    case remoteCompute
 
-    /// Portal and Storage require a CADC session; all other modes are open.
+    /// Portal, Storage and Remote Compute require a CADC session; all other modes are open.
     var requiresAuthentication: Bool {
         switch self {
-        case .portal, .storage: return true
+        case .portal, .storage, .remoteCompute: return true
         default: return false
+        }
+    }
+
+    /// The mode's name for agents — `navigate_to`, `get_current_view`.
+    var key: String { rawValue }
+
+    init?(key: String) { self.init(rawValue: key) }
+
+    /// Its title as an agent reads it.
+    var title: String {
+        switch self {
+        case .landing:       return "Landing"
+        case .search:        return "Search"
+        case .research:      return "Research"
+        case .portal:        return "Portal"
+        case .storage:       return "Storage"
+        case .fitsViewer:    return "FITS Viewer"
+        case .cubeViewer:    return "Cube Viewer"
+        case .aiGuide:       return "AI Guide"
+        case .workflows:     return "Workflows"
+        case .remoteCompute: return "Remote Compute"
         }
     }
 }
@@ -61,12 +83,15 @@ final class AppState {
     /// agent `run_code` tool launches as a contributed session, plus its
     /// own registry host + Harbor credentials (so a private compute image
     /// can be pulled). Sibling of `imageDiscoverySettings`, separate
-    /// keyspace/Keychain. Surfaced in Settings ▸ Compute.
+    /// keyspace/Keychain. Surfaced in Settings ▸ AI Compute.
     let aiComputeSettings = AIComputeSettingsService()
 
     #if os(macOS)
     /// Code run on the person's compute session — by them on the Remote
     /// Compute screen or by an assistant — and the runs remembered.
+    /// The Remote Compute screen, kept while the app runs so an agent's
+    /// `show_compute_run` or `set_compute_snippet` lands where the person looks.
+    @ObservationIgnored private(set) lazy var remoteComputeModel = RemoteComputeModel(service: remoteCompute)
     @ObservationIgnored private(set) lazy var remoteCompute = RemoteComputeService(
         runs: ComputeRunStore(),
         sessions: sessionService,
@@ -152,6 +177,20 @@ final class AppState {
         case headless = 2
     }
     var launchFormTab: LaunchFormTab = .standard
+
+    /// Storage to open at a folder in the person's home; the view that holds
+    /// the Storage browser applies it and clears it.
+    struct StorageFolderRequest: Equatable, Sendable {
+        let id = UUID()
+        let path: String
+    }
+    var storageFolderRequest: StorageFolderRequest?
+
+    /// Opens Storage at `path`, relative to the person's home.
+    func showStorageFolder(_ path: String) {
+        storageFolderRequest = StorageFolderRequest(path: path)
+        navigateTo(.storage)
+    }
 
     /// The launch form is open: a sheet over the Portal, from Launch
     /// Session on Active Sessions, "Use this image", or an agent.
@@ -450,7 +489,7 @@ final class AppState {
     /// Navigate to an auth-gated mode, or remember the intent and open the
     /// login sheet when signed out (Landing tiles / ⌘5 / ⌘6).
     func navigateOrPromptLogin(_ mode: AppMode) {
-        assert(mode.requiresAuthentication, "navigateOrPromptLogin is only for Portal/Storage")
+        assert(mode.requiresAuthentication, "navigateOrPromptLogin is only for modes that need sign-in")
         if isAuthenticated {
             navigateTo(mode)
         } else {

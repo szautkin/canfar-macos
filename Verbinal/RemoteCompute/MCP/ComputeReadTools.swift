@@ -60,9 +60,9 @@ struct GetComputeStateTool: JSONReadTool {
             switch (configured, hasSession) {
             case (true, _): return nil
             case (false, false):
-                return "Not set up: a compute image is chosen in Settings ▸ Compute (open_settings section compute); the Remote Compute screen explains what it takes."
+                return "Not set up: a compute image is chosen in Settings ▸ AI Compute (open_settings section aiCompute); the Remote Compute screen (navigate_to remoteCompute) explains what it takes."
             case (false, true):
-                return "Not set up in this app, but a compute session is on the person's account — left from another install or from before a reinstall, and still holding their cores. They can stop it on the Remote Compute screen, or you can propose stop_compute. Running code needs a compute image in Settings ▸ Compute first."
+                return "Not set up in this app, but a compute session is on the person's account — left from another install or from before a reinstall, and still holding their cores. They can stop it on the Remote Compute screen, or you can propose stop_compute. Running code needs a compute image in Settings ▸ AI Compute first."
             }
         }
     }

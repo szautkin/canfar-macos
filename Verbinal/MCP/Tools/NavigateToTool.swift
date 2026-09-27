@@ -36,7 +36,7 @@ struct NavigateToTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "navigate_to",
-        description: "Switch the user's window to a specific app section: landing (dashboard / home), search (CADC archive search form), research (downloaded observations + notes), portal (sessions dashboard), storage (VOSpace browser), fitsViewer (the FITS viewer; open a file via `open_fits_file` first), cubeViewer (the 3D spectral-cube viewer; open a cube via `open_cube` first). Live-applied; use deliberately to keep the user oriented.",
+        description: "Switch the user's window to a specific app section: landing (dashboard / home), search (CADC archive search form), research (downloaded observations + notes), portal (sessions dashboard), storage (VOSpace browser), fitsViewer (the FITS viewer; open a file via `open_fits_file` first), cubeViewer (the 3D spectral-cube viewer; open a cube via `open_cube` first), aiGuide, workflows, remoteCompute (the Remote Compute screen: the compute session, its runs, and a box to run code; needs sign-in). Live-applied; use deliberately to keep the user oriented.",
         schema: #"""
         {
           "type": "object",
@@ -44,7 +44,7 @@ struct NavigateToTool: AITool {
           "properties": {
             "mode": {
               "type": "string",
-              "enum": ["landing", "search", "research", "portal", "storage", "fitsViewer", "cubeViewer", "aiGuide", "workflows"]
+              "enum": ["landing", "search", "research", "portal", "storage", "fitsViewer", "cubeViewer", "aiGuide", "workflows", "remoteCompute"]
             }
           },
           "additionalProperties": false
@@ -78,34 +78,7 @@ struct NavigateToTool: AITool {
         }
     }
 
-    private static func mode(from key: String) -> AppMode? {
-        switch key {
-        case "landing":    return .landing
-        case "search":     return .search
-        case "research":   return .research
-        case "portal":     return .portal
-        case "storage":    return .storage
-        case "fitsViewer": return .fitsViewer
-        case "cubeViewer": return .cubeViewer
-        case "aiGuide":    return .aiGuide
-        case "workflows":  return .workflows
-        default:           return nil
-        }
-    }
+    private static func mode(from key: String) -> AppMode? { AppMode(key: key) }
 
-    private static func title(for mode: AppMode) -> String {
-        switch mode {
-        case .landing:    return "Landing"
-        case .search:     return "Search"
-        case .research:   return "Research"
-        case .portal:     return "Portal"
-        case .storage:    return "Storage"
-        case .fitsViewer: return "FITS Viewer"
-        case .cubeViewer: return "Cube Viewer"
-        // Not an agent-navigable target (see `mode(from:)`), but the switch
-        // must be exhaustive.
-        case .aiGuide:    return "AI Guide"
-        case .workflows:  return "Workflows"
-        }
-    }
+    private static func title(for mode: AppMode) -> String { mode.title }
 }

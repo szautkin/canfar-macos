@@ -265,7 +265,11 @@ struct DescribeAppTool: JSONReadTool {
       * **Remote compute**: `get_compute_state` (set up? session
         state, size, uptime) and `list_compute_runs` (every run, who
         sent it, its status) beside `run_code` / `run_code_output` /
-        `start_compute` / `stop_compute`.
+        `start_compute` / `stop_compute`. The Remote Compute screen
+        (`navigate_to remoteCompute`): `get_compute_view`,
+        `show_compute_run`, `set_compute_snippet` (fills the box; the
+        person runs it). `show_storage_folder` opens Storage at a folder
+        of the person's home.
       * **Images the catalogue does not list**: `search_image_registry`,
         `list_my_images`, `add_registry_image` (write),
         `remove_registry_image` (write, destructive).
