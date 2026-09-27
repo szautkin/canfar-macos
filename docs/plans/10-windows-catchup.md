@@ -85,6 +85,22 @@ twins of theirs, which we keep.
 
 ---
 
+## Status
+
+| Phase | State | Commits |
+|---|---|---|
+| H1 split `AppState+AgentTools` | done | `3a8fa1b` |
+| H2 zero warnings, non-blocking tests | done | `f0d1e2c` |
+| H3 invariant tests | ongoing (a guard lands with each step) | — |
+| H4 pinned toolchain, CI package tests | done | `76f11a7` |
+| A1–A8 correctness | done — QA: [11](./11-qa-windows-phase-a.md) | `4433b44` … `1d3be2f` |
+| B agent experience | next | |
+| C marks · D cutouts · E portal/compute | open | |
+
+A8 found no message truncation on the Mac (a Windows-only bug) and
+corrected a real one instead: destructive tools told agents they ran
+immediately under auto-apply, which they never do.
+
 ## Phases
 
 ```mermaid
