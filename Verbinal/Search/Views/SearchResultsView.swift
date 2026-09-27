@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import VerbinalKit
 #if os(macOS)
 import AppKit
 #endif
@@ -40,6 +41,8 @@ struct SearchResultsView: View {
     var resultsModel: SearchResultsModel
     var tapClient: TAPClient
     var researchModel: ResearchModel?
+    /// What the search asked for, for a cutout of one of its results.
+    var cutoutHints: CutoutHints? = nil
     /// Invoked when the user clicks a quick-search cell. Called on MainActor
     /// with `(columnID, rawValue)`; wire through to
     /// ``SearchFormModel/quickSearch(columnID:rawValue:)``.
@@ -95,7 +98,8 @@ struct SearchResultsView: View {
                     columns: resultsModel.columns
                 ),
                 tapClient: tapClient,
-                researchModel: researchModel
+                researchModel: researchModel,
+                cutoutHints: cutoutHints
             )
             .iosSheetChrome([.medium, .large])
         }

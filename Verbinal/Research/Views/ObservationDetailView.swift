@@ -13,6 +13,8 @@ struct ObservationDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var showDeleteConfirm = false
     @State private var showRemoveFileConfirm = false
+    /// The cutout editor, open on this observation.
+    @State private var cutoutEditor: CutoutEditorModel?
     /// Why removing the file failed.
     @State private var fileProblem: String?
     /// True when the downloaded FITS file is a spectral cube, so the Open
@@ -122,6 +124,18 @@ struct ObservationDetailView: View {
                         .controlSize(.small)
                     }
 
+                    if !observation.isCutout {
+                        Button {
+                            cutoutEditor = CutoutEditorModel(publisherID: observation.publisherID, details: observation,
+                                                             service: model.cutoutService)
+                        } label: {
+                            Label("Cut Out…", systemImage: "scissors")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("Download only part of a file, cut on CADC's side")
+                    }
+
                     Button {
                         PlatformClipboard.copy(observation.facts.detailsText)
                     } label: {
@@ -226,6 +240,11 @@ struct ObservationDetailView: View {
                 )
             }
             .padding()
+        }
+        .sheet(item: $cutoutEditor) { editor in
+            CutoutEditorView(model: editor) { spec in
+                Task { await model.downloadCutout(of: editor.details, spec) }
+            }
         }
     }
 

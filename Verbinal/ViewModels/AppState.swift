@@ -721,6 +721,9 @@ final class AppState {
         var id: String { rawValue }
     }
     var activeSheet: ActiveSheet?
+    /// The cutout editor an agent opened (show_cutout_editor); the Search
+    /// and Research details open their own.
+    var cutoutEditor: CutoutEditorModel?
 
     /// True if the login sheet should be shown. Convenience for call sites that
     /// only need to know about the login sheet specifically.

@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import VerbinalKit
 #if os(macOS)
 import AppKit
 #endif
@@ -31,6 +32,10 @@ struct ObservationDetailViewer: View {
     @State private var isLoadingDataLink = false
     @State private var selectedTab: Tab = .overview
     @State private var isDownloading = false
+    /// What the search asked for, for a cutout.
+    var cutoutHints: CutoutHints? = nil
+    /// The cutout editor, open over this detail.
+    @State private var cutoutEditor: CutoutEditorModel?
     @State private var downloadMessage: String?
     @State private var downloadIsError = false
 
@@ -66,6 +71,11 @@ struct ObservationDetailViewer: View {
         .task {
             await model.loadCAOM2()
             await loadDataLink()
+        }
+        .sheet(item: $cutoutEditor) { editor in
+            CutoutEditorView(model: editor) { spec in
+                Task { await researchModel?.downloadCutout(of: editor.details, spec) }
+            }
         }
     }
 
@@ -175,6 +185,18 @@ struct ObservationDetailViewer: View {
                     .controlSize(.small)
                     .disabled(inResearch)
                     .help("Keep this observation in Research without downloading its file — for notes, and to download later")
+
+                    Button {
+                        cutoutEditor = CutoutEditorModel(
+                            publisherID: model.publisherID,
+                            details: DownloadedObservation.from(result: model.result, columns: model.columns, localPath: "", dataLink: dataLink),
+                            service: research.cutoutService, hints: cutoutHints)
+                    } label: {
+                        Label("Cut Out…", systemImage: "scissors")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Download only part of a file, cut on CADC's side")
                 } else if let url = TAPClient.downloadURL(publisherID: model.publisherID) {
                     Button {
                         openURL(url)

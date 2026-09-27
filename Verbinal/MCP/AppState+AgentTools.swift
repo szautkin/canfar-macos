@@ -286,6 +286,7 @@ extension AppState {
         tools.append(makeShowResearchObservationTool())
         tools.append(makeGetCutoutOptionsTool())
         tools.append(makeDownloadCutoutTool())
+        tools.append(makeShowCutoutEditorTool())
         tools.append(makeListFITSBookmarksTool())
         tools.append(makeGetCubeViewTool())
         tools.append(makeGetCubeImageTool())

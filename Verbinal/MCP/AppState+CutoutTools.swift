@@ -32,6 +32,37 @@ extension AppState {
         })
     }
 
+    func makeShowCutoutEditorTool() -> ShowCutoutEditorTool {
+        ShowCutoutEditorTool(show: { [weak self] args in
+            guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
+            let pid = args.publisherId.trimmingCharacters(in: .whitespacesAndNewlines)
+            // CADC first: the region is set against the file it names, and a file is chosen, not guessed.
+            let (sources, problems) = await self.cutoutSources(publisherID: pid)
+            guard !sources.isEmpty else {
+                return CutoutEditorShown(shown: false, artifactId: nil, summary: nil, errors: [], warnings: [],
+                                         estimatedBytes: nil, message: ([CutoutOptionsOutput.noneCanBeCut] + problems).joined(separator: " — "))
+            }
+            let initial: CutoutSpec? = args.asksAnything || args.artifactId != nil
+                ? try { let source = try args.pickSource(sources)
+                        return args.asksAnything ? try args.spec(for: source) : source.suggest(nil) }()
+                : nil
+            return await MainActor.run {
+                let editor = CutoutEditorModel(publisherID: pid, details: self.observationDetails(publisherID: pid),
+                                               service: self.cutoutService, hints: self.searchModel.cutoutHints, initial: initial)
+                editor.present(sources: sources, problems: problems)
+                self.cutoutEditor = editor
+                self.agentsService.activityStore.append(.live(
+                    kind: "show_cutout_editor", summary: "Opened the cutout editor on \(pid)",
+                    origin: .external(clientID: "show_cutout_editor")))
+                let spec = try? editor.spec.get()
+                return CutoutEditorShown(shown: true, artifactId: editor.source?.file.artifactID, summary: spec?.summary,
+                                         errors: editor.check?.errors.map(\.message) ?? [],
+                                         warnings: editor.check?.warnings.map(\.message) ?? [],
+                                         estimatedBytes: editor.estimatedBytes, message: nil)
+            }
+        })
+    }
+
     func makeCutoutAppliers(activity: AgentActivityStore) -> [any ProposalApplier] {
         [
             DownloadCutoutApplier(download: { [weak self] payload, attribution in

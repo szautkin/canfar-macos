@@ -114,15 +114,21 @@ Catching up with Verbinal for Windows 1.4.1 (see
   or observation id; `list_downloaded_observations` marks records
   without a file `downloaded: false`, and `download_observation` into a
   record Research has keeps its id.
-- **Cutouts** (in progress) — part of a file, cut on CADC's side, so a
-  few MB come down instead of a 1.6 GB tile. A cutout is kept in
+- **Cutouts** — part of a file, cut on CADC's side, so a few MB come
+  down instead of a 1.6 GB tile. **Cut Out…** in an observation's detail
+  (Search, and Research) opens an editor on the file's footprint: a circle
+  or box — RA and Dec in degrees or sexagesimal, sizes in arcminutes — and
+  for a cube a wavelength range in nanometres, started from what the
+  search asked for, checked as you type (off the file, partly off, the
+  wrong shape for this file), with the size it will be. A cutout is kept in
   Research beside its observation, marked with what it was cut from and
   where, with a way back to the complete observation; downloading it
   again cuts it again. For assistants: `get_cutout_options` (what each
   file can be cut by, its footprint and band, and a suggested cutout from
   the last search, with its size — or why CADC offers none) and
   `download_cutout` (a circle, box or polygon, optionally a band, checked
-  against the file before it is proposed).
+  against the file before it is proposed) and `show_cutout_editor` (the
+  editor on the person's screen, on a region or the suggestion).
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across

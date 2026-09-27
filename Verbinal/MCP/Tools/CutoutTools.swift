@@ -219,3 +219,45 @@ struct DownloadCutoutApplier: ResultReportingApplier {
         return (try? JSONEncoder().encode(AutoAppliedAck.Extra(id: id.uuidString))) ?? Data()
     }
 }
+
+// MARK: - show_cutout_editor
+
+/// What the editor shows after an agent opened it.
+struct CutoutEditorShown: Encodable, Sendable {
+    let shown: Bool
+    let artifactId: String?
+    let summary: String?
+    let errors: [String]
+    let warnings: [String]
+    let estimatedBytes: Int64?
+    let message: String?
+}
+
+struct ShowCutoutEditorTool: JSONReadTool {
+    static var verbClass: VerbClass { .viewState }
+    typealias Args = CutoutArgs
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "show_cutout_editor",
+        description: "Open the cutout editor on the person's screen, on one of an observation's files, with the region you give (circle, box or polygon, degrees; bandMin/bandMax in metres) — or the editor's own suggestion from the last search. The reply says what the editor shows and anything wrong with it. Nothing is downloaded: the person adjusts it and presses Download Cutout, or you follow with download_cutout. Live-applied; no proposal.",
+        schema: """
+        {
+          "type": "object",
+          "required": ["publisherId"],
+          "properties": {
+        \(CutoutArgs.schemaProperties)
+          },
+          "additionalProperties": false
+        }
+        """
+    )
+
+    let show: @Sendable (CutoutArgs) async throws -> CutoutEditorShown
+
+    func handle(_ args: CutoutArgs, context: AIToolContext) async throws -> CutoutEditorShown {
+        guard !args.publisherId.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw ToolFailureReason.invalidArgument("publisherId is required")
+        }
+        return try await show(args)
+    }
+}

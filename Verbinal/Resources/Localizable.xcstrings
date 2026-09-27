@@ -1075,6 +1075,16 @@
         }
       }
     },
+    "A polygon needs at least three corners." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un polygone doit avoir au moins trois sommets."
+          }
+        }
+      }
+    },
     "A timestamped folder will be created inside the selected directory." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1093,6 +1103,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "À propos"
+          }
+        }
+      }
+    },
+    "About %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Environ %@"
+          }
+        }
+      }
+    },
+    "About %@ of %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Environ %@ sur %@"
           }
         }
       }
@@ -1488,6 +1518,16 @@
         }
       }
     },
+    "any" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "toutes"
+          }
+        }
+      }
+    },
     "Appearance" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1610,6 +1650,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Asinh"
+          }
+        }
+      }
+    },
+    "Asking CADC what it can cut…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demande au CADC de ce qu'il peut découper…"
           }
         }
       }
@@ -2024,6 +2074,16 @@
         }
       }
     },
+    "CADC offers no cutouts of this observation's files." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le CADC ne propose aucune découpe des fichiers de cette observation."
+          }
+        }
+      }
+    },
     "CADC username" : {
       "localizations" : {
         "fr" : {
@@ -2087,7 +2147,6 @@
       }
     },
     "Cancel" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2220,6 +2279,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisissez un dossier pour donner à Verbinal accès à ses fichiers FITS."
+          }
+        }
+      }
+    },
+    "Choose a region (or a band) to cut; with neither, the whole file would come back." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez une région (ou une bande) à découper ; sans l'une ni l'autre, le fichier entier serait renvoyé."
           }
         }
       }
@@ -3741,6 +3810,26 @@
         }
       }
     },
+    "Cut Out" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découper"
+          }
+        }
+      }
+    },
+    "Cut Out…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découper…"
+          }
+        }
+      }
+    },
     "Cutout" : {
       "localizations" : {
         "fr" : {
@@ -3867,6 +3956,16 @@
         }
       }
     },
+    "Dec has to be between −90° and +90°." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La déclinaison doit être entre −90° et +90°."
+          }
+        }
+      }
+    },
     "Dec:" : {
       "localizations" : {
         "fr" : {
@@ -3927,6 +4026,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Valeurs par défaut"
+          }
+        }
+      }
+    },
+    "deg or hh:mm:ss" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "deg ou hh:mm:ss"
+          }
+        }
+      }
+    },
+    "deg or ±dd:mm:ss" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "deg ou ±dd:mm:ss"
           }
         }
       }
@@ -4446,6 +4565,16 @@
         }
       }
     },
+    "Download Cutout" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger la découpe"
+          }
+        }
+      }
+    },
     "Download failed" : {
       "localizations" : {
         "fr" : {
@@ -4483,6 +4612,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Téléchargez des observations depuis Rechercher pour les voir ici."
+          }
+        }
+      }
+    },
+    "Download only part of a file, cut on CADC's side" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger seulement une partie d'un fichier, découpée par le CADC"
           }
         }
       }
@@ -5100,6 +5239,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Saisissez l’A.D. et la Déc. en degrés ou en sexagésimal"
+          }
+        }
+      }
+    },
+    "Enter the radius in arcminutes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez le rayon en minutes d'arc"
+          }
+        }
+      }
+    },
+    "Enter the wavelengths in nanometres, or leave them empty" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez les longueurs d'onde en nanomètres, ou laissez-les vides"
+          }
+        }
+      }
+    },
+    "Enter the width and height in arcminutes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez la largeur et la hauteur en minutes d'arc"
           }
         }
       }
@@ -6324,6 +6493,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tâche sans interface lancée (id=%@)"
+          }
+        }
+      }
+    },
+    "Height (′)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hauteur (′)"
           }
         }
       }
@@ -7594,6 +7773,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Journaux"
+          }
+        }
+      }
+    },
+    "Longest (nm)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus longue (nm)"
           }
         }
       }
@@ -9381,6 +9570,36 @@
         }
       }
     },
+    "Part of that region is outside the footprint; the cutout will be trimmed to it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une partie de cette région est hors de l'empreinte ; la découpe y sera limitée."
+          }
+        }
+      }
+    },
+    "Part of that time range is outside this file's; the cutout will be trimmed to it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une partie de cette période est hors de celle du fichier ; la découpe y sera limitée."
+          }
+        }
+      }
+    },
+    "Part of that wavelength range is outside this file's; the cutout will be trimmed to it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une partie de cette plage est hors de celle du fichier ; la découpe y sera limitée."
+          }
+        }
+      }
+    },
     "Partial launch — see error below" : {
       "localizations" : {
         "fr" : {
@@ -10187,6 +10406,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rayon"
+          }
+        }
+      }
+    },
+    "Radius (′)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rayon (′)"
           }
         }
       }
@@ -12426,6 +12655,16 @@
         }
       }
     },
+    "Shortest (nm)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus courte (nm)"
+          }
+        }
+      }
+    },
     "Show" : {
       "localizations" : {
         "fr" : {
@@ -13506,6 +13745,46 @@
         }
       }
     },
+    "That region is larger than any cutout can be." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette région est plus grande qu'aucune découpe ne peut l'être."
+          }
+        }
+      }
+    },
+    "That region is outside this file's footprint." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette région est hors de l'empreinte de ce fichier."
+          }
+        }
+      }
+    },
+    "That time range is outside this file's." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette période est hors de celle du fichier."
+          }
+        }
+      }
+    },
+    "That wavelength range is outside this file's." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette plage de longueurs d'onde est hors de celle du fichier."
+          }
+        }
+      }
+    },
     "The agent calls this as " : {
       "localizations" : {
         "fr" : {
@@ -13596,6 +13875,16 @@
         }
       }
     },
+    "The file's footprint and the region to cut" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'empreinte du fichier et la région à découper"
+          }
+        }
+      }
+    },
     "The loop" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13603,6 +13892,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La boucle"
+          }
+        }
+      }
+    },
+    "The position and size have to be numbers." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La position et la taille doivent être des nombres."
           }
         }
       }
@@ -13623,6 +13922,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le serveur a accepté le lancement mais n'a renvoyé aucun ID de session."
+          }
+        }
+      }
+    },
+    "The shortest wavelength has to be below the longest." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La plus courte longueur d'onde doit être inférieure à la plus longue."
+          }
+        }
+      }
+    },
+    "The size has to be greater than zero." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La taille doit être supérieure à zéro."
+          }
+        }
+      }
+    },
+    "The start has to be before the end." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le début doit précéder la fin."
           }
         }
       }
@@ -13681,6 +14010,46 @@
         }
       }
     },
+    "This file cannot be cut by polarization." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier ne peut pas être découpé par polarisation."
+          }
+        }
+      }
+    },
+    "This file cannot be cut by time." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier ne peut pas être découpé par temps."
+          }
+        }
+      }
+    },
+    "This file cannot be cut by wavelength." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier ne peut pas être découpé par longueur d'onde."
+          }
+        }
+      }
+    },
+    "This file cannot be cut to that shape." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier ne peut pas être découpé selon cette forme."
+          }
+        }
+      }
+    },
     "This file has a third axis. Open it in the 2D FITS Viewer or the 3D Cube Viewer." : {
       "localizations" : {
         "en" : {
@@ -13693,6 +14062,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ce fichier a un troisième axe. Ouvrez-le dans la visionneuse FITS 2D ou la visionneuse Cube 3D."
+          }
+        }
+      }
+    },
+    "This file has no %@ polarization; it has %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier n'a pas de polarisation %@ ; il a %@."
           }
         }
       }
@@ -13797,6 +14176,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le fichier sera supprimé du disque. Cette action est irréversible."
+          }
+        }
+      }
+    },
+    "Those corners enclose no area." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces sommets n'enferment aucune surface."
           }
         }
       }
@@ -15331,6 +15720,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Image entière"
+          }
+        }
+      }
+    },
+    "Width (′)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Largeur (′)"
           }
         }
       }

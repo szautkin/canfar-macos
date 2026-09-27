@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 import Observation
 #if os(macOS)
 import AppKit
@@ -172,6 +173,16 @@ final class ResearchModel {
                 self?.lastError = nil
             }
         }
+    }
+
+    /// Cut part of `details`' file on CADC's side and keep it in Research as
+    /// a cutout of the observation, beside the complete one.
+    func downloadCutout(of details: DownloadedObservation, _ spec: CutoutSpec) async {
+        var record = details.withoutFile()
+        record.id = UUID()
+        record.cutout = spec
+        record.agentAttribution = nil
+        await download(record)
     }
 
     /// Keep an observation from Search in Research without its file.

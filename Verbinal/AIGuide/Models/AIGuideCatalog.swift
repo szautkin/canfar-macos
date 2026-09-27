@@ -132,6 +132,7 @@ enum AIGuideCatalog {
         "show_research_observation": "research",
         "get_cutout_options": "downloads",
         "download_cutout": "downloads",
+        "show_cutout_editor": "downloads",
         "get_observation_notes": "research",
         "update_observation_note": "research",
         "bulk_update_observation_notes": "research",

@@ -165,6 +165,11 @@ struct ContentView: View {
             ViewerChoiceSheet(url: item.url)
                 .environment(appState)
         }
+        .sheet(item: Bindable(appState).cutoutEditor) { editor in
+            CutoutEditorView(model: editor) { spec in
+                Task { await appState.researchModel.downloadCutout(of: editor.details, spec) }
+            }
+        }
         #endif
         .task {
             initResearchModel()

@@ -176,8 +176,8 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Download a record kept without its file (Research detail, row menu) | `download_observation` (same record, same id) | write |
 | Select a record, detail open | `show_research_observation` | live |
 | Cutout record: Original Observation | `show_research_observation` with its publisher id | live |
-| Cutout options of a file (editor: D2c) | `get_cutout_options` | read |
-| Download a cutout (editor: D2c) | `download_cutout` | write |
+| Cut Out… (Search and Research detail): the editor, its file, region, band, checks, size | `show_cutout_editor`; `get_cutout_options` | live/read |
+| Download Cutout | `download_cutout` | write |
 | AI Guide content (overrides, guides) | pre-existing batch | mixed |
 
 ## Workflows
