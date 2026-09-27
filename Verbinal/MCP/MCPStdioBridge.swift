@@ -42,6 +42,10 @@ import MCPCore
 /// Entry point invoked from `VerbinalMain` when the `mcp` argument is
 /// present. Runs the bridge to completion, then terminates the process —
 /// it never returns to the SwiftUI app path.
+///
+/// The relaying — and keeping the assistant's session alive while the app
+/// is closed, starts or quits — is `ResilientBridge`'s; this file only
+/// supplies the stdio side, the way to the app's socket, and the words.
 enum MCPStdioBridge {
     static func runAndExit() -> Never {
         // Ignore SIGPIPE process-wide: an MCP client can close stdout while
@@ -50,12 +54,39 @@ enum MCPStdioBridge {
         BridgeLog.info("mcp bridge startup pid=\(getpid())")
         let sem = DispatchSemaphore(value: 0)
         Task {
-            await Bridge().run()
+            let bridge = ResilientBridge(
+                client: StdioTransport(),
+                connect: connectToApp,
+                manifest: .standard(),
+                configuration: .init(
+                    serverName: "Verbinal",
+                    serverVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
+                    notRunningMessage: notRunningMessage),
+                log: { BridgeLog.info($0) })
+            await bridge.run()
             sem.signal()
         }
         sem.wait()
         BridgeLog.info("mcp bridge shutting down")
         exit(0)
+    }
+
+    /// What an assistant reads while Verbinal is closed.
+    static let notRunningMessage = "Verbinal is not running. Open Verbinal and turn on Settings ▸ AI Agent ▸ Allow external AI agents; its tools come back on their own once it is running."
+
+    /// The running app's socket, or nil while it is closed.
+    @Sendable
+    private static func connectToApp() async -> (any MCPTransport)? {
+        guard let socketPath = try? SocketSidecar.read() else { return nil }
+        let socket = SocketTransport.client(socketPath: socketPath)
+        do {
+            try await socket.start()
+            BridgeLog.info("connected to \(socketPath)")
+            return socket
+        } catch {
+            BridgeLog.info("connect to \(socketPath) failed — \(error)")
+            return nil
+        }
     }
 }
 
@@ -66,9 +97,7 @@ enum MCPStdioBridge {
 // is grepable diagnostic evidence without opening Console.app.
 
 private enum BridgeLog {
-    static func debug(_ message: @autoclosure () -> String) { emit("debug", message()) }
-    static func info(_ message: @autoclosure () -> String)  { emit("info",  message()) }
-    static func error(_ message: @autoclosure () -> String) { emit("error", message()) }
+    static func info(_ message: @autoclosure () -> String) { emit("info", message()) }
 
     nonisolated(unsafe) private static let formatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
@@ -80,120 +109,6 @@ private enum BridgeLog {
         let line = "\(formatter.string(from: Date())) [verbinal-mcp] [\(level)] \(message)\n"
         guard let data = line.data(using: .utf8) else { return }
         try? FileHandle.standardError.write(contentsOf: data)
-    }
-}
-
-/// Three states: connecting, forwarding, failing. Mirrors the old helper's
-/// `Forwarder` so behaviour (graceful JSON-RPC errors when the app isn't
-/// running) is identical.
-private actor Bridge {
-
-    func run() async {
-        let stdio = StdioTransport()
-
-        let socketPath: String
-        do {
-            socketPath = try SocketSidecar.read()
-            BridgeLog.info("sidecar resolved -> \(socketPath)")
-        } catch {
-            BridgeLog.error("sidecar missing — \(error)")
-            await drainAndFail(
-                stdio: stdio,
-                code: JSONRPCErrorCode.serviceUnavailable,
-                message: "Verbinal app is not running."
-            )
-            return
-        }
-
-        let socket = SocketTransport.client(socketPath: socketPath)
-        do {
-            try await socket.start()
-            BridgeLog.info("socket connected")
-        } catch {
-            BridgeLog.error("connect failed — \(error)")
-            await drainAndFail(
-                stdio: stdio,
-                code: JSONRPCErrorCode.serviceUnavailable,
-                message: "Could not connect to Verbinal app."
-            )
-            return
-        }
-
-        BridgeLog.info("entering forward loop")
-        await splice(stdio: stdio, socket: socket)
-        BridgeLog.info("forward loop exited")
-        await stdio.close()
-        await socket.close()
-    }
-
-    /// Bidirectional stdin↔socket bridge. Returns when either side closes.
-    private func splice(stdio: StdioTransport, socket: SocketTransport) async {
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                await Self.copy(from: stdio, to: socket, label: "stdio→socket")
-            }
-            group.addTask {
-                await Self.copy(from: socket, to: stdio, label: "socket→stdio")
-            }
-            // First finished implies the link is broken; abandon the other.
-            _ = await group.next()
-            group.cancelAll()
-        }
-    }
-
-    private static func copy(from src: any MCPTransport,
-                             to dst: any MCPTransport,
-                             label: String) async {
-        do {
-            for try await frame in src.incoming {
-                BridgeLog.debug("\(label) \(frame.count)B \(Self.trace(of: frame))")
-                try await dst.send(frame)
-            }
-        } catch {
-            BridgeLog.info("\(label) ended — \(error)")
-        }
-    }
-
-    /// Best-effort one-line trace of a JSON-RPC frame (method + id only).
-    private static func trace(of frame: Data) -> String {
-        guard let obj = try? JSONSerialization.jsonObject(with: frame) as? [String: Any] else {
-            return "<non-json>"
-        }
-        let id: String
-        switch obj["id"] {
-        case let n as Int:    id = String(n)
-        case let n as Int64:  id = String(n)
-        case let s as String: id = "\"\(s)\""
-        case is NSNull:       id = "null"
-        default:              id = "-"
-        }
-        if let method = obj["method"] as? String { return "method=\(method) id=\(id)" }
-        if obj["result"] != nil { return "response result id=\(id)" }
-        if obj["error"] != nil { return "response error id=\(id)" }
-        return "id=\(id)"
-    }
-
-    /// Read every incoming request and respond with the same error so the
-    /// client gets well-formed JSON-RPC instead of silence.
-    private func drainAndFail(stdio: StdioTransport, code: Int, message: String) async {
-        let decoder = JSONDecoder()
-        let encoder = JSONEncoder()
-        do {
-            for try await frame in stdio.incoming {
-                guard let request = try? decoder.decode(JSONRPCRequest.self, from: frame) else {
-                    continue // skip notifications and malformed bodies
-                }
-                let payload = JSONRPCErrorPayload(code: code, message: message)
-                let response = JSONRPCResponse.failure(id: request.id, error: payload)
-                if let bytes = try? encoder.encode(response) {
-                    try? await stdio.send(bytes)
-                } else {
-                    BridgeLog.error("failed to encode error response for id \(request.id)")
-                }
-            }
-        } catch {
-            // EOF / framing failure — peer hung up; done.
-        }
     }
 }
 #endif

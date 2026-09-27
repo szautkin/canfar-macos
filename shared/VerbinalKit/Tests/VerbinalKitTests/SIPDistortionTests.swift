@@ -105,7 +105,6 @@ final class SIPDistortionTests: XCTestCase {
     }
 
     func testDistortionMattersAtTheCorners() throws {
-        let withSIP = try XCTUnwrap(FITSWCSTransform.fromHeader(header()))
         let without = try XCTUnwrap(FITSWCSTransform.fromHeader(header(ctype: false)))
         XCTAssertNil(without.sip, "coefficients without -SIP on CTYPE are not applied")
         // Where a linear WCS would put each true position; astropy's worst

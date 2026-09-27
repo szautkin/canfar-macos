@@ -606,7 +606,7 @@ final class MCPBridgeServiceTests: XCTestCase {
             approval: .allowAll
         )
 
-        let (clientSide, serverSide) = PairTransport.makePair()
+        let (clientSide, serverSide) = InMemoryTransport.pair()
 
         // Spin the server side.
         let serveTask = Task { await bridge.serve(on: serverSide) }
@@ -662,7 +662,7 @@ final class MCPBridgeServiceTests: XCTestCase {
             services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8))
         )
 
-        let (clientSide, serverSide) = PairTransport.makePair()
+        let (clientSide, serverSide) = InMemoryTransport.pair()
         let serveTask = Task { await bridge.serve(on: serverSide) }
         try await clientSide.send(makeRPC(method: "tools/list", id: .int(1), params: EmptyArgs()))
         let resp = try await readResponse(from: clientSide)
@@ -698,7 +698,7 @@ final class MCPBridgeServiceTests: XCTestCase {
             aiGuide: resolver
         )
 
-        let (clientSide, serverSide) = PairTransport.makePair()
+        let (clientSide, serverSide) = InMemoryTransport.pair()
         let serveTask = Task { await bridge.serve(on: serverSide) }
 
         let initParams = InitializeParams(protocolVersion: "2024-11-05",
@@ -790,7 +790,7 @@ final class MCPBridgeServiceTests: XCTestCase {
         return try JSONSerialization.data(withJSONObject: envelope)
     }
 
-    private func readResponse(from t: PairTransport) async throws -> JSONRPCResponse {
+    private func readResponse(from t: InMemoryTransport) async throws -> JSONRPCResponse {
         var iterator = t.incoming.makeAsyncIterator()
         guard let frame = try await iterator.next() else {
             // Stream finished without yielding a response frame — surface as

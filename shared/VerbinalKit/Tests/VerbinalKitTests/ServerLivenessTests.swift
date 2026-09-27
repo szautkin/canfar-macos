@@ -136,7 +136,7 @@ final class ServerLivenessTests: XCTestCase {
             services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8)),
             approval: .allowAll)
 
-        let (clientSide, serverSide) = PairTransport.makePair()
+        let (clientSide, serverSide) = InMemoryTransport.pair()
         let serveTask = Task { await bridge.serve(on: serverSide) }
 
         try await clientSide.send(Self.makeRPC(

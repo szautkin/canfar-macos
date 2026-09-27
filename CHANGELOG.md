@@ -33,6 +33,18 @@ Catching up with Verbinal for Windows 1.4.1 (see
   against it, starting from `AP`/`BP` when the header has them — and
   agrees with astropy to 1e-9° and 1e-6 px. Header values written with a
   `D` exponent (`1.5D-07`) are now read.
+- **Your assistant while Verbinal is closed, starting or quitting** — an
+  assistant started before Verbinal got a failed handshake and gave up on
+  it for the whole session (Claude Code, Claude Desktop and others do),
+  and one connected when Verbinal quit lost its tools until reconnected by
+  hand. The bridge an assistant launches (`Verbinal mcp`) now answers the
+  handshake itself, lists the tools Verbinal listed last time — each
+  answering that Verbinal is not running and what to turn on, as a tool
+  error the assistant reads — then connects when Verbinal starts, replays
+  the assistant's handshake to it and tells the assistant its tool list
+  has changed. A request Verbinal was holding when it quit is answered
+  instead of left hanging, and a handshake is never held up by a stalled
+  first connection attempt.
 
 ## [1.3.4] - Unreleased
 

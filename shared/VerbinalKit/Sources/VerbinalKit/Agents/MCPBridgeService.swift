@@ -253,7 +253,9 @@ public actor MCPBridgeService {
         let result = InitializeResult(
             protocolVersion: params.protocolVersion,
             capabilities: ServerCapabilities(
-                tools: .init(listChanged: false),
+                // The bridge (`ResilientBridge`) sends list_changed when it
+                // reconnects to a restarted app.
+                tools: .init(listChanged: true),
                 resources: .init(subscribe: false, listChanged: false),
                 logging: .object([:])
             ),
