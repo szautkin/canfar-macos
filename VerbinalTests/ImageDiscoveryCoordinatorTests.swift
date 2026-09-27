@@ -178,7 +178,8 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         headless: MockHeadless,
         vospace: MockVOSpace,
         timeout: TimeInterval = 5.0,
-        imageTypesLookup: (@Sendable (String) async -> [String]?)? = { _ in ["headless"] }
+        imageTypesLookup: (@Sendable (String) async -> [String]?)? = { _ in ["headless"] },
+        recordJob: (@Sendable (JobRecord) async -> Void)? = nil
     ) -> ImageDiscoveryCoordinator {
         // Default `imageTypesLookup` returns `["headless"]` for any
         // image so the coordinator routes through `.inTarget` — the
@@ -197,7 +198,9 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             probeJobTimeout: timeout,
             pollInterval: 0.01,         // fast polling for tests
             maxConcurrentProbes: 3,
-            imageTypesLookup: imageTypesLookup
+            imageTypesLookup: imageTypesLookup,
+            tasks: TaskRegistry(),
+            recordJob: recordJob
         )
     }
 
@@ -1076,5 +1079,32 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             return XCTFail("expected .failure outcome")
         }
         XCTAssertEqual(cat, .jobTimedOut)
+    }
+
+    // MARK: - Job history
+
+    /// Each probe job is remembered when it ends — the platform forgets it
+    /// and the coordinator deletes it — with the image, and why it failed.
+    func testEveryProbeJobIsRememberedWithItsOutcome() async throws {
+        let recorded = Locked<[JobRecord]>([])
+        let record: @Sendable (JobRecord) async -> Void = { job in recorded.withValue { $0.append(job) } }
+
+        let h = MockHeadless()
+        let v = MockVOSpace()
+        wireLaunchToWriteManifest(v, h)
+        let imageID = "images.canfar.net/skaha/astroml:24.07"
+        _ = try await makeCoord(store: makeStore(), headless: h, vospace: v, recordJob: record).discover(imageID)
+        let success = try XCTUnwrap(recorded.value.first)
+        XCTAssertEqual(success.origin, .imageProbe)
+        XCTAssertEqual(success.outcome, .succeeded)
+        XCTAssertEqual(success.targetImage, imageID)
+        XCTAssertFalse(success.id.isEmpty, "keyed by the platform's job id")
+
+        _ = try? await makeCoord(store: makeStore(), headless: MockHeadless(), vospace: MockVOSpace(), recordJob: record)
+            .discover("missing:1")
+        let failure = try XCTUnwrap(recorded.value.last)
+        XCTAssertEqual(failure.outcome, .failed)
+        XCTAssertEqual(failure.targetImage, "missing:1")
+        XCTAssertFalse(failure.failureReason?.isEmpty ?? true, "the reason, while there is one")
     }
 }

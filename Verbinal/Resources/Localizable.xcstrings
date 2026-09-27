@@ -2086,6 +2086,16 @@
         }
       }
     },
+    "Batch job" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâche par lots"
+          }
+        }
+      }
+    },
     "Batch Job Completed" : {
       "localizations" : {
         "fr" : {
@@ -2810,6 +2820,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Effacer les terminées"
+          }
+        }
+      }
+    },
+    "Clear History" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer l'historique"
           }
         }
       }
@@ -7174,6 +7194,26 @@
         }
       }
     },
+    "Image inspection" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspection d'image"
+          }
+        }
+      }
+    },
+    "Image inspection — %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspection d'image — %@"
+          }
+        }
+      }
+    },
     "Image URL" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7659,6 +7699,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Garder cette observation dans Recherche sans télécharger son fichier — pour les notes, et pour la télécharger plus tard"
+          }
+        }
+      }
+    },
+    "Kept on this Mac after CANFAR removes the job." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conservé sur ce Mac après le retrait de la tâche par CANFAR."
           }
         }
       }
@@ -9547,6 +9597,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rien n'est revenu dans le temps prévu. La session s'est peut-être arrêtée avant l'exécution ; le code est toujours dans la boîte de réception et s'exécutera au prochain démarrage."
+          }
+        }
+      }
+    },
+    "Nothing has finished yet. Jobs appear here as they end, and stay after CANFAR removes them." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n'est encore terminé. Les tâches apparaissent ici à leur fin et y restent après leur retrait par CANFAR."
           }
         }
       }

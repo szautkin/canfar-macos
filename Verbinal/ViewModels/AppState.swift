@@ -513,6 +513,8 @@ final class AppState {
     let searchModel = SearchFormModel()
     /// What the app is doing — the activity bar's tasks.
     let tasks = TaskRegistry.shared
+    /// Finished batch jobs, kept after the platform forgets them.
+    let jobHistory = JobHistoryStore()
     /// What an agent can point at (`point_at_ui`), and its hint.
     let uiPointer = UIPointerRegistry()
     /// Marks kept with each file, for both viewers.
@@ -859,7 +861,7 @@ final class AppState {
             return
         }
 
-        let monitor = HeadlessMonitorModel(headlessService: headlessService)
+        let monitor = HeadlessMonitorModel(headlessService: headlessService, history: jobHistory)
         monitor.onAuthFailure = { [weak self] in
             Task { @MainActor in
                 self?.auth.handleTokenExpired()
@@ -917,7 +919,8 @@ final class AppState {
             username: username,
             imageTypesLookup: typesLookup,
             registryAuthProvider: authProvider,
-            inspectorImageResolver: inspectorResolver
+            inspectorImageResolver: inspectorResolver,
+            recordJob: { [weak self] job in await self?.jobHistory.record(job) }
         )
         imageDiscoveryCoordinator = coord
         imageDiscoveryModel = ImageDiscoveryModel(coordinator: coord)

@@ -177,6 +177,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   new folders, observation downloads and cutouts, and remote-compute runs
   are on it; a task that ends without saying how is shown as abandoned,
   never as running for ever. For assistants: `list_activity`.
+- **Batch jobs are remembered after CANFAR removes them** — the Batch
+  Jobs sheet has a **History** tab: the last fifty finished jobs, yours
+  and image discovery's probes, with when they ended and, for a failure,
+  why — taken while the job still existed, since the platform soon
+  forgets it and its logs. For assistants: `list_job_history`
+  (`failedOnly`).
 - **Remote Compute** — a home tile (it needs you signed in) for the
   session your assistant's `run_code` uses: its state, size and uptime,
   **Start Session** and **Stop Session**, every run with its code, output

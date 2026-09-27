@@ -143,6 +143,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Session log view | `get_session_logs` | read |
 | Connect button (opens browser) | `open_session` | live |
 | Headless jobs (logs/events/launch) | pre-existing batch | mixed |
+| Batch Jobs ▸ History (finished jobs CANFAR has removed, and why) | `list_job_history` (`failedOnly`) | read |
 
 ## Image discovery
 
@@ -227,8 +228,9 @@ Mac keeps legacy names as aliases so older agents keep working:
 
 ## Intentionally not exposed
 
-- **Clear Finished** (activity bar) — the person's own housekeeping of
-  what they have read; an agent reads the list with `list_activity`.
+- **Clear Finished** (activity bar) and **Clear History** (Batch Jobs) —
+  the person's own housekeeping of what they have read; an agent reads
+  them with `list_activity` and `list_job_history`.
 - **Ephemeral gesture state**: FITS canvas scroll-pan/pinch and Cube
   slice-view pan/zoom are transient local view state; the semantic
   equivalents (goto coordinate, zoom level, fit, channel, camera) are

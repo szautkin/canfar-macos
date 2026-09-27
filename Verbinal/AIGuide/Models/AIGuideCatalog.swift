@@ -227,6 +227,7 @@ enum AIGuideCatalog {
         "get_headless_job_logs": "headless",
         "get_headless_job_events": "headless",
         "launch_headless_job": "headless",
+        "list_job_history": "headless",
         // Image Discovery
         "find_images_with_packages": "discovery",
         "discover_image_packages": "discovery",

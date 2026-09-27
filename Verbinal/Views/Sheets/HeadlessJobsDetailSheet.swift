@@ -36,7 +36,7 @@ struct HeadlessJobsDetailSheet: View {
             ("pending", String(localized: "Pending"), model.pendingCount, .orange),
             ("completed", String(localized: "Completed"), model.completedCount, .blue),
             ("failed", String(localized: "Failed"), model.failedCount, .red),
-        ]
+        ] + (model.history.map { [("history", String(localized: "History"), $0.jobs.count, .gray)] } ?? [])
     }
 
     private var filteredJobs: [HeadlessJob] {
@@ -116,7 +116,9 @@ struct HeadlessJobsDetailSheet: View {
             Divider()
 
             // Job list
-            if filteredJobs.isEmpty {
+            if selectedTab == "history", let history = model.history {
+                JobHistoryList(history: history)
+            } else if filteredJobs.isEmpty {
                 Spacer()
                 Text(emptyStateText)
                     .foregroundStyle(.secondary)
@@ -375,5 +377,54 @@ struct HeadlessJobsDetailSheet: View {
         eventsText = SessionDisplay.logResultText(await events, emptyFallback: String(localized: "No events available"))
         logsText = SessionDisplay.logResultText(await logs, emptyFallback: String(localized: "No logs available"))
         eventsSheetJob = job
+    }
+}
+
+/// The jobs CANFAR no longer lists — the only place a failure from an hour
+/// ago still has its reason.
+private struct JobHistoryList: View {
+    var history: JobHistoryStore
+
+    var body: some View {
+        if history.jobs.isEmpty {
+            Spacer()
+            Text("Nothing has finished yet. Jobs appear here as they end, and stay after CANFAR removes them.")
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            Spacer()
+        } else {
+            HStack {
+                Text("Kept on this Mac after CANFAR removes the job.").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Clear History") { history.clear() }
+                    .controlSize(.small)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            List(history.jobs) { job in
+                let failed = job.outcome == .failed
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: failed ? "xmark.octagon.fill" : "checkmark.circle.fill")
+                        .foregroundStyle(failed ? .red : .green)
+                        .accessibilityLabel(Text(failed ? "Failed" : "Succeeded"))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(job.name).fontWeight(.medium)
+                        // The reason when there is one; otherwise what it was.
+                        Text(failed && job.failureReason?.isEmpty == false ? "\(job.summary) — \(job.failureReason ?? "")" : job.summary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Text(SharedFormatters.userMediumDateShortTime.string(from: job.finishedAt))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            .listStyle(.inset)
+        }
     }
 }

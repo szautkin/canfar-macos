@@ -171,6 +171,9 @@ actor ImageDiscoveryCoordinator {
 
     /// Where each probe shows on the activity bar, with the stage it has reached.
     private let tasks: TaskRegistry
+    /// Remembers each probe job once it ends — the platform forgets it,
+    /// and this coordinator deletes it.
+    private let recordJob: (@Sendable (JobRecord) async -> Void)?
 
     init(
         store: any ManifestStore,
@@ -185,9 +188,11 @@ actor ImageDiscoveryCoordinator {
         imageTypesLookup: (@Sendable (String) async -> [String]?)? = nil,
         registryAuthProvider: (@Sendable () async -> String?)? = nil,
         inspectorImageResolver: (@Sendable () async -> String)? = nil,
-        tasks: TaskRegistry = .shared
+        tasks: TaskRegistry = .shared,
+        recordJob: (@Sendable (JobRecord) async -> Void)? = nil
     ) {
         self.tasks = tasks
+        self.recordJob = recordJob
         self.store = store
         self.headless = headless
         self.vospace = vospace
@@ -515,6 +520,7 @@ actor ImageDiscoveryCoordinator {
         }
 
         try await store.setManifest(manifest)
+        await recordProbe(jobID: jobID, imageID: imageID, failure: nil)
         return manifest
     }
 
@@ -986,6 +992,7 @@ actor ImageDiscoveryCoordinator {
         error: ImageDiscoveryError,
         jobID: String?
     ) async throws {
+        if let jobID { await recordProbe(jobID: jobID, imageID: imageID, failure: error.displayMessage) }
         try await store.setFailure(
             imageID: imageID,
             category: error.cacheCategory,
@@ -993,6 +1000,14 @@ actor ImageDiscoveryCoordinator {
             attemptedAt: Date(),
             jobID: jobID
         )
+    }
+
+    /// A probe job's end, for the job history: it succeeded, or why not.
+    private func recordProbe(jobID: String, imageID: String, failure: String?) async {
+        await recordJob?(JobRecord(
+            id: jobID, name: String(localized: "Image inspection"), image: imageID, origin: .imageProbe,
+            outcome: failure == nil ? .succeeded : .failed, status: failure == nil ? "Succeeded" : "Failed",
+            startedAt: "", finishedAt: Date(), failureReason: failure, targetImage: imageID))
     }
 
     // MARK: - Grace polling for late-landing manifests

@@ -44,8 +44,12 @@ final class HeadlessMonitorModel: CadencedPoller {
     /// Called when API returns 401 — signals that the token has expired.
     var onAuthFailure: (() -> Void)?
 
-    init(headlessService: HeadlessService) {
+    /// Where finished jobs are remembered after the platform forgets them.
+    let history: JobHistoryStore?
+
+    init(headlessService: HeadlessService, history: JobHistoryStore? = nil) {
         self.headlessService = headlessService
+        self.history = history
     }
 
     // MARK: - Data Loading
@@ -162,6 +166,8 @@ final class HeadlessMonitorModel: CadencedPoller {
         failedCount = jobs.filter { $0.isFailed }.count
     }
 
+    /// Says so, and writes it down: the notification is a moment, the
+    /// record is what survives the platform reaping the job.
     private func announce(_ settled: [HeadlessJob]) {
         for job in settled {
             if job.isCompleted {
@@ -169,7 +175,16 @@ final class HeadlessMonitorModel: CadencedPoller {
             } else {
                 NotificationService.sendJobFailed(sessionName: job.name, image: job.image)
             }
+            history?.record(Self.record(of: job))
         }
+    }
+
+    /// A settled job as the history keeps it. The platform's status is all
+    /// there is to say why at this point; a probe's own record says more.
+    nonisolated static func record(of job: HeadlessJob, at finished: Date = Date()) -> JobRecord {
+        JobRecord(id: job.id, name: job.name, image: job.image, origin: .user,
+                  outcome: job.isCompleted ? .succeeded : .failed, status: job.status, startedAt: job.startedTime,
+                  finishedAt: finished, failureReason: job.isFailed ? job.status : nil, targetImage: nil)
     }
 
     private static func isTerminalStatus(_ status: String) -> Bool {
