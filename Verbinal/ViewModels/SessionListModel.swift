@@ -9,7 +9,7 @@ import Observation
 
 @Observable
 @MainActor
-final class SessionListModel {
+final class SessionListModel: CadencedPoller {
     private let sessionService: SessionService
 
     var sessions: [Session] = []
@@ -20,7 +20,9 @@ final class SessionListModel {
     var pollCountdown = 0
 
     private var pollTask: Task<Void, Never>?
-    private let pollInterval = 15
+    private(set) var cadence = PollCadence(watchCeiling: PollCadence.sessionWatchSeconds)
+    /// Status by session id at the last load; nil before the first.
+    private var previousStatuses: [String: String]?
 
     /// Fires when sessions are refreshed (for updating session counters).
     var onSessionsRefreshed: (() -> Void)?
@@ -35,15 +37,28 @@ final class SessionListModel {
         errorMessage = ""
 
         do {
-            sessions = try await sessionService.getSessions()
+            let fetched = try await sessionService.getSessions()
+            let transitions = StatusTransitions(
+                previous: previousStatuses,
+                current: Dictionary(fetched.map { ($0.id, $0.status) }, uniquingKeysWith: { _, last in last }))
+            for session in transitions.newlySettled(
+                fetched, id: \.id,
+                wasInFlight: { $0.lowercased() == "pending" },
+                isSettled: { $0.isRunning || $0.isFailed }) {
+                if session.isRunning {
+                    NotificationService.sendSessionReady(sessionName: session.sessionName, image: session.containerImage)
+                } else {
+                    NotificationService.sendSessionFailed(sessionName: session.sessionName, image: session.containerImage)
+                }
+            }
+            previousStatuses = transitions.current
+            sessions = fetched
             onSessionsRefreshed?()
 
-            // Start or stop polling based on pending sessions
-            if hasPendingSessions {
-                startPolling()
-            } else {
-                stopPolling()
-            }
+            // Keep watching: quickly while a session is pending, at the idle
+            // interval otherwise (a session can start from another machine).
+            cadence.observe(inFlight: hasPendingSessions, changed: transitions.changed)
+            startPolling()
         } catch {
             hasError = true
             errorMessage = error.localizedDescription
@@ -112,9 +127,7 @@ final class SessionListModel {
     func startPolling() {
         guard !isPolling else { return }
         isPolling = true
-        pollTask = Task { [weak self] in
-            await self?.pollLoop()
-        }
+        pollTask = startPollLoop()
     }
 
     func stopPolling() {
@@ -124,25 +137,7 @@ final class SessionListModel {
         pollCountdown = 0
     }
 
-    private func pollLoop() async {
-        while !Task.isCancelled && isPolling {
-            pollCountdown = pollInterval
-
-            // Countdown
-            for _ in 0..<pollInterval {
-                if Task.isCancelled { return }
-                try? await Task.sleep(for: .seconds(1))
-                pollCountdown -= 1
-            }
-
-            if Task.isCancelled { return }
-
-            await loadSessions()
-
-            if !hasPendingSessions {
-                stopPolling()
-                return
-            }
-        }
+    func poll() async {
+        await loadSessions()
     }
 }

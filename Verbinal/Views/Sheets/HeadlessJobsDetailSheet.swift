@@ -80,7 +80,7 @@ struct HeadlessJobsDetailSheet: View {
                 }
                 .keyboardShortcut("r", modifiers: .command)
                 .disabled(model.isLoading)
-                .help("Refresh batch jobs from Skaha now (auto-refresh fires every 45s)")
+                .help("Refresh batch jobs from Skaha now")
                 Button("Close") { dismiss() }
                     .buttonStyle(.bordered)
                     .keyboardShortcut(.cancelAction)

@@ -13,6 +13,7 @@ import Foundation
 
 enum NotificationService {
     private static let groupID = "com.codebg.Verbinal.headless"
+    private static let sessionGroupID = "com.codebg.Verbinal.sessions"
 
     static func requestPermissionIfNeeded() {
         let center = UNUserNotificationCenter.current()
@@ -25,8 +26,8 @@ enum NotificationService {
 
     static func sendJobCompleted(sessionName: String, image: String) {
         let content = UNMutableNotificationContent()
-        content.title = "Batch Job Completed"
-        content.body = "\(sessionName) finished successfully"
+        content.title = String(localized: "Batch Job Completed")
+        content.body = String(localized: "\(sessionName) finished successfully")
         content.subtitle = shortImageLabel(image)
         content.sound = .default
         content.threadIdentifier = groupID
@@ -36,8 +37,8 @@ enum NotificationService {
 
     static func sendJobFailed(sessionName: String, image: String) {
         let content = UNMutableNotificationContent()
-        content.title = "Batch Job Failed"
-        content.body = "\(sessionName) has failed"
+        content.title = String(localized: "Batch Job Failed")
+        content.body = String(localized: "\(sessionName) has failed")
         content.subtitle = shortImageLabel(image)
         content.sound = .default
         content.threadIdentifier = groupID
@@ -46,9 +47,34 @@ enum NotificationService {
         send(id: "failed-\(sessionName)-\(Date().timeIntervalSince1970)", content: content)
     }
 
+    /// A pending session came up — the notification the person launching
+    /// it is usually waiting for.
+    static func sendSessionReady(sessionName: String, image: String) {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "Session Ready")
+        content.body = String(localized: "\(sessionName) is running")
+        content.subtitle = shortImageLabel(image)
+        content.sound = .default
+        content.threadIdentifier = sessionGroupID
+
+        send(id: "session-ready-\(sessionName)-\(Date().timeIntervalSince1970)", content: content)
+    }
+
+    static func sendSessionFailed(sessionName: String, image: String) {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "Session Failed")
+        content.body = String(localized: "\(sessionName) failed to start")
+        content.subtitle = shortImageLabel(image)
+        content.sound = .default
+        content.threadIdentifier = sessionGroupID
+        content.interruptionLevel = .timeSensitive
+
+        send(id: "session-failed-\(sessionName)-\(Date().timeIntervalSince1970)", content: content)
+    }
+
     static func sendExportCompleted(bundleName: String, moduleSummary: String) {
         let content = UNMutableNotificationContent()
-        content.title = "Export Complete"
+        content.title = String(localized: "Export Complete")
         content.body = moduleSummary
         content.subtitle = bundleName
         content.sound = .default

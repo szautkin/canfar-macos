@@ -10,7 +10,7 @@ import VerbinalKit
 
 @Observable
 @MainActor
-final class HeadlessMonitorModel {
+final class HeadlessMonitorModel: CadencedPoller {
     private let headlessService: HeadlessService
 
     var jobs: [HeadlessJob] = []
@@ -37,9 +37,9 @@ final class HeadlessMonitorModel {
     var deletingJobIDs: Set<String> = []
 
     private var pollTask: Task<Void, Never>?
-    private let pollInterval = 45
-    private var previousStateMap: [String: String] = [:]
-    private var isFirstPoll = true
+    private(set) var cadence = PollCadence(watchCeiling: PollCadence.jobsWatchSeconds)
+    /// Status by job id at the last poll; nil before the first.
+    private var previousStateMap: [String: String]?
 
     /// Called when API returns 401 — signals that the token has expired.
     var onAuthFailure: (() -> Void)?
@@ -57,17 +57,19 @@ final class HeadlessMonitorModel {
 
         do {
             let fetched = try await headlessService.getHeadlessJobs()
-            let newStateMap = Dictionary(uniqueKeysWithValues: fetched.map { ($0.id, $0.status) })
+            let transitions = StatusTransitions(
+                previous: previousStateMap,
+                current: Dictionary(fetched.map { ($0.id, $0.status) }, uniquingKeysWith: { _, last in last }))
+            announce(transitions.newlySettled(
+                fetched, id: \.id,
+                wasInFlight: { !Self.isTerminalStatus($0) },
+                isSettled: { $0.isCompleted || $0.isFailed }))
 
-            if !isFirstPoll {
-                detectTransitions(from: previousStateMap, to: newStateMap, jobs: fetched)
-            }
-
-            previousStateMap = newStateMap
-            isFirstPoll = false
+            previousStateMap = transitions.current
             jobs = fetched
             updateCounts()
             updateDockBadge()
+            cadence.observe(inFlight: totalActive > 0, changed: transitions.changed)
         } catch let error as NetworkError where error.isUnauthorized {
             hasError = true
             errorMessage = error.localizedDescription
@@ -86,11 +88,12 @@ final class HeadlessMonitorModel {
     func startMonitoring() {
         guard !isPolling else { return }
         isPolling = true
-        isFirstPoll = true
-        previousStateMap = [:]
+        previousStateMap = nil
+        cadence = PollCadence(watchCeiling: PollCadence.jobsWatchSeconds)
         pollTask = Task { [weak self] in
             await self?.loadJobs()
-            await self?.pollLoop()
+            guard let self, !Task.isCancelled else { return }
+            self.pollTask = self.startPollLoop()
         }
     }
 
@@ -102,19 +105,8 @@ final class HeadlessMonitorModel {
         clearDockBadge()
     }
 
-    private func pollLoop() async {
-        while !Task.isCancelled && isPolling {
-            pollCountdown = pollInterval
-
-            for _ in 0..<pollInterval {
-                if Task.isCancelled { return }
-                try? await Task.sleep(for: .seconds(1))
-                pollCountdown -= 1
-            }
-
-            if Task.isCancelled { return }
-            await loadJobs()
-        }
+    func poll() async {
+        await loadJobs()
     }
 
     // MARK: - Job Actions
@@ -170,20 +162,17 @@ final class HeadlessMonitorModel {
         failedCount = jobs.filter { $0.isFailed }.count
     }
 
-    private func detectTransitions(from old: [String: String], to new: [String: String], jobs: [HeadlessJob]) {
-        for job in jobs {
-            guard let oldStatus = old[job.id] else { continue }
-            if isTerminalStatus(oldStatus) { continue }
-
+    private func announce(_ settled: [HeadlessJob]) {
+        for job in settled {
             if job.isCompleted {
                 NotificationService.sendJobCompleted(sessionName: job.name, image: job.image)
-            } else if job.isFailed {
+            } else {
                 NotificationService.sendJobFailed(sessionName: job.name, image: job.image)
             }
         }
     }
 
-    private func isTerminalStatus(_ status: String) -> Bool {
+    private static func isTerminalStatus(_ status: String) -> Bool {
         let lower = status.lowercased()
         return lower == "completed" || lower == "succeeded" || lower == "failed" || lower == "error"
     }

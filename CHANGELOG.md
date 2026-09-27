@@ -54,6 +54,20 @@ Catching up with Verbinal for Windows 1.4.1 (see
   kept as a recent one. For assistants: `cancel_search`, and `run_search`,
   `set_search_form`, `set_adql_query` and `execute_adql_query` say
   `cancelled: true` when the person cancelled the search they started.
+- **Session notifications** — a pending session that comes up, or fails
+  to start, is announced, as batch jobs already were. Nothing that
+  settled before Verbinal looked is announced.
+
+### Changed
+- **Polling follows what is happening** — sessions and batch jobs were
+  polled every 15 s and 45 s whatever was going on, so a notification
+  came up to that late, and a job that started and failed between two
+  polls was never announced. Polls now come about 5 s after a change,
+  ease off while nothing moves (to 8 s for a pending session, 20 s for a
+  running job), and drop to 45 s when nothing is in flight — still
+  watching, since work can start from another machine. A job first seen
+  already finished is announced when it appeared between two polls.
+  Notifications are now translated.
 
 ## [1.3.4] - Unreleased
 

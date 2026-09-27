@@ -913,6 +913,46 @@
         }
       }
     },
+    "%@ finished successfully" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ s’est terminée avec succès"
+          }
+        }
+      }
+    },
+    "%@ has failed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ a échoué"
+          }
+        }
+      }
+    },
+    "%@ is running" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ est en cours d’exécution"
+          }
+        }
+      }
+    },
+    "%@ failed to start" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n’a pas pu démarrer"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -1673,6 +1713,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bandes"
+          }
+        }
+      }
+    },
+    "Batch Job Completed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâche en lot terminée"
+          }
+        }
+      }
+    },
+    "Batch Job Failed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec de la tâche en lot"
           }
         }
       }
@@ -4876,7 +4936,6 @@
       }
     },
     "Export Complete" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9837,6 +9896,16 @@
         }
       }
     },
+    "Refresh batch jobs from Skaha now" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiser les tâches en lot depuis Skaha maintenant"
+          }
+        }
+      }
+    },
     "Refresh batch jobs from Skaha now (auto-refresh fires every 45s)" : {
       "localizations" : {
         "fr" : {
@@ -11410,6 +11479,16 @@
         }
       }
     },
+    "Session Failed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec de la session"
+          }
+        }
+      }
+    },
     "Session Launched" : {
       "localizations" : {
         "fr" : {
@@ -11471,6 +11550,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le nom de la session est requis"
+          }
+        }
+      }
+    },
+    "Session Ready" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session prête"
           }
         }
       }
