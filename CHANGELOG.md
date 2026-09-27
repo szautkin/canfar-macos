@@ -150,6 +150,20 @@ Catching up with Verbinal for Windows 1.4.1 (see
   `cutBy` chooses who cuts (`soda` or `local`; left out, this computer
   when it can), `extensions` the images of a mosaic to keep, and
   `companions` the files to cut along (listed by `get_cutout_options`).
+- **Images the catalogue does not list** — the images card's **Find in
+  Registry…** searches the registry behind the platform (Settings ▸ Image
+  Discovery's host and credentials) for a colleague's build or a tag not
+  yet picked up, and **Add** keeps one in your images: they join the
+  catalogue on the card (its **Added** tab) and on the launch form, typed
+  by the session types their registry labels name. For assistants:
+  `search_image_registry`, `list_my_images`, `add_registry_image` and
+  `remove_registry_image` (which waits for you); `list_session_images`
+  includes your images.
+- **What is inside an image, for your assistant** — `describe_image`
+  gives a probed image's OS, Python and packages with versions by
+  ecosystem (Python per environment, R, dpkg, rpm, apk), and
+  `search_packages` says what packages are actually called across the
+  probed images ("spec" → specutils, pyspeckit), shortest first.
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across

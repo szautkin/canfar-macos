@@ -219,8 +219,9 @@ final class AppState {
     }
 
     /// `marks` is injectable so tests never write to the person's marks.
-    init(marks: MarkStore? = nil) {
+    init(marks: MarkStore? = nil, userImages: UserImageStore? = nil) {
         self.marks = marks ?? MarkStore()
+        self.userImages = userImages ?? UserImageStore()
         self.fitsMarkEditor = MarkEditor(store: self.marks)
         self.cubeMarkEditor = MarkEditor(store: self.marks)
         // Effective endpoints: user override > cached registry resolution >
@@ -458,6 +459,13 @@ final class AppState {
     let uiPointer = UIPointerRegistry()
     /// Marks kept with each file, for both viewers.
     let marks: MarkStore
+    /// The images the person added from the registry — joined to the
+    /// catalogue in the images card, on the launch form and for agents.
+    let userImages: UserImageStore
+    /// Searching the registry from the images card.
+    @ObservationIgnored private(set) lazy var registrySearch = RegistrySearchModel(store: userImages) { [weak self] query throws(RegistrySearchError) in
+        try await self?.searchRegistry(query) ?? []
+    }
     /// Marks being drawn and edited by hand, one editor per viewer.
     let fitsMarkEditor: MarkEditor
     let cubeMarkEditor: MarkEditor
@@ -812,9 +820,8 @@ final class AppState {
         // inspector strategy per image. Best-effort: a transient
         // catalogue fetch failure means we fall back to in-target,
         // which is the prior single-strategy behaviour.
-        let imageSvc = imageService
-        let typesLookup: @Sendable (String) async -> [String]? = { id in
-            guard let raws = try? await imageSvc.getImages() else { return nil }
+        let typesLookup: @Sendable (String) async -> [String]? = { [weak self] id in
+            guard let raws = try? await self?.catalogueImages() else { return nil }
             return raws.first(where: { $0.id == id })?.types
         }
 
@@ -861,6 +868,7 @@ final class AppState {
             coordinator: coord,
             recentLaunchStore: recentLaunchStore,
             portalSettingsService: portalSettingsService,
+            userImages: userImages,
             username: username
         )
         #endif

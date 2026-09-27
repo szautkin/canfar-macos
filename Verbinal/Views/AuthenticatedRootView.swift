@@ -54,6 +54,7 @@ struct AuthenticatedRootView: View {
             recentLaunchStore: appState.recentLaunchStore,
             cacheService: appState.portalImageCacheService,
             settingsService: appState.portalSettingsService,
+            userImages: appState.userImages,
             username: appState.username
         )
         let plm = PlatformLoadModel(platformService: appState.platformService)

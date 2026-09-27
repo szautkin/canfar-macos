@@ -115,7 +115,7 @@ struct ListSessionImagesTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_session_images",
-        description: "List Skaha container images this user is allowed to launch. Returns full registry-qualified ids — pass one verbatim as `launch_session.image`. Optional `type` filter (notebook/desktop/firefly/carta/contributed/headless) and `project` filter; each image says its project. Hand-typed image strings WILL fail with HTTP 400; always pick from this list. Output also carries a `schedulingGuidance` block: per-shape tier hints (fast/warm/slow) you should consult BEFORE picking `cores`/`ram`/`gpus` on `launch_headless_job` or `launch_session`. 1c/1g/0gpu is the fastest schedulable shape and the recommended default; anything bigger frequently queues for 15+ min on the shared cluster.",
+        description: "List Skaha container images this user is allowed to launch. Returns full registry-qualified ids — pass one verbatim as `launch_session.image`. Optional `type` filter (notebook/desktop/firefly/carta/contributed/headless) and `project` filter; each image says its project. Includes the images the user added from the registry (list_my_images; search_image_registry finds more). Hand-typed image strings WILL fail with HTTP 400; always pick from this list. Output also carries a `schedulingGuidance` block: per-shape tier hints (fast/warm/slow) you should consult BEFORE picking `cores`/`ram`/`gpus` on `launch_headless_job` or `launch_session`. 1c/1g/0gpu is the fastest schedulable shape and the recommended default; anything bigger frequently queues for 15+ min on the shared cluster.",
         schema: #"""
         {
           "type": "object",

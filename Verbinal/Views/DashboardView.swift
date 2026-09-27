@@ -114,7 +114,8 @@ struct DashboardView: View {
                     preselectedImageID: Bindable(appState).preselectedDiscoveryImageID,
                     onUseInLaunchForm: { image, preferredType in
                         sendImageToLaunchForm(image, preferredType: preferredType, open: true)
-                    }
+                    },
+                    registrySearch: appState.registrySearch
                 )
             }
         case .recentLaunches:

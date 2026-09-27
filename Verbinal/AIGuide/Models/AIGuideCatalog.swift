@@ -232,6 +232,12 @@ enum AIGuideCatalog {
         "get_probe_logs": "discovery",
         "get_image_manifest": "discovery",
         "clear_probe_failures": "discovery",
+        "search_packages": "discovery",
+        "describe_image": "discovery",
+        "search_image_registry": "discovery",
+        "list_my_images": "discovery",
+        "add_registry_image": "discovery",
+        "remove_registry_image": "discovery",
         // AI Compute
         "run_code": "compute",
         "run_code_output": "compute",

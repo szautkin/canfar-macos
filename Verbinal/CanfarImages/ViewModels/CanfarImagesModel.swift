@@ -25,6 +25,9 @@ import Observation
 ///     `PortalSettingsService`. Drives the Default tab.
 ///   * Recent launches from `RecentLaunchStore`. Drives the
 ///     Popular tab.
+///   * The images the person added from the registry
+///     (`UserImageStore`), merged into the catalogue. Drives the
+///     Added tab.
 @Observable
 @MainActor
 final class CanfarImagesModel {
@@ -35,7 +38,11 @@ final class CanfarImagesModel {
     private let coordinator: ImageDiscoveryCoordinator?
     private let recentLaunchStore: RecentLaunchStore
     private let portalSettingsService: PortalSettingsService
+    private let userImages: UserImageStore?
     private let username: String
+
+    /// The catalogue as the platform lists it, before the added images join it.
+    private var catalogue: [RawImage] = []
 
     // MARK: - State
 
@@ -76,12 +83,14 @@ final class CanfarImagesModel {
         coordinator: ImageDiscoveryCoordinator?,
         recentLaunchStore: RecentLaunchStore,
         portalSettingsService: PortalSettingsService,
+        userImages: UserImageStore? = nil,
         username: String
     ) {
         self.imageService = imageService
         self.coordinator = coordinator
         self.recentLaunchStore = recentLaunchStore
         self.portalSettingsService = portalSettingsService
+        self.userImages = userImages
         self.username = username
     }
 
@@ -95,8 +104,8 @@ final class CanfarImagesModel {
 
         // 1. Catalogue.
         do {
-            let raw = try await imageService.getImages()
-            allImages = raw.map(ImageParser.parse)
+            catalogue = try await imageService.getImages()
+            mergeAddedImages()
         } catch {
             bannerMessage = "Couldn't load image catalogue: \(error.localizedDescription)"
             return
@@ -121,6 +130,22 @@ final class CanfarImagesModel {
         guard let coordinator else { return }
         await refreshDiscoveryStateFromCache(coordinator)
     }
+
+    /// The added images, by reference — what the card watches to catch up
+    /// when one is added or removed.
+    var addedImageIDs: [String] { userImages?.images.map(\.id) ?? [] }
+
+    /// Catch up with the added images without fetching the catalogue again.
+    func addedImagesChanged() async {
+        mergeAddedImages()
+        await refreshFromCache()
+    }
+
+    private func mergeAddedImages() {
+        allImages = (userImages?.merged(into: catalogue) ?? catalogue).map(ImageParser.parse)
+    }
+
+    private func isAdded(_ image: ParsedImage) -> Bool { userImages?.contains(image.id) ?? false }
 
     private func refreshDiscoveryStateFromCache(
         _ coordinator: ImageDiscoveryCoordinator
@@ -232,6 +257,8 @@ final class CanfarImagesModel {
             // catalogue to drop ids the user has lost access to.
             let knownByID = Dictionary(uniqueKeysWithValues: allImages.map { ($0.id, $0) })
             return recentImageIDsInOrder.compactMap { knownByID[$0] }
+        case .mine:
+            return allImages.filter(isAdded)
         case .notebook, .desktop, .carta, .firefly, .contributed, .headless:
             guard let key = selectedTab.sessionTypeKey else { return [] }
             return allImages.filter { $0.types.contains(key) }
@@ -264,6 +291,8 @@ final class CanfarImagesModel {
         case .popular:
             let known = Set(allImages.map(\.id))
             return recentImageIDsInOrder.lazy.filter { known.contains($0) }.count
+        case .mine:
+            return allImages.lazy.filter(isAdded).count
         case .notebook, .desktop, .carta, .firefly, .contributed, .headless:
             guard let key = tab.sessionTypeKey else { return 0 }
             return allImages.lazy.filter { $0.types.contains(key) }.count

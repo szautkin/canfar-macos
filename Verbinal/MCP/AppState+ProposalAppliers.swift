@@ -123,6 +123,12 @@ extension AppState {
                 await self?.imageDiscoveryCoordinator
             },
             activity: activity))
+        appliers.append(AddRegistryImageApplier(
+            add: { [weak self] image in await self?.userImages.add(image) ?? false },
+            activity: activity))
+        appliers.append(RemoveRegistryImageApplier(
+            remove: { [weak self] id in await self?.userImages.remove(id) ?? false },
+            activity: activity))
 
         // Parity batch: renewal, exports, arbitrary-file upload, FITS
         // bookmarks. Capabilities captured here (MainActor) so the

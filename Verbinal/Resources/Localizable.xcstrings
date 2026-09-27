@@ -1272,6 +1272,26 @@
         }
       }
     },
+    "Add" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter"
+          }
+        }
+      }
+    },
+    "Add it to your images" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'ajouter à vos images"
+          }
+        }
+      }
+    },
     "Add Tag" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1279,6 +1299,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajouter une étiquette"
+          }
+        }
+      }
+    },
+    "Added" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutées"
           }
         }
       }
@@ -3509,6 +3539,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Impossible d’allouer une texture de volume %lld×%lld×%lld. Essayez le mode coupe ou un cube plus petit."
+          }
+        }
+      }
+    },
+    "Could not reach the registry: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de joindre le registre : %@"
+          }
+        }
+      }
+    },
+    "Could not read the registry's answer: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de lire la réponse du registre : %@"
           }
         }
       }
@@ -6053,6 +6103,26 @@
         }
       }
     },
+    "Find in Registry" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chercher dans le registre"
+          }
+        }
+      }
+    },
+    "Find in Registry…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chercher dans le registre…"
+          }
+        }
+      }
+    },
     "Fit" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6256,6 +6326,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mot de passe oublié ?"
+          }
+        }
+      }
+    },
+    "Found for “%@”" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trouvées pour « %@ »"
           }
         }
       }
@@ -6875,6 +6955,16 @@
         }
       }
     },
+    "Images the platform's catalogue does not list — a colleague's build, a tag not yet picked up. Uses the registry and credentials of Settings ▸ Image Discovery." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Des images que le catalogue de la plateforme ne liste pas — la construction d'un collègue, une étiquette pas encore reprise. Utilise le registre et les identifiants de Réglages ▸ Découverte d'images."
+          }
+        }
+      }
+    },
     "images.canfar.net" : {
       "shouldTranslate" : false
     },
@@ -6884,6 +6974,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dans Recherche"
+          }
+        }
+      }
+    },
+    "In your images" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans vos images"
           }
         }
       }
@@ -8671,6 +8771,16 @@
         }
       }
     },
+    "No images added yet. Find in Registry… adds one the catalogue does not list." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune image ajoutée. « Chercher dans le registre… » en ajoute une que le catalogue ne liste pas."
+          }
+        }
+      }
+    },
     "No images match the current filters" : {
       "localizations" : {
         "fr" : {
@@ -8805,6 +8915,16 @@
         }
       }
     },
+    "No registry host is set — see Settings ▸ Image Discovery." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun hôte de registre n'est défini — voir Réglages ▸ Découverte d'images."
+          }
+        }
+      }
+    },
     "No results" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8853,6 +8973,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune requête enregistrée"
+          }
+        }
+      }
+    },
+    "No session type — launch it from the Advanced tab" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun type de session — lancez-la depuis l'onglet Avancé"
           }
         }
       }
@@ -8958,6 +9088,16 @@
         }
       }
     },
+    "None yet — images you add appear here, in the images card and on the launch form." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune pour l'instant — les images ajoutées apparaissent ici, dans la carte des images et dans le formulaire de lancement."
+          }
+        }
+      }
+    },
     "North Up" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9037,6 +9177,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Notes"
+          }
+        }
+      }
+    },
+    "Nothing in the registry matched that." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien dans le registre ne correspond."
           }
         }
       }
@@ -11378,6 +11528,16 @@
         }
       }
     },
+    "Repository name or part of it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nom du dépôt, ou une partie"
+          }
+        }
+      }
+    },
     "Requires WCS calibration data" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -12202,6 +12362,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rechercher"
+          }
+        }
+      }
+    },
+    "Search the registry for an image the catalogue does not list" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chercher dans le registre une image que le catalogue ne liste pas"
           }
         }
       }
@@ -13683,6 +13853,16 @@
         }
       }
     },
+    "Take it out of your list; the image itself is untouched" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La retirer de votre liste ; l'image elle-même reste intacte"
+          }
+        }
+      }
+    },
     "Tap to clear" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -14059,6 +14239,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La tâche-sonde est peut-être encore en cours sur Skaha. Le coordinateur interroge VOSpace pour un manifeste tardif ; cette ligne passera automatiquement à « découvert » s'il arrive."
+          }
+        }
+      }
+    },
+    "The registry answered HTTP %lld." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le registre a répondu HTTP %lld."
+          }
+        }
+      }
+    },
+    "The registry refused these credentials. Use your Harbor CLI secret, not your CADC password." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le registre a refusé ces identifiants. Utilisez votre secret CLI Harbor, pas votre mot de passe CADC."
           }
         }
       }
@@ -14531,6 +14731,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Type"
+          }
+        }
+      }
+    },
+    "Type part of an image's name to search for." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tapez une partie du nom d'une image à chercher."
           }
         }
       }
@@ -16042,6 +16252,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vos observations téléchargées et vos notes, au même endroit et consultables."
+          }
+        }
+      }
+    },
+    "Your images" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos images"
           }
         }
       }

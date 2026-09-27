@@ -151,8 +151,13 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Package search / probe an image | `find_images_with_packages`, `discover_image_packages` (pre-existing) | read/write |
 | Failure rows | `list_probe_failures` | read |
 | View probe logs/events | `get_probe_logs` | read |
-| Manifest detail | `get_image_manifest` | read |
+| Manifest detail | `get_image_manifest` (counts), `describe_image` (packages and versions, `filter`) | read |
+| Package filter pane: what the packages are called | `search_packages` (`ecosystem`) | read |
 | Dismiss error / Clear all errors | `clear_probe_failures` | write (destructive) |
+| Images card ▸ Find in Registry… ▸ Search | `search_image_registry` | read |
+| Find in Registry ▸ Add | `add_registry_image` (`types`) | write |
+| Find in Registry ▸ Your images; the card's Added tab | `list_my_images`; `list_session_images` includes them | read |
+| Find in Registry ▸ Your images ▸ Remove | `remove_registry_image` | write (destructive) |
 
 ## Storage (VOSpace)
 

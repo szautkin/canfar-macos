@@ -26,7 +26,7 @@ extension AppState {
             catalogue: { [weak self] in
                 guard let self else { return [] }
                 do {
-                    let raw = try await self.imageService.getImages()
+                    let raw = try await self.catalogueImages()
                     return raw.map { (id: $0.id, types: $0.types) }
                 } catch {
                     // Catalogue endpoint flaky: derive a
@@ -82,12 +82,26 @@ extension AppState {
         })
     }
 
+    /// The image's manifest when its last probe succeeded.
+    func probedManifest(_ imageID: String) async -> ImageManifest? {
+        guard let coordinator = imageDiscoveryCoordinator,
+              case .success(let manifest) = await coordinator.outcome(for: imageID) else { return nil }
+        return manifest
+    }
+
+    func makeDescribeImageTool() -> DescribeImageTool {
+        DescribeImageTool(manifest: { [weak self] image in await self?.probedManifest(image) })
+    }
+
+    func makeSearchPackagesTool() -> SearchPackagesTool {
+        SearchPackagesTool(vocabulary: { [weak self] in
+            await self?.imageDiscoveryCoordinator?.allPackages() ?? AllPackages()
+        })
+    }
+
     func makeGetImageManifestTool() -> GetImageManifestTool {
         GetImageManifestTool(lookup: { [weak self] image in
-            guard let coordinator = await self?.imageDiscoveryCoordinator else { return nil }
-            guard case .success(let manifest) = await coordinator.outcome(for: image) else {
-                return nil
-            }
+            guard let manifest = await self?.probedManifest(image) else { return nil }
             let iso = ISO8601DateFormatter()
             return GetImageManifestTool.Output(
                 imageID: manifest.imageID,

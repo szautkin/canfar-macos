@@ -18,6 +18,7 @@ final class SessionLaunchModel {
     private let username: String
 
     private var imagesByTypeAndProject: [String: [String: [ParsedImage]]] = [:]
+    private let userImages: UserImageStore?
     private var cachedImages: [RawImage] = []
 
     /// Shared accessor for the parsed image catalogue, keyed by session
@@ -105,12 +106,14 @@ final class SessionLaunchModel {
          recentLaunchStore: RecentLaunchStore,
          cacheService: PortalImageCacheService? = nil,
          settingsService: PortalSettingsService? = nil,
+         userImages: UserImageStore? = nil,
          username: String = "") {
         self.sessionService = sessionService
         self.imageService = imageService
         self.recentLaunchStore = recentLaunchStore
         self.cacheService = cacheService
         self.settingsService = settingsService
+        self.userImages = userImages
         self.username = username
         recomputeDefaultFlags()
     }
@@ -197,8 +200,10 @@ final class SessionLaunchModel {
     }
 
     private func apply(cache: PortalImageCache) {
-        cachedImages = cache.images
-        imagesByTypeAndProject = ImageParser.groupByTypeAndProject(cache.images)
+        // The images the person added join the catalogue here, not in the
+        // cache, so taking one out shows without waiting for a refresh.
+        cachedImages = userImages?.merged(into: cache.images) ?? cache.images
+        imagesByTypeAndProject = ImageParser.groupByTypeAndProject(cachedImages)
         repositories = cache.repositories
 
         if repositoryHost.isEmpty, let first = cache.repositories.first {

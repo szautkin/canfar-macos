@@ -129,7 +129,7 @@ struct ManifestDetailSheet: View {
 
     @ViewBuilder
     private var pythonSection: some View {
-        let grouped = Dictionary(grouping: manifest.pythonPackages) { $0.env.isEmpty ? "system" : $0.env }
+        let grouped = Dictionary(grouping: manifest.pythonPackages, by: \.environment)
         DisclosureGroup {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(grouped.keys.sorted(), id: \.self) { env in

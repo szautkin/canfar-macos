@@ -259,7 +259,12 @@ struct DescribeAppTool: JSONReadTool {
         `open_session` (opens the connect URL in the user's browser).
       * **Image discovery diagnostics**: `list_probe_failures`,
         `get_probe_logs`, `get_image_manifest`,
-        `clear_probe_failures` (write).
+        `clear_probe_failures` (write). `search_packages` says what
+        packages are called; `describe_image` lists a probed image's
+        packages with versions.
+      * **Images the catalogue does not list**: `search_image_registry`,
+        `list_my_images`, `add_registry_image` (write),
+        `remove_registry_image` (write, destructive).
       * **Storage**: `open_vospace_file` (write — download + open;
         NAXIS≥3 shows Open as… and the ack `note` tells you to call
         `choose_viewer`).

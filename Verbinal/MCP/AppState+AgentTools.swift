@@ -117,6 +117,13 @@ extension AppState {
         tools.append(makeGetProbeLogsTool())
         tools.append(makeGetImageManifestTool())
         tools.append(ClearProbeFailuresTool())
+        // What is inside probed images, and images the catalogue does not list.
+        tools.append(makeSearchPackagesTool())
+        tools.append(makeDescribeImageTool())
+        tools.append(makeSearchImageRegistryTool())
+        tools.append(makeListMyImagesTool())
+        tools.append(AddRegistryImageTool())
+        tools.append(makeRemoveRegistryImageTool())
 
         // FITS domain — uses the already-instantiated observationStore
         tools.append(makeGetFITSHeaderTool(store: observationStore))

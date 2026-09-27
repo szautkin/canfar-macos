@@ -65,6 +65,8 @@ struct CanfarImageRow: Identifiable, Equatable, Sendable {
 enum CanfarImagesTab: String, CaseIterable, Identifiable, Sendable {
     case `default` = "default"
     case popular = "popular"
+    /// The images the person added from the registry.
+    case mine = "mine"
     case notebook = "notebook"
     case desktop = "desktop"
     case carta = "carta"
@@ -79,6 +81,7 @@ enum CanfarImagesTab: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .default:     return "Default"
         case .popular:     return "Popular"
+        case .mine:        return String(localized: "Added")
         case .notebook:    return "Notebook"
         case .desktop:     return "Desktop"
         case .carta:       return "CARTA"
@@ -92,7 +95,7 @@ enum CanfarImagesTab: String, CaseIterable, Identifiable, Sendable {
     /// `default` / `popular` (those use cross-type heuristics).
     var sessionTypeKey: String? {
         switch self {
-        case .default, .popular:    return nil
+        case .default, .popular, .mine: return nil
         case .notebook:             return "notebook"
         case .desktop:              return "desktop"
         case .carta:                return "carta"

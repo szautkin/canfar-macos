@@ -39,6 +39,11 @@ struct CanfarImagesView: View {
     /// tab the user was filtering by — not whatever the multi-type image's first
     /// declared type happens to be.
     var onUseInLaunchForm: ((ParsedImage, String?) -> Void)?
+    /// Searching the registry for images the catalogue does not list;
+    /// nil hides the way in.
+    var registrySearch: RegistrySearchModel?
+
+    @State private var showRegistrySearch = false
 
     var body: some View {
         GroupBox {
@@ -55,6 +60,10 @@ struct CanfarImagesView: View {
             }
         }
         .task { if model.totalCatalogueCount == 0 { await model.reload() } }
+        .onChange(of: model.addedImageIDs) { Task { await model.addedImagesChanged() } }
+        .sheet(isPresented: $showRegistrySearch) {
+            if let registrySearch { RegistrySearchSheet(model: registrySearch) }
+        }
     }
 
     // MARK: - Header
@@ -173,6 +182,8 @@ struct CanfarImagesView: View {
             return "No default images marked yet. Use the star button on the launch form to set one."
         case .popular:
             return "No recent launches yet."
+        case .mine:
+            return String(localized: "No images added yet. Find in Registry… adds one the catalogue does not list.")
         default:
             return "No images of this type are available for your account."
         }
@@ -193,6 +204,17 @@ struct CanfarImagesView: View {
                 CopyErrorButton(message: banner)
             }
             Spacer()
+            if registrySearch != nil {
+                Button {
+                    showRegistrySearch = true
+                } label: {
+                    Label("Find in Registry…", systemImage: "shippingbox.and.arrow.backward")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .help("Search the registry for an image the catalogue does not list")
+                .pointable("portal.findInRegistry", label: "Find in Registry", screen: "portal")
+            }
             Button {
                 preselectedImageID = nil
                 showDiscoverySheet = true
