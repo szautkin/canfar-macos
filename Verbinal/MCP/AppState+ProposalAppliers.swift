@@ -55,34 +55,26 @@ extension AppState {
             DeleteSessionApplier(service: sessionService, activity: activity),
             DeleteSessionsBulkApplier(service: sessionService, activity: activity),
             ClearResearchArchiveApplier(store: observationStore, activity: activity),
+            // Remote compute — all through the one service the Remote
+            // Compute screen uses, so a run is remembered as the assistant's.
             RunCodeApplier(
-                service: sessionService,
-                vospace: vospace,
-                username: { [weak self] in
-                    guard let self else { return "" }
-                    return await self.username
-                },
-                registryAuth: { [weak self] in
-                    guard let self else { return nil }
-                    return await self.aiComputeSettings.registryCredentials()
+                submit: { [weak self] request, launch in
+                    guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                    try await self.remoteCompute.submit(request, by: .agent, launch: launch)
                 },
                 activity: activity),
-            // Explicit pre-warm/sizing — same deps as RunCodeApplier so a
-            // private compute image still pulls at cold-launch.
             StartComputeApplier(
-                service: sessionService,
-                vospace: vospace,
-                username: { [weak self] in
-                    guard let self else { return "" }
-                    return await self.username
-                },
-                registryAuth: { [weak self] in
-                    guard let self else { return nil }
-                    return await self.aiComputeSettings.registryCredentials()
+                ensure: { [weak self] launch in
+                    guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                    return try await self.remoteCompute.ensureSession(launch)
                 },
                 activity: activity),
-            // Teardown — needs only the session service (delete-by-name).
-            StopComputeApplier(service: sessionService, activity: activity),
+            StopComputeApplier(
+                stop: { [weak self] in
+                    guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                    return try await self.remoteCompute.stop()
+                },
+                activity: activity),
             LaunchHeadlessJobApplier(
                 service: headlessService,
                 recentLaunchStore: recentLaunchStore,

@@ -159,6 +159,15 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Find in Registry ▸ Your images; the card's Added tab | `list_my_images`; `list_session_images` includes them | read |
 | Find in Registry ▸ Your images ▸ Remove | `remove_registry_image` | write (destructive) |
 
+## Remote Compute
+
+| UI interaction | Tool | Kind |
+|---|---|---|
+| Status: not set up, stopped, starting, running, stopping, failed; size; uptime | `get_compute_state` | read |
+| Run history: who sent it, language, status | `list_compute_runs` | read |
+| Start / Stop | `start_compute`, `stop_compute` | write (stop: destructive) |
+| Run code, and its output | `run_code`, `run_code_output` | write/read |
+
 ## Storage (VOSpace)
 
 | UI interaction | Tool | Kind |

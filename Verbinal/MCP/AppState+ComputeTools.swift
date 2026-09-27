@@ -11,22 +11,16 @@ import VerbinalKit
 /// AI remote compute: reading run output and the compute settings.
 extension AppState {
     /// `run_code_output` reads the watcher's result file back over the
-    /// ARC REST API. A 404 means "not produced yet" (the session is still
-    /// provisioning/executing) → surface as nil so the tool reports
-    /// `ready:false` rather than an error.
-    func makeRunCodeOutputTool(service: VOSpaceBrowserService) -> RunCodeOutputTool {
-        RunCodeOutputTool(fetchOut: { [weak self] path, maxBytes in
+    /// ARC REST API — through the service, so the run is recorded as done.
+    func makeRunCodeOutputTool() -> RunCodeOutputTool {
+        RunCodeOutputTool(fetchOut: { [weak self] id in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
-            let username = await self.username
-            guard !username.isEmpty else { throw ToolFailureReason.authRequired }
             do {
-                let result = try await service.fetchBytes(
-                    username: username, path: path, offset: 0, maxBytes: maxBytes)
-                return result.data
+                return try await self.remoteCompute.fetchOut(id)
+            } catch RemoteComputeError.signedOut {
+                throw ToolFailureReason.authRequired
             } catch let e as NetworkError {
                 switch e {
-                case .httpError(404, _):
-                    return nil   // result not written yet
                 case .unauthorized, .httpError(401, _), .httpError(403, _):
                     throw ToolFailureReason.authRequired
                 default:
@@ -34,6 +28,17 @@ extension AppState {
                 }
             }
         })
+    }
+
+    func makeGetComputeStateTool() -> GetComputeStateTool {
+        GetComputeStateTool(snapshot: { [weak self] in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            return try await self.remoteCompute.snapshot()
+        })
+    }
+
+    func makeListComputeRunsTool() -> ListComputeRunsTool {
+        ListComputeRunsTool(runs: { [weak self] in await self?.remoteCompute.runs.runs ?? [] })
     }
 
     func makeGetComputeConfigTool() -> GetComputeConfigTool {

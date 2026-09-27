@@ -121,6 +121,15 @@ final class ComputeLifecycleToolsTests: XCTestCase {
         SessionService(network: NetworkClient(session: MockURLProtocol.mockSession()))
     }
 
+    /// Stopping as the app does: through the remote-compute service over `service`.
+    @MainActor
+    private func stopper(_ service: SessionService) -> @Sendable () async throws -> Bool {
+        let compute = RemoteComputeService(
+            runs: ComputeRunStore(persistence: nil), sessions: service, files: FakeComputeFiles(),
+            username: { "u" }, configuration: { .init(image: "img", cores: 1, ram: 1) }, registryAuth: { nil })
+        return { try await compute.stop() }
+    }
+
     private func makeProposal(kind: String) -> PendingProposal {
         PendingProposal(
             toolName: kind, kind: kind, summary: "test",
@@ -141,7 +150,7 @@ final class ComputeLifecycleToolsTests: XCTestCase {
             let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (resp, Data(body.utf8))
         }
-        let applier = StopComputeApplier(service: service, activity: activity)
+        let applier = StopComputeApplier(stop: stopper(service), activity: activity)
         try await applier.apply(makeProposal(kind: "stop_compute"))
         XCTAssertFalse(deleteHit.value, "no matching compute instance → must not call deleteSession")
     }
@@ -163,7 +172,7 @@ final class ComputeLifecycleToolsTests: XCTestCase {
             let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (resp, Data(body.utf8))
         }
-        let applier = StopComputeApplier(service: service, activity: activity)
+        let applier = StopComputeApplier(stop: stopper(service), activity: activity)
         try await applier.apply(makeProposal(kind: "stop_compute"))
         XCTAssertEqual(deletedID.value, "vc-1", "a running verbinal-compute instance must be deleted by id")
     }
@@ -184,7 +193,7 @@ final class ComputeLifecycleToolsTests: XCTestCase {
             let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (resp, Data(body.utf8))
         }
-        let applier = StopComputeApplier(service: service, activity: activity)
+        let applier = StopComputeApplier(stop: stopper(service), activity: activity)
         try await applier.apply(makeProposal(kind: "stop_compute"))
         XCTAssertEqual(deletedID.value, "vc-2")
     }

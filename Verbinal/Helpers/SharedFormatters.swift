@@ -43,6 +43,12 @@ enum SharedFormatters {
         return f
     }()
 
+    /// An ISO-8601 time with or without fractional seconds — as the
+    /// platform and the compute watcher write them.
+    static func isoDate(_ text: String) -> Date? {
+        iso8601.date(from: text) ?? iso8601Fractional.date(from: text)
+    }
+
     /// `yyyy-MM-dd` UTC, no time-of-day. Use for date-only display.
     static let yyyyMMddUTC: DateFormatter = {
         let f = DateFormatter()

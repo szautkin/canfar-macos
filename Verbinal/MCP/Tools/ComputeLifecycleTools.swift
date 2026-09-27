@@ -90,58 +90,18 @@ struct StartComputeTool: JSONWriteTool {
 
 struct StartComputeApplier: ProposalApplier {
     let kind = "start_compute"
-    let service: SessionService
-    let vospace: VOSpaceBrowserService
-    let username: @Sendable () async -> String
-    /// Raw (username, secret) for the compute image's registry, so a
-    /// PRIVATE image can be pulled at cold-launch. nil ⇒ public image.
-    let registryAuth: @Sendable () async -> (username: String, secret: String)?
+    /// Reuses or launches the session at this size; true when one was already there.
+    let ensure: @Sendable (RemoteComputeService.Configuration) async throws -> Bool
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(StartComputeTool.Payload.self, from: proposal.payload)
-        let user = await username()
-        guard !user.isEmpty else {
-            throw ProposalApplyError.backendError("start_compute: not authenticated (no CADC username).")
-        }
-        let svc = service
-        let vos = vospace
-        let auth = registryAuth
-        let image = payload.image
-
-        // Whether we launched a new instance (vs. reused a warm one), so
-        // the activity breadcrumb is honest about which.
+        let launch = RemoteComputeService.Configuration(image: payload.image, cores: payload.cores, ram: payload.ram)
+        let ensure = ensure
         let reusedExisting: Bool
         do {
             reusedExisting = try await withApplierTimeout(seconds: 180, label: "start_compute") {
-                let sessions = try await svc.getSessions()
-                let infos = sessions.map {
-                    RunCodeContract.SessionInfo(id: $0.id, type: $0.sessionType,
-                                                name: $0.sessionName, status: $0.status)
-                }
-                if RunCodeContract.reusableSessionID(in: infos, name: RunCodeContract.sessionName) != nil {
-                    // A warm (running/pending) instance already exists.
-                    // We CANNOT resize it — leave it at its current size
-                    // and treat this as a successful no-op.
-                    return true
-                }
-                // Launch a new instance at the requested size. Pass the
-                // compute registry creds so Skaha can pull a private image.
-                let creds = await auth()
-                let params = SessionLaunchParams(
-                    type: RunCodeContract.sessionType,
-                    name: RunCodeContract.sessionName,
-                    image: image,
-                    cores: payload.cores, ram: payload.ram, gpus: 0,
-                    cmd: nil,
-                    registryUsername: creds?.username,
-                    registrySecret: creds?.secret
-                )
-                _ = try await svc.launchSession(params)
-                // Defensively ensure the /arc inbox tree exists so the
-                // first `run_code` PUT doesn't 404 on a missing parent.
-                await RunCodeApplier.ensureTree(vos, user: user)
-                return false
+                try await ensure(launch)
             }
         } catch let pa as ProposalApplyError {
             throw pa
@@ -149,21 +109,12 @@ struct StartComputeApplier: ProposalApplier {
             throw ProposalApplyError.backendError("start_compute: \(error.localizedDescription)")
         }
 
-        // Note in the feed whether we reused a running instance (and so
-        // honoured its current size, not the requested one) or launched
-        // fresh — the user/agent can see why a resize "didn't take".
+        // Say whether a running instance was reused (and so kept its size)
+        // or a new one launched — why a resize "didn't take".
         let summary = reusedExisting
             ? "Reused the existing \(RunCodeContract.sessionName) instance at its current size — a running instance can't be resized (stop_compute then start_compute to change it)."
             : proposal.summary
-        await MainActor.run {
-            activity.append(.applied(
-                proposal: PendingProposal(
-                    id: proposal.id, toolName: proposal.toolName, kind: proposal.kind,
-                    summary: summary, payload: proposal.payload,
-                    createdAt: proposal.createdAt, origin: proposal.origin,
-                    requestID: proposal.requestID),
-                kind: kind))
-        }
+        await MainActor.run { activity.append(.applied(proposal: proposal.summarised(summary), kind: kind)) }
     }
 }
 
@@ -201,44 +152,29 @@ struct StopComputeTool: JSONWriteTool {
 
 struct StopComputeApplier: ProposalApplier {
     let kind = "stop_compute"
-    let service: SessionService
+    /// Deletes the session; false when there was none.
+    let stop: @Sendable () async throws -> Bool
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
-        let svc = service
+        let stop = stop
         let foundRunning: Bool
         do {
-            foundRunning = try await withApplierTimeout(seconds: 180, label: "stop_compute") {
-                let sessions = try await svc.getSessions()
-                let infos = sessions.map {
-                    RunCodeContract.SessionInfo(id: $0.id, type: $0.sessionType,
-                                                name: $0.sessionName, status: $0.status)
-                }
-                guard let id = RunCodeContract.reusableSessionID(
-                    in: infos, name: RunCodeContract.sessionName) else {
-                    // Clean no-op — nothing to stop.
-                    return false
-                }
-                try await svc.deleteSession(id: id)
-                return true
-            }
+            foundRunning = try await withApplierTimeout(seconds: 180, label: "stop_compute") { try await stop() }
         } catch let pa as ProposalApplyError {
             throw pa
         } catch {
             throw ProposalApplyError.backendError("stop_compute: \(error.localizedDescription)")
         }
+        let summary = foundRunning ? proposal.summary : "No compute instance running — stop_compute was a no-op."
+        await MainActor.run { activity.append(.applied(proposal: proposal.summarised(summary), kind: kind)) }
+    }
+}
 
-        let summary = foundRunning
-            ? proposal.summary
-            : "No compute instance running — stop_compute was a no-op."
-        await MainActor.run {
-            activity.append(.applied(
-                proposal: PendingProposal(
-                    id: proposal.id, toolName: proposal.toolName, kind: proposal.kind,
-                    summary: summary, payload: proposal.payload,
-                    createdAt: proposal.createdAt, origin: proposal.origin,
-                    requestID: proposal.requestID),
-                kind: kind))
-        }
+extension PendingProposal {
+    /// The same proposal saying what actually happened, for the activity feed.
+    func summarised(_ summary: String) -> PendingProposal {
+        PendingProposal(id: id, toolName: toolName, kind: kind, summary: summary, payload: payload,
+                        createdAt: createdAt, origin: origin, requestID: requestID)
     }
 }

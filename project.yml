@@ -113,6 +113,7 @@ targets:
           - "FITSViewer/**"
           - "CubeViewer/**"
           - "Storage/**"
+          - "RemoteCompute/**"
           - "MCP/**"
           # Bundled as a folder resource below so Bundle looks under Workflows/.
           - "Workflows/Resources/**"

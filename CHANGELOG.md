@@ -159,6 +159,16 @@ Catching up with Verbinal for Windows 1.4.1 (see
   `search_image_registry`, `list_my_images`, `add_registry_image` and
   `remove_registry_image` (which waits for you); `list_session_images`
   includes your images.
+- **Remote compute remembers its runs** — every piece of code sent to
+  the compute session, by your assistant (`run_code`) or by you, is kept
+  with who sent it, when, and how it ended (ok, error, timeout, no
+  result, not sent), and is watched until its result arrives whether or
+  not anyone asks for it. For assistants: `get_compute_state` (not set
+  up, stopped, starting, running, stopping or failed, with the size asked
+  for and the size granted, and the uptime) and `list_compute_runs`. A
+  session left on your account from another install is reported, not
+  hidden behind "not set up". The compute image field drops a pasted
+  `https://` and spaces.
 - **What is inside an image, for your assistant** — `describe_image`
   gives a probed image's OS, Python and packages with versions by
   ecosystem (Python per environment, R, dpkg, rpm, apk), and

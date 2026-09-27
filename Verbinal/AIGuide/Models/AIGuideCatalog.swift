@@ -243,6 +243,8 @@ enum AIGuideCatalog {
         "run_code_output": "compute",
         "start_compute": "compute",
         "stop_compute": "compute",
+        "get_compute_state": "compute",
+        "list_compute_runs": "compute",
         // View & Navigation
         "set_search_focus": "navigation",
         "navigate_to": "navigation",

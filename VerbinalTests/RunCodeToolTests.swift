@@ -104,8 +104,9 @@ final class RunCodeToolTests: XCTestCase {
 
     // MARK: - run_code_output (read / poll)
 
-    private func outputTool(_ fetch: @escaping @Sendable (_ path: String, _ maxBytes: Int) async throws -> Data?) -> RunCodeOutputTool {
-        RunCodeOutputTool(fetchOut: fetch)
+    /// The output tool over a result file with these bytes (nil: not written yet).
+    private func outputTool(_ fetch: @escaping @Sendable (_ id: String) async throws -> Data?) -> RunCodeOutputTool {
+        RunCodeOutputTool(fetchOut: { id in RunCodeContract.Fetched(try await fetch(id)) })
     }
 
     private func decode(_ result: ToolResult) throws -> [String: Any] {
@@ -116,14 +117,14 @@ final class RunCodeToolTests: XCTestCase {
     }
 
     func testOutputEmptyIDRejected() async {
-        let tool = outputTool { _, _ in nil }
+        let tool = outputTool { _ in nil }
         let r = await tool.invoke(arguments: argsData(["execution_id": "  "]), context: ctx())
         guard case .failed(let reason) = r else { return XCTFail("expected .failed") }
         XCTAssertEqual(reason.auditTag, "invalidArgument")
     }
 
     func testOutputNotReadyWhenAbsent() async throws {
-        let tool = outputTool { _, _ in nil }   // 404 → nil
+        let tool = outputTool { _ in nil }   // 404 → nil
         let r = await tool.invoke(arguments: argsData(["execution_id": "abc"]), context: ctx())
         let obj = try decode(r)
         XCTAssertEqual(obj["ready"] as? Bool, false)
@@ -137,8 +138,8 @@ final class RunCodeToolTests: XCTestCase {
          "duration_ms":12,"truncated":false,
          "started_at":"2026-06-02T14:00:00Z","finished_at":"2026-06-02T14:00:00Z"}
         """
-        let tool = outputTool { path, _ in
-            XCTAssertEqual(path, RunCodeContract.outPath(id: "abc"))
+        let tool = outputTool { id in
+            XCTAssertEqual(id, "abc")
             return Data(resultJSON.utf8)
         }
         let r = await tool.invoke(arguments: argsData(["execution_id": "abc"]), context: ctx())
@@ -155,7 +156,7 @@ final class RunCodeToolTests: XCTestCase {
         let resultJSON = """
         {"id":"bin","status":"ok","exit_code":0,"stdout":"AAEC","stdout_encoding":"base64"}
         """
-        let tool = outputTool { _, _ in Data(resultJSON.utf8) }
+        let tool = outputTool { _ in Data(resultJSON.utf8) }
         let r = await tool.invoke(arguments: argsData(["execution_id": "bin"]), context: ctx())
         let obj = try decode(r)
         XCTAssertEqual(obj["ready"] as? Bool, true)
@@ -164,14 +165,14 @@ final class RunCodeToolTests: XCTestCase {
     }
 
     func testOutputUnparseableTreatedAsNotReady() async throws {
-        let tool = outputTool { _, _ in Data("{ partial".utf8) }   // mid-write / propagating
+        let tool = outputTool { _ in Data("{ partial".utf8) }   // mid-write / propagating
         let r = await tool.invoke(arguments: argsData(["execution_id": "abc"]), context: ctx())
         let obj = try decode(r)
         XCTAssertEqual(obj["ready"] as? Bool, false)
     }
 
     func testOutputAuthRequiredPropagates() async {
-        let tool = outputTool { _, _ in throw ToolFailureReason.authRequired }
+        let tool = outputTool { _ in throw ToolFailureReason.authRequired }
         let r = await tool.invoke(arguments: argsData(["execution_id": "abc"]), context: ctx())
         guard case .failed(let reason) = r else { return XCTFail("expected .failed") }
         XCTAssertEqual(reason.auditTag, "authRequired")

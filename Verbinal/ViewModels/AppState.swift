@@ -64,6 +64,23 @@ final class AppState {
     /// keyspace/Keychain. Surfaced in Settings ▸ Compute.
     let aiComputeSettings = AIComputeSettingsService()
 
+    #if os(macOS)
+    /// Code run on the person's compute session — by them on the Remote
+    /// Compute screen or by an assistant — and the runs remembered.
+    @ObservationIgnored private(set) lazy var remoteCompute = RemoteComputeService(
+        runs: ComputeRunStore(),
+        sessions: sessionService,
+        files: VOSpaceBrowserService(network: network, endpoints: endpoints),
+        username: { [weak self] in self?.username ?? "" },
+        configuration: { [weak self] in
+            let settings = self?.aiComputeSettings.settings
+            return RemoteComputeService.Configuration(
+                image: settings?.image ?? "",
+                cores: settings?.cores ?? RunCodeContract.defaultCores, ram: settings?.ram ?? RunCodeContract.defaultRam)
+        },
+        registryAuth: { [weak self] in self?.aiComputeSettings.registryCredentials() })
+    #endif
+
     /// AI Guide — per-tool description overrides + user-authored instruction
     /// tools. The overrides re-tune what the MCP server advertises in
     /// `tools/list`; the guide tools are exposed as read-only callable tools.
@@ -922,6 +939,9 @@ final class AppState {
         imageDiscoveryCoordinator = nil
         imageDiscoveryModel = nil
         canfarImagesModel = nil
+        #if os(macOS)
+        remoteCompute.stopWatching()
+        #endif
     }
 
     func logout() async {

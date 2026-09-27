@@ -262,6 +262,10 @@ struct DescribeAppTool: JSONReadTool {
         `clear_probe_failures` (write). `search_packages` says what
         packages are called; `describe_image` lists a probed image's
         packages with versions.
+      * **Remote compute**: `get_compute_state` (set up? session
+        state, size, uptime) and `list_compute_runs` (every run, who
+        sent it, its status) beside `run_code` / `run_code_output` /
+        `start_compute` / `stop_compute`.
       * **Images the catalogue does not list**: `search_image_registry`,
         `list_my_images`, `add_registry_image` (write),
         `remove_registry_image` (write, destructive).

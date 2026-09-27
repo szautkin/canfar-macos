@@ -30,98 +30,6 @@ import VerbinalKit
 /// it also keeps the single-threaded MCP transport from being blocked by
 /// a long synchronous exec.
 
-// MARK: - Contract (shared, pinned literals + types)
-
-/// The file-drop contract literals. These MUST stay byte-for-byte in sync
-/// with the watcher image (`dev_info/verbinal-compute-image-spec.md`); a
-/// mismatch fails silently (the agent polls an output file the watcher
-/// wrote elsewhere).
-enum RunCodeContract {
-    static let sessionName = "verbinal-compute"
-    static let sessionType = "contributed"
-    static let inboxDir = ".verbinal/exec/inbox"
-    static let outDir   = ".verbinal/exec/out"
-    /// Result file hard cap — matches `read_vospace_file`'s 1 MB ceiling.
-    static let maxResultBytes = 1024 * 1024
-    static let supportedLanguages = ["python", "bash"]
-    static let defaultTimeoutSeconds = 60
-    static let maxTimeoutSeconds = 900
-
-    /// Resource bounds for the compute instance. The default size is the
-    /// Settings-resolved value (`AIComputeImage.resolvedResources()`);
-    /// these constants are the floor (1) the lazy launch falls back to
-    /// and the ceiling agent-requested sizes are clamped to. Resources
-    /// are an INSTANCE property — set once at `start_compute` (or the
-    /// `run_code` self-launch) and fixed for that instance's lifetime.
-    static let defaultCores = 1
-    static let defaultRam = 1
-    static let maxCores = 64
-    static let maxRam = 256
-
-    static func clampCores(_ value: Int) -> Int { min(max(value, 1), maxCores) }
-    static func clampRam(_ value: Int) -> Int { min(max(value, 1), maxRam) }
-
-    /// Sanitize a request id for filesystem use. The 9-character set
-    /// `/ : \ ? * < > | "` MUST match the watcher image and Verbinal's
-    /// `ImageManifest.sanitize` byte-for-byte, or id-derived filenames
-    /// won't agree across the two sides.
-    static func sanitize(_ id: String) -> String {
-        let bad: Set<Character> = ["/", ":", "\\", "?", "*", "<", ">", "|", "\""]
-        return String(id.map { bad.contains($0) ? "_" : $0 })
-    }
-    static func inboxPath(id: String) -> String { "\(inboxDir)/\(sanitize(id)).json" }
-    static func outPath(id: String) -> String { "\(outDir)/\(sanitize(id)).json" }
-
-    /// Client → watcher. Single JSON object PUT to the inbox.
-    struct Request: Codable, Sendable {
-        let id: String
-        let language: String
-        let code: String
-        let timeout_seconds: Int
-    }
-
-    /// Watcher → client. Decoded leniently (every field optional) so a
-    /// partially-written or older-schema result degrades to "not ready"
-    /// rather than throwing.
-    struct ResultFile: Codable, Sendable {
-        let id: String?
-        let status: String?
-        let exit_code: Int?
-        let stdout: String?
-        let stdout_encoding: String?
-        let stderr: String?
-        let stderr_encoding: String?
-        let duration_ms: Int?
-        let truncated: Bool?
-        let started_at: String?
-        let finished_at: String?
-    }
-
-    /// Minimal view of a session for the reuse decision — keeps the pure
-    /// choice logic testable without the Session model.
-    struct SessionInfo: Sendable, Equatable {
-        let id: String
-        let type: String
-        let name: String
-        let status: String   // raw Skaha status: running / pending / terminating / …
-    }
-
-    /// The id of a warm session to reuse, or nil to launch a new one: a
-    /// `contributed` session WE launched (matched by its pinned name) that is
-    /// running OR still provisioning (`pending`) — never terminating/failed.
-    /// Matching by name (not the image string) is robust to `launchSession`'s
-    /// registry-prefix normalization, and counting `pending` stops rapid
-    /// cold-start calls from spawning duplicate sessions.
-    static func reusableSessionID(in sessions: [SessionInfo], name: String) -> String? {
-        sessions.first { s in
-            let status = s.status.lowercased()
-            return s.type.lowercased() == sessionType
-                && s.name == name
-                && (status == "running" || status == "pending")
-        }?.id
-    }
-}
-
 // MARK: - run_code (auto-apply-gated write)
 
 struct RunCodeTool: JSONWriteTool {
@@ -221,102 +129,26 @@ struct RunCodeTool: JSONWriteTool {
 
 struct RunCodeApplier: ProposalApplier {
     let kind = "run_code"
-    let service: SessionService
-    let vospace: VOSpaceBrowserService
-    let username: @Sendable () async -> String
-    /// Raw (username, secret) for the registry the compute image lives in,
-    /// so a PRIVATE image can be pulled at cold-launch. nil ⇒ public image
-    /// / no creds configured (Settings ▸ Compute).
-    let registryAuth: @Sendable () async -> (username: String, secret: String)?
+    /// Sends the request as the assistant's, launching the session from the
+    /// configuration the proposal was planned with when there is none.
+    let submit: @Sendable (RunCodeContract.Request, RemoteComputeService.Configuration) async throws -> Void
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(RunCodeTool.Payload.self, from: proposal.payload)
-        let user = await username()
-        guard !user.isEmpty else {
-            throw ProposalApplyError.backendError("run_code: not authenticated (no CADC username).")
-        }
-        let svc = service
-        let vos = vospace
-        let auth = registryAuth
-        let image = payload.image
-
-        // 3-minute deadline so a stalled launch/upload always emits a
-        // terminal event rather than hanging the strip.
+        let request = RunCodeContract.Request(id: payload.id, language: payload.language,
+                                              code: payload.code, timeout_seconds: payload.timeout_seconds)
+        let launch = RemoteComputeService.Configuration(image: payload.image, cores: payload.cores, ram: payload.ram)
+        let submit = submit
+        // A 3-minute deadline so a stalled launch or upload always ends.
         do {
-            try await withApplierTimeout(seconds: 180, label: "run_code") {
-                // 1. Reuse a warm contributed compute session, or launch one.
-                //    We don't wait for Running — once the watcher boots it
-                //    re-scans the inbox and runs anything already dropped, and
-                //    the agent polls run_code_output until the result lands.
-                //    NOTE: the spec's status.json readiness gate (assert
-                //    ready:true + matching resolved_user BEFORE the first PUT) is
-                //    deferred together with the renew timer until the
-                //    contributed-session-stays-Running question (ticket #28) is
-                //    validated; until then a genuine cold start relies on
-                //    ensureTree below + the watcher boot re-scan.
-                let sessions = try await svc.getSessions()
-                let infos = sessions.map {
-                    RunCodeContract.SessionInfo(id: $0.id, type: $0.sessionType,
-                                                name: $0.sessionName, status: $0.status)
-                }
-                if RunCodeContract.reusableSessionID(in: infos, name: RunCodeContract.sessionName) == nil {
-                    // Pass the compute registry creds (Settings ▸ Compute) so
-                    // Skaha can mint x-skaha-registry-auth and pull a PRIVATE
-                    // image; nil for a public image.
-                    let creds = await auth()
-                    let params = SessionLaunchParams(
-                        type: RunCodeContract.sessionType,
-                        name: RunCodeContract.sessionName,
-                        image: image,
-                        cores: payload.cores, ram: payload.ram, gpus: 0,
-                        cmd: nil,
-                        registryUsername: creds?.username,
-                        registrySecret: creds?.secret
-                    )
-                    _ = try await svc.launchSession(params)
-                }
-
-                // 2. Defensively ensure the inbox tree exists. The watcher is
-                //    the source of truth, but a just-launched session may not
-                //    have created it yet — a missing parent 404s the PUT.
-                await Self.ensureTree(vos, user: user)
-
-                // 3. Drop the request into the inbox (single PUT).
-                let request = RunCodeContract.Request(
-                    id: payload.id, language: payload.language,
-                    code: payload.code, timeout_seconds: payload.timeout_seconds)
-                let data = try JSONEncoder().encode(request)
-                let tmp = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("runcode-\(RunCodeContract.sanitize(payload.id)).json")
-                try data.write(to: tmp)
-                defer { try? FileManager.default.removeItem(at: tmp) }
-                try await vos.uploadFile(
-                    username: user,
-                    remotePath: RunCodeContract.inboxPath(id: payload.id),
-                    fileURL: tmp)
-            }
+            try await withApplierTimeout(seconds: 180, label: "run_code") { try await submit(request, launch) }
         } catch let pa as ProposalApplyError {
             throw pa
         } catch {
             throw ProposalApplyError.backendError("run_code: \(error.localizedDescription)")
         }
-
-        await MainActor.run {
-            activity.append(.applied(proposal: proposal, kind: kind))
-        }
-    }
-
-    /// Create the coordination tree, one container per call, ignoring
-    /// "already exists" (createFolder throws on conflict). Sequential —
-    /// each parent must exist before its child. `internal` so
-    /// `StartComputeApplier` (the explicit pre-warm path) shares the
-    /// single source of truth for the /arc inbox tree.
-    static func ensureTree(_ vos: VOSpaceBrowserService, user: String) async {
-        try? await vos.createFolder(username: user, parentPath: "", folderName: ".verbinal")
-        try? await vos.createFolder(username: user, parentPath: ".verbinal", folderName: "exec")
-        try? await vos.createFolder(username: user, parentPath: ".verbinal/exec", folderName: "inbox")
-        try? await vos.createFolder(username: user, parentPath: ".verbinal/exec", folderName: "out")
+        await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
     }
 }
 
@@ -326,9 +158,8 @@ struct RunCodeOutputTool: AITool {
     static var verbClass: VerbClass { .read }
     static var agentSafe: Bool { true }
 
-    /// Returns the result-file bytes, or nil when it isn't there yet
-    /// (404). Injected for testing.
-    let fetchOut: @Sendable (_ path: String, _ maxBytes: Int) async throws -> Data?
+    /// Reads the run's result file (and records it). Injected for testing.
+    let fetchOut: @Sendable (_ executionID: String) async throws -> RunCodeContract.Fetched
 
     var toolTimeoutSeconds: TimeInterval { 30 }
 
@@ -365,24 +196,23 @@ struct RunCodeOutputTool: AITool {
     }
 
     private func run(id: String) async throws -> ToolResult {
-        let data = try await fetchOut(RunCodeContract.outPath(id: id), RunCodeContract.maxResultBytes)
-        guard let data else {
+        switch try await fetchOut(id) {
+        case .absent:
             return Self.encode(Output(ready: false, execution_id: id,
                 note: "No result yet — the compute session may still be provisioning or executing. Retry run_code_output shortly; if several polls still return nothing, the session may have stopped — call start_compute (or run_code) to (re)launch it."))
-        }
-        // A present-but-unparseable file means a partial/propagating write
-        // (read-after-write lag on /arc) — treat as not-ready, keep polling.
-        guard let result = try? JSONDecoder().decode(RunCodeContract.ResultFile.self, from: data) else {
+        case .incomplete:
+            // A partial/propagating write (read-after-write lag on /arc) — keep polling.
             return Self.encode(Output(ready: false, execution_id: id,
                 note: "Result file is present but not yet complete; retry shortly."))
+        case .done(let result):
+            return Self.encode(Output(
+                ready: true, execution_id: id,
+                status: result.status, exit_code: result.exit_code,
+                stdout: result.stdout, stdout_encoding: result.stdout_encoding,
+                stderr: result.stderr, stderr_encoding: result.stderr_encoding,
+                duration_ms: result.duration_ms, truncated: result.truncated,
+                started_at: result.started_at, finished_at: result.finished_at))
         }
-        return Self.encode(Output(
-            ready: true, execution_id: id,
-            status: result.status, exit_code: result.exit_code,
-            stdout: result.stdout, stdout_encoding: result.stdout_encoding,
-            stderr: result.stderr, stderr_encoding: result.stderr_encoding,
-            duration_ms: result.duration_ms, truncated: result.truncated,
-            started_at: result.started_at, finished_at: result.finished_at))
     }
 
     struct Output: Encodable {

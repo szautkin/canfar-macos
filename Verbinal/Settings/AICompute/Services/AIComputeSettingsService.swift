@@ -45,7 +45,7 @@ final class AIComputeSettingsService {
             loaded.username = user
         }
         if let img = userDefaults.string(forKey: Self.keyImage), !img.isEmpty {
-            loaded.image = img
+            loaded.image = RegistryImage.normalized(img)
         }
         // `object(forKey:)` so an explicitly-saved 1 isn't confused with
         // "never set" (which `integer(forKey:)` also reports as 0).
@@ -82,7 +82,8 @@ final class AIComputeSettingsService {
     /// Set the compute image. Empty genuinely unsets it (disabling
     /// `run_code`) — there is no built-in fallback image.
     func setImage(_ value: String) {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        // As pasted from a browser: no scheme or spaces, which a reference cannot have.
+        let trimmed = RegistryImage.normalized(value)
         guard trimmed != settings.image else { return }
         if trimmed.isEmpty {
             userDefaults.removeObject(forKey: Self.keyImage)

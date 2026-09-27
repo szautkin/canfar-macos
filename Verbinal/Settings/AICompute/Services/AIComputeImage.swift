@@ -33,7 +33,7 @@ enum AIComputeImage {
     /// Resolved image id: the UserDefaults override, else empty.
     /// `defaults` is injectable for tests; production reads `.standard`.
     static func resolvedImageID(_ defaults: UserDefaults = .standard) -> String {
-        defaults.string(forKey: imageDefaultsKey) ?? builtinImageID
+        RegistryImage.normalized(defaults.string(forKey: imageDefaultsKey) ?? builtinImageID)
     }
 
     /// Resolved default instance size for the `run_code` lazy launch and

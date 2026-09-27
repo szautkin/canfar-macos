@@ -177,7 +177,9 @@ extension AppState {
         // result back. Disabled until an AI compute image is set in
         // Settings ▸ Compute.
         tools.append(RunCodeTool())
-        tools.append(makeRunCodeOutputTool(service: vospace))
+        tools.append(makeRunCodeOutputTool())
+        tools.append(makeGetComputeStateTool())
+        tools.append(makeListComputeRunsTool())
         // Explicit lifecycle on top of the lazy `run_code`: pre-warm /
         // size the instance (`start_compute`) and tear it down
         // (`stop_compute`). Resources are an instance property set on
