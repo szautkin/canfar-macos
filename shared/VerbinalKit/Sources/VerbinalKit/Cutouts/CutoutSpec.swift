@@ -27,9 +27,15 @@ public struct CutoutSpec: Codable, Equatable, Hashable, Sendable {
     public var timeMin: Double?
     public var timeMax: Double?
     public var pol: [String] = []
+    /// Who cuts it: CADC (SODA) or this computer from the file already here.
+    public var cutBy: CutoutMethod = .soda
+    /// Which images of a multi-extension file a local cut keeps ("SCI,1");
+    /// empty for every image the region falls on.
+    public var extensions: [String] = []
 
     public init(artifactID: String, region: SkyRegion? = nil, bandMin: Double? = nil, bandMax: Double? = nil,
-                timeMin: Double? = nil, timeMax: Double? = nil, pol: [String] = []) {
+                timeMin: Double? = nil, timeMax: Double? = nil, pol: [String] = [],
+                cutBy: CutoutMethod = .soda, extensions: [String] = []) {
         self.artifactID = artifactID
         self.region = region
         self.bandMin = bandMin
@@ -37,6 +43,26 @@ public struct CutoutSpec: Codable, Equatable, Hashable, Sendable {
         self.timeMin = timeMin
         self.timeMax = timeMax
         self.pol = pol
+        self.cutBy = cutBy
+        self.extensions = extensions
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case artifactID, region, bandMin, bandMax, timeMin, timeMax, pol, cutBy, extensions
+    }
+
+    /// A cutout saved before local cuts had neither `cutBy` nor `extensions`.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        artifactID = try c.decode(String.self, forKey: .artifactID)
+        region = try c.decodeIfPresent(SkyRegion.self, forKey: .region)
+        bandMin = try c.decodeIfPresent(Double.self, forKey: .bandMin)
+        bandMax = try c.decodeIfPresent(Double.self, forKey: .bandMax)
+        timeMin = try c.decodeIfPresent(Double.self, forKey: .timeMin)
+        timeMax = try c.decodeIfPresent(Double.self, forKey: .timeMax)
+        pol = try c.decodeIfPresent([String].self, forKey: .pol) ?? []
+        cutBy = try c.decodeIfPresent(CutoutMethod.self, forKey: .cutBy) ?? .soda
+        extensions = try c.decodeIfPresent([String].self, forKey: .extensions) ?? []
     }
 
     /// Nothing to cut: the file would come back whole.
@@ -45,10 +71,15 @@ public struct CutoutSpec: Codable, Equatable, Hashable, Sendable {
     }
 
     /// Everything that makes this cutout the one it is; `key` is its hash.
+    /// A local cut is a different product from CADC's, so the method is part
+    /// of it — only when local, so a SODA cutout keeps the key it had.
     public var identity: String {
-        [artifactID, region?.shape.rawValue ?? "", region?.sodaValue ?? "",
-         Self.number(bandMin), Self.number(bandMax), Self.number(timeMin), Self.number(timeMax),
-         pol.joined(separator: ",")].joined(separator: "|")
+        var canonical = [artifactID, region?.shape.rawValue ?? "", region?.sodaValue ?? "",
+                         Self.number(bandMin), Self.number(bandMax), Self.number(timeMin), Self.number(timeMax),
+                         pol.joined(separator: ",")].joined(separator: "|")
+        if cutBy != .soda { canonical += "|\(cutBy.rawValue)" }
+        if !extensions.isEmpty { canonical += "|ext:" + extensions.joined(separator: ";") }
+        return canonical
     }
 
     /// Eight characters, the same for the same cutout and different for
@@ -65,6 +96,7 @@ public struct CutoutSpec: Codable, Equatable, Hashable, Sendable {
         if bandMin != nil || bandMax != nil { parts.append(Self.wavelengthRange(bandMin, bandMax)) }
         if timeMin != nil || timeMax != nil { parts.append("\(Self.date(mjd: timeMin)) – \(Self.date(mjd: timeMax))") }
         if !pol.isEmpty { parts.append(pol.joined(separator: ", ")) }
+        if !extensions.isEmpty { parts.append(extensions.map { "[\($0)]" }.joined(separator: " ")) }
         return parts.joined(separator: " · ")
     }
 

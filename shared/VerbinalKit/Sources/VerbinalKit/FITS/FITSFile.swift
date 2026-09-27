@@ -29,13 +29,16 @@ public struct FITSHDUnit: Sendable, Identifiable {
     public let dataOffset: Int     // byte offset in file
     public let dataLength: Int     // byte length of data segment
     public let wcs: FITSWCSTransform?
+    /// Where the header's first card is — its cards run to `dataOffset`.
+    public let headerOffset: Int
 
-    public init(id: Int, header: FITSHeader, dataOffset: Int, dataLength: Int, wcs: FITSWCSTransform?) {
+    public init(id: Int, header: FITSHeader, dataOffset: Int, dataLength: Int, wcs: FITSWCSTransform?, headerOffset: Int = 0) {
         self.id = id
         self.header = header
         self.dataOffset = dataOffset
         self.dataLength = dataLength
         self.wcs = wcs
+        self.headerOffset = headerOffset
     }
 
     public var isImage: Bool { header.naxis >= 2 && header.naxis1 > 0 && header.naxis2 > 0 }

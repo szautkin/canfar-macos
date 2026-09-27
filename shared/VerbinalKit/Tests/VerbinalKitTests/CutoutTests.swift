@@ -76,6 +76,20 @@ final class CutoutTests: XCTestCase {
         XCTAssertEqual(CutoutSpec.date(mjd: 51544), "2000-01-01")
     }
 
+    /// A cutout saved before local cuts still reads, and keeps its key.
+    func testACutoutSavedBeforeLocalCutsKeepsItsKey() throws {
+        let saved = #"{"artifactID":"cadc:X/a.fits","region":{"shape":"circle","ra":10,"dec":41,"radius":0.05,"width":0,"height":0,"vertices":[]},"pol":[]}"#
+        let spec = try JSONDecoder().decode(CutoutSpec.self, from: Data(saved.utf8))
+        XCTAssertEqual(spec.cutBy, .soda)
+        XCTAssertEqual(spec.extensions, [])
+        XCTAssertEqual(spec.key, CutoutSpec(artifactID: "cadc:X/a.fits", region: .circle(ra: 10, dec: 41, radius: 0.05)).key)
+        var local = spec
+        local.cutBy = .local
+        XCTAssertNotEqual(local.key, spec.key, "a local cut is another product")
+        local.extensions = ["SCI,1"]
+        XCTAssertTrue(local.summary.hasSuffix("[SCI,1]"))
+    }
+
     // MARK: - The descriptor
 
     private static let dataLink = """

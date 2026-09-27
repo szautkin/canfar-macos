@@ -112,7 +112,8 @@ public enum FITSParser {
                 header: effectiveHeader,
                 dataOffset: dataOffset,
                 dataLength: dataLength,
-                wcs: wcs
+                wcs: wcs,
+                headerOffset: offset
             ))
 
             // Advance to next 2880-byte boundary
