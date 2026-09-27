@@ -16,6 +16,8 @@ struct MarkView: Encodable, Sendable {
     let y: Double?
     let raDeg: Double?
     let decDeg: Double?
+    /// A cube mark's channel.
+    let channel: Int?
     let halfWidth: Double?
     let halfHeight: Double?
     let text: String
@@ -36,6 +38,7 @@ struct MarkView: Encodable, Sendable {
         y = sky ? nil : m.anchor.y
         raDeg = sky ? m.anchor.x : nil
         decDeg = sky ? m.anchor.y : nil
+        channel = m.anchor.space == .data ? Int(m.anchor.z.rounded()) : nil
         halfWidth = m.extent?.halfWidth
         halfHeight = m.extent?.halfHeight
         text = m.text
@@ -48,6 +51,19 @@ struct MarkView: Encodable, Sendable {
     }
 }
 
+/// Which viewer's marks a tool acts on.
+enum MarkViewer: String, Sendable {
+    case fits, cube
+
+    static func parse(_ text: String?) throws -> MarkViewer {
+        guard let text else { return .fits }
+        guard let viewer = MarkViewer(rawValue: text.lowercased()) else {
+            throw ToolFailureReason.invalidArgument("viewer must be fits or cube, not \"\(text)\"")
+        }
+        return viewer
+    }
+}
+
 /// Position, size, label and style — the arguments annotate and update share.
 struct MarkFields: Decodable, Sendable {
     var kind: String?
@@ -55,6 +71,7 @@ struct MarkFields: Decodable, Sendable {
     var y: Double?
     var raDeg: Double?
     var decDeg: Double?
+    var channel: Int?
     var radius: Double?
     var halfWidth: Double?
     var halfHeight: Double?
@@ -66,13 +83,36 @@ struct MarkFields: Decodable, Sendable {
     var bold: Bool?
     var stroke: Double?
 
-    static let schemaProperties = #"""
-            "kind": { "type": "string", "enum": ["circle", "rect", "callout", "text"], "description": "Default circle." },
+    /// Where a FITS mark goes.
+    static let fitsPosition = #"""
             "x": { "type": "number", "description": "0-based FITS pixel column (with y)." },
             "y": { "type": "number", "description": "0-based FITS pixel row (with x)." },
             "raDeg": { "type": "number", "description": "ICRS RA in degrees (with decDeg)." },
             "decDeg": { "type": "number", "description": "ICRS Dec in degrees (with raDeg)." },
             "radius": { "type": "number", "description": "Half-size in the position's units: pixels, or degrees on the sky." },
+    """#
+
+    /// Where a cube mark goes: a voxel on a channel.
+    static let cubePosition = #"""
+            "x": { "type": "number", "description": "0-based voxel column." },
+            "y": { "type": "number", "description": "0-based voxel row." },
+            "channel": { "type": "integer", "minimum": 0, "description": "The channel the mark lives on — it is drawn on that channel's slice only." },
+            "radius": { "type": "number", "description": "Half-size in voxels." },
+    """#
+
+    /// Either viewer's position, for a change.
+    static let anyPosition = #"""
+            "x": { "type": "number", "description": "0-based pixel (FITS) or voxel (cube) column, with y." },
+            "y": { "type": "number" },
+            "raDeg": { "type": "number", "description": "FITS only: ICRS RA in degrees (with decDeg)." },
+            "decDeg": { "type": "number" },
+            "channel": { "type": "integer", "minimum": 0, "description": "Cube only: move the mark to this channel." },
+            "radius": { "type": "number", "description": "Half-size in the position's units: pixels, voxels, or degrees on the sky." },
+    """#
+
+    /// Shape, words and look — the same for both viewers.
+    static let shapeProperties = #"""
+            "kind": { "type": "string", "enum": ["circle", "rect", "callout", "text"], "description": "Default circle." },
             "halfWidth": { "type": "number" },
             "halfHeight": { "type": "number" },
             "text": { "type": "string", "description": "The label; required for a callout or text mark." },
@@ -84,14 +124,37 @@ struct MarkFields: Decodable, Sendable {
             "stroke": { "type": "number", "minimum": 0.5, "maximum": 20 }
     """#
 
-    /// The position given, if one was: a pixel pair or a sky pair, never both
-    /// and never half of one.
-    func anchor() throws -> Mark.Anchor? {
-        switch (x, y, raDeg, decDeg) {
-        case (nil, nil, nil, nil): return nil
-        case (let x?, let y?, nil, nil): return Mark.Anchor(space: .imagePixel, x: x, y: y)
-        case (nil, nil, let ra?, let dec?): return Mark.Anchor(space: .sky, x: ra, y: dec)
-        default: throw ToolFailureReason.invalidArgument("give the position as x and y, or as raDeg and decDeg — one pair")
+    /// The position given, if one was. FITS: a pixel pair or a sky pair,
+    /// never both and never half of one. Cube: a voxel on a channel —
+    /// `channel` may be left out to keep `currentChannel` (a change; a
+    /// change of channel alone is the caller's).
+    func anchor(for viewer: MarkViewer, currentChannel: Double? = nil) throws -> Mark.Anchor? {
+        switch viewer {
+        case .fits:
+            guard channel == nil else {
+                throw ToolFailureReason.invalidArgument("channel is for cube marks — use annotate_cube, or viewer cube")
+            }
+            switch (x, y, raDeg, decDeg) {
+            case (nil, nil, nil, nil): return nil
+            case (let x?, let y?, nil, nil): return Mark.Anchor(space: .imagePixel, x: x, y: y)
+            case (nil, nil, let ra?, let dec?): return Mark.Anchor(space: .sky, x: ra, y: dec)
+            default: throw ToolFailureReason.invalidArgument("give the position as x and y, or as raDeg and decDeg — one pair")
+            }
+        case .cube:
+            guard raDeg == nil, decDeg == nil else {
+                throw ToolFailureReason.invalidArgument("a cube mark is on a voxel — give x, y and channel, not raDeg and decDeg")
+            }
+            switch (x, y) {
+            case (nil, nil):
+                return nil
+            case (let x?, let y?):
+                guard let z = channel.map(Double.init) ?? currentChannel else {
+                    throw ToolFailureReason.invalidArgument("give the channel the mark lives on")
+                }
+                return Mark.Anchor(space: .data, x: x, y: y, z: z)
+            default:
+                throw ToolFailureReason.invalidArgument("give both x and y")
+            }
         }
     }
 
@@ -135,9 +198,11 @@ struct MarkChange: Encodable, Sendable {
     var removed: Int?
 }
 
-/// Where a mark tool acts: a file (default: the one on screen) and, for
-/// FITS, an extension (default: the one on screen).
+/// Where a mark tool acts: a viewer (default FITS), a file (default: the
+/// one on screen in that viewer) and, for FITS, an extension (default: the
+/// one on screen).
 struct MarkTargetArgs: Decodable, Sendable {
+    var viewer: String?
     var target: String?
     var hdu: Int?
     var allHdus: Bool?
@@ -146,6 +211,7 @@ struct MarkTargetArgs: Decodable, Sendable {
 // MARK: - The tools
 
 enum MarkTools {
+    /// Fields and target read from the same arguments.
     struct Annotate: Decodable, Sendable {
         let fields: MarkFields
         let target: MarkTargetArgs
@@ -170,10 +236,14 @@ enum MarkTools {
     }
 
     struct ByID: Decodable, Sendable {
-        var id: String?
-        var viewer: String?
-        var target: String?
-        var hdu: Int?
+        let id: String?
+        let target: MarkTargetArgs
+
+        private enum Keys: String, CodingKey { case id }
+        init(from decoder: Decoder) throws {
+            id = try decoder.container(keyedBy: Keys.self).decodeIfPresent(String.self, forKey: .id)
+            target = try MarkTargetArgs(from: decoder)
+        }
     }
 
     struct Listing: Encodable, Sendable {
@@ -192,12 +262,18 @@ enum MarkTools {
         let content: String
     }
 
+    /// A FITS file and extension.
     static let targetProperties = #"""
-            "target": { "type": "string", "description": "The file's path. Defaults to the image on screen." },
-            "hdu": { "type": "integer", "minimum": 0, "description": "Which extension. Defaults to the one on screen." }
+            "target": { "type": "string", "description": "The file's path. Defaults to the file on screen." },
+            "hdu": { "type": "integer", "minimum": 0, "description": "FITS only: which extension. Defaults to the one on screen." }
     """#
 
-    static let viewerProperty = #""viewer": { "type": "string", "enum": ["fits"], "description": "Which viewer's marks (fits)." }"#
+    /// A cube file.
+    static let cubeTargetProperty = #"""
+            "target": { "type": "string", "description": "The cube's path. Defaults to the cube on screen." }
+    """#
+
+    static let viewerProperty = #""viewer": { "type": "string", "enum": ["fits", "cube"], "description": "Which viewer's marks. Default fits." }"#
 }
 
 /// A mark tool: its schema and what it does. Every mark tool is a live

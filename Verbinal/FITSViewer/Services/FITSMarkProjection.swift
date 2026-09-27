@@ -13,19 +13,22 @@ extension FITSViewerModel {
         fileURL.map { MarkStore.Target(file: $0, hdu: selectedHDUIndex) }
     }
 
+    /// The displayed image's grid, once an HDU is chosen.
+    var displayGrid: FITSDisplayGrid? {
+        selectedHDU.map { FITSDisplayGrid(width: $0.header.naxis1, height: $0.header.naxis2) }
+    }
+
     /// Where a mark's anchor falls on the display image (row 0 on top):
     /// 0-based FITS array pixels, or the sky through the WCS.
     func displayPoint(_ anchor: Mark.Anchor) -> CGPoint? {
-        guard let hdu = selectedHDU else { return nil }
-        let pixel: (x: Double, y: Double)
+        guard let grid = displayGrid else { return nil }
         switch anchor.space {
         case .imagePixel, .data:
-            pixel = (anchor.x, anchor.y)
+            return grid.display(ofPixel: anchor.x, anchor.y)
         case .sky:
             guard let wcs, let p = wcs.worldToPixel(ra: anchor.x, dec: anchor.y) else { return nil }
-            pixel = (p.x, p.y)
+            return grid.display(ofPixel: p.x, p.y)
         }
-        return CGPoint(x: pixel.x + 0.5, y: Double(hdu.header.naxis2) - pixel.y - 0.5)
     }
 
     /// The anchor a display-image point means: on the sky when the image
@@ -33,12 +36,8 @@ extension FITSViewerModel {
     /// field), else on its pixels. A new mark off the image is a miss; a
     /// moved one keeps its space and slides along the edge.
     func anchor(atDisplay point: CGPoint, moving: Mark.Anchor?) -> Mark.Anchor? {
-        guard let hdu = selectedHDU else { return nil }
-        let width = Double(hdu.header.naxis1), height = Double(hdu.header.naxis2)
-        let inside = point.x >= 0 && point.y >= 0 && point.x < width && point.y < height
-        guard moving != nil || inside else { return nil }
-        let x = min(max(point.x, 0), width) - 0.5
-        let y = height - min(max(point.y, 0), height) - 0.5
+        guard let grid = displayGrid, moving != nil || grid.contains(display: point) else { return nil }
+        let (x, y) = grid.pixel(ofDisplay: grid.clamped(display: point))
         switch moving?.space ?? (wcs != nil ? .sky : .imagePixel) {
         case .sky:
             guard let wcs else { return nil }

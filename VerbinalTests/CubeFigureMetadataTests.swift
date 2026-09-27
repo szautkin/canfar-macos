@@ -15,7 +15,7 @@ import VerbinalKit
 final class CubeFigureMetadataTests: XCTestCase {
 
     func testFigureMetadataFromKnownCube() async throws {
-        let url = try writeSyntheticCube()
+        let url = try FITSTestFixtures.writeCube()
         defer { try? FileManager.default.removeItem(at: url) }
 
         let model = CubeViewerModel()
@@ -38,52 +38,5 @@ final class CubeFigureMetadataTests: XCTestCase {
         XCTAssertEqual(meta.spectralRange, "1.00000 GHz … 1.00400 GHz")
         XCTAssertFalse(meta.valueLo.isEmpty)
         XCTAssertFalse(meta.valueHi.isEmpty)
-    }
-
-    // MARK: - Synthetic FITS cube on disk
-
-    private func writeSyntheticCube() throws -> URL {
-        let nx = 4, ny = 3, nz = 5
-        var data = Data()
-        for z in 0..<nz {
-            for y in 0..<ny {
-                for x in 0..<nx {
-                    var be = Float(z * 100 + y * 10 + x).bitPattern.bigEndian
-                    data.append(Data(bytes: &be, count: 4))
-                }
-            }
-        }
-        let cards: [(String, String)] = [
-            ("SIMPLE", "T"), ("BITPIX", "-32"), ("NAXIS", "3"),
-            ("NAXIS1", "\(nx)"), ("NAXIS2", "\(ny)"), ("NAXIS3", "\(nz)"),
-            ("OBJECT", "'TestObj'"), ("BUNIT", "'Jy'"),
-            ("CTYPE1", "'RA---TAN'"), ("CTYPE2", "'DEC--TAN'"),
-            ("CRVAL1", "150.0"), ("CRVAL2", "2.0"), ("CRPIX1", "2.0"), ("CRPIX2", "1.5"),
-            ("CD1_1", "-0.001"), ("CD2_2", "0.001"),
-            ("CTYPE3", "'FREQ'"), ("CUNIT3", "'Hz'"),
-            ("CRVAL3", "1000000000.0"), ("CRPIX3", "1.0"), ("CDELT3", "1000000.0"),
-            ("RESTFRQ", "1000000000.0"),
-        ]
-        var header = ""
-        for (k, v) in cards {
-            let key = k.padding(toLength: 8, withPad: " ", startingAt: 0)
-            header += String((key + "= " + v).prefix(80)).padding(toLength: 80, withPad: " ", startingAt: 0)
-        }
-        header += "END".padding(toLength: 80, withPad: " ", startingAt: 0)
-
-        var bytes = Data(header.utf8)
-        pad(&bytes, with: 0x20)   // space-pad header to 2880
-        pad(&data, with: 0x00)    // zero-pad data to 2880
-        bytes.append(data)
-
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cubefig-\(UUID().uuidString).fits")
-        try bytes.write(to: url)
-        return url
-    }
-
-    private func pad(_ data: inout Data, with byte: UInt8) {
-        let rem = data.count % 2880
-        if rem != 0 { data.append(Data(repeating: byte, count: 2880 - rem)) }
     }
 }

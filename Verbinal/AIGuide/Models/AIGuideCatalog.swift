@@ -170,6 +170,8 @@ enum AIGuideCatalog {
         "open_cube": "cube",
         "get_cube_view": "cube",
         "get_cube_image": "cube",
+        "annotate_cube": "cube",
+        "list_cube_annotations": "cube",
         "set_cube_view": "cube",
         "set_cube_camera": "cube",
         "probe_cube_spectrum": "cube",

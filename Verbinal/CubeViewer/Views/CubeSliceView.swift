@@ -11,11 +11,14 @@ import SwiftUI
 /// bar, a timeline scrubber (play + waveform), and click-to-probe spectrum.
 struct CubeSliceView: View {
     let model: CubeViewerModel
+    /// Marks drawn and edited on the slice.
+    var marks: MarkEditor?
+    /// Search at a sky position (a mark's Search Here).
+    var search: (Double, Double) -> Void = { _, _ in }
     @State private var hoverLocation: CGPoint?
-    @State private var zoom: CGFloat = 1
-    @State private var lastZoom: CGFloat = 1
-    @State private var pan: CGSize = .zero
-    @State private var lastPan: CGSize = .zero
+
+    /// Zoom per scroll notch, as in the FITS viewer.
+    private static let scrollZoomFactor: CGFloat = 1.1
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,11 +38,38 @@ struct CubeSliceView: View {
                         .interpolation(.none)
                         .resizable()
                         .scaledToFit()
-                        .scaleEffect(zoom)
-                        .offset(pan)
+                        .scaleEffect(model.sliceZoom)
+                        .offset(model.slicePan)
                 } else if model.isRendering {
                     ProgressView()
                 }
+
+                if let marks, let target = model.markTarget,
+                   let projection = model.sliceMarkProjection(canvasSize: geo.size) {
+                    MarkOverlay(editor: marks, target: target, projection: projection)
+                }
+
+                #if os(macOS)
+                ScrollCaptureView(
+                    onScroll: { delta, location in
+                        let factor = delta > 0 ? Self.scrollZoomFactor : 1 / Self.scrollZoomFactor
+                        model.zoomSlice(to: model.sliceZoom * factor, keeping: location)
+                    },
+                    onPan: { dx, dy in panSlice(dx, dy) },
+                    onClick: { location in probe(at: location, canvas: geo.size) },
+                    onDrag: { dx, dy in panSlice(dx, dy) },
+                    onHover: { location in hover(at: location, canvas: geo.size) },
+                    onMagnify: { magnification in
+                        model.zoomSlice(to: model.sliceZoom * (1 + magnification), keeping: hoverLocation)
+                    },
+                    onHoverEnd: {
+                        hoverLocation = nil
+                        model.clearCursor()
+                    },
+                    pointer: markPointer(canvasSize: geo.size),
+                    // Keys stay with the viewer's own handler (channels, play).
+                    takesKeyFocus: false)
+                #endif
 
                 if model.probePoint != nil || model.probeUnavailableReason != nil {
                     spectrumOverlay
@@ -53,51 +83,47 @@ struct CubeSliceView: View {
                         )
                         .allowsHitTesting(false)
                 }
-            }
-            .contentShape(Rectangle())
-            .help("Drag to pan, pinch to zoom, double-click to reset, click to probe a spectrum")
-            .simultaneousGesture(
-                MagnificationGesture()
-                    .onChanged { zoom = max(1, min(lastZoom * $0, 20)) }
-                    .onEnded { _ in lastZoom = zoom }
-            )
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 8)
-                    .onChanged { pan = CGSize(width: lastPan.width + $0.translation.width, height: lastPan.height + $0.translation.height) }
-                    .onEnded { _ in lastPan = pan }
-            )
-            .onTapGesture(count: 2) { resetView() }
-            .onTapGesture(coordinateSpace: .local) { location in
-                if let (x, y) = imagePixel(at: fitLocation(location, in: geo.size), in: geo.size) {
-                    Task { await model.probe(x: Int(x.rounded()), y: Int(y.rounded())) }
+
+                if let marks {
+                    MarkNamingLayer(editor: marks, target: model.markTarget,
+                                    projection: model.sliceMarkProjection(canvasSize: geo.size), canvas: geo.size)
                 }
             }
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(let location):
-                    hoverLocation = location
-                    if let (x, y) = imagePixel(at: fitLocation(location, in: geo.size), in: geo.size) {
-                        Task { await model.updateCursor(x: x, y: y) }
-                    }
-                case .ended:
-                    hoverLocation = nil
-                    model.clearCursor()
-                }
-            }
-            .onChange(of: model.fileName) { _, _ in resetView() }
+            .clipped()
+            .help("Drag or scroll to pan, ⌘-scroll or pinch to zoom, double-click to reset, click to probe a spectrum")
+            .onAppear { model.sliceCanvasSize = geo.size }
+            .onChange(of: geo.size) { _, size in model.sliceCanvasSize = size }
         }
     }
 
-    private func resetView() {
-        zoom = 1; lastZoom = 1; pan = .zero; lastPan = .zero
+    private func panSlice(_ dx: CGFloat, _ dy: CGFloat) {
+        model.slicePan.width += dx
+        model.slicePan.height += dy
     }
 
-    /// Undo the zoom/pan transform (applied around the view center) so a view-space
-    /// location maps back to the aspect-fit image space `imagePixel` expects.
-    private func fitLocation(_ p: CGPoint, in size: CGSize) -> CGPoint {
-        let cx = size.width / 2, cy = size.height / 2
-        return CGPoint(x: cx + (p.x - pan.width - cx) / zoom, y: cy + (p.y - pan.height - cy) / zoom)
+    /// The spectrum through the voxel whose square was clicked.
+    private func probe(at location: CGPoint, canvas: CGSize) {
+        guard let voxel = model.sliceFrame(canvasSize: canvas)?.voxelIndex(atScreen: location) else { return }
+        Task { await model.probe(x: voxel.x, y: voxel.y) }
     }
+
+    private func hover(at location: CGPoint, canvas: CGSize) {
+        hoverLocation = location
+        if let voxel = model.sliceFrame(canvasSize: canvas)?.voxel(atScreen: location) {
+            Task { await model.updateCursor(x: voxel.x, y: voxel.y) }
+        }
+    }
+
+    #if os(macOS)
+    private func markPointer(canvasSize: CGSize) -> ScrollCaptureNSView.Pointer? {
+        guard let marks, let target = model.markTarget else { return nil }
+        let model = self.model
+        return .marks(marks, on: target,
+                      host: CubeMarkCommands(cube: model, editor: marks, target: target, search: search),
+                      projection: { model.sliceMarkProjection(canvasSize: canvasSize) },
+                      emptyDoubleClick: { model.resetSliceView() })
+    }
+    #endif
 
     /// Floating readout that follows the cursor (sky + spectral + value).
     private var cursorChip: some View {
@@ -177,26 +203,6 @@ struct CubeSliceView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(.bar)
-    }
-
-    // MARK: Hit-testing
-
-    /// Map a view-space location to a 0-based FITS pixel (x, y), flipping Y so the
-    /// readout matches FITS convention (y increases upward). Returns nil outside
-    /// the aspect-fit image rect.
-    private func imagePixel(at location: CGPoint, in size: CGSize) -> (Double, Double)? {
-        guard model.nx > 0, model.ny > 0 else { return nil }
-        let iw = CGFloat(model.nx), ih = CGFloat(model.ny)
-        let scale = min(size.width / iw, size.height / ih)
-        guard scale > 0 else { return nil }
-        let dw = iw * scale, dh = ih * scale
-        let ox = (size.width - dw) / 2, oy = (size.height - dh) / 2
-        guard location.x >= ox, location.x <= ox + dw, location.y >= oy, location.y <= oy + dh else { return nil }
-        let px = Double((location.x - ox) / scale)
-        let pyTop = Double((location.y - oy) / scale)
-        let fitsX = min(max(px, 0), Double(model.nx - 1))
-        let fitsY = min(max(Double(model.ny) - pyTop, 0), Double(model.ny - 1))
-        return (fitsX, fitsY)
     }
 }
 

@@ -350,8 +350,7 @@ final class FITSViewerModel: Identifiable {
     /// renderer draws buffer row `naxis2 - 1 - displayRow`, so the row
     /// flips. This is the convention `probe_fits_pixel` takes.
     static func arrayPixel(atDisplay point: CGPoint, naxis2: Int) -> (x: Int, y: Int) {
-        let displayRow = Int(point.y.rounded(.down))
-        return (Int(point.x.rounded(.down)), naxis2 - 1 - displayRow)
+        FITSDisplayGrid(width: 0, height: naxis2).index(ofDisplay: point)
     }
 
     /// Readout text for one sample: 4 significant digits, "NaN" for blanks.

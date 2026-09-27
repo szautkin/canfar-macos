@@ -79,10 +79,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
   the image has a WCS (so a mark finds the same place in another image of
   the field), keep their size on the subject as you zoom, turn with the
   view, and are kept with the file and extension — however its path is
-  spelled — so they are there when you open it again. Your assistant can
-  mark too, and its marks say so: `annotate_fits`,
-  `list_fits_annotations`, `update_annotation`, `select_annotation`
-  (picks one out and centres the view on it), `remove_annotation`,
+  spelled — so they are there when you open it again. Cubes have marks
+  too, in the Cube Viewer's panel: a cube mark lives on a channel — drawn
+  on the slice showing it, and Centre on Mark goes to that channel. Your
+  assistant can mark too, and its marks say so: `annotate_fits` and
+  `list_fits_annotations`, `annotate_cube` and `list_cube_annotations`,
+  and for either viewer `update_annotation`, `select_annotation` (picks
+  one out and centres the view on it), `remove_annotation`,
   `clear_annotations`, and `export_annotations`, which gives a file's
   marks — open or not — as a DS9 region file (sky in fk5 with sizes in
   arcseconds, pixels 1-based as DS9 counts them) or as JSON grouped by
@@ -164,11 +167,19 @@ Catching up with Verbinal for Windows 1.4.1 (see
   position falls on, and the assistant's `fits_goto_coordinate` says
   where it lies ("320 px left of the image") with the pixel, from the
   same answer the viewer gets.
+- **The cube's spectrum probe and cursor read-out** used a pixel's corner
+  as its centre, so a click on the right or lower half of a spatial pixel
+  probed its neighbour, and the sky read-out was half a pixel out. One map
+  from the screen to the cube's voxels now serves the probe, the read-out
+  and marks.
 - **`get_fits_wcs` without an HDU** reads the HDU on screen when the file
   is open, otherwise the first HDU with a WCS, and says which
   (`hduChosenBy`).
 
 ### Changed
+- **The cube slice moves like the FITS image** — scroll to pan, ⌘-scroll
+  to zoom toward the pointer (as well as pinch), drag to pan, double-click
+  to reset. The slice's zoom and pan now survive a trip to volume mode.
 - **A click on a search result selects it** — five columns (collection,
   instrument, target, proposal, PI) were filter links, so clicking a
   row's target narrowed the search instead of selecting the observation.

@@ -4579,6 +4579,16 @@
         }
       }
     },
+    "Drag or scroll to pan, ⌘-scroll or pinch to zoom, double-click to reset, click to probe a spectrum" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glissez ou faites défiler pour déplacer, ⌘-défilement ou pincement pour zoomer, double-cliquez pour réinitialiser, cliquez pour sonder un spectre"
+          }
+        }
+      }
+    },
     "Drag to pan, pinch to zoom, double-click to reset, click to probe a spectrum" : {
       "extractionState" : "stale",
       "localizations" : {

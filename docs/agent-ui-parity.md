@@ -124,6 +124,12 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Auto (99.9%) / Full Range window buttons | `set_cube_view` `autoWindow` | live |
 | Recent cubes, spectrum inspector, channel profile, transfer curve | `list_recent_cubes`, `show_cube_spectrum`, `get_cube_channel_profile`, `set_cube_transfer` | read/live |
 | Cube document tabs | `switch_cube_tab`, `list_open_tabs` | live/read |
+| Draw a mark on the slice (Marks panel ▸ Draw) | `annotate_cube` | live |
+| Move, resize, rename, restyle, move to another channel | `update_annotation` `viewer: cube` | live |
+| Delete a mark, Clear All | `remove_annotation`, `clear_annotations` `viewer: cube` | live |
+| Pick out a mark, Centre on Mark (goes to its channel) | `select_annotation` `viewer: cube` | live |
+| Marks list | `list_cube_annotations` | read |
+| Export Marks | `export_annotations` `viewer: cube` | read |
 
 ## Portal / sessions
 

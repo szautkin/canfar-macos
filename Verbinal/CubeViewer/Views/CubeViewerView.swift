@@ -10,6 +10,18 @@ import SwiftUI
 /// with the render-control side panel.
 struct CubeViewerView: View {
     @Bindable var model: CubeViewerModel
+    @Environment(AppState.self) private var appState
+
+    private var marks: MarkEditor { appState.cubeMarkEditor }
+
+    /// What a mark's menu does here; nil before a cube is open.
+    private var markCommands: CubeMarkCommands? {
+        model.markTarget.map {
+            CubeMarkCommands(cube: model, editor: marks, target: $0, search: { [weak appState] ra, dec in
+                appState?.dispatch(.searchCoordinates(ra: ra, dec: dec))
+            })
+        }
+    }
 
     var body: some View {
         // HSplitView so the control panel is user-resizable within the
@@ -46,7 +58,7 @@ struct CubeViewerView: View {
                 timelineBar
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            CubeRenderControlsView(model: model)
+            CubeRenderControlsView(model: model, marks: marks, markCommands: markCommands)
                 .frame(minWidth: 240, idealWidth: 270, maxWidth: 340)
         }
         .focusable()
@@ -76,6 +88,16 @@ struct CubeViewerView: View {
     /// Keyboard: ←/→ scrub (Shift = ±10), Space play/pause, V toggle mode,
     /// R reset window. Mirrors v-cube's key map.
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
+        if let target = model.markTarget {
+            switch press.key {
+            case .delete, .deleteForward:
+                if marks.deleteSelected(on: target) { return .handled }
+            case .escape:
+                if marks.escape(on: target) { return .handled }
+            default:
+                break
+            }
+        }
         switch press.key {
         case .leftArrow:
             model.stepChannel(press.modifiers.contains(.shift) ? -10 : -1); return .handled
@@ -151,7 +173,9 @@ struct CubeViewerView: View {
     private var content: some View {
         switch model.viewMode {
         case .slice:
-            CubeSliceView(model: model)
+            CubeSliceView(model: model, marks: marks, search: { [weak appState] ra, dec in
+                appState?.dispatch(.searchCoordinates(ra: ra, dec: dec))
+            })
         case .volume:
             #if os(macOS)
             ZStack(alignment: .top) {

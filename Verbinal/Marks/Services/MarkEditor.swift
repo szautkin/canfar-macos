@@ -253,6 +253,18 @@ final class MarkEditor {
         return true
     }
 
+    /// Escape: put the pencil down, else let the picked-out mark go.
+    /// False when there was nothing to do, so the key goes on.
+    func escape(on target: MarkStore.Target) -> Bool {
+        if drawArmed {
+            drawArmed = false
+            return true
+        }
+        guard selectedID(on: target) != nil else { return false }
+        select(nil, on: target)
+        return true
+    }
+
     func clear(_ target: MarkStore.Target) {
         naming = nil
         store.clear([target])

@@ -19,6 +19,8 @@ import UniformTypeIdentifiers
 /// scale, MIP, and the transfer function apply to the volume mode.
 struct CubeRenderControlsView: View {
     @Bindable var model: CubeViewerModel
+    var marks: MarkEditor?
+    var markCommands: MarkCommandHost?
     @State private var showExport = false
 
     var body: some View {
@@ -30,6 +32,10 @@ struct CubeRenderControlsView: View {
                 if model.viewMode == .volume {
                     Divider()
                     volumeSection
+                }
+                if let marks {
+                    Divider()
+                    MarksPanel(editor: marks, target: model.markTarget, host: markCommands)
                 }
                 #if os(macOS)
                 Divider()

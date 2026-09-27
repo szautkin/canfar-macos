@@ -279,6 +279,8 @@ extension AppState {
         tools.append(makeRemoveAnnotationTool())
         tools.append(makeClearAnnotationsTool())
         tools.append(makeExportAnnotationsTool())
+        tools.append(makeAnnotateCubeTool())
+        tools.append(makeListCubeAnnotationsTool())
         tools.append(makeListFITSBookmarksTool())
         tools.append(makeGetCubeViewTool())
         tools.append(makeGetCubeImageTool())

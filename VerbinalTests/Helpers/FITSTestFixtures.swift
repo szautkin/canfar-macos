@@ -51,4 +51,49 @@ enum FITSTestFixtures {
     static func rampValue(x: Int, y: Int, width: Int = 100) -> Float {
         Float(y * width + x)
     }
+
+    /// A small FITS cube on disk: `nx`×`ny`×`nz` float32 with value
+    /// `z*100 + y*10 + x`, a TAN celestial WCS and a FREQ axis. The caller
+    /// removes it.
+    static func writeCube(nx: Int = 4, ny: Int = 3, nz: Int = 5) throws -> URL {
+        var data = Data()
+        for z in 0..<nz {
+            for y in 0..<ny {
+                for x in 0..<nx {
+                    var be = Float(z * 100 + y * 10 + x).bitPattern.bigEndian
+                    data.append(Data(bytes: &be, count: 4))
+                }
+            }
+        }
+        let cards: [(String, String)] = [
+            ("SIMPLE", "T"), ("BITPIX", "-32"), ("NAXIS", "3"),
+            ("NAXIS1", "\(nx)"), ("NAXIS2", "\(ny)"), ("NAXIS3", "\(nz)"),
+            ("OBJECT", "'TestObj'"), ("BUNIT", "'Jy'"),
+            ("CTYPE1", "'RA---TAN'"), ("CTYPE2", "'DEC--TAN'"),
+            ("CRVAL1", "150.0"), ("CRVAL2", "2.0"), ("CRPIX1", "2.0"), ("CRPIX2", "1.5"),
+            ("CD1_1", "-0.001"), ("CD2_2", "0.001"),
+            ("CTYPE3", "'FREQ'"), ("CUNIT3", "'Hz'"),
+            ("CRVAL3", "1000000000.0"), ("CRPIX3", "1.0"), ("CDELT3", "1000000.0"),
+            ("RESTFRQ", "1000000000.0"),
+        ]
+        var header = ""
+        for (k, v) in cards {
+            let key = k.padding(toLength: 8, withPad: " ", startingAt: 0)
+            header += String((key + "= " + v).prefix(80)).padding(toLength: 80, withPad: " ", startingAt: 0)
+        }
+        header += "END".padding(toLength: 80, withPad: " ", startingAt: 0)
+
+        func pad(_ data: inout Data, with byte: UInt8) {
+            let rem = data.count % 2880
+            if rem != 0 { data.append(Data(repeating: byte, count: 2880 - rem)) }
+        }
+        var bytes = Data(header.utf8)
+        pad(&bytes, with: 0x20)   // space-pad header to 2880
+        pad(&data, with: 0x00)    // zero-pad data to 2880
+        bytes.append(data)
+
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("cube-\(UUID().uuidString).fits")
+        try bytes.write(to: url)
+        return url
+    }
 }

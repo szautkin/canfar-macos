@@ -67,6 +67,14 @@ final class CubeViewerModel: Identifiable {
         didSet { if viewMode == .slice && oldValue != .slice { requestSliceRender() } }
     }
     private(set) var channel = 0
+    /// The slice's zoom (1 = fitted to the canvas) and pan in screen points.
+    /// Kept here, not in the view, so a mark can be centred and the view
+    /// survives a trip to volume mode.
+    var sliceZoom: CGFloat = 1
+    var slicePan: CGSize = .zero
+    /// The slice canvas as last laid out.
+    var sliceCanvasSize: CGSize = .zero
+    static let sliceZoomRange: ClosedRange<CGFloat> = 1...20
     /// Window over the normalized [0,1] value, shared by slice cuts and the
     /// volume shader so the two modes display the same dynamic range.
     var windowLo: Float = 0
@@ -138,6 +146,7 @@ final class CubeViewerModel: Identifiable {
         loadProgress = 0
         fileName = url.lastPathComponent
         fileURL = url
+        resetSliceView()
         Self.logger.info("Opening cube: \(url.lastPathComponent, privacy: .public)")
 
         let didScope = url.startAccessingSecurityScopedResource()
@@ -221,6 +230,36 @@ final class CubeViewerModel: Identifiable {
 
     func stepChannel(_ delta: Int) { setChannel(channel + delta) }
 
+    // MARK: - Slice view
+
+    /// The slice on `canvasSize` (default: as last laid out); nil before a cube.
+    func sliceFrame(canvasSize: CGSize? = nil) -> CubeSliceFrame? {
+        CubeSliceFrame(nx: nx, ny: ny, canvas: canvasSize ?? sliceCanvasSize, zoom: sliceZoom, pan: slicePan)
+    }
+
+    func resetSliceView() {
+        sliceZoom = 1
+        slicePan = .zero
+    }
+
+    /// Zoom the slice, keeping the point under `anchor` (default: the
+    /// canvas centre) still.
+    func zoomSlice(to zoom: CGFloat, keeping anchor: CGPoint? = nil) {
+        let zoom = min(max(zoom, Self.sliceZoomRange.lowerBound), Self.sliceZoomRange.upperBound)
+        if let frame = sliceFrame() {
+            let at = anchor ?? CGPoint(x: frame.canvas.width / 2, y: frame.canvas.height / 2)
+            slicePan = zoom == 1 ? .zero : frame.panKeeping(at, atZoom: zoom)
+        }
+        sliceZoom = zoom
+    }
+
+    /// Show voxel (x, y) of `channel` in the middle of the slice.
+    func centreSlice(onVoxel x: Double, _ y: Double, channel: Int) {
+        viewMode = .slice
+        setChannel(channel)
+        if let frame = sliceFrame() { slicePan = frame.panCentring(voxel: x, y) }
+    }
+
     // MARK: - Slice rendering (reuses FITSRenderEngine)
 
     /// Map the shared normalized window onto raw cut levels for the CPU renderer,
@@ -278,7 +317,8 @@ final class CubeViewerModel: Identifiable {
         spectralReadout = wcs?.spectral.format(channel: channel)
     }
 
-    /// Update the cursor coordinate/value readout for image pixel (x, y), 0-based.
+    /// Update the cursor coordinate/value readout for image pixel (x, y):
+    /// 0-based, continuous — a pixel's centre is a whole number.
     func updateCursor(x: Double, y: Double) async {
         if let celestial = wcs?.celestial, let sky = celestial.pixelToSky(x: x, y: y) {
             skyReadout = celestial.formatSky(lon: sky.lon, lat: sky.lat)
@@ -286,7 +326,8 @@ final class CubeViewerModel: Identifiable {
             skyReadout = nil
         }
         if let cube {
-            let value = await cube.valueAt(x: Int(x.rounded()), y: Int(y.rounded()), z: channel)
+            // The voxel whose square the point is in (x - 0.5 ..< x + 0.5).
+            let value = await cube.valueAt(x: Int((x + 0.5).rounded(.down)), y: Int((y + 0.5).rounded(.down)), z: channel)
             cursorValue = value.isNaN ? "—" : String(format: "%.4g %@", value, bunit)
         }
     }
