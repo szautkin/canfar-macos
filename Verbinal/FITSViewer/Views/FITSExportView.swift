@@ -247,7 +247,7 @@ private struct FITSExportPlate: View {
             legend.append(("Size", "\(header.naxis1) × \(header.naxis2) px"))
         }
         if let wcs = model.wcs {
-            legend.append(("Center", "\(FITSWCSTransform.formatRA(wcs.crval1)) \(FITSWCSTransform.formatDec(wcs.crval2))"))
+            legend.append(("Center", "\(Sexagesimal.readoutHMS(degrees: wcs.crval1)) \(Sexagesimal.readoutDMS(degrees: wcs.crval2))"))
             legend.append(("Scale", String(format: "%.3g″/px", wcs.pixelScaleArcsec)))
         }
 

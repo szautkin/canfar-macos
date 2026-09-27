@@ -6,6 +6,21 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - Unreleased
+
+Catching up with Verbinal for Windows 1.4.1 (see
+`docs/plans/10-windows-catchup.md`).
+
+### Fixed
+- **Sexagesimal rounding** — a position just under a whole minute printed
+  as `23h59m60.00s` in the FITS and cube viewers, bookmarks and figure
+  legends; the carry now happens everywhere a position is written, from
+  one formatter that the search table shares.
+- **Go To in the FITS viewer** reads a position as the rest of the app
+  does: decimal degrees with a point or a comma (a French Mac types
+  `10,68`), or sexagesimal. A position it cannot read now says so instead
+  of doing nothing.
+
 ## [1.3.4] - Unreleased
 
 Post–1.3.3 polish: Workflows local Edit/Delete, Storage recursive folder

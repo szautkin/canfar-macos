@@ -112,23 +112,14 @@ extension AppState {
             resolveTarget: { name in
                 let result = try await resolver.resolve(target: name, service: .all)
                 // CADC's resolver returns RA/Dec as strings — usually
-                // decimal degrees but some shapes ship sexagesimal.
-                // Try Double() first; fall back to the sexagesimal
-                // parsers from FITSWCSTransform. Trailing CR/LF is
+                // decimal degrees but some shapes ship sexagesimal; the
+                // Sexagesimal readers take either. Trailing CR/LF is
                 // already stripped by the resolver parser (F-12 fix in
-                // TAPClient.parseResolverResponse), so a clean
-                // numeric string here means we genuinely failed to
-                // resolve. (Closes F-9 of the platform review.)
-                let ra: Double
-                let dec: Double
-                if let r = Double(result.coordsRA), let d = Double(result.coordsDec) {
-                    ra = r
-                    dec = d
-                } else if let r = FITSWCSTransform.parseRA(result.coordsRA),
-                          let d = FITSWCSTransform.parseDec(result.coordsDec) {
-                    ra = r
-                    dec = d
-                } else {
+                // TAPClient.parseResolverResponse), so a string neither
+                // reads means we genuinely failed to resolve. (Closes F-9
+                // of the platform review.)
+                guard let ra = Sexagesimal.rightAscension(result.coordsRA),
+                      let dec = Sexagesimal.declination(result.coordsDec) else {
                     throw ToolFailureReason.targetNotResolved(name)
                 }
                 return (ra: ra, dec: dec)
@@ -171,8 +162,8 @@ extension AppState {
             // either as plain decimal degrees or sexagesimal strings;
             // try both. If neither parses we treat the target as
             // unresolved, mirroring the SearchObservationsTool path.
-            let raDeg = Double(r.coordsRA) ?? FITSWCSTransform.parseRA(r.coordsRA)
-            let decDeg = Double(r.coordsDec) ?? FITSWCSTransform.parseDec(r.coordsDec)
+            let raDeg = Sexagesimal.rightAscension(r.coordsRA)
+            let decDeg = Sexagesimal.declination(r.coordsDec)
             if raDeg == nil || decDeg == nil {
                 throw ToolFailureReason.targetNotResolved(name)
             }

@@ -4656,6 +4656,16 @@
         }
       }
     },
+    "Enter RA and Dec in degrees or sexagesimal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez l’A.D. et la Déc. en degrés ou en sexagésimal"
+          }
+        }
+      }
+    },
     "Erase the agent-activity breadcrumb log" : {
       "localizations" : {
         "fr" : {
@@ -5604,7 +5614,6 @@
       }
     },
     "Go To" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {

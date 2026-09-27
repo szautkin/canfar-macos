@@ -223,7 +223,7 @@ struct FITSRenderControlsView: View {
                 // Go To coordinates
                 if model.wcs != nil {
                     Divider()
-                    Text("Go To (degrees)")
+                    Text("Go To")
                         .font(.caption2.bold())
                         .foregroundStyle(.secondary)
                     HStack(spacing: 4) {
@@ -234,12 +234,14 @@ struct FITSRenderControlsView: View {
                             .textFieldStyle(.roundedBorder)
                             .font(.system(.caption2, design: .monospaced))
                         Button("Go") {
-                            if let ra = Double(goToRA.trimmingCharacters(in: .whitespaces)),
-                               let dec = Double(goToDec.trimmingCharacters(in: .whitespaces)) {
-                                let inBounds = model.goToCoordinate(ra: ra, dec: dec)
-                                if !inBounds {
-                                    toast?.show(String(localized: "Coordinates outside image bounds"), isError: true)
-                                }
+                            guard let ra = Sexagesimal.rightAscension(goToRA),
+                                  let dec = Sexagesimal.declination(goToDec) else {
+                                toast?.show(String(localized: "Enter RA and Dec in degrees or sexagesimal"), isError: true)
+                                return
+                            }
+                            let inBounds = model.goToCoordinate(ra: ra, dec: dec)
+                            if !inBounds {
+                                toast?.show(String(localized: "Coordinates outside image bounds"), isError: true)
                             }
                         }
                         .buttonStyle(.bordered)

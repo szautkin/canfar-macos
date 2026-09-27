@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 // MARK: - Formatter contract
 
@@ -329,43 +330,23 @@ struct CoordinateFormatter: ColumnFormatter {
     }
 }
 
-/// Right-ascension in hours/minutes/seconds (HH:MM:SS.ss).
-///
-/// Input is degrees; divides by 15°/h and wraps into `[0, 24)` hours. Rollover
-/// artefacts are avoided by working in integer centiseconds, so a value
-/// of 359.999999° formats as `23:59:59.99`, not `24:00:00.00`.
+/// Right-ascension in hours/minutes/seconds (HH:MM:SS.ss), wrapped into
+/// [0h, 24h). Formatting is ``Sexagesimal``'s — one rounding rule app-wide.
 struct HMSFormatter: ColumnFormatter {
     func format(_ raw: String) -> String {
         guard let deg = finiteDouble(raw) else { return raw }
-        // Wrap into [0, 24) hours.
-        let hours = (deg / 15.0).truncatingRemainder(dividingBy: 24)
-        let positive = hours < 0 ? hours + 24 : hours
-        let dayInCentiseconds = 24 * 3600 * 100
-        var totalCs = Int((positive * 3600 * 100).rounded())
-        totalCs = ((totalCs % dayInCentiseconds) + dayInCentiseconds) % dayInCentiseconds
-        let h = totalCs / (3600 * 100)
-        let m = (totalCs / (60 * 100)) % 60
-        let s = (totalCs / 100) % 60
-        let cs = totalCs % 100
-        return String(format: "%02d:%02d:%02d.%02d", h, m, s, cs)
+        return Sexagesimal.formatHMS(degrees: deg, style: .colons) ?? raw
     }
 }
 
 /// Declination in degrees/arcminutes/arcseconds (±DD:MM:SS.s).
 ///
 /// Pass-through for values outside the valid Dec range [-90°, +90°] — we
-/// never render nonsense like `DD > 90` DMS. Integer deciseconds-of-arc
-/// internally avoid the `59.95 → 60.0` rollover bug.
+/// never render nonsense like `DD > 90` DMS.
 struct DMSFormatter: ColumnFormatter {
     func format(_ raw: String) -> String {
-        guard let deg = finiteDouble(raw), (-90.0...90.0).contains(deg) else { return raw }
-        let sign = deg < 0 ? "-" : "+"
-        let totalDs = Int((abs(deg) * 3600 * 10).rounded())
-        let d = totalDs / (3600 * 10)
-        let m = (totalDs / (60 * 10)) % 60
-        let s = (totalDs / 10) % 60
-        let ds = totalDs % 10
-        return String(format: "%@%02d:%02d:%02d.%d", sign, d, m, s, ds)
+        guard let deg = finiteDouble(raw) else { return raw }
+        return Sexagesimal.formatDMS(degrees: deg, style: .colons) ?? raw
     }
 }
 

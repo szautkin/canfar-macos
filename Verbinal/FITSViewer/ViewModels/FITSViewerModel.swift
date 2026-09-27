@@ -380,8 +380,8 @@ final class FITSViewerModel: Identifiable {
     /// FITSTabHostModel should call this instead of setting crosshairPixel directly.
     func applyLinkedCrosshair(pixel: CGPoint, ra: Double, dec: Double) {
         crosshairPixel = pixel
-        crosshairRA = FITSWCSTransform.formatRA(ra)
-        crosshairDec = FITSWCSTransform.formatDec(dec)
+        crosshairRA = Sexagesimal.readoutHMS(degrees: ra)
+        crosshairDec = Sexagesimal.readoutDMS(degrees: dec)
         isLinkedCrosshair = true
     }
 
@@ -411,8 +411,8 @@ final class FITSViewerModel: Identifiable {
         if let wcs {
             let fitsY = Self.displayToFITSY(point.y, naxis2: hdu.header.naxis2)
             let (ra, dec) = wcs.pixelToWorld(x: point.x, y: fitsY)
-            crosshairRA = FITSWCSTransform.formatRA(ra)
-            crosshairDec = FITSWCSTransform.formatDec(dec)
+            crosshairRA = Sexagesimal.readoutHMS(degrees: ra)
+            crosshairDec = Sexagesimal.readoutDMS(degrees: dec)
             crosshairRADeg = ra
             crosshairDecDeg = dec
             Self.logger.info("Crosshair WCS: RA=\(self.crosshairRA) Dec=\(self.crosshairDec) val=\(self.crosshairValue)")
@@ -438,8 +438,8 @@ final class FITSViewerModel: Identifiable {
         if let wcs {
             let fitsY = Self.displayToFITSY(point.y, naxis2: hdu.header.naxis2)
             let (ra, dec) = wcs.pixelToWorld(x: point.x, y: fitsY)
-            cursorRA = FITSWCSTransform.formatRA(ra)
-            cursorDec = FITSWCSTransform.formatDec(dec)
+            cursorRA = Sexagesimal.readoutHMS(degrees: ra)
+            cursorDec = Sexagesimal.readoutDMS(degrees: dec)
         }
     }
 

@@ -110,17 +110,17 @@ final class FITSWCSTransformTests: XCTestCase {
 
     func testFormatRA() {
         // 180 degrees = 12 hours
-        let formatted = FITSWCSTransform.formatRA(180.0)
+        let formatted = Sexagesimal.readoutHMS(degrees: 180.0)
         XCTAssertTrue(formatted.hasPrefix("12h00m"), "Expected 12h00m, got: \(formatted)")
     }
 
     func testFormatDec() {
-        let formatted = FITSWCSTransform.formatDec(45.0)
+        let formatted = Sexagesimal.readoutDMS(degrees: 45.0)
         XCTAssertTrue(formatted.hasPrefix("+45"), "Expected +45, got: \(formatted)")
     }
 
     func testFormatDecNegative() {
-        let formatted = FITSWCSTransform.formatDec(-30.5)
+        let formatted = Sexagesimal.readoutDMS(degrees: -30.5)
         XCTAssertTrue(formatted.hasPrefix("-30"), "Expected -30, got: \(formatted)")
     }
 

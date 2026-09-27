@@ -374,8 +374,8 @@ public struct FITSWCSTransform: Sendable {
         // Try RA/DEC keywords (sexagesimal: HH:MM:SS.SS / ±DD:MM:SS.S)
         guard let raStr = header.string("RA"),
               let decStr = header.string("DEC"),
-              let ra = parseRA(raStr),
-              let dec = parseDec(decStr) else { return nil }
+              let ra = Sexagesimal.parseHMS(raStr),
+              let dec = Sexagesimal.parseDMS(decStr) else { return nil }
 
         let naxis1 = header.int("NAXIS1")
         let naxis2 = header.int("NAXIS2")
@@ -404,61 +404,5 @@ public struct FITSWCSTransform: Sendable {
             ctype2: "DEC--TAN",
             isApproximate: true
         )
-    }
-
-    /// Parse sexagesimal RA (HH:MM:SS.SS or HH MM SS.SS) to degrees.
-    ///
-    /// Validates: h in [0, 24), m in [0, 60), s in [0, 60).
-    public static func parseRA(_ str: String) -> Double? {
-        let parts = str.trimmingCharacters(in: .whitespaces)
-            .components(separatedBy: CharacterSet(charactersIn: ": "))
-            .filter { !$0.isEmpty }
-        guard parts.count >= 2 else { return nil }
-        guard let h = Double(parts[0]) else { return nil }
-        let m = parts.count > 1 ? (Double(parts[1]) ?? 0) : 0
-        let s = parts.count > 2 ? (Double(parts[2]) ?? 0) : 0
-        guard h >= 0, h < 24, m >= 0, m < 60, s >= 0, s < 60 else { return nil }
-        return (h + m / 60.0 + s / 3600.0) * 15.0 // hours → degrees
-    }
-
-    /// Parse sexagesimal Dec (±DD:MM:SS.S or ±DD MM SS.S) to degrees.
-    ///
-    /// Validates: d in [0, 90], m in [0, 60), s in [0, 60).
-    public static func parseDec(_ str: String) -> Double? {
-        let trimmed = str.trimmingCharacters(in: .whitespaces)
-        let sign: Double = trimmed.hasPrefix("-") ? -1 : 1
-        let cleaned = trimmed.replacingOccurrences(of: "+", with: "").replacingOccurrences(of: "-", with: "")
-        let parts = cleaned.components(separatedBy: CharacterSet(charactersIn: ": "))
-            .filter { !$0.isEmpty }
-        guard parts.count >= 2 else { return nil }
-        guard let d = Double(parts[0]) else { return nil }
-        let m = parts.count > 1 ? (Double(parts[1]) ?? 0) : 0
-        let s = parts.count > 2 ? (Double(parts[2]) ?? 0) : 0
-        guard d >= 0, d <= 90, m >= 0, m < 60, s >= 0, s < 60 else { return nil }
-        return sign * (d + m / 60.0 + s / 3600.0)
-    }
-
-    // MARK: - Formatting
-
-    /// Format RA in degrees to sexagesimal (HHhMMmSS.SSs).
-    public static func formatRA(_ raDeg: Double) -> String {
-        guard raDeg.isFinite else { return "--h--m--.--s" }
-        var ra = raDeg / 15.0
-        if ra < 0 { ra += 24 }
-        let h = Int(ra)
-        let m = Int((ra - Double(h)) * 60)
-        let s = (ra - Double(h) - Double(m) / 60.0) * 3600
-        return String(format: "%02dh%02dm%05.2fs", h, m, s)
-    }
-
-    /// Format Dec in degrees to sexagesimal (+DD°MM'SS.S").
-    public static func formatDec(_ decDeg: Double) -> String {
-        guard decDeg.isFinite else { return "--\u{00b0}--'--.--\"" }
-        let sign = decDeg >= 0 ? "+" : "-"
-        let dec = abs(decDeg)
-        let d = Int(dec)
-        let m = Int((dec - Double(d)) * 60)
-        let s = (dec - Double(d) - Double(m) / 60.0) * 3600
-        return String(format: "%@%02d\u{00b0}%02d'%04.1f\"", sign, d, m, s)
     }
 }

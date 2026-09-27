@@ -245,8 +245,8 @@ final class FITSTabHostModel {
               pixel.y >= 0, pixel.y < Double(naxis2) else {
             Self.logger.info("Linked crosshair out of bounds: pixel=(\(pixel.x), \(pixel.y)) naxis=\(naxis1)×\(naxis2)")
             tab.crosshairOutOfBounds = true
-            tab.outOfBoundsRA = FITSWCSTransform.formatRA(ra)
-            tab.outOfBoundsDec = FITSWCSTransform.formatDec(dec)
+            tab.outOfBoundsRA = Sexagesimal.readoutHMS(degrees: ra)
+            tab.outOfBoundsDec = Sexagesimal.readoutDMS(degrees: dec)
             return
         }
 

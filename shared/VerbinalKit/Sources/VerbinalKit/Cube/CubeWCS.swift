@@ -163,8 +163,8 @@ public struct CelestialWCS: Sendable {
                               lat: String(format: "%@%.3f°", lat >= 0 ? "+" : "−", abs(lat)))
         }
         return SkyReadout(lonLabel: "RA", latLabel: "DEC",
-                          lon: FITSWCSTransform.formatRA(lon),
-                          lat: FITSWCSTransform.formatDec(lat))
+                          lon: Sexagesimal.readoutHMS(degrees: lon),
+                          lat: Sexagesimal.readoutDMS(degrees: lat))
     }
 
     static func from(header h: FITSHeader) -> CelestialWCS {

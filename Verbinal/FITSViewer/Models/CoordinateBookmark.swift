@@ -20,7 +20,7 @@ struct CoordinateBookmark: Codable, Identifiable, Equatable {
     var agentAttribution: AgentAttribution?
 
     var formattedCoords: String {
-        "\(FITSWCSTransform.formatRA(ra))  \(FITSWCSTransform.formatDec(dec))"
+        "\(Sexagesimal.readoutHMS(degrees: ra))  \(Sexagesimal.readoutDMS(degrees: dec))"
     }
 
     init(label: String, ra: Double, dec: Double, sourceFilePath: String,
