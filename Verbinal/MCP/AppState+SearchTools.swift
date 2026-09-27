@@ -474,6 +474,16 @@ extension AppState {
         }
     }
 
+    /// Inverse of ``intentKey(_:)`` — one mapping, read both ways.
+    private nonisolated static func intent(forKey key: String) -> IntentValue? {
+        IntentValue.allCases.first { intentKey($0) == key }
+    }
+
+    /// Inverse of ``datePresetKey(_:)``.
+    private nonisolated static func datePreset(forKey key: String) -> DatePresetValue? {
+        DatePresetValue.allCases.first { datePresetKey($0) == key }
+    }
+
     private nonisolated static func columnKindKey(_ kind: ColumnKind) -> String {
         switch kind {
         case .text: return "text"
@@ -572,34 +582,35 @@ extension AppState {
 
             // Map enum-ish strings up front so bad values reject cleanly
             // before any form mutation.
-            var intent: IntentValue?
+            let intent: IntentValue?
             if let raw = args.intent {
-                switch raw {
-                case "any": intent = .any
-                case "science": intent = .science
-                case "calibration": intent = .calibration
-                default: return .init(error: "Unknown intent '\(raw)'")
+                guard let value = Self.intent(forKey: raw) else {
+                    return .init(error: "Unknown intent '\(raw)'")
                 }
+                intent = value
+            } else {
+                intent = nil
             }
-            var resolver: ResolverValue?
+            let resolver: ResolverValue?
             if let raw = args.resolver {
                 guard let value = ResolverValue(rawValue: raw.uppercased()) else {
                     return .init(error: "Unknown resolver '\(raw)'")
                 }
                 resolver = value
+            } else {
+                resolver = nil
             }
-            var datePreset: DatePresetValue?
+            let datePreset: DatePresetValue?
             if let raw = args.datePreset {
-                switch raw {
-                case "none": datePreset = DatePresetValue.none
-                case "past24Hours": datePreset = .past24Hours
-                case "pastWeek": datePreset = .pastWeek
-                case "pastMonth": datePreset = .pastMonth
-                default: return .init(error: "Unknown datePreset '\(raw)'")
+                guard let value = Self.datePreset(forKey: raw) else {
+                    return .init(error: "Unknown datePreset '\(raw)'")
                 }
+                datePreset = value
+            } else {
+                datePreset = nil
             }
 
-            let model = await self.searchModel
+            let model = self.searchModel
             let targetTouched: Bool = await MainActor.run {
                 let state = model.formState
                 if let v = args.observationID { state.observationID = v }
@@ -713,7 +724,7 @@ extension AppState {
                 return .init(columns: [], lastRefreshedISO: nil,
                              isRefreshing: false, error: "App state unavailable")
             }
-            let model = await self.searchModel
+            let model = self.searchModel
             // Idempotent: joins any in-flight load, serves cache instantly.
             await model.dataTrainModel.loadData()
             return await MainActor.run {
@@ -757,7 +768,7 @@ extension AppState {
             guard let self else {
                 return .init(error: "App state unavailable", lastRefreshedISO: nil)
             }
-            let model = await self.searchModel
+            let model = self.searchModel
             await model.dataTrainModel.refreshData()
             return await MainActor.run {
                 let dataTrain = model.dataTrainModel
@@ -782,7 +793,7 @@ extension AppState {
         let activity = agentsService.activityStore
         return SetADQLEditorTool(apply: { [weak self] args in
             guard let self else { return .init(error: "App state unavailable") }
-            let model = await self.searchModel
+            let model = self.searchModel
             let adql: String = await MainActor.run {
                 if let text = args.adql {
                     model.resultsModel.adqlQuery = text
@@ -852,7 +863,7 @@ extension AppState {
             }
             let trimmed = value.trimmingCharacters(in: .whitespaces)
             guard !trimmed.isEmpty else { return .init(error: "value is empty") }
-            let model = await self.searchModel
+            let model = self.searchModel
             await MainActor.run {
                 model.nextSearchAttribution = .forLiveTool(
                     label: "quick_search",

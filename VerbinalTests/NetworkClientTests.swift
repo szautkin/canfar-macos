@@ -498,23 +498,18 @@ final class NetworkClientTests: XCTestCase {
             return self.okResponse(url: request.url?.absoluteString ?? "https://example.com/f")
         }
 
-        let lock = NSLock()
-        var samples: [(Int64, Int64)] = []
+        let samples = Locked<[(Int64, Int64)]>([])
         let (_, response) = try await client.putFile(
             "https://example.com/f",
             fileURL: fileURL,
             contentType: "application/octet-stream",
             onProgress: { sent, total in
-                lock.lock()
-                samples.append((sent, total))
-                lock.unlock()
+                samples.withValue { $0.append((sent, total)) }
             }
         )
         XCTAssertEqual(response.statusCode, 200)
 
-        lock.lock()
-        let seen = samples
-        lock.unlock()
+        let seen = samples.value
 
         // MockURLProtocol finishes instantly, so Progress may only fire
         // once — but every sample must be well-formed and non-decreasing.
@@ -567,9 +562,11 @@ final class NetworkClientTests: XCTestCase {
                                        name: "cancel.bin")
         defer { try? FileManager.default.removeItem(at: fileURL) }
 
-        // Hold the request open long enough for the test to cancel.
+        // Hold the request open until the test has cancelled.
+        let release = DispatchSemaphore(value: 0)
+        defer { release.signal() }
         MockURLProtocol.requestHandler = { request in
-            Thread.sleep(forTimeInterval: 3)
+            _ = release.wait(timeout: .now() + 3)
             return self.okResponse(url: request.url?.absoluteString ?? "https://example.com/f")
         }
 
@@ -585,6 +582,7 @@ final class NetworkClientTests: XCTestCase {
         // Let the task start the upload before cancelling.
         try await Task.sleep(for: .milliseconds(50))
         upload.cancel()
+        release.signal()
 
         do {
             _ = try await upload.value
@@ -634,8 +632,10 @@ final class NetworkClientTests: XCTestCase {
     func testDownloadFileCancelThrowsCancellationError() async throws {
         let client = makeClient()
 
+        let release = DispatchSemaphore(value: 0)
+        defer { release.signal() }
         MockURLProtocol.requestHandler = { request in
-            Thread.sleep(forTimeInterval: 3)
+            _ = release.wait(timeout: .now() + 3)
             return (
                 HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
                 Data(repeating: 0x66, count: 1_024)
@@ -652,6 +652,7 @@ final class NetworkClientTests: XCTestCase {
 
         try await Task.sleep(for: .milliseconds(50))
         download.cancel()
+        release.signal()
 
         do {
             _ = try await download.value
@@ -679,22 +680,17 @@ final class NetworkClientTests: XCTestCase {
             )
         }
 
-        let lock = NSLock()
-        var samples: [(Int64, Int64)] = []
+        let samples = Locked<[(Int64, Int64)]>([])
         let (tempURL, _) = try await client.downloadFile(
             "https://example.com/progress.fits",
             expectedTotal: Int64(payload.count),
             onProgress: { transferred, total in
-                lock.lock()
-                samples.append((transferred, total))
-                lock.unlock()
+                samples.withValue { $0.append((transferred, total)) }
             }
         )
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
-        lock.lock()
-        let seen = samples
-        lock.unlock()
+        let seen = samples.value
 
         XCTAssertFalse(seen.isEmpty, "progress delegate must fire")
         XCTAssertTrue(

@@ -593,47 +593,6 @@ final class InMemoryProposalStoreTests: XCTestCase {
 
 final class MCPBridgeServiceTests: XCTestCase {
 
-    /// In-process pair of stub transports: anything one side sends, the
-    /// other side receives. Used to drive `MCPBridgeService.serve` through
-    /// a real-shape JSON-RPC conversation without TCP/sockets.
-    private final class PairTransport: MCPTransport, @unchecked Sendable {
-        let incoming: AsyncThrowingStream<Data, Error>
-        let inboundContinuation: AsyncThrowingStream<Data, Error>.Continuation
-        var peer: PairTransport?
-        private let stateLock = NSLock()
-        private var closed = false
-
-        init() {
-            var c: AsyncThrowingStream<Data, Error>.Continuation!
-            self.incoming = AsyncThrowingStream { c = $0 }
-            self.inboundContinuation = c
-        }
-
-        func send(_ payload: Data) async throws {
-            stateLock.lock()
-            let isClosed = closed
-            stateLock.unlock()
-            if isClosed { throw MCPTransportError.closed }
-            peer?.inboundContinuation.yield(payload)
-        }
-
-        func close() async {
-            stateLock.lock()
-            guard !closed else { stateLock.unlock(); return }
-            closed = true
-            stateLock.unlock()
-            inboundContinuation.finish()
-        }
-    }
-
-    private func makePair() -> (PairTransport, PairTransport) {
-        let a = PairTransport()
-        let b = PairTransport()
-        a.peer = b
-        b.peer = a
-        return (a, b)
-    }
-
     func testInitializeThenToolsListRoundTrip() async throws {
         let router = AIToolRouter(tools: [EchoReadTool()], auditSink: CapturingAuditSink())
         let identity = MCPBridgeService.ServerIdentity(
@@ -647,7 +606,7 @@ final class MCPBridgeServiceTests: XCTestCase {
             approval: .allowAll
         )
 
-        let (clientSide, serverSide) = makePair()
+        let (clientSide, serverSide) = PairTransport.makePair()
 
         // Spin the server side.
         let serveTask = Task { await bridge.serve(on: serverSide) }
@@ -703,7 +662,7 @@ final class MCPBridgeServiceTests: XCTestCase {
             services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8))
         )
 
-        let (clientSide, serverSide) = makePair()
+        let (clientSide, serverSide) = PairTransport.makePair()
         let serveTask = Task { await bridge.serve(on: serverSide) }
         try await clientSide.send(makeRPC(method: "tools/list", id: .int(1), params: EmptyArgs()))
         let resp = try await readResponse(from: clientSide)
@@ -739,7 +698,7 @@ final class MCPBridgeServiceTests: XCTestCase {
             aiGuide: resolver
         )
 
-        let (clientSide, serverSide) = makePair()
+        let (clientSide, serverSide) = PairTransport.makePair()
         let serveTask = Task { await bridge.serve(on: serverSide) }
 
         let initParams = InitializeParams(protocolVersion: "2024-11-05",

@@ -90,7 +90,7 @@ final class ColumnVisibilityStoreTests: XCTestCase {
 
     func testPersistVisibilityWritesAllColumns() {
         let store = InMemoryColumnVisibilityStore()
-        var columns = SearchResultColumns(
+        let columns = SearchResultColumns(
             headers: ["\"Collection\"", "\"Foo\""],
             sampleRows: [["JWST", "bar"]]
         )

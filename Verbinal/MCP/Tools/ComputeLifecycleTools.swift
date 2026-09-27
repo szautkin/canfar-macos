@@ -109,12 +109,11 @@ struct StartComputeApplier: ProposalApplier {
         let auth = registryAuth
         let image = payload.image
 
-        // Whether we launched a new instance (vs. reused a warm one),
-        // captured so the activity breadcrumb is honest about which.
-        var reusedExisting = false
-
+        // Whether we launched a new instance (vs. reused a warm one), so
+        // the activity breadcrumb is honest about which.
+        let reusedExisting: Bool
         do {
-            try await withApplierTimeout(seconds: 180, label: "start_compute") {
+            reusedExisting = try await withApplierTimeout(seconds: 180, label: "start_compute") {
                 let sessions = try await svc.getSessions()
                 let infos = sessions.map {
                     RunCodeContract.SessionInfo(id: $0.id, type: $0.sessionType,
@@ -124,8 +123,7 @@ struct StartComputeApplier: ProposalApplier {
                     // A warm (running/pending) instance already exists.
                     // We CANNOT resize it — leave it at its current size
                     // and treat this as a successful no-op.
-                    reusedExisting = true
-                    return
+                    return true
                 }
                 // Launch a new instance at the requested size. Pass the
                 // compute registry creds so Skaha can pull a private image.
@@ -143,6 +141,7 @@ struct StartComputeApplier: ProposalApplier {
                 // Defensively ensure the /arc inbox tree exists so the
                 // first `run_code` PUT doesn't 404 on a missing parent.
                 await RunCodeApplier.ensureTree(vos, user: user)
+                return false
             }
         } catch let pa as ProposalApplyError {
             throw pa
@@ -207,9 +206,9 @@ struct StopComputeApplier: ProposalApplier {
 
     func apply(_ proposal: PendingProposal) async throws {
         let svc = service
-        var foundRunning = false
+        let foundRunning: Bool
         do {
-            try await withApplierTimeout(seconds: 180, label: "stop_compute") {
+            foundRunning = try await withApplierTimeout(seconds: 180, label: "stop_compute") {
                 let sessions = try await svc.getSessions()
                 let infos = sessions.map {
                     RunCodeContract.SessionInfo(id: $0.id, type: $0.sessionType,
@@ -218,10 +217,10 @@ struct StopComputeApplier: ProposalApplier {
                 guard let id = RunCodeContract.reusableSessionID(
                     in: infos, name: RunCodeContract.sessionName) else {
                     // Clean no-op — nothing to stop.
-                    return
+                    return false
                 }
-                foundRunning = true
                 try await svc.deleteSession(id: id)
+                return true
             }
         } catch let pa as ProposalApplyError {
             throw pa

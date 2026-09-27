@@ -56,9 +56,9 @@ final class RetryPolicyTests: XCTestCase {
     }
 
     func testRetryingRetriesTransientThenSucceeds() async throws {
-        let counter = LockedCounter()
+        let counter = Locked(0)
         let result = try await retrying(fast) {
-            let current = counter.incrementAndReturn()
+            let current = counter.increment()
             if current < 2 {
                 throw NetworkError.httpError(503, "transient")
             }
@@ -69,10 +69,10 @@ final class RetryPolicyTests: XCTestCase {
     }
 
     func testRetryingExhaustsAttempts() async {
-        let counter = LockedCounter()
+        let counter = Locked(0)
         do {
             _ = try await retrying(fast) {
-                _ = counter.incrementAndReturn()
+                _ = counter.increment()
                 throw NetworkError.httpError(503, "still down")
             }
             XCTFail("Expected throw after retries exhausted")
@@ -90,10 +90,10 @@ final class RetryPolicyTests: XCTestCase {
     }
 
     func testRetryingDoesNotRetryNonTransient() async {
-        let counter = LockedCounter()
+        let counter = Locked(0)
         do {
             _ = try await retrying(fast) {
-                _ = counter.incrementAndReturn()
+                _ = counter.increment()
                 throw NetworkError.httpError(404, "missing")
             }
             XCTFail("Expected throw")
@@ -242,21 +242,5 @@ final class RetryPolicyTests: XCTestCase {
 
     func testTimeInSecondsForZero() {
         XCTAssertEqual(Duration.zero.timeInSeconds, 0.0)
-    }
-}
-
-// MARK: - Test helpers
-
-private final class LockedCounter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-    func incrementAndReturn() -> Int {
-        lock.lock(); defer { lock.unlock() }
-        count += 1
-        return count
-    }
-    var value: Int {
-        lock.lock(); defer { lock.unlock() }
-        return count
     }
 }

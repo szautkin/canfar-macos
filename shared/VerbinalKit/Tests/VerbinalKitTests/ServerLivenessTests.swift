@@ -136,7 +136,7 @@ final class ServerLivenessTests: XCTestCase {
             services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8)),
             approval: .allowAll)
 
-        let (clientSide, serverSide) = Self.makePair()
+        let (clientSide, serverSide) = PairTransport.makePair()
         let serveTask = Task { await bridge.serve(on: serverSide) }
 
         try await clientSide.send(Self.makeRPC(
@@ -195,46 +195,6 @@ final class ServerLivenessTests: XCTestCase {
         }
         XCTAssertLessThanOrEqual(attempts.value, 2,
                                  "wall-clock budget must stop retries long before maxAttempts")
-    }
-
-    // MARK: - Pair transport (mirrors MCPBridgeServiceTests)
-
-    private final class PairTransport: MCPTransport, @unchecked Sendable {
-        let incoming: AsyncThrowingStream<Data, Error>
-        let inboundContinuation: AsyncThrowingStream<Data, Error>.Continuation
-        var peer: PairTransport?
-        private let stateLock = NSLock()
-        private var closed = false
-
-        init() {
-            var c: AsyncThrowingStream<Data, Error>.Continuation!
-            self.incoming = AsyncThrowingStream { c = $0 }
-            self.inboundContinuation = c
-        }
-
-        func send(_ payload: Data) async throws {
-            stateLock.lock()
-            let isClosed = closed
-            stateLock.unlock()
-            if isClosed { throw MCPTransportError.closed }
-            peer?.inboundContinuation.yield(payload)
-        }
-
-        func close() async {
-            stateLock.lock()
-            guard !closed else { stateLock.unlock(); return }
-            closed = true
-            stateLock.unlock()
-            inboundContinuation.finish()
-        }
-    }
-
-    private static func makePair() -> (PairTransport, PairTransport) {
-        let a = PairTransport()
-        let b = PairTransport()
-        a.peer = b
-        b.peer = a
-        return (a, b)
     }
 
     private static func makeRPC<P: Encodable>(method: String, id: JSONRPCID, params: P) throws -> Data {

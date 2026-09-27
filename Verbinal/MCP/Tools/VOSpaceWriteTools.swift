@@ -598,7 +598,7 @@ struct DeleteVOSpaceNodeApplier: ProposalApplier {
             } catch let error as VOSpaceError {
                 // Surface service errors (incl. cap) as typed apply failures.
                 throw ProposalApplyError.backendError(
-                    error.localizedDescription ?? String(describing: error)
+                    error.localizedDescription
                 )
             }
         }

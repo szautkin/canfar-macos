@@ -324,11 +324,15 @@ final class StorageBrowserNavigationTests: XCTestCase {
     func testCancelUploadClearsProgressAndSetsCancelledStatus() async throws {
         let started = expectation(description: "upload request started")
         started.assertForOverFulfill = false
+        // Holds the PUT open until the test has cancelled. A fixed sleep
+        // kept URLSession's protocol thread busy into later tests.
+        let release = DispatchSemaphore(value: 0)
+        defer { release.signal() }
 
         let model = makeModel { request in
             if request.httpMethod == "PUT" {
                 started.fulfill()
-                Thread.sleep(forTimeInterval: 5)
+                _ = release.wait(timeout: .now() + 5)
             }
             let url = request.url ?? URL(string: "https://ws-uv.canfar.net/")!
             return (HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!,
@@ -349,6 +353,7 @@ final class StorageBrowserNavigationTests: XCTestCase {
         XCTAssertEqual(model.activeTransfer?.kind, .upload)
 
         model.cancelTransfer()
+        release.signal()
         await upload.value
 
         XCTAssertFalse(model.isTransferring)
@@ -361,13 +366,15 @@ final class StorageBrowserNavigationTests: XCTestCase {
     func testCancelDownloadClearsProgressAndSetsCancelledStatus() async throws {
         let started = expectation(description: "download request started")
         started.assertForOverFulfill = false
+        let release = DispatchSemaphore(value: 0)
+        defer { release.signal() }
 
         let model = makeModel { request in
             let url = request.url ?? URL(string: "https://ws-uv.canfar.net/")!
             // Hang on the binary GET (files/home/…/cube.fits), not listings.
             if url.path.contains("/files/"), url.lastPathComponent == "cube.fits" {
                 started.fulfill()
-                Thread.sleep(forTimeInterval: 5)
+                _ = release.wait(timeout: .now() + 5)
                 return (HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
                                         headerFields: ["Content-Length": "4096"])!,
                         Data(repeating: 0x11, count: 4_096))
@@ -393,6 +400,7 @@ final class StorageBrowserNavigationTests: XCTestCase {
         XCTAssertEqual(model.activeTransfer?.kind, .download)
 
         model.cancelTransfer()
+        release.signal()
         await download.value
 
         XCTAssertFalse(model.isTransferring)

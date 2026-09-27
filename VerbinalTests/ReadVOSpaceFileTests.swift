@@ -119,16 +119,14 @@ final class ReadVOSpaceFileTests: XCTestCase {
     /// `offset` to 0 — pin these so future "let's be conservative"
     /// changes don't silently slash the per-call budget.
     func testDefaultsAreAppliedToServiceCall() async throws {
-        var seenOffset: Int = -1
-        var seenMax: Int = -1
+        let seen = Locked((offset: -1, max: -1))
         let tool = makeTool { _, offset, max in
-            seenOffset = offset
-            seenMax = max
+            seen.set((offset, max))
             return ReadVOSpaceFetchResult(data: Data([0x41]), totalBytes: 1)
         }
         _ = try await tool.handle(args(), context: ctx())
-        XCTAssertEqual(seenOffset, 0)
-        XCTAssertEqual(seenMax, 256 * 1024, "default maxBytes must be 256 KB")
+        XCTAssertEqual(seen.value.offset, 0)
+        XCTAssertEqual(seen.value.max, 256 * 1024, "default maxBytes must be 256 KB")
     }
 
     // MARK: - Encoding decisions

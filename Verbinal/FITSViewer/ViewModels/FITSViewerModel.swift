@@ -17,7 +17,7 @@ import VerbinalKit
 @Observable
 @MainActor
 final class FITSViewerModel: Identifiable {
-    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "FITSViewer")
+    private nonisolated static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "FITSViewer")
     let id = UUID()
     var file: FITSFile?
     var selectedHDUIndex = 0

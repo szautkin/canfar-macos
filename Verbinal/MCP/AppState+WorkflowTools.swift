@@ -12,16 +12,17 @@ import VerbinalKit
 extension AppState {
     func makeListWorkflowsTool() -> ListWorkflowsTool {
         ListWorkflowsTool(list: { [weak self] in
-            await MainActor.run {
-                guard let self else { return [] }
-                return self.workflowStore.listBuiltIn() + self.workflowStore.listLocal()
+            guard let self else { return [] }
+            return await MainActor.run {
+                self.workflowStore.listBuiltIn() + self.workflowStore.listLocal()
             }
         })
     }
 
     func makeGetWorkflowTool() -> GetWorkflowTool {
         GetWorkflowTool(get: { [weak self] id in
-            await MainActor.run { self?.workflowStore.get(id) }
+            guard let self else { return nil }
+            return await MainActor.run { self.workflowStore.get(id) }
         })
     }
 }

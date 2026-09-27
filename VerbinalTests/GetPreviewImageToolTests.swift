@@ -65,8 +65,8 @@ final class GetPreviewImageToolTests: XCTestCase {
         // MCP-safe cap → must be refused so the base64 response can never blow
         // the ~1 MB client limit. Valid GIF magic so it passes the type check
         // and trips the size guard, not contentTypeMismatch.
-        var bigGif = Data([0x47, 0x49, 0x46, 0x38, 0x39, 0x61])   // "GIF89a"
-        bigGif.append(Data(repeating: 0x00, count: 800 * 1024))   // 800 KB > the ~696 KB cap
+        let bigGif = Data([0x47, 0x49, 0x46, 0x38, 0x39, 0x61])   // "GIF89a"
+            + Data(repeating: 0x00, count: 800 * 1024)             // 800 KB > the ~696 KB cap
         let tool = makeTool(
             resolve: { _ in [self.artifact(band: nil)] },
             fetch: { _, _ in (bigGif, "image/gif") }

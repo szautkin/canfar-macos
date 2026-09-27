@@ -16,8 +16,8 @@ struct WorkflowInfo: Sendable, Identifiable {
 
 @Observable @MainActor
 final class WorkflowStore {
-    static let builtInPrefix = "builtin:"
-    static let localPrefix = "local:"
+    nonisolated static let builtInPrefix = "builtin:"
+    nonisolated static let localPrefix = "local:"
     private let directory: URL
     private let builtins: () -> [(String, String)]
     var changeID = UUID()
@@ -83,7 +83,7 @@ final class WorkflowStore {
     private func path(for id: String) -> URL { directory.appendingPathComponent(String(id.dropFirst(Self.localPrefix.count)) + WorkflowFormat.fileExtension) }
     private func localPath(_ id: String) throws -> URL { guard id.hasPrefix(Self.localPrefix), FileManager.default.fileExists(atPath: path(for: id).path) else { throw id.hasPrefix(Self.builtInPrefix) ? WorkflowError.notLocal : WorkflowError.missing(id) }; return path(for: id) }
     private func slug(of url: URL) -> String { String(url.lastPathComponent.dropLast(WorkflowFormat.fileExtension.count)) }
-    private static func loadTemplates() -> [(String, String)] {
+    private nonisolated static func loadTemplates() -> [(String, String)] {
         // Prefer the Workflows/ folder resource; fall back to the bundle root
         // for older builds that flattened the templates.
         let urls = Bundle.main.urls(forResourcesWithExtension: "workflow.md", subdirectory: "Workflows")

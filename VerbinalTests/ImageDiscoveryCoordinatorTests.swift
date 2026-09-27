@@ -60,57 +60,57 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         var onLaunchSimulate: (@Sendable (HeadlessLaunchParams) -> Void)?
 
         func launchHeadlessJob(_ params: HeadlessLaunchParams) async throws -> [String] {
-            lock.lock()
-            defer { lock.unlock() }
-            launchCalls.append(params)
-            if !launchErrorSequence.isEmpty {
-                let err = launchErrorSequence.removeFirst()
-                throw err
+            return try lock.withLock {
+                launchCalls.append(params)
+                if !launchErrorSequence.isEmpty {
+                    let err = launchErrorSequence.removeFirst()
+                    throw err
+                }
+                if let err = launchError { throw err }
+                nextID += 1
+                let id = "job-\(nextID)"
+                let job = makeJob(id: id, status: completeAfterPolls > 0 ? "Pending" : (failJobs ? "Failed" : "Completed"))
+                jobs.append(job)
+                pollCounts[id] = 0
+                // Side-effect: simulate the probe writing its manifest.
+                // Tests can populate VOSpace via this hook so the
+                // coordinator's post-poll fetch finds something.
+                onLaunchSimulate?(params)
+                return [id]
             }
-            if let err = launchError { throw err }
-            nextID += 1
-            let id = "job-\(nextID)"
-            let job = makeJob(id: id, status: completeAfterPolls > 0 ? "Pending" : (failJobs ? "Failed" : "Completed"))
-            jobs.append(job)
-            pollCounts[id] = 0
-            // Side-effect: simulate the probe writing its manifest.
-            // Tests can populate VOSpace via this hook so the
-            // coordinator's post-poll fetch finds something.
-            onLaunchSimulate?(params)
-            return [id]
         }
 
         func getHeadlessJobs() async throws -> [HeadlessJob] {
-            lock.lock()
-            defer { lock.unlock() }
-            // Advance state machine: each poll bumps the count and may
-            // flip the job to terminal once threshold is reached.
-            var updated: [HeadlessJob] = []
-            for var job in jobs {
-                let count = (pollCounts[job.id] ?? 0) + 1
-                pollCounts[job.id] = count
-                if !job.isTerminal && count >= completeAfterPolls && completeAfterPolls > 0 {
-                    job.status = failJobs ? "Failed" : "Completed"
+            return lock.withLock {
+                // Advance state machine: each poll bumps the count and may
+                // flip the job to terminal once threshold is reached.
+                var updated: [HeadlessJob] = []
+                for var job in jobs {
+                    let count = (pollCounts[job.id] ?? 0) + 1
+                    pollCounts[job.id] = count
+                    if !job.isTerminal && count >= completeAfterPolls && completeAfterPolls > 0 {
+                        job.status = failJobs ? "Failed" : "Completed"
+                    }
+                    updated.append(job)
                 }
-                updated.append(job)
+                jobs = updated
+                return jobs
             }
-            jobs = updated
-            return jobs
         }
 
         var stubbedLogs: [String: String] = [:]
         var stubbedEvents: [String: String] = [:]
 
         func getLogs(id: String) async throws -> String {
-            lock.lock()
-            defer { lock.unlock() }
-            return stubbedLogs[id] ?? ""
+            return lock.withLock {
+                return stubbedLogs[id] ?? ""
+            }
         }
 
         func getEvents(id: String) async throws -> String {
-            lock.lock()
-            defer { lock.unlock() }
-            return stubbedEvents[id] ?? ""
+            return lock.withLock {
+                return stubbedEvents[id] ?? ""
+            }
         }
 
         private func makeJob(id: String, status: String) -> HeadlessJob {
@@ -138,32 +138,32 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         var createFolderError: Error?
 
         func uploadFile(username: String, remotePath: String, fileURL: URL) async throws {
-            lock.lock()
-            defer { lock.unlock() }
-            if let err = uploadError { throw err }
-            let content = (try? Data(contentsOf: fileURL)) ?? Data()
-            uploads.append((remotePath: remotePath, content: content))
+            try lock.withLock {
+                if let err = uploadError { throw err }
+                let content = (try? Data(contentsOf: fileURL)) ?? Data()
+                uploads.append((remotePath: remotePath, content: content))
+            }
         }
 
         func downloadFile(username: String, path: String) async throws -> (tempURL: URL, filename: String) {
-            lock.lock()
-            defer { lock.unlock() }
-            if let err = downloadError { throw err }
-            guard let data = fileContents[path] else {
-                throw NSError(domain: "MockVOSpace", code: 404,
-                              userInfo: [NSLocalizedDescriptionKey: "no file at \(path)"])
+            return try lock.withLock {
+                if let err = downloadError { throw err }
+                guard let data = fileContents[path] else {
+                    throw NSError(domain: "MockVOSpace", code: 404,
+                                  userInfo: [NSLocalizedDescriptionKey: "no file at \(path)"])
+                }
+                let tempURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("mock-download-\(UUID().uuidString)")
+                try data.write(to: tempURL)
+                return (tempURL, (path as NSString).lastPathComponent)
             }
-            let tempURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("mock-download-\(UUID().uuidString)")
-            try data.write(to: tempURL)
-            return (tempURL, (path as NSString).lastPathComponent)
         }
 
         func createFolder(username: String, parentPath: String, folderName: String) async throws {
-            lock.lock()
-            defer { lock.unlock() }
-            if let err = createFolderError { throw err }
-            foldersCreated.append((parentPath: parentPath, folderName: folderName))
+            try lock.withLock {
+                if let err = createFolderError { throw err }
+                foldersCreated.append((parentPath: parentPath, folderName: folderName))
+            }
         }
     }
 

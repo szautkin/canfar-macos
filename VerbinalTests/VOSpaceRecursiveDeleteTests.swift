@@ -149,7 +149,7 @@ final class VOSpaceRecursiveDeleteTests: XCTestCase {
             )
             XCTFail("expected not-empty error")
         } catch let error as VOSpaceError {
-            let msg = error.localizedDescription ?? ""
+            let msg = error.localizedDescription
             XCTAssertTrue(
                 msg.localizedCaseInsensitiveContains("not empty")
                     || msg.localizedCaseInsensitiveContains("pas vide"),

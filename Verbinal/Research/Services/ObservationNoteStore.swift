@@ -22,7 +22,7 @@ import VerbinalKit
 @Observable
 @MainActor
 final class ObservationNoteStore {
-    private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ObservationNoteStore")
+    private nonisolated static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ObservationNoteStore")
 
     private let db: AppDatabase
     private let deviceID: String
@@ -31,7 +31,7 @@ final class ObservationNoteStore {
     private(set) var notes: [String: ObservationNote] = [:]
 
     /// The production legacy JSON store the one-shot importer migrates from.
-    static let productionLegacyNotesStore = DiskPersistence<[String: ObservationNote]>(
+    nonisolated static let productionLegacyNotesStore = DiskPersistence<[String: ObservationNote]>(
         subdirectory: "Verbinal", fileName: "observation_notes.json", logger: logger
     )
 

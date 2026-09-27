@@ -163,10 +163,12 @@ public enum SocketSidecar {
 
     /// Atomically write the socket path. Called by the host app when its
     /// listener becomes ready. Returns the URL written to so callers can
-    /// surface it for diagnostics.
+    /// surface it for diagnostics. `directory` defaults to
+    /// ``appWriteDirectory()``; tests pass their own so they never touch
+    /// (or delete) a running app's sidecar.
     @discardableResult
-    public static func write(socketPath: String) throws -> URL {
-        let dir = try appWriteDirectory()
+    public static func write(socketPath: String, directory: URL? = nil) throws -> URL {
+        let dir = try directory ?? appWriteDirectory()
         let target = dir.appendingPathComponent(fileName)
         let line = socketPath + "\n"
         guard let data = line.data(using: .utf8) else {
@@ -181,10 +183,9 @@ public enum SocketSidecar {
     }
 
     /// Remove the sidecar file (best-effort; missing file is not an error).
-    public static func clear() {
-        if let dir = try? appWriteDirectory() {
-            let target = dir.appendingPathComponent(fileName)
-            try? FileManager.default.removeItem(at: target)
+    public static func clear(directory: URL? = nil) {
+        if let dir = directory ?? (try? appWriteDirectory()) {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(fileName))
         }
     }
 

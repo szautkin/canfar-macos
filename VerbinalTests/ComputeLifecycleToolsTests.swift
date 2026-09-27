@@ -132,7 +132,7 @@ final class ComputeLifecycleToolsTests: XCTestCase {
     func testStopNoOpsWhenNoMatchingSession() async throws {
         let service = makeService()
         let activity = AgentActivityStore(fileName: "test_stop_noop_\(UUID().uuidString).json")
-        let deleteHit = LockedBox(false)
+        let deleteHit = Locked(false)
         // getSessions returns only a NON-matching session → no delete.
         MockURLProtocol.requestHandler = { request in
             let method = request.httpMethod ?? "GET"
@@ -143,14 +143,14 @@ final class ComputeLifecycleToolsTests: XCTestCase {
         }
         let applier = StopComputeApplier(service: service, activity: activity)
         try await applier.apply(makeProposal(kind: "stop_compute"))
-        XCTAssertFalse(deleteHit.get(), "no matching compute instance → must not call deleteSession")
+        XCTAssertFalse(deleteHit.value, "no matching compute instance → must not call deleteSession")
     }
 
     @MainActor
     func testStopDeletesWhenRunningInstanceExists() async throws {
         let service = makeService()
         let activity = AgentActivityStore(fileName: "test_stop_del_\(UUID().uuidString).json")
-        let deletedID = LockedBox<String?>(nil)
+        let deletedID = Locked<String?>(nil)
         MockURLProtocol.requestHandler = { request in
             let method = request.httpMethod ?? "GET"
             if method == "DELETE" {
@@ -165,7 +165,7 @@ final class ComputeLifecycleToolsTests: XCTestCase {
         }
         let applier = StopComputeApplier(service: service, activity: activity)
         try await applier.apply(makeProposal(kind: "stop_compute"))
-        XCTAssertEqual(deletedID.get(), "vc-1", "a running verbinal-compute instance must be deleted by id")
+        XCTAssertEqual(deletedID.value, "vc-1", "a running verbinal-compute instance must be deleted by id")
     }
 
     @MainActor
@@ -173,7 +173,7 @@ final class ComputeLifecycleToolsTests: XCTestCase {
         // `pending` (still provisioning) counts as a matching instance.
         let service = makeService()
         let activity = AgentActivityStore(fileName: "test_stop_pend_\(UUID().uuidString).json")
-        let deletedID = LockedBox<String?>(nil)
+        let deletedID = Locked<String?>(nil)
         MockURLProtocol.requestHandler = { request in
             if (request.httpMethod ?? "GET") == "DELETE" {
                 deletedID.set(request.url?.lastPathComponent)
@@ -186,17 +186,6 @@ final class ComputeLifecycleToolsTests: XCTestCase {
         }
         let applier = StopComputeApplier(service: service, activity: activity)
         try await applier.apply(makeProposal(kind: "stop_compute"))
-        XCTAssertEqual(deletedID.get(), "vc-2")
+        XCTAssertEqual(deletedID.value, "vc-2")
     }
-}
-
-/// Tiny thread-safe box so the `MockURLProtocol` handler (a `@Sendable`
-/// closure run on URLSession's queue) can record what the applier did
-/// without tripping strict-concurrency capture rules.
-private final class LockedBox<T>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: T
-    init(_ initial: T) { self.value = initial }
-    func set(_ newValue: T) { lock.lock(); value = newValue; lock.unlock() }
-    func get() -> T { lock.lock(); defer { lock.unlock() }; return value }
 }

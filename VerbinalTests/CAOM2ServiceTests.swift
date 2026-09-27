@@ -31,7 +31,7 @@ final class CAOM2ServiceTests: XCTestCase {
     // MARK: - Request shape
 
     func testFetchSendsCAOM2ObservationURI() async throws {
-        let receivedID = LockedString()
+        let receivedID = Locked<String?>(nil)
         let service = makeService { request in
             // Capture the ID query param so the test can pin the URI mapping.
             let comps = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)
@@ -134,7 +134,7 @@ final class CAOM2ServiceTests: XCTestCase {
     // MARK: - Cache
 
     func testFetchCachesResultsByObservationURI() async throws {
-        let counter = LockedCounter()
+        let counter = Locked(0)
         let service = makeService { request in
             counter.increment()
             return (
@@ -146,22 +146,4 @@ final class CAOM2ServiceTests: XCTestCase {
         _ = try await service.fetch(publisherID: Self.publisherID)
         XCTAssertEqual(counter.value, 1, "Second fetch should hit the LRU cache, not the network")
     }
-}
-
-// MARK: - Test helpers
-
-/// Lock-guarded box. Uses `NSLock` rather than an actor so it's callable
-/// from `MockURLProtocol`'s synchronous handler closure.
-private final class LockedString: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stored: String?
-    func set(_ s: String?) { lock.lock(); defer { lock.unlock() }; stored = s }
-    var value: String? { lock.lock(); defer { lock.unlock() }; return stored }
-}
-
-private final class LockedCounter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-    func increment() { lock.lock(); defer { lock.unlock() }; count += 1 }
-    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
 }
