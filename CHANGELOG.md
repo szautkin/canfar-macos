@@ -167,6 +167,16 @@ Catching up with Verbinal for Windows 1.4.1 (see
   `search_image_registry`, `list_my_images`, `add_registry_image` and
   `remove_registry_image` (which waits for you); `list_session_images`
   includes your images.
+- **What the app is doing, along the bottom of the window** — an activity
+  bar says in one line what is running ("Inspect skaha/astroml:24.07 —
+  Waiting for job 7f3a…", or "3 tasks running") and how many things went
+  wrong; a click lists them, newest first, each with its stage while it
+  runs, how long it took, and a failure's reason — so a probe that failed
+  in a sheet you closed can still be read. Image probes, launches,
+  session deletes and renewals, Storage uploads, downloads, deletes and
+  new folders, observation downloads and cutouts, and remote-compute runs
+  are on it; a task that ends without saying how is shown as abandoned,
+  never as running for ever. For assistants: `list_activity`.
 - **Remote Compute** — a home tile (it needs you signed in) for the
   session your assistant's `run_code` uses: its state, size and uptime,
   **Start Session** and **Stop Session**, every run with its code, output

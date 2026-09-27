@@ -1133,6 +1133,26 @@
         }
       }
     },
+    "%lld tasks running" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tâches en cours"
+          }
+        }
+      }
+    },
+    "%lld failed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld en échec"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -1212,6 +1232,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un dossier horodaté sera créé dans le répertoire sélectionné."
+          }
+        }
+      }
+    },
+    "abandoned before it finished" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "abandonnée avant la fin"
           }
         }
       }
@@ -1318,6 +1348,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sessions actives (%lld)"
+          }
+        }
+      }
+    },
+    "Activity" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activité"
           }
         }
       }
@@ -2760,6 +2800,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Effacer le filtre"
+          }
+        }
+      }
+    },
+    "Clear Finished" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer les terminées"
           }
         }
       }
@@ -4331,6 +4381,16 @@
         }
       }
     },
+    "Delete %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer %@"
+          }
+        }
+      }
+    },
     "Delete %@?" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4401,6 +4461,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer la session"
+          }
+        }
+      }
+    },
+    "Delete session %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer la session %@"
           }
         }
       }
@@ -6063,6 +6133,16 @@
         }
       }
     },
+    "failed, no reason given" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "échec, sans raison donnée"
+          }
+        }
+      }
+    },
     "Fair" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6993,6 +7073,16 @@
         }
       }
     },
+    "Idle" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Au repos"
+          }
+        }
+      }
+    },
     "Idle auto-orbit" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7197,6 +7287,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entrées"
+          }
+        }
+      }
+    },
+    "Inspect %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspecter %@"
           }
         }
       }
@@ -7668,6 +7768,16 @@
         }
       }
     },
+    "Launch %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer %1$@ %2$@"
+          }
+        }
+      }
+    },
     "Launch (Custom Image)" : {
       "localizations" : {
         "fr" : {
@@ -7704,6 +7814,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lancer une session depuis la barre latérale"
+          }
+        }
+      }
+    },
+    "Launch batch job %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer la tâche par lots %@"
           }
         }
       }
@@ -8586,6 +8706,16 @@
         }
       }
     },
+    "New folder %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau dossier %@"
+          }
+        }
+      }
+    },
     "New Guide" : {
       "localizations" : {
         "fr" : {
@@ -9125,6 +9255,16 @@
         }
       }
     },
+    "No result came back" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun résultat n'est revenu"
+          }
+        }
+      }
+    },
     "No results" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9407,6 +9547,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rien n'est revenu dans le temps prévu. La session s'est peut-être arrêtée avant l'exécution ; le code est toujours dans la boîte de réception et s'exécutera au prochain démarrage."
+          }
+        }
+      }
+    },
+    "Nothing has run since Verbinal started." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n'a été lancé depuis le démarrage de Verbinal."
           }
         }
       }
@@ -10642,6 +10792,16 @@
         }
       }
     },
+    "Preparing the probe" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Préparation de la sonde"
+          }
+        }
+      }
+    },
     "Preset" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11196,6 +11356,16 @@
         }
       }
     },
+    "Reading the manifest" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lecture du manifeste"
+          }
+        }
+      }
+    },
     "Recent" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11707,6 +11877,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Renouveler"
+          }
+        }
+      }
+    },
+    "Renew session %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renouveler la session %@"
           }
         }
       }
@@ -13492,6 +13672,16 @@
         }
       }
     },
+    "Shows what the app is doing and what went wrong" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Montre ce que fait l'app et ce qui a échoué"
+          }
+        }
+      }
+    },
     "Sign In" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -14183,6 +14373,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Étirement"
+          }
+        }
+      }
+    },
+    "Submitting the probe job" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoi de la tâche de sonde"
           }
         }
       }
@@ -15374,6 +15574,16 @@
         }
       }
     },
+    "Upload %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléverser %@"
+          }
+        }
+      }
+    },
     "Upload a file or create a new folder to get started." : {
       "localizations" : {
         "fr" : {
@@ -16067,6 +16277,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "voxel %lld, %lld, canal %lld"
+          }
+        }
+      }
+    },
+    "Waiting for job %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente de la tâche %@"
+          }
+        }
+      }
+    },
+    "Waiting for the result" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente du résultat"
           }
         }
       }

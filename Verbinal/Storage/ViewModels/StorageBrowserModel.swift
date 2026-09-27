@@ -72,9 +72,12 @@ final class StorageBrowserModel {
         return sortOrder == .ascending ? ascending : ascending.reversed()
     }
 
-    init(service: VOSpaceBrowserService, username: String) {
+    private let tasks: TaskRegistry
+
+    init(service: VOSpaceBrowserService, username: String, tasks: TaskRegistry = .shared) {
         self.service = service
         self.username = username
+        self.tasks = tasks
     }
 
     // MARK: - Navigation
@@ -166,6 +169,7 @@ final class StorageBrowserModel {
         // Folders always walk children first — ARC refuses DELETE on
         // non-empty containers (matches confirm copy + MCP recursive).
         let recursive = node.isContainer
+        let task = tasks.begin(.storage, String(localized: "Delete \(node.name)"))
         isDeleting = true
         hasError = false
         statusMessage = recursive
@@ -197,12 +201,15 @@ final class StorageBrowserModel {
             // Refresh replaces status with the item count — restore the
             // delete summary so the user sees what just happened.
             statusMessage = doneMessage
+            task.succeed(doneMessage)
         } catch is CancellationError {
             hasError = false
             errorMessage = ""
+            task.abandon()
             await loadCurrentFolder()
             statusMessage = String(localized: "Delete cancelled")
         } catch {
+            task.fail(error.localizedDescription)
             await loadCurrentFolder()
             reportError(error.localizedDescription)
         }
@@ -215,7 +222,9 @@ final class StorageBrowserModel {
             return
         }
         do {
-            try await service.createFolder(username: username, parentPath: currentPath, folderName: trimmed)
+            try await tasks.track(.storage, String(localized: "New folder \(trimmed)")) { [service, username, currentPath] _ in
+                try await service.createFolder(username: username, parentPath: currentPath, folderName: trimmed)
+            }
             statusMessage = String(localized: "Created folder \(trimmed)")
             await loadCurrentFolder()
         } catch {
@@ -387,6 +396,8 @@ final class StorageBrowserModel {
             : seed.indeterminateStatus()
 
         let throttle = TransferProgressThrottle()
+        let task = tasks.begin(.storage, seed.kind == .upload
+            ? String(localized: "Upload \(seed.fileName)") : String(localized: "Download \(seed.fileName)"))
         let workTask = Task { @MainActor [weak self] in
             guard let self else { return }
             defer {
@@ -412,14 +423,17 @@ final class StorageBrowserModel {
                     self.activeTransfer = transfer
                     self.statusMessage = transfer.completedStatus()
                 }
+                task.succeed()
                 await onSuccess(result)
             } catch is CancellationError {
                 self.statusMessage = seed.cancelledStatus
                 self.hasError = false
                 self.errorMessage = ""
+                task.abandon()
                 onCancelled?()
             } catch {
                 self.reportError(error.localizedDescription)
+                task.fail(error.localizedDescription)
                 onFailed?()
             }
         }

@@ -11,6 +11,7 @@ import Observation
 @MainActor
 final class SessionListModel: CadencedPoller {
     private let sessionService: SessionService
+    private let tasks: TaskRegistry
 
     var sessions: [Session] = []
     var isLoading = false
@@ -27,7 +28,8 @@ final class SessionListModel: CadencedPoller {
     /// Fires when sessions are refreshed (for updating session counters).
     var onSessionsRefreshed: (() -> Void)?
 
-    init(sessionService: SessionService) {
+    init(sessionService: SessionService, tasks: TaskRegistry = .shared) {
+        self.tasks = tasks
         self.sessionService = sessionService
     }
 
@@ -68,24 +70,30 @@ final class SessionListModel: CadencedPoller {
     }
 
     func deleteSession(id: String) async {
+        let task = tasks.begin(.session, String(localized: "Delete session \(id)"))
         do {
             try await sessionService.deleteSession(id: id)
+            task.succeed()
             // Grace period for backend state synchronization (matches Linux client)
             try? await Task.sleep(for: .seconds(3))
             await loadSessions()
         } catch {
             hasError = true
             errorMessage = "Delete failed: \(error.localizedDescription)"
+            task.fail(error.localizedDescription)
         }
     }
 
     func renewSession(id: String) async {
+        let task = tasks.begin(.session, String(localized: "Renew session \(id)"))
         do {
             try await sessionService.renewSession(id: id)
+            task.succeed()
             await loadSessions()
         } catch {
             hasError = true
             errorMessage = "Renew failed: \(error.localizedDescription)"
+            task.fail(error.localizedDescription)
         }
     }
 

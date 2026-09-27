@@ -169,6 +169,9 @@ actor ImageDiscoveryCoordinator {
     /// in `.verbinal/` without overlap.
     private var inspectorScriptUploaded: Bool = false
 
+    /// Where each probe shows on the activity bar, with the stage it has reached.
+    private let tasks: TaskRegistry
+
     init(
         store: any ManifestStore,
         headless: any HeadlessProbeLauncher,
@@ -181,8 +184,10 @@ actor ImageDiscoveryCoordinator {
         maxConcurrentProbes: Int = 5,
         imageTypesLookup: (@Sendable (String) async -> [String]?)? = nil,
         registryAuthProvider: (@Sendable () async -> String?)? = nil,
-        inspectorImageResolver: (@Sendable () async -> String)? = nil
+        inspectorImageResolver: (@Sendable () async -> String)? = nil,
+        tasks: TaskRegistry = .shared
     ) {
+        self.tasks = tasks
         self.store = store
         self.headless = headless
         self.vospace = vospace
@@ -275,9 +280,12 @@ actor ImageDiscoveryCoordinator {
 
         // Launch the probe in a detached task so caller cancellation
         // doesn't kill it. Other joiners wait on the same Task.
+        let tasks = self.tasks
         let task = Task.detached { [weak self] () async throws -> ImageManifest in
             guard let self else { throw ImageDiscoveryError.cancelled }
-            return try await self.runDiscovery(for: imageID, force: force)
+            return try await tasks.track(.discovery, String(localized: "Inspect \(imageID)")) { handle in
+                try await self.runDiscovery(for: imageID, force: force, task: handle)
+            }
         }
         inFlight[imageID] = task
         broadcastInFlightChange()
@@ -381,8 +389,9 @@ actor ImageDiscoveryCoordinator {
 
     // MARK: - Discovery pipeline
 
-    private func runDiscovery(for imageID: String, force: Bool = false) async throws -> ImageManifest {
+    private func runDiscovery(for imageID: String, force: Bool = false, task: TaskHandle? = nil) async throws -> ImageManifest {
         let strategy = await strategy(for: imageID)
+        await task?.stage(String(localized: "Preparing the probe"))
 
         // Upload whichever script(s) the strategy requires. Both
         // share the same `.verbinal/` parent dir; ensure-* is
@@ -411,6 +420,7 @@ actor ImageDiscoveryCoordinator {
             return manifest
         }
 
+        await task?.stage(String(localized: "Submitting the probe job"))
         let jobID: String
         do {
             switch strategy {
@@ -438,6 +448,7 @@ actor ImageDiscoveryCoordinator {
             throw err
         }
 
+        await task?.stage(String(localized: "Waiting for job \(jobID)"))
         do {
             try await pollUntilTerminal(jobID: jobID)
         } catch {
@@ -474,6 +485,7 @@ actor ImageDiscoveryCoordinator {
             throw err
         }
 
+        await task?.stage(String(localized: "Reading the manifest"))
         let data: Data
         do {
             data = try await fetchManifestData(for: imageID)

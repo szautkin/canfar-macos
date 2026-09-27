@@ -41,6 +41,7 @@ extension AppState {
         tools.append(makeCloseSettingsTool())
         tools.append(makeGetAuthStateTool())
         tools.append(makeGetCurrentViewTool())
+        tools.append(ListActivityTool(tasks: { [weak self] in await self?.tasks.tasks ?? [] }))
 
         // Search domain. The recent/saved stores are the LIVE instances
         // inside the hoisted `searchModel` — agent writes appear in the

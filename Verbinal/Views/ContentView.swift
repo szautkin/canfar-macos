@@ -268,17 +268,18 @@ struct ContentView: View {
         // auth-gated tiles stay locked until it lands. The old full-screen
         // "Checking authentication…" interstitial blocked the whole app on
         // one network round-trip.
-        if showsModeChrome {
-            VStack(spacing: 0) {
-                hoistedModeToolbar
-                Divider()
-                modeBody
-            }
-        } else {
+        VStack(spacing: 0) {
             // Portal / Storage while signed out render a standalone
             // login-required screen with NO mode toolbar (matches the
             // pre-hoist behaviour, which never wrapped that screen in chrome).
+            if showsModeChrome {
+                hoistedModeToolbar
+                Divider()
+            }
             modeBody
+            // What the app is doing, whatever the mode.
+            Divider()
+            ActivityBar(registry: appState.tasks)
         }
         #else
         modeBody

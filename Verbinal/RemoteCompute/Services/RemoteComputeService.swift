@@ -76,6 +76,7 @@ final class RemoteComputeService {
     /// How long past a run's own timeout to wait before calling it lost: a
     /// cold session takes a minute or two, and only then picks the request up.
     private let startupAllowance: TimeInterval
+    private let tasks: TaskRegistry
     private var watchers: [String: Task<Void, Never>] = [:]
 
     init(runs: ComputeRunStore,
@@ -85,7 +86,9 @@ final class RemoteComputeService {
          configuration: @escaping @MainActor () -> Configuration,
          registryAuth: @escaping @MainActor () -> (username: String, secret: String)?,
          pollInterval: Duration = .seconds(5),
-         startupAllowance: TimeInterval = 5 * 60) {
+         startupAllowance: TimeInterval = 5 * 60,
+         tasks: TaskRegistry = .shared) {
+        self.tasks = tasks
         self.runs = runs
         self.sessions = sessions
         self.files = files
@@ -155,6 +158,8 @@ final class RemoteComputeService {
                                               code: RunCodeContract.normalizeNewlines(request.code),
                                               timeout_seconds: request.timeout_seconds)
         runs.add(ComputeRun(request, author: author))
+        let who = author == .agent ? String(localized: "Assistant") : String(localized: "You")
+        let task = tasks.begin(.session, "\(who): \(request.language) on \(RunCodeContract.sessionName)")
         do {
             try await ensureSession(launch)
             // A just-launched session may not have made its inbox yet, and a missing parent 404s the PUT.
@@ -166,9 +171,11 @@ final class RemoteComputeService {
             try await files.uploadFile(username: user, remotePath: RunCodeContract.inboxPath(id: request.id), fileURL: file)
         } catch {
             runs.close(request.id, as: ComputeRun.notSent)
+            task.fail(error.localizedDescription)
             throw error
         }
-        watch(request)
+        task.stage(String(localized: "Waiting for the result"))
+        watch(request, task)
     }
 
     /// Reads a run's result; whoever reads it first records it.
@@ -186,7 +193,7 @@ final class RemoteComputeService {
         watchers = [:]
     }
 
-    private func watch(_ request: RunCodeContract.Request) {
+    private func watch(_ request: RunCodeContract.Request, _ task: TaskHandle) {
         let id = request.id
         let giveUpAt = Date().addingTimeInterval(TimeInterval(request.timeout_seconds) + startupAllowance)
         let interval = pollInterval
@@ -200,6 +207,12 @@ final class RemoteComputeService {
             guard let self, !Task.isCancelled else { return }
             self.runs.close(id, as: ComputeRun.noResult)
             self.watchers[id] = nil
+            switch self.runs.find(id)?.state {
+            case "ok": task.succeed()
+            case ComputeRun.noResult: task.fail(String(localized: "No result came back"))
+            case let status?: task.fail(status)
+            case nil: task.abandon()
+            }
         }
     }
 

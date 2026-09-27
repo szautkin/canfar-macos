@@ -15,12 +15,15 @@ actor DownloadService {
     private let session: URLSession
     private let endpoints: APIEndpoints
     private let caom2: CAOM2Service
+    private let tasks: TaskRegistry
 
     init(
         session: URLSession = .shared,
         endpoints: APIEndpoints = TAPConfig.endpoints,
-        caom2: CAOM2Service = CAOM2Service()
+        caom2: CAOM2Service = CAOM2Service(),
+        tasks: TaskRegistry = .shared
     ) {
+        self.tasks = tasks
         self.session = session
         self.endpoints = endpoints
         self.caom2 = caom2
@@ -30,7 +33,14 @@ actor DownloadService {
     /// Prefers DataLink `#this`, then CAOM-2 `productType: science`
     /// artifacts (the ESPaDOnS / package-fallback path that otherwise
     /// yields a 0-byte `pkg-*.txt`), then `/caom2ops/pkg`.
+    /// Fetches the observation's file — on the activity bar, whoever asked.
     func downloadToTemp(publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
+        try await tasks.track(.download, Self.label(publisherID)) { _ in
+            try await self.fetchWhole(publisherID: publisherID)
+        }
+    }
+
+    private func fetchWhole(publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
         let datalink = await resolveDataLink(publisherID: publisherID)
         if let directURL = datalink.bestDirectFileURL {
             Self.logger.info("Using DataLink direct URL: \(directURL.lastPathComponent)")
@@ -71,7 +81,14 @@ actor DownloadService {
     /// Download `url` — a cutout, or any file CADC serves — to a temporary
     /// file named `suggestedFilename`.
     func downloadToTemp(url: URL, suggestedFilename: String, publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
-        try await fetchToTemp(url: url, publisherID: publisherID, suggested: suggestedFilename)
+        try await tasks.track(.download, Self.label(publisherID, file: suggestedFilename)) { _ in
+            try await self.fetchToTemp(url: url, publisherID: publisherID, suggested: suggestedFilename)
+        }
+    }
+
+    /// "Download M31 (MegaPipe…)" — the observation, or the file when there is one.
+    private static func label(_ publisherID: String, file: String? = nil) -> String {
+        String(localized: "Download \(file ?? PublisherID(publisherID)?.observationID ?? publisherID)")
     }
 
     private func fetchToTemp(

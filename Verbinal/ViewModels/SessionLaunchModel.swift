@@ -19,6 +19,7 @@ final class SessionLaunchModel {
 
     private var imagesByTypeAndProject: [String: [String: [ParsedImage]]] = [:]
     private let userImages: UserImageStore?
+    private let tasks: TaskRegistry
     private var cachedImages: [RawImage] = []
 
     /// Shared accessor for the parsed image catalogue, keyed by session
@@ -107,7 +108,8 @@ final class SessionLaunchModel {
          cacheService: PortalImageCacheService? = nil,
          settingsService: PortalSettingsService? = nil,
          userImages: UserImageStore? = nil,
-         username: String = "") {
+         username: String = "",
+         tasks: TaskRegistry = .shared) {
         self.sessionService = sessionService
         self.imageService = imageService
         self.recentLaunchStore = recentLaunchStore
@@ -115,6 +117,7 @@ final class SessionLaunchModel {
         self.settingsService = settingsService
         self.userImages = userImages
         self.username = username
+        self.tasks = tasks
         recomputeDefaultFlags()
     }
 
@@ -684,9 +687,11 @@ final class SessionLaunchModel {
             params.registrySecret = repositorySecret
         }
 
+        let task = tasks.begin(.launch, String(localized: "Launch \(selectedType) \(sessionName)"))
         do {
             let sessionId = try await sessionService.launchSession(params)
             if let sessionId {
+                task.succeed()
                 launchSuccess = true
                 launchStatus = String(localized: "Session launched! ID: \(sessionId)")
 
@@ -713,11 +718,13 @@ final class SessionLaunchModel {
                 hasError = true
                 errorMessage = String(localized: "The server accepted the launch but returned no session ID.")
                 launchStatus = String(localized: "Launch failed")
+                task.fail(errorMessage)
             }
         } catch {
             hasError = true
             errorMessage = error.localizedDescription
             launchStatus = String(localized: "Launch failed")
+            task.fail(errorMessage)
         }
 
         isLaunching = false

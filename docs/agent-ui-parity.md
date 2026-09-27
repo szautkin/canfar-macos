@@ -189,6 +189,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 |---|---|---|
 | Navigate between modes (now incl. AI Guide) | `navigate_to` (`aiGuide` added) | live |
 | Current view incl. Search sub-tab + result counts | `get_current_view` (enriched) | read |
+| Activity bar: what is running, its stage, what failed and why | `list_activity` | read |
 | Local file-browser panel: browse | `list_local_folder` | read |
 | Local file-browser panel: open file | `open_local_file` (optional `viewer` skips Open as…) | live |
 | Settings ▸ Endpoints (effective URLs) | `get_endpoints` | read |
@@ -226,6 +227,8 @@ Mac keeps legacy names as aliases so older agents keep working:
 
 ## Intentionally not exposed
 
+- **Clear Finished** (activity bar) — the person's own housekeeping of
+  what they have read; an agent reads the list with `list_activity`.
 - **Ephemeral gesture state**: FITS canvas scroll-pan/pinch and Cube
   slice-view pan/zoom are transient local view state; the semantic
   equivalents (goto coordinate, zoom level, fit, channel, camera) are

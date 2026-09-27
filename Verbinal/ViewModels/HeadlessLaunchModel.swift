@@ -21,6 +21,7 @@ import Observation
 final class HeadlessLaunchModel {
     private let headlessService: HeadlessService
     private let recentLaunchStore: RecentLaunchStore
+    private let tasks: TaskRegistry
 
     // MARK: - Form state
 
@@ -46,9 +47,10 @@ final class HeadlessLaunchModel {
     /// after a `partialReplicaFailure` — `errorMessage` will explain.
     private(set) var lastLaunchedJobIDs: [String] = []
 
-    init(headlessService: HeadlessService, recentLaunchStore: RecentLaunchStore) {
+    init(headlessService: HeadlessService, recentLaunchStore: RecentLaunchStore, tasks: TaskRegistry = .shared) {
         self.headlessService = headlessService
         self.recentLaunchStore = recentLaunchStore
+        self.tasks = tasks
     }
 
     // MARK: - External image selection
@@ -122,6 +124,9 @@ final class HeadlessLaunchModel {
             replicas: replicas
         )
 
+        let task = tasks.begin(.launch, String(localized: "Launch batch job \(trimmedName)"))
+        // Whatever the outcome below, it is said on the activity bar too.
+        defer { hasError ? task.fail(errorMessage) : task.succeed() }
         do {
             let ids = try await headlessService.launchHeadlessJob(params)
             lastLaunchedJobIDs = ids

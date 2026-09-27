@@ -511,6 +511,8 @@ final class AppState {
     /// ADQL editor) instead of the pending-handoff bridges alone. Cheap at
     /// init: no network until a search or data-train load runs.
     let searchModel = SearchFormModel()
+    /// What the app is doing — the activity bar's tasks.
+    let tasks = TaskRegistry.shared
     /// What an agent can point at (`point_at_ui`), and its hint.
     let uiPointer = UIPointerRegistry()
     /// Marks kept with each file, for both viewers.
