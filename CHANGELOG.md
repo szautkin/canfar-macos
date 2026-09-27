@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A full image reference on the launch form's Advanced tab** — pasted,
+  or given by your assistant's `show_launch_form`, it was put under the
+  chosen registry a second time (`images.canfar.net/images.canfar.net/…`)
+  and the launch was refused; a pasted `https://` was kept as part of the
+  name. It is now used as it is, without the scheme or spaces.
 - **Storage shows the folder last asked for** — a listing that answered
   late (a slow folder, then a quick click elsewhere) replaced the newer
   one, leaving the breadcrumb and the files out of step.

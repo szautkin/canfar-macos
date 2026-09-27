@@ -610,6 +610,16 @@ final class SessionLaunchModel {
 
     // MARK: - Launch
 
+    /// The Advanced tab's image as a launch asks for it: under the chosen
+    /// registry, unless it already names a registry — its first part a
+    /// host (a dot, a port, or localhost), as a pasted or agent-given full
+    /// reference does.
+    nonisolated static func customImageReference(_ image: String, host: String) -> String {
+        let first = image.split(separator: "/", maxSplits: 1).first.map(String.init) ?? ""
+        let namesRegistry = image.contains("/") && (first.contains(".") || first.contains(":") || first == "localhost")
+        return host.isEmpty || namesRegistry ? image : "\(host)/\(image)"
+    }
+
     func launch() async {
         // errorMessage + launchStatus are displayed via `Text(model.errorMessage)`
         // (verbatim String initializer) — localize at assignment to keep the
@@ -622,7 +632,7 @@ final class SessionLaunchModel {
 
         let imageId: String
         if useCustomImage {
-            let trimmed = customImageUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmed = RegistryImage.normalized(customImageUrl)
             guard !trimmed.isEmpty else {
                 hasError = true
                 errorMessage = String(localized: "Custom image URL is required")
@@ -638,12 +648,7 @@ final class SessionLaunchModel {
                 errorMessage = String(localized: "Custom image URL contains invalid characters")
                 return
             }
-            // Advanced tab: prepend selected registry host to custom image path
-            if !repositoryHost.isEmpty {
-                imageId = "\(repositoryHost)/\(trimmed)"
-            } else {
-                imageId = trimmed
-            }
+            imageId = Self.customImageReference(trimmed, host: repositoryHost)
         } else {
             guard let img = selectedImage else {
                 hasError = true

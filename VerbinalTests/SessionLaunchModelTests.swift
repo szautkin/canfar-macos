@@ -131,4 +131,18 @@ final class SessionLaunchModelTests: XCTestCase {
         model.applyImageSelection(img, preferredType: "carta")
         XCTAssertEqual(model.selectedType, "notebook")
     }
+
+    /// The Advanced tab's own image goes under the chosen registry — once:
+    /// a full reference, pasted or from an agent, already names one.
+    func testTheAdvancedImageIsQualifiedOnce() {
+        let host = "images.canfar.net"
+        XCTAssertEqual(SessionLaunchModel.customImageReference("skaha/astroml:24.07", host: host), "images.canfar.net/skaha/astroml:24.07")
+        XCTAssertEqual(SessionLaunchModel.customImageReference("images.canfar.net/skaha/astroml:24.07", host: host),
+                       "images.canfar.net/skaha/astroml:24.07")
+        XCTAssertEqual(SessionLaunchModel.customImageReference("docker.io/library/python:3", host: host), "docker.io/library/python:3")
+        XCTAssertEqual(SessionLaunchModel.customImageReference("localhost:5000/me/tool:1", host: host), "localhost:5000/me/tool:1")
+        XCTAssertEqual(SessionLaunchModel.customImageReference("astroml:1", host: host), "images.canfar.net/astroml:1")
+        XCTAssertEqual(SessionLaunchModel.customImageReference("skaha/x:1", host: ""), "skaha/x:1")
+        XCTAssertEqual(RegistryImage.normalized(" https://images.canfar.net/skaha/x:1 "), "images.canfar.net/skaha/x:1")
+    }
 }
