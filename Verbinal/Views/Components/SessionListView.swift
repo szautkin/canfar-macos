@@ -8,6 +8,8 @@ import SwiftUI
 
 struct SessionListView: View {
     @Bindable var model: SessionListModel
+    /// Opens the launch form; no button without it.
+    var onLaunch: (() -> Void)? = nil
     @Environment(\.openURL) private var openURL
     @State private var sessionToDelete: Session?
     @State private var showDeleteConfirmation = false
@@ -67,6 +69,15 @@ struct SessionListView: View {
                     .buttonStyle(.borderless)
                     .help("Refresh active sessions")
                     .accessibilityLabel("Refresh sessions")
+
+                    if let onLaunch {
+                        Button(action: onLaunch) {
+                            Label("Launch Session", systemImage: "plus.circle")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .pointable("portal.openLaunchForm", label: String(localized: "Launch Session"), screen: "portal")
+                    }
                 }
 
                 // Cross-fade the empty↔content BOUNDARY only. The 15 s

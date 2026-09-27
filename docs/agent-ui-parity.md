@@ -137,6 +137,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | UI interaction | Tool | Kind |
 |---|---|---|
 | List/launch/renew/delete, images, platform load | pre-existing batch | mixed |
+| Launch Session (opens the launch form sheet), its tabs, "Use this image" | `show_launch_form` (`tab`, `image`, `close`) | live |
 | Session Events sheet | `get_session_events` | read |
 | Session log view | `get_session_logs` | read |
 | Connect button (opens browser) | `open_session` | live |

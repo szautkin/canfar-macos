@@ -184,4 +184,32 @@ extension AppState {
             )
         })
     }
+
+    // MARK: - The launch form
+
+    func makeShowLaunchFormTool() -> ShowLaunchFormTool {
+        ShowLaunchFormTool(show: { [weak self] args in
+            guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
+            return try await MainActor.run {
+                if args.close == true {
+                    self.launchFormPresented = false
+                    return LaunchFormShown(shown: false, tab: nil, image: nil, imageSource: nil)
+                }
+                guard self.isAuthenticated else {
+                    throw ToolFailureReason.targetNotResolved("the Portal needs the person signed in to CANFAR")
+                }
+                let trimmed = args.image?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let image = trimmed?.isEmpty == false ? trimmed : nil
+                let tab = args.tab.flatMap { ShowLaunchFormTool.tabs[$0.lowercased()] }
+                let inCatalogue = image.map { id in self.canfarImagesModel?.allImages.contains { $0.id == id } ?? false }
+                self.navigateTo(.portal)
+                self.launchFormRequest = LaunchFormRequest(tab: tab, image: image)
+                self.agentsService.activityStore.append(.live(
+                    kind: "show_launch_form", summary: "Opened the launch form", origin: .external(clientID: "show_launch_form")))
+                let shownTab = tab ?? (inCatalogue == false ? .advanced : self.launchFormTab)
+                return LaunchFormShown(shown: true, tab: ShowLaunchFormTool.tabs.first { $0.value == shownTab }?.key, image: image,
+                                       imageSource: inCatalogue.map { $0 ? "catalogue" : "custom" })
+            }
+        })
+    }
 }

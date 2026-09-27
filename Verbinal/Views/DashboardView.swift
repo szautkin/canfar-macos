@@ -15,63 +15,34 @@ struct DashboardView: View {
     var platformLoadModel: PlatformLoadModel
     var storageModel: StorageModel
 
+    /// A pick in the image-discovery sheet opens the launch form once that sheet is gone.
+    @State private var openLaunchFormAfterDiscovery = false
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // Top row: Sessions + (Storage / Batch Jobs)
-                HStack(alignment: .top, spacing: 16) {
-                    SessionListView(model: sessionListModel)
-                        .frame(maxWidth: .infinity)
-                    VStack(spacing: 16) {
-                        StorageQuotaView(model: storageModel)
-                        if let hm = appState.headlessMonitor {
-                            HeadlessJobsView(model: hm)
-                        }
-                    }
-                    .frame(minWidth: 220, maxWidth: 280)
-                }
-
-                // Bottom row: Launch Form + (Recent + Platform)
-                HStack(alignment: .top, spacing: 16) {
-                    LaunchFormView(
-                        model: sessionLaunchModel,
-                        headlessModel: headlessLaunchModel,
-                        imageDiscoveryModel: appState.imageDiscoveryModel,
-                        onLaunched: {
-                            Task { await sessionListModel.loadSessions() }
-                            Task { await appState.headlessMonitor?.loadJobs() }
-                        }
-                    )
-                    .frame(maxWidth: .infinity)
-
-                    VStack(spacing: 16) {
-                        if let cim = appState.canfarImagesModel {
-                            CanfarImagesView(
-                                model: cim,
-                                showDiscoverySheet: Bindable(appState).showImageDiscoverySheet,
-                                preselectedImageID: Bindable(appState).preselectedDiscoveryImageID,
-                                onUseInLaunchForm: { image, preferredType in
-                                    sendImageToLaunchForm(image, preferredType: preferredType)
-                                }
-                            )
-                        }
-
-                        RecentLaunchesView(
-                            store: appState.recentLaunchStore,
-                            launchModel: sessionLaunchModel,
-                            onRelaunched: {
-                                Task { await sessionListModel.loadSessions() }
+        GeometryReader { geometry in
+            ScrollView {
+                Grid(alignment: .topLeading, horizontalSpacing: 16, verticalSpacing: 16) {
+                    ForEach(Array(PortalLayout.rows(PortalLayout.arrangement(forWidth: geometry.size.width - 40)).enumerated()),
+                            id: \.offset) { _, row in
+                        GridRow(alignment: .top) {
+                            ForEach(row, id: \.card) { placed in
+                                card(placed.card)
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                                    .gridCellColumns(placed.cell.span)
                             }
-                        )
-
-                        PlatformLoadView(model: platformLoadModel)
+                        }
                     }
-                    .frame(minWidth: 280, maxWidth: 380)
                 }
+                .padding(20)
             }
-            .padding(20)
         }
-        .sheet(isPresented: Bindable(appState).showImageDiscoverySheet) {
+        .sheet(isPresented: Bindable(appState).launchFormPresented) { launchFormSheet }
+        .sheet(isPresented: Bindable(appState).showImageDiscoverySheet, onDismiss: {
+            if openLaunchFormAfterDiscovery {
+                openLaunchFormAfterDiscovery = false
+                appState.launchFormPresented = true
+            }
+        }) {
             if let idm = appState.imageDiscoveryModel,
                let cim = appState.canfarImagesModel {
                 ImageDiscoverySheet(
@@ -88,7 +59,8 @@ struct DashboardView: View {
                         // also avoids a no-op if the live list reloads
                         // while the sheet is open.
                         if let match = catalogue.first(where: { $0.id == imageID }) {
-                            sendImageToLaunchForm(match, preferredType: idm.typeFilter)
+                            sendImageToLaunchForm(match, preferredType: idm.typeFilter, open: false)
+                            openLaunchFormAfterDiscovery = true
                         }
                     },
                     catalogue: cim.allImages
@@ -112,6 +84,93 @@ struct DashboardView: View {
                 }
             }
         }
+        .task(id: appState.launchFormRequest) {
+            guard let request = appState.launchFormRequest else { return }
+            appState.launchFormRequest = nil
+            apply(request)
+        }
+    }
+
+    // MARK: - Cards
+
+    @ViewBuilder
+    private func card(_ card: PortalCard) -> some View {
+        switch card {
+        case .platformLoad:
+            PlatformLoadView(model: platformLoadModel)
+        case .storage:
+            StorageQuotaView(model: storageModel)
+        case .batchJobs:
+            if let hm = appState.headlessMonitor {
+                HeadlessJobsView(model: hm)
+            }
+        case .sessions:
+            SessionListView(model: sessionListModel, onLaunch: { appState.launchFormPresented = true })
+        case .images:
+            if let cim = appState.canfarImagesModel {
+                CanfarImagesView(
+                    model: cim,
+                    showDiscoverySheet: Bindable(appState).showImageDiscoverySheet,
+                    preselectedImageID: Bindable(appState).preselectedDiscoveryImageID,
+                    onUseInLaunchForm: { image, preferredType in
+                        sendImageToLaunchForm(image, preferredType: preferredType, open: true)
+                    }
+                )
+            }
+        case .recentLaunches:
+            RecentLaunchesView(
+                store: appState.recentLaunchStore,
+                launchModel: sessionLaunchModel,
+                onRelaunched: {
+                    Task { await sessionListModel.loadSessions() }
+                }
+            )
+        }
+    }
+
+    // MARK: - The launch form
+
+    private var launchFormSheet: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Launch Session").font(.title2.bold())
+                Spacer()
+                Button("Done") { appState.launchFormPresented = false }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding([.horizontal, .top], 20)
+            ScrollView {
+                LaunchFormView(
+                    model: sessionLaunchModel,
+                    headlessModel: headlessLaunchModel,
+                    imageDiscoveryModel: appState.imageDiscoveryModel,
+                    onLaunched: {
+                        Task { await sessionListModel.loadSessions() }
+                        Task { await appState.headlessMonitor?.loadJobs() }
+                        appState.launchFormPresented = false
+                    }
+                )
+                .padding(20)
+            }
+        }
+        .frame(minWidth: 620, idealWidth: 680, minHeight: 560, idealHeight: 680)
+        .environment(appState)
+        .uiPointerOverlay()
+    }
+
+    /// An agent's request: the tab, an image — from the catalogue on the
+    /// Standard tab, any other as the Advanced tab's own — then the form.
+    private func apply(_ request: AppState.LaunchFormRequest) {
+        if let id = request.image {
+            if let match = appState.canfarImagesModel?.allImages.first(where: { $0.id == id }) {
+                sendImageToLaunchForm(match, preferredType: nil, open: false)
+            } else {
+                sessionLaunchModel.customImageUrl = id
+                appState.launchFormTab = .advanced
+            }
+        }
+        if let tab = request.tab { appState.launchFormTab = tab }
+        appState.launchFormPresented = true
     }
 
     /// Routes a `ParsedImage` to whichever launch model fits its
@@ -123,7 +182,7 @@ struct DashboardView: View {
     /// Single-registry assumption: catalogue images implicitly
     /// flip out of advanced-mode in `SessionLaunchModel`. No
     /// custom-registry write happens here.
-    private func sendImageToLaunchForm(_ image: ParsedImage, preferredType: String?) {
+    private func sendImageToLaunchForm(_ image: ParsedImage, preferredType: String?, open: Bool) {
         // Honor the type the user was filtering by. Catalogue images are often
         // multi-type (e.g. notebook+headless), so routing purely on
         // `types.contains("headless")` would yank a notebook the user picked
@@ -153,5 +212,7 @@ struct DashboardView: View {
             sessionLaunchModel.applyImageSelection(image, preferredType: preferredType)
             appState.launchFormTab = .standard
         }
+        // So the person sees what changed.
+        if open { appState.launchFormPresented = true }
     }
 }

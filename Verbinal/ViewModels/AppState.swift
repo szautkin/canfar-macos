@@ -136,13 +136,20 @@ final class AppState {
     }
     var launchFormTab: LaunchFormTab = .standard
 
-    /// Routes a `ParsedImage` to the correct launch model and
-    /// flips `launchFormTab` to match. Owned here (rather than in
-    /// the dashboard) because both launch models live as the
-    /// dashboard's properties and aren't visible to e.g. the
-    /// Canfar Images widget — but every surface that wants to
-    /// "use this image" can call into this single closure.
-    var sendImageToLaunchForm: ((ParsedImage) -> Void)?
+    /// The launch form is open: a sheet over the Portal, from Launch
+    /// Session on Active Sessions, "Use this image", or an agent.
+    var launchFormPresented = false
+
+    /// What an agent asked the launch form to show; the Portal, which holds
+    /// the launch models, applies it and clears it.
+    struct LaunchFormRequest: Equatable, Sendable {
+        let id = UUID()
+        var tab: LaunchFormTab?
+        /// An image ID: from the catalogue on the Standard tab, else the
+        /// Advanced tab's own image.
+        var image: String?
+    }
+    var launchFormRequest: LaunchFormRequest?
 
     // Addon system
     let addonRegistry = AddonRegistry()

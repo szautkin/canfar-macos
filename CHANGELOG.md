@@ -241,6 +241,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **The Portal, laid out as on Verbinal for Linux and Windows** —
+  platform load, storage and batch jobs across the top, active sessions
+  the full width, then CANFAR images beside recent launches; one column
+  in a narrow window. The launch form is no longer a card: **Launch
+  Session** on Active Sessions opens it in a sheet (as does "Use this
+  image"), and it closes when the session is launched. For assistants,
+  `show_launch_form` opens it at a tab, with an image, or closes it.
 - **The cube slice moves like the FITS image** — scroll to pan, ⌘-scroll
   to zoom toward the pointer (as well as pinch), drag to pan, double-click
   to reset. The slice's zoom and pan now survive a trip to volume mode.
