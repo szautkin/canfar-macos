@@ -70,6 +70,9 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
+            #if os(macOS)
+            SettingsOpener()
+            #endif
             HStack(spacing: 0) {
                 #if os(macOS)
                 if showFileBrowser {

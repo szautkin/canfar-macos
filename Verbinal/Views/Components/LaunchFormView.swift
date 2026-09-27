@@ -327,6 +327,7 @@ struct LaunchFormView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(model.isLaunching || model.isAtSessionLimit || model.selectedImage == nil)
+            .pointable("portal.launch", label: String(localized: "Launch Session"), screen: "portal")
             Spacer()
         }
 

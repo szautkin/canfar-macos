@@ -228,6 +228,7 @@ struct FITSRenderControlsView: View {
                         .foregroundStyle(.secondary)
                     HStack(spacing: 4) {
                         TextField("RA", text: $goToRA)
+                            .pointable("fits.goto.ra", label: String(localized: "RA"), screen: "fitsViewer")
                             .textFieldStyle(.roundedBorder)
                             .font(.system(.caption2, design: .monospaced))
                         TextField("Dec", text: $goToDec)

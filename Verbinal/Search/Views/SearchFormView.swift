@@ -70,6 +70,7 @@ struct SearchFormView: View {
             .disabled(searchModel.isSearching)
             .keyboardShortcut(.return, modifiers: .command)
             .help("Execute search (⌘↩)")
+            .pointable("search.run", label: String(localized: "Search"), screen: "search")
 
             SearchCancelButton(searchModel: searchModel)
 
@@ -85,6 +86,7 @@ struct SearchFormView: View {
             .controlSize(.large)
             .disabled(searchModel.isSearching)
             .help("Clear all filters")
+            .pointable("search.reset", label: String(localized: "Reset"), screen: "search")
 
             Spacer()
 

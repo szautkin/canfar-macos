@@ -94,8 +94,8 @@ twins of theirs, which we keep.
 | H3 invariant tests | ongoing (a guard lands with each step) | — |
 | H4 pinned toolchain, CI package tests | done | `76f11a7` |
 | A1–A8 correctness | done — QA: [11](./11-qa-windows-phase-a.md) | `4433b44` … `1d3be2f` |
-| B agent experience | next | |
-| C marks · D cutouts · E portal/compute | open | |
+| B agent experience | done — B1 tool map, B2 TAP schema + ADQL checker, B3 viewer pictures, B4 tabs/details, B5 copy, B6 background applies, B7 UI pointer + Settings | `c647e64` … |
+| C marks · D cutouts · E portal/compute | next: C | |
 
 A8 found no message truncation on the Mac (a Windows-only bug) and
 corrected a real one instead: destructive tools told agents they ran

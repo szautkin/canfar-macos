@@ -23,6 +23,9 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | A tool by what it does | `search_tools` | read |
 | One tool's description and full schema | `man` | read |
 | Copy text, or an observation's details | `copy_to_clipboard` | live |
+| What can be pointed at on screen | `list_ui_targets` | read |
+| Point at a control, with a message | `point_at_ui` | live |
+| Open Settings at a section / close it | `open_settings` / `close_settings` | live |
 
 ## Long work
 

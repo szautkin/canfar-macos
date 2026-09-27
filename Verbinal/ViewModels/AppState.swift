@@ -443,6 +443,17 @@ final class AppState {
     /// ADQL editor) instead of the pending-handoff bridges alone. Cheap at
     /// init: no network until a search or data-train load runs.
     let searchModel = SearchFormModel()
+    /// What an agent can point at (`point_at_ui`), and its hint.
+    let uiPointer = UIPointerRegistry()
+    /// The Settings window's tab.
+    var settingsSection: SettingsSection = .general
+    /// Open or close the Settings window (`open_settings` / `close_settings`).
+    private(set) var settingsRequest: SettingsRequest?
+
+    func requestSettings(_ action: SettingsRequest.Action, section: SettingsSection? = nil) {
+        if let section { settingsSection = section }
+        settingsRequest = SettingsRequest(action: action, serial: (settingsRequest?.serial ?? 0) + 1)
+    }
     /// Hoisted research archive — same rationale as `searchModel`: MCP
     /// FITS tools and the Research UI must share one store so ids
     /// survive relaunch and in-session downloads are visible both ways.

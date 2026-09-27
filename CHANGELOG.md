@@ -53,6 +53,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (matching the query's words, not the whole phrase), and `man` gives one
   tool's full description and schema, or the nearest names for a typo.
   They read the tool list exactly as the assistant receives it.
+- **Your assistant can show you where things are** — `point_at_ui` rings
+  a control on screen with a short message beside it for a few seconds,
+  and `list_ui_targets` lists what it can point at (the Search, ADQL and
+  launch buttons, the AI Agent settings, the FITS Go To…). A name that
+  matches no control — or two equally — points at nothing and lists what
+  is there instead of guessing. `open_settings` opens Settings at a
+  section and `close_settings` closes it; nothing is set for you.
 - **Your assistant can see the viewers** — `get_fits_image` returns a
   picture of the FITS Viewer as you see it (zoom, pan, rotation,
   colormap, crosshair) with the exact map from a point in the picture to

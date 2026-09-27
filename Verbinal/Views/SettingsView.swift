@@ -12,16 +12,20 @@ import VerbinalKit
 /// System Settings-style apps (Mail, Xcode, Music).
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        TabView {
+        @Bindable var appState = appState
+        TabView(selection: $appState.settingsSection) {
             GeneralSettingsTab()
                 .environment(appState)
                 .tabItem { Label("General", systemImage: "gear") }
+                .tag(SettingsSection.general)
 
             PortalSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Portal", systemImage: "play.circle") }
+                .tag(SettingsSection.portal)
 
             // Master switch first, then the features that depend on it
             // (Image Discovery probe jobs, AI Compute), then the
@@ -29,33 +33,60 @@ struct SettingsView: View {
             AgentsSettingsTab()
                 .environment(appState)
                 .tabItem { Label("AI Agent", image: "robot") }
+                .tag(SettingsSection.agent)
 
             ImageDiscoverySettingsTab()
                 .environment(appState)
                 .tabItem { Label("Image Discovery", systemImage: "shippingbox.and.arrow.backward") }
+                .tag(SettingsSection.imageDiscovery)
 
             AIComputeSettingsTab()
                 .environment(appState)
                 .tabItem { Label("AI Compute", systemImage: "cpu") }
+                .tag(SettingsSection.aiCompute)
 
             MCPIntegrationSettingsTab()
                 .environment(appState)
                 .tabItem { Label("MCP Clients", systemImage: "network") }
+                .tag(SettingsSection.mcpClients)
 
             EndpointsSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Endpoints", systemImage: "server.rack") }
+                .tag(SettingsSection.endpoints)
 
             AboutSettingsTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
+                .tag(SettingsSection.about)
         }
         // Resizable instead of a fixed 420 height: the AI Agent tab can
         // stack the autonomy controls + a ~160pt nested activity
         // ScrollView, which a hard 420 traps. A sensible minimum keeps
         // the modal from collapsing.
         .frame(minWidth: 520, idealWidth: 520, minHeight: 420, idealHeight: 520)
+        // close_settings: the window closes itself.
+        .onChange(of: appState.settingsRequest) { _, request in
+            if request?.action == .close { dismiss() }
+        }
     }
 }
+
+#if os(macOS)
+/// Opens the Settings window when app state asks (open_settings). Lives in
+/// the main window, which has the `openSettings` action.
+struct SettingsOpener: View {
+    @Environment(AppState.self) private var appState
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .onChange(of: appState.settingsRequest) { _, request in
+                if request?.action == .open { openSettings() }
+            }
+    }
+}
+#endif
 
 // MARK: - General tab
 
@@ -520,6 +551,8 @@ private struct AgentsSettingsTab: View {
             Section {
                 Toggle("Allow external AI agents", isOn: allowExternalAgents)
                     .toggleStyle(.switch)
+                    .pointable("settings.agent.allowExternal", label: String(localized: "Allow external AI agents"),
+                               screen: "settings.agent")
                 statusRow
             } header: {
                 Text("MCP Server")
@@ -536,8 +569,12 @@ private struct AgentsSettingsTab: View {
                 Section {
                     Toggle("Auto-apply agent writes", isOn: autoApplyWrites)
                         .toggleStyle(.switch)
+                        .pointable("settings.agent.autoApply", label: String(localized: "Auto-apply agent writes"),
+                                   screen: "settings.agent")
                     Toggle("Follow agent activity", isOn: followAgentActivity)
                         .toggleStyle(.switch)
+                        .pointable("settings.agent.follow", label: String(localized: "Follow agent activity"),
+                                   screen: "settings.agent")
                     Toggle("Show activity snackbar", isOn: showActivitySnackbar)
                         .toggleStyle(.switch)
                 } header: {
