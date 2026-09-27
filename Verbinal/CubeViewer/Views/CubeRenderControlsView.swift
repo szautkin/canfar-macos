@@ -47,7 +47,9 @@ struct CubeRenderControlsView: View {
         // No fixed width — the host HSplitView bounds the panel
         // (min 240 / ideal 270 / max 340), matching the FITS sidebar.
         #if os(macOS)
-        .sheet(isPresented: $showExport) { CubeExportView(model: model) }
+        .sheet(isPresented: $showExport) {
+            CubeExportView(model: model, marks: model.markTarget.map { marks?.marks(on: $0) ?? [] } ?? [])
+        }
         #endif
     }
 
@@ -288,26 +290,57 @@ struct CubeExportStyle: Equatable {
     var annotate = true
     var transparent = false
     var textColor: TextColor = .auto
+    /// Draw the cube's marks on the figure.
+    var marks = true
+
+    /// Where the sheet keeps each choice; the agent's exports read them too.
+    enum Key {
+        static let theme = "cubeExport.theme"
+        static let font = "cubeExport.font"
+        static let scale = "cubeExport.scale"
+        static let annotate = "cubeExport.annotate"
+        static let transparent = "cubeExport.transparent"
+        static let textColor = "cubeExport.textColor"
+        static let marks = "cubeExport.marks"
+    }
+
+    /// The style last set in the Export Figure sheet.
+    static func stored(_ defaults: UserDefaults = .standard) -> CubeExportStyle {
+        CubeExportStyle(
+            theme: Theme(rawValue: defaults.string(forKey: Key.theme) ?? "") ?? .light,
+            font: FontKind(rawValue: defaults.string(forKey: Key.font) ?? "") ?? .sans,
+            scale: defaults.object(forKey: Key.scale) as? Double ?? 1.0,
+            annotate: defaults.object(forKey: Key.annotate) as? Bool ?? true,
+            transparent: defaults.object(forKey: Key.transparent) as? Bool ?? false,
+            textColor: TextColor(rawValue: defaults.string(forKey: Key.textColor) ?? "") ?? .auto,
+            marks: defaults.object(forKey: Key.marks) as? Bool ?? true)
+    }
 }
 
 /// Export sheet — style controls, a live preview, and PNG/PDF output.
 struct CubeExportView: View {
     let model: CubeViewerModel
+    /// The cube's marks, drawn on the figure.
+    var marks: [Mark] = []
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("cubeExport.theme") private var themeRaw = CubeExportStyle.Theme.light.rawValue
-    @AppStorage("cubeExport.font") private var fontRaw = CubeExportStyle.FontKind.sans.rawValue
-    @AppStorage("cubeExport.scale") private var scale = 1.0
-    @AppStorage("cubeExport.annotate") private var annotate = true
-    @AppStorage("cubeExport.transparent") private var transparent = false
-    @AppStorage("cubeExport.textColor") private var textColorRaw = CubeExportStyle.TextColor.auto.rawValue
+    @AppStorage(CubeExportStyle.Key.theme) private var themeRaw = CubeExportStyle.Theme.light.rawValue
+    @AppStorage(CubeExportStyle.Key.font) private var fontRaw = CubeExportStyle.FontKind.sans.rawValue
+    @AppStorage(CubeExportStyle.Key.scale) private var scale = 1.0
+    @AppStorage(CubeExportStyle.Key.annotate) private var annotate = true
+    @AppStorage(CubeExportStyle.Key.transparent) private var transparent = false
+    @AppStorage(CubeExportStyle.Key.textColor) private var textColorRaw = CubeExportStyle.TextColor.auto.rawValue
+    @AppStorage(CubeExportStyle.Key.marks) private var showMarks = true
     @State private var content: CGImage?
     @State private var previewImage: NSImage?
+    /// The last save's outcome.
+    @State private var message: String?
 
     private var style: CubeExportStyle {
         CubeExportStyle(theme: CubeExportStyle.Theme(rawValue: themeRaw) ?? .light,
                         font: CubeExportStyle.FontKind(rawValue: fontRaw) ?? .sans,
                         scale: scale, annotate: annotate, transparent: transparent,
-                        textColor: CubeExportStyle.TextColor(rawValue: textColorRaw) ?? .auto)
+                        textColor: CubeExportStyle.TextColor(rawValue: textColorRaw) ?? .auto,
+                        marks: showMarks)
     }
 
     var body: some View {
@@ -342,16 +375,22 @@ struct CubeExportView: View {
                 Text(String(format: "%.2f×", scale)).font(.callout.monospacedDigit()).foregroundStyle(.secondary)
             }
             Toggle("Annotations (header + legend)", isOn: $annotate)
+            Toggle("Marks", isOn: $showMarks)
+                .disabled(marks.isEmpty)
             Toggle("Transparent background", isOn: $transparent)
 
             HStack(spacing: 10) {
-                Button("PNG 2×") { exportPNG(2) }
-                Button("PNG 4×") { exportPNG(4) }
-                Button("PDF…") { exportPDF() }
+                Button("PNG 2×") { save(.png, scale: 2) }
+                Button("PNG 4×") { save(.png, scale: 4) }
+                Button("PDF…") { save(.pdf, scale: 1) }
                 Spacer()
             }
             .buttonStyle(.borderedProminent)
             .disabled(content == nil)
+
+            if let message {
+                Text(message).font(.callout).foregroundStyle(.secondary)
+            }
         }
         .padding(20)
         .frame(width: 560)
@@ -383,119 +422,87 @@ struct CubeExportView: View {
     /// Render the plate to an image for an accurate preview (recomputed on change).
     private func rebuildPreview() {
         guard let content else { previewImage = nil; return }
-        let renderer = ImageRenderer(content: plate(content))
+        let renderer = ImageRenderer(content: CubeExportPlate.make(model: model, content: content, marks: marks, style: style))
         renderer.scale = 1
         previewImage = renderer.nsImage
     }
 
-    private var dateString: String { Date.now.formatted(date: .abbreviated, time: .shortened) }
-
-    private var stops: [Color] { colormapPreviewStops(model.colormap) }
-
     private func currentContent() -> CGImage? {
-        guard model.viewMode == .volume else { return model.sliceImage }
-        // Volume export background follows the theme (or transparent).
-        let bg: SIMD4<Float>? = transparent ? nil
-            : (CubeExportStyle.Theme(rawValue: themeRaw) ?? .light).backgroundRGBA
-        return model.volumeSnapshot?(CubeViewerConstants.exportWidth, CubeViewerConstants.exportHeight, bg)
+        model.figureContent(style: CubeExportStyle(theme: CubeExportStyle.Theme(rawValue: themeRaw) ?? .light,
+                                                   transparent: transparent))
     }
 
-    private var baseName: String {
-        let base = (model.object.isEmpty || model.object == "—") ? "cube" : model.object
-        return "\(base)_\(model.viewMode == .slice ? "ch\(model.channel + 1)" : "volume")"
-    }
-
-    private func plate(_ image: CGImage) -> CubeExportPlate {
-        CubeExportPlate(model: model, metadata: model.figureMetadata(), date: dateString,
-                        content: image, stops: stops, style: style, showAxes: model.viewMode == .volume)
-    }
-
-    private func exportPNG(_ factor: CGFloat) {
+    private func save(_ format: FigureFile.Format, scale: CGFloat) {
         guard let content else { return }
-        let renderer = ImageRenderer(content: plate(content))
-        renderer.scale = factor
-        guard let nsImage = renderer.nsImage else { return }
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png]
-        panel.nameFieldStringValue = "\(baseName).png"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        if let tiff = nsImage.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
-           let data = rep.representation(using: .png, properties: [:]) {
-            try? data.write(to: url)
-        }
-    }
-
-    private func exportPDF() {
-        guard let content else { return }
-        let renderer = ImageRenderer(content: plate(content))
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.pdf]
-        panel.nameFieldStringValue = "\(baseName).pdf"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        renderer.render { size, renderInContext in
-            var mediaBox = CGRect(origin: .zero, size: size)
-            guard let consumer = CGDataConsumer(url: url as CFURL),
-                  let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return }
-            context.beginPDFPage(nil)
-            renderInContext(context)
-            context.endPDFPage()
-            context.closePDF()
+        let plate = CubeExportPlate.make(model: model, content: content, marks: marks, style: style)
+        switch FigureFile.save(plate, as: format, scale: scale, name: model.figureBaseName) {
+        case .success(let url)?:
+            message = String(localized: "Saved \(url.lastPathComponent)")
+        case .failure(let error)?:
+            message = String(localized: "Could not save the figure: \(error.localizedDescription)")
+        case nil:
+            break
         }
     }
 }
 
+extension CubeViewerModel {
+    /// The picture a figure shows: the slice, or a volume snapshot on the
+    /// style's background (none when transparent).
+    func figureContent(style: CubeExportStyle) -> CGImage? {
+        guard viewMode == .volume else { return sliceImage }
+        let background: SIMD4<Float>? = style.transparent ? nil : style.theme.backgroundRGBA
+        return volumeSnapshot?(CubeViewerConstants.exportWidth, CubeViewerConstants.exportHeight, background)
+    }
+
+    /// The figure file's name: the object and the channel or "volume".
+    var figureBaseName: String {
+        let base = (object.isEmpty || object == "—") ? "cube" : object
+        return "\(base)_\(viewMode == .slice ? "ch\(channel + 1)" : "volume")"
+    }
+}
+
+/// What an agent's `export_cube_figure` asks for. Style fields left out
+/// are what the person last chose in the Export Figure sheet.
+struct CubeFigureRequest: Codable, Sendable, Equatable {
+    var scale: Double = 2
+    var format: FigureFile.Format = .png
+    var marks: Bool?
+
+    init(scale: Double = 2, format: FigureFile.Format = .png, marks: Bool? = nil) {
+        self.scale = scale
+        self.format = format
+        self.marks = marks
+    }
+
+    /// A proposal made before formats and marks held only `scale`.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        scale = try c.decodeIfPresent(Double.self, forKey: .scale) ?? 2
+        format = try c.decodeIfPresent(FigureFile.Format.self, forKey: .format) ?? .png
+        marks = try c.decodeIfPresent(Bool.self, forKey: .marks)
+    }
+}
+
 /// Headless figure export for the `export_cube_figure` agent tool — the
-/// PNG happy path of `CubeExportView` with no sheet and no save panel.
-/// Reuses the sheet's persisted style defaults (same `@AppStorage` keys)
-/// so agent exports match what the user last configured. Lives in this
-/// file because `CubeExportPlate` is deliberately private to it.
-/// Returns the written file URL (in ~/Downloads).
+/// sheet's output with no sheet and no save panel, in the sheet's last
+/// style. Lives in this file because `CubeExportPlate` is deliberately
+/// private to it. Returns the written file URL (in ~/Downloads).
 @MainActor
-func exportCubeFigureHeadless(model: CubeViewerModel, scale: CGFloat) throws -> URL {
+func exportCubeFigureHeadless(model: CubeViewerModel, request: CubeFigureRequest, marks: [Mark]) throws -> URL {
     guard model.hasData else {
         throw ToolFailureReason.targetNotResolved(
             "No cube is open in the Cube Viewer — call open_cube, then navigate_to(mode: cubeViewer).")
     }
-    let d = UserDefaults.standard
-    let style = CubeExportStyle(
-        theme: CubeExportStyle.Theme(rawValue: d.string(forKey: "cubeExport.theme") ?? "") ?? .light,
-        font: CubeExportStyle.FontKind(rawValue: d.string(forKey: "cubeExport.font") ?? "") ?? .sans,
-        scale: d.object(forKey: "cubeExport.scale") as? Double ?? 1.0,
-        annotate: d.object(forKey: "cubeExport.annotate") as? Bool ?? true,
-        transparent: d.object(forKey: "cubeExport.transparent") as? Bool ?? false,
-        textColor: CubeExportStyle.TextColor(rawValue: d.string(forKey: "cubeExport.textColor") ?? "") ?? .auto)
-
-    let content: CGImage?
-    if model.viewMode == .volume {
-        let bg: SIMD4<Float>? = style.transparent ? nil : style.theme.backgroundRGBA
-        content = model.volumeSnapshot?(
-            CubeViewerConstants.exportWidth, CubeViewerConstants.exportHeight, bg)
-    } else {
-        content = model.sliceImage
-    }
-    guard let content else {
+    var style = CubeExportStyle.stored()
+    if let showMarks = request.marks { style.marks = showMarks }
+    guard let content = model.figureContent(style: style) else {
         throw ToolFailureReason.backendError(
             "No rendered image is available yet — call navigate_to(mode: cubeViewer) so the render lands, then retry export_cube_figure.")
     }
-
-    let plate = CubeExportPlate(
-        model: model, metadata: model.figureMetadata(),
-        date: Date.now.formatted(date: .abbreviated, time: .shortened),
-        content: content, stops: colormapPreviewStops(model.colormap),
-        style: style, showAxes: model.viewMode == .volume)
-    let renderer = ImageRenderer(content: plate)
-    renderer.scale = scale
-    guard let nsImage = renderer.nsImage,
-          let tiff = nsImage.tiffRepresentation,
-          let rep = NSBitmapImageRep(data: tiff),
-          let data = rep.representation(using: .png, properties: [:]) else {
-        throw ToolFailureReason.backendError("Figure rendering failed")
-    }
-
-    let base = (model.object.isEmpty || model.object == "—") ? "cube" : model.object
-    let mode = model.viewMode == .slice ? "ch\(model.channel + 1)" : "volume"
-    let dest = FileHelper.timestampedDownloadsURL(stem: "\(base)_\(mode)", ext: "png")
-    try data.write(to: dest)
+    let plate = CubeExportPlate.make(model: model, content: content, marks: marks, style: style)
+    let dest = FileHelper.timestampedDownloadsURL(stem: model.figureBaseName, ext: request.format.rawValue)
+    try FigureFile.write(plate, as: request.format, scale: request.scale, to: dest)
     return dest
 }
 
@@ -509,6 +516,15 @@ private struct CubeExportPlate: View {
     let stops: [Color]
     let style: CubeExportStyle
     let showAxes: Bool
+    let marks: [Mark]
+
+    @MainActor
+    static func make(model: CubeViewerModel, content: CGImage, marks: [Mark], style: CubeExportStyle) -> CubeExportPlate {
+        CubeExportPlate(model: model, metadata: model.figureMetadata(),
+                        date: Date.now.formatted(date: .abbreviated, time: .shortened),
+                        content: content, stops: colormapPreviewStops(model.colormap), style: style,
+                        showAxes: model.viewMode == .volume, marks: marks)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -520,6 +536,15 @@ private struct CubeExportPlate: View {
                 .resizable()
                 .scaledToFit()
                 .overlay { if showAxes { CubeAxisCaptions(model: model, distanceScale: CubeViewerConstants.exportDistanceScale) } }
+                .overlay {
+                    if style.marks, !marks.isEmpty {
+                        GeometryReader { geo in
+                            if let projection = model.figureMarkProjection(size: geo.size) {
+                                MarkOverlay(marks: marks, selectedID: nil, projection: projection, showsGrips: false)
+                            }
+                        }
+                    }
+                }
                 .padding(style.annotate ? 14 : 0)
             if style.annotate {
                 Rectangle().fill(style.theme.line).frame(height: 1)

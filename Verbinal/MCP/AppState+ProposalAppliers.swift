@@ -209,11 +209,13 @@ extension AppState {
             },
             activity: activity))
         appliers.append(ExportCubeFigureApplier(
-            run: { [weak self] scale in
+            run: { [weak self] request in
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
                 return try await MainActor.run {
                     self.navigateTo(.cubeViewer)
-                    return try exportCubeFigureHeadless(model: self.cubeViewer, scale: CGFloat(scale)).path
+                    let cube = self.cubeViewer
+                    let marks = cube.markTarget.map { self.marks.marks(on: $0) } ?? []
+                    return try exportCubeFigureHeadless(model: cube, request: request, marks: marks).path
                 }
             },
             activity: activity))

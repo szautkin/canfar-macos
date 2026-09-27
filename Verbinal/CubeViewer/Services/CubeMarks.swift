@@ -19,7 +19,21 @@ extension CubeViewerModel {
     /// Marks on the slice: voxels of the channel on screen ↔ the screen. A
     /// new mark lands on the channel shown; a moved one keeps its own.
     func sliceMarkProjection(canvasSize: CGSize) -> MarkProjection? {
-        guard let frame = sliceFrame(canvasSize: canvasSize) else { return nil }
+        sliceFrame(canvasSize: canvasSize).map(sliceMarkProjection(frame:))
+    }
+
+    /// Marks on a figure of the view: the whole slice drawn at `size`, or
+    /// the volume as the export snapshot's camera sees it.
+    func figureMarkProjection(size: CGSize) -> MarkProjection? {
+        switch viewMode {
+        case .slice:
+            return CubeSliceFrame(nx: nx, ny: ny, canvas: size, zoom: 1, pan: .zero).map(sliceMarkProjection(frame:))
+        case .volume:
+            return volumeMarkProjection(canvasSize: size, distanceScale: CubeViewerConstants.exportDistanceScale)
+        }
+    }
+
+    private func sliceMarkProjection(frame: CubeSliceFrame) -> MarkProjection {
         let channel = channel
         return MarkProjection(
             point: { anchor in
@@ -40,8 +54,8 @@ extension CubeViewerModel {
 
     /// Marks in the volume: every channel's, where the camera sees them.
     /// Drawn only — marks are placed and moved on the slice.
-    func volumeMarkProjection(canvasSize: CGSize) -> MarkProjection? {
-        guard nz > 0, let camera = camera(for: canvasSize) else { return nil }
+    func volumeMarkProjection(canvasSize: CGSize, distanceScale: Float = 1) -> MarkProjection? {
+        guard nz > 0, let camera = camera(for: canvasSize, distanceScale: distanceScale) else { return nil }
         let (nx, ny, nz) = (self.nx, self.ny, self.nz)
         func screen(_ x: Double, _ y: Double, _ z: Double) -> CGPoint? {
             camera.screen(ofBoxPoint: CubeCamera.boxPoint(voxelX: x, y, z, nx: nx, ny: ny, nz: nz), in: canvasSize)

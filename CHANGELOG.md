@@ -98,7 +98,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
   centre and field of view. For assistants, `export_fits_figure` takes
   `region` — the view on screen (the default), the whole image, a pixel
   box, a circle on the sky, or around a mark — and `format` (PNG or PDF),
-  `marks`, `annotate` and `dark`.
+  `marks`, `annotate` and `dark`. The Cube Viewer's figures draw the
+  cube's marks too — on a slice, those of the channel shown; in the
+  volume, where they sit — and `export_cube_figure` takes `format` and
+  `marks`.
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across
@@ -183,8 +186,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   and marks.
 - **A figure's "Center"** was the WCS reference point (CRVAL), which is
   often not the middle of the image; it is now the centre of what the
-  figure shows. A figure that could not be written said nothing; the
-  sheet now says so.
+  figure shows. A figure that could not be written said nothing, in
+  either viewer; the sheet now says so.
 - **`get_fits_wcs` without an HDU** reads the HDU on screen when the file
   is open, otherwise the first HDU with a WCS, and says which
   (`hduChosenBy`).

@@ -132,6 +132,42 @@ final class CubeMarkTests: XCTestCase {
         XCTAssertGreaterThan(near, far * 1.5)
     }
 
+    // MARK: - Figures
+
+    /// A slice figure shows the whole slice, with the marks of the channel shown.
+    func testASliceFigurePutsMarksOnTheirVoxels() async throws {
+        let cube = try await openCube()
+        cube.zoomSlice(to: 4)
+        let projection = try XCTUnwrap(cube.figureMarkProjection(size: CGSize(width: 400, height: 300)))
+        XCTAssertEqual(projection.point(Mark.Anchor(space: .data, x: 2, y: 1, z: 2)), CGPoint(x: 250, y: 150),
+                       "the figure is the whole slice, whatever the zoom on screen")
+        XCTAssertNil(projection.point(Mark.Anchor(space: .data, x: 2, y: 1, z: 3)))
+    }
+
+    /// A volume figure's camera is pulled back like the snapshot's, so marks shrink with it.
+    func testAVolumeFigureSeesMarksAsTheSnapshotDoes() async throws {
+        let cube = try await openCube()
+        cube.viewMode = .volume
+        let size = CGSize(width: 1400, height: 1050)
+        let middle = Mark.Anchor(space: .data, x: 1.5, y: 1, z: 2)
+        let figure = try XCTUnwrap(cube.figureMarkProjection(size: size)?.halfSize(.square(1), middle)).width
+        let screen = try XCTUnwrap(cube.volumeMarkProjection(canvasSize: size)?.halfSize(.square(1), middle)).width
+        XCTAssertEqual(figure / screen, 1 / Double(CubeViewerConstants.exportDistanceScale), accuracy: 0.05)
+    }
+
+    func testTheCubeFigureToolTakesAFormatAndMarks() async throws {
+        let ctx = ctx()
+        let plan = try await ExportCubeFigureTool().plan(.init(scale: 4, format: "PDF", marks: false), context: ctx)
+        XCTAssertEqual(try JSONDecoder().decode(CubeFigureRequest.self, from: plan.payload),
+                       CubeFigureRequest(scale: 4, format: .pdf, marks: false))
+        do {
+            _ = try await ExportCubeFigureTool().plan(.init(scale: nil, format: "tiff", marks: nil), context: ctx)
+            XCTFail("tiff is not a format")
+        } catch {}
+        XCTAssertEqual(try JSONDecoder().decode(CubeFigureRequest.self, from: Data(#"{"scale":3}"#.utf8)),
+                       CubeFigureRequest(scale: 3), "a proposal from before formats")
+    }
+
     // MARK: - Tools
 
     private func ctx() -> AIToolContext {
