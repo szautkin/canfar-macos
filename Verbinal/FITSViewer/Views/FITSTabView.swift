@@ -16,6 +16,8 @@ struct FITSTabView: View {
     @Environment(AppState.self) private var appState
     @State private var showHeader = false
     @State private var showBookmarks = false
+    @State private var showMarks = false
+    @Environment(\.fitsToast) private var toast
 
     /// App-owned (see `AppState.fitsBookmarks`): the agent bookmark tools
     /// write to the same live store the panel renders, so a tool-saved
@@ -209,6 +211,14 @@ struct FITSTabView: View {
                                     FITSBookmarkPanel(model: activeModel, store: bookmarkStore)
                                         .frame(minHeight: 100)
                                 }
+                                if showMarks {
+                                    Divider()
+                                    MarksPanel(editor: appState.fitsMarkEditor, target: activeModel.markTarget,
+                                               host: activeModel.markTarget.map {
+                                                   FITSMarkCommands(tab: activeModel, editor: appState.fitsMarkEditor,
+                                                                    target: $0, say: { toast?.show($0) })
+                                               })
+                                }
                             }
                         }
                     }
@@ -235,7 +245,7 @@ struct FITSTabView: View {
                             }
                             Spacer()
                         } else if activeModel.renderedImage != nil {
-                            FITSImageView(model: activeModel, tabHost: tabHost)
+                            FITSImageView(model: activeModel, tabHost: tabHost, marks: appState.fitsMarkEditor)
                             Divider()
                             FITSCoordinateBar(model: activeModel)
                         } else {
@@ -366,6 +376,13 @@ struct FITSTabView: View {
             }
             .buttonStyle(.bordered).controlSize(.small)
             .help("Toggle coordinate bookmarks panel")
+
+            Button { showMarks.toggle() } label: {
+                Label("Marks", systemImage: "pencil.and.outline")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered).controlSize(.small)
+            .help("Toggle the marks panel: draw, list and export marks")
 
             Spacer()
         }

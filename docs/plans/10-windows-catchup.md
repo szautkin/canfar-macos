@@ -95,7 +95,7 @@ twins of theirs, which we keep.
 | H4 pinned toolchain, CI package tests | done | `76f11a7` |
 | A1–A8 correctness | done — QA: [11](./11-qa-windows-phase-a.md) | `4433b44` … `1d3be2f` |
 | B agent experience | done — B1 tool map, B2 TAP schema + ADQL checker, B3 viewer pictures, B4 tabs/details, B5 copy, B6 background applies, B7 UI pointer + Settings | `c647e64` … |
-| C marks | in progress — C1 FITS marks: model, store (normalised path, per HDU), overlay, 7 tools, DS9/JSON export | C1 |
+| C marks | in progress — C1 FITS marks: model, store (normalised path, per HDU), overlay, 7 tools, DS9/JSON export; C2 drawing and editing by hand, Marks panel, mark menu | `178d67f`, C2 |
 | D cutouts · E portal/compute | next | |
 
 A8 found no message truncation on the Mac (a Windows-only bug) and

@@ -983,6 +983,46 @@
         }
       }
     },
+    "%@ — by the assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — par l'assistant"
+          }
+        }
+      }
+    },
+    "%lld pt" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld pt"
+          }
+        }
+      }
+    },
+    "%g px" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%g px"
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, %@"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -1703,6 +1743,16 @@
         }
       }
     },
+    "B" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G"
+          }
+        }
+      }
+    },
     "Back" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1830,6 +1880,16 @@
         }
       }
     },
+    "Bold label" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Libellé en gras"
+          }
+        }
+      }
+    },
     "Bookmark saved" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1847,6 +1907,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Signets"
+          }
+        }
+      }
+    },
+    "box" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rectangle"
+          }
+        }
+      }
+    },
+    "Box" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rectangle"
           }
         }
       }
@@ -1977,6 +2057,26 @@
         }
       }
     },
+    "callout" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "légende"
+          }
+        }
+      }
+    },
+    "Callout" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Légende"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2069,6 +2169,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Centre"
+          }
+        }
+      }
+    },
+    "Centre on Mark" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Centrer sur la marque"
           }
         }
       }
@@ -2176,6 +2286,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisissez où enregistrer le fichier d'observation téléchargé."
+          }
+        }
+      }
+    },
+    "circle" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cercle"
+          }
+        }
+      }
+    },
+    "Circle" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cercle"
           }
         }
       }
@@ -2294,7 +2424,6 @@
       }
     },
     "Clear All" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2570,6 +2699,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Palette"
+          }
+        }
+      }
+    },
+    "Colour" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleur"
           }
         }
       }
@@ -3103,6 +3242,16 @@
         }
       }
     },
+    "Copy Position" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier la position"
+          }
+        }
+      }
+    },
     "Copy RA/Dec" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3212,6 +3361,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Impossible d’allouer une texture de volume %lld×%lld×%lld. Essayez le mode coupe ou un cube plus petit."
+          }
+        }
+      }
+    },
+    "Could not save the marks: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d'enregistrer les marques : %@"
           }
         }
       }
@@ -3776,6 +3935,16 @@
         }
       }
     },
+    "Delete Mark" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer la marque"
+          }
+        }
+      }
+    },
     "Delete selected item" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3804,6 +3973,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer la liste d'images en cache ; la prochaine ouverture la récupérera à nouveau"
+          }
+        }
+      }
+    },
+    "Delete the mark" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer la marque"
           }
         }
       }
@@ -4390,6 +4569,16 @@
         }
       }
     },
+    "Drag a grip to resize, the shape to move it; double-click to rename." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faites glisser une poignée pour redimensionner, la forme pour la déplacer ; double-cliquez pour renommer."
+          }
+        }
+      }
+    },
     "Drag to pan, pinch to zoom, double-click to reset, click to probe a spectrum" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4397,6 +4586,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Glissez pour déplacer, pincez pour zoomer, double-cliquez pour réinitialiser, cliquez pour sonder un spectre"
+          }
+        }
+      }
+    },
+    "Draw" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dessiner"
           }
         }
       }
@@ -4427,6 +4626,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer les valeurs par défaut du Portail enregistrées pour ce compte"
+          }
+        }
+      }
+    },
+    "DS9 Regions…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Régions DS9…"
           }
         }
       }
@@ -4669,6 +4878,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modifier l'outil guide"
+          }
+        }
+      }
+    },
+    "Edit Label" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier le libellé"
           }
         }
       }
@@ -5110,6 +5329,26 @@
         }
       }
     },
+    "Export Marks as DS9 Regions…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporter les marques en régions DS9…"
+          }
+        }
+      }
+    },
+    "Export Marks as JSON…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporter les marques en JSON…"
+          }
+        }
+      }
+    },
     "Export observations and notes" : {
       "localizations" : {
         "fr" : {
@@ -5381,6 +5620,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Filtrer les mots-clés…"
+          }
+        }
+      }
+    },
+    "Filter marks…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtrer les marques…"
           }
         }
       }
@@ -6598,6 +6847,16 @@
         }
       }
     },
+    "JSON…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON…"
+          }
+        }
+      }
+    },
     "just now" : {
       "localizations" : {
         "fr" : {
@@ -6615,6 +6874,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Continuer à modifier"
+          }
+        }
+      }
+    },
+    "Keep the label" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder le libellé"
           }
         }
       }
@@ -6651,6 +6920,16 @@
         }
       }
     },
+    "Label" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Libellé"
+          }
+        }
+      }
+    },
     "Label (optional)" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6658,6 +6937,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Libellé (facultatif)"
+          }
+        }
+      }
+    },
+    "Label size" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taille du libellé"
           }
         }
       }
@@ -7228,6 +7517,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gérer les sessions et les données"
+          }
+        }
+      }
+    },
+    "Mark colour" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleur de la marque"
+          }
+        }
+      }
+    },
+    "Mark label" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Libellé de la marque"
+          }
+        }
+      }
+    },
+    "Marks" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marques"
           }
         }
       }
@@ -7968,6 +8287,16 @@
         }
       }
     },
+    "No mark matches." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune marque ne correspond."
+          }
+        }
+      }
+    },
     "No matches" : {
       "localizations" : {
         "fr" : {
@@ -8273,6 +8602,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Notes"
+          }
+        }
+      }
+    },
+    "Nothing marked yet. Turn on Draw, then click the image." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune marque pour l'instant. Activez Dessiner, puis cliquez sur l'image."
           }
         }
       }
@@ -8842,6 +9181,16 @@
         }
       }
     },
+    "Outline thickness" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Épaisseur du contour"
+          }
+        }
+      }
+    },
     "Outside the image, at pixel %lld, %lld" : {
       "localizations" : {
         "fr" : {
@@ -9128,6 +9477,16 @@
         }
       }
     },
+    "pixel %lld, %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pixel %lld, %lld"
+          }
+        }
+      }
+    },
     "Pixel (%@, %@) · %@ channels" : {
       "localizations" : {
         "en" : {
@@ -9333,6 +9692,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Position"
+          }
+        }
+      }
+    },
+    "Position copied" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Position copiée"
           }
         }
       }
@@ -10241,6 +10610,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Retirer"
+          }
+        }
+      }
+    },
+    "Remove All" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout supprimer"
+          }
+        }
+      }
+    },
+    "Remove all %lld marks from this image?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer les %lld marques de cette image ?"
           }
         }
       }
@@ -11157,6 +11546,16 @@
         }
       }
     },
+    "Saved %lld marks to %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld marques enregistrées dans %@"
+          }
+        }
+      }
+    },
     "Saved Queries" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11329,7 +11728,6 @@
       }
     },
     "Search Here" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -11817,6 +12215,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réglages"
+          }
+        }
+      }
+    },
+    "Shape" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forme"
           }
         }
       }
@@ -12851,6 +13259,26 @@
         }
       }
     },
+    "text" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "texte"
+          }
+        }
+      }
+    },
+    "Text" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texte"
+          }
+        }
+      }
+    },
     "Text color" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13096,6 +13524,16 @@
         }
       }
     },
+    "This image has no sky coordinates" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette image n'a pas de coordonnées célestes"
+          }
+        }
+      }
+    },
     "This launches the bundled canfar-mcp helper exactly as your client would and confirms it can initialize." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13217,6 +13655,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Afficher ou masquer le panneau d'en-tête FITS"
+          }
+        }
+      }
+    },
+    "Toggle the marks panel: draw, list and export marks" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher ou masquer le panneau des marques : dessiner, lister et exporter"
           }
         }
       }
@@ -14101,6 +14549,16 @@
     "VOTable" : {
       "shouldTranslate" : false
     },
+    "voxel %lld, %lld, channel %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "voxel %lld, %lld, canal %lld"
+          }
+        }
+      }
+    },
     "Warning" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -14607,6 +15065,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quel client connectez-vous ?"
+          }
+        }
+      }
+    },
+    "While on, click or drag on the image to add a mark" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activé, cliquez ou faites glisser sur l'image pour ajouter une marque"
           }
         }
       }

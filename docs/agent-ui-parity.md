@@ -107,10 +107,14 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Search Here (⌘⇧L) | `search_at_crosshair` | live |
 | Export Figure sheet (NEW in UI too) | `export_fits_figure` | write |
 | "Open as…" 2D vs 3D sheet (NAXIS≥3) | `choose_viewer`; `get_current_view.pendingViewerChoice` | live/read |
-| Marks drawn on the image (placing and editing by hand: C2) | `annotate_fits`, `update_annotation`, `remove_annotation`, `clear_annotations` | live |
-| A mark picked out, view centred on it | `select_annotation` | live |
-| The file's marks, open or not | `list_fits_annotations` | read |
-| Marks as a DS9 region file or JSON | `export_annotations` | read |
+| Draw a mark (Marks panel ▸ Draw, click or drag the image) | `annotate_fits` | live |
+| Move, resize (grip), rename (double-click, Edit Label), restyle (panel colour/bold/size/outline) | `update_annotation` | live |
+| Delete a mark (menu, ⌫), Clear All | `remove_annotation`, `clear_annotations` | live |
+| Pick out a mark (click, list row), Centre on Mark | `select_annotation` | live |
+| Marks list and its filter | `list_fits_annotations` (the filter is presentation) | read |
+| Copy Position | `copy_to_clipboard` with the position `list_fits_annotations` gives | live |
+| Search Here on a mark | `run_search` with its position | live |
+| Export Marks (DS9 / JSON, to a file) | `export_annotations` (returns the text) | read |
 
 ## Cube viewer
 

@@ -90,4 +90,15 @@ final class SexagesimalTests: XCTestCase {
             XCTAssertEqual(try XCTUnwrap(Sexagesimal.parseDMS(text)), dec, accuracy: 0.005 / 3600 + 1e-9, text)
         }
     }
+
+    /// Two tokens the Search box reads back to the same place.
+    func testSearchPairReadsBack() throws {
+        let pair = try XCTUnwrap(Sexagesimal.searchPair(ra: 10.684708, dec: 41.269167))
+        XCTAssertEqual(pair, "00:42:44.33 +41:16:09.0")
+        let tokens = pair.split(separator: " ").map(String.init)
+        XCTAssertEqual(tokens.count, 2)
+        XCTAssertEqual(try XCTUnwrap(Sexagesimal.rightAscension(tokens[0])), 10.684708, accuracy: 1e-4)
+        XCTAssertEqual(try XCTUnwrap(Sexagesimal.declination(tokens[1])), 41.269167, accuracy: 1e-4)
+        XCTAssertNil(Sexagesimal.searchPair(ra: 10, dec: 91))
+    }
 }

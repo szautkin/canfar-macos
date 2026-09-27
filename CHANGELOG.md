@@ -66,13 +66,21 @@ Catching up with Verbinal for Windows 1.4.1 (see
   the file's pixel, so an assistant can point at what it sees;
   `get_cube_image` returns the cube's slice or volume. Pictures are made
   small enough for the assistant to receive.
-- **Marks on FITS images** — your assistant can mark what it is talking
-  about: a circle or box around a source, a callout with a leader line to
-  its label, or a label alone, placed on the sky (so the mark finds the
-  same place in another image of the field) or on the file's pixels.
-  Marks keep their size on the subject as you zoom, turn with the view,
-  and are kept with the file and extension — however its path is
-  spelled — so they are there when you open it again. `annotate_fits`,
+- **Marks on FITS images** — mark what you are looking at: a circle or
+  box around a source, a callout with a leader line to its label, or a
+  label alone. Turn on **Draw** in the FITS viewer's new **Marks** panel,
+  click the image (or drag to size the mark) and type its label; drag a
+  mark to move it, a corner grip to resize it, double-click to rename it,
+  and right-click it to copy its position (in the form the Search box
+  reads), centre on it, search there, export or delete it. The panel
+  lists the image's marks — each row goes to its mark — with a filter,
+  colour, bold, label size and outline for the selected mark (or the next
+  one), DS9 or JSON export and Clear All. Marks are pinned to the sky when
+  the image has a WCS (so a mark finds the same place in another image of
+  the field), keep their size on the subject as you zoom, turn with the
+  view, and are kept with the file and extension — however its path is
+  spelled — so they are there when you open it again. Your assistant can
+  mark too, and its marks say so: `annotate_fits`,
   `list_fits_annotations`, `update_annotation`, `select_annotation`
   (picks one out and centres the view on it), `remove_annotation`,
   `clear_annotations`, and `export_annotations`, which gives a file's

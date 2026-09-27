@@ -27,10 +27,8 @@ struct ObservationFacts: Equatable, Sendable {
     /// The position as the Search box, Simbad and DS9 read it, with the
     /// degrees beside it: `00:42:44.33 +41:16:09.0 (10.684708°, +41.269167°)`.
     var position: String? {
-        guard let ra, let dec,
-              let hms = Sexagesimal.formatHMS(degrees: ra, style: .colons),
-              let dms = Sexagesimal.formatDMS(degrees: dec, style: .colons) else { return nil }
-        return "\(hms) \(dms) (\(String(format: "%.6f", ra))°, \(String(format: "%+.6f", dec))°)"
+        guard let ra, let dec, let pair = Sexagesimal.searchPair(ra: ra, dec: dec) else { return nil }
+        return "\(pair) (\(String(format: "%.6f", ra))°, \(String(format: "%+.6f", dec))°)"
     }
 
     /// One "Label: value" line per known fact; empty facts are left out.

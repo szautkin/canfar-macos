@@ -57,6 +57,16 @@ public enum Sexagesimal {
         }
     }
 
+    /// A position as the Search box, Simbad, NED and DS9 read it:
+    /// `00:42:44.33 +41:16:09.0`. Exactly two tokens — a third would be
+    /// read as a search radius.
+    /// - Returns: nil when either coordinate cannot be written.
+    public static func searchPair(ra: Double, dec: Double) -> String? {
+        guard let hms = formatHMS(degrees: ra, style: .colons),
+              let dms = formatDMS(degrees: dec, style: .colons) else { return nil }
+        return "\(hms) \(dms)"
+    }
+
     /// Viewer read-out of a right ascension: letters style, or a dashed
     /// placeholder when there is no value.
     public static func readoutHMS(degrees: Double) -> String {

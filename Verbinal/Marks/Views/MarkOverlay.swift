@@ -6,87 +6,87 @@
 
 import SwiftUI
 
-/// How a viewer turns a mark into points on its screen. The FITS canvas and
-/// the cube supply their own; everything drawn from it is shared.
-struct MarkProjection {
-    /// The anchor on screen, or nil when it has no place here.
-    let point: (Mark.Anchor) -> CGPoint?
-    /// Screen half-size of an extent at an anchor.
-    let halfSize: (Mark.Extent, Mark.Anchor) -> CGSize?
-    /// The view's rotation, so a box turns with the image.
-    var rotation: Double = 0
-}
-
 /// Draws marks — one renderer, so a mark looks the same wherever it is.
+/// Positions come from `MarkGeometry`, which the gestures hit-test against.
 struct MarkOverlay: View {
     let marks: [Mark]
     let selectedID: String?
+    /// The mark whose words are being typed: its field shows them instead.
+    var namingID: String?
     let projection: MarkProjection
 
     var body: some View {
         Canvas { context, _ in
             for mark in marks {
-                draw(mark, selected: mark.id == selectedID, in: &context)
+                guard let frame = MarkGeometry.frame(of: mark, in: projection) else { continue }
+                draw(mark, frame: frame, selected: mark.id == selectedID, in: &context)
             }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 
-    private func draw(_ mark: Mark, selected: Bool, in context: inout GraphicsContext) {
-        guard let centre = projection.point(mark.anchor) else { return }
+    private func draw(_ mark: Mark, frame: MarkGeometry.Frame, selected: Bool, in context: inout GraphicsContext) {
         let style = mark.effectiveStyle
         let ink = Color(hex: style.colour)
-        var shapeFrame = CGRect(origin: centre, size: .zero)
 
-        if let extent = mark.extent, let half = projection.halfSize(extent, mark.anchor) {
-            shapeFrame = CGRect(x: -half.width, y: -half.height, width: half.width * 2, height: half.height * 2)
-            let outline: Path = mark.kind == .rect ? Path(shapeFrame) : Path(ellipseIn: shapeFrame)
+        if mark.extent != nil {
+            let box = CGRect(x: -frame.half.width, y: -frame.half.height,
+                             width: frame.half.width * 2, height: frame.half.height * 2)
+            let outline: Path = mark.kind == .rect ? Path(box) : Path(ellipseIn: box)
             var shaped = context
-            shaped.translateBy(x: centre.x, y: centre.y)
-            shaped.rotate(by: .radians(projection.rotation))
+            shaped.translateBy(x: frame.centre.x, y: frame.centre.y)
+            shaped.rotate(by: .radians(frame.rotation))
             if selected {
                 shaped.stroke(outline, with: .color(.white.opacity(0.8)),
                               style: StrokeStyle(lineWidth: style.stroke + 3, dash: [4, 3]))
             }
             shaped.stroke(outline, with: .color(ink), lineWidth: style.stroke)
-            shapeFrame = shapeFrame.offsetBy(dx: centre.x, dy: centre.y)
+        } else if selected {
+            let dot = CGRect(x: frame.centre.x - 3, y: frame.centre.y - 3, width: 6, height: 6)
+            context.fill(Path(ellipseIn: dot), with: .color(ink))
         }
 
-        let text = mark.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        let label = Text(text)
-            .font(.system(size: style.fontSize, weight: style.bold ? .semibold : .regular))
-            .foregroundStyle(ink)
-        switch mark.kind {
-        case .callout:
-            let offset = CGPoint(x: mark.labelOffsetX ?? Mark.defaultLabelOffset.x,
-                                 y: mark.labelOffsetY ?? Mark.defaultLabelOffset.y)
-            let end = CGPoint(x: centre.x + offset.x, y: centre.y + offset.y)
-            var leader = Path()
-            leader.move(to: edgePoint(of: shapeFrame, towards: end, centre: centre))
-            leader.addLine(to: end)
-            context.stroke(leader, with: .color(ink), lineWidth: max(1, style.stroke))
-            context.draw(label, at: CGPoint(x: end.x + (offset.x >= 0 ? 4 : -4), y: end.y),
-                         anchor: offset.x >= 0 ? .leading : .trailing)
-        case .text:
-            context.draw(label, at: centre, anchor: .center)
-        case .circle, .rect:
-            context.draw(label, at: CGPoint(x: shapeFrame.maxX + 4, y: shapeFrame.minY), anchor: .bottomLeading)
+        if let label = MarkGeometry.label(of: mark, frame: frame) {
+            if let leader = label.leader {
+                var line = Path()
+                line.move(to: leader.from)
+                line.addLine(to: leader.to)
+                context.stroke(line, with: .color(ink), lineWidth: max(1, style.stroke))
+            }
+            if mark.id != namingID {
+                let text = Text(mark.text.trimmingCharacters(in: .whitespacesAndNewlines))
+                    .font(.system(size: style.fontSize, weight: style.bold ? .semibold : .regular))
+                    .foregroundStyle(ink)
+                context.draw(text, at: label.at, anchor: UnitPoint(x: label.alignment.x, y: label.alignment.y))
+            }
         }
-    }
 
-    /// Where a leader leaves the shape — its edge towards the label, or the
-    /// anchor itself for a callout without one.
-    private func edgePoint(of frame: CGRect, towards end: CGPoint, centre: CGPoint) -> CGPoint {
-        guard frame.width > 0, frame.height > 0 else { return centre }
-        let dx = end.x - centre.x, dy = end.y - centre.y
-        let length = max(hypot(dx, dy), 1)
-        return CGPoint(x: centre.x + dx / length * frame.width / 2, y: centre.y + dy / length * frame.height / 2)
+        if selected {
+            for grip in MarkGeometry.handles(of: mark, frame: frame) {
+                let r = MarkGeometry.handleRadius
+                let dot = Path(ellipseIn: CGRect(x: grip.x - r, y: grip.y - r, width: 2 * r, height: 2 * r))
+                context.fill(dot, with: .color(.white))
+                context.stroke(dot, with: .color(ink), lineWidth: 1.5)
+            }
+        }
     }
 }
 
 extension Color {
+    /// `#rrggbb` in sRGB, for storage and MCP.
+    var hexString: String? {
+        #if os(macOS)
+        guard let c = NSColor(self).usingColorSpace(.sRGB) else { return nil }
+        let (r, g, b) = (c.redComponent, c.greenComponent, c.blueComponent)
+        #else
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
+        #endif
+        func byte(_ v: CGFloat) -> Int { Int((min(max(v, 0), 1) * 255).rounded()) }
+        return String(format: "#%02x%02x%02x", byte(r), byte(g), byte(b))
+    }
+
     /// `#rrggbb`; anything else is the user ink.
     init(hex: String) {
         let digits = Mark.Style.normalisedColour(hex) ?? Mark.Style.userDefault.colour

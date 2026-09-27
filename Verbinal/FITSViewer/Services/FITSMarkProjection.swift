@@ -28,7 +28,30 @@ extension FITSViewerModel {
         return CGPoint(x: pixel.x + 0.5, y: Double(hdu.header.naxis2) - pixel.y - 0.5)
     }
 
-    /// Marks on this canvas: the display image → the screen.
+    /// The anchor a display-image point means: on the sky when the image
+    /// has a WCS (so the mark finds the same place in another image of the
+    /// field), else on its pixels. A new mark off the image is a miss; a
+    /// moved one keeps its space and slides along the edge.
+    func anchor(atDisplay point: CGPoint, moving: Mark.Anchor?) -> Mark.Anchor? {
+        guard let hdu = selectedHDU else { return nil }
+        let width = Double(hdu.header.naxis1), height = Double(hdu.header.naxis2)
+        let inside = point.x >= 0 && point.y >= 0 && point.x < width && point.y < height
+        guard moving != nil || inside else { return nil }
+        let x = min(max(point.x, 0), width) - 0.5
+        let y = height - min(max(point.y, 0), height) - 0.5
+        switch moving?.space ?? (wcs != nil ? .sky : .imagePixel) {
+        case .sky:
+            guard let wcs else { return nil }
+            let world = wcs.pixelToWorld(x: x, y: y)
+            let ra = world.ra.truncatingRemainder(dividingBy: 360)
+            let anchor = Mark.Anchor(space: .sky, x: ra < 0 ? ra + 360 : ra, y: world.dec)
+            return anchor.isValid ? anchor : nil
+        case .imagePixel, .data:
+            return Mark.Anchor(space: .imagePixel, x: x, y: y)
+        }
+    }
+
+    /// Marks on this canvas: the display image ↔ the screen.
     func markProjection(canvasSize: CGSize) -> MarkProjection? {
         guard let transform = displayTransform(canvasSize: canvasSize) else { return nil }
         let wcs = self.wcs
@@ -45,6 +68,9 @@ extension FITSViewerModel {
                     perUnit = zoom * 3600 / wcs.pixelScaleArcsec
                 }
                 return CGSize(width: extent.halfWidth * perUnit, height: extent.halfHeight * perUnit)
+            },
+            anchor: { [weak self] screen, moving in
+                self?.anchor(atDisplay: transform.screenToImage(screen), moving: moving)
             },
             rotation: viewport.rotation)
     }
