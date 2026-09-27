@@ -5,7 +5,6 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
-@testable import Verbinal
 @testable import VerbinalKit
 
 // MARK: - Rice Unfold Mapping Tests
@@ -116,93 +115,12 @@ final class BitReaderTests: XCTestCase {
 
 final class RiceDecoderTests: XCTestCase {
 
-    // MARK: - Encoder
-
-    // Encode a tile matching the cfitsio-compatible RiceDecoder:
-    //   1. First pixel as 16 bits written into the BIT stream (big-endian, MSB first)
-    //   2. For each block (starting at pixel[0]):
-    //      a. (fs + 1) written as 4-bit nybble — decoder subtracts 1 to recover fs
-    //         Special case: raw nybble 0 → decoder treats as all-zeros block (fs=-1)
-    //      b. unary quotient + fs-bit remainder written continuously (NO padding between blocks)
-    //   3. Final padding to byte boundary at the very end
-    //
-    // Note: the first block INCLUDES pixel[0] (delta = 0 since prev = pixel[0]).
-    // The decoder reads the literal into prev, then the first block outputs pixel[0].
-    private func encodeTile(_ pixels: [Int16], blockSize: Int, fs: Int) -> Data {
-        precondition(fs >= 0 && fs <= 14, "fs must be 0-14 for BYTEPIX=2")
-
-        func fold(_ delta: Int32) -> Int32 {
-            if delta >= 0 { return delta * 2 }
-            else { return -delta * 2 - 1 }
-        }
-
-        // Accumulate all bits, then pack into bytes at the end
-        var bits: [UInt8] = []
-
-        func writeBits(_ value: Int, count: Int) {
-            for b in stride(from: count - 1, through: 0, by: -1) {
-                bits.append(UInt8((value >> b) & 1))
-            }
-        }
-
-        // First pixel: 16 bits into bit stream (big-endian)
-        let firstU = UInt16(bitPattern: pixels[0])
-        writeBits(Int(firstU), count: 16)
-
-        // The decoder reads the literal into `prev`, then ALL pixelCount pixels
-        // come from block iterations — including pixel[0] (whose delta = 0).
-        var prev = Int32(pixels[0])
-        var i = 0
-        while i < pixels.count {
-            let blockCount = min(blockSize, pixels.count - i)
-
-            // Write (fs + 1) as 4-bit nybble so decoder recovers fs after subtracting 1.
-            writeBits(fs + 1, count: 4)
-
-            // Rice codes for each pixel in the block (no padding between blocks)
-            for pi in 0..<blockCount {
-                let delta = Int32(pixels[i + pi]) - prev
-                let folded = fold(delta)
-                let q = Int(folded) >> fs
-                let r = Int(folded) & ((1 << fs) - 1)
-
-                // Unary code: q zeros then a 1
-                for _ in 0..<q { bits.append(0) }
-                bits.append(1)
-
-                // fs remainder bits, MSB first
-                if fs > 0 {
-                    writeBits(r, count: fs)
-                }
-
-                prev = Int32(pixels[i + pi])
-            }
-            i += blockCount
-        }
-
-        // Pad to byte boundary at the very end
-        while bits.count % 8 != 0 { bits.append(0) }
-
-        // Pack bits into bytes
-        var out = Data()
-        var j = 0
-        while j < bits.count {
-            var byte: UInt8 = 0
-            for b in 0..<8 {
-                byte |= bits[j + b] << (7 - b)
-            }
-            out.append(byte)
-            j += 8
-        }
-        return out
-    }
-
     // MARK: - Tests
 
     func testDecodeAllZeros() throws {
         // All-zero pixel array: first pixel = 0, all deltas = 0
         let pixels = [Int16](repeating: 0, count: 32)
-        let compressed = encodeTile(pixels, blockSize: 32, fs: 1)
+        let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 1)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: pixels.count, blockSize: 32)
         XCTAssertEqual(decoded, pixels)
@@ -211,7 +129,7 @@ final class RiceDecoderTests: XCTestCase {
     func testDecodeConstantValue() throws {
         // All pixels = 100: first pixel = 100, all deltas = 0
         let pixels = [Int16](repeating: 100, count: 16)
-        let compressed = encodeTile(pixels, blockSize: 32, fs: 1)
+        let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 1)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: pixels.count, blockSize: 32)
         XCTAssertEqual(decoded, pixels)
@@ -220,7 +138,7 @@ final class RiceDecoderTests: XCTestCase {
     func testDecodeRamp() throws {
         // Increasing ramp: deltas are all +10 (fold(10)=20, with fs=3: q=2, r=4)
         let pixels: [Int16] = (0..<16).map { Int16($0 * 10) }
-        let compressed = encodeTile(pixels, blockSize: 32, fs: 3)
+        let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 3)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: pixels.count, blockSize: 32)
         XCTAssertEqual(decoded, pixels)
@@ -229,7 +147,7 @@ final class RiceDecoderTests: XCTestCase {
     func testDecodeNegativeDeltas() throws {
         // Decreasing ramp
         let pixels: [Int16] = (0..<16).map { Int16(200 - $0 * 5) }
-        let compressed = encodeTile(pixels, blockSize: 32, fs: 3)
+        let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 3)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: pixels.count, blockSize: 32)
         XCTAssertEqual(decoded, pixels)
@@ -238,7 +156,7 @@ final class RiceDecoderTests: XCTestCase {
     func testDecodeMultipleBlocks() throws {
         // 64 pixels, blockSize=32: exercises the two-block path
         let pixels: [Int16] = (0..<64).map { Int16($0 % 20 - 10) }
-        let compressed = encodeTile(pixels, blockSize: 32, fs: 4)
+        let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 4)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: pixels.count, blockSize: 32)
         XCTAssertEqual(decoded, pixels)
@@ -246,7 +164,7 @@ final class RiceDecoderTests: XCTestCase {
 
     func testDecodeSinglePixel() throws {
         let pixels: [Int16] = [42]
-        let compressed = encodeTile(pixels, blockSize: 32, fs: 2)
+        let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 2)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: 1, blockSize: 32)
         XCTAssertEqual(decoded, pixels)
@@ -270,7 +188,7 @@ final class RiceDecoderTests: XCTestCase {
     func testDecodeFs0Mode() throws {
         // fs=0: unary-only coding. All deltas = 0 → each delta encodes as q=0, one '1' bit.
         let pixels = [Int16](repeating: 50, count: 8)
-        let compressed = encodeTile(pixels, blockSize: 32, fs: 0)
+        let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 0)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: pixels.count, blockSize: 32)
         XCTAssertEqual(decoded, pixels)
@@ -279,7 +197,7 @@ final class RiceDecoderTests: XCTestCase {
     func testDecodeFs14Mode() throws {
         // fs=14 is the maximum non-escape value for BYTEPIX=2
         let pixels: [Int16] = [0, 100, -200, 300, -400]
-        let compressed = encodeTile(pixels, blockSize: 32, fs: 14)
+        let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 14)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: pixels.count, blockSize: 32)
         XCTAssertEqual(decoded, pixels)
@@ -288,7 +206,7 @@ final class RiceDecoderTests: XCTestCase {
     func testDecodeNegativeFirstPixel() throws {
         // First pixel is negative — tests 16-bit literal encoding for negative values
         let pixels: [Int16] = [-1000, -990, -980, -970]
-        let compressed = encodeTile(pixels, blockSize: 32, fs: 3)
+        let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 3)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: pixels.count, blockSize: 32)
         XCTAssertEqual(decoded, pixels)
@@ -299,7 +217,7 @@ final class RiceDecoderTests: XCTestCase {
         // The bit stream must be continuous: fs nybble and Rice bits for block N+1
         // immediately follow the last bit of block N with no padding between them.
         let pixels: [Int16] = [0, 1, 2, 3, 10, 11, 12, 13, 100, 101, 102, 103]
-        let compressed = encodeTile(pixels, blockSize: 4, fs: 2)
+        let compressed = riceEncodeTile(pixels, blockSize: 4, fs: 2)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
                                              pixelCount: pixels.count, blockSize: 4)
         XCTAssertEqual(decoded, pixels)

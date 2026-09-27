@@ -54,6 +54,28 @@ public enum FITSDecompressor {
     /// - Throws:  `FITSDecompressor.Error` or `FITSError` on malformed data.
     public static func decompress(from data: Data, hdu: FITSHDUnit) throws -> [Float] {
         let h = hdu.header
+        let stored = try storedValues(from: data, hdu: hdu)
+        // For fpack-compressed files the BSCALE/BZERO in the binary-table header
+        // apply to the *original* integer values (not the compressed form).
+        // BZERO=32768 is standard for unsigned-uint16 stored as int16 in FITS.
+        let bscale = Float(h.double("BSCALE", fallback: 1.0))
+        let bzero  = Float(h.double("BZERO",  fallback: 0.0))
+        var floatPixels = stored.map { Float($0) }
+        if bscale != 1.0 || bzero != 0.0 {
+            var scale = bscale
+            var zero  = bzero
+            var result = [Float](repeating: 0, count: floatPixels.count)
+            vDSP_vsmsa(floatPixels, 1, &scale, &zero, &result, 1, vDSP_Length(floatPixels.count))
+            floatPixels = result
+        }
+        return floatPixels
+    }
+
+    /// The image's stored 16-bit values, row-major — of the whole image, or
+    /// of `box` only, decoding just the tiles it touches (a small cutout of
+    /// a large fpack tile reads a few rows, not the file).
+    public static func storedValues(from data: Data, hdu: FITSHDUnit, box: PixelBox? = nil) throws -> [Int16] {
+        let h = hdu.header
 
         // Validate compression type
         let zcmptype = h.string("ZCMPTYPE") ?? ""
@@ -70,10 +92,12 @@ public enum FITSDecompressor {
         // Original image dimensions (these are now stored as NAXIS1/NAXIS2 in the header)
         let imageWidth  = h.int("NAXIS1")   // e.g. 2048
         let imageHeight = h.int("NAXIS2")   // e.g. 2048
+        let area = box ?? PixelBox(x0: 0, y0: 0, x1: imageWidth, y1: imageHeight)
 
         // Tile dimensions from ZTILE keywords (ZTILE1=width, ZTILE2=height per tile)
         let tileWidth  = h.int("ZTILE1", fallback: imageWidth)
         let tileHeight = h.int("ZTILE2", fallback: 1)
+        guard tileWidth > 0, tileHeight > 0 else { throw FITSError.invalidFile("Compressed FITS: tiles of no size") }
 
         // Rice parameters
         let blockSize = h.int("ZVAL1", fallback: 32)  // pixels per Rice block
@@ -98,15 +122,15 @@ public enum FITSDecompressor {
             )
         }
 
-        // Total pixel count in the uncompressed image
-        let (totalPixels, totalPixelsOverflow) = imageWidth.multipliedReportingOverflow(by: imageHeight)
+        // Pixel count of what is returned
+        let (totalPixels, totalPixelsOverflow) = area.width.multipliedReportingOverflow(by: area.height)
         guard !totalPixelsOverflow else {
-            throw FITSError.invalidFile("Compressed FITS: image dimensions overflow (\(imageWidth)×\(imageHeight))")
+            throw FITSError.invalidFile("Compressed FITS: image dimensions overflow (\(area.width)×\(area.height))")
         }
         guard totalPixels <= FITSLimits.maxPixels else {
             throw FITSError.invalidFile("Compressed FITS: image too large (\(totalPixels) pixels exceeds 500 Mpx cap)")
         }
-        var rawPixels = [Int32](repeating: 0, count: totalPixels)
+        var stored = [Int16](repeating: 0, count: totalPixels)
 
         // Number of tiles along each axis
         let nTilesX = (imageWidth  + tileWidth  - 1) / tileWidth
@@ -118,6 +142,16 @@ public enum FITSDecompressor {
         let tilesToDecode = min(nTiles, tableNRows)
 
         for tileIdx in 0..<tilesToDecode {
+            // Where the tile is; tiles the area does not touch are not decoded.
+            let tileCol = tileIdx % nTilesX
+            let tileRow = tileIdx / nTilesX
+            let tileX0 = tileCol * tileWidth, tileY0 = tileRow * tileHeight
+            let tilePxWidth  = max(0, min(tileWidth,  imageWidth  - tileX0))
+            let tilePxHeight = max(0, min(tileHeight, imageHeight - tileY0))
+            guard tilePxWidth > 0, tilePxHeight > 0,
+                  tileX0 < area.x1, tileX0 + tilePxWidth > area.x0,
+                  tileY0 < area.y1, tileY0 + tilePxHeight > area.y0 else { continue }
+
             // Parse variable-length array descriptor from the main table.
             // Each row is `tableRowBytes` bytes wide; the first 8 bytes encode
             // the descriptor: (nelem: Int32, offset: Int32), both big-endian.
@@ -149,13 +183,6 @@ public enum FITSDecompressor {
 
             // Compressed bytes for this tile
             let tileBytes = data[tileDataStart..<(tileDataStart + nelem)]
-
-            // Actual pixel dimensions of this tile (edge tiles may be smaller)
-            let tileCol = tileIdx % nTilesX
-            let tileRow = tileIdx / nTilesX
-            let tilePxWidth  = max(0, min(tileWidth,  imageWidth  - tileCol * tileWidth))
-            let tilePxHeight = max(0, min(tileHeight, imageHeight - tileRow * tileHeight))
-            guard tilePxWidth > 0, tilePxHeight > 0 else { continue }
             let tilePxCount  = tilePxWidth * tilePxHeight
 
             // Decode Rice-compressed bytes into signed 16-bit integers
@@ -170,36 +197,16 @@ public enum FITSDecompressor {
                 throw Error.decodingFailed(row: tileIdx, message: "\(riceError.description) (tilePxCount=\(tilePxCount), tileBytes=\(tileBytes.count), blockSize=\(blockSize))")
             }
 
-            // Copy decoded pixels into the output buffer at the correct image position
-            let destRowStart = tileRow * tileHeight
-            for py in 0..<tilePxHeight {
-                let srcBase  = py * tilePxWidth
-                let destBase = (destRowStart + py) * imageWidth + tileCol * tileWidth
-                for px in 0..<tilePxWidth {
-                    guard destBase + px < rawPixels.count else { continue }
-                    rawPixels[destBase + px] = Int32(decoded[srcBase + px])
+            // Copy the tile's pixels that fall in the area to their place in it
+            for py in max(0, area.y0 - tileY0)..<min(tilePxHeight, area.y1 - tileY0) {
+                let srcBase = py * tilePxWidth
+                let destBase = (tileY0 + py - area.y0) * area.width
+                for px in max(0, area.x0 - tileX0)..<min(tilePxWidth, area.x1 - tileX0) where srcBase + px < decoded.count {
+                    stored[destBase + tileX0 + px - area.x0] = decoded[srcBase + px]
                 }
             }
         }
-
-        // Convert raw Int32 values to Float32, applying BSCALE/BZERO.
-        // For fpack-compressed files the BSCALE/BZERO in the binary-table header
-        // apply to the *original* integer values (not the compressed form).
-        // BZERO=32768 is standard for unsigned-uint16 stored as int16 in FITS.
-        let bscale = Float(h.double("BSCALE", fallback: 1.0))
-        let bzero  = Float(h.double("BZERO",  fallback: 0.0))
-
-        var floatPixels = rawPixels.map { Float($0) }
-
-        if bscale != 1.0 || bzero != 0.0 {
-            var scale = bscale
-            var zero  = bzero
-            var result = [Float](repeating: 0, count: totalPixels)
-            vDSP_vsmsa(floatPixels, 1, &scale, &zero, &result, 1, vDSP_Length(totalPixels))
-            floatPixels = result
-        }
-
-        return floatPixels
+        return stored
     }
 }
 

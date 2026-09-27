@@ -121,8 +121,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
   they are (same BITPIX and scaling), rewrites the header so the same sky
   lands on the same pixel (CRPIX, LTV/LTM, SIP kept valid), adds a
   HISTORY line and fresh CHECKSUM/DATASUM, can keep chosen images of a
-  mosaic, and cuts a cube to the channels of a wavelength range (its
-  frequency, wavelength, wavenumber or velocity axis read as metres). **Cut Out…** in an observation's detail
+  mosaic, cuts a cube to the channels of a wavelength range (its
+  frequency, wavelength, wavenumber or velocity axis read as metres), and
+  cuts an fpack-compressed (RICE_1) image by decoding only the tiles the
+  region touches, writing the cutout uncompressed. **Cut Out…** in an observation's detail
   (Search, and Research) opens an editor on the file's footprint: a circle
   or box — RA and Dec in degrees or sexagesimal, sizes in arcminutes — and
   for a cube a wavelength range in nanometres, started from what the

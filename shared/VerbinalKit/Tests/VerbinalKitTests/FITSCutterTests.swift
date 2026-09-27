@@ -222,4 +222,65 @@ final class FITSCutterTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(radio.wavelengthMetres(atChannel: 0)), 0.299792458, accuracy: 1e-12, "at rest")
         XCTAssertNil(SpectralWCS(ctype: "STOKES", cunit: "", restfrq: nil, table: nil, crval: 1, crpix: 1, cdelt: 1).wavelengthMetres(atChannel: 0))
     }
+
+    // MARK: - fpack
+
+    /// A dataless primary and a RICE_1 row-tiled 20×12 16-bit image, value y·100 + x − 500.
+    private func compressed() -> Data {
+        let width = 20, height = 12
+        var tiles: [Data] = []
+        for y in 0..<height {
+            tiles.append(riceEncodeTile((0..<width).map { Int16(y * 100 + $0 - 500) }, blockSize: 32, fs: 3))
+        }
+        var table = Data(), heap = Data()
+        for tile in tiles {
+            withUnsafeBytes(of: Int32(tile.count).bigEndian) { table.append(contentsOf: $0) }
+            withUnsafeBytes(of: Int32(heap.count).bigEndian) { table.append(contentsOf: $0) }
+            heap.append(tile)
+        }
+        var body = table + heap
+        let r = body.count % 2880
+        if r != 0 { body.append(Data(repeating: 0, count: 2880 - r)) }
+        let cards = [card("XTENSION", "'BINTABLE'"), card("BITPIX", "8"), card("NAXIS", "2"), card("NAXIS1", "8"),
+                     card("NAXIS2", "\(height)"), card("PCOUNT", "\(heap.count)"), card("GCOUNT", "1"), card("TFIELDS", "1"),
+                     card("TTYPE1", "'COMPRESSED_DATA'"), card("TFORM1", "'1PB(64)'"), card("ZIMAGE", "T"),
+                     card("ZCMPTYPE", "'RICE_1'"), card("ZBITPIX", "16"), card("ZNAXIS", "2"), card("ZNAXIS1", "\(width)"),
+                     card("ZNAXIS2", "\(height)"), card("ZTILE1", "\(width)"), card("ZTILE2", "1"), card("ZNAME1", "'BLOCKSIZE'"),
+                     card("ZVAL1", "32"), card("ZNAME2", "'BYTEPIX'"), card("ZVAL2", "2"), card("EXTNAME", "'SCI'"),
+                     card("ZD", "12.5"), card("BZERO", "1000.0"),
+                     card("CTYPE1", "'RA---TAN'"), card("CTYPE2", "'DEC--TAN'"), card("CRVAL1", "150.0"), card("CRVAL2", "2.0"),
+                     card("CRPIX1", "10.5"), card("CRPIX2", "6.5"), card("CD1_1", "-0.000277777778"), card("CD2_2", "0.000277777778")]
+        return header([card("SIMPLE", "T"), card("BITPIX", "8"), card("NAXIS", "0"), card("EXTEND", "T")]) + header(cards) + body
+    }
+
+    /// A cut of an fpack image decodes only the tiles it touches and is written plain.
+    func testAnFpackImageIsCutFromTheTilesItTouches() throws {
+        let data = compressed()
+        let file = try FITSParser.parse(from: data)
+        let hdu = try XCTUnwrap(file.hdus.last)
+        let box = PixelBox(x0: 5, y0: 3, x1: 9, y1: 6)
+        let part = try FITSDecompressor.storedValues(from: data, hdu: hdu, box: box)
+        let whole = try FITSDecompressor.storedValues(from: data, hdu: hdu)
+        XCTAssertEqual(part, (3..<6).flatMap { y in (5..<9).map { whole[y * 20 + $0] } }, "the box, as the whole image has it")
+        XCTAssertEqual(part.first, 3 * 100 + 5 - 500)
+
+        XCTAssertEqual(FITSCutter.images(of: file).map(FITSCutter.name(of:)), ["SCI"])
+        let parts = try FITSCutter.plan(file, region: .circle(ra: 150, dec: 2, radius: 2.2 / 3600))
+        let cut = try FITSCutter.cut(data, file: file, parts: parts, history: "cut")
+        try assertChecksumsVerify(cut)
+        let result = try FITSParser.parse(from: cut)
+        let image = try XCTUnwrap(result.hdus.last)
+        XCTAssertEqual(image.header.string("XTENSION"), "IMAGE")
+        XCTAssertEqual(image.header.bitpix, 16)
+        XCTAssertFalse(image.header.contains("ZCMPTYPE"))
+        XCTAssertFalse(image.header.contains("TFORM1"))
+        XCTAssertEqual(image.header.double("ZD"), 12.5, "a real keyword that starts with Z survives")
+        XCTAssertEqual(image.header.bzero, 1000)
+        let box2 = parts[0].box
+        let pixels = try FITSParser.extractPixels(from: cut, hdu: image)
+        XCTAssertEqual(pixels[0], Float(box2.y0 * 100 + box2.x0 - 500 + 1000), "BZERO applied to the stored value")
+        let before = try XCTUnwrap(hdu.wcs).worldToPixel(ra: 150.0002, dec: 2.0001)!
+        let after = try XCTUnwrap(image.wcs).worldToPixel(ra: 150.0002, dec: 2.0001)!
+        XCTAssertEqual(after.x, before.x - Double(box2.x0), accuracy: 1e-9)
+    }
 }

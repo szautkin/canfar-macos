@@ -77,10 +77,17 @@ public enum FITSCutter {
         }
     }
 
-    /// The images a local cut can take: 2-D or cubes, uncompressed, with a WCS.
+    /// The images a local cut can take, with a WCS: 2-D images and cubes,
+    /// and fpack RICE_1 16-bit images (decoded a tile at a time).
     public static func images(of file: FITSFile) -> [FITSHDUnit] {
-        file.hdus.filter { $0.isImage && (2...3).contains($0.header.naxis) && !$0.header.contains("_COMPRESSED") && $0.wcs != nil }
+        file.hdus.filter { hdu in
+            guard hdu.isImage, hdu.wcs != nil else { return false }
+            guard isCompressed(hdu) else { return (2...3).contains(hdu.header.naxis) }
+            return hdu.header.naxis == 2 && hdu.header.string("ZCMPTYPE") == "RICE_1" && hdu.header.int("ZBITPIX") == 16
+        }
     }
+
+    static func isCompressed(_ hdu: FITSHDUnit) -> Bool { hdu.header.contains("_COMPRESSED") }
 
     /// Each channel's wavelength in metres, for a cube whose axis gives them.
     public static func wavelengths(of hdu: FITSHDUnit) -> [Double]? {
@@ -147,7 +154,8 @@ public enum FITSCutter {
         }
         for part in parts.sorted(by: { $0.index < $1.index }) {
             guard let hdu = file.hdus.first(where: { $0.id == part.index }) else { throw .unreadable("no HDU \(part.index)") }
-            var header = rewrite(try cards(of: hdu, in: data), hdu: hdu, box: part.box, channels: part.channels, history: history)
+            let written = isCompressed(hdu) ? uncompressedCards(try cards(of: hdu, in: data), hdu: hdu) : try cards(of: hdu, in: data)
+            var header = rewrite(written, hdu: hdu, box: part.box, channels: part.channels, history: history)
             if hdu.id == 0 && !onlyPrimary {
                 header = setting("EXTEND", to: "T", in: header, after: hdu.header.naxis == 3 ? "NAXIS3" : "NAXIS2")
             }
@@ -245,6 +253,41 @@ public enum FITSCutter {
         return cards
     }
 
+    /// The tile-compression convention's reserved keywords: the table's
+    /// shape and the Z-keywords that describe the image inside it.
+    static func isTileCompressionKeyword(_ key: String) -> Bool {
+        let fixed: Set<String> = ["ZIMAGE", "ZCMPTYPE", "ZBITPIX", "ZNAXIS", "ZMASKCMP", "ZQUANTIZ", "ZDITHER0", "ZSIMPLE",
+                                  "ZTENSION", "ZEXTEND", "ZBLOCKED", "ZPCOUNT", "ZGCOUNT", "ZHECKSUM", "ZDATASUM", "ZBLANK",
+                                  "TFIELDS", "THEAP"]
+        if fixed.contains(key) { return true }
+        for prefix in ["ZNAXIS", "ZTILE", "ZNAME", "ZVAL", "TTYPE", "TFORM", "TUNIT", "TDIM", "TNULL", "TSCAL", "TZERO", "TDISP"]
+        where key.hasPrefix(prefix) && key.dropFirst(prefix.count).allSatisfy(\.isNumber) && key.count > prefix.count {
+            return true
+        }
+        return false
+    }
+
+    /// The image a tile-compressed table holds, as its own header: its
+    /// shape from the Z-keywords, its null value from ZBLANK, and every
+    /// other card as written (a real keyword such as ZD survives).
+    static func uncompressedCards(_ table: [String], hdu: FITSHDUnit) -> [String] {
+        let h = hdu.header
+        let axes = h.int("ZNAXIS")
+        var cards = [card("XTENSION", "'IMAGE   '", "image extension"), card("BITPIX", "\(h.int("ZBITPIX"))"),
+                     card("NAXIS", "\(axes)")]
+        cards += (1...max(axes, 1)).map { card("NAXIS\($0)", "\(h.int("ZNAXIS\($0)"))") }
+        cards += [card("PCOUNT", "0"), card("GCOUNT", "1")]
+        let structural: Set<String> = ["XTENSION", "SIMPLE", "BITPIX", "NAXIS", "PCOUNT", "GCOUNT", "EXTEND"]
+        for original in table {
+            let key = keyword(of: original)
+            if structural.contains(key) || (key.hasPrefix("NAXIS") && key.dropFirst(5).allSatisfy(\.isNumber)) { continue }
+            if key == "ZBLANK" { cards.append(card("BLANK", "\(h.int("ZBLANK"))")); continue }
+            if isTileCompressionKeyword(key) { continue }
+            cards.append(original)
+        }
+        return cards
+    }
+
     /// A primary header with no data: its keywords, without the image's shape.
     static func dataless(_ original: [String]) -> [String] {
         let dropped: Set<String> = ["BSCALE", "BZERO", "BLANK", "CHECKSUM", "DATASUM"]
@@ -259,6 +302,16 @@ public enum FITSCutter {
     // MARK: - Pixels and blocks
 
     static func pixels(of hdu: FITSHDUnit, box: PixelBox, channels: Range<Int>? = nil, in data: Data) throws(Failure) -> Data {
+        if isCompressed(hdu) {
+            // Only the tiles the box touches are decoded; the cut is written plain.
+            let values: [Int16]
+            do { values = try FITSDecompressor.storedValues(from: data, hdu: hdu, box: box) } catch {
+                throw .unreadable(error.localizedDescription)
+            }
+            var out = Data(capacity: values.count * 2)
+            for value in values { withUnsafeBytes(of: value.bigEndian) { out.append(contentsOf: $0) } }
+            return out
+        }
         let bpp = abs(hdu.header.bitpix) / 8
         let rowLength = hdu.header.naxis1 * bpp
         let planeLength = rowLength * hdu.header.naxis2
