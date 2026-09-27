@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
+import os
 @testable import VerbinalKit
 import MCPCore
 
@@ -80,6 +81,25 @@ final class ServerLivenessTests: XCTestCase {
         XCTAssertEqual(result, "deadline")
         XCTAssertLessThan(elapsed, .seconds(1.5),
                           "caller must resume at the deadline, not when the straggler finishes")
+    }
+
+    /// An agent opening a huge file needs an answer in time while the load
+    /// itself finishes: the deadline must not cancel that work.
+    func testHardDeadlineCanLeaveTheWorkRunning() async throws {
+        let finished = OSAllocatedUnfairLock(initialState: false)
+        let result = await withHardDeadline(
+            seconds: 0.05,
+            cancelsWork: false,
+            onDeadline: { "still loading" },
+            work: {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                let cancelled = Task.isCancelled
+                finished.withLock { $0 = !cancelled }
+                return "loaded"
+            })
+        XCTAssertEqual(result, "still loading")
+        try await Task.sleep(nanoseconds: 400_000_000)
+        XCTAssertTrue(finished.withLock { $0 }, "the work ran to the end, uncancelled")
     }
 
     func testHardDeadlineReturnsWorkResultWhenFast() async {

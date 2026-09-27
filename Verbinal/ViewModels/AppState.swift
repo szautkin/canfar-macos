@@ -525,18 +525,35 @@ final class AppState {
         case cube
     }
 
-    /// Result of routing a FITS file: opened immediately, or waiting on
-    /// the NAXIS≥3 "Open as…" sheet.
+    /// What an agent's open came to.
     enum AstronomyOpenOutcome: Equatable, Sendable {
-        case openedFITS
-        case openedCube
+        /// The viewer shows the file.
+        case opened(AstronomyViewerChoice)
+        /// Still loading when the agent's wait ran out. It lands on its own —
+        /// or, if it fails, its tab goes — so the agent must not open it again.
+        case loading(AstronomyViewerChoice)
+        /// The NAXIS≥3 "Open as…" sheet is up.
         case awaitingViewerChoice
     }
+
+    /// How long an agent's open waits for the pixels before answering
+    /// "still loading" — under the ~60 s an MCP client waits for a tool, so
+    /// a 1.6 GB tile does not look like a failure the agent retries.
+    var agentOpenWait: TimeInterval = 40
 
     /// Agent-facing copy when the "Open as…" sheet is showing. Shared by
     /// `get_current_view`, `open_local_file`, and `open_vospace_file`.
     nonisolated static func viewerChoiceAgentNote(filename: String) -> String {
         "An Open as… sheet is showing for \(filename). Call choose_viewer(viewer: \"fits\") for the 2D FITS Viewer, choose_viewer(viewer: \"cube\") for the 3D Cube Viewer, or choose_viewer(viewer: \"dismiss\") to close the sheet."
+    }
+
+    /// Agent-facing copy for an open still loading at the deadline. Shared
+    /// by every tool that opens a file.
+    nonisolated static func stillLoadingAgentNote(filename: String, viewer: AstronomyViewerChoice) -> String {
+        let (name, read) = viewer == .fits
+            ? ("FITS Viewer", "get_fits_view (isOpen)")
+            : ("Cube Viewer", "get_cube_view")
+        return "\(filename) is still loading in the \(name) — it is large, not failed. Do not open it again (a second open only switches to its tab); check \(read) or list_open_tabs until it is there."
     }
 
     /// Open a FITS file in the right viewer. Plain 2D images go to the FITS
@@ -547,46 +564,55 @@ final class AppState {
     /// for the load and reports its failure instead.
     @discardableResult
     func openAstronomyFITS(url: URL, viewer: AstronomyViewerChoice? = nil) -> Task<Void, Never> {
-        Task { hand(url, to: await astronomyRoute(for: url, viewer: viewer)) }
-    }
-
-    /// Where a file opens — decided once for the UI and the agent paths.
-    private func astronomyRoute(for url: URL, viewer: AstronomyViewerChoice?) async -> AstronomyOpenOutcome {
-        switch viewer {
-        case .fits?: return .openedFITS
-        case .cube?: return .openedCube
-        case nil: return await Self.fitsIsCube(url) ? .awaitingViewerChoice : .openedFITS
+        Task {
+            switch await astronomyRoute(for: url, viewer: viewer) {
+            case .fits?: dispatch(.openFITS(url: url))
+            case .cube?: dispatch(.openCube(url: url))
+            case nil: pendingViewerChoiceURL = url
+            }
         }
     }
 
-    /// UI path: hand the file to its viewer without waiting for the load.
-    private func hand(_ url: URL, to route: AstronomyOpenOutcome) {
-        switch route {
-        case .openedFITS: dispatch(.openFITS(url: url))
-        case .openedCube: dispatch(.openCube(url: url))
-        case .awaitingViewerChoice: pendingViewerChoiceURL = url
-        }
+    /// Which viewer a file opens in — decided once for the UI and the
+    /// agent paths. Nil: ask (the "Open as…" sheet).
+    private func astronomyRoute(for url: URL, viewer: AstronomyViewerChoice?) async -> AstronomyViewerChoice? {
+        if let viewer { return viewer }
+        return await Self.fitsIsCube(url) ? nil : .fits
     }
 
     #if os(macOS)
-    /// Load a FITS file into the viewer and wait until parse finishes.
-    /// Agent tools use this so `opened: true` means the pixels are there.
-    func loadFITSNow(url: URL) async throws {
-        pendingFITSURL = nil
-        try await loadNow(url: url, in: fitsTabHost, mode: .fitsViewer)
+    /// Agent path: shows the viewer, opens `url` there, and waits for the
+    /// pixels — or until `agentOpenWait`, answering `.loading` while the
+    /// load carries on. A failed load leaves no dead tab and throws.
+    func loadForAgent(url: URL, in viewer: AstronomyViewerChoice) async throws -> AstronomyOpenOutcome {
+        switch viewer {
+        case .fits:
+            pendingFITSURL = nil
+            return try await loadNow(url: url, in: fitsTabHost, mode: .fitsViewer, as: viewer)
+        case .cube:
+            pendingCubeURL = nil
+            return try await loadNow(url: url, in: cubeTabHost, mode: .cubeViewer, as: viewer)
+        }
     }
 
-    /// Load a cube and wait until ingest finishes.
-    func loadCubeNow(url: URL) async throws {
-        pendingCubeURL = nil
-        try await loadNow(url: url, in: cubeTabHost, mode: .cubeViewer)
+    private enum LoadRace: Sendable {
+        case finished(failure: String?)
+        case stillLoading
     }
 
-    /// Shows `mode` and opens `url` there; a failed load leaves no dead tab.
-    private func loadNow(url: URL, in host: some ViewerTabHosting, mode: AppMode) async throws {
+    private func loadNow<Host: ViewerTabHosting>(
+        url: URL, in host: Host, mode: AppMode, as viewer: AstronomyViewerChoice
+    ) async throws -> AstronomyOpenOutcome {
         navigateTo(mode)
-        if let failure = await host.openFileDiscardingFailure(url: url) {
-            throw AstronomyOpenError(message: failure)
+        let race = await withHardDeadline(
+            seconds: agentOpenWait,
+            cancelsWork: false,
+            onDeadline: { LoadRace.stillLoading },
+            work: { @MainActor in .finished(failure: await host.openFileDiscardingFailure(url: url)) })
+        switch race {
+        case .finished(nil): return .opened(viewer)
+        case .finished(let failure?): throw AstronomyOpenError(message: failure)
+        case .stillLoading: return .loading(viewer)
         }
     }
     #endif
@@ -599,23 +625,22 @@ final class AppState {
 
     /// Same routing as `openAstronomyFITS`, but waits for the header-only
     /// cube detection so MCP tools can return `pendingViewerChoice`, and
-    /// waits for the actual FITS/cube load so `opened: true` is honest.
+    /// for the load (up to `agentOpenWait`) so `opened: true` is honest.
     @discardableResult
     func openAstronomyFITSAwaitingChoice(
         url: URL,
         viewer: AstronomyViewerChoice? = nil
     ) async throws -> AstronomyOpenOutcome {
-        let route = await astronomyRoute(for: url, viewer: viewer)
-        #if os(macOS)
-        switch route {
-        case .openedFITS: try await loadFITSNow(url: url)
-        case .openedCube: try await loadCubeNow(url: url)
-        case .awaitingViewerChoice: pendingViewerChoiceURL = url
+        guard let viewer = await astronomyRoute(for: url, viewer: viewer) else {
+            pendingViewerChoiceURL = url
+            return .awaitingViewerChoice
         }
+        #if os(macOS)
+        return try await loadForAgent(url: url, in: viewer)
         #else
-        hand(url, to: route)
+        dispatch(viewer == .fits ? .openFITS(url: url) : .openCube(url: url))
+        return .opened(viewer)
         #endif
-        return route
     }
 
     func openPendingViewerChoiceAsFITS() {

@@ -225,11 +225,13 @@ struct OpenLocalFileTool: AITool {
         let viewer: String?
         let pendingViewerChoice: Bool
         let note: String?
+        /// Still loading when the wait ran out — large, not failed.
+        var stillLoading = false
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "open_local_file",
-        description: "Open a local FITS file (absolute path, e.g. from `list_local_folder`) in the right viewer. 2D images go to the FITS Viewer. NAXIS≥3 files show the same Open as… sheet the UI uses — this call then returns `pendingViewerChoice: true` and you must call `choose_viewer` (fits / cube / dismiss). Pass `viewer` ('fits' or 'cube') to skip the sheet. For files the research archive already tracks, prefer `open_fits_file` / `open_cube` by observation id. Live-applied; no proposal.",
+        description: "Open a local FITS file (absolute path, e.g. from `list_local_folder`) in the right viewer. A very large file still loading after ~40 s answers `stillLoading: true` — do not open it again; a file already open switches to its tab. 2D images go to the FITS Viewer. NAXIS≥3 files show the same Open as… sheet the UI uses — this call then returns `pendingViewerChoice: true` and you must call `choose_viewer` (fits / cube / dismiss). Pass `viewer` ('fits' or 'cube') to skip the sheet. For files the research archive already tracks, prefer `open_fits_file` / `open_cube` by observation id. Live-applied; no proposal.",
         schema: #"""
         {
           "type": "object",

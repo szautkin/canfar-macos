@@ -176,4 +176,34 @@ final class FITSTabHostModelTests: XCTestCase {
         let expected = FITSTestFixtures.rampValue(x: 3, y: 99)
         XCTAssertEqual(target.crosshairValue, FITSViewerModel.formatPixelValue(expected))
     }
+
+    // MARK: - Reopening a file
+
+    /// Windows 1.4.0 parity: opening a file that is already open switches
+    /// to its tab instead of adding a duplicate — however its path is spelled.
+    func testOpeningAFileAlreadyOpenFocusesItsTab() async throws {
+        let host = FITSTabHostModel()
+        let path = "/tmp/ramp-\(UUID().uuidString).fits"
+        let first = host.addTab()
+        FITSTestFixtures.loadRamp(into: first, path: path)
+        _ = host.addTab()
+        XCTAssertEqual(host.activeTabIndex, 1)
+
+        let respelled = URL(fileURLWithPath: "/tmp/./sub/../" + (path as NSString).lastPathComponent)
+        let tab = await host.openFile(url: respelled)
+        XCTAssertTrue(tab === first)
+        XCTAssertEqual(host.tabCount, 2, "no duplicate tab")
+        XCTAssertEqual(host.activeTabIndex, 0, "the existing tab is focused")
+    }
+
+    /// A tab whose open failed is not "already open": the file opens afresh.
+    func testAFailedTabDoesNotBlockOpeningTheFileAgain() async throws {
+        let host = FITSTabHostModel()
+        let url = try FITSTestFixtures.writeNonFITSFile()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        _ = await host.openFile(url: url)
+        _ = await host.openFile(url: url)
+        XCTAssertEqual(host.tabCount, 2)
+    }
 }

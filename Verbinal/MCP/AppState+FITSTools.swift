@@ -149,8 +149,8 @@ extension AppState {
                     activeFITSTabIndex: host.tabs.isEmpty ? nil : host.activeTabIndex,
                     cubeOpen: cube.hasData,
                     cubeFileName: cube.hasData ? cube.fileName : nil,
-                    cubeTabs: self.cubeTabHost.tabs.enumerated().map {
-                        .init(index: $0.offset, path: $0.element.fileName, isActive: $0.offset == self.cubeTabHost.activeTabIndex)
+                    cubeTabs: self.cubeTabHost.tabPaths.enumerated().map {
+                        .init(index: $0.offset, path: $0.element, isActive: $0.offset == self.cubeTabHost.activeTabIndex)
                     },
                     activeCubeTabIndex: self.cubeTabHost.activeTabIndex)
             }

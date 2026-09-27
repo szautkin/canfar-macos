@@ -58,6 +58,16 @@ Catching up with Verbinal for Windows 1.4.1 (see
   to start, is announced, as batch jobs already were. Nothing that
   settled before Verbinal looked is announced.
 
+- **Opening large files through your assistant** — `open_fits_file`,
+  `open_cube`, `open_local_file`, `choose_viewer` and `open_vospace_file`
+  wait for the pixels, and a very large file ran past the time an
+  assistant waits for a tool, so it read as a failure and was opened
+  again. Past ~40 s they now answer `stillLoading: true` with a note
+  while the file carries on loading. Opening a file that is already open
+  — in either viewer, however its path is spelled — switches to its tab
+  instead of adding a duplicate. `list_open_tabs` gives each cube tab's
+  real path.
+
 ### Changed
 - **Polling follows what is happening** — sessions and batch jobs were
   polled every 15 s and 45 s whatever was going on, so a notification

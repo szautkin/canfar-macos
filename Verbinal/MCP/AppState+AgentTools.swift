@@ -187,8 +187,8 @@ extension AppState {
         tools.append(DeleteGuideToolTool())
 
         // View-state tools — live-applied, no proposal.
-        tools.append(makeOpenFITSFileTool(store: observationStore))
-        tools.append(makeOpenCubeTool(store: observationStore))
+        tools.append(makeOpenDownloadedTool(store: observationStore, viewer: .fits))
+        tools.append(makeOpenDownloadedTool(store: observationStore, viewer: .cube))
         tools.append(makeChooseViewerTool())
         tools.append(makeSetSearchFocusTool())
         tools.append(makeNavigateToTool())

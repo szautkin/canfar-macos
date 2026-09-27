@@ -39,8 +39,13 @@ private final class DeadlineOnce: @unchecked Sendable {
 /// result is discarded. Use only where an abandoned straggler is safe
 /// (the router's dispatch backstop); prefer the structured helpers when
 /// the work is known to be cancellation-responsive.
+///
+/// With `cancelsWork: false` the work is not asked to stop — for work
+/// that should finish anyway, like a large file an agent opened, where
+/// the caller only needs an answer in time ("still loading").
 public func withHardDeadline<T: Sendable>(
     seconds: TimeInterval,
+    cancelsWork: Bool = true,
     onDeadline: @escaping @Sendable () -> T,
     work: @escaping @Sendable () async -> T
 ) async -> T {
@@ -55,7 +60,7 @@ public func withHardDeadline<T: Sendable>(
         Task {
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             if once.claim() {
-                workTask.cancel()
+                if cancelsWork { workTask.cancel() }
                 continuation.resume(returning: onDeadline())
             }
         }

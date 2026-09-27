@@ -18,8 +18,10 @@ final class CubeTabHostModel {
 
     /// Opens `url` in a new tab. The UI keeps a failed tab so its error
     /// stays visible; agent callers use `openFileDiscardingFailure(url:)`.
+    /// Callers go through `openFile(url:)`, which reuses a tab already
+    /// showing the file.
     @discardableResult
-    func openFile(url: URL) async -> CubeViewerModel {
+    func openNewTab(url: URL) async -> CubeViewerModel {
         let model = CubeViewerModel()
         tabs.append(model)
         activeTabIndex = tabs.count - 1

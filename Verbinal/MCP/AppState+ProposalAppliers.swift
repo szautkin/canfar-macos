@@ -190,11 +190,12 @@ extension AppState {
                 let user = await self.username
                 guard !user.isEmpty else { throw ProposalApplyError.backendError("Sign in to CADC first") }
                 let (tempURL, _) = try await vospace.downloadFile(username: user, path: path)
-                let outcome = try await self.openAstronomyFITSAwaitingChoice(url: tempURL)
-                if case .awaitingViewerChoice = outcome {
-                    return AppState.viewerChoiceAgentNote(filename: tempURL.lastPathComponent)
+                let name = tempURL.lastPathComponent
+                switch try await self.openAstronomyFITSAwaitingChoice(url: tempURL) {
+                case .awaitingViewerChoice: return AppState.viewerChoiceAgentNote(filename: name)
+                case .loading(let viewer): return AppState.stillLoadingAgentNote(filename: name, viewer: viewer)
+                case .opened: return nil
                 }
-                return nil
             },
             activity: activity))
         appliers.append(SetVOSpaceACLApplier(

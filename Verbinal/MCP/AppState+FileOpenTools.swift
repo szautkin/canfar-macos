@@ -13,64 +13,39 @@ import VerbinalKit
 extension AppState {
     // MARK: - Viewer opens
 
-    func makeOpenFITSFileTool(store: ObservationStore) -> OpenFITSFileTool {
+    /// `open_fits_file` / `open_cube`: open a downloaded observation in
+    /// `viewer` and wait for it (or answer "still loading").
+    func makeOpenDownloadedTool(store: ObservationStore, viewer: AstronomyViewerChoice) -> OpenDownloadedObservationTool {
         let activity = agentsService.activityStore
-        return OpenFITSFileTool(openFITS: { [weak self] rawID in
+        let toolName = viewer == .fits ? "open_fits_file" : "open_cube"
+        let noun = viewer == .fits ? "FITS file" : "cube"
+        let open: @Sendable (String) async throws -> OpenDownloadedObservationTool.Opened = { [weak self] rawID in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
             let obs = await MainActor.run { store.observation(matching: rawID) }
             guard let obs else {
                 throw ToolFailureReason.observationNotFound(id: rawID, localPath: nil)
             }
             let url = try Self.resolveAccessibleFileURL(for: obs).url
-            // View-state ops don't run through the proposal flow, so
-            // we don't have an `OperationOrigin` from a context. Fall
-            // back to a synthetic external origin tagged with the
-            // tool name — the activity feed surfaces it as a "live"
-            // entry so the user sees the breadcrumb even though no
-            // proposal was queued.
-            let origin: OperationOrigin = .external(clientID: "open_fits_file")
+            let outcome: AstronomyOpenOutcome
             do {
-                try await self.loadFITSNow(url: url)
-                await MainActor.run {
-                    activity.append(.live(
-                        kind: "open_fits_file",
-                        summary: "Opened FITS file: \(obs.observationID) (\(obs.collection))",
-                        origin: origin
-                    ))
-                }
+                outcome = try await self.loadForAgent(url: url, in: viewer)
             } catch let e as AstronomyOpenError {
-                throw ToolFailureReason.backendError("failed to open FITS: \(e.message)")
+                throw ToolFailureReason.backendError("failed to open \(noun): \(e.message)")
             }
-            return (observationID: obs.observationID, localPath: obs.localPath)
-        })
-    }
-
-    /// Cube-viewer twin of `makeOpenFITSFileTool` — resolves the downloaded
-    /// observation's URL and routes it into the Cube Viewer (its own mode).
-    func makeOpenCubeTool(store: ObservationStore) -> OpenCubeTool {
-        let activity = agentsService.activityStore
-        return OpenCubeTool(openCube: { [weak self] rawID in
-            guard let self else { throw ToolFailureReason.backendError("appState gone") }
-            let obs = await MainActor.run { store.observation(matching: rawID) }
-            guard let obs else {
-                throw ToolFailureReason.observationNotFound(id: rawID, localPath: nil)
+            let loading = outcome == .loading(viewer)
+            // View-state ops don't run through the proposal flow, so the
+            // activity feed gets a "live" entry tagged with the tool name.
+            await MainActor.run {
+                activity.append(.live(
+                    kind: toolName,
+                    summary: "\(loading ? "Opening" : "Opened") \(noun): \(obs.observationID) (\(obs.collection))",
+                    origin: .external(clientID: toolName)))
             }
-            let url = try Self.resolveAccessibleFileURL(for: obs).url
-            let origin: OperationOrigin = .external(clientID: "open_cube")
-            do {
-                try await self.loadCubeNow(url: url)
-                await MainActor.run {
-                    activity.append(.live(
-                        kind: "open_cube",
-                        summary: "Opened cube: \(obs.observationID) (\(obs.collection))",
-                        origin: origin
-                    ))
-                }
-            } catch let e as AstronomyOpenError {
-                throw ToolFailureReason.backendError("failed to open cube: \(e.message)")
-            }
-            return (observationID: obs.observationID, localPath: obs.localPath)
-        })
+            return .init(
+                observationID: obs.observationID, localPath: obs.localPath, stillLoading: loading,
+                note: loading ? Self.stillLoadingAgentNote(filename: url.lastPathComponent, viewer: viewer) : nil)
+        }
+        return viewer == .fits ? .fits(open: open) : .cube(open: open)
     }
 
     func makeChooseViewerTool() -> ChooseViewerTool {
@@ -85,36 +60,29 @@ extension AppState {
             let name = url.lastPathComponent
             await MainActor.run { self.pendingViewerChoiceURL = nil }
             switch viewer {
-            case "fits":
+            case "fits", "cube":
+                let choice: AstronomyViewerChoice = viewer == "fits" ? .fits : .cube
+                let outcome: AstronomyOpenOutcome
                 do {
-                    try await self.loadFITSNow(url: url)
+                    outcome = try await self.loadForAgent(url: url, in: choice)
                 } catch let e as AstronomyOpenError {
                     throw ToolFailureReason.backendError(e.message)
                 }
+                let viewerName = choice == .fits ? "FITS Viewer" : "Cube Viewer"
                 await MainActor.run {
                     activity.append(.live(
                         kind: "choose_viewer",
-                        summary: "Opened \(name) in FITS Viewer",
+                        summary: "Opened \(name) in \(viewerName)",
                         origin: .external(clientID: "choose_viewer")))
                 }
-                return ChooseViewerTool.Output(
-                    applied: true, viewer: "fits", path: path,
-                    note: "Opened in the 2D FITS Viewer.")
-            case "cube":
-                do {
-                    try await self.loadCubeNow(url: url)
-                } catch let e as AstronomyOpenError {
-                    throw ToolFailureReason.backendError(e.message)
-                }
-                await MainActor.run {
-                    activity.append(.live(
-                        kind: "choose_viewer",
-                        summary: "Opened \(name) in Cube Viewer",
-                        origin: .external(clientID: "choose_viewer")))
+                if outcome == .loading(choice) {
+                    return ChooseViewerTool.Output(
+                        applied: true, viewer: viewer, path: path,
+                        note: Self.stillLoadingAgentNote(filename: name, viewer: choice), stillLoading: true)
                 }
                 return ChooseViewerTool.Output(
-                    applied: true, viewer: "cube", path: path,
-                    note: "Opened in the 3D Cube Viewer.")
+                    applied: true, viewer: viewer, path: path,
+                    note: choice == .fits ? "Opened in the 2D FITS Viewer." : "Opened in the 3D Cube Viewer.")
             case "dismiss":
                 await MainActor.run {
                     activity.append(.live(
@@ -241,24 +209,19 @@ extension AppState {
             }
             let name = url.lastPathComponent
             switch outcome {
-            case .openedFITS:
+            case .opened(let choice), .loading(let choice):
+                let loading = outcome == .loading(choice)
+                let viewerName = choice == .fits ? "FITS Viewer" : "Cube Viewer"
                 await MainActor.run {
                     activity.append(.live(
                         kind: "open_local_file",
-                        summary: "Opened \(name) in FITS Viewer",
+                        summary: "Opened \(name) in \(viewerName)",
                         origin: .external(clientID: "open_local_file")))
                 }
-                return .init(applied: true, path: displayPath, viewer: "fits",
-                             pendingViewerChoice: false, note: nil)
-            case .openedCube:
-                await MainActor.run {
-                    activity.append(.live(
-                        kind: "open_local_file",
-                        summary: "Opened \(name) in Cube Viewer",
-                        origin: .external(clientID: "open_local_file")))
-                }
-                return .init(applied: true, path: displayPath, viewer: "cube",
-                             pendingViewerChoice: false, note: nil)
+                return .init(applied: true, path: displayPath, viewer: choice.rawValue,
+                             pendingViewerChoice: false,
+                             note: loading ? AppState.stillLoadingAgentNote(filename: name, viewer: choice) : nil,
+                             stillLoading: loading)
             case .awaitingViewerChoice:
                 await MainActor.run {
                     activity.append(.live(

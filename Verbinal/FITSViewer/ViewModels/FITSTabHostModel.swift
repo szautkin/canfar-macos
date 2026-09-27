@@ -114,9 +114,10 @@ final class FITSTabHostModel {
     /// Opens `url` in a new tab. The UI keeps a failed tab so the error
     /// (and Retry) stay visible; agent callers use
     /// `openFileDiscardingFailure(url:)` so a bad file cannot remain the
-    /// active document.
+    /// active document. Callers go through `openFile(url:)`, which reuses
+    /// a tab already showing the file.
     @discardableResult
-    func openFile(url: URL) async -> FITSViewerModel {
+    func openNewTab(url: URL) async -> FITSViewerModel {
         let model = addTab()
         await model.open(url: url)
         return model
@@ -124,10 +125,6 @@ final class FITSTabHostModel {
 
     var tabCount: Int { tabs.count }
     var hasMultipleTabs: Bool { tabs.count > 1 }
-
-    /// One path per tab, index-aligned with `activeTabIndex` (a tab whose
-    /// load failed still has its path; a tab never opened has "").
-    var tabPaths: [String] { tabs.map { $0.fileURL?.path ?? "" } }
 
     /// True when a sync mode (linked crosshair or linked zoom) is active and
     /// any open tab has missing / invalid / approximate WCS — meaning the

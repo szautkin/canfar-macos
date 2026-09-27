@@ -30,6 +30,8 @@ final class CubeViewerModel: Identifiable {
     var loadStage = ""
     var loadProgress: Double = 0
     var fileName = ""
+    /// The file this tab shows; set when an open starts.
+    private(set) var fileURL: URL?
     var toast: String?
     var showGuide = false
 
@@ -135,6 +137,7 @@ final class CubeViewerModel: Identifiable {
         loadStage = "OPENING"
         loadProgress = 0
         fileName = url.lastPathComponent
+        fileURL = url
         Self.logger.info("Opening cube: \(url.lastPathComponent, privacy: .public)")
 
         let didScope = url.startAccessingSecurityScopedResource()
