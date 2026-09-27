@@ -185,9 +185,11 @@ final class AIToolRouterTests: XCTestCase {
             rawArguments: Data(#"{"fooBar":"ok"}"#.utf8),
             context: ctx()
         )
-        guard case .data = aliased else {
+        guard case .data(let echoed) = aliased else {
             return XCTFail("camelCase of a declared snake_case name must pass the gate, got \(aliased)")
         }
+        // The tool decodes the declared spelling only, so it must receive that.
+        XCTAssertEqual(String(decoding: echoed, as: UTF8.self), #"{"foo_bar":"ok"}"#)
 
         let ok = await router.dispatch(
             name: "strict",

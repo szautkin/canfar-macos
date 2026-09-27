@@ -98,6 +98,26 @@ final class AppNavigationTests: XCTestCase {
         }
     }
 
+    /// A user's click hands the file to the viewer, which keeps a tab that
+    /// fails to load — with its error and Retry. Only the agent path rolls a
+    /// failed open back, so a bad file must still reach the viewer here.
+    func testUIOpenHandsAFileThatWillNotLoadToTheViewer() async {
+        let state = AppState()
+        let url = URL(fileURLWithPath: "/tmp/not-a-fits-\(UUID().uuidString).fits")
+        await state.openAstronomyFITS(url: url).value
+        XCTAssertEqual(state.currentMode, .fitsViewer)
+        XCTAssertEqual(state.pendingFITSURL, url)
+        XCTAssertNil(state.pendingViewerChoiceURL)
+    }
+
+    func testUIOpenWithExplicitCubeViewerHandsToCubeViewer() async {
+        let state = AppState()
+        let url = URL(fileURLWithPath: "/tmp/cube-\(UUID().uuidString).fits")
+        await state.openAstronomyFITS(url: url, viewer: .cube).value
+        XCTAssertEqual(state.currentMode, .cubeViewer)
+        XCTAssertEqual(state.pendingCubeURL, url)
+    }
+
     func testViewerChoiceAgentNoteNamesChooseViewer() {
         let note = AppState.viewerChoiceAgentNote(filename: "cube.fits")
         XCTAssertTrue(note.contains("choose_viewer"))

@@ -167,20 +167,19 @@ public actor AIToolRouter {
             return .failed(.unknownTarget(name))
         }
 
-        let unknown = ToolInputSchema.undeclaredArguments(
-            schema: tool.definition.inputSchema, arguments: rawArguments
-        )
-        if !unknown.isEmpty {
-            let declared = ToolInputSchema.propertyNames(tool.definition.inputSchema)
+        let arguments: Data
+        switch ToolInputSchema.check(schema: tool.definition.inputSchema, arguments: rawArguments) {
+        case .accepted(let canonical):
+            arguments = canonical
+        case .refused(let why):
             let outcome = AuditOutcome.failed(tag: "invalidArgument")
             emitAudit(name: name, args: rawArguments, context: context,
                       outcome: outcome, verbClass: meta.verbClass,
                       durationMS: msSince(started))
-            return .failed(.invalidArgument(
-                "\(name): unknown argument(s) \(unknown); it takes \(declared)"))
+            return .failed(.invalidArgument("\(name): \(why)"))
         }
 
-        let result = await tool.invoke(arguments: rawArguments, context: context)
+        let result = await tool.invoke(arguments: arguments, context: context)
         let durationMS = msSince(started)
 
         // Post-dispatch budget gate: writes must reserve a slot. If the

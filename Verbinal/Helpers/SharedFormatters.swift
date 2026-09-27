@@ -80,7 +80,7 @@ enum SharedFormatters {
 
     /// `yyyyMMdd-HHmmss` in the local zone, POSIX locale — a sortable stamp
     /// for exported file names (e.g., `verbinal-results-20260923-143015.csv`).
-    nonisolated(unsafe) static let fileNameStamp: DateFormatter = {
+    static let fileNameStamp: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyyMMdd-HHmmss"
         f.locale = Locale(identifier: "en_US_POSIX")

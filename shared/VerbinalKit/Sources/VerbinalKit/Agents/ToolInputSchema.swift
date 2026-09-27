@@ -11,7 +11,8 @@ import MCPCore
 ///
 /// Two bugs this exists to close:
 ///  1. Every schema said `additionalProperties: false` and nothing enforced
-///     it, so a misspelled argument was accepted and ignored.
+///     it, so a misspelled argument was accepted and ignored. ``check(schema:arguments:)``
+///     refuses it by name.
 ///  2. One malformed `inputSchema` (not an object) made a client reject the
 ///     whole server. Arguments are a named map, so the schema must describe
 ///     an object, `properties` must be a map, and `required` can only name
@@ -60,23 +61,55 @@ public enum ToolInputSchema {
         return issues
     }
 
-    /// Argument keys present in `arguments` that the schema does not declare.
-    /// Empty when the schema does not set `additionalProperties: false`.
-    ///
-    /// Both camelCase and snake_case of a declared name are accepted, matching
-    /// the spellings Codable and the Ubuntu/Windows arg bridges honour.
-    public static func undeclaredArguments(schema: JSONValue, arguments: Data) -> [String] {
-        guard additionalPropertiesForbidden(schema) else { return [] }
-        guard let props = properties(schema) else { return [] }
-        guard let given = objectKeys(in: arguments) else { return [] }
+    /// Outcome of checking one call's arguments against its tool's schema.
+    public enum ArgumentCheck: Sendable, Equatable {
+        /// Hand these bytes to the tool: the originals, or a copy with each
+        /// alias renamed to the spelling the schema declares.
+        case accepted(Data)
+        /// Refused; the message names the offending keys.
+        case refused(String)
+    }
 
-        var declared = Set<String>()
-        for name in props.keys {
-            declared.insert(name)
-            declared.insert(camelCase(name))
-            declared.insert(snakeCase(name))
+    /// Checks `arguments` against a schema that sets
+    /// `additionalProperties: false`, and canonicalises aliases.
+    ///
+    /// The camelCase and snake_case twins of a declared name are accepted —
+    /// the Ubuntu and Windows bridges honour both — but tools decode with a
+    /// plain `JSONDecoder`, which reads only the declared spelling. So an
+    /// alias is *renamed*, not merely allowed: were it passed through, an
+    /// optional argument would be accepted here and then silently ignored.
+    /// Unknown keys, and one argument given under two spellings, are refused.
+    /// Arguments that are not a JSON object pass through for the tool's own
+    /// decoder to reject.
+    public static func check(schema: JSONValue, arguments: Data) -> ArgumentCheck {
+        guard additionalPropertiesForbidden(schema),
+              let props = properties(schema),
+              let given = argumentObject(in: arguments) else { return .accepted(arguments) }
+
+        let spellings = declaredSpellings(props)
+        var canonical: [String: JSONValue] = [:]
+        var sourceKey: [String: String] = [:]
+        var unknown: [String] = []
+        for (key, value) in given {
+            guard let name = spellings[key] else {
+                unknown.append(key)
+                continue
+            }
+            if let earlier = sourceKey[name] {
+                let both = [earlier, key].sorted().joined(separator: "` and `")
+                return .refused("`\(both)` are two spellings of `\(name)`; pass it once")
+            }
+            canonical[name] = value
+            sourceKey[name] = key
         }
-        return given.filter { !declared.contains($0) }.sorted()
+        guard unknown.isEmpty else {
+            return .refused("unknown argument(s) \(unknown.sorted()); it takes \(propertyNames(schema))")
+        }
+        let renamedAny = sourceKey.contains { $0.key != $0.value }
+        guard renamedAny, let data = try? JSONEncoder().encode(JSONValue.object(canonical)) else {
+            return .accepted(arguments)
+        }
+        return .accepted(data)
     }
 
     public static func propertyNames(_ schema: JSONValue) -> [String] {
@@ -93,24 +126,35 @@ public enum ToolInputSchema {
         schema.objectValue?["properties"]?.objectValue
     }
 
-    /// `null`, empty, or missing arguments parse as an empty object.
-    static func objectKeys(in arguments: Data) -> [String]? {
-        if arguments.isEmpty { return [] }
+    /// `null`, empty, or missing arguments parse as an empty object; nil
+    /// when the bytes are not a JSON object.
+    static func argumentObject(in arguments: Data) -> [String: JSONValue]? {
+        if arguments.isEmpty { return [:] }
         if let text = String(data: arguments, encoding: .utf8) {
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty || trimmed == "null" { return [] }
+            if trimmed.isEmpty || trimmed == "null" { return [:] }
         }
-        guard let value = try? JSONDecoder().decode(JSONValue.self, from: arguments) else {
-            return nil
-        }
-        return value.objectValue.map { Array($0.keys) }
+        return (try? JSONDecoder().decode(JSONValue.self, from: arguments))?.objectValue
     }
 
+    /// Every accepted spelling → the declared name it stands for. A declared
+    /// name always maps to itself, even when it is another's twin.
+    static func declaredSpellings(_ props: [String: JSONValue]) -> [String: String] {
+        var map: [String: String] = [:]
+        for name in props.keys { map[name] = name }
+        for name in props.keys {
+            for alias in [camelCase(name), snakeCase(name)] where map[alias] == nil {
+                map[alias] = name
+            }
+        }
+        return map
+    }
+
+    /// `foo_bar` → `fooBar`; a name without underscores is returned as is.
     static func camelCase(_ name: String) -> String {
         let parts = name.split(separator: "_", omittingEmptySubsequences: true)
-        guard let first = parts.first else { return name }
-        return first.lowercased()
-            + parts.dropFirst().map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined()
+        guard parts.count > 1, let first = parts.first else { return name }
+        return String(first) + parts.dropFirst().map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined()
     }
 
     static func snakeCase(_ name: String) -> String {

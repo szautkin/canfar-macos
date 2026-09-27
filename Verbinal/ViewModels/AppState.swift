@@ -542,10 +542,30 @@ final class AppState {
     /// Open a FITS file in the right viewer. Plain 2D images go to the FITS
     /// Viewer; NAXIS≥3 files prompt for 2D vs Cube (spectral cubes default
     /// to Cube). Detection reads only the header. Fire-and-forget for UI
-    /// clicks; MCP callers use `openAstronomyFITSAwaitingChoice` so they
-    /// can tell the agent when the sheet is up.
-    func openAstronomyFITS(url: URL, viewer: AstronomyViewerChoice? = nil) {
-        Task { try? await openAstronomyFITSAwaitingChoice(url: url, viewer: viewer) }
+    /// clicks: the viewer keeps a tab that fails to load, with its error and
+    /// Retry. MCP callers use `openAstronomyFITSAwaitingChoice`, which waits
+    /// for the load and reports its failure instead.
+    @discardableResult
+    func openAstronomyFITS(url: URL, viewer: AstronomyViewerChoice? = nil) -> Task<Void, Never> {
+        Task { hand(url, to: await astronomyRoute(for: url, viewer: viewer)) }
+    }
+
+    /// Where a file opens — decided once for the UI and the agent paths.
+    private func astronomyRoute(for url: URL, viewer: AstronomyViewerChoice?) async -> AstronomyOpenOutcome {
+        switch viewer {
+        case .fits?: return .openedFITS
+        case .cube?: return .openedCube
+        case nil: return await Self.fitsIsCube(url) ? .awaitingViewerChoice : .openedFITS
+        }
+    }
+
+    /// UI path: hand the file to its viewer without waiting for the load.
+    private func hand(_ url: URL, to route: AstronomyOpenOutcome) {
+        switch route {
+        case .openedFITS: dispatch(.openFITS(url: url))
+        case .openedCube: dispatch(.openCube(url: url))
+        case .awaitingViewerChoice: pendingViewerChoiceURL = url
+        }
     }
 
     #if os(macOS)
@@ -585,34 +605,17 @@ final class AppState {
         url: URL,
         viewer: AstronomyViewerChoice? = nil
     ) async throws -> AstronomyOpenOutcome {
-        if let viewer {
-            switch viewer {
-            case .fits:
-                #if os(macOS)
-                try await loadFITSNow(url: url)
-                #else
-                dispatch(.openFITS(url: url))
-                #endif
-                return .openedFITS
-            case .cube:
-                #if os(macOS)
-                try await loadCubeNow(url: url)
-                #else
-                dispatch(.openCube(url: url))
-                #endif
-                return .openedCube
-            }
-        }
-        if await Self.fitsIsCube(url) {
-            pendingViewerChoiceURL = url
-            return .awaitingViewerChoice
-        }
+        let route = await astronomyRoute(for: url, viewer: viewer)
         #if os(macOS)
-        try await loadFITSNow(url: url)
+        switch route {
+        case .openedFITS: try await loadFITSNow(url: url)
+        case .openedCube: try await loadCubeNow(url: url)
+        case .awaitingViewerChoice: pendingViewerChoiceURL = url
+        }
         #else
-        dispatch(.openFITS(url: url))
+        hand(url, to: route)
         #endif
-        return .openedFITS
+        return route
     }
 
     func openPendingViewerChoiceAsFITS() {

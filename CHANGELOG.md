@@ -86,7 +86,10 @@ delete, Cube Intel volume hardening, Research local FITS import (see
   rejection. `get_proposal_state` accepts `proposalId` as an alias of
   `id`.
 - MCP router refuses undeclared arguments when the schema sets
-  `additionalProperties: false`. `open_fits_file` / `open_cube` /
+  `additionalProperties: false`, and one argument passed under two
+  spellings. The camelCase / snake_case twin of a declared name is
+  renamed to the declared spelling before the tool reads it, so it is
+  honoured rather than accepted and ignored. `open_fits_file` / `open_cube` /
   `open_local_file` wait for the viewer load and report the real
   outcome. DataLink surfaces `error_message` / unauthorized rows as
   `faults` and prefers JWST `*_i2d.fits` over `asn.json` among `#this`
