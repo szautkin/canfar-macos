@@ -17,6 +17,12 @@ public enum CutoutIssue: Equatable, Hashable, Sendable {
     case noTime, timeOrder, timeOutside, timePartial
     case noPol
     case polUnknown(String, available: [String])
+    /// A local cut: the file has no image by that name.
+    case unknownImage(String, available: [String])
+    /// A local cut: this way cannot choose among images (CADC's cut keeps every one).
+    case noImageChoice
+    /// A local cut: the file on this computer could not be read.
+    case unreadable(String)
 
     /// English — what an agent is told; the app has its own translation.
     public var message: String {
@@ -44,6 +50,9 @@ public enum CutoutIssue: Equatable, Hashable, Sendable {
         case .timePartial: return "Part of that time range is outside this file's; the cutout will be trimmed to it."
         case .noPol: return "This file cannot be cut by polarization."
         case .polUnknown(let state, let available): return "This file has no \(state) polarization; it has \(available.joined(separator: ", "))."
+        case .unknownImage(let name, let available): return "This file has no image \(name); it has \(available.joined(separator: ", "))."
+        case .noImageChoice: return "This way of cutting cannot choose among the file's images; it keeps every image the region falls on."
+        case .unreadable(let why): return "The file on this computer could not be read: \(why)"
         }
     }
 }
@@ -54,6 +63,11 @@ public struct CutoutCheck: Equatable, Sendable {
     public let errors: [CutoutIssue]
     public let warnings: [CutoutIssue]
     public var isValid: Bool { errors.isEmpty }
+
+    public init(errors: [CutoutIssue], warnings: [CutoutIssue]) {
+        self.errors = errors
+        self.warnings = warnings
+    }
 }
 
 /// The rules every cutout is held to, whoever cuts it: there is something
@@ -75,6 +89,7 @@ public enum CutoutRules {
             checkInterval(file.supports("TIME"), spec.timeMin, spec.timeMax, file.timeMin, file.timeMax,
                           (.noTime, .timeOrder, .timeOutside, .timePartial), &errors, &warnings)
         }
+        if !spec.extensions.isEmpty && file.images.isEmpty { errors.append(.noImageChoice) }
         if !spec.pol.isEmpty {
             if !file.supports("POL") {
                 errors.append(.noPol)

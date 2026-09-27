@@ -13,8 +13,7 @@ extension AppState {
     /// The ways an observation's files can be cut, and — when there are
     /// none — why.
     func cutoutSources(publisherID: String) async -> (sources: [any CutoutSource], problems: [String]) {
-        let options = await cutoutService.options(publisherID: publisherID)
-        return (options.sources, options.problems)
+        await researchModel.cutoutSources(publisherID: publisherID)
     }
 
     func makeGetCutoutOptionsTool() -> GetCutoutOptionsTool {
@@ -48,7 +47,8 @@ extension AppState {
                 : nil
             return await MainActor.run {
                 let editor = CutoutEditorModel(publisherID: pid, details: self.observationDetails(publisherID: pid),
-                                               service: self.cutoutService, hints: self.searchModel.cutoutHints, initial: initial)
+                                               sources: { [research = self.researchModel] in await research.cutoutSources(publisherID: pid) },
+                                               hints: self.searchModel.cutoutHints, initial: initial)
                 editor.present(sources: sources, problems: problems)
                 self.cutoutEditor = editor
                 self.agentsService.activityStore.append(.live(
@@ -67,8 +67,10 @@ extension AppState {
         [
             DownloadCutoutApplier(download: { [weak self] payload, attribution in
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
-                let temp = try await SodaCutoutMaker(service: self.cutoutService).make(publisherID: payload.publisherId, spec: payload.spec)
-                let downloads = await MainActor.run { self.researchModel.downloadService }
+                let (maker, downloads) = await MainActor.run {
+                    (self.researchModel.cutoutMaker(for: payload.spec.cutBy), self.researchModel.downloadService)
+                }
+                let temp = try await maker.make(publisherID: payload.publisherId, spec: payload.spec)
                 let placed = try await placeInDownloads(tempURL: temp, suggestedFilename: payload.spec.fileName, downloadService: downloads)
                 return await MainActor.run {
                     var record = self.observationDetails(publisherID: payload.publisherId)

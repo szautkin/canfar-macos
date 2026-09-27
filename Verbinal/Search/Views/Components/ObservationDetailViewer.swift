@@ -191,7 +191,8 @@ struct ObservationDetailViewer: View {
                         cutoutEditor = CutoutEditorModel(
                             publisherID: model.publisherID,
                             details: DownloadedObservation.from(result: model.result, columns: model.columns, localPath: "", dataLink: dataLink),
-                            service: research.cutoutService, hints: searchCutout.hints)
+                            sources: { [research, pid = model.publisherID] in await research.cutoutSources(publisherID: pid) },
+                            hints: searchCutout.hints)
                     } label: {
                         Label("Cut Out…", systemImage: "scissors")
                     }

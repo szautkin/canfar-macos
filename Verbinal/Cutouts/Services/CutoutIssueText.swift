@@ -35,6 +35,12 @@ extension CutoutIssue {
         case .noPol: return String(localized: "This file cannot be cut by polarization.")
         case .polUnknown(let state, let available):
             return String(localized: "This file has no \(state) polarization; it has \(available.joined(separator: ", ")).")
+        case .unknownImage(let name, let available):
+            return String(localized: "This file has no image \(name); it has \(available.joined(separator: ", ")).")
+        case .noImageChoice:
+            return String(localized: "This way of cutting cannot choose among the file's images; it keeps every image the region falls on.")
+        case .unreadable(let why):
+            return String(localized: "The file on this computer could not be read: \(why)")
         }
     }
 }

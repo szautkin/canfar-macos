@@ -1023,6 +1023,26 @@
         }
       }
     },
+    "%@ — on this computer" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — sur cet ordinateur"
+          }
+        }
+      }
+    },
+    "%@ — by CADC" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — par le CADC"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -6777,7 +6797,6 @@
       }
     },
     "Images" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8856,6 +8875,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune détectée"
+          }
+        }
+      }
+    },
+    "None ticked: every image the region falls on" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune cochée : toutes les images où tombe la région"
           }
         }
       }
@@ -13915,6 +13944,16 @@
         }
       }
     },
+    "The file on this computer could not be read: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier sur cet ordinateur n'a pas pu être lu : %@"
+          }
+        }
+      }
+    },
     "The file's footprint and the region to cut" : {
       "localizations" : {
         "fr" : {
@@ -14116,6 +14155,16 @@
         }
       }
     },
+    "This file has no image %@; it has %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier n'a pas d'image %@ ; il a %@."
+          }
+        }
+      }
+    },
     "This file lacks standard WCS calibration. Coordinates are estimated from legacy header keywords and may be imprecise." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -14206,6 +14255,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cela retire l'observation de Recherche. Ses notes sont conservées."
+          }
+        }
+      }
+    },
+    "This way of cutting cannot choose among the file's images; it keeps every image the region falls on." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette façon de découper ne peut pas choisir parmi les images du fichier ; elle garde toutes celles où tombe la région."
           }
         }
       }

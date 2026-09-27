@@ -115,7 +115,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
   without a file `downloaded: false`, and `download_observation` into a
   record Research has keeps its id.
 - **Cutouts** — part of a file, cut on CADC's side, so a few MB come
-  down instead of a 1.6 GB tile. **Cut Out…** in an observation's detail
+  down instead of a 1.6 GB tile — or, when the observation's file is
+  already downloaded, cut on this computer: instant, offline, and the
+  only way for files CADC will not cut. A local cut keeps the pixels as
+  they are (same BITPIX and scaling), rewrites the header so the same sky
+  lands on the same pixel (CRPIX, LTV/LTM, SIP kept valid), adds a
+  HISTORY line and fresh CHECKSUM/DATASUM, and can keep chosen images of
+  a mosaic. **Cut Out…** in an observation's detail
   (Search, and Research) opens an editor on the file's footprint: a circle
   or box — RA and Dec in degrees or sexagesimal, sizes in arcminutes — and
   for a cube a wavelength range in nanometres, started from what the
@@ -134,6 +140,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   against the file before it is proposed) and `show_cutout_editor` (the
   editor on the person's screen, on a region or the suggestion);
   `get_search_form` and `set_search_form` read and set the two boxes.
+  `cutBy` chooses who cuts (`soda` or `local`; left out, this computer
+  when it can) and `extensions` the images of a mosaic to keep.
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across

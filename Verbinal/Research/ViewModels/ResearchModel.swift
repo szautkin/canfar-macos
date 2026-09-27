@@ -130,7 +130,7 @@ final class ResearchModel {
             // Step 1: Download to temp — a cutout is cut again, not fetched whole.
             let tempURL: URL, suggestedFilename: String
             if let spec = record.cutout {
-                tempURL = try await SodaCutoutMaker(service: cutoutService).make(publisherID: record.publisherID, spec: spec)
+                tempURL = try await cutoutMaker(for: spec.cutBy).make(publisherID: record.publisherID, spec: spec)
                 suggestedFilename = spec.fileName
             } else {
                 (tempURL, suggestedFilename) = try await downloadService.downloadToTemp(publisherID: record.publisherID)
@@ -183,6 +183,34 @@ final class ResearchModel {
                 self?.lastError = nil
             }
         }
+    }
+
+    // MARK: - Cutouts
+
+    /// The complete observation's file on this computer, readable.
+    func localFile(publisherID: String) -> URL? {
+        guard let record = observationStore.whole(publisherID: publisherID), record.isDownloaded else { return nil }
+        #if os(macOS)
+        if let url = resolvedURL(for: record) { return url }
+        #endif
+        return record.resolvedReadableURL
+    }
+
+    /// Who makes a cutout the given way.
+    func cutoutMaker(for method: CutoutMethod) -> CutoutMaker {
+        switch method {
+        case .soda:
+            return SodaCutoutMaker(service: cutoutService)
+        case .local:
+            return LocalCutoutMaker(file: { [weak self] publisherID in self?.localFile(publisherID: publisherID) })
+        }
+    }
+
+    /// The ways an observation's files can be cut — the downloaded file on
+    /// this computer first — and, when CADC can cut none, why.
+    func cutoutSources(publisherID: String) async -> (sources: [any CutoutSource], problems: [String]) {
+        let options = await cutoutService.options(publisherID: publisherID)
+        return (CutoutSources.combine(local: localFile(publisherID: publisherID), soda: options.sources), options.problems)
     }
 
     /// Cut part of `details`' file on CADC's side and keep it in Research as

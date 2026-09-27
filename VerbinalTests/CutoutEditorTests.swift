@@ -27,7 +27,7 @@ final class CutoutEditorTests: XCTestCase {
                         sources: [any CutoutSource]? = nil) -> CutoutEditorModel {
         let model = CutoutEditorModel(
             publisherID: "ivo://cadc.nrc.ca/CFHTSG?G/G", details: SaveObservationToResearchTool.record(from: .init(publisherId: "ivo://cadc.nrc.ca/CFHTSG?G/G")),
-            service: CutoutService(), hints: hints, initial: initial)
+            sources: { ([], []) }, hints: hints, initial: initial)
         model.present(sources: sources ?? [source()], problems: [])
         return model
     }
@@ -90,7 +90,7 @@ final class CutoutEditorTests: XCTestCase {
 
     func testNothingToCutSaysWhy() {
         let empty = CutoutEditorModel(publisherID: "p", details: SaveObservationToResearchTool.record(from: .init(publisherId: "p")),
-                                      service: CutoutService())
+                                      sources: { ([], []) })
         empty.present(sources: [], problems: ["the SODA service's accessURL is not https"])
         XCTAssertEqual(empty.phase, .unavailable(["the SODA service's accessURL is not https"]))
         XCTAssertNil(empty.acceptedSpec)

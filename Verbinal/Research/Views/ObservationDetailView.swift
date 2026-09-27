@@ -127,7 +127,9 @@ struct ObservationDetailView: View {
                     if !observation.isCutout {
                         Button {
                             cutoutEditor = CutoutEditorModel(publisherID: observation.publisherID, details: observation,
-                                                             service: model.cutoutService)
+                                                             sources: { [model, pid = observation.publisherID] in
+                                                                 await model.cutoutSources(publisherID: pid)
+                                                             })
                         } label: {
                             Label("Cut Out…", systemImage: "scissors")
                         }

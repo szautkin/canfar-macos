@@ -64,9 +64,12 @@ struct CutoutEditorView: View {
             if model.sources.count > 1 {
                 Picker("File", selection: $model.sourceIndex) {
                     ForEach(model.sources.indices, id: \.self) { i in
-                        Text(model.sources[i].file.fileName).tag(i)
+                        Text(model.label(of: model.sources[i])).tag(i)
                     }
                 }
+            }
+            if let why = model.source?.unavailable {
+                Label(why, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange)
             }
             HStack(alignment: .top, spacing: 16) {
                 CutoutSketch(footprint: model.source?.file.footprint, region: sketchRegion)
@@ -101,6 +104,19 @@ struct CutoutEditorView: View {
                 }
             } else if let polygon = model.polygon {
                 LabeledContent("Region", value: polygon.summary)
+            }
+            if model.imageNames.count > 1 {
+                LabeledContent("Images") {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(model.imageNames, id: \.self) { name in
+                            Toggle(name, isOn: Binding(
+                                get: { model.chosenImages.contains(name) },
+                                set: { if $0 { model.chosenImages.insert(name) } else { model.chosenImages.remove(name) } }))
+                        }
+                        Text("None ticked: every image the region falls on")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
             }
             if model.takesBand {
                 TextField("Shortest (nm)", text: $model.bandMinNM, prompt: Text("any"))

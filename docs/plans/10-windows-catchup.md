@@ -96,7 +96,7 @@ twins of theirs, which we keep.
 | A1–A8 correctness | done — QA: [11](./11-qa-windows-phase-a.md) | `4433b44` … `1d3be2f` |
 | B agent experience | done — B1 tool map, B2 TAP schema + ADQL checker, B3 viewer pictures, B4 tabs/details, B5 copy, B6 background applies, B7 UI pointer + Settings | `c647e64` … |
 | C marks | done — QA: [12](./12-qa-windows-phase-c.md). C1 FITS marks: model, store (normalised path, per HDU), overlay, 7 tools, DS9/JSON export; C2 drawing and editing by hand, Marks panel, mark menu; C3a cube marks on the slice, `annotate_cube`, `list_cube_annotations`; C3b marks in the volume (one `CubeCamera`); C4a FITS figures of a region, with marks; C4b cube figures with marks | `178d67f` … `f5d7527` |
-| D Research and cutouts | in progress — D1 records without their file; D2a cutout model, SODA descriptor, rules, request, prefill (VerbinalKit); D2b cutout records, CutoutService/CutoutMaker, get_cutout_options, download_cutout; D2c the cutout editor, show_cutout_editor; D2d the search's cutout boxes honoured on download; D3a-1 the local FITS cutter (VerbinalKit) | `3094375` … `d511e33`, D3a-1 |
+| D Research and cutouts | in progress — D1 records without their file; D2a cutout model, SODA descriptor, rules, request, prefill (VerbinalKit); D2b cutout records, CutoutService/CutoutMaker, get_cutout_options, download_cutout; D2c the cutout editor, show_cutout_editor; D2d the search's cutout boxes honoured on download; D3a-1 the local FITS cutter (VerbinalKit); D3a-2 local cuts in the app, editor and tools | `3094375` … `932c320`, D3a-2 |
 | E portal/compute | next | |
 
 A8 found no message truncation on the Mac (a Windows-only bug) and

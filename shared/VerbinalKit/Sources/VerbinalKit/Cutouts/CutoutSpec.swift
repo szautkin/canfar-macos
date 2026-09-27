@@ -167,9 +167,13 @@ public protocol CutoutFile: Sendable {
     var timeMax: Double? { get }
     /// The polarization states it lists, if any.
     var polStates: [String] { get }
+    /// The images a cut can choose among, by name ("SCI,1"); empty where
+    /// it cannot choose.
+    var images: [String] { get }
 }
 
 extension CutoutFile {
+    public var images: [String] { [] }
     public func supports(_ parameter: String) -> Bool { parameters.contains(parameter.uppercased()) }
     /// It can be cut to a region on the sky.
     public var supportsSky: Bool { supports("CIRCLE") || supports("POLYGON") }

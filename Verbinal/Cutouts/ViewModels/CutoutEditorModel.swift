@@ -26,7 +26,8 @@ final class CutoutEditorModel: Identifiable {
     let publisherID: String
     /// The observation, for the record the cutout is kept as.
     let details: DownloadedObservation
-    private let service: CutoutService
+    /// The ways the observation's files can be cut, and — when there are none — why.
+    private let loadSources: @MainActor () async -> (sources: [any CutoutSource], problems: [String])
     private let hints: CutoutHints?
     /// The cutout to open on, instead of the suggestion.
     private let initial: CutoutSpec?
@@ -49,12 +50,15 @@ final class CutoutEditorModel: Identifiable {
     var bandMaxNM = ""
     /// A polygon an agent asked for; the editor shows it, it does not edit it.
     private(set) var polygon: SkyRegion?
+    /// The images of a mosaic a local cut keeps; none for every image the region falls on.
+    var chosenImages: Set<String> = []
 
-    init(publisherID: String, details: DownloadedObservation, service: CutoutService,
+    init(publisherID: String, details: DownloadedObservation,
+         sources: @escaping @MainActor () async -> (sources: [any CutoutSource], problems: [String]),
          hints: CutoutHints? = nil, initial: CutoutSpec? = nil) {
         self.publisherID = publisherID
         self.details = details
-        self.service = service
+        self.loadSources = sources
         self.hints = hints
         self.initial = initial
     }
@@ -63,12 +67,22 @@ final class CutoutEditorModel: Identifiable {
 
     var takesBand: Bool { source?.file.supports("BAND") ?? false }
 
+    /// The images this way can choose among.
+    var imageNames: [String] { source?.file.images ?? [] }
+
+    /// A way of cutting, named for the person: the file, and who cuts it.
+    func label(of source: any CutoutSource) -> String {
+        source.method == .local
+            ? String(localized: "\(source.file.fileName) — on this computer")
+            : String(localized: "\(source.file.fileName) — by CADC")
+    }
+
     // MARK: - Loading
 
     /// Ask CADC what the observation's files can be cut by, then open on
     /// the cutout asked for — or the suggestion from the search.
     func load() async {
-        let options = await service.options(publisherID: publisherID)
+        let options = await loadSources()
         present(sources: options.sources, problems: options.problems)
     }
 
@@ -79,8 +93,11 @@ final class CutoutEditorModel: Identifiable {
             phase = .unavailable(problems)
             return
         }
-        let start = initial.flatMap { spec in sources.firstIndex { $0.file.artifactID == spec.artifactID }.map { ($0, spec) } }
-        sourceIndex = start?.0 ?? 0
+        let start = initial.flatMap { spec in
+            sources.firstIndex { $0.file.artifactID == spec.artifactID && $0.method == spec.cutBy }.map { ($0, spec) }
+        }
+        let preferred = CutoutSources.preferred(sources).flatMap { best in sources.firstIndex { $0.file.artifactID == best.file.artifactID && $0.method == best.method } }
+        sourceIndex = start?.0 ?? preferred ?? 0
         apply(start?.1 ?? sources[sourceIndex].suggest(hints))
         phase = .ready
     }
@@ -88,6 +105,7 @@ final class CutoutEditorModel: Identifiable {
     /// Show `spec` in the fields.
     func apply(_ spec: CutoutSpec) {
         polygon = nil
+        chosenImages = Set(spec.extensions)
         if let region = spec.region {
             shape = region.shape
             switch region.shape {
@@ -136,7 +154,8 @@ final class CutoutEditorModel: Identifiable {
             bandMin = Self.number(bandMinNM).map { $0 * 1e-9 }
             bandMax = Self.number(bandMaxNM).map { $0 * 1e-9 }
         }
-        return .success(CutoutSpec(artifactID: source.file.artifactID, region: region, bandMin: bandMin, bandMax: bandMax))
+        return .success(CutoutSpec(artifactID: source.file.artifactID, region: region, bandMin: bandMin, bandMax: bandMax,
+                                   cutBy: source.method, extensions: imageNames.filter(chosenImages.contains)))
     }
 
     struct FieldProblem: Error, Equatable { let text: String }

@@ -23,6 +23,8 @@ struct CutoutArgs: Decodable, Sendable {
     var bandMin: Double?
     var bandMax: Double?
     var cutBy: String?
+    /// Which images of a multi-extension file a local cut keeps.
+    var extensions: [String]?
 
     struct CircleArg: Decodable, Sendable { let ra: Double; let dec: Double; let radius: Double }
     struct BoxArg: Decodable, Sendable { let ra: Double; let dec: Double; let width: Double; let height: Double }
@@ -35,7 +37,8 @@ struct CutoutArgs: Decodable, Sendable {
         "polygon": { "type": "array", "description": "Corners as [ra, dec] pairs in degrees, at least three.", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 } },
         "bandMin": { "type": "number", "description": "Shortest wavelength to keep, METRES (5e-7 is 500 nm). Only for files that can be cut by wavelength." },
         "bandMax": { "type": "number", "description": "Longest wavelength to keep, metres." },
-        "cutBy": { "type": "string", "enum": ["soda"], "description": "Who cuts it: 'soda', on CADC's side — only the part is downloaded." }
+        "extensions": { "type": "array", "items": { "type": "string" }, "description": "Which images of a multi-extension file to keep, by the names get_cutout_options lists (e.g. \"SCI,1\"); left out, every image the region falls on. Only a local cut can choose." },
+        "cutBy": { "type": "string", "enum": ["soda", "local"], "description": "Who cuts it: 'soda' on CADC's side (only the part is downloaded), or 'local' from the observation's file already on this computer (instant, offline; the only way for files CADC will not cut). Left out: local when the file is here and can be cut, else soda." }
     """#
 
     /// The region asked for; nil when none was. More than one is refused.
@@ -52,31 +55,45 @@ struct CutoutArgs: Decodable, Sendable {
     }
 
     /// Whether these arguments ask for anything — else the suggestion stands.
-    var asksAnything: Bool { circle != nil || box != nil || polygon != nil || bandMin != nil || bandMax != nil }
+    var asksAnything: Bool {
+        circle != nil || box != nil || polygon != nil || bandMin != nil || bandMax != nil || !(extensions ?? []).isEmpty
+    }
 
     /// The file meant and the way of cutting it: the file named, or the only
     /// one that can be cut. A choice left to guess is refused with the names.
     func pickSource(_ sources: [any CutoutSource]) throws -> any CutoutSource {
         guard !sources.isEmpty else { throw ToolFailureReason.invalidArgument(CutoutOptionsOutput.noneCanBeCut) }
-        if let asked = cutBy, CutoutMethod(rawValue: asked.lowercased()) != .soda {
-            throw ToolFailureReason.invalidArgument("cutBy must be soda")
-        }
-        let files = sources.map(\.file.artifactID)
+        let files = Array(Set(sources.map(\.file.artifactID))).sorted()
         let named = (artifactId ?? "").trimmingCharacters(in: .whitespaces)
-        let candidates = named.isEmpty ? sources : sources.filter { $0.file.artifactID == named || $0.file.fileName == named }
+        var candidates = named.isEmpty ? sources : sources.filter { $0.file.artifactID == named || $0.file.fileName == named }
         guard !candidates.isEmpty else {
             throw ToolFailureReason.invalidArgument("no file '\(named)' can be cut from this observation; the ones that can: \(files.joined(separator: ", "))")
         }
-        guard candidates.count == 1, let chosen = candidates.first else {
+        // The way asked for narrows the choice first.
+        if let asked = cutBy {
+            guard let method = CutoutMethod(rawValue: asked.lowercased()) else {
+                throw ToolFailureReason.invalidArgument("cutBy must be soda or local")
+            }
+            candidates = candidates.filter { $0.method == method }
+            guard !candidates.isEmpty else {
+                throw ToolFailureReason.invalidArgument(method == .local
+                    ? "this file is not on this computer to cut locally; download_observation fetches it, or cut it with cutBy 'soda'"
+                    : "CADC offers no cutout service for this file; cut it with cutBy 'local' once it is downloaded")
+            }
+        }
+        guard Set(candidates.map(\.file.artifactID)).count == 1, let chosen = CutoutSources.preferred(candidates) else {
             throw ToolFailureReason.invalidArgument("this observation has \(files.count) files that can be cut; name one as artifactId: \(files.joined(separator: ", "))")
         }
-        if let why = chosen.unavailable { throw ToolFailureReason.invalidArgument("this file cannot be cut: \(why)") }
+        if let why = chosen.unavailable {
+            throw ToolFailureReason.invalidArgument("this file cannot be cut \(chosen.method == .local ? "locally" : "on CADC's side"): \(why)")
+        }
         return chosen
     }
 
     /// The cutout these arguments ask of `source`.
     func spec(for source: any CutoutSource) throws -> CutoutSpec {
-        CutoutSpec(artifactID: source.file.artifactID, region: try region(), bandMin: bandMin, bandMax: bandMax)
+        CutoutSpec(artifactID: source.file.artifactID, region: try region(), bandMin: bandMin, bandMax: bandMax,
+                   cutBy: source.method, extensions: extensions ?? [])
     }
 }
 
@@ -90,6 +107,8 @@ struct CutoutOptionsOutput: Encodable, Sendable {
         let cutBy: String
         let unavailable: String?
         let parameters: [String]
+        /// The images of a multi-extension file a local cut can choose among.
+        let images: [String]
         let footprint: SkyRegion?
         let boundingCircle: SkyRegion?
         let bandMinMetres: Double?
@@ -106,7 +125,7 @@ struct CutoutOptionsOutput: Encodable, Sendable {
     /// When CADC can cut none of the files, why its answer offered no way to.
     let sodaProblems: [String]?
 
-    static let noneCanBeCut = "none of this observation's files can be cut out: CADC offers no cutout service for them; download_observation fetches the whole file"
+    static let noneCanBeCut = "none of this observation's files can be cut out: CADC offers no cutout service for them, and none is on this computer; download_observation fetches the whole file, which can then be cut locally"
 
     /// Each file's options, with the cutout the editor would open on. Pure.
     static func from(publisherId: String, sources: [any CutoutSource], hints: CutoutHints?, problems: [String]) -> CutoutOptionsOutput {
@@ -114,7 +133,7 @@ struct CutoutOptionsOutput: Encodable, Sendable {
             let f = source.file
             let suggested = source.suggest(hints)
             return File(artifactId: f.artifactID, fileName: f.fileName, cutBy: source.method.rawValue,
-                        unavailable: source.unavailable, parameters: f.parameters.sorted(), footprint: f.footprint,
+                        unavailable: source.unavailable, parameters: f.parameters.sorted(), images: f.images, footprint: f.footprint,
                         boundingCircle: f.boundingCircle, bandMinMetres: f.bandMin, bandMaxMetres: f.bandMax,
                         wholeFileBytes: source.wholeFileBytes, suggested: suggested, suggestedSummary: suggested.summary,
                         suggestedBytes: source.estimatedBytes(suggested))
@@ -129,7 +148,7 @@ struct GetCutoutOptionsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_cutout_options",
-        description: "What an observation's files can be CUT by on CADC's side (SODA) — only the part is downloaded, a few MB of a 1.6 GB MegaPipe tile. For each file: the parameters it takes (CIRCLE, POLYGON, BAND …), its footprint and wavelength range in metres, its full size, and the cutout the editor would suggest — from the last search's target and wavelengths when they fall on the file — with its estimated size. When CADC can cut none, sodaProblems says why its DataLink answer offered no way to. Read this before download_cutout.",
+        description: "What an observation's files can be CUT by, each way: cutBy 'soda' — on CADC's side, only the part downloaded (a few MB of a 1.6 GB MegaPipe tile) — and 'local' — from the observation's file already on this computer: instant, offline, and the only way for files CADC will not cut. For each: the parameters it takes (CIRCLE, POLYGON, BAND …), its footprint and wavelength range in metres, its full size, why it cannot be cut this way when it cannot (unavailable), the images of a multi-extension file a local cut can choose among (images), and the cutout the editor would suggest — from the last search's target and wavelengths when they fall on the file — with its size (estimated for soda, exact for local). When CADC can cut none, sodaProblems says why. Read this before download_cutout.",
         schema: #"""
         {
           "type": "object",
@@ -164,7 +183,7 @@ struct DownloadCutoutTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_cutout",
-        description: "Propose downloading a CUTOUT — part of one of an observation's files, cut on CADC's side — into Research, where it is kept as a cutout of the observation, never as the whole of it. Give one region (circle, box or polygon, degrees) and, for a cube, optionally bandMin/bandMax in metres. It is checked against the file before it is proposed: a region off the file is refused with the reason. Use get_cutout_options first for the file's limits and a suggestion. The file lands in Downloads; returns its downloaded_observation_id.",
+        description: "Propose making a CUTOUT — part of one of an observation's files — into Research, where it is kept as a cutout of the observation, never as the whole of it: cut on CADC's side (cutBy 'soda') or on this computer from the file already downloaded (cutBy 'local'); left out, locally when that file is here and can be cut, else by CADC. Give one region (circle, box or polygon, degrees), for a cube optionally bandMin/bandMax in metres, and for a local cut of a mosaic optionally the images to keep. It is checked against the file before it is proposed: a region off the file is refused with the reason. Use get_cutout_options first. The file lands in Downloads; returns its downloaded_observation_id.",
         schema: """
         {
           "type": "object",
@@ -188,9 +207,10 @@ struct DownloadCutoutTool: JSONWriteTool {
         let check = source.check(spec)
         guard check.isValid else { throw ToolFailureReason.invalidArgument(check.errors.map(\.message).joined(separator: " ")) }
         let size = source.estimatedBytes(spec).map { ", about \(ByteCountFormatter.string(fromByteCount: $0, countStyle: .file))" } ?? ""
+        let verb = spec.cutBy == .local ? "Cut out locally" : "Download a cutout"
         return try ProposalPlan.encoding(
             kind: "download_cutout",
-            summary: "Download a cutout of \(pid): \(spec.summary)\(size)",
+            summary: "\(verb) of \(pid): \(spec.summary)\(size)",
             payload: Payload(publisherId: pid, spec: spec))
     }
 }
