@@ -397,80 +397,65 @@ struct SearchResultsView: View {
                 selectedResult = result
             }
         )
-        .contextMenu {
-            Button("Open Detail") {
-                selectedRowID = result.id
-                selectedResult = result
-            }
-            let pid = resultsModel.columns.value(in: result, forID: "publisherid")
-            if !pid.isEmpty, let url = TAPClient.detailURL(publisherID: pid) {
-                Button("Open on CADC…") { openURL(url) }
-            }
-            if !pid.isEmpty, let url = TAPClient.downloadURL(publisherID: pid) {
-                Button("Download File…") { openURL(url) }
-            }
-            Divider()
-            Button("Copy Row") { copyRow(result, columns: columns) }
+        .contextMenu { rowMenu(result, columns: columns) }
+    }
+
+    /// The row's actions — on the row, and under each cell's own items.
+    @ViewBuilder
+    private func rowMenu(_ result: SearchResult, columns: [SearchResultColumn]) -> some View {
+        Button("Open Detail") {
+            selectedRowID = result.id
+            selectedResult = result
+        }
+        let pid = resultsModel.columns.value(in: result, forID: "publisherid")
+        if !pid.isEmpty, let url = TAPClient.detailURL(publisherID: pid) {
+            Button("Open on CADC…") { openURL(url) }
+        }
+        if !pid.isEmpty, let url = TAPClient.downloadURL(publisherID: pid) {
+            Button("Download File…") { openURL(url) }
+        }
+        Divider()
+        Button("Copy Details") { PlatformClipboard.copy(resultsModel.facts(for: result).detailsText) }
+        Button("Copy Row") { PlatformClipboard.copy(resultsModel.tabSeparated([result], columns: columns)) }
+        Button("Copy Page") {
+            PlatformClipboard.copy(resultsModel.tabSeparated(resultsModel.displayedRows, columns: columns))
         }
     }
 
-    /// Render one cell. Every cell is a `Button` so single-clicks fire
-    /// without competing with row-level tap gestures (see ``resultRow``).
-    /// Quick-search-eligible cells run the narrow-by-this-value action and
-    /// render with link styling; all other cells just select the row.
+    /// Render one cell. A click selects the row (a double-click opens it);
+    /// narrowing the search to a cell's value is on the cell's right-click
+    /// menu, with copying it — a click that silently re-filtered the table
+    /// was taken for "open this observation" (Windows 1.4.1).
     @ViewBuilder
     private func cell(for col: SearchResultColumn, in result: SearchResult) -> some View {
         let raw = resultsModel.columns.value(in: result, forID: col.id)
-        let formatted = CellFormatterRegistry.format(
-            id: col.id,
-            raw: raw,
-            unitID: resultsModel.selectedUnit(for: col.id)
-        )
-        let isLink = onQuickSearch != nil
+        let formatted = resultsModel.displayValue(of: result, columnID: col.id)
+        let canNarrow = onQuickSearch != nil
             && SearchFormModel.quickSearchableColumnIDs.contains(col.id)
             && !raw.isEmpty
 
-        let button = Button {
-            if isLink {
-                onQuickSearch?(col.id, raw)
-            } else {
-                selectedRowID = result.id
-            }
+        Button {
+            selectedRowID = result.id
         } label: {
             Text(formatted)
                 .font(.caption)
                 .lineLimit(1)
-                .underline(isLink, pattern: .solid)
-                .foregroundStyle(isLink ? Color.accentColor : Color.primary)
                 .frame(width: col.idealWidth, alignment: .leading)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-
-        if isLink {
-            button.help(Text("Narrow search to \(col.label) = \(raw)"))
-        } else {
-            button
-        }
-    }
-
-    private func copyRow(_ result: SearchResult, columns: [SearchResultColumn]) {
-        let line = columns
-            .map { col in
-                CellFormatterRegistry.format(
-                    id: col.id,
-                    raw: resultsModel.columns.value(in: result, forID: col.id),
-                    unitID: resultsModel.selectedUnit(for: col.id)
-                )
+        .contextMenu {
+            if !formatted.isEmpty {
+                Button("Copy “\(formatted)”") { PlatformClipboard.copy(formatted) }
             }
-            .joined(separator: "\t")
-        #if os(macOS)
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(line, forType: .string)
-        #endif
+            if canNarrow {
+                Button("Narrow Search to \(col.label) = \(raw)") { onQuickSearch?(col.id, raw) }
+            }
+            Divider()
+            rowMenu(result, columns: resultsModel.columns.visible)
+        }
     }
 
     // MARK: - Export

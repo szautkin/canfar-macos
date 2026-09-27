@@ -34,6 +34,7 @@ extension AppState {
         tools.append(ListAppsTool(published: published))
         tools.append(SearchToolsTool(published: published))
         tools.append(ManTool(published: published))
+        tools.append(makeCopyToClipboardTool())
         tools.append(makeGetAuthStateTool())
         tools.append(makeGetCurrentViewTool())
 

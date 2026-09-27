@@ -101,6 +101,15 @@ struct ObservationDetailView: View {
                         .controlSize(.small)
                     }
 
+                    Button {
+                        PlatformClipboard.copy(observation.facts.detailsText)
+                    } label: {
+                        Label("Copy Details", systemImage: "doc.on.doc")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Copy this observation's details — ID, position, instrument, date — as text")
+
                     Spacer()
 
                     Button(role: .destructive) {

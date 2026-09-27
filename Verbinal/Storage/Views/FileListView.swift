@@ -71,9 +71,7 @@ struct FileListView: View {
                                     }
                                 }
                                 Button("Copy Path") {
-                                    let uri = model.vospaceURI(for: node)
-                                    NSPasteboard.general.clearContents()
-                                    NSPasteboard.general.setString(uri, forType: .string)
+                                    PlatformClipboard.copy(model.vospaceURI(for: node))
                                 }
                                 Divider()
                                 Button("Delete", role: .destructive) {

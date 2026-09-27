@@ -44,12 +44,16 @@ extension Color {
 // MARK: - Clipboard
 
 enum PlatformClipboard {
-    static func copy(_ string: String) {
+    /// Puts `string` on the clipboard. False when the clipboard refused it,
+    /// so a copy is never claimed that did not happen.
+    @discardableResult
+    static func copy(_ string: String) -> Bool {
         #if os(macOS)
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(string, forType: .string)
+        return NSPasteboard.general.setString(string, forType: .string)
         #else
         UIPasteboard.general.string = string
+        return UIPasteboard.general.string == string
         #endif
     }
 }

@@ -248,9 +248,7 @@ struct LegalDocumentSheet: View {
                     .font(.headline)
                 Spacer()
                 Button {
-                    let pb = NSPasteboard.general
-                    pb.clearContents()
-                    pb.setString(doc.plainText, forType: .string)
+                    PlatformClipboard.copy(doc.plainText)
                 } label: {
                     Label(doc.copyButton, systemImage: "doc.on.doc")
                 }

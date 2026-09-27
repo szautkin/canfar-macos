@@ -199,9 +199,7 @@ struct ObservationNotesView: View {
 
     #if os(macOS)
     private func copyToClipboard() {
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(editor.text, forType: .string)
+        PlatformClipboard.copy(editor.text)
     }
     #endif
 }

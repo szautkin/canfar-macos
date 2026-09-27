@@ -334,9 +334,7 @@ final class FITSViewerModel: Identifiable {
     #if os(macOS)
     /// Copy the current crosshair RA/Dec to the system clipboard.
     func copyCoordsToClipboard() {
-        let coords = "\(crosshairRA), \(crosshairDec)"
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(coords, forType: .string)
+        PlatformClipboard.copy("\(crosshairRA), \(crosshairDec)")
     }
     #endif
 

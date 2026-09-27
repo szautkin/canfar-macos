@@ -22,6 +22,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | One area's tools, one line each | `describe_app` `app` | read |
 | A tool by what it does | `search_tools` | read |
 | One tool's description and full schema | `man` | read |
+| Copy text, or an observation's details | `copy_to_clipboard` | live |
 
 ## Search — form
 

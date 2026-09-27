@@ -121,8 +121,9 @@ struct DownloadedFilesView: View {
                                         #if os(macOS)
                                         Button("Open File") { model.openFile(obs) }
                                         Button("Reveal in Finder") { model.revealInFinder(obs) }
-                                        Divider()
                                         #endif
+                                        Button("Copy Details") { PlatformClipboard.copy(obs.facts.detailsText) }
+                                        Divider()
                                         Button("Delete", role: .destructive) {
                                             // User-initiated removal — animate the row out.
                                             withAppAnimation(AppMotion.stateSwap, reduceMotion: reduceMotion) {

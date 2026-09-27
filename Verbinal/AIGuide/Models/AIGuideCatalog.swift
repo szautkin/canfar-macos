@@ -71,6 +71,7 @@ enum AIGuideCatalog {
         "list_apps": "foundational",
         "search_tools": "foundational",
         "man": "foundational",
+        "copy_to_clipboard": "foundational",
         "get_auth_state": "foundational",
         "get_current_view": "foundational",
         "get_service_health": "foundational",

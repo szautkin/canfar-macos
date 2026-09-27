@@ -296,9 +296,7 @@ struct ExportDialogView: View {
     }
 
     private func copyPath(_ url: URL) {
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(url.path, forType: .string)
+        PlatformClipboard.copy(url.path)
     }
 
     private func runVOSpaceUpload(_ url: URL) async {

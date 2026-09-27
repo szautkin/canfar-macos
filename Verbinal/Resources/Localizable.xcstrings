@@ -3032,6 +3032,16 @@
         }
       }
     },
+    "Copy Details" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier les détails"
+          }
+        }
+      }
+    },
     "Copy error message to clipboard" : {
       "localizations" : {
         "fr" : {
@@ -3068,6 +3078,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier les notes dans le presse-papiers"
+          }
+        }
+      }
+    },
+    "Copy Page" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier la page"
           }
         }
       }
@@ -3140,6 +3160,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier le message d'échec dans le presse-papiers (⇧⌘C)"
+          }
+        }
+      }
+    },
+    "Copy this observation's details — ID, position, instrument, date — as text" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier les détails de cette observation — ID, position, instrument, date — en texte"
+          }
+        }
+      }
+    },
+    "Copy “%@”" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier « %@ »"
           }
         }
       }
@@ -7452,6 +7492,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restreindre la recherche à %@ = %@"
+          }
+        }
+      }
+    },
+    "Narrow Search to %@ = %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restreindre la recherche à %1$@ = %2$@"
           }
         }
       }

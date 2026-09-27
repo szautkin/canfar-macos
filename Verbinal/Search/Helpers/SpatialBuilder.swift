@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// Build ADQL WHERE clauses for spatial constraints.
 ///
@@ -80,16 +81,17 @@ enum SpatialBuilder {
     // MARK: - Private
 
     /// Parse a coordinate pair from the target field.
-    /// Accepts: "RA DEC" or "RA DEC RADIUS" where RA/DEC are decimal degree numbers
-    /// and RADIUS is an optional value with optional unit (deg/arcmin/arcsec).
-    /// Returns nil if the input doesn't look like a coordinate pair (e.g. "M31").
-    private static func parseCoordinatePair(_ input: String) -> (ra: Double, dec: Double, radius: Double)? {
+    /// Accepts: "RA DEC" or "RA DEC RADIUS" where RA/DEC are decimal degrees
+    /// or colon sexagesimal (`00:42:44.3 +41:16:09`, as Copy Details, Simbad
+    /// and DS9 write it) and RADIUS is an optional value with optional unit
+    /// (deg/arcmin/arcsec). Returns nil if the input doesn't look like a
+    /// coordinate pair (e.g. "M31").
+    static func parseCoordinatePair(_ input: String) -> (ra: Double, dec: Double, radius: Double)? {
         let parts = input.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
         guard parts.count >= 2 else { return nil }
 
-        // First two tokens must be valid doubles that look like sky coordinates
-        guard let ra = Double(parts[0]), let dec = Double(parts[1]) else { return nil }
-        guard (0...360).contains(ra), (-90...90).contains(dec) else { return nil }
+        guard let ra = Sexagesimal.rightAscension(parts[0]),
+              let dec = Sexagesimal.declination(parts[1]) else { return nil }
 
         // Optional third token: search radius with optional unit
         var radius = ADQL.defaultSearchRadius

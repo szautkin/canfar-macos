@@ -288,8 +288,7 @@ final class MCPIntegrationSettingsService {
     }
 
     func copyConfigSnippet() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(configSnippet(), forType: .string)
+        PlatformClipboard.copy(configSnippet())
     }
 
     func revealConfigInFinder() {
@@ -368,13 +367,11 @@ final class MCPIntegrationSettingsService {
     }
 
     func copyClaudeCodeAddCommand() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(claudeCodeAddCommand(), forType: .string)
+        PlatformClipboard.copy(claudeCodeAddCommand())
     }
 
     func copyClaudeCodeSnippet() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(claudeCodeConfigSnippet(), forType: .string)
+        PlatformClipboard.copy(claudeCodeConfigSnippet())
     }
 
     func revealClaudeCodeConfig() {

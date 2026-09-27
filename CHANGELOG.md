@@ -77,6 +77,15 @@ Catching up with Verbinal for Windows 1.4.1 (see
   opens the detail of a row on the results page shown, and
   `show_observation_detail` that of an observation in the results by its
   publisher ID.
+- **Copy an observation, or any result** — right-click a cell of the
+  search results to copy its value, the observation's details, the row,
+  or the whole page as tab-separated text that pastes into a spreadsheet.
+  Research's list and detail have **Copy Details**. The details read the
+  same everywhere — ID, collection, publisher ID, target, the position as
+  the Search box, Simbad and DS9 read it with the degrees beside it,
+  instrument, filter, date, calibration level, proposal, release — and
+  the Search box now reads a pasted `00:42:44.3 +41:16:09` position. For
+  assistants: `copy_to_clipboard`, text or an observation's details.
 - **Cancel a search** — a search that takes long could not be stopped:
   Search stayed greyed with a spinner until CADC answered. **Cancel** now
   sits beside the spinner, on the form and in the ADQL editor (Esc), and
@@ -116,6 +125,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **A click on a search result selects it** — five columns (collection,
+  instrument, target, proposal, PI) were filter links, so clicking a
+  row's target narrowed the search instead of selecting the observation.
+  Narrowing to a value is now on the cell's right-click menu.
 - **Polling follows what is happening** — sessions and batch jobs were
   polled every 15 s and 45 s whatever was going on, so a notification
   came up to that late, and a job that started and failed between two
