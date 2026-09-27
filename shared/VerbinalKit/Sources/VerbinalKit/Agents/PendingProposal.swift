@@ -71,6 +71,9 @@ public enum ProposalState: String, Codable, Sendable, Equatable {
     /// can retry; `get_proposal_state` reports `failed` rather than
     /// `pending` or `rejected` so an agent can tell the difference.
     case failed
+    /// Being applied now — possibly in the background, past the call that
+    /// asked. It cannot be applied a second time meanwhile.
+    case applying
     /// Not in the queue, no tombstone — never existed or older than the
     /// retention window.
     case unknown

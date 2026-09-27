@@ -71,6 +71,11 @@ public protocol ProposalStore: Sendable {
     /// retry); `state` reports `.failed` until the next resolution.
     @discardableResult
     func markApplyFailed(_ id: UUID) async -> Bool
+
+    /// Claim a pending proposal for applying. False when it is not pending
+    /// or already being applied — so one change never applies twice.
+    /// Released by `markApplied`, `markApplyFailed` or any resolution.
+    func beginApply(_ id: UUID) async -> Bool
 }
 
 /// In-memory implementation with optional disk journaling.
@@ -86,6 +91,9 @@ public actor InMemoryProposalStore: ProposalStore {
     private var pendingOrder: [UUID] = []
     private var kindByID: [UUID: String] = [:]   // surfaced into events post-resolve
     private var failedIDs: Set<UUID> = []
+    /// Being applied now. Not journaled: after a restart an interrupted
+    /// apply is simply pending again.
+    private var applyingIDs: Set<UUID> = []
     private var tombstones: [(UUID, ProposalState, Date)] = []
     private let eventLog: EventLog?
     private let journal: DiskPersistence<ProposalJournal>?
@@ -150,6 +158,7 @@ public actor InMemoryProposalStore: ProposalStore {
     public func state(_ id: UUID) -> ProposalState {
         gcTombstones()
         if pending[id] != nil {
+            if applyingIDs.contains(id) { return .applying }
             return failedIDs.contains(id) ? .failed : .pending
         }
         if let hit = tombstones.first(where: { $0.0 == id }) { return hit.1 }
@@ -165,9 +174,16 @@ public actor InMemoryProposalStore: ProposalStore {
     @discardableResult
     public func withdraw(_ id: UUID) async -> Bool { await resolve(id, as: .withdrawn) }
 
+    public func beginApply(_ id: UUID) async -> Bool {
+        guard pending[id] != nil, !applyingIDs.contains(id) else { return false }
+        applyingIDs.insert(id)
+        return true
+    }
+
     @discardableResult
     public func markApplyFailed(_ id: UUID) async -> Bool {
         guard pending[id] != nil else { return false }
+        applyingIDs.remove(id)
         failedIDs.insert(id)
         persist()
         if let eventLog {
@@ -185,6 +201,7 @@ public actor InMemoryProposalStore: ProposalStore {
             pendingOrder.remove(at: i)
         }
         failedIDs.remove(id)
+        applyingIDs.remove(id)
         let kind = kindByID.removeValue(forKey: id) ?? ""
         tombstones.append((id, state, Date()))
         if tombstones.count > tombstoneCap {
@@ -199,7 +216,7 @@ public actor InMemoryProposalStore: ProposalStore {
             case .withdrawn:  event = .proposalWithdrawn(id: id, kind: kind)
             case .failed:
                 event = .proposalFailed(id: id, kind: kind)
-            case .pending, .unknown:
+            case .pending, .applying, .unknown:
                 return true  // shouldn't happen via resolve()
             }
             await eventLog.append(event)

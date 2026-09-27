@@ -194,7 +194,7 @@ struct ProposalStripSheet: View {
                 Text(proposal.summary)
                     .font(.callout)
                 Spacer()
-                if inFlight.contains(proposal.id) {
+                if inFlight.contains(proposal.id) || appState.agentsService.applyingIDs.contains(proposal.id) {
                     ProgressView().controlSize(.small)
                 } else {
                     HStack(spacing: 6) {

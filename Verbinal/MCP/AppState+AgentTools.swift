@@ -311,6 +311,9 @@ extension AppState {
         tools.append(ListPendingProposalsTool())
         tools.append(GetProposalStateTool())
         tools.append(WithdrawProposalTool())
+        let service = agentsService
+        tools.append(StartBackgroundApplyTool(start: { id in await service.startBackgroundApply(id) }))
+        tools.append(GetJobStatusTool(status: { id in await service.jobStatus(id) }))
         tools.append(ListEventsTool())
 
         registerWriteAppliers(savedQueryStore: savedStore,

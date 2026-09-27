@@ -43,13 +43,20 @@ public actor AIToolRouter {
     /// and failing calls too (Windows `onAgentDispatchStart` parity).
     /// Best-effort and synchronous; hosts hop to their own actor.
     private let onDispatchStart: (@Sendable (_ toolName: String, _ originLabel: String) -> Void)?
+    /// Where an auto-apply that outlives its call is followed.
+    private let applyJobs: ApplyJobRegistry
+    /// How long an auto-applied write may hold its call before answering
+    /// "still applying" with a job id — under the ~60 s a client waits.
+    private let autoApplyInlineWait: TimeInterval
 
     public init(
         tools: [any AITool],
         auditSink: any AuditSink = LoggingAuditSink(),
         autoApplyHook: AutoApplyHook? = nil,
         dispatchCeilingOverride: TimeInterval? = nil,
-        onDispatchStart: (@Sendable (_ toolName: String, _ originLabel: String) -> Void)? = nil
+        onDispatchStart: (@Sendable (_ toolName: String, _ originLabel: String) -> Void)? = nil,
+        applyJobs: ApplyJobRegistry = ApplyJobRegistry(),
+        autoApplyInlineWait: TimeInterval = 40
     ) {
         var table: [String: any AITool] = [:]
         var metadata: [String: ToolMetadata] = [:]
@@ -78,6 +85,8 @@ public actor AIToolRouter {
         self.autoApplyHook = autoApplyHook
         self.dispatchCeilingOverride = dispatchCeilingOverride
         self.onDispatchStart = onDispatchStart
+        self.applyJobs = applyJobs
+        self.autoApplyInlineWait = autoApplyInlineWait
     }
 
     /// Manifest as seen by an external (MCP) client. Filters out tools
@@ -218,8 +227,27 @@ public actor AIToolRouter {
                 // "cap pending strip items" rationale doesn't apply.
                 if let hook = autoApplyHook,
                    await hook.shouldAutoApply(meta.verbClass, proposal) {
-                    do {
-                        let extra = try await hook.apply(proposal.id)
+                    // The apply records its own outcome, so one that
+                    // outlives the call (a 1.6 GB download) is still
+                    // reported — by get_job_status — when it ends.
+                    let jobs = applyJobs
+                    await jobs.start(proposal)
+                    let race = await withHardDeadline(
+                        seconds: autoApplyInlineWait,
+                        cancelsWork: false,
+                        onDeadline: { AutoApplyRace.stillApplying },
+                        work: {
+                            do {
+                                let extra = try await hook.apply(proposal.id)
+                                await jobs.succeed(proposal.id, result: extra)
+                                return AutoApplyRace.applied(extra)
+                            } catch {
+                                await jobs.fail(proposal.id, message: "\(error)")
+                                return AutoApplyRace.failed("\(error)")
+                            }
+                        })
+                    switch race {
+                    case .applied(let extra):
                         emitAudit(name: name, args: rawArguments, context: context,
                                   outcome: .applied(proposal.id),
                                   verbClass: meta.verbClass,
@@ -227,18 +255,24 @@ public actor AIToolRouter {
                         let ack = AutoAppliedAck(proposal: proposal, extraJSON: extra)
                         let body = (try? JSONEncoder().encode(ack)) ?? Data()
                         return .data(body)
-                    } catch {
+                    case .failed(let message):
                         // The applier threw — withdraw the optimistic
                         // proposal so a deterministically failing write
                         // can't linger in the queue only to fail again.
-                        // Mirrors the budget-cap path below. Audit
-                        // records the failure.
+                        // Mirrors the budget-cap path below.
                         _ = await context.proposals.withdraw(proposal.id)
                         emitAudit(name: name, args: rawArguments, context: context,
                                   outcome: .failed(tag: "autoApplyFailed"),
                                   verbClass: meta.verbClass,
                                   durationMS: msSince(started))
-                        return .failed(.backendError("auto-apply failed: \(error)"))
+                        return .failed(.backendError("auto-apply failed: \(message)"))
+                    case .stillApplying:
+                        emitAudit(name: name, args: rawArguments, context: context,
+                                  outcome: .proposed(proposal.id),
+                                  verbClass: meta.verbClass,
+                                  durationMS: msSince(started))
+                        let ack = StillApplyingAck(proposal: proposal)
+                        return .data((try? JSONEncoder().encode(ack)) ?? Data())
                     }
                 }
 
@@ -309,4 +343,11 @@ private final class DeadlineFlag: @unchecked Sendable {
         defer { lock.unlock() }
         return flag
     }
+}
+
+/// How an auto-apply raced its call's deadline.
+private enum AutoApplyRace: Sendable {
+    case applied(Data?)
+    case failed(String)
+    case stillApplying
 }

@@ -135,3 +135,27 @@ public struct AutoAppliedAck: Codable, Sendable {
         note = try c.decodeIfPresent(String.self, forKey: .note)
     }
 }
+
+/// The answer to an auto-applied write still running at the call's
+/// deadline: it carries on, and `get_job_status` with `jobId` (the
+/// proposal's id) says how it ends — it is not refused, and must not be
+/// asked for again.
+public struct StillApplyingAck: Codable, Sendable {
+    public let applied: Bool
+    public let applying: Bool
+    public let jobId: UUID
+    public let proposalID: UUID
+    public let kind: String
+    public let summary: String
+    public let note: String
+
+    public init(proposal: PendingProposal) {
+        applied = false
+        applying = true
+        jobId = proposal.id
+        proposalID = proposal.id
+        kind = proposal.kind
+        summary = proposal.summary
+        note = "Still applying — it carries on in Verbinal. Follow it with get_job_status(jobId); do not ask for it again."
+    }
+}

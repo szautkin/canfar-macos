@@ -108,3 +108,14 @@ final class AgentToolCatalogParityTests: XCTestCase {
         })
     }
 }
+
+/// start_background_apply may start only what auto-apply would apply
+/// without the person (Windows 1.4.1 fixed an approval bypass here).
+final class BackgroundApplyPolicyTests: XCTestCase {
+    func testOnlyWhatAutoApplyWouldApplyMayStart() {
+        XCTAssertNil(AgentsService.backgroundRefusal(kind: "download_observation", verbClass: .semanticWrite, autoApplyOn: true))
+        XCTAssertNotNil(AgentsService.backgroundRefusal(kind: "download_observation", verbClass: .semanticWrite, autoApplyOn: false))
+        let destructive = AgentsService.backgroundRefusal(kind: "delete_vospace_node", verbClass: .destructive, autoApplyOn: true)
+        XCTAssertTrue(destructive?.contains("destructive") ?? false)
+    }
+}

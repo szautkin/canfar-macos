@@ -24,6 +24,13 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | One tool's description and full schema | `man` | read |
 | Copy text, or an observation's details | `copy_to_clipboard` | live |
 
+## Long work
+
+| Need | Tool | Kind |
+|---|---|---|
+| Apply a pending change without waiting (only what auto-apply would) | `start_background_apply` | live |
+| Follow a background apply, or an auto-apply still running at its deadline | `get_job_status` | read |
+
 ## Seeing the viewers
 
 | Need | Tool | Kind |

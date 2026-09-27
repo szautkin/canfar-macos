@@ -239,6 +239,8 @@ enum AIGuideCatalog {
         "list_pending_proposals": "control",
         "get_proposal_state": "control",
         "withdraw_proposal": "control",
+        "start_background_apply": "control",
+        "get_job_status": "control",
         "list_events": "control",
         // Workflows
         "list_workflows": "workflows",

@@ -87,6 +87,11 @@ final class AgentsService {
     /// Snapshot of pending proposals for SwiftUI binding. Refreshed
     /// after each enqueue/apply/reject so the strip stays current.
     private(set) var pendingProposals: [PendingProposal] = []
+    /// Proposals being applied now — by the strip, auto-apply, or a
+    /// background job — so the strip shows them as applying, not "Apply".
+    private(set) var applyingIDs: Set<UUID> = []
+    /// Applies that outlived their call, for `get_job_status`.
+    let applyJobs = ApplyJobRegistry()
 
     /// Path published to the sidecar; nil when not running. Surfaced for
     /// diagnostics in Settings.
@@ -208,6 +213,13 @@ final class AgentsService {
         guard let applier = await applierRegistry.applier(for: proposal.kind) else {
             throw ProposalApplyError.noApplierForKind(proposal.kind)
         }
+        // One apply per change: a second Apply (or an agent's background
+        // start) while the first runs would do the work twice.
+        guard await proposals.beginApply(id) else {
+            throw ProposalApplyError.backendError("\(proposal.kind) is already being applied")
+        }
+        applyingIDs.insert(id)
+        defer { applyingIDs.remove(id) }
         let extra: Data?
         do {
             if let reporting = applier as? any ResultReportingApplier {
@@ -236,6 +248,70 @@ final class AgentsService {
         }
         await refreshPending()
         return extra
+    }
+
+    // MARK: - Background applies
+
+    /// What `start_background_apply` answered.
+    struct BackgroundStart: Encodable, Sendable {
+        let started: Bool
+        let jobId: String?
+        let kind: String?
+        let summary: String?
+        let status: String
+        let message: String
+    }
+
+    /// Why a pending proposal may not be started in the background, or nil.
+    /// The person's approval is not the agent's to give: only what
+    /// auto-apply would apply without them may start (never a destructive
+    /// change, and nothing while auto-apply is off).
+    nonisolated static func backgroundRefusal(kind: String, verbClass: VerbClass, autoApplyOn: Bool) -> String? {
+        guard !AutoApplyPolicy.appliesAtOnce(verbClass, autoApplyOn: autoApplyOn) else { return nil }
+        return verbClass == .destructive
+            ? "'\(kind)' is a destructive change, so only the person can apply it: it waits for their approval in Verbinal's pending changes"
+            : "auto-apply is off, so the person applies each change: '\(kind)' waits for their approval in Verbinal's pending changes"
+    }
+
+    /// Starts applying a pending proposal without holding the call open.
+    func startBackgroundApply(_ raw: String) async -> BackgroundStart {
+        func refused(_ message: String) -> BackgroundStart {
+            BackgroundStart(started: false, jobId: nil, kind: nil, summary: nil, status: "notStarted", message: message)
+        }
+        guard let id = UUID(uuidString: raw.trimmingCharacters(in: .whitespaces)) else {
+            return refused("'\(raw)' is not a proposal id — list_pending_proposals reports them")
+        }
+        guard let proposal = await proposals.list(origin: nil).first(where: { $0.id == id }) else {
+            return refused("no pending proposal '\(raw)' — list_pending_proposals shows the ones there are")
+        }
+        // A tool the router does not know is treated as destructive.
+        let verbClass = await router?.verbClass(of: proposal.toolName) ?? .destructive
+        if let why = Self.backgroundRefusal(kind: proposal.kind, verbClass: verbClass, autoApplyOn: autoApplyWrites) {
+            return refused(why)
+        }
+        if await proposals.state(id) == .applying {
+            return refused("'\(proposal.kind)' is already being applied — follow it with get_job_status")
+        }
+        let jobs = applyJobs
+        await jobs.start(proposal)
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let result = try await self.applyProposalReturningResult(id, autoApplied: true)
+                await jobs.succeed(id, result: result)
+            } catch {
+                await jobs.fail(id, message: error.localizedDescription)
+            }
+        }
+        return BackgroundStart(started: true, jobId: id.uuidString, kind: proposal.kind, summary: proposal.summary,
+                               status: "running", message: "started; follow it with get_job_status")
+    }
+
+    /// A job's state, or — for an id that never ran as a job — what the
+    /// proposal queue knows of it.
+    func jobStatus(_ raw: String) async -> (job: ApplyJobRegistry.Job?, state: ProposalState)? {
+        guard let id = UUID(uuidString: raw.trimmingCharacters(in: .whitespaces)) else { return nil }
+        return (await applyJobs.job(id), await proposals.state(id))
     }
 
     /// Map a proposal `kind` to the AppMode whose view will reflect the
@@ -358,7 +434,8 @@ final class AgentsService {
             }
         )
         let router = AIToolRouter(tools: tools, auditSink: multiSink,
-                                  autoApplyHook: hook, onDispatchStart: onDispatchStart)
+                                  autoApplyHook: hook, onDispatchStart: onDispatchStart,
+                                  applyJobs: applyJobs)
         self.router = router
 
         // Compute a fresh socket path for this app instance. Including

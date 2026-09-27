@@ -103,6 +103,16 @@ Catching up with Verbinal for Windows 1.4.1 (see
   to start, is announced, as batch jobs already were. Nothing that
   settled before Verbinal looked is announced.
 
+- **Long changes your assistant starts** — an auto-applied write that
+  ran longer than the assistant waits for a tool (a 1.6 GB download) read
+  as a failure while it carried on. After ~40 s the call now answers
+  `applying: true` with a job id, the work continues, and
+  `get_job_status` says how it ended — with the download's result or
+  the reason it failed. `start_background_apply` starts a pending change
+  the same way, but only one auto-apply would have applied without you:
+  never a destructive change, and nothing while Auto-apply is off. A
+  change being applied shows as applying in Pending and cannot be
+  applied a second time meanwhile.
 - **Opening large files through your assistant** — `open_fits_file`,
   `open_cube`, `open_local_file`, `choose_viewer` and `open_vospace_file`
   wait for the pixels, and a very large file ran past the time an
