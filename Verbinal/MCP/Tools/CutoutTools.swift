@@ -25,6 +25,8 @@ struct CutoutArgs: Decodable, Sendable {
     var cutBy: String?
     /// Which images of a multi-extension file a local cut keeps.
     var extensions: [String]?
+    /// The observation's other files to cut with it, by artifact ID or file name.
+    var companions: [String]?
 
     struct CircleArg: Decodable, Sendable { let ra: Double; let dec: Double; let radius: Double }
     struct BoxArg: Decodable, Sendable { let ra: Double; let dec: Double; let width: Double; let height: Double }
@@ -38,6 +40,7 @@ struct CutoutArgs: Decodable, Sendable {
         "bandMin": { "type": "number", "description": "Shortest wavelength to keep, METRES (5e-7 is 500 nm). Only for files that can be cut by wavelength." },
         "bandMax": { "type": "number", "description": "Longest wavelength to keep, metres." },
         "extensions": { "type": "array", "items": { "type": "string" }, "description": "Which images of a multi-extension file to keep, by the names get_cutout_options lists (e.g. \"SCI,1\"); left out, every image the region falls on. Only a local cut can choose." },
+        "companions": { "type": "array", "items": { "type": "string" }, "description": "The observation's other files to cut WITH it, box for box — a MegaPipe tile's weight map — by the artifact ids or file names get_cutout_options lists under companions. Only a local cut can take them, and only files beside the cut file on this computer, on the same pixels. Each is written beside the cutout, named by the same key." },
         "cutBy": { "type": "string", "enum": ["soda", "local"], "description": "Who cuts it: 'soda' on CADC's side (only the part is downloaded), or 'local' from the observation's file already on this computer (instant, offline; the only way for files CADC will not cut). Left out: local when the file is here and can be cut, else soda." }
     """#
 
@@ -57,6 +60,7 @@ struct CutoutArgs: Decodable, Sendable {
     /// Whether these arguments ask for anything — else the suggestion stands.
     var asksAnything: Bool {
         circle != nil || box != nil || polygon != nil || bandMin != nil || bandMax != nil || !(extensions ?? []).isEmpty
+            || !(companions ?? []).isEmpty
     }
 
     /// The file meant and the way of cutting it: the file named, or the only
@@ -92,8 +96,12 @@ struct CutoutArgs: Decodable, Sendable {
 
     /// The cutout these arguments ask of `source`.
     func spec(for source: any CutoutSource) throws -> CutoutSpec {
-        CutoutSpec(artifactID: source.file.artifactID, region: try region(), bandMin: bandMin, bandMax: bandMax,
-                   cutBy: source.method, extensions: extensions ?? [])
+        // A file name is as good as its artifact id; one not offered is kept, for the check to refuse by name.
+        let named = (companions ?? []).map { given in
+            source.file.companions.first { $0.artifactID == given || $0.fileName == given }?.artifactID ?? given
+        }
+        return CutoutSpec(artifactID: source.file.artifactID, region: try region(), bandMin: bandMin, bandMax: bandMax,
+                          cutBy: source.method, extensions: extensions ?? [], companions: Array(Set(named)).sorted())
     }
 }
 
@@ -109,6 +117,8 @@ struct CutoutOptionsOutput: Encodable, Sendable {
         let parameters: [String]
         /// The images of a multi-extension file a local cut can choose among.
         let images: [String]
+        /// The observation's other files a local cut can take along, or why not.
+        let companions: [CutoutCompanion]
         let footprint: SkyRegion?
         let boundingCircle: SkyRegion?
         let bandMinMetres: Double?
@@ -133,7 +143,7 @@ struct CutoutOptionsOutput: Encodable, Sendable {
             let f = source.file
             let suggested = source.suggest(hints)
             return File(artifactId: f.artifactID, fileName: f.fileName, cutBy: source.method.rawValue,
-                        unavailable: source.unavailable, parameters: f.parameters.sorted(), images: f.images, footprint: f.footprint,
+                        unavailable: source.unavailable, parameters: f.parameters.sorted(), images: f.images, companions: f.companions, footprint: f.footprint,
                         boundingCircle: f.boundingCircle, bandMinMetres: f.bandMin, bandMaxMetres: f.bandMax,
                         wholeFileBytes: source.wholeFileBytes, suggested: suggested, suggestedSummary: suggested.summary,
                         suggestedBytes: source.estimatedBytes(suggested))

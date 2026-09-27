@@ -118,6 +118,19 @@ struct CutoutEditorView: View {
                     }
                 }
             }
+            if !model.companions.isEmpty {
+                LabeledContent("Also cut") {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(model.companions, id: \.artifactID) { companion in
+                            Toggle(companion.fileName, isOn: Binding(
+                                get: { model.chosenCompanions.contains(companion.artifactID) },
+                                set: { if $0 { model.chosenCompanions.insert(companion.artifactID) } else { model.chosenCompanions.remove(companion.artifactID) } }))
+                            .disabled(companion.unavailable != nil)
+                            .help(companion.unavailable ?? String(localized: "Cut on the same pixels, and saved beside the cutout"))
+                        }
+                    }
+                }
+            }
             if model.takesBand {
                 TextField("Shortest (nm)", text: $model.bandMinNM, prompt: Text("any"))
                 TextField("Longest (nm)", text: $model.bandMaxNM, prompt: Text("any"))

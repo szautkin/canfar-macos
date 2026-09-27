@@ -164,6 +164,77 @@ public enum FITSCutter {
         return out
     }
 
+    // MARK: - Companions
+
+    /// How far apart two grids may put one pixel, in pixels, and still be one grid.
+    public static let sameGridTolerance = 0.01
+
+    /// Whether two images lie on the same pixels: the same size along every
+    /// axis, the same sky at each point of a 3 × 3 grid across them to a
+    /// hundredth of a pixel, and a cube's first and last planes at the same
+    /// wavelengths. Compared as the sky each pixel is at, not card by card —
+    /// one file may write the grid with CD, the other with PC and CDELT.
+    public static func sameGrid(_ a: FITSHDUnit, _ b: FITSHDUnit) -> Bool {
+        guard a.header.naxis == b.header.naxis,
+              (1...max(a.header.naxis, 1)).allSatisfy({ a.header.int("NAXIS\($0)") == b.header.int("NAXIS\($0)") }),
+              let wa = a.wcs, let wb = b.wcs, wa.pixelScaleArcsec > 0 else { return false }
+        let tolerance = sameGridTolerance * wa.pixelScaleArcsec / 3600
+        let w = Double(a.header.naxis1 - 1), h = Double(a.header.naxis2 - 1)
+        for x in [0, w / 2, w] {
+            for y in [0, h / 2, h] {
+                let p = wa.pixelToWorld(x: x, y: y), q = wb.pixelToWorld(x: x, y: y)
+                let apart = SkyGeometry.distance(SkyPoint(ra: p.ra, dec: p.dec), SkyPoint(ra: q.ra, dec: q.dec))
+                guard apart <= tolerance else { return false }   // NaN too
+            }
+        }
+        guard a.header.naxis == 3 else { return true }
+        guard let la = wavelengths(of: a), let lb = wavelengths(of: b), let firstA = la.first, let lastA = la.last,
+              let firstB = lb.first, let lastB = lb.last else {
+            return wavelengths(of: a) == nil && wavelengths(of: b) == nil
+        }
+        let channel = abs(lastA - firstA) / Double(max(la.count - 1, 1))
+        return abs(firstA - firstB) <= sameGridTolerance * channel && abs(lastA - lastB) <= sameGridTolerance * channel
+    }
+
+    /// For each image of `file` a cut takes, the companion's image on the
+    /// same pixels — the one image of each when each has one, else the one
+    /// at the same HDU — or why it cannot be cut with it.
+    public static func companionImages(of file: FITSFile, in companion: FITSFile) -> Result<[Int: Int], CompanionProblem> {
+        let mine = images(of: file), theirs = images(of: companion)
+        guard !theirs.isEmpty else { return .failure(.noImage) }
+        var map: [Int: Int] = [:]
+        for image in mine {
+            let twin = mine.count == 1 && theirs.count == 1 ? theirs[0] : theirs.first { $0.id == image.id }
+            guard let twin else { return .failure(.noImageLike(name(of: image))) }
+            guard sameGrid(image, twin) else { return .failure(.otherGrid(name(of: twin))) }
+            map[image.id] = twin.id
+        }
+        return .success(map)
+    }
+
+    /// Why a companion cannot be cut with a file.
+    public enum CompanionProblem: Error, Equatable, Sendable {
+        case noImage
+        case noImageLike(String)
+        case otherGrid(String)
+
+        public var message: String {
+            switch self {
+            case .noImage: return "it has no image with sky coordinates to cut"
+            case .noImageLike(let name): return "it has no image like \(name) of the file cut"
+            case .otherGrid(let name): return "its image \(name) is not on the same pixels as the file cut, so the same box would not be the same sky"
+            }
+        }
+    }
+
+    /// `parts` of a file as the same boxes of a companion's images.
+    public static func companionParts(_ parts: [Part], images map: [Int: Int], in companion: FITSFile) -> [Part] {
+        parts.compactMap { part in
+            guard let index = map[part.index], let hdu = companion.hdus.first(where: { $0.id == index }) else { return nil }
+            return Part(index: index, name: name(of: hdu), box: part.box, channels: part.channels)
+        }
+    }
+
     // MARK: - Cards
 
     /// The header's own card images, END excluded.

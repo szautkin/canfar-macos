@@ -32,10 +32,15 @@ public struct CutoutSpec: Codable, Equatable, Hashable, Sendable {
     /// Which images of a multi-extension file a local cut keeps ("SCI,1");
     /// empty for every image the region falls on.
     public var extensions: [String] = []
+    /// The observation's other files cut with it, box for box — a MegaPipe
+    /// tile's weight map — by artifact ID. Not part of the key: the cutout is
+    /// the same with its weight map or without, and each companion's file is
+    /// named by the same key.
+    public var companions: [String] = []
 
     public init(artifactID: String, region: SkyRegion? = nil, bandMin: Double? = nil, bandMax: Double? = nil,
                 timeMin: Double? = nil, timeMax: Double? = nil, pol: [String] = [],
-                cutBy: CutoutMethod = .soda, extensions: [String] = []) {
+                cutBy: CutoutMethod = .soda, extensions: [String] = [], companions: [String] = []) {
         self.artifactID = artifactID
         self.region = region
         self.bandMin = bandMin
@@ -45,10 +50,11 @@ public struct CutoutSpec: Codable, Equatable, Hashable, Sendable {
         self.pol = pol
         self.cutBy = cutBy
         self.extensions = extensions
+        self.companions = companions
     }
 
     private enum CodingKeys: String, CodingKey {
-        case artifactID, region, bandMin, bandMax, timeMin, timeMax, pol, cutBy, extensions
+        case artifactID, region, bandMin, bandMax, timeMin, timeMax, pol, cutBy, extensions, companions
     }
 
     /// A cutout saved before local cuts had neither `cutBy` nor `extensions`.
@@ -63,6 +69,7 @@ public struct CutoutSpec: Codable, Equatable, Hashable, Sendable {
         pol = try c.decodeIfPresent([String].self, forKey: .pol) ?? []
         cutBy = try c.decodeIfPresent(CutoutMethod.self, forKey: .cutBy) ?? .soda
         extensions = try c.decodeIfPresent([String].self, forKey: .extensions) ?? []
+        companions = try c.decodeIfPresent([String].self, forKey: .companions) ?? []
     }
 
     /// Nothing to cut: the file would come back whole.
@@ -97,6 +104,7 @@ public struct CutoutSpec: Codable, Equatable, Hashable, Sendable {
         if timeMin != nil || timeMax != nil { parts.append("\(Self.date(mjd: timeMin)) – \(Self.date(mjd: timeMax))") }
         if !pol.isEmpty { parts.append(pol.joined(separator: ", ")) }
         if !extensions.isEmpty { parts.append(extensions.map { "[\($0)]" }.joined(separator: " ")) }
+        if !companions.isEmpty { parts.append("+ " + companions.map(Self.artifactFileName).joined(separator: ", ")) }
         return parts.joined(separator: " · ")
     }
 
@@ -170,10 +178,27 @@ public protocol CutoutFile: Sendable {
     /// The images a cut can choose among, by name ("SCI,1"); empty where
     /// it cannot choose.
     var images: [String] { get }
+    /// The observation's other files that can be cut with this one.
+    var companions: [CutoutCompanion] { get }
+}
+
+/// Another of the observation's files, beside the one cut, that a local cut
+/// can take along on the same pixels — or why it cannot.
+public struct CutoutCompanion: Codable, Equatable, Hashable, Sendable {
+    public let artifactID: String
+    public let fileName: String
+    public let unavailable: String?
+
+    public init(artifactID: String, fileName: String, unavailable: String?) {
+        self.artifactID = artifactID
+        self.fileName = fileName
+        self.unavailable = unavailable
+    }
 }
 
 extension CutoutFile {
     public var images: [String] { [] }
+    public var companions: [CutoutCompanion] { [] }
     public func supports(_ parameter: String) -> Bool { parameters.contains(parameter.uppercased()) }
     /// It can be cut to a region on the sky.
     public var supportsSky: Bool { supports("CIRCLE") || supports("POLYGON") }

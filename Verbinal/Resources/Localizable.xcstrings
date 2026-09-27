@@ -1043,6 +1043,36 @@
         }
       }
     },
+    "%@ saved in Downloads" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ enregistré dans Téléchargements"
+          }
+        }
+      }
+    },
+    "%@ is not beside this file on this computer, so it cannot be cut with it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n'est pas à côté de ce fichier sur cet ordinateur ; il ne peut donc pas être découpé avec lui."
+          }
+        }
+      }
+    },
+    "%@ cannot be cut with this file: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de découper %@ avec ce fichier : %@"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -1494,6 +1524,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Autoriser les agents IA externes"
+          }
+        }
+      }
+    },
+    "Also cut" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découper aussi"
           }
         }
       }
@@ -3826,6 +3866,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Outils d'instructions personnalisés en lecture seule que vous créez. L'agent voit chacun comme un outil appelable dans `tools/list` et reçoit votre texte lorsqu'il l'appelle — aucun code n'est exécuté."
+          }
+        }
+      }
+    },
+    "Cut on the same pixels, and saved beside the cutout" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découpé sur les mêmes pixels, et enregistré à côté de la découpe"
           }
         }
       }
@@ -8875,6 +8925,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune détectée"
+          }
+        }
+      }
+    },
+    "None of the observation's other files can be cut with this one: a cut on this computer takes those beside the file, on the same pixels." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun des autres fichiers de l'observation ne peut être découpé avec celui-ci : une découpe sur cet ordinateur prend ceux à côté du fichier, sur les mêmes pixels."
           }
         }
       }

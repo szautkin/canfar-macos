@@ -124,7 +124,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
   mosaic, cuts a cube to the channels of a wavelength range (its
   frequency, wavelength, wavenumber or velocity axis read as metres), and
   cuts an fpack-compressed (RICE_1) image by decoding only the tiles the
-  region touches, writing the cutout uncompressed. **Cut Out…** in an observation's detail
+  region touches, writing the cutout uncompressed. It can cut the
+  observation's other files beside it with the same box — a MegaPipe
+  tile's weight map — after checking they lie on the same pixels (a file
+  on another grid is offered greyed, with why); each is saved beside the
+  cutout under the same key. **Cut Out…** in an observation's detail
   (Search, and Research) opens an editor on the file's footprint: a circle
   or box — RA and Dec in degrees or sexagesimal, sizes in arcminutes — and
   for a cube a wavelength range in nanometres, started from what the
@@ -144,7 +148,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   editor on the person's screen, on a region or the suggestion);
   `get_search_form` and `set_search_form` read and set the two boxes.
   `cutBy` chooses who cuts (`soda` or `local`; left out, this computer
-  when it can) and `extensions` the images of a mosaic to keep.
+  when it can), `extensions` the images of a mosaic to keep, and
+  `companions` the files to cut along (listed by `get_cutout_options`).
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across

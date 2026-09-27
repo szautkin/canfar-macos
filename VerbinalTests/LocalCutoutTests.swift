@@ -25,18 +25,20 @@ final class LocalCutoutTests: XCTestCase {
         return text.padding(toLength: 80, withPad: " ", startingAt: 0)
     }
 
-    /// A 40×30 16-bit image at (150, 2), 1″ a pixel, named `name` in the temporary folder.
-    private func image(named name: String = "G.fits") throws -> URL {
+    /// A 40×30 16-bit image at (150, 2), 1″ a pixel, named `name` in the
+    /// temporary folder (or in `folder`, by exactly that name).
+    private func image(named name: String = "G.fits", in folder: URL? = nil, crpix1: String = "20.5") throws -> URL {
         let cards = [card("SIMPLE", "T"), card("BITPIX", "16"), card("NAXIS", "2"), card("NAXIS1", "40"), card("NAXIS2", "30"),
                      card("CTYPE1", "'RA---TAN'"), card("CTYPE2", "'DEC--TAN'"), card("CRVAL1", "150.0"), card("CRVAL2", "2.0"),
-                     card("CRPIX1", "20.5"), card("CRPIX2", "15.5"), card("CD1_1", "-0.000277777778"), card("CD2_2", "0.000277777778"),
+                     card("CRPIX1", crpix1), card("CRPIX2", "15.5"), card("CD1_1", "-0.000277777778"), card("CD2_2", "0.000277777778"),
                      "END".padding(toLength: 80, withPad: " ", startingAt: 0)]
         var data = Data(cards.joined().utf8)
         data.append(Data(repeating: 0x20, count: 2880 - data.count % 2880))
         var pixels = Data(count: 40 * 30 * 2)
         pixels.append(Data(repeating: 0, count: 2880 - pixels.count % 2880))
         data.append(pixels)
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-\(name)")
+        let url = folder?.appendingPathComponent(name)
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-\(name)")
         try data.write(to: url)
         files.append(url)
         return url
@@ -90,7 +92,7 @@ final class LocalCutoutTests: XCTestCase {
                        [.noImageChoice], "CADC's cut keeps every image")
 
         let maker = LocalCutoutMaker(file: { _ in url })
-        let cut = try await maker.make(publisherID: "p", spec: spec)
+        let cut = try await maker.make(publisherID: "p", spec: spec).cutout
         files.append(cut)
         XCTAssertEqual(cut.lastPathComponent, spec.fileName)
         let bytes = try Data(contentsOf: cut)
@@ -126,11 +128,44 @@ final class LocalCutoutTests: XCTestCase {
         off.bandMax = 0.6
         XCTAssertFalse(local.check(off).isValid)
 
-        let cut = try await LocalCutoutMaker(file: { _ in url }).make(publisherID: "p", spec: spec)
+        let cut = try await LocalCutoutMaker(file: { _ in url }).make(publisherID: "p", spec: spec).cutout
         files.append(cut)
         let bytes = try Data(contentsOf: cut)
         XCTAssertEqual(Int64(bytes.count), local.estimatedBytes(spec))
         XCTAssertEqual(try FITSParser.parse(from: bytes).hdus[0].header.int("NAXIS3"), 3)
+    }
+
+    /// A weight map beside the file, on the same pixels, is cut with it and
+    /// named by the same key; one on other pixels is offered greyed.
+    func testAWeightMapIsCutAlongOnTheSamePixels() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("companions-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        files.append(folder)
+        let url = try image(named: "G.fits", in: folder)
+        _ = try image(named: "G.weight.fits", in: folder)
+        _ = try image(named: "G.flag.fits", in: folder, crpix1: "21.0")
+        let local = LocalCutoutSource.open(url, artifactID: "cadc:X/G.fits",
+                                           artifacts: ["cadc:X/G.fits", "cadc:X/G.weight.fits", "cadc:X/G.flag.fits", "cadc:X/G.cat"])
+        XCTAssertEqual(local.file.companions.map(\.fileName), ["G.flag.fits", "G.weight.fits"], "FITS files beside it, not itself")
+        XCTAssertNil(local.file.companions.first { $0.fileName == "G.weight.fits" }?.unavailable)
+        XCTAssertNotNil(local.file.companions.first { $0.fileName == "G.flag.fits" }?.unavailable, "other pixels")
+
+        let spec = CutoutSpec(artifactID: "cadc:X/G.fits", region: .circle(ra: 150, dec: 2, radius: 2.2 / 3600), cutBy: .local,
+                              companions: ["cadc:X/G.weight.fits"])
+        XCTAssertTrue(local.check(spec).isValid)
+        var refused = spec
+        refused.companions = ["cadc:X/G.flag.fits"]
+        XCTAssertEqual(local.check(refused).errors.count, 1)
+
+        let made = try await LocalCutoutMaker(file: { _ in url }).make(publisherID: "p", spec: spec)
+        files += [made.cutout] + made.companions
+        XCTAssertEqual(made.companions.map(\.lastPathComponent), ["G.weight.cutout-\(spec.key).fits"])
+        let weight = try FITSParser.parse(from: Data(contentsOf: made.companions[0])).hdus[0]
+        let cut = try FITSParser.parse(from: Data(contentsOf: made.cutout)).hdus[0]
+        XCTAssertEqual([weight.header.naxis1, weight.header.naxis2], [cut.header.naxis1, cut.header.naxis2], "box for box")
+
+        let asked = try args(#"{"publisherId":"p","companions":["G.weight.fits"]}"#).spec(for: local)
+        XCTAssertEqual(asked.companions, ["cadc:X/G.weight.fits"], "a file name is as good as its id")
     }
 
     // MARK: - Choosing the way

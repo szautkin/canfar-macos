@@ -46,12 +46,19 @@ struct SodaCutoutSource: CutoutSource {
     func estimatedBytes(_ spec: CutoutSpec) -> Int64? { SodaRequest.estimatedBytes(descriptor, spec, wholeFile: wholeFileBytes) }
 }
 
+/// A cutout's files, in temporary places: the cutout, and the companions
+/// cut with it (a weight map), each named by the cutout's key.
+struct CutoutFiles: Sendable {
+    let cutout: URL
+    var companions: [URL] = []
+}
+
 /// Makes a cutout's file, one way. Research keeps every cutout the same
 /// way; the maker is asked only for the step that differs: the bytes.
 protocol CutoutMaker: Sendable {
     var method: CutoutMethod { get }
-    /// The cutout in a temporary file, named for it; throws with the reason.
-    func make(publisherID: String, spec: CutoutSpec) async throws -> URL
+    /// The cutout (and companions) in temporary files; throws with the reason.
+    func make(publisherID: String, spec: CutoutSpec) async throws -> CutoutFiles
 }
 
 /// What an observation's files can be cut by on CADC's side, and a SODA
@@ -77,19 +84,24 @@ actor CutoutService {
     struct Options: Sendable {
         let sources: [SodaCutoutSource]
         let problems: [String]
+        /// Every file of the observation, by artifact ID — what a local cut's
+        /// companions are looked for among.
+        var artifacts: [String] = []
     }
 
     func options(publisherID: String) async -> Options {
+        async let artifacts = artifactSizes(publisherID: publisherID)
         let parse: SodaDescriptorParser.Parse
         do {
             parse = SodaDescriptorParser.parse(try await dataLinkDocument(publisherID: publisherID))
         } catch {
-            return Options(sources: [], problems: ["DataLink could not be read: \(error.localizedDescription)"])
+            return Options(sources: [], problems: ["DataLink could not be read: \(error.localizedDescription)"],
+                           artifacts: await artifacts.keys.sorted())
         }
-        guard !parse.descriptors.isEmpty else { return Options(sources: [], problems: parse.passedOver) }
-        let sizes = await wholeFileSizes(publisherID: publisherID)
-        return Options(sources: parse.descriptors.map { SodaCutoutSource(descriptor: $0, wholeFileBytes: sizes[$0.artifactID]) },
-                       problems: [])
+        let sizes = await artifacts
+        guard !parse.descriptors.isEmpty else { return Options(sources: [], problems: parse.passedOver, artifacts: sizes.keys.sorted()) }
+        return Options(sources: parse.descriptors.map { SodaCutoutSource(descriptor: $0, wholeFileBytes: sizes[$0.artifactID].flatMap { $0 > 0 ? $0 : nil }) },
+                       problems: [], artifacts: sizes.keys.sorted())
     }
 
     /// The cutout, fetched to a temporary file — against the file's
@@ -129,14 +141,13 @@ actor CutoutService {
         return data
     }
 
-    /// Each artifact's full size, from CAOM2; empty when it cannot be read.
-    private func wholeFileSizes(publisherID: String) async -> [String: Int64] {
+    /// Each of the observation's files, by artifact ID, with its size when
+    /// CAOM2 gives one (0 when not); empty when CAOM2 cannot be read.
+    private func artifactSizes(publisherID: String) async -> [String: Int64] {
         guard let observation = try? await caom2.fetch(publisherID: publisherID) else { return [:] }
         var sizes: [String: Int64] = [:]
         for plane in observation.planes {
-            for artifact in plane.artifacts {
-                if let length = artifact.contentLength { sizes[artifact.uri] = length }
-            }
+            for artifact in plane.artifacts { sizes[artifact.uri] = artifact.contentLength ?? 0 }
         }
         return sizes
     }
@@ -161,7 +172,7 @@ struct SodaCutoutMaker: CutoutMaker {
     let service: CutoutService
     var method: CutoutMethod { .soda }
 
-    func make(publisherID: String, spec: CutoutSpec) async throws -> URL {
-        try await service.fetch(publisherID: publisherID, spec: spec)
+    func make(publisherID: String, spec: CutoutSpec) async throws -> CutoutFiles {
+        CutoutFiles(cutout: try await service.fetch(publisherID: publisherID, spec: spec))
     }
 }

@@ -52,6 +52,8 @@ final class CutoutEditorModel: Identifiable {
     private(set) var polygon: SkyRegion?
     /// The images of a mosaic a local cut keeps; none for every image the region falls on.
     var chosenImages: Set<String> = []
+    /// The companions cut with it (a weight map), by artifact ID.
+    var chosenCompanions: Set<String> = []
 
     init(publisherID: String, details: DownloadedObservation,
          sources: @escaping @MainActor () async -> (sources: [any CutoutSource], problems: [String]),
@@ -69,6 +71,9 @@ final class CutoutEditorModel: Identifiable {
 
     /// The images this way can choose among.
     var imageNames: [String] { source?.file.images ?? [] }
+
+    /// The files this way can cut along with this one, and why any cannot.
+    var companions: [CutoutCompanion] { source?.file.companions ?? [] }
 
     /// A way of cutting, named for the person: the file, and who cuts it.
     func label(of source: any CutoutSource) -> String {
@@ -106,6 +111,7 @@ final class CutoutEditorModel: Identifiable {
     func apply(_ spec: CutoutSpec) {
         polygon = nil
         chosenImages = Set(spec.extensions)
+        chosenCompanions = Set(spec.companions)
         if let region = spec.region {
             shape = region.shape
             switch region.shape {
@@ -155,7 +161,8 @@ final class CutoutEditorModel: Identifiable {
             bandMax = Self.number(bandMaxNM).map { $0 * 1e-9 }
         }
         return .success(CutoutSpec(artifactID: source.file.artifactID, region: region, bandMin: bandMin, bandMax: bandMax,
-                                   cutBy: source.method, extensions: imageNames.filter(chosenImages.contains)))
+                                   cutBy: source.method, extensions: imageNames.filter(chosenImages.contains),
+                                   companions: companions.map(\.artifactID).filter(chosenCompanions.contains)))
     }
 
     struct FieldProblem: Error, Equatable { let text: String }

@@ -22,6 +22,7 @@ struct LocalCutoutFile: CutoutFile {
     var timeMax: Double? { nil }
     var polStates: [String] { [] }
     let images: [String]
+    var companions: [CutoutCompanion] = []
 }
 
 /// One way of cutting: from the downloaded file, on this computer —
@@ -38,7 +39,7 @@ struct LocalCutoutSource: CutoutSource {
 
     /// Read `url`'s headers — the pixels are read only when cutting.
     /// `artifactID` names it as CADC does when the file is one CADC offers.
-    static func open(_ url: URL, artifactID: String? = nil) -> LocalCutoutSource {
+    static func open(_ url: URL, artifactID: String? = nil, artifacts: [String] = []) -> LocalCutoutSource {
         let name = artifactID ?? url.lastPathComponent
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value
         let empty = LocalCutoutFile(artifactID: name, footprint: nil, boundingCircle: nil, images: [])
@@ -66,8 +67,33 @@ struct LocalCutoutSource: CutoutSource {
         let wavelengths = images.lazy.compactMap(FITSCutter.wavelengths(of:)).first
         return LocalCutoutSource(url: url, localFile: LocalCutoutFile(artifactID: name, footprint: footprint, boundingCircle: bounding,
                                                                       bandMin: wavelengths?.min(), bandMax: wavelengths?.max(),
-                                                                      images: images.map(FITSCutter.name(of:))),
+                                                                      images: images.map(FITSCutter.name(of:)),
+                                                                      companions: companions(of: fits, at: url, among: artifacts, except: name)),
                                  fitsFile: fits, wholeFileBytes: size, unavailable: nil)
+    }
+
+    /// The observation's other FITS files beside this one on this computer,
+    /// each matched image for image — or greyed with why.
+    private static func companions(of fits: FITSFile, at url: URL, among artifacts: [String], except own: String) -> [CutoutCompanion] {
+        let folder = url.deletingLastPathComponent()
+        return Array(Set(artifacts)).sorted().compactMap { id -> CutoutCompanion? in
+            let name = CutoutSpec.artifactFileName(id)
+            let lower = name.lowercased()
+            guard id != own, lower != url.lastPathComponent.lowercased(),
+                  [".fits", ".fit", ".fts", ".fits.fz", ".fz"].contains(where: lower.hasSuffix) else { return nil }
+            let path = folder.appendingPathComponent(name)
+            guard FileManager.default.isReadableFile(atPath: path.path) else { return nil }
+            let unavailable: String?
+            do {
+                switch FITSCutter.companionImages(of: fits, in: try FITSParser.parse(url: path)) {
+                case .success: unavailable = nil
+                case .failure(let problem): unavailable = problem.message
+                }
+            } catch {
+                unavailable = CutoutIssue.unreadable(error.localizedDescription).message
+            }
+            return CutoutCompanion(artifactID: id, fileName: name, unavailable: unavailable)
+        }
     }
 
     /// The image's corners on the sky.
@@ -125,7 +151,7 @@ struct LocalCutoutMaker: CutoutMaker {
     let file: @MainActor @Sendable (String) -> URL?
     var method: CutoutMethod { .local }
 
-    func make(publisherID: String, spec: CutoutSpec) async throws -> URL {
+    func make(publisherID: String, spec: CutoutSpec) async throws -> CutoutFiles {
         guard let url = await file(publisherID) else {
             throw CutoutFailure.noService("the observation's file is not on this computer — download it, or cut it on CADC's side")
         }
@@ -136,15 +162,38 @@ struct LocalCutoutMaker: CutoutMaker {
             let data = try Data(contentsOf: url, options: .mappedIfSafe)
             let fits = try FITSParser.parse(from: data, url: url)
             let cut: Data
+            let parts: [FITSCutter.Part]
             do {
-                let parts = try FITSCutter.plan(fits, region: region, images: spec.extensions, band: (spec.bandMin, spec.bandMax))
+                parts = try FITSCutter.plan(fits, region: region, images: spec.extensions, band: (spec.bandMin, spec.bandMax))
                 cut = try FITSCutter.cut(data, file: fits, parts: parts, history: "Verbinal cutout of \(url.lastPathComponent)")
             } catch {
                 throw CutoutFailure.refused((error as? FITSCutter.Failure)?.message ?? error.localizedDescription)
             }
             let target = FileManager.default.temporaryDirectory.appendingPathComponent(spec.fileName)
             try cut.write(to: target, options: .atomic)
-            return target
+            // Each companion: the same boxes of its images on the same pixels, named by the same key.
+            var companions: [URL] = []
+            for id in spec.companions {
+                let name = CutoutSpec.artifactFileName(id)
+                let path = url.deletingLastPathComponent().appendingPathComponent(name)
+                let companionData = try Data(contentsOf: path, options: .mappedIfSafe)
+                let companion = try FITSParser.parse(from: companionData, url: path)
+                guard case .success(let images) = FITSCutter.companionImages(of: fits, in: companion) else {
+                    throw CutoutFailure.refused("\(name) is not on the same pixels as \(url.lastPathComponent)")
+                }
+                let companionCut: Data
+                do {
+                    companionCut = try FITSCutter.cut(companionData, file: companion,
+                                                      parts: FITSCutter.companionParts(parts, images: images, in: companion),
+                                                      history: "Verbinal cutout of \(name), with \(url.lastPathComponent)")
+                } catch {
+                    throw CutoutFailure.refused((error as? FITSCutter.Failure)?.message ?? error.localizedDescription)
+                }
+                let companionTarget = FileManager.default.temporaryDirectory.appendingPathComponent(spec.fileName(for: name))
+                try companionCut.write(to: companionTarget, options: .atomic)
+                companions.append(companionTarget)
+            }
+            return CutoutFiles(cutout: target, companions: companions)
         }.value
     }
 }
@@ -159,10 +208,11 @@ enum CutoutSources {
     /// The ways an observation's files can be cut: its downloaded file on
     /// this computer — named as CADC names it when CADC offers the same file
     /// — then CADC's.
-    static func combine(local: URL?, soda: [SodaCutoutSource]) -> [any CutoutSource] {
+    static func combine(local: URL?, soda: [SodaCutoutSource], artifacts: [String] = []) -> [any CutoutSource] {
         guard let local else { return soda }
         let name = local.lastPathComponent.lowercased()
         let match = soda.first { $0.file.fileName.lowercased() == name }
-        return [LocalCutoutSource.open(local, artifactID: match?.file.artifactID)] + soda
+            .map(\.file.artifactID) ?? artifacts.first { CutoutSpec.artifactFileName($0).lowercased() == name }
+        return [LocalCutoutSource.open(local, artifactID: match, artifacts: artifacts)] + soda
     }
 }

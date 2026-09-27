@@ -129,8 +129,10 @@ final class ResearchModel {
         do {
             // Step 1: Download to temp — a cutout is cut again, not fetched whole.
             let tempURL: URL, suggestedFilename: String
+            var companions: [URL] = []
             if let spec = record.cutout {
-                tempURL = try await cutoutMaker(for: spec.cutBy).make(publisherID: record.publisherID, spec: spec)
+                let files = try await cutoutMaker(for: spec.cutBy).make(publisherID: record.publisherID, spec: spec)
+                (tempURL, companions) = (files.cutout, files.companions)
                 suggestedFilename = spec.fileName
             } else {
                 (tempURL, suggestedFilename) = try await downloadService.downloadToTemp(publisherID: record.publisherID)
@@ -151,10 +153,12 @@ final class ResearchModel {
                 // Downloads rather than swallowed, but must not interrupt the
                 // cancel flow, so we don't propagate it.
                 await downloadService.deleteFileLoggingFailure(at: tempURL)
+                for companion in companions { await downloadService.deleteFileLoggingFailure(at: companion) }
                 activeDownloads.removeValue(forKey: downloadID)
                 return
             }
             let finalURL = saveResult.url
+            let companionNote = placeCompanions(companions, beside: finalURL)
 
             // Step 3: Get file size and store metadata (with the security-
             // scoped bookmark we captured during the save panel session).
@@ -166,7 +170,7 @@ final class ResearchModel {
 
             let stored = observationStore.save(observation)
             if selectedObservation?.recordKey == stored.recordKey { selectedObservation = stored }
-            lastSuccess = String(localized: "Saved: \(suggestedFilename)")
+            lastSuccess = String(localized: "Saved: \(suggestedFilename)") + (companionNote.map { " — \($0)" } ?? "")
 
             // Clean up active download indicator
             scheduleStatusDismiss(after: 2) { [weak self] in
@@ -210,7 +214,8 @@ final class ResearchModel {
     /// this computer first — and, when CADC can cut none, why.
     func cutoutSources(publisherID: String) async -> (sources: [any CutoutSource], problems: [String]) {
         let options = await cutoutService.options(publisherID: publisherID)
-        return (CutoutSources.combine(local: localFile(publisherID: publisherID), soda: options.sources), options.problems)
+        return (CutoutSources.combine(local: localFile(publisherID: publisherID), soda: options.sources, artifacts: options.artifacts),
+                options.problems)
     }
 
     /// Cut part of `details`' file on CADC's side and keep it in Research as
@@ -221,6 +226,20 @@ final class ResearchModel {
         record.cutout = spec
         record.agentAttribution = nil
         await download(record)
+    }
+
+    /// A cutout's companions, beside it — or in Downloads when the sandbox
+    /// grants only the file the person chose. Says where they went when
+    /// that is not beside it.
+    private func placeCompanions(_ companions: [URL], beside cutout: URL) -> String? {
+        var elsewhere: [String] = []
+        for companion in companions {
+            let name = companion.lastPathComponent
+            if (try? DownloadsFolder.move(companion, named: name, into: cutout.deletingLastPathComponent())) == nil {
+                if let placed = try? DownloadsFolder.move(companion, named: name) { elsewhere.append(placed.lastPathComponent) }
+            }
+        }
+        return elsewhere.isEmpty ? nil : String(localized: "\(elsewhere.joined(separator: ", ")) saved in Downloads")
     }
 
     /// Keep an observation from Search in Research without its file.

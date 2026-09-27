@@ -28,14 +28,16 @@ final class FITSCutterTests: XCTestCase {
     /// A 16-bit image, value y*100 + x (scaled by BZERO 1000), with a TAN WCS
     /// at 1″ a pixel whose reference pixel is `crpix`, looking at (ra, dec).
     private func image(width: Int, height: Int, ra: Double, dec: Double, crpix: (Double, Double),
-                       first: [String], extra: [String] = []) -> Data {
+                       first: [String], extra: [String] = [], pcAndCdelt: Bool = false) -> Data {
         var cards = first + [card("BITPIX", "16"), card("NAXIS", "2"), card("NAXIS1", "\(width)"), card("NAXIS2", "\(height)")]
         if first.first?.hasPrefix("XTENSION") == true { cards += [card("PCOUNT", "0"), card("GCOUNT", "1")] }
         cards += extra + [card("BZERO", "1000.0"), card("BSCALE", "1.0"),
                           card("CTYPE1", "'RA---TAN'"), card("CTYPE2", "'DEC--TAN'"),
                           card("CRVAL1", "\(ra)"), card("CRVAL2", "\(dec)"),
-                          card("CRPIX1", "\(crpix.0)"), card("CRPIX2", "\(crpix.1)"),
-                          card("CD1_1", "-0.000277777778"), card("CD2_2", "0.000277777778")]
+                          card("CRPIX1", "\(crpix.0)"), card("CRPIX2", "\(crpix.1)")]
+            + (pcAndCdelt
+               ? [card("PC1_1", "1.0"), card("PC2_2", "1.0"), card("CDELT1", "-0.000277777778"), card("CDELT2", "0.000277777778")]
+               : [card("CD1_1", "-0.000277777778"), card("CD2_2", "0.000277777778")])
         var data = Data()
         for y in 0..<height {
             for x in 0..<width {
@@ -282,5 +284,42 @@ final class FITSCutterTests: XCTestCase {
         let before = try XCTUnwrap(hdu.wcs).worldToPixel(ra: 150.0002, dec: 2.0001)!
         let after = try XCTUnwrap(image.wcs).worldToPixel(ra: 150.0002, dec: 2.0001)!
         XCTAssertEqual(after.x, before.x - Double(box2.x0), accuracy: 1e-9)
+    }
+
+    // MARK: - Companions
+
+    /// The same grid written with PC and CDELT instead of CD is the same grid;
+    /// a reference pixel half a pixel off is not.
+    func testACompanionMustLieOnTheSamePixels() throws {
+        let file = try FITSParser.parse(from: single())
+        let pcForm = try FITSParser.parse(from: image(width: 40, height: 30, ra: 150, dec: 2, crpix: (20.5, 15.5),
+                                                      first: [card("SIMPLE", "T")], pcAndCdelt: true))
+        XCTAssertTrue(String(decoding: image(width: 1, height: 1, ra: 0, dec: 0, crpix: (1, 1), first: [card("SIMPLE", "T")],
+                                             pcAndCdelt: true), as: UTF8.self).contains("CDELT1"))
+        XCTAssertTrue(FITSCutter.sameGrid(file.hdus[0], pcForm.hdus[0]))
+        let shifted = try FITSParser.parse(from: image(width: 40, height: 30, ra: 150, dec: 2, crpix: (21.0, 15.5),
+                                                       first: [card("SIMPLE", "T")]))
+        XCTAssertFalse(FITSCutter.sameGrid(file.hdus[0], shifted.hdus[0]))
+        let smaller = try FITSParser.parse(from: image(width: 39, height: 30, ra: 150, dec: 2, crpix: (20.5, 15.5),
+                                                       first: [card("SIMPLE", "T")]))
+        XCTAssertFalse(FITSCutter.sameGrid(file.hdus[0], smaller.hdus[0]))
+
+        XCTAssertEqual(try FITSCutter.companionImages(of: file, in: pcForm).get(), [0: 0])
+        XCTAssertEqual(FITSCutter.companionImages(of: file, in: shifted), .failure(.otherGrid("0")))
+
+        let mosaic = try FITSParser.parse(from: mef())
+        XCTAssertEqual(try FITSCutter.companionImages(of: mosaic, in: mosaic).get(), [1: 1, 2: 2], "image by image")
+        let parts = try FITSCutter.plan(mosaic, region: .circle(ra: 150, dec: 2, radius: 3.0 / 3600))
+        XCTAssertEqual(FITSCutter.companionParts(parts, images: [1: 1, 2: 2], in: mosaic).map(\.box), parts.map(\.box))
+    }
+
+    func testTheRulesKnowWhatCanBeCutAlong() {
+        let file = SodaDescriptor(accessURL: "https://x", artifactID: "a", parameters: ["CIRCLE"],
+                                  footprint: .circle(ra: 10, dec: 10, radius: 1))
+        let spec = CutoutSpec(artifactID: "a", region: .circle(ra: 10, dec: 10, radius: 0.1), companions: ["cadc:X/a.weight.fits"])
+        XCTAssertEqual(CutoutRules.check(spec, against: file).errors, [.noCompanions])
+        XCTAssertEqual(spec.key, CutoutSpec(artifactID: "a", region: .circle(ra: 10, dec: 10, radius: 0.1)).key,
+                       "a companion does not make it another cutout")
+        XCTAssertTrue(spec.summary.hasSuffix("+ a.weight.fits"))
     }
 }

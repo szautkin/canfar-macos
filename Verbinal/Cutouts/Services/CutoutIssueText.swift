@@ -41,6 +41,12 @@ extension CutoutIssue {
             return String(localized: "This way of cutting cannot choose among the file's images; it keeps every image the region falls on.")
         case .unreadable(let why):
             return String(localized: "The file on this computer could not be read: \(why)")
+        case .noCompanions:
+            return String(localized: "None of the observation's other files can be cut with this one: a cut on this computer takes those beside the file, on the same pixels.")
+        case .companionUnknown(let name):
+            return String(localized: "\(name) is not beside this file on this computer, so it cannot be cut with it.")
+        case .companionUnavailable(let name, let why):
+            return String(localized: "\(name) cannot be cut with this file: \(why)")
         }
     }
 }

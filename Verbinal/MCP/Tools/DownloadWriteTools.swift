@@ -181,20 +181,6 @@ struct DownloadObservationsBulkTool: JSONWriteTool {
 
 // MARK: - Appliers
 
-/// Resolves the user's Downloads directory for the running app sandbox.
-private func userDownloadsDirectory() -> URL {
-    if let url = try? FileManager.default.url(
-        for: .downloadsDirectory, in: .userDomainMask,
-        appropriateFor: nil, create: true
-    ) {
-        return url
-    }
-    return FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Downloads", isDirectory: true)
-}
-
-/// Move a temp file into the user's Downloads, deduplicating against
-/// any existing same-named file. Returns the final URL.
 /// A downloaded temporary file moved into Downloads, ready to be a
 /// Research record's file: its path, its size, and a security-scoped
 /// bookmark so a sandboxed relaunch can reopen it. The temporary file is
@@ -203,29 +189,13 @@ func placeInDownloads(tempURL: URL, suggestedFilename: String,
                       downloadService: DownloadService) async throws -> (localPath: String, size: Int64?, bookmark: Data?) {
     let finalURL: URL
     do {
-        finalURL = try moveIntoDownloads(tempURL: tempURL, suggestedFilename: suggestedFilename)
+        finalURL = try DownloadsFolder.move(tempURL, named: suggestedFilename)
     } catch {
         try? await downloadService.deleteFile(at: tempURL)
         throw ProposalApplyError.backendError("move into Downloads failed: \(error.localizedDescription)")
     }
     let bookmark = try? finalURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
     return (LocalFolderAccessStore.userFacingPath(for: finalURL), await downloadService.fileSize(at: finalURL), bookmark)
-}
-
-private func moveIntoDownloads(tempURL: URL, suggestedFilename: String) throws -> URL {
-    let dir = userDownloadsDirectory()
-    var target = dir.appendingPathComponent(suggestedFilename)
-    let fm = FileManager.default
-    if fm.fileExists(atPath: target.path) {
-        let base = (suggestedFilename as NSString).deletingPathExtension
-        let ext = (suggestedFilename as NSString).pathExtension
-        let stamp = ISO8601DateFormatter().string(from: Date())
-            .replacingOccurrences(of: ":", with: "")
-        let unique = ext.isEmpty ? "\(base)-\(stamp)" : "\(base)-\(stamp).\(ext)"
-        target = dir.appendingPathComponent(unique)
-    }
-    try fm.moveItem(at: tempURL, to: target)
-    return target
 }
 
 private let downloadLogger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "downloads")

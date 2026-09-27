@@ -23,6 +23,12 @@ public enum CutoutIssue: Equatable, Hashable, Sendable {
     case noImageChoice
     /// A local cut: the file on this computer could not be read.
     case unreadable(String)
+    /// No other file of the observation can be cut with this one.
+    case noCompanions
+    /// That file is not beside this one to be cut with it.
+    case companionUnknown(String)
+    /// That file cannot be cut with this one, and why.
+    case companionUnavailable(String, why: String)
 
     /// English — what an agent is told; the app has its own translation.
     public var message: String {
@@ -53,6 +59,9 @@ public enum CutoutIssue: Equatable, Hashable, Sendable {
         case .unknownImage(let name, let available): return "This file has no image \(name); it has \(available.joined(separator: ", "))."
         case .noImageChoice: return "This way of cutting cannot choose among the file's images; it keeps every image the region falls on."
         case .unreadable(let why): return "The file on this computer could not be read: \(why)"
+        case .noCompanions: return "None of the observation's other files can be cut with this one: a cut on this computer takes those beside the file, on the same pixels."
+        case .companionUnknown(let name): return "\(name) is not beside this file on this computer, so it cannot be cut with it."
+        case .companionUnavailable(let name, let why): return "\(name) cannot be cut with this file: \(why)"
         }
     }
 }
@@ -90,6 +99,19 @@ public enum CutoutRules {
                           (.noTime, .timeOrder, .timeOutside, .timePartial), &errors, &warnings)
         }
         if !spec.extensions.isEmpty && file.images.isEmpty { errors.append(.noImageChoice) }
+        if !spec.companions.isEmpty {
+            if file.companions.isEmpty {
+                errors.append(.noCompanions)
+            } else {
+                for id in Array(Set(spec.companions)).sorted() {
+                    if let companion = file.companions.first(where: { $0.artifactID == id }) {
+                        if let why = companion.unavailable { errors.append(.companionUnavailable(companion.fileName, why: why)) }
+                    } else {
+                        errors.append(.companionUnknown(CutoutSpec.artifactFileName(id)))
+                    }
+                }
+            }
+        }
         if !spec.pol.isEmpty {
             if !file.supports("POL") {
                 errors.append(.noPol)
