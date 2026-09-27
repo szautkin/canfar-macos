@@ -7,7 +7,10 @@
 import Foundation
 import VerbinalKit
 
-/// Metadata for a downloaded observation file stored locally.
+/// An observation kept in Research: its details, and its file on this
+/// computer when it has one. A record may have no file — saved to read
+/// about later, or its file removed to free space — and Download brings
+/// the file back to the same record.
 struct DownloadedObservation: Codable, Identifiable, Equatable {
     var id: UUID = UUID()
     var publisherID: String
@@ -20,7 +23,9 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     var dec: String
     var startDate: String
     var calLevel: String
-    var localPath: String          // relative to downloads directory
+    /// The file, relative to Downloads or absolute; empty when Research
+    /// keeps the observation without one (`isDownloaded`).
+    var localPath: String
     var fileSize: Int64?
     var downloadedAt: Date = Date()
     var thumbnailURL: String?
@@ -63,11 +68,27 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
         )
     }
 
-    /// Full local file URL. Prefers a sandbox-readable candidate
-    /// (tilde expansion, container ↔ user-facing Downloads) so FITS
-    /// tools and the research archive agree on whether the file is there.
-    var localURL: URL {
-        resolvedReadableURL ?? URL(fileURLWithPath: expandedLocalPath)
+    /// Research keeps a file for this observation (it may still be
+    /// missing from disk — see `fileExists`).
+    var isDownloaded: Bool { !localPath.isEmpty }
+
+    /// Full local file URL; nil when there is no file. Prefers a
+    /// sandbox-readable candidate (tilde expansion, container ↔
+    /// user-facing Downloads) so FITS tools and the research archive agree
+    /// on whether the file is there. Never the empty path, which is the
+    /// working directory.
+    var localURL: URL? {
+        guard isDownloaded else { return nil }
+        return resolvedReadableURL ?? URL(fileURLWithPath: expandedLocalPath)
+    }
+
+    /// The same observation without its file.
+    func withoutFile() -> DownloadedObservation {
+        var record = self
+        record.localPath = ""
+        record.fileSize = nil
+        record.bookmarkData = nil
+        return record
     }
 
     /// Whether the local file still exists on disk — including the
@@ -81,6 +102,7 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// sandbox/tilde candidates exist. Bookmark resolution is separate
     /// (FITS tools try the bookmark even when this is nil).
     var resolvedReadableURL: URL? {
+        guard isDownloaded else { return nil }
         #if os(macOS)
         return LocalFolderAccessStore.readableURL(for: localPath, directory: false)
         #else
@@ -100,8 +122,8 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
         #endif
     }
 
-    /// Display filename extracted from the local path.
+    /// Display filename extracted from the local path; empty without a file.
     var filename: String {
-        localURL.lastPathComponent
+        localURL?.lastPathComponent ?? ""
     }
 }

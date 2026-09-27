@@ -433,8 +433,10 @@ struct UploadToVOSpaceApplier: ProposalApplier {
             } catch {
                 throw ProposalApplyError.backendError("bookmark resolution: \(error.localizedDescription)")
             }
+        } else if let fileURL = obs.localURL {
+            url = fileURL
         } else {
-            url = obs.localURL
+            throw ProposalApplyError.backendError("observation \(obs.id) has no file on this computer — download it first")
         }
         defer { if didStart { url.stopAccessingSecurityScopedResource() } }
         do {

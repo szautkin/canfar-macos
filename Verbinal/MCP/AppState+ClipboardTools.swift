@@ -20,9 +20,7 @@ extension AppState {
                     text = given
                 } else if let pid = args.publisherId?.trimmingCharacters(in: .whitespaces) {
                     let results = self.searchModel.resultsModel
-                    guard let row = results.results.first(where: {
-                        results.columns.value(in: $0, forID: "publisherid") == pid
-                    }) else {
+                    guard let row = results.result(publisherID: pid) else {
                         throw ToolFailureReason.unknownTarget("\(pid) is not among the current search results")
                     }
                     text = results.facts(for: row).detailsText

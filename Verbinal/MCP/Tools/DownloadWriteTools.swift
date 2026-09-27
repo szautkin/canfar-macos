@@ -50,7 +50,7 @@ struct DownloadObservationTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_observation",
-        description: "Download a single observation FITS to the user's Downloads folder. Uses DataLink #this when available; falls back to `/caom2ops/pkg`. Requires CADC sign-in for proprietary collections (NEOSSAT, embargoed JWST, …). Synchronous with a 10-min applier deadline. Returns the new `downloaded_observation_id` (UUID) you pass to `get_fits_header`/`get_fits_wcs`/`open_fits_file`/`upload_to_vospace`/`delete_downloaded_observation`.",
+        description: "Download a single observation FITS to the user's Downloads folder. Uses DataLink #this when available; falls back to `/caom2ops/pkg`. Requires CADC sign-in for proprietary collections (NEOSSAT, embargoed JWST, …). Synchronous with a 10-min applier deadline. Returns the `downloaded_observation_id` (UUID) — an observation already in Research (kept without its file, or downloaded before) keeps its id — which you pass to `get_fits_header`/`get_fits_wcs`/`open_fits_file`/`upload_to_vospace`/`delete_downloaded_observation`.",
         schema: #"""
         {
           "type": "object",
@@ -302,11 +302,11 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
             bookmarkData: bookmark,
             agentAttribution: attribution
         )
-        await MainActor.run {
-            observationStore.save(observation)
-        }
+        // Into Research's record of the observation when it has one (kept
+        // without its file, or downloaded before): the id stays the same.
+        let stored = await MainActor.run { observationStore.save(observation) }
         downloadLogger.notice("agent download applied: \(payload.publisherID, privacy: .public)")
-        return observation.id
+        return stored.id
     }
 }
 
@@ -415,9 +415,9 @@ struct DeleteDownloadedObservationApplier: ProposalApplier {
         guard let observation else {
             throw ProposalApplyError.backendError("downloaded_observation not found: \(id)")
         }
-        if payload.deleteFile, observation.fileExists {
+        if payload.deleteFile, let url = observation.resolvedReadableURL {
             do {
-                try await downloadService.deleteFile(at: observation.localURL)
+                try await downloadService.deleteFile(at: url)
             } catch {
                 throw ProposalApplyError.backendError("file delete failed: \(error.localizedDescription)")
             }

@@ -119,8 +119,12 @@ struct DownloadedFilesView: View {
                                     .tag(obs.id)
                                     .contextMenu {
                                         #if os(macOS)
-                                        Button("Open File") { model.openFile(obs) }
-                                        Button("Reveal in Finder") { model.revealInFinder(obs) }
+                                        if obs.isDownloaded {
+                                            Button("Open File") { model.openFile(obs) }
+                                            Button("Reveal in Finder") { model.revealInFinder(obs) }
+                                        } else {
+                                            Button("Download") { Task { await model.download(obs) } }
+                                        }
                                         #endif
                                         Button("Copy Details") { PlatformClipboard.copy(obs.facts.detailsText) }
                                         Divider()
@@ -311,7 +315,13 @@ struct DownloadedFilesView: View {
 
             Spacer()
 
-            if let size = obs.fileSize {
+            if !obs.isDownloaded {
+                Image(systemName: "arrow.down.circle.dotted")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .help("Not downloaded")
+                    .accessibilityLabel(Text("Not downloaded"))
+            } else if let size = obs.fileSize {
                 Text(SharedFormatters.bytes(size))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)

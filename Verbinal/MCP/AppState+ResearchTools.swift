@@ -37,6 +37,57 @@ extension AppState {
         })
     }
 
+    // MARK: - Records without their file
+
+    func makeShowResearchObservationTool() -> LiveActionTool<ResearchActions.ShowArgs> {
+        ResearchActions.show { [weak self] args in
+            guard let self else { return "App state unavailable" }
+            return await MainActor.run {
+                guard let record = self.researchModel.observationStore.record(identifiedBy: args.id) else {
+                    return "no observation \"\(args.id)\" in Research — list_downloaded_observations gives the ids"
+                }
+                self.researchModel.selectedObservation = record
+                self.navigateTo(.research)
+                self.agentsService.activityStore.append(.live(
+                    kind: "show_research_observation",
+                    summary: "Showed \(record.targetName.isEmpty ? record.observationID : record.targetName) in Research",
+                    origin: .external(clientID: "show_research_observation")))
+                return nil
+            }
+        }
+    }
+
+    /// Keeping an observation without its file, and removing a file while
+    /// keeping the observation.
+    func makeResearchRecordAppliers(activity: AgentActivityStore) -> [any ProposalApplier] {
+        [
+            SaveObservationToResearchApplier(save: { [weak self] payload, attribution in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                return await MainActor.run {
+                    // The search row has the fullest details, when it is there.
+                    let results = self.searchModel.resultsModel
+                    var record = results.result(publisherID: payload.publisherId).map {
+                        DownloadedObservation.from(result: $0, columns: results.columns, localPath: "")
+                    } ?? SaveObservationToResearchTool.record(from: payload)
+                    record.agentAttribution = attribution
+                    let kept = self.researchModel.observationStore.keep(record)
+                    return (kept.record.id, kept.added)
+                }
+            }, activity: activity),
+            RemoveDownloadedFileApplier(remove: { [weak self] id in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                let record = await MainActor.run { self.researchModel.observationStore.record(identifiedBy: id) }
+                guard let record else {
+                    throw ProposalApplyError.backendError("no observation \"\(id)\" in Research")
+                }
+                guard record.isDownloaded else {
+                    throw ProposalApplyError.backendError("\(id) has no file on this computer — nothing to remove")
+                }
+                try await self.researchModel.removeFile(record)
+            }, activity: activity),
+        ]
+    }
+
     private nonisolated static func flatten(_ obs: DownloadedObservation) -> DownloadedObservationOut {
         DownloadedObservationOut(
             id: obs.id.uuidString,

@@ -31,6 +31,12 @@ final class SearchResultsModel {
 
     /// All loaded rows, in server order.
     private(set) var results: [SearchResult] = []
+
+    /// The loaded row of an observation, by its publisher ID.
+    func result(publisherID: String) -> SearchResult? {
+        let wanted = publisherID.trimmingCharacters(in: .whitespacesAndNewlines)
+        return results.first { columns.value(in: $0, forID: "publisherid") == wanted }
+    }
     /// Column metadata — owns id→index lookup and visibility.
     var columns: SearchResultColumns = SearchResultColumns()
     /// User-selected display unit per column (only meaningful for multi-unit

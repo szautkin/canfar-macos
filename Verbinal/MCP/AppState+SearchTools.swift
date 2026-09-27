@@ -1118,10 +1118,7 @@ extension AppState {
             guard let self else { return "App state unavailable" }
             let wanted = args.publisherId.trimmingCharacters(in: .whitespaces)
             return await MainActor.run {
-                let results = self.searchModel.resultsModel
-                guard let row = results.results.first(where: {
-                    results.columns.value(in: $0, forID: "publisherid") == wanted
-                }) else {
+                guard let row = self.searchModel.resultsModel.result(publisherID: wanted) else {
                     return "\(wanted) is not among the current search results — search for it first (set_search_form with its observationID), then call this again"
                 }
                 return self.openObservationDetail(rowID: row.id, via: "show_observation_detail")

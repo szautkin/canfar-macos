@@ -3374,6 +3374,16 @@
         }
       }
     },
+    "Could not remove the file: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de supprimer le fichier : %@"
+          }
+        }
+      }
+    },
     "Could not save the figure: %@" : {
       "localizations" : {
         "fr" : {
@@ -3992,6 +4002,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer la liste d'images en cache ; la prochaine ouverture la récupérera à nouveau"
+          }
+        }
+      }
+    },
+    "Delete the file from this computer and keep the observation and its notes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le fichier de cet ordinateur et garder l'observation et ses notes"
           }
         }
       }
@@ -5567,6 +5587,16 @@
         }
       }
     },
+    "Fetch this observation's file from CADC" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Récupérer le fichier de cette observation depuis le CADC"
+          }
+        }
+      }
+    },
     "Field of view" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5579,7 +5609,6 @@
       }
     },
     "File" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6542,6 +6571,16 @@
     "images.canfar.net" : {
       "shouldTranslate" : false
     },
+    "In Research" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans Recherche"
+          }
+        }
+      }
+    },
     "Include downloaded files" : {
       "localizations" : {
         "fr" : {
@@ -6923,6 +6962,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Garder le libellé"
+          }
+        }
+      }
+    },
+    "Keep this observation in Research without downloading its file — for notes, and to download later" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder cette observation dans Recherche sans télécharger son fichier — pour les notes, et pour la télécharger plus tard"
           }
         }
       }
@@ -8579,6 +8628,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nord en haut"
+          }
+        }
+      }
+    },
+    "Not downloaded" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non téléchargé"
           }
         }
       }
@@ -10693,6 +10752,26 @@
         }
       }
     },
+    "Remove File" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le fichier"
+          }
+        }
+      }
+    },
+    "Remove File…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le fichier…"
+          }
+        }
+      }
+    },
     "Remove filter %@ %@" : {
       "localizations" : {
         "fr" : {
@@ -10709,6 +10788,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer le secret"
+          }
+        }
+      }
+    },
+    "Remove the file of \"%@\"?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le fichier de « %@ » ?"
           }
         }
       }
@@ -11573,8 +11662,17 @@
         }
       }
     },
+    "Save to Research" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer dans Recherche"
+          }
+        }
+      }
+    },
     "Saved" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -13428,6 +13526,16 @@
         }
       }
     },
+    "The file is deleted from this computer. The observation, its details and notes stay in Research, and Download fetches the file again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier est supprimé de cet ordinateur. L'observation, ses détails et ses notes restent dans Recherche, et Télécharger récupère de nouveau le fichier."
+          }
+        }
+      }
+    },
     "The loop" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13609,6 +13717,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Les métadonnées complètes de cette observation nécessitent une connexion au CADC."
+          }
+        }
+      }
+    },
+    "This removes the observation and its place in Research. Its notes are kept." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cela retire l'observation de Recherche. Ses notes sont conservées."
           }
         }
       }

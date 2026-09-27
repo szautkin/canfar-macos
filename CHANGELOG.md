@@ -102,6 +102,18 @@ Catching up with Verbinal for Windows 1.4.1 (see
   cube's marks too — on a slice, those of the channel shown; in the
   volume, where they sit — and `export_cube_figure` takes `format` and
   `marks`.
+- **Research without the file** — **Save to Research** (in an
+  observation's detail and on a search result's menu) keeps an
+  observation, its details and a place for notes, without downloading
+  it; **Download** in Research fetches the file into the same record
+  later. **Remove File…** deletes a downloaded file from this computer
+  and keeps the observation and its notes. Rows without a file say so.
+  For assistants: `save_observation_to_research`,
+  `remove_downloaded_file` (always waits for you), and
+  `show_research_observation` to show a record by its id, publisher id
+  or observation id; `list_downloaded_observations` marks records
+  without a file `downloaded: false`, and `download_observation` into a
+  record Research has keeps its id.
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across

@@ -41,15 +41,42 @@ final class ObservationStore {
         }
     }
 
-    func save(_ observation: DownloadedObservation) {
-        // Dedup by publisherID
+    /// Keeps `observation`, replacing Research's record of the same
+    /// publisher ID — as the same record (its id), so a download into a
+    /// record without a file, or a re-download, is still the record an
+    /// agent or a link knows. Returns what is stored.
+    @discardableResult
+    func save(_ observation: DownloadedObservation) -> DownloadedObservation {
+        var stored = observation
         if let idx = observations.firstIndex(where: { $0.publisherID == observation.publisherID }) {
-            observations[idx] = observation
+            stored.id = observations[idx].id
+            observations[idx] = stored
         } else {
-            observations.insert(observation, at: 0)
+            observations.insert(stored, at: 0)
         }
         persistence.write(observations)
-        spotlight?.index(observation)
+        spotlight?.index(stored)
+        return stored
+    }
+
+    /// Keeps an observation without its file. One Research already has is
+    /// left as it is. Returns the record, and whether it is new.
+    func keep(_ observation: DownloadedObservation) -> (record: DownloadedObservation, added: Bool) {
+        if let existing = observations.first(where: { $0.publisherID == observation.publisherID }) {
+            return (existing, false)
+        }
+        return (save(observation.withoutFile()), true)
+    }
+
+    /// Forgets a record's file (the caller deletes it), keeping the
+    /// observation. Nil when the id is not in Research.
+    @discardableResult
+    func forgetFile(of id: UUID) -> DownloadedObservation? {
+        guard let idx = observations.firstIndex(where: { $0.id == id }) else { return nil }
+        observations[idx] = observations[idx].withoutFile()
+        persistence.write(observations)
+        spotlight?.index(observations[idx])
+        return observations[idx]
     }
 
     func remove(_ observation: DownloadedObservation) {
@@ -105,6 +132,18 @@ final class ObservationStore {
             $0.id.uuidString.replacingOccurrences(of: "-", with: "").uppercased().hasPrefix(prefix)
         }
         return matches.count == 1 ? matches[0] : nil
+    }
+
+    /// A record by any name an agent or a person has for it: its id (or a
+    /// unique 8+ hex prefix), its publisher ID, or — when only one record
+    /// has it — its observation ID.
+    func record(identifiedBy raw: String) -> DownloadedObservation? {
+        let wanted = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !wanted.isEmpty else { return nil }
+        if let byID = observation(matching: wanted) { return byID }
+        if let byPublisher = observations.first(where: { $0.publisherID == wanted }) { return byPublisher }
+        let byObservation = observations.filter { $0.observationID == wanted }
+        return byObservation.count == 1 ? byObservation[0] : nil
     }
 
     /// Canonical UUID from hyphenated or 32-char hex form.

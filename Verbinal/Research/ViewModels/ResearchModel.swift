@@ -93,23 +93,29 @@ final class ResearchModel {
 
     // MARK: - Download
 
-    /// Download an observation: fetch to temp, let user choose save location, store metadata.
+    /// Download an observation from Search: fetch to temp, let the person
+    /// choose where it goes, keep it in Research.
     func downloadObservation(
         from result: SearchResult,
         columns: SearchResultColumns,
         dataLink: DataLinkResult?
     ) async {
-        let publisherID = columns.value(in: result, forID: "publisherid")
+        await download(DownloadedObservation.from(result: result, columns: columns, localPath: "", dataLink: dataLink))
+    }
+
+    /// Fetch `record`'s file, let the person choose where it goes, and keep
+    /// the record with it — the same record (id, notes) when Research
+    /// already has the observation, as for one kept without its file.
+    func download(_ record: DownloadedObservation) async {
         let downloadID = UUID()
-        let placeholder = DownloadedObservation.from(result: result, columns: columns, localPath: "", dataLink: dataLink)
-        activeDownloads[downloadID] = DownloadProgress(id: downloadID, observation: placeholder)
+        activeDownloads[downloadID] = DownloadProgress(id: downloadID, observation: record)
         lastError = nil
         lastSuccess = nil
 
         do {
             // Step 1: Download to temp
             let (tempURL, suggestedFilename) = try await downloadService.downloadToTemp(
-                publisherID: publisherID
+                publisherID: record.publisherID
             )
 
             activeDownloads[downloadID]?.state = .completed
@@ -134,17 +140,14 @@ final class ResearchModel {
 
             // Step 3: Get file size and store metadata (with the security-
             // scoped bookmark we captured during the save panel session).
-            let fileSize = await downloadService.fileSize(at: finalURL)
-            var observation = DownloadedObservation.from(
-                result: result,
-                columns: columns,
-                localPath: finalURL.path,
-                bookmarkData: saveResult.bookmarkData,
-                dataLink: dataLink
-            )
-            observation.fileSize = fileSize
+            var observation = record
+            observation.localPath = finalURL.path
+            observation.bookmarkData = saveResult.bookmarkData
+            observation.fileSize = await downloadService.fileSize(at: finalURL)
+            observation.downloadedAt = Date()
 
-            observationStore.save(observation)
+            let stored = observationStore.save(observation)
+            if selectedObservation?.publisherID == stored.publisherID { selectedObservation = stored }
             lastSuccess = String(localized: "Saved: \(suggestedFilename)")
 
             // Clean up active download indicator
@@ -164,6 +167,24 @@ final class ResearchModel {
         }
     }
 
+    /// Keep an observation from Search in Research without its file.
+    /// One already there is left as it is; returns whether it was added.
+    @discardableResult
+    func saveToResearch(from result: SearchResult, columns: SearchResultColumns, dataLink: DataLinkResult? = nil) -> Bool {
+        observationStore.keep(DownloadedObservation.from(result: result, columns: columns, localPath: "", dataLink: dataLink)).added
+    }
+
+    /// Delete `observation`'s file from this computer and keep the
+    /// observation — its details and notes — so Download brings it back.
+    func removeFile(_ observation: DownloadedObservation) async throws {
+        if let url = observation.resolvedReadableURL {
+            try await downloadService.deleteFile(at: url)
+        }
+        if let kept = observationStore.forgetFile(of: observation.id), selectedObservation?.id == kept.id {
+            selectedObservation = kept
+        }
+    }
+
     /// Schedule a delayed clean-up, replacing any pending dismiss so an old handle
     /// cannot wipe state that belongs to a newer download.
     private func scheduleStatusDismiss(after seconds: TimeInterval, _ body: @escaping @MainActor () -> Void) {
@@ -176,14 +197,21 @@ final class ResearchModel {
         }
     }
 
+    /// Research has this observation's file.
     func isDownloaded(publisherID: String) -> Bool {
+        observationStore.observations.contains { $0.publisherID == publisherID && $0.isDownloaded }
+    }
+
+    /// Research keeps this observation, with its file or without.
+    func isInResearch(publisherID: String) -> Bool {
         observationStore.contains(publisherID: publisherID)
     }
 
     // MARK: - File Management
 
     func deleteObservation(_ observation: DownloadedObservation) {
-        let url = URL(fileURLWithPath: observation.localPath)
+        // No file, nothing to delete — an empty path is the working directory.
+        let url = observation.isDownloaded ? URL(fileURLWithPath: observation.localPath) : nil
         // Delete the file off the main actor (DownloadService is an actor),
         // then apply the @Observable state mutations explicitly back on the
         // MainActor. The closure already inherits this model's @MainActor
@@ -194,7 +222,7 @@ final class ResearchModel {
             // The file may already be gone (handled as a no-op). Any genuine
             // deletion failure is logged under category Downloads for
             // diagnostics rather than surfaced to the user mid-delete.
-            await self?.downloadService.deleteFileLoggingFailure(at: url)
+            if let url { await self?.downloadService.deleteFileLoggingFailure(at: url) }
             guard let self else { return }
             // Remove metadata only after file deletion is attempted.
             self.observationStore.remove(observation)
@@ -206,6 +234,7 @@ final class ResearchModel {
 
     #if os(macOS)
     func revealInFinder(_ observation: DownloadedObservation) {
+        guard observation.isDownloaded else { return }
         let url = resolvedURL(for: observation) ?? URL(fileURLWithPath: observation.localPath)
         // NSWorkspace runs in Finder's process and has its own grant — no
         // start/stopAccessingSecurityScopedResource needed here.
@@ -217,6 +246,7 @@ final class ResearchModel {
         // files outside ~/Downloads after app restart. Fall back to a
         // path-only URL for legacy rows; if that fails the permission probe,
         // route through the re-grant flow.
+        guard observation.isDownloaded else { return }
         let resolved = resolvedURL(for: observation)
         let candidate = resolved ?? URL(fileURLWithPath: observation.localPath)
 

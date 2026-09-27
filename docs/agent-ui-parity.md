@@ -171,6 +171,10 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Settings ▸ Endpoints (effective URLs) | `get_endpoints` | read |
 | Settings ▸ AI Compute | `get_compute_config` | read |
 | Research module (downloads, notes, open in viewer, export) | pre-existing batch | mixed |
+| Save to Research (Search detail, row menu) — no file | `save_observation_to_research` | write |
+| Remove File… (Research detail) — keep the observation | `remove_downloaded_file` (always waits for approval) | write |
+| Download a record kept without its file (Research detail, row menu) | `download_observation` (same record, same id) | write |
+| Select a record, detail open | `show_research_observation` | live |
 | AI Guide content (overrides, guides) | pre-existing batch | mixed |
 
 ## Workflows

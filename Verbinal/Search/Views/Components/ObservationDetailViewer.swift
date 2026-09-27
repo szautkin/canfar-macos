@@ -163,6 +163,18 @@ struct ObservationDetailViewer: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
                     .disabled(isDownloading)
+
+                    let inResearch = research.isInResearch(publisherID: model.publisherID)
+                    Button {
+                        research.saveToResearch(from: model.result, columns: model.columns, dataLink: dataLink)
+                    } label: {
+                        Label(inResearch ? String(localized: "In Research") : String(localized: "Save to Research"),
+                              systemImage: inResearch ? "checkmark.circle" : "tray.and.arrow.down")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(inResearch)
+                    .help("Keep this observation in Research without downloading its file — for notes, and to download later")
                 } else if let url = TAPClient.downloadURL(publisherID: model.publisherID) {
                     Button {
                         openURL(url)

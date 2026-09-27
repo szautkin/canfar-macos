@@ -414,6 +414,12 @@ struct SearchResultsView: View {
         if !pid.isEmpty, let url = TAPClient.downloadURL(publisherID: pid) {
             Button("Download File…") { openURL(url) }
         }
+        if !pid.isEmpty, let researchModel {
+            Button("Save to Research") {
+                researchModel.saveToResearch(from: result, columns: resultsModel.columns)
+            }
+            .disabled(researchModel.isInResearch(publisherID: pid))
+        }
         Divider()
         Button("Copy Details") { PlatformClipboard.copy(resultsModel.facts(for: result).detailsText) }
         Button("Copy Row") { PlatformClipboard.copy(resultsModel.tabSeparated([result], columns: columns)) }

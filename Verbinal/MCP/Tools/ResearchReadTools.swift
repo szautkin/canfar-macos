@@ -27,16 +27,34 @@ struct ListDownloadedObservationsTool: JSONReadTool {
             let instrument: String
             let filter: String
             let calLevel: String
+            /// Research keeps a file for it; false for one kept without.
+            let downloaded: Bool
             let localPath: String
             let fileExists: Bool
             let fileSize: Int64?
             let downloadedAtISO: String
+
+            init(_ obs: DownloadedObservationOut) {
+                id = obs.id
+                publisherID = obs.publisherID
+                collection = obs.collection
+                observationID = obs.observationID
+                targetName = obs.targetName
+                instrument = obs.instrument
+                filter = obs.filter
+                calLevel = obs.calLevel
+                downloaded = !obs.localPath.isEmpty
+                localPath = obs.localPath
+                fileExists = obs.fileExists
+                fileSize = obs.fileSize
+                downloadedAtISO = SharedFormatters.iso8601.string(from: obs.downloadedAt)
+            }
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_downloaded_observations",
-        description: "List observations the user has downloaded locally. Optional filter by collection (e.g. 'JWST').",
+        description: "List the observations kept in Research — downloaded, or kept without their file (`downloaded: false`; save_observation_to_research, remove_downloaded_file). Optional filter by collection (e.g. 'JWST').",
         schema: #"""
         {
           "type": "object",
@@ -51,8 +69,6 @@ struct ListDownloadedObservationsTool: JSONReadTool {
     let snapshot: @Sendable () async -> [DownloadedObservationOut]
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime]
         let all = await snapshot()
         let filtered: [DownloadedObservationOut]
         if let collection = args.collection?.trimmingCharacters(in: .whitespaces),
@@ -61,22 +77,7 @@ struct ListDownloadedObservationsTool: JSONReadTool {
         } else {
             filtered = all
         }
-        return Output(entries: filtered.map { obs in
-            Output.Entry(
-                id: obs.id,
-                publisherID: obs.publisherID,
-                collection: obs.collection,
-                observationID: obs.observationID,
-                targetName: obs.targetName,
-                instrument: obs.instrument,
-                filter: obs.filter,
-                calLevel: obs.calLevel,
-                localPath: obs.localPath,
-                fileExists: obs.fileExists,
-                fileSize: obs.fileSize,
-                downloadedAtISO: iso.string(from: obs.downloadedAt)
-            )
-        })
+        return Output(entries: filtered.map(Output.Entry.init))
     }
 }
 
@@ -109,22 +110,7 @@ struct GetDownloadedObservationTool: JSONReadTool {
         guard let obs = await lookup(args.id) else {
             throw ToolFailureReason.observationNotFound(id: args.id, localPath: nil)
         }
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime]
-        return Output(
-            id: obs.id,
-            publisherID: obs.publisherID,
-            collection: obs.collection,
-            observationID: obs.observationID,
-            targetName: obs.targetName,
-            instrument: obs.instrument,
-            filter: obs.filter,
-            calLevel: obs.calLevel,
-            localPath: obs.localPath,
-            fileExists: obs.fileExists,
-            fileSize: obs.fileSize,
-            downloadedAtISO: iso.string(from: obs.downloadedAt)
-        )
+        return Output(obs)
     }
 }
 

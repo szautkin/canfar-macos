@@ -11,9 +11,16 @@ struct ObservationDetailView: View {
     var model: ResearchModel
     @Environment(\.openURL) private var openURL
     @State private var showDeleteConfirm = false
+    @State private var showRemoveFileConfirm = false
+    /// Why removing the file failed.
+    @State private var fileProblem: String?
     /// True when the downloaded FITS file is a spectral cube, so the Open
     /// button can name the Cube Viewer the router will actually pick.
     @State private var isCube = false
+
+    private var title: String {
+        observation.targetName.isEmpty ? observation.observationID : observation.targetName
+    }
 
     var body: some View {
         ScrollView {
@@ -43,7 +50,7 @@ struct ObservationDetailView: View {
 
                 // Title
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(observation.targetName.isEmpty ? observation.observationID : observation.targetName)
+                    Text(title)
                         .font(.title2.bold())
                     Text("\(observation.collection) \u{2014} \(observation.observationID)")
                         .font(.subheadline)
@@ -53,42 +60,51 @@ struct ObservationDetailView: View {
                 // Actions
                 HStack(spacing: 12) {
                     #if os(macOS)
-                    Button {
-                        model.openFile(observation)
-                    } label: {
-                        let ext = observation.localURL.pathExtension.lowercased()
-                        if FileHelper.isFITS(ext) {
-                            if isCube {
-                                Label("Open in Cube Viewer", systemImage: "cube")
+                    if let fileURL = observation.localURL {
+                        Button {
+                            model.openFile(observation)
+                        } label: {
+                            if FileHelper.isFITS(fileURL.pathExtension.lowercased()) {
+                                if isCube {
+                                    Label("Open in Cube Viewer", systemImage: "cube")
+                                } else {
+                                    Label("Open in FITS Viewer", systemImage: "star.circle")
+                                }
                             } else {
-                                Label("Open in FITS Viewer", systemImage: "star.circle")
+                                Label("Open File", systemImage: "doc")
                             }
-                        } else {
-                            Label("Open File", systemImage: "doc")
                         }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .disabled(!observation.fileExists)
-                    .keyboardShortcut("o")
-                    .task(id: observation.localURL) {
-                        // Name the viewer the router will pick (same header sniff).
-                        guard observation.fileExists,
-                              FileHelper.isFITS(observation.localURL.pathExtension.lowercased()) else {
-                            isCube = false
-                            return
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .disabled(!observation.fileExists)
+                        .keyboardShortcut("o")
+                        .task(id: fileURL) {
+                            // Name the viewer the router will pick (same header sniff).
+                            guard observation.fileExists, FileHelper.isFITS(fileURL.pathExtension.lowercased()) else {
+                                isCube = false
+                                return
+                            }
+                            isCube = await AppState.fitsIsCube(fileURL)
                         }
-                        isCube = await AppState.fitsIsCube(observation.localURL)
-                    }
 
-                    Button {
-                        model.revealInFinder(observation)
-                    } label: {
-                        Label("Reveal in Finder", systemImage: "folder")
+                        Button {
+                            model.revealInFinder(observation)
+                        } label: {
+                            Label("Reveal in Finder", systemImage: "folder")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .keyboardShortcut("r", modifiers: [.command, .shift])
+                    } else {
+                        Button {
+                            Task { await model.download(observation) }
+                        } label: {
+                            Label("Download", systemImage: "arrow.down.circle")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .help("Fetch this observation's file from CADC")
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .keyboardShortcut("r", modifiers: [.command, .shift])
                     #endif
 
                     if let url = TAPClient.detailURL(publisherID: observation.publisherID) {
@@ -112,6 +128,28 @@ struct ObservationDetailView: View {
 
                     Spacer()
 
+                    if observation.isDownloaded {
+                        Button {
+                            showRemoveFileConfirm = true
+                        } label: {
+                            Label("Remove File…", systemImage: "doc.badge.minus")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("Delete the file from this computer and keep the observation and its notes")
+                        .confirmationDialog("Remove the file of \"\(title)\"?", isPresented: $showRemoveFileConfirm) {
+                            Button("Remove File", role: .destructive) {
+                                Task {
+                                    do { try await model.removeFile(observation) } catch {
+                                        fileProblem = String(localized: "Could not remove the file: \(error.localizedDescription)")
+                                    }
+                                }
+                            }
+                        } message: {
+                            Text("The file is deleted from this computer. The observation, its details and notes stay in Research, and Download fetches the file again.")
+                        }
+                    }
+
                     Button(role: .destructive) {
                         showDeleteConfirm = true
                     } label: {
@@ -121,15 +159,23 @@ struct ObservationDetailView: View {
                     .controlSize(.small)
                     .keyboardShortcut(.delete)
                     .confirmationDialog(
-                        "Delete \"\(observation.targetName.isEmpty ? observation.observationID : observation.targetName)\"?",
+                        "Delete \"\(title)\"?",
                         isPresented: $showDeleteConfirm
                     ) {
                         Button("Delete", role: .destructive) {
                             model.deleteObservation(observation)
                         }
                     } message: {
-                        Text("This will remove the file from disk. This cannot be undone.")
+                        if observation.isDownloaded {
+                            Text("This will remove the file from disk. This cannot be undone.")
+                        } else {
+                            Text("This removes the observation and its place in Research. Its notes are kept.")
+                        }
                     }
+                }
+
+                if let fileProblem {
+                    Text(fileProblem).font(.caption).foregroundStyle(.red)
                 }
 
                 Divider()
@@ -154,12 +200,17 @@ struct ObservationDetailView: View {
                     Text("File Info")
                         .font(.subheadline.bold())
 
-                    metadataRow("Path", observation.localURL.path)
-                    if let size = observation.fileSize {
-                        metadataRow("Size", SharedFormatters.bytes(size))
+                    if let fileURL = observation.localURL {
+                        metadataRow("Path", fileURL.path)
+                        if let size = observation.fileSize {
+                            metadataRow("Size", SharedFormatters.bytes(size))
+                        }
+                        metadataRow("Downloaded", formatDate(observation.downloadedAt))
+                        metadataRow("Exists", observation.fileExists ? String(localized: "Yes") : String(localized: "Missing"))
+                    } else {
+                        metadataRow("File", String(localized: "Not downloaded"))
+                        metadataRow("Saved", formatDate(observation.downloadedAt))
                     }
-                    metadataRow("Downloaded", formatDate(observation.downloadedAt))
-                    metadataRow("Exists", observation.fileExists ? String(localized: "Yes") : String(localized: "Missing"))
                 }
 
                 Divider()
