@@ -119,13 +119,9 @@ extension AppState {
             guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
             return try await MainActor.run {
                 guard let tab = self.fitsTabHost.activeTab, tab.isLoaded, let hdu = tab.selectedHDU,
-                      let rendered = tab.renderedImage else {
+                      let rendered = tab.renderedImage, let viewport = tab.displayTransform(canvasSize: tab.lastCanvasSize) else {
                     throw ToolFailureReason.targetNotResolved("No image is on screen in the FITS Viewer — open one first")
                 }
-                let viewport = ViewportTransform(
-                    zoom: tab.viewport.zoom, rotation: tab.viewport.rotation, flipX: tab.viewport.flipX,
-                    panX: tab.viewport.panX, panY: tab.viewport.panY,
-                    imageSize: CGSize(width: rendered.width, height: rendered.height), canvasSize: tab.lastCanvasSize)
                 guard let snapshot = FITSViewSnapshot.make(
                     rendered: rendered, viewport: viewport, naxis2: hdu.header.naxis2,
                     crosshair: tab.crosshairPixel, maxSide: maxSide) else {

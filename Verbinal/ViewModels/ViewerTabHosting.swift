@@ -60,16 +60,11 @@ extension ViewerTabHosting {
 
     /// The tab showing `url`, when it loaded or is loading.
     func tab(showing url: URL) -> Document? {
-        let wanted = Self.identity(of: url)
+        let wanted = FileIdentity.key(url)
         return tabs.first { tab in
-            guard let open = tab.fileURL, Self.identity(of: open) == wanted else { return false }
+            guard let open = tab.fileURL, FileIdentity.key(open) == wanted else { return false }
             return tab.isLoaded || tab.isLoading
         }
-    }
-
-    /// One spelling per file: `..`, `.` and symlinks resolved.
-    private static func identity(of url: URL) -> String {
-        url.standardizedFileURL.resolvingSymlinksInPath().path
     }
 
     func closeTab(_ tab: Document) {

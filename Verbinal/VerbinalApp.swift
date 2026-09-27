@@ -19,6 +19,7 @@ struct VerbinalApp: App {
                 .uiPointerOverlay()
                 .environment(appState)
                 .environment(appState.uiPointer)
+                .environment(appState.marks)
                 .environment(\.locale, appState.locale)
                 .frame(minWidth: 900, minHeight: 600)
                 .task { NotificationService.requestPermissionIfNeeded() }

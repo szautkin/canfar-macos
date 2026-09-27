@@ -211,7 +211,9 @@ final class AppState {
         #endif
     }
 
-    init() {
+    /// `marks` is injectable so tests never write to the person's marks.
+    init(marks: MarkStore? = nil) {
+        self.marks = marks ?? MarkStore()
         // Effective endpoints: user override > cached registry resolution >
         // CANFAR default, per field. Captured once here — every service
         // holds this value for the process lifetime (edits relaunch).
@@ -445,6 +447,8 @@ final class AppState {
     let searchModel = SearchFormModel()
     /// What an agent can point at (`point_at_ui`), and its hint.
     let uiPointer = UIPointerRegistry()
+    /// Marks kept with each file, for both viewers.
+    let marks: MarkStore
     /// The Settings window's tab.
     var settingsSection: SettingsSection = .general
     /// Open or close the Settings window (`open_settings` / `close_settings`).

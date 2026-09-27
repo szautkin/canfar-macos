@@ -66,6 +66,19 @@ Catching up with Verbinal for Windows 1.4.1 (see
   the file's pixel, so an assistant can point at what it sees;
   `get_cube_image` returns the cube's slice or volume. Pictures are made
   small enough for the assistant to receive.
+- **Marks on FITS images** — your assistant can mark what it is talking
+  about: a circle or box around a source, a callout with a leader line to
+  its label, or a label alone, placed on the sky (so the mark finds the
+  same place in another image of the field) or on the file's pixels.
+  Marks keep their size on the subject as you zoom, turn with the view,
+  and are kept with the file and extension — however its path is
+  spelled — so they are there when you open it again. `annotate_fits`,
+  `list_fits_annotations`, `update_annotation`, `select_annotation`
+  (picks one out and centres the view on it), `remove_annotation`,
+  `clear_annotations`, and `export_annotations`, which gives a file's
+  marks — open or not — as a DS9 region file (sky in fk5 with sizes in
+  arcseconds, pixels 1-based as DS9 counts them) or as JSON grouped by
+  extension.
 - **The archive's schema for your assistant** — `describe_tap_schema`
   reads CADC's own TAP_SCHEMA (tables, what each column means with units
   and UCDs, and the joins it declares; one table, or a search across

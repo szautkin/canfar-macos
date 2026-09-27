@@ -107,6 +107,10 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Search Here (⌘⇧L) | `search_at_crosshair` | live |
 | Export Figure sheet (NEW in UI too) | `export_fits_figure` | write |
 | "Open as…" 2D vs 3D sheet (NAXIS≥3) | `choose_viewer`; `get_current_view.pendingViewerChoice` | live/read |
+| Marks drawn on the image (placing and editing by hand: C2) | `annotate_fits`, `update_annotation`, `remove_annotation`, `clear_annotations` | live |
+| A mark picked out, view centred on it | `select_annotation` | live |
+| The file's marks, open or not | `list_fits_annotations` | read |
+| Marks as a DS9 region file or JSON | `export_annotations` | read |
 
 ## Cube viewer
 

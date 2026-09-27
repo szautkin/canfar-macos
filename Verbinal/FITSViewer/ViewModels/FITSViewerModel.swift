@@ -544,6 +544,11 @@ final class FITSViewerModel: Identifiable {
         )
     }
 
+    /// The viewport over the rendered image on a canvas; nil before a render.
+    func displayTransform(canvasSize: CGSize) -> ViewportTransform? {
+        renderedImage.map { makeTransform(imgSize: CGSize(width: $0.width, height: $0.height), canvasSize: canvasSize) }
+    }
+
     /// Image pixel → screen point. See ``ViewportTransform/imageToScreen(_:)``.
     func imageToScreen(_ imgPoint: CGPoint, imgSize: CGSize, canvasSize: CGSize) -> CGPoint {
         makeTransform(imgSize: imgSize, canvasSize: canvasSize).imageToScreen(imgPoint)

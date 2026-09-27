@@ -18,6 +18,7 @@ struct FITSImageView: View {
 
     @Environment(\.fitsToast) private var toast
 
+    @Environment(MarkStore.self) private var markStore: MarkStore?
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "FITSImageView")
 
     var body: some View {
@@ -47,6 +48,14 @@ struct FITSImageView: View {
 
                     // Blink overlay
                     blinkOverlay(imgSize: imgSize, canvasSize: geometry.size)
+
+                    // Marks kept with this file and extension
+                    if let store = markStore, let target = model.markTarget,
+                       let projection = model.markProjection(canvasSize: geometry.size) {
+                        MarkOverlay(marks: store.marks(on: target),
+                                    selectedID: store.selected?.target == target ? store.selected?.id : nil,
+                                    projection: projection)
+                    }
 
                     // Crosshair — simple imageToScreen
                     if let crosshair = model.crosshairPixel {
