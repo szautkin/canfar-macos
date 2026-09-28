@@ -78,6 +78,8 @@ final class TaskRegistry {
         guard let index = tasks.firstIndex(where: { $0.id == id }), !tasks[index].isFinished else { return }
         tasks[index].progress = progress
         tasks[index].message = message
+        // Where it had got to is over; how it ended is the message (QA L10).
+        tasks[index].stage = ""
         tasks[index].finished = Date()
     }
 }

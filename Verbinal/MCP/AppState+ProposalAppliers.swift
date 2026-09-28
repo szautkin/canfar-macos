@@ -166,15 +166,17 @@ extension AppState {
             activity: activity))
         appliers.append(SaveFITSBookmarkApplier(
             save: { [weak self] label, ra, dec, attribution in
-                guard let self else { return }
-                await MainActor.run {
+                guard let self else { return nil }
+                return await MainActor.run {
                     // Attach to the active tab's file so the panel's
                     // per-file filter shows it; a global bookmark (no
                     // viewer open) keeps an empty source path.
                     let sourcePath = self.fitsTabHost.activeTab?.fileURL?.path ?? ""
-                    self.fitsBookmarks.save(CoordinateBookmark(
+                    let bookmark = CoordinateBookmark(
                         label: label, ra: ra, dec: dec, sourceFilePath: sourcePath,
-                        agentAttribution: attribution))
+                        agentAttribution: attribution)
+                    self.fitsBookmarks.save(bookmark)
+                    return bookmark.id
                 }
             },
             activity: activity))

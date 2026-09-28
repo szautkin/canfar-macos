@@ -20,12 +20,19 @@ struct RegistryImageEntry: Encodable, Sendable, Equatable {
     let project: String
     /// When it joined the user's list; absent when it is not in it.
     let addedAt: String?
+    /// False when no label names a session type: the Standard launch tab
+    /// cannot offer it, and a launch must name the type itself.
+    let launchableFromStandard: Bool
+    let note: String?
 
     init(_ image: RegistryImage) {
         id = image.id
         types = image.types
         project = image.project
         addedAt = image.addedAt.map { ISO8601DateFormatter().string(from: $0) }
+        launchableFromStandard = image.isOfferedOnStandard
+        note = image.isOfferedOnStandard ? nil
+            : "No session type in its labels, so the Standard launch tab cannot offer it: launch it with launch_session and a type you choose (the Advanced tab)."
     }
 }
 

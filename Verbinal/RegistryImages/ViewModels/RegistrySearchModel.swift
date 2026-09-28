@@ -61,7 +61,7 @@ final class RegistrySearchModel {
 
     /// What the types of `image` mean for a launch.
     static func typesLine(_ image: RegistryImage) -> String {
-        image.types.isEmpty
+        !image.isOfferedOnStandard
             ? String(localized: "No session type — launch it from the Advanced tab")
             : image.types.joined(separator: ", ")
     }

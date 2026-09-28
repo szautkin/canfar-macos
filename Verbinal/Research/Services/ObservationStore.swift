@@ -33,7 +33,8 @@ final class ObservationStore {
         self.spotlight = spotlight
         // File existence is surfaced via DownloadedObservation.fileExists — do not prune on load.
         // Pruning on launch would silently destroy metadata for files on remounted/offline volumes.
-        self.observations = persistence.read() ?? []
+        // Newest first, whatever order an older build wrote them in (QA L9).
+        self.observations = (persistence.read() ?? []).sorted { $0.downloadedAt > $1.downloadedAt }
         // Refresh the Spotlight index off-disk on launch so coverage stays
         // current across schema changes / out-of-process index loss.
         if !observations.isEmpty {
@@ -50,10 +51,11 @@ final class ObservationStore {
         var stored = observation
         if let idx = observations.firstIndex(where: { $0.recordKey == observation.recordKey }) {
             stored.id = observations[idx].id
-            observations[idx] = stored
-        } else {
-            observations.insert(stored, at: 0)
+            observations.remove(at: idx)
         }
+        // Newest first: a re-download comes to the top with its new date.
+        let place = observations.firstIndex { $0.downloadedAt <= stored.downloadedAt } ?? observations.endIndex
+        observations.insert(stored, at: place)
         persistence.write(observations)
         spotlight?.index(stored)
         return stored

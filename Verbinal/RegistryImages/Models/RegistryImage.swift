@@ -43,6 +43,11 @@ struct RegistryImage: Codable, Equatable, Hashable, Identifiable, Sendable {
         self.init(id: id, types: types, addedAt: addedAt)
     }
 
+    /// Whether the launch form's Standard tab can offer it: only by a
+    /// session type its labels declare. One without (QA L16:
+    /// `espsrc/astroml-pandas-george`) is launched from Advanced, with a type.
+    var isOfferedOnStandard: Bool { !types.isEmpty }
+
     /// The project — `host/PROJECT/name:tag` — as the catalogue's images have it.
     var project: String { ImageParser.parse(raw).project }
 

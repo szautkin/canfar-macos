@@ -21,6 +21,16 @@ final class RegistryImageTests: XCTestCase {
         XCTAssertEqual(image.project, "p")
     }
 
+    /// Plan 15 O4 (QA L16): an image with no session type says the Standard tab cannot offer it.
+    func testAnImageWithNoSessionTypeSaysWhereItCanBeLaunched() {
+        let untyped = RegistryImage(id: "images.canfar.net/espsrc/astroml-pandas-george:1", labels: ["gpu"])
+        XCTAssertFalse(untyped.isOfferedOnStandard)
+        let entry = RegistryImageEntry(untyped)
+        XCTAssertFalse(entry.launchableFromStandard)
+        XCTAssertTrue(entry.note?.contains("Advanced") == true)
+        XCTAssertNil(RegistryImageEntry(RegistryImage(id: "h/p/n:1", types: ["notebook"])).note)
+    }
+
     func testAReferenceNeedsATagEvenOnAHostWithAPort() {
         XCTAssertNil(RegistryImage.problem(with: "images.canfar.net/skaha/astroml:24.07"))
         XCTAssertNotNil(RegistryImage.problem(with: "images.canfar.net/skaha/astroml"))

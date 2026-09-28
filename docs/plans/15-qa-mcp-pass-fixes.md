@@ -19,7 +19,7 @@ with its tests and a CHANGELOG entry; a tool change also updates
 | S agent safety and audit | done — S1 standing instructions wait for the person; S2 who applied a change; S3 the person's rules come first; S4 proposals expire after 3 hours; S5 public secrets flagged, Make Private; S6 a session that differs from Settings says so | `445d1e5`, `7662e58`, `bc245a2`, `d7a12bc`, `0079fbc`, `b793e65` |
 | V viewers | done — V1 marks in get_fits_image; V2 the cube picture as seen; V3 a linear first look; V4 North Up re-fits; V5 the spectrum with its axis and unit; V6 fields apart said | `3753b7c`, `4c0b179`, `f3cb0de`, `675d2c3`, `eb97833`, `04ce64c` |
 | R search, ADQL, resolver, VizieR | done — R1 a row per plane, text proposal ids; R2 bare ambiguous columns, checked before sending; R3 transient names; R4 VizieR mirrors that answer, nearest first; R5 target-first names | `8befbf2`, `89e5a35`, `81645df`, `03bbe89`, `4fed789` |
-| O other surfaces | in progress — O1 view state, pointable targets, platform counts; O2 decimal GB; O3 launch project, flexible sessions, no events | `db90e5b`, `6fca536`, O3 |
+| O other surfaces | done — O1 view state, pointable targets, platform counts; O2 decimal GB; O3 launch project, flexible sessions, no events; O4 workflow copies, finished stages, bookmark id, untyped images | `db90e5b`, `6fca536`, `f83129b`, O4 |
 | Q capture and regression | planned — Q1–Q2 | — |
 
 ## How the work is done
@@ -99,7 +99,7 @@ leaving an empty row. — `64a2500`
 | **O1** | M19, M20 | `get_current_view` includes the open detail sheet and the selected Research record; the home tiles, Search, Storage and every Settings section get pointable targets; `get_platform_load` returns the instance counts, or its description stops promising them. |
 | **O2** | M15 | Quota in the units it says: decimal GB, as Finder counts. |
 | **O3** | L7, L8, L15 | Recent launches show the project of every image shape; a flexible session says "flexible" for CPU and RAM; `get_session_events` answers an empty list. |
-| **O4** | L4, L9, L10, L14, L16 | Duplicate workflow templates merged; Research newest first, one path shown per file; a finished task drops its stage, and compute runs are their own kind; `save_fits_bookmark` returns the new id; a registry image with no session type says it cannot be launched from Standard. |
+| **O4** | L4, L9, L10, L14, L16 | Using a template again reuses an unstarted copy and numbers a new one (existing copies are the person's, not merged); a finished task drops its stage, and compute runs are their own kind; `save_fits_bookmark` returns the new id; a registry image with no session type says it cannot be launched from Standard. Research is newest first by download date (the store orders it, on load and on every save). L9's paths are taken with the deferred storage-architecture review: they differ because the files do live in different places (older builds downloaded into the app's container), and the viewers' `~/Downloads` for a container file is that review's to settle. |
 
 ## Q — Capture and regression
 

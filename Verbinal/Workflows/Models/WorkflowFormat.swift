@@ -95,6 +95,16 @@ enum WorkflowFormat {
         throw WorkflowError.invalidStep(stepIndex, count: occurrence)
     }
 
+    /// `text` with its `# Title` line saying `title` (one added when it has none).
+    static func withTitle(_ text: String, _ title: String) -> String {
+        var lines = text.components(separatedBy: "\n")
+        if let index = lines.firstIndex(where: { $0.hasPrefix("# ") && !$0.hasPrefix("##") }) {
+            lines[index] = "# \(title)"
+            return lines.joined(separator: "\n")
+        }
+        return "# \(title)\n" + text
+    }
+
     static func skeleton(_ title: String) -> String { "# \(title)\n> One-line description of what this protocol achieves.\nTags: \nTime: ~1 h\n\n## Steps\n\n- [ ] **First step** — What to do and why.\n      Tool: search_observations\n      View: search\n- [ ] **Second step** — ...\n" }
 
     private static func checkbox(in line: String) -> (done: Bool, content: String)? {

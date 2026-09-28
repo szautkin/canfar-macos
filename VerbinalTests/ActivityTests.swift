@@ -27,6 +27,7 @@ final class ActivityTests: XCTestCase {
         probe.succeed()
         XCTAssertEqual(registry.tasks[0].progress, .failed, "the first outcome wins")
         XCTAssertEqual(registry.tasks[0].message, "the job failed")
+        XCTAssertEqual(registry.tasks[0].stage, "", "a finished task has no stage (plan 15 O4, QA L10)")
         XCTAssertEqual(registry.failedCount, 1)
         XCTAssertNotNil(registry.tasks[0].finished)
     }
@@ -118,6 +119,7 @@ final class ActivityTests: XCTestCase {
             pollInterval: .milliseconds(10), tasks: registry)
         try await compute.submit(RunCodeContract.Request(id: "r", language: "python", code: "1", timeout_seconds: 5), by: .agent)
         XCTAssertEqual(registry.tasks.first?.stage, "Waiting for the result")
+        XCTAssertEqual(registry.tasks.first?.kind, .compute, "a code run is its own kind (QA L10)")
         XCTAssertTrue(registry.tasks.first?.label.hasPrefix("Assistant") == true)
         files.put(RunCodeContract.outPath(id: "r"), #"{"status":"timeout"}"#)
         for _ in 0..<100 where registry.runningCount > 0 { try await Task.sleep(for: .milliseconds(10)) }
@@ -131,6 +133,6 @@ final class ActivityTests: XCTestCase {
         }
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         XCTAssertEqual(object["failed"] as? Int, 1)
-        XCTAssertEqual((object["tasks"] as? [[String: Any]])?.first?["kind"] as? String, "session")
+        XCTAssertEqual((object["tasks"] as? [[String: Any]])?.first?["kind"] as? String, "compute")
     }
 }

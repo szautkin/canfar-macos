@@ -24,7 +24,7 @@ struct ListActivityTool: JSONReadTool {
     }
 
     struct Entry: Encodable, Sendable, Equatable {
-        /// discovery, launch, session, storage or download.
+        /// discovery, launch, session, compute, storage or download.
         let kind: String
         let label: String
         /// running, succeeded, failed or cancelled (abandoned before it finished).

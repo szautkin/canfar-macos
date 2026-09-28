@@ -12,6 +12,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Smaller things the QA pass found** — using a workflow template again
+  no longer makes a lookalike copy: an unstarted copy is reused, and a new
+  one is numbered ("… (2)"); a finished task on the activity bar no longer
+  shows the stage it had reached, and remote-compute runs are their own
+  kind (`compute`); your assistant's `save_fits_bookmark` returns the new
+  bookmark's id; a registry image with no session type says, to your
+  assistant as on screen, that the Standard launch tab cannot offer it;
+  and Research lists observations newest first, a re-download at the top.
 - **Session and launch details say what they are** — for assistants, a
   recent launch now names the project its image came from (an assistant's
   launches recorded none), a flexible session's cores and RAM say

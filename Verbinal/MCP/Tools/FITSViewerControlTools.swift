@@ -313,7 +313,7 @@ struct SaveFITSBookmarkTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "save_fits_bookmark",
-        description: "Save a labelled sky bookmark at (RA, Dec) in degrees (RA 0-360, Dec -90 to 90).",
+        description: "Save a labelled sky bookmark at (RA, Dec) in degrees (RA 0-360, Dec -90 to 90). Returns the new bookmark's `id`.",
         schema: #"""
         {
           "type": "object",
@@ -433,16 +433,22 @@ struct ListOpenTabsTool: JSONReadTool {
 /// Concrete handler that runs when the user clicks Apply on a
 /// `save_fits_bookmark` proposal in the strip (or immediately when
 /// auto-apply is on).
-struct SaveFITSBookmarkApplier: ProposalApplier {
+struct SaveFITSBookmarkApplier: ProposalApplier, ResultReportingApplier {
     let kind = "save_fits_bookmark"
-    let save: @Sendable (String, Double, Double, AgentAttribution) async -> Void
+    /// Saves the bookmark and gives its id.
+    let save: @Sendable (String, Double, Double, AgentAttribution) async -> UUID?
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    /// The new bookmark's id, for delete_fits_bookmark and the rest (QA L14).
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(SaveFITSBookmarkTool.Payload.self, from: proposal.payload)
-        await save(payload.label, payload.raDeg, payload.decDeg,
-                   AgentAttribution.from(proposal: proposal))
+        let id = await save(payload.label, payload.raDeg, payload.decDeg, AgentAttribution.from(proposal: proposal))
         await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
+        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(id: id?.uuidString))) ?? Data()
     }
 }
 

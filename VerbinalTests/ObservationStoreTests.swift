@@ -48,6 +48,25 @@ final class ObservationStoreTests: XCTestCase {
         super.tearDown()
     }
 
+    /// Plan 15 O4 (QA L9): newest first, and a re-download comes to the top.
+    func testResearchIsNewestFirst() {
+        let store = makeStore()
+        var old = makeObservation(publisherID: "ivo://cadc.nrc.ca/A?1/1", collection: "A")
+        old.downloadedAt = Date(timeIntervalSince1970: 100)
+        var older = makeObservation(publisherID: "ivo://cadc.nrc.ca/B?1/1", collection: "B")
+        older.downloadedAt = Date(timeIntervalSince1970: 50)
+        store.save(older)
+        store.save(old)
+        var new = makeObservation(publisherID: "ivo://cadc.nrc.ca/C?1/1", collection: "C")
+        new.downloadedAt = Date(timeIntervalSince1970: 200)
+        store.save(new)
+        XCTAssertEqual(store.observations.map(\.collection), ["C", "A", "B"])
+
+        older.downloadedAt = Date(timeIntervalSince1970: 300)
+        store.save(older)
+        XCTAssertEqual(store.observations.map(\.collection), ["B", "C", "A"], "downloaded again, at the top")
+    }
+
     func testSaveAndRetrieve() {
         let store = makeStore()
         let obs = makeObservation()

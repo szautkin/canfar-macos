@@ -168,7 +168,7 @@ final class RemoteComputeService {
                                               timeout_seconds: request.timeout_seconds)
         runs.add(ComputeRun(request, author: author))
         let who = author == .agent ? String(localized: "Assistant") : String(localized: "You")
-        let task = tasks.begin(.session, "\(who): \(request.language) on \(RunCodeContract.sessionName)")
+        let task = tasks.begin(.compute, "\(who): \(request.language) on \(RunCodeContract.sessionName)")
         let drift: ComputeDrift?
         do {
             let reused = try await reuseOrLaunch(launch)

@@ -42,6 +42,22 @@ final class WorkflowFormatTests: XCTestCase {
         XCTAssertEqual(store.get(id)?.document.doneCount, 1)
     }
 
+    /// Plan 15 O4 (QA L4): using a template twice does not make two copies
+    /// with one title — an unstarted copy is reused, a started one kept and
+    /// the next numbered.
+    @MainActor func testUsingATemplateAgainMakesNoLookalike() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WorkflowStore(directory: directory, builtins: { [("cfht", "# CFHT imaging recon\n- [ ] **Step**\n")] })
+        let first = try store.useWorkflow("builtin:cfht")
+        XCTAssertEqual(try store.useWorkflow("builtin:cfht"), first, "an unstarted copy is the copy")
+        try store.setStepDone(first, index: 0, done: true)
+        let second = try store.useWorkflow("builtin:cfht")
+        XCTAssertNotEqual(second, first)
+        XCTAssertEqual(store.listLocal().map(\.document.title), ["CFHT imaging recon", "CFHT imaging recon (2)"])
+        XCTAssertEqual(WorkflowFormat.withTitle("> no title\n", "T"), "# T\n> no title\n")
+    }
+
     @MainActor func testStoreUpdateTextAndDeleteLocal() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

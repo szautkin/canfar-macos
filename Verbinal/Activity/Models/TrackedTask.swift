@@ -12,8 +12,10 @@ enum TaskKind: String, Codable, Sendable {
     case discovery
     /// Launching a session or batch job.
     case launch
-    /// Acting on an existing session, or running code on one.
+    /// Acting on an existing session.
     case session
+    /// Running code on the compute session (Remote Compute, `run_code`).
+    case compute
     /// Reading or writing Storage.
     case storage
     /// Fetching an observation's file, or a cutout of it.
