@@ -108,74 +108,70 @@ final class AgentActivityStoreTests: XCTestCase {
         XCTAssertNil(store.entry(forProposal: UUID()))
     }
 
-    // MARK: - markAutoApplied(forProposal:)
+    // MARK: - markApplied(forProposal:by:) — plan 15 S2
 
-    func testMarkAutoAppliedFlipsAppliedEntry() {
+    func testMarkAppliedSaysWhoAppliedIt() {
         let store = makeStore()
-        let pid = UUID()
-        store.append(makeEntry(proposalID: pid, outcome: .applied, autoApplied: false))
+        let byAuto = UUID(), byPerson = UUID()
+        store.append(makeEntry(proposalID: byAuto, outcome: .applied, autoApplied: false))
+        store.append(makeEntry(proposalID: byPerson, outcome: .applied, autoApplied: false))
 
-        store.markAutoApplied(forProposal: pid)
+        store.markApplied(forProposal: byAuto, by: .autoApply)
+        store.markApplied(forProposal: byPerson, by: .person)
 
-        XCTAssertEqual(store.entry(forProposal: pid)?.autoApplied, true)
+        XCTAssertEqual(store.entry(forProposal: byAuto)?.appliedBy, .autoApply)
+        XCTAssertEqual(store.entry(forProposal: byAuto)?.autoApplied, true)
+        XCTAssertEqual(store.entry(forProposal: byPerson)?.appliedBy, .person)
+        XCTAssertEqual(store.entry(forProposal: byPerson)?.autoApplied, false)
     }
 
-    func testMarkAutoAppliedPreservesOtherFields() {
+    func testMarkAppliedPreservesOtherFields() {
         let store = makeStore()
         let pid = UUID()
         let original = makeEntry(proposalID: pid, outcome: .applied, autoApplied: false, summary: "keep me")
         store.append(original)
 
-        store.markAutoApplied(forProposal: pid)
+        store.markApplied(forProposal: pid, by: .background)
 
         let updated = store.entry(forProposal: pid)
         XCTAssertEqual(updated?.id, original.id)
         XCTAssertEqual(updated?.timestamp, original.timestamp)
         XCTAssertEqual(updated?.summary, "keep me")
         XCTAssertEqual(updated?.outcome, .applied)
-        XCTAssertEqual(updated?.autoApplied, true)
+        XCTAssertEqual(updated?.appliedBy, .background)
     }
 
-    func testMarkAutoAppliedIsNoOpForRejected() {
+    func testMarkAppliedIsNoOpForRejectedAndWithdrawn() {
+        let store = makeStore()
+        let rejected = UUID(), withdrawn = UUID()
+        store.append(makeEntry(proposalID: rejected, outcome: .rejected, autoApplied: false))
+        store.append(makeEntry(proposalID: withdrawn, outcome: .withdrawn, autoApplied: false))
+
+        store.markApplied(forProposal: rejected, by: .autoApply)
+        store.markApplied(forProposal: withdrawn, by: .autoApply)
+
+        XCTAssertNil(store.entry(forProposal: rejected)?.appliedBy)
+        XCTAssertNil(store.entry(forProposal: withdrawn)?.appliedBy)
+    }
+
+    func testMarkAppliedKeepsTheFirstActor() {
         let store = makeStore()
         let pid = UUID()
-        store.append(makeEntry(proposalID: pid, outcome: .rejected, autoApplied: false))
+        store.append(makeEntry(proposalID: pid, outcome: .applied, autoApplied: false))
+        store.markApplied(forProposal: pid, by: .person)
+        let stamped = store.entry(forProposal: pid)
 
-        store.markAutoApplied(forProposal: pid)
+        store.markApplied(forProposal: pid, by: .autoApply)
 
-        XCTAssertEqual(store.entry(forProposal: pid)?.autoApplied, false)
+        XCTAssertEqual(store.entry(forProposal: pid), stamped)
     }
 
-    func testMarkAutoAppliedIsNoOpForWithdrawn() {
-        let store = makeStore()
-        let pid = UUID()
-        store.append(makeEntry(proposalID: pid, outcome: .withdrawn, autoApplied: false))
-
-        store.markAutoApplied(forProposal: pid)
-
-        XCTAssertEqual(store.entry(forProposal: pid)?.autoApplied, false)
-    }
-
-    func testMarkAutoAppliedIsNoOpForAlreadyFlagged() {
-        let store = makeStore()
-        let pid = UUID()
-        let original = makeEntry(proposalID: pid, outcome: .applied, autoApplied: true)
-        store.append(original)
-
-        store.markAutoApplied(forProposal: pid)
-
-        // Already flagged: the entry must be untouched (same identity).
-        let updated = store.entry(forProposal: pid)
-        XCTAssertEqual(updated?.id, original.id)
-        XCTAssertEqual(updated?.autoApplied, true)
-    }
-
-    func testMarkAutoAppliedIsNoOpForUnknownProposal() {
+    func testMarkAppliedIsNoOpForUnknownProposal() {
         let store = makeStore()
         store.append(makeEntry(proposalID: UUID(), outcome: .applied, autoApplied: false))
         let before = store.entries
 
-        store.markAutoApplied(forProposal: UUID())
+        store.markApplied(forProposal: UUID(), by: .person)
 
         XCTAssertEqual(store.entries, before)
     }

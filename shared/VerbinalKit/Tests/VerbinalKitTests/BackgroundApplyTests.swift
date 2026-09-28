@@ -27,7 +27,7 @@ final class BackgroundApplyTests: XCTestCase {
             apply: { id in
                 try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
                 if fails { throw ProposalApplyError.backendError("disk full") }
-                _ = await store.markApplied(id)
+                _ = await store.markApplied(id, by: .person)
                 return Data(#"{"id":"new-1"}"#.utf8)
             })
         let router = AIToolRouter(tools: [SaveTool()], auditSink: CapturingAuditSink(), autoApplyHook: hook,
@@ -85,7 +85,7 @@ final class BackgroundApplyTests: XCTestCase {
         _ = await store.markApplyFailed(p.id)
         let retry = await store.beginApply(p.id)
         XCTAssertTrue(retry, "a failed apply can be tried again")
-        _ = await store.markApplied(p.id)
+        _ = await store.markApplied(p.id, by: .person)
         let applied = await store.state(p.id)
         XCTAssertEqual(applied, .applied)
     }

@@ -12,6 +12,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Pending's History says who applied each change** — you from Pending,
+  auto-apply, or your assistant's background start. Before, the three
+  looked the same, and a deletion could be put down to you only by its
+  timing. For assistants, `list_events` reports `appliedBy`.
 - **Instructions for future assistants always wait for you** — adding or
   changing an AI Guide tool, or rewriting a tool's description, changes
   what every assistant after it is told, and it applied at once when

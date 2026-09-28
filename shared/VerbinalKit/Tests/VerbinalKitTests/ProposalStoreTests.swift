@@ -52,7 +52,7 @@ final class ProposalStoreCapAndIsolationTests: XCTestCase {
             let p = makeProposal(origin: .user)
             ids.append(p.id)
             _ = await store.enqueue(p)
-            _ = await store.markApplied(p.id)
+            _ = await store.markApplied(p.id, by: .person)
         }
 
         // The first 5 should have been pushed out of the tombstone ring.

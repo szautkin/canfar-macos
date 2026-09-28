@@ -9,7 +9,7 @@ final class EventLogTests: XCTestCase {
         let log = EventLog()
         let id = UUID()
         let t1 = await log.append(.proposalArrived(id: id, kind: "x", originKind: "user"))
-        let t2 = await log.append(.proposalApplied(id: id, kind: "x"))
+        let t2 = await log.append(.proposalApplied(id: id, kind: "x", by: .person))
         XCTAssertEqual(t1, 1)
         XCTAssertEqual(t2, 2)
     }
@@ -18,7 +18,7 @@ final class EventLogTests: XCTestCase {
         let log = EventLog()
         let id = UUID()
         _ = await log.append(.proposalArrived(id: id, kind: "x", originKind: "user")) // 1
-        _ = await log.append(.proposalApplied(id: id, kind: "x")) // 2
+        _ = await log.append(.proposalApplied(id: id, kind: "x", by: .person)) // 2
         _ = await log.append(.proposalRejected(id: UUID(), kind: "y")) // 3
         let result = await log.entries(since: 1)
         XCTAssertEqual(result.entries.map(\.token), [2, 3])
@@ -60,7 +60,7 @@ final class EventLogTests: XCTestCase {
         XCTAssertEqual(empty, 0)
 
         _ = await log.append(.proposalArrived(id: UUID(), kind: "k", originKind: "u"))
-        _ = await log.append(.proposalApplied(id: UUID(), kind: "k"))
+        _ = await log.append(.proposalApplied(id: UUID(), kind: "k", by: .person))
         let current = await log.currentToken()
         XCTAssertEqual(current, 2)
     }
@@ -76,7 +76,7 @@ final class EventLogTests: XCTestCase {
             origin: .user
         )
         _ = await store.enqueue(proposal)
-        let didApply = await store.markApplied(proposal.id)
+        let didApply = await store.markApplied(proposal.id, by: .person)
         XCTAssertTrue(didApply)
         let snap = await log.snapshot()
         XCTAssertEqual(snap.count, 2)
@@ -86,5 +86,23 @@ final class EventLogTests: XCTestCase {
         if case .proposalApplied = snap[1].event {} else {
             XCTFail("expected proposalApplied second")
         }
+    }
+
+    /// Plan 15 S2 (QA H7): the applied event says who applied it, so a
+    /// person's click and auto-apply are told apart without timing.
+    func testTheAppliedEventSaysWhoAppliedIt() async {
+        let log = EventLog()
+        let store = InMemoryProposalStore(eventLog: log)
+        for actor in ApplyActor.allCases {
+            let proposal = PendingProposal(toolName: "t", kind: actor.rawValue, summary: "s",
+                                           payload: Data("{}".utf8), origin: .user)
+            _ = await store.enqueue(proposal)
+            _ = await store.markApplied(proposal.id, by: actor)
+        }
+        let applied = await log.snapshot().compactMap { entry -> ApplyActor? in
+            if case .proposalApplied(_, _, let actor) = entry.event { return actor }
+            return nil
+        }
+        XCTAssertEqual(applied, ApplyActor.allCases)
     }
 }

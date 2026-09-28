@@ -40,6 +40,9 @@ public struct AgentActivityEntry: Codable, Sendable, Equatable, Identifiable {
     /// so the user can tell autonomous applies apart from confirmed
     /// applies after the fact.
     public let autoApplied: Bool
+    /// Who applied it, for an `applied` entry; nil for the others and for
+    /// entries written before it was kept.
+    public let appliedBy: ApplyActor?
 
     public enum Outcome: String, Codable, Sendable, Equatable {
         /// Write proposal, user clicked Apply, applier succeeded.
@@ -62,7 +65,8 @@ public struct AgentActivityEntry: Codable, Sendable, Equatable, Identifiable {
         originLabel: String,
         proposalID: UUID? = nil,
         outcome: Outcome,
-        autoApplied: Bool = false
+        autoApplied: Bool = false,
+        appliedBy: ApplyActor? = nil
     ) {
         self.id = id
         self.timestamp = timestamp
@@ -73,13 +77,14 @@ public struct AgentActivityEntry: Codable, Sendable, Equatable, Identifiable {
         self.proposalID = proposalID
         self.outcome = outcome
         self.autoApplied = autoApplied
+        self.appliedBy = appliedBy
     }
 
     // MARK: - Codable (back-compat)
 
     private enum CodingKeys: String, CodingKey {
         case id, timestamp, kind, summary, originFingerprint, originLabel,
-             proposalID, outcome, autoApplied
+             proposalID, outcome, autoApplied, appliedBy
     }
 
     public init(from decoder: Decoder) throws {
@@ -95,6 +100,14 @@ public struct AgentActivityEntry: Codable, Sendable, Equatable, Identifiable {
         // Pre-autonomy entries on disk lack this field; treat as
         // strip-confirmed (the only path that existed before).
         self.autoApplied = try c.decodeIfPresent(Bool.self, forKey: .autoApplied) ?? false
+        self.appliedBy = try c.decodeIfPresent(ApplyActor.self, forKey: .appliedBy)
+    }
+
+    /// This entry, applied by `actor`.
+    public func applied(by actor: ApplyActor) -> AgentActivityEntry {
+        AgentActivityEntry(id: id, timestamp: timestamp, kind: kind, summary: summary,
+                           originFingerprint: originFingerprint, originLabel: originLabel, proposalID: proposalID,
+                           outcome: outcome, autoApplied: actor != .person, appliedBy: actor)
     }
 
     // MARK: - Factories

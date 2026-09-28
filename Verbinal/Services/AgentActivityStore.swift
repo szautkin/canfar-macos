@@ -65,27 +65,15 @@ final class AgentActivityStore {
         entries.first(where: { $0.proposalID == id })
     }
 
-    /// Flip the most-recent entry for a proposal id to `autoApplied =
-    /// true`. The auto-apply path drives this *after* the applier
-    /// runs — the applier itself doesn't know whether it was invoked
-    /// via a strip click or via the trusted-client hook, so the
-    /// service centralizes the decision here.
-    func markAutoApplied(forProposal id: UUID) {
+    /// Stamp the most-recent `applied` entry for a proposal with who
+    /// applied it. The service drives this *after* the applier runs — the
+    /// applier itself doesn't know whether it was invoked from Pending, by
+    /// auto-apply or in the background, so the decision is made there.
+    func markApplied(forProposal id: UUID, by actor: ApplyActor) {
         guard let idx = entries.firstIndex(where: { $0.proposalID == id }),
               entries[idx].outcome == .applied,
-              !entries[idx].autoApplied else { return }
-        let old = entries[idx]
-        entries[idx] = AgentActivityEntry(
-            id: old.id,
-            timestamp: old.timestamp,
-            kind: old.kind,
-            summary: old.summary,
-            originFingerprint: old.originFingerprint,
-            originLabel: old.originLabel,
-            proposalID: old.proposalID,
-            outcome: old.outcome,
-            autoApplied: true
-        )
+              entries[idx].appliedBy == nil else { return }
+        entries[idx] = entries[idx].applied(by: actor)
         persistence.write(entries)
     }
 

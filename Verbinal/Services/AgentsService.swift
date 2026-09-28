@@ -197,17 +197,16 @@ final class AgentsService {
     // MARK: - Proposal lifecycle (driven by the strip UI)
 
     /// Apply a pending proposal. Looks up the applier, invokes it, then
-    /// marks the proposal applied on success. Surfaces typed errors.
-    /// `autoApplied` is set by the trusted-client auto-apply hook so
-    /// the activity feed entry can be tagged for the wand badge — the
-    /// applier itself is unchanged.
-    func applyProposal(_ id: UUID, autoApplied: Bool = false) async throws {
-        _ = try await applyProposalReturningResult(id, autoApplied: autoApplied)
+    /// marks the proposal applied on success, by `actor` — the person from
+    /// Pending, auto-apply, or an agent's background start — which the
+    /// applied event and the activity feed keep. Surfaces typed errors.
+    func applyProposal(_ id: UUID, by actor: ApplyActor) async throws {
+        _ = try await applyProposalReturningResult(id, by: actor)
     }
 
     /// Same as `applyProposal`, but returns extra JSON for the auto-apply
     /// ack when the applier is a `ResultReportingApplier`.
-    func applyProposalReturningResult(_ id: UUID, autoApplied: Bool = false) async throws -> Data? {
+    func applyProposalReturningResult(_ id: UUID, by actor: ApplyActor) async throws -> Data? {
         let pending = await proposals.list(origin: nil)
         guard let proposal = pending.first(where: { $0.id == id }) else {
             throw ProposalApplyError.backendError("proposal not pending: \(id)")
@@ -239,9 +238,9 @@ final class AgentsService {
             await refreshPending()
             throw ProposalApplyError.backendError("\(error)")
         }
-        _ = await proposals.markApplied(id)
-        if autoApplied {
-            activityStore.markAutoApplied(forProposal: id)
+        _ = await proposals.markApplied(id, by: actor)
+        activityStore.markApplied(forProposal: id, by: actor)
+        if actor != .person {
             if followAgentActivity,
                let target = Self.navigationTarget(forKind: proposal.kind),
                let nav = navigator {
@@ -302,7 +301,7 @@ final class AgentsService {
         Task { [weak self] in
             guard let self else { return }
             do {
-                let result = try await self.applyProposalReturningResult(id, autoApplied: true)
+                let result = try await self.applyProposalReturningResult(id, by: .background)
                 await jobs.succeed(id, result: result)
             } catch {
                 await jobs.fail(id, message: error.localizedDescription)
@@ -437,7 +436,7 @@ final class AgentsService {
                 guard let self else {
                     throw ProposalApplyError.backendError("AgentsService deallocated")
                 }
-                return try await self.applyProposalReturningResult(id, autoApplied: true)
+                return try await self.applyProposalReturningResult(id, by: .autoApply)
             }
         )
         let router = AIToolRouter(tools: tools, auditSink: multiSink,

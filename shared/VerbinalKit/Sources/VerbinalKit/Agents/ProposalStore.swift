@@ -54,9 +54,10 @@ public protocol ProposalStore: Sendable {
     /// Look up a proposal by id; returns its lifecycle state.
     func state(_ id: UUID) async -> ProposalState
 
-    /// Mark applied (called by the strip UI after the applier succeeds).
+    /// Mark applied — after the applier succeeds — by `actor`, which the
+    /// applied event carries.
     @discardableResult
-    func markApplied(_ id: UUID) async -> Bool
+    func markApplied(_ id: UUID, by actor: ApplyActor) async -> Bool
 
     /// Mark rejected (the user clicked Reject in the strip).
     @discardableResult
@@ -166,7 +167,7 @@ public actor InMemoryProposalStore: ProposalStore {
     }
 
     @discardableResult
-    public func markApplied(_ id: UUID) async -> Bool { await resolve(id, as: .applied) }
+    public func markApplied(_ id: UUID, by actor: ApplyActor) async -> Bool { await resolve(id, as: .applied, by: actor) }
 
     @discardableResult
     public func markRejected(_ id: UUID) async -> Bool { await resolve(id, as: .rejected) }
@@ -195,7 +196,7 @@ public actor InMemoryProposalStore: ProposalStore {
 
     // MARK: - Internals
 
-    private func resolve(_ id: UUID, as state: ProposalState) async -> Bool {
+    private func resolve(_ id: UUID, as state: ProposalState, by actor: ApplyActor = .person) async -> Bool {
         guard pending.removeValue(forKey: id) != nil else { return false }
         if let i = pendingOrder.firstIndex(of: id) {
             pendingOrder.remove(at: i)
@@ -211,7 +212,7 @@ public actor InMemoryProposalStore: ProposalStore {
         if let eventLog {
             let event: AgentEvent
             switch state {
-            case .applied:    event = .proposalApplied(id: id, kind: kind)
+            case .applied:    event = .proposalApplied(id: id, kind: kind, by: actor)
             case .rejected:   event = .proposalRejected(id: id, kind: kind)
             case .withdrawn:  event = .proposalWithdrawn(id: id, kind: kind)
             case .failed:

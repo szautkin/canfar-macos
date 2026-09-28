@@ -18,7 +18,8 @@ public enum AgentEvent: Sendable, Equatable {
     /// A proposal arrived in the user's strip. Carries the proposal id
     /// + kind so the agent can correlate against its own submission.
     case proposalArrived(id: UUID, kind: String, originKind: String)
-    case proposalApplied(id: UUID, kind: String)
+    /// A proposal was applied, and by whom.
+    case proposalApplied(id: UUID, kind: String, by: ApplyActor)
     case proposalRejected(id: UUID, kind: String)
     case proposalWithdrawn(id: UUID, kind: String)
     case proposalFailed(id: UUID, kind: String)

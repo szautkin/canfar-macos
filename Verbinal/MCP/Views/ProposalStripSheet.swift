@@ -135,6 +135,11 @@ struct ProposalStripSheet: View {
                     Label(entry.originLabel, systemImage: "personalhotspot")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    if let actor = entry.appliedBy {
+                        Label(actor.label, systemImage: actor.systemImage)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                     Label(Self.relativeTime.localizedString(for: entry.timestamp,
                                                              relativeTo: Date()),
                           systemImage: "clock")
@@ -271,7 +276,7 @@ struct ProposalStripSheet: View {
         perRowError.removeValue(forKey: proposal.id)
         defer { inFlight.remove(proposal.id) }
         do {
-            try await appState.agentsService.applyProposal(proposal.id)
+            try await appState.agentsService.applyProposal(proposal.id, by: .person)
         } catch ProposalApplyError.noApplierForKind(let kind) {
             perRowError[proposal.id] = "Couldn't apply this proposal: no handler for kind '\(kind)'."
         } catch {
@@ -293,3 +298,22 @@ struct ProposalStripSheet: View {
     }()
 }
 #endif
+
+/// Who applied a change, as the History row says it.
+private extension ApplyActor {
+    var label: String {
+        switch self {
+        case .person: return String(localized: "Applied by you")
+        case .autoApply: return String(localized: "Auto-applied")
+        case .background: return String(localized: "Applied in the background")
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .person: return "person.fill"
+        case .autoApply: return "wand.and.stars"
+        case .background: return "arrow.triangle.2.circlepath"
+        }
+    }
+}

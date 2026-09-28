@@ -34,12 +34,15 @@ struct ListEventsTool: AITool {
             let proposalID: String
             let proposalKind: String
             let originKind: String?   // only set for proposalArrived
+            /// Who applied it — "person", "autoApply" or "background";
+            /// only set for proposalApplied.
+            var appliedBy: String? = nil
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_events",
-        description: "Poll the agent event log. Pass `since_token` to read only events newer than that token. Response includes nextToken to use on the following poll. If `expired` is true, your token is older than the buffer; re-baseline with an empty since_token.",
+        description: "Poll the agent event log. Pass `since_token` to read only events newer than that token. Response includes nextToken to use on the following poll. If `expired` is true, your token is older than the buffer; re-baseline with an empty since_token. A `proposalApplied` event says who applied it in `appliedBy`: `person` (from Pending), `autoApply` (as your call arrived) or `background` (`start_background_apply`).",
         schema: #"""
         {
           "type": "object",
@@ -100,14 +103,15 @@ struct ListEventsTool: AITool {
                 proposalKind: kind,
                 originKind: originKind
             )
-        case .proposalApplied(let id, let kind):
+        case .proposalApplied(let id, let kind, let actor):
             return Output.Item(
                 token: String(entry.token),
                 occurredAtISO: iso.string(from: entry.occurredAt),
                 kind: "proposalApplied",
                 proposalID: id.uuidString,
                 proposalKind: kind,
-                originKind: nil
+                originKind: nil,
+                appliedBy: actor.rawValue
             )
         case .proposalRejected(let id, let kind):
             return Output.Item(

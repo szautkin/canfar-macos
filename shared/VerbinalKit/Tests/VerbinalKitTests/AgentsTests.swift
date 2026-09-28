@@ -283,7 +283,7 @@ final class AIToolRouterTests: XCTestCase {
             shouldAutoApply: { _, _ in true },
             apply: { id in
                 try await counter.bumpAndRecord(id)
-                _ = await store.markApplied(id)
+                _ = await store.markApplied(id, by: .person)
                 return nil
             }
         )
@@ -495,7 +495,7 @@ final class InMemoryProposalStoreTests: XCTestCase {
         let p = await store.enqueue(makeProposal())
         let initialState = await store.state(p.id)
         XCTAssertEqual(initialState, .pending)
-        let applied = await store.markApplied(p.id)
+        let applied = await store.markApplied(p.id, by: .person)
         XCTAssertTrue(applied)
         let finalState = await store.state(p.id)
         XCTAssertEqual(finalState, .applied)
@@ -522,9 +522,9 @@ final class InMemoryProposalStoreTests: XCTestCase {
     func testResolveTwiceIsNoOp() async {
         let store = InMemoryProposalStore()
         let p = await store.enqueue(makeProposal())
-        let firstApplied = await store.markApplied(p.id)
+        let firstApplied = await store.markApplied(p.id, by: .person)
         XCTAssertTrue(firstApplied)
-        let secondApplied = await store.markApplied(p.id)
+        let secondApplied = await store.markApplied(p.id, by: .person)
         XCTAssertFalse(secondApplied)
     }
 
@@ -537,7 +537,7 @@ final class InMemoryProposalStoreTests: XCTestCase {
         XCTAssertEqual(state, .failed)
         let list = await store.list(origin: nil)
         XCTAssertEqual(list.map(\.id), [p.id], "failed apply must remain in the strip for retry")
-        let applied = await store.markApplied(p.id)
+        let applied = await store.markApplied(p.id, by: .person)
         XCTAssertTrue(applied)
         let after = await store.state(p.id)
         XCTAssertEqual(after, .applied)
@@ -578,11 +578,11 @@ final class InMemoryProposalStoreTests: XCTestCase {
         )
         let first = InMemoryProposalStore(journal: persistence)
         let p = await first.enqueue(makeProposal())
-        _ = await first.markApplied(p.id)
+        _ = await first.markApplied(p.id, by: .person)
         let second = InMemoryProposalStore(journal: persistence)
         let state = await second.state(p.id)
         XCTAssertEqual(state, .applied)
-        let appliedAgain = await second.markApplied(p.id)
+        let appliedAgain = await second.markApplied(p.id, by: .person)
         XCTAssertFalse(appliedAgain, "resolved id must not apply twice after relaunch")
         let pending = await second.list(origin: nil)
         XCTAssertTrue(pending.isEmpty)
