@@ -366,6 +366,11 @@ final class AgentsService {
     /// store. Called after lifecycle transitions; the strip rebinds.
     func refreshPending() async {
         let snapshot = await proposals.list(origin: nil)
+        // What left Pending by waiting out its time goes into History.
+        let still = Set(snapshot.map(\.id))
+        for gone in pendingProposals where !still.contains(gone.id) {
+            if await proposals.state(gone.id) == .expired { activityStore.append(.expired(proposal: gone)) }
+        }
         pendingProposals = snapshot
     }
 

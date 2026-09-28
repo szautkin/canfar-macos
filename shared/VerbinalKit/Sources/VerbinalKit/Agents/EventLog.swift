@@ -23,6 +23,8 @@ public enum AgentEvent: Sendable, Equatable {
     case proposalRejected(id: UUID, kind: String)
     case proposalWithdrawn(id: UUID, kind: String)
     case proposalFailed(id: UUID, kind: String)
+    /// A proposal waited out `PendingProposal.lifetime` unapplied.
+    case proposalExpired(id: UUID, kind: String)
 }
 
 /// One record in the event log.

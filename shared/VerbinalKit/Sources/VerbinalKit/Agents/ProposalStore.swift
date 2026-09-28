@@ -104,10 +104,17 @@ public actor InMemoryProposalStore: ProposalStore {
     /// Hard cap on tombstone count even if TTL has not elapsed; defends
     /// against memory growth in long-lived sessions.
     public let tombstoneCap: Int = 256
+    /// An expiry is remembered for a day: the agent that proposed may ask
+    /// about it long after the five minutes other outcomes are kept.
+    public let expiredTombstoneTTL: TimeInterval = 24 * 60 * 60
+    /// The clock the lifetime is measured on; a test's own.
+    private let now: @Sendable () -> Date
 
-    public init(eventLog: EventLog? = nil, journal: DiskPersistence<ProposalJournal>? = nil) {
+    public init(eventLog: EventLog? = nil, journal: DiskPersistence<ProposalJournal>? = nil,
+                now: @escaping @Sendable () -> Date = { Date() }) {
         self.eventLog = eventLog
         self.journal = journal
+        self.now = now
         if let journal, let snap = journal.read() {
             for p in snap.pending {
                 pending[p.id] = p
@@ -115,8 +122,11 @@ public actor InMemoryProposalStore: ProposalStore {
                 kindByID[p.id] = p.kind
             }
             failedIDs = Set(snap.failedIDs)
-            let cutoff = Date().addingTimeInterval(-tombstoneTTL)
-            let liveTombs = snap.tombstones.filter { $0.resolvedAt >= cutoff }
+            let current = now()
+            let shortTTL = tombstoneTTL, expiredTTL = expiredTombstoneTTL
+            let liveTombs = snap.tombstones.filter {
+                $0.resolvedAt >= current.addingTimeInterval(-($0.state == .expired ? expiredTTL : shortTTL))
+            }
             tombstones = liveTombs.map { ($0.id, $0.state, $0.resolvedAt) }
             // Persist GC using locals so actor init does not hop back onto self.
             if liveTombs.count != snap.tombstones.count {
@@ -130,6 +140,7 @@ public actor InMemoryProposalStore: ProposalStore {
     }
 
     public func enqueue(_ proposal: PendingProposal) async -> PendingProposal {
+        await expireStale()
         pending[proposal.id] = proposal
         pendingOrder.append(proposal.id)
         kindByID[proposal.id] = proposal.kind
@@ -145,18 +156,17 @@ public actor InMemoryProposalStore: ProposalStore {
         return proposal
     }
 
-    // `list` and `state` are written without `async` even though they
-    // satisfy the protocol's `async` requirements: actor isolation makes
-    // any call from outside the actor suspend and require `await`, so the
-    // keyword is redundant here. Callers await regardless — see the
-    // protocol doc-comment for the full rationale.
-    public func list(origin: OperationOrigin? = nil) -> [PendingProposal] {
+    // `list`, `state` and `beginApply` first let go of what has waited too
+    // long, so no answer — and no apply — sees a proposal past its time.
+    public func list(origin: OperationOrigin? = nil) async -> [PendingProposal] {
+        await expireStale()
         let all = pendingOrder.compactMap { pending[$0] }
         guard let origin else { return all }
         return all.filter { $0.origin == origin }
     }
 
-    public func state(_ id: UUID) -> ProposalState {
+    public func state(_ id: UUID) async -> ProposalState {
+        await expireStale()
         gcTombstones()
         if pending[id] != nil {
             if applyingIDs.contains(id) { return .applying }
@@ -176,6 +186,7 @@ public actor InMemoryProposalStore: ProposalStore {
     public func withdraw(_ id: UUID) async -> Bool { await resolve(id, as: .withdrawn) }
 
     public func beginApply(_ id: UUID) async -> Bool {
+        await expireStale()
         guard pending[id] != nil, !applyingIDs.contains(id) else { return false }
         applyingIDs.insert(id)
         return true
@@ -204,7 +215,7 @@ public actor InMemoryProposalStore: ProposalStore {
         failedIDs.remove(id)
         applyingIDs.remove(id)
         let kind = kindByID.removeValue(forKey: id) ?? ""
-        tombstones.append((id, state, Date()))
+        tombstones.append((id, state, now()))
         if tombstones.count > tombstoneCap {
             tombstones.removeFirst(tombstones.count - tombstoneCap)
         }
@@ -217,6 +228,7 @@ public actor InMemoryProposalStore: ProposalStore {
             case .withdrawn:  event = .proposalWithdrawn(id: id, kind: kind)
             case .failed:
                 event = .proposalFailed(id: id, kind: kind)
+            case .expired:    event = .proposalExpired(id: id, kind: kind)
             case .pending, .applying, .unknown:
                 return true  // shouldn't happen via resolve()
             }
@@ -226,8 +238,21 @@ public actor InMemoryProposalStore: ProposalStore {
     }
 
     private func gcTombstones() {
-        let cutoff = Date().addingTimeInterval(-tombstoneTTL)
-        tombstones.removeAll { $0.2 < cutoff }
+        let current = now()
+        tombstones.removeAll {
+            $0.2 < current.addingTimeInterval(-($0.1 == .expired ? expiredTombstoneTTL : tombstoneTTL))
+        }
+    }
+
+    /// Resolves as `expired` every proposal that has waited out
+    /// `PendingProposal.lifetime`; one being applied is left to finish.
+    private func expireStale() async {
+        let current = now()
+        let stale = pendingOrder.filter { id in
+            guard let proposal = pending[id], !applyingIDs.contains(id) else { return false }
+            return proposal.expiresAt <= current
+        }
+        for id in stale { _ = await resolve(id, as: .expired) }
     }
 
     private func persist() {

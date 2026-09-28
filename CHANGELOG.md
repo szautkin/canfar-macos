@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A proposed change nobody applies expires after 3 hours** — one sat in
+  Pending for six days, ready to apply against a world that had moved on.
+  Each proposal now says when it expires; once it has, it leaves Pending
+  unapplied and History says so. For assistants, `get_proposal_state`
+  answers `expired`, `list_pending_proposals` gives `expiresAtISO`, and
+  `list_events` reports `proposalExpired`.
 - **Assistants meet your AI Guide tools before anything else** — rules
   you wrote for them, such as where results go in Storage, were seen only
   by an assistant that thought to list guide tools. `describe_app` now

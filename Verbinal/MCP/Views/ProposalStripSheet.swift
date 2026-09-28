@@ -158,6 +158,7 @@ struct ProposalStripSheet: View {
         case .rejected:   return "xmark.circle.fill"
         case .withdrawn:  return "arrow.uturn.backward.circle.fill"
         case .live:       return "robot"
+        case .expired:    return "clock.badge.xmark"
         }
     }
 
@@ -167,6 +168,7 @@ struct ProposalStripSheet: View {
         case .rejected:   return .orange
         case .withdrawn:  return .secondary
         case .live:       return .accentColor
+        case .expired:    return .secondary
         }
     }
 
@@ -225,6 +227,11 @@ struct ProposalStripSheet: View {
                     .foregroundStyle(.secondary)
                 Label(Self.relativeTime.localizedString(for: proposal.createdAt, relativeTo: Date()),
                       systemImage: "clock")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                // Unapplied, it expires (PendingProposal.lifetime).
+                Label(String(localized: "Expires \(Self.relativeTime.localizedString(for: proposal.expiresAt, relativeTo: Date()))"),
+                      systemImage: "hourglass")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()

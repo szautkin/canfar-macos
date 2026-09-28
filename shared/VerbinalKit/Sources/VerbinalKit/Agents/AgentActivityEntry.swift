@@ -54,6 +54,8 @@ public struct AgentActivityEntry: Codable, Sendable, Equatable, Identifiable {
         case withdrawn
         /// View-state op — applied immediately, no proposal flow.
         case live
+        /// Write proposal nobody applied within `PendingProposal.lifetime`.
+        case expired
     }
 
     public init(
@@ -129,6 +131,18 @@ public struct AgentActivityEntry: Codable, Sendable, Equatable, Identifiable {
             proposalID: proposal.id,
             outcome: .applied,
             autoApplied: autoApplied
+        )
+    }
+
+    /// Build an `expired` entry: the proposal waited out its lifetime.
+    public static func expired(proposal: PendingProposal) -> AgentActivityEntry {
+        AgentActivityEntry(
+            kind: proposal.kind,
+            summary: proposal.summary,
+            originFingerprint: AuditOrigin.from(proposal.origin).fingerprintString,
+            originLabel: proposal.origin.label,
+            proposalID: proposal.id,
+            outcome: .expired
         )
     }
 

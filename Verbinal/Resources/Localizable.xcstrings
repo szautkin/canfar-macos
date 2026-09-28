@@ -5878,6 +5878,16 @@
         }
       }
     },
+    "Expires %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expire %@"
+          }
+        }
+      }
+    },
     "Explore & organize" : {
       "localizations" : {
         "fr" : {

@@ -27,13 +27,15 @@ struct ListPendingProposalsTool: AITool {
             let kind: String
             let summary: String
             let createdAtISO: String
+            /// When it expires unapplied (`PendingProposal.lifetime` after it arrived).
+            let expiresAtISO: String
             let originTag: String
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_pending_proposals",
-        description: "List proposals currently waiting for user review in the strip. Returns id, the tool that created it, kind, summary, and origin.",
+        description: "List proposals currently waiting for user review in the strip. Returns id, the tool that created it, kind, summary, origin, and `expiresAtISO` — a proposal nobody applies within 3 hours expires and leaves Pending.",
         schema: #"""
         {
           "type": "object",
@@ -54,6 +56,7 @@ struct ListPendingProposalsTool: AITool {
                 kind: p.kind,
                 summary: p.summary,
                 createdAtISO: iso.string(from: p.createdAt),
+                expiresAtISO: iso.string(from: p.expiresAt),
                 originTag: AuditOrigin.from(p.origin).tag
             )
         }
@@ -90,7 +93,7 @@ struct GetProposalStateTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_proposal_state",
-        description: "Look up the lifecycle state of a proposal by `id` or `proposalId` (pending, applied, rejected, withdrawn, failed, unknown). `failed` means the last apply threw and the item is still in the strip for retry. Tombstones live ~5 min after resolution.",
+        description: "Look up the lifecycle state of a proposal by `id` or `proposalId` (pending, applying, applied, rejected, withdrawn, failed, expired, unknown). `failed` means the last apply threw and the item is still in the strip for retry; `expired` means nobody applied it within 3 hours, so it was not applied and has left Pending (remembered for a day). Other outcomes are remembered ~5 min.",
         schema: #"""
         {
           "type": "object",

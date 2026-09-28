@@ -56,6 +56,15 @@ public struct PendingProposal: Sendable, Identifiable, Equatable, Codable {
         self.origin = origin
         self.requestID = requestID
     }
+
+    /// How long a proposal waits for the person before it expires: long
+    /// enough for a working session, short enough that a change proposed
+    /// yesterday is not applied today against a changed world (the person
+    /// chose 3 hours, plan 15 S4).
+    public static let lifetime: TimeInterval = 3 * 60 * 60
+
+    /// When this proposal expires if nobody has applied it.
+    public var expiresAt: Date { createdAt.addingTimeInterval(Self.lifetime) }
 }
 
 /// Lifecycle state of a proposal as observed externally (e.g. by the
@@ -74,6 +83,9 @@ public enum ProposalState: String, Codable, Sendable, Equatable {
     /// Being applied now — possibly in the background, past the call that
     /// asked. It cannot be applied a second time meanwhile.
     case applying
+    /// Waited longer than `PendingProposal.lifetime` without the person
+    /// applying it, so it was not applied and has left Pending.
+    case expired
     /// Not in the queue, no tombstone — never existed or older than the
     /// retention window.
     case unknown

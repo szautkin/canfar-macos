@@ -30,7 +30,7 @@ struct ListEventsTool: AITool {
         struct Item: Encodable, Sendable {
             let token: String
             let occurredAtISO: String
-            let kind: String          // "proposalArrived" | "proposalApplied" | "proposalRejected" | "proposalWithdrawn" | "proposalFailed"
+            let kind: String          // "proposalArrived" | "proposalApplied" | "proposalRejected" | "proposalWithdrawn" | "proposalFailed" | "proposalExpired"
             let proposalID: String
             let proposalKind: String
             let originKind: String?   // only set for proposalArrived
@@ -127,6 +127,15 @@ struct ListEventsTool: AITool {
                 token: String(entry.token),
                 occurredAtISO: iso.string(from: entry.occurredAt),
                 kind: "proposalWithdrawn",
+                proposalID: id.uuidString,
+                proposalKind: kind,
+                originKind: nil
+            )
+        case .proposalExpired(let id, let kind):
+            return Output.Item(
+                token: String(entry.token),
+                occurredAtISO: iso.string(from: entry.occurredAt),
+                kind: "proposalExpired",
                 proposalID: id.uuidString,
                 proposalKind: kind,
                 originKind: nil
