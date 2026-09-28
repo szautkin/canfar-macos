@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A linked crosshair says when a tab shows another part of the sky** —
+  a GOODS-S frame linked to COSMOS frames gave no sign that the crosshair
+  had nowhere to land. With the crosshair linked, the tab bar names the
+  tabs that share no sky with the one you are in, and `set_tab_sync`
+  returns them (`fieldsApart`).
 - **Your assistant's spectrum probe says what the numbers are** —
   `probe_cube_spectrum` returned a whole spectrum as bare values (3610 of
   them, about 60 KB) with no wavelength and no unit. It now gives the

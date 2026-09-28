@@ -525,17 +525,7 @@ extension AppState {
                 guard host.hasMultipleTabs else {
                     return .rejected("Tab sync needs at least 2 open FITS tabs")
                 }
-                if let link = args.linkCrosshair {
-                    let wasOff = !host.linkedState.linkCrosshair
-                    host.linkedState.linkCrosshair = link
-                    if link && wasOff {
-                        // The UI toggle norths-up unrotated tabs on enable so
-                        // linked crosshairs land on consistently oriented views.
-                        for tab in host.tabs where tab.viewport.rotation == 0 {
-                            tab.applyNorthUp()
-                        }
-                    }
-                }
+                if let link = args.linkCrosshair { host.setLinkCrosshair(link) }
                 if let zoom = args.syncZoom { host.linkedState.linkZoom = zoom }
                 activity.append(.live(
                     kind: "set_tab_sync",
@@ -544,7 +534,8 @@ extension AppState {
                 return .applied(.init(
                     linkCrosshair: host.linkedState.linkCrosshair,
                     syncZoom: host.linkedState.linkZoom,
-                    usesImpreciseWCS: host.syncUsesImpreciseWCS))
+                    usesImpreciseWCS: host.syncUsesImpreciseWCS,
+                    fieldsApart: host.fieldsApartFromActive.map(\.displayName)))
             }
         })
     }

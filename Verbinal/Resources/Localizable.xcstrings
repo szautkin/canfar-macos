@@ -9578,6 +9578,16 @@
         }
       }
     },
+    "No shared sky with %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun ciel en commun avec %@"
+          }
+        }
+      }
+    },
     "NO SIGNAL" : {
       "localizations" : {
         "fr" : {
@@ -15460,6 +15470,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ces valeurs dimensionnent l'instance de calcul de run_code. Petit/rapide convient mieux aux vérifications rapides — la plus petite taille démarre le plus vite. Les tailles disponibles proviennent du contexte de session CANFAR ; l'agent peut aussi passer une taille à start_compute pour remplacer cette valeur par défaut."
+          }
+        }
+      }
+    },
+    "These tabs show another part of the sky, so the linked crosshair has no place in them." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces onglets montrent une autre partie du ciel : le réticule lié n'y a pas de place."
           }
         }
       }

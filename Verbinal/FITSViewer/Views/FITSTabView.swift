@@ -74,7 +74,8 @@ struct FITSTabView: View {
 
                 // Linked controls — always visible, disabled when < 2 tabs
                 HStack(spacing: 8) {
-                    Toggle(isOn: Bindable(tabHost.linkedState).linkCrosshair) {
+                    Toggle(isOn: Binding(get: { tabHost.linkedState.linkCrosshair },
+                                         set: { tabHost.setLinkCrosshair($0) })) {
                         Label("Link Crosshair", systemImage: "scope")
                             .font(.caption2)
                     }
@@ -82,13 +83,6 @@ struct FITSTabView: View {
                     .controlSize(.mini)
                     .disabled(!tabHost.hasMultipleTabs)
                     .help("Sync crosshair position across tabs via WCS coordinates")
-                    .onChange(of: tabHost.linkedState.linkCrosshair) { _, enabled in
-                        if enabled {
-                            for tab in tabHost.tabs where tab.viewport.rotation == 0 {
-                                tab.applyNorthUp()
-                            }
-                        }
-                    }
 
                     Toggle(isOn: Bindable(tabHost.linkedState).linkZoom) {
                         Label("Sync Zoom", systemImage: "arrow.up.left.and.arrow.down.right")
@@ -179,6 +173,15 @@ struct FITSTabView: View {
                             .font(.caption2)
                             .foregroundStyle(.orange)
                             .help("A linked tab has missing, invalid, or approximate WCS. Crosshair and zoom sync across tabs may not land on the exact sky position.")
+                    }
+                    // A linked crosshair has nowhere to land in a field elsewhere on the sky.
+                    let apart = tabHost.fieldsApartFromActive
+                    if !apart.isEmpty {
+                        Label(String(localized: "No shared sky with \(apart.map(\.displayName).joined(separator: ", "))"),
+                              systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                            .help("These tabs show another part of the sky, so the linked crosshair has no place in them.")
                     }
 
                     Spacer()
@@ -324,7 +327,7 @@ struct FITSTabView: View {
     // MARK: - Tab Button
 
     private func tabButton(index: Int, tab: FITSViewerModel) -> some View {
-        let title = tab.fileURL?.lastPathComponent ?? String(localized: "Untitled")
+        let title = tab.displayName
         return HStack(spacing: 4) {
             Button {
                 tabHost.activeTabIndex = index

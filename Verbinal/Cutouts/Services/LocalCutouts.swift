@@ -58,12 +58,12 @@ struct LocalCutoutSource: CutoutSource {
                                         ? "the file is compressed in a way this computer does not cut (it cuts RICE_1 integer fpack images) — cut it with cutBy soda"
                                         : FITSCutter.Failure.noImage.message)
         }
-        let corners = images.flatMap(skyCorners)
+        let corners = images.flatMap(\.skyCorners)
         let centre = SkyGeometry.centroid(corners)
         let reach = corners.map { SkyGeometry.distance(centre, $0) }.max() ?? 0
         let bounding = SkyRegion.circle(ra: centre.ra, dec: centre.dec, radius: max(reach, 1e-6))
         // One image is its own footprint; a mosaic's is the circle round them all.
-        let footprint = images.count == 1 ? SkyRegion.polygon(skyCorners(images[0])) : bounding
+        let footprint = images.count == 1 ? SkyRegion.polygon(images[0].skyCorners) : bounding
         let wavelengths = images.lazy.compactMap(FITSCutter.wavelengths(of:)).first
         return LocalCutoutSource(url: url, localFile: LocalCutoutFile(artifactID: name, footprint: footprint, boundingCircle: bounding,
                                                                       bandMin: wavelengths?.min(), bandMax: wavelengths?.max(),
@@ -93,17 +93,6 @@ struct LocalCutoutSource: CutoutSource {
                 unavailable = CutoutIssue.unreadable(error.localizedDescription).message
             }
             return CutoutCompanion(artifactID: id, fileName: name, unavailable: unavailable)
-        }
-    }
-
-    /// The image's corners on the sky.
-    private static func skyCorners(_ hdu: FITSHDUnit) -> [SkyPoint] {
-        guard let wcs = hdu.wcs else { return [] }
-        let w = Double(hdu.header.naxis1) - 0.5, h = Double(hdu.header.naxis2) - 0.5
-        // A cube's WCS is read for its first two axes.
-        return [(-0.5, -0.5), (w, -0.5), (w, h), (-0.5, h)].map {
-            let sky = wcs.pixelToWorld(x: $0.0, y: $0.1)
-            return SkyPoint(ra: sky.ra, dec: sky.dec)
         }
     }
 

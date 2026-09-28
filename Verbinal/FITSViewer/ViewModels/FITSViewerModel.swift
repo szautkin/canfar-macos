@@ -125,6 +125,9 @@ final class FITSViewerModel: Identifiable {
 
     var wcs: FITSWCSTransform? { selectedHDU?.wcs }
 
+    /// What the tab is called: its file's name.
+    var displayName: String { fileURL?.lastPathComponent ?? String(localized: "Untitled") }
+
     // MARK: - File Operations
 
     func open(url: URL) async {

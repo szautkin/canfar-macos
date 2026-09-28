@@ -141,6 +141,28 @@ final class FITSTabHostModel {
         }
     }
 
+    /// Open tabs whose image shares no sky with the active tab's — with the
+    /// crosshair linked, it has nowhere to land in them (QA M18: a JWST
+    /// GOODS-S tab linked to CFHT COSMOS tabs, and nothing said so).
+    var fieldsApartFromActive: [FITSViewerModel] {
+        guard linkedState.linkCrosshair, tabs.count > 1, let active = activeTab,
+              let here = active.selectedHDU?.skyCorners, here.count >= 3 else { return [] }
+        return tabs.filter { tab in
+            guard tab !== active, let there = tab.selectedHDU?.skyCorners, there.count >= 3 else { return false }
+            return SkyGeometry.overlap(there, here) == .outside
+        }
+    }
+
+    /// Links or unlinks the crosshair; linking turns every unrotated tab
+    /// north up, so linked crosshairs land on views oriented alike. The one
+    /// way the toggle and `set_tab_sync` do it.
+    func setLinkCrosshair(_ on: Bool) {
+        let wasOff = !linkedState.linkCrosshair
+        linkedState.linkCrosshair = on
+        guard on, wasOff else { return }
+        for tab in tabs where tab.viewport.rotation == 0 { tab.applyNorthUp() }
+    }
+
     // MARK: - Store: Write (active tab → store)
 
     // Linked-state contract (writes):
