@@ -35,6 +35,12 @@ struct VOSpaceNode: Identifiable, Equatable, Hashable {
         FileHelper.isFITS(fileExtension)
     }
 
+    /// A file's media type, by the rule a read uses too
+    /// (``VOSpaceContentType``); a folder has none.
+    var mediaType: String? {
+        isContainer ? nil : VOSpaceContentType.of(path: name, stated: contentType)
+    }
+
     var formattedSize: String {
         guard let size = sizeBytes else { return "" }
         return SharedFormatters.bytes(size)

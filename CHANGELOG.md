@@ -12,6 +12,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Reading a Storage file in chunks reads the whole file** — ARC answers
+  some requests for part of a file with all of it, and `read_vospace_file`
+  kept the first bytes, so every `offset` returned the file's start. The
+  whole answer is now cut at the offset, and `totalBytes` is the file's
+  size. A file's `contentType` is decided one way everywhere — its
+  extension's type, else the server's — so a `.py` is Python in a listing
+  as when read; and `list_vospace_path` says `truncated` when the folder
+  holds more than `limit` entries.
 - **Updating a saved query changes it, not a copy** — an update, yours or
   your assistant's `update_saved_query`, added a second row with the same
   id, and the copies crowded older queries out of the list of twenty. An

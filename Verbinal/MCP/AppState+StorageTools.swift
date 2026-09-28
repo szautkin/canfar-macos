@@ -59,7 +59,7 @@ extension AppState {
             path: node.path,
             type: node.type.rawValue,
             sizeBytes: node.sizeBytes,
-            contentType: node.contentType,
+            contentType: node.mediaType,
             lastModified: node.lastModified,
             isPublic: node.isPublic
         )

@@ -112,14 +112,13 @@ actor VOSpaceBrowserService {
 
     // MARK: - Bounded read into memory
 
-    /// Result of an agent-visible bounded read. `totalBytes` is the
-    /// full file size when the server reports it via `Content-Range`;
-    /// `nil` when the server didn't honour the `Range:` header (it
-    /// returned 200 with the whole body — we still truncate before
-    /// surfacing) or omitted `Content-Range` entirely.
+    /// Result of an agent-visible bounded read: the slice asked for.
     struct FetchResult: Sendable {
         let data: Data
+        /// The whole file's size, when the server said it.
         let totalBytes: Int?
+        /// The media type the server gave the file, if any.
+        var statedContentType: String? = nil
     }
 
     /// Read a bounded slice of a VOSpace file directly into memory,
@@ -128,9 +127,8 @@ actor VOSpaceBrowserService {
     /// and is therefore invisible to the agent. Uses HTTP
     /// `Range: bytes=offset-(offset+maxBytes-1)` to ask the ARC
     /// REST endpoint for just the requested slice; if the server
-    /// ignores the Range header (200 instead of 206), we still
-    /// truncate the local buffer at `maxBytes` so the caller's
-    /// memory contract is honoured.
+    /// ignores the Range header (200 instead of 206), the whole file
+    /// is sliced here (``slice(_:of:offset:maxBytes:)``).
     ///
     /// Closes the QA finding from 2026-05-15: "three of eight
     /// Skaha jobs in this engagement existed solely to cat file
@@ -153,14 +151,27 @@ actor VOSpaceBrowserService {
         let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
         let rangeEnd = offset + maxBytes - 1
         let headers = ["Range": "bytes=\(offset)-\(rangeEnd)"]
-        let (data, response) = try await network.get(urlString, additionalHeaders: headers)
-        let totalBytes = Self.parseContentRangeTotal(response)
-        // Defensive truncation: if the server ignored Range and
-        // sent us the whole file (some VOSpace deployments don't
-        // implement byte-ranges on all paths), respect the
-        // caller's maxBytes contract anyway.
-        let bounded = data.count > maxBytes ? data.prefix(maxBytes) : data
-        return FetchResult(data: Data(bounded), totalBytes: totalBytes)
+        do {
+            let (data, response) = try await network.get(urlString, additionalHeaders: headers)
+            return Self.slice(data, of: response, offset: offset, maxBytes: maxBytes)
+        } catch NetworkError.httpError(416, _) {
+            // Range Not Satisfiable: the offset is at or past the end.
+            return FetchResult(data: Data(), totalBytes: nil)
+        }
+    }
+
+    /// The slice a ranged GET asked for. A 206 is that slice. A 200 is the
+    /// whole file — ARC answers some paths so, whatever `Range` said — and
+    /// is sliced here at `offset`; keeping its first bytes instead handed a
+    /// chunked reader the file's start at every offset.
+    static func slice(_ data: Data, of response: HTTPURLResponse, offset: Int, maxBytes: Int) -> FetchResult {
+        let stated = response.mimeType
+        guard response.statusCode != 206 else {
+            return FetchResult(data: Data(data.prefix(maxBytes)), totalBytes: parseContentRangeTotal(response),
+                               statedContentType: stated)
+        }
+        return FetchResult(data: Data(data.dropFirst(offset).prefix(maxBytes)), totalBytes: data.count,
+                           statedContentType: stated)
     }
 
     /// Parse `Content-Range: bytes 0-99/1000` and return the total

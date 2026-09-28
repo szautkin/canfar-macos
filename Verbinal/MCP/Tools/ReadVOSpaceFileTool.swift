@@ -7,14 +7,9 @@
 import Foundation
 import VerbinalKit
 
-/// Result envelope passed from the wireup layer (which holds the
-/// authenticated `VOSpaceBrowserService`) to the tool. Carries the
-/// bytes plus the server's `Content-Range`-reported total when
-/// available — the tool uses the total to set `truncated` precisely.
-struct ReadVOSpaceFetchResult: Sendable {
-    let data: Data
-    let totalBytes: Int?
-}
+/// What the wireup layer's authenticated read hands the tool: the
+/// service's own result, so the two cannot drift.
+typealias ReadVOSpaceFetchResult = VOSpaceBrowserService.FetchResult
 
 /// Read a bounded slice of a VOSpace file into the tool result
 /// envelope — the agent-visible counterpart to `download_from_vospace`
@@ -41,9 +36,9 @@ struct ReadVOSpaceFileTool: JSONReadTool {
         /// the response with its call when multiple reads are in
         /// flight.
         let path: String
-        /// Coarse content-type guess derived from the file extension.
-        /// Used by the encoding decision below; the agent can also
-        /// use it as a hint for downstream parsing.
+        /// The file's media type, by the rule a listing uses too
+        /// (`VOSpaceContentType`): its extension's, else the server's.
+        /// Decides the encoding below.
         let contentType: String
         /// Either `"utf8"` or `"base64"`. Text-like content types
         /// return UTF-8 when the bytes round-trip cleanly; everything
@@ -53,10 +48,9 @@ struct ReadVOSpaceFileTool: JSONReadTool {
         /// the wire format). For binary content this equals the
         /// pre-base64 byte count, not the base64 string length.
         let returnedBytes: Int
-        /// Full file size on the server when reported via
-        /// `Content-Range`; `nil` when the server didn't honour the
-        /// `Range:` header or omitted the total. Use this to decide
-        /// whether `truncated` reflects a partial read.
+        /// The whole file's size — from `Content-Range`, or the body's
+        /// length when the server sent the whole file; `nil` when the
+        /// server said neither.
         let totalBytes: Int?
         /// `true` when more data exists past the returned slice. If
         /// `totalBytes` is known, this is exact; if not, we
@@ -72,7 +66,7 @@ struct ReadVOSpaceFileTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "read_vospace_file",
-        description: "Read a bounded slice of a VOSpace file into the tool result — the agent-visible counterpart to `download_vospace_file` (which only writes to the user's Mac and is invisible to you). The 2026-05-15 QA report named this as a recurring pain point: three of eight Skaha jobs in a real workflow existed only to `cat` files back through stdout because the agent couldn't see what it had just written. This tool replaces that pattern with a single round-trip. `path` is relative to the user's home (`compact-groups/v1/results.fits`); absolute `/home/<user>/…` is accepted and stripped. `offset` defaults to 0 and `maxBytes` defaults to 262144 (256 KB); hard cap is 1048576 (1 MB) per call — beyond that, split into multiple calls or use `download_vospace_file` to land the file on disk for the user. The response includes `totalBytes` (when the server reports it via Content-Range) and `truncated` (true when more data exists past the returned slice). `encoding` is `\"utf8\"` for textual files whose bytes round-trip cleanly (extensions: .txt, .csv, .tsv, .json, .xml, .yaml, .yml, .py, .sh, .md, .log) and `\"base64\"` for everything else (FITS, .gz, .png, .jpg) — base64 always when in doubt.",
+        description: "Read a bounded slice of a VOSpace file into the tool result — the agent-visible counterpart to `download_vospace_file` (which only writes to the user's Mac and is invisible to you). The 2026-05-15 QA report named this as a recurring pain point: three of eight Skaha jobs in a real workflow existed only to `cat` files back through stdout because the agent couldn't see what it had just written. This tool replaces that pattern with a single round-trip. `path` is relative to the user's home (`compact-groups/v1/results.fits`); absolute `/home/<user>/…` is accepted and stripped. `offset` defaults to 0 and `maxBytes` defaults to 262144 (256 KB); hard cap is 1048576 (1 MB) per call — beyond that, split into multiple calls or use `download_vospace_file` to land the file on disk for the user. The response includes `totalBytes` (the whole file's size, when known) and `truncated` (true when more data exists past the returned slice); read a large file in chunks by advancing `offset` by `returnedBytes`. `contentType` follows the same rule as `list_vospace_path`: the extension's type, else the server's. `encoding` is `\"utf8\"` for textual files whose bytes round-trip cleanly (extensions: .txt, .csv, .tsv, .json, .xml, .yaml, .yml, .py, .sh, .md, .log) and `\"base64\"` for everything else (FITS, .gz, .png, .jpg) — base64 always when in doubt.",
         schema: #"""
         {
           "type": "object",
@@ -123,7 +117,7 @@ struct ReadVOSpaceFileTool: JSONReadTool {
             throw ToolFailureReason.backendError(message)
         }
 
-        let contentType = Self.inferContentType(path: args.path)
+        let contentType = VOSpaceContentType.of(path: args.path, stated: result.statedContentType)
         let (encoding, content) = Self.encodeContent(result.data, contentType: contentType)
         let truncated: Bool
         if let total = result.totalBytes {
@@ -146,42 +140,13 @@ struct ReadVOSpaceFileTool: JSONReadTool {
         )
     }
 
-    /// Map file extension to a coarse content-type. Doesn't peek at
-    /// the bytes — the encoding decision (`encodeContent`) does.
-    static func inferContentType(path: String) -> String {
-        let ext = (path as NSString).pathExtension.lowercased()
-        switch ext {
-        case "txt", "log":            return "text/plain"
-        case "csv":                   return "text/csv"
-        case "tsv":                   return "text/tab-separated-values"
-        case "json":                  return "application/json"
-        case "xml":                   return "application/xml"
-        case "py":                    return "text/x-python"
-        case "sh":                    return "application/x-sh"
-        case "md":                    return "text/markdown"
-        case "yaml", "yml":           return "application/yaml"
-        case "ini", "conf", "toml":   return "text/plain"
-        case "fits":                  return "application/fits"
-        case "gz":                    return "application/gzip"
-        case "zip":                   return "application/zip"
-        case "png":                   return "image/png"
-        case "jpg", "jpeg":           return "image/jpeg"
-        default:                      return "application/octet-stream"
-        }
-    }
-
     /// Decide UTF-8 vs base64. Textual content types get a UTF-8 try
     /// first; if the bytes don't round-trip as valid UTF-8 we fall
     /// back to base64 (so a `.csv` with embedded null bytes or
     /// latin-1 garbage doesn't surface as nonsense). Everything
     /// else rides base64 directly.
     static func encodeContent(_ data: Data, contentType: String) -> (encoding: String, content: String) {
-        let looksTextual = contentType.hasPrefix("text/")
-            || contentType == "application/json"
-            || contentType == "application/xml"
-            || contentType == "application/yaml"
-            || contentType == "application/x-sh"
-        if looksTextual, let s = String(data: data, encoding: .utf8) {
+        if VOSpaceContentType.isText(contentType), let s = String(data: data, encoding: .utf8) {
             return ("utf8", s)
         }
         return ("base64", data.base64EncodedString())

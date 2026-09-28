@@ -25,6 +25,8 @@ struct ListVOSpacePathTool: JSONReadTool {
     struct Output: Encodable, Sendable {
         let path: String
         let nodes: [Node]
+        /// The folder holds more than `limit` entries; these are the first.
+        var truncated = false
         struct Node: Encodable, Sendable {
             let name: String
             let path: String
@@ -38,7 +40,7 @@ struct ListVOSpacePathTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_vospace_path",
-        description: "List contents of a VOSpace path relative to the user's home (empty string is the root). Absolute `/home/<user>/…` and `/arc/home/<user>/…` prefixes are stripped so they are not double-prepended. Optional `limit` (default 200, max 500). The VOSpace REST endpoint doesn't always honour `?limit=` server-side, so the tool truncates client-side too — the response is always ≤ the requested limit. Requires auth.",
+        description: "List contents of a VOSpace path relative to the user's home (empty string is the root). Absolute `/home/<user>/…` and `/arc/home/<user>/…` prefixes are stripped so they are not double-prepended. Optional `limit` (default 200, max 500); the response is always ≤ `limit` entries, and `truncated` is true when the folder holds more. `contentType` is the file's extension's type, else the server's — the rule `read_vospace_file` uses. Requires auth.",
         schema: #"""
         {
           "type": "object",
@@ -59,11 +61,10 @@ struct ListVOSpacePathTool: JSONReadTool {
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime]
         do {
-            let nodes = try await listNodes(path, limit)
-            // The VOSpace REST endpoint accepts `?limit=` but doesn't
-            // always honour it (observed: ~1100 rows returned for
-            // limit=200). Truncate client-side so the tool's contract
-            // matches its schema regardless of server behaviour.
+            // One more than asked, to know whether there are more. The
+            // endpoint doesn't always honour `?limit=` (observed: ~1100
+            // rows for limit=200), so the answer is capped here too.
+            let nodes = try await listNodes(path, limit + 1)
             let capped = Array(nodes.prefix(limit))
             return Output(
                 path: path,
@@ -77,7 +78,8 @@ struct ListVOSpacePathTool: JSONReadTool {
                         lastModifiedISO: $0.lastModified.map { iso.string(from: $0) },
                         isPublic: $0.isPublic
                     )
-                }
+                },
+                truncated: nodes.count > limit
             )
         } catch {
             if error is VOSpaceError, (error as? VOSpaceError) == .invalidPath {

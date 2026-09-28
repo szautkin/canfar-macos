@@ -242,23 +242,106 @@ final class ReadVOSpaceFileTests: XCTestCase {
         XCTAssertFalse(out.truncated, "offset 50 + 50 bytes = total 100; final chunk")
     }
 
-    // MARK: - inferContentType pure function
+    // MARK: - One media-type rule (VOSpaceContentType)
 
-    func testInferContentTypeForCommonExtensions() {
-        XCTAssertEqual(ReadVOSpaceFileTool.inferContentType(path: "a.fits"), "application/fits")
-        XCTAssertEqual(ReadVOSpaceFileTool.inferContentType(path: "a.gz"), "application/gzip")
-        XCTAssertEqual(ReadVOSpaceFileTool.inferContentType(path: "a.json"), "application/json")
-        XCTAssertEqual(ReadVOSpaceFileTool.inferContentType(path: "a.py"), "text/x-python")
-        XCTAssertEqual(ReadVOSpaceFileTool.inferContentType(path: "a.md"), "text/markdown")
-        XCTAssertEqual(ReadVOSpaceFileTool.inferContentType(path: "deep/path/log.txt"), "text/plain")
-        XCTAssertEqual(ReadVOSpaceFileTool.inferContentType(path: "no_extension"), "application/octet-stream")
+    func testContentTypeForCommonExtensions() {
+        let type = { VOSpaceContentType.of(path: $0, stated: nil) }
+        XCTAssertEqual(type("a.fits"), "application/fits")
+        XCTAssertEqual(type("a.gz"), "application/gzip")
+        XCTAssertEqual(type("a.json"), "application/json")
+        XCTAssertEqual(type("a.py"), "text/x-python")
+        XCTAssertEqual(type("a.md"), "text/markdown")
+        XCTAssertEqual(type("deep/path/log.txt"), "text/plain")
+        XCTAssertEqual(type("no_extension"), "application/octet-stream")
     }
 
     /// Case-insensitive: `.FITS` and `.fits` must map to the same
     /// content-type. Astronomy filenames in the wild are wildly
     /// inconsistent on case.
-    func testInferContentTypeCaseInsensitive() {
-        XCTAssertEqual(ReadVOSpaceFileTool.inferContentType(path: "BIG.FITS"), "application/fits")
-        XCTAssertEqual(ReadVOSpaceFileTool.inferContentType(path: "Notes.JSON"), "application/json")
+    func testContentTypeCaseInsensitive() {
+        XCTAssertEqual(VOSpaceContentType.of(path: "BIG.FITS", stated: nil), "application/fits")
+        XCTAssertEqual(VOSpaceContentType.of(path: "Notes.JSON", stated: nil), "application/json")
+    }
+
+    /// QA L5: a listing called a `.py` `application/octet-stream` (the
+    /// server's word) and a read called it `text/x-python`.
+    func testAListingAndAReadGiveAFileOneType() async throws {
+        let listed = VOSpaceNode(name: "fit.py", path: "fit.py", type: .dataNode, contentType: "application/octet-stream")
+        let tool = makeTool { _, _, _ in
+            ReadVOSpaceFetchResult(data: Data("x = 1".utf8), totalBytes: 5, statedContentType: "application/octet-stream")
+        }
+        let read = try await tool.handle(args(path: "fit.py"), context: ctx())
+        XCTAssertEqual(listed.mediaType, "text/x-python")
+        XCTAssertEqual(read.contentType, listed.mediaType)
+        XCTAssertEqual(read.encoding, "utf8")
+        XCTAssertEqual(VOSpaceContentType.of(path: "run.slurm", stated: "text/plain"), "text/plain",
+                       "an extension that names nothing takes the server's type")
+        XCTAssertNil(VOSpaceNode(name: "results", path: "results", type: .container).mediaType)
+    }
+
+    // MARK: - A server that ignores Range (QA H4)
+
+    private func response(_ status: Int, _ headers: [String: String] = [:]) -> HTTPURLResponse {
+        HTTPURLResponse(url: URL(string: "https://ws-uv.canfar.net/arc/files/home/u/notes.md")!,
+                        statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)!
+    }
+
+    /// The reported case: a 445-byte file, `offset` 21, `maxBytes` 10,
+    /// answered 200 with the whole file, gave bytes 0–9.
+    func testAWholeFileAnswerIsReadFromTheOffset() {
+        let file = Data((0..<445).map { UInt8($0 % 251) })
+        let slice = VOSpaceBrowserService.slice(file, of: response(200, ["Content-Type": "text/markdown"]),
+                                                offset: 21, maxBytes: 10)
+        XCTAssertEqual(slice.data, file.subdata(in: 21..<31))
+        XCTAssertEqual(slice.totalBytes, 445)
+        XCTAssertEqual(slice.statedContentType, "text/markdown")
+
+        let last = VOSpaceBrowserService.slice(file, of: response(200), offset: 440, maxBytes: 10)
+        XCTAssertEqual(last.data, file.subdata(in: 440..<445))
+        XCTAssertTrue(VOSpaceBrowserService.slice(file, of: response(200), offset: 445, maxBytes: 10).data.isEmpty)
+    }
+
+    func testARangedAnswerIsTheSlice() {
+        let slice = VOSpaceBrowserService.slice(Data(repeating: 7, count: 10),
+                                                of: response(206, ["Content-Range": "bytes 21-30/445"]),
+                                                offset: 21, maxBytes: 10)
+        XCTAssertEqual(slice.data, Data(repeating: 7, count: 10))
+        XCTAssertEqual(slice.totalBytes, 445)
+    }
+
+    /// Reading a file in chunks reaches its end, whatever the server does with Range.
+    func testChunkedReadsWalkTheFile() async throws {
+        let file = Data((0..<445).map { UInt8($0 % 251) })
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, file)
+        }
+        defer { MockURLProtocol.requestHandler = nil }
+        let service = VOSpaceBrowserService(network: NetworkClient(session: MockURLProtocol.mockSession()))
+        var read = Data()
+        var offset = 0
+        for _ in 0..<10 {   // 445 bytes in 100s: five reads
+            let chunk = try await service.fetchBytes(username: "u", path: "notes.md", offset: offset, maxBytes: 100)
+            read += chunk.data
+            offset += chunk.data.count
+            if chunk.data.isEmpty || offset >= (chunk.totalBytes ?? .max) { break }
+        }
+        XCTAssertEqual(read, file)
+    }
+
+    // MARK: - A listing says when it stopped at its limit (QA L6)
+
+    func testAListingSaysWhenItStoppedAtItsLimit() async throws {
+        func node(_ i: Int) -> VOSpaceNodeOut {
+            VOSpaceNodeOut(name: "f\(i)", path: "f\(i)", type: "dataNode", sizeBytes: 1, contentType: nil,
+                           lastModified: nil, isPublic: false)
+        }
+        let folder = (0..<5).map(node)
+        let tool = ListVOSpacePathTool(listNodes: { _, limit in Array(folder.prefix(limit)) })
+        let first = try await tool.handle(.init(path: "", limit: 3), context: ctx())
+        XCTAssertEqual(first.nodes.count, 3)
+        XCTAssertTrue(first.truncated)
+        let all = try await tool.handle(.init(path: "", limit: 5), context: ctx())
+        XCTAssertEqual(all.nodes.count, 5)
+        XCTAssertFalse(all.truncated)
     }
 }
