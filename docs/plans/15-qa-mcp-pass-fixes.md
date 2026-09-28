@@ -15,7 +15,7 @@ with its tests and a CHANGELOG entry; a tool change also updates
 | Phase | State | Commits |
 |---|---|---|
 | P Portal layout | done — P1 | `64a2500` |
-| F data you can trust | in progress — F1 Rice high-entropy blocks, 8/16/32-bit; F2 a compressed image's own header; F3 downloads that hold nothing | `59af802`, `6e3a57e`, F3 |
+| F data you can trust | in progress — F1 Rice high-entropy blocks, 8/16/32-bit; F2 a compressed image's own header; F3 downloads that hold nothing; F4 one row per saved query | `59af802`, `6e3a57e`, `fadd302`, F4 |
 | S agent safety and audit | planned — S1–S6 | — |
 | V viewers | planned — V1–V6 | — |
 | R search, ADQL, resolver, VizieR | planned — R1–R5 | — |

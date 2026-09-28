@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Updating a saved query changes it, not a copy** — an update, yours or
+  your assistant's `update_saved_query`, added a second row with the same
+  id, and the copies crowded older queries out of the list of twenty. An
+  update now replaces the query and brings it to the top. Saved queries
+  from before are tidied once, on first launch: the newest row of each is
+  kept, and `&amp;` in a name, description or tag is `&` again, as typed.
 - **A download that holds nothing is not kept as one** — an observation
   with no files came back as a 0-byte package or a tar of 1024 zero bytes,
   and Research recorded it as downloaded. A download is now refused when

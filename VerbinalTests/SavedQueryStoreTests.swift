@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
+import os
 import VerbinalKit
 @testable import Verbinal
 
@@ -103,5 +104,39 @@ final class SavedQueryStoreTests: XCTestCase {
 
         XCTAssertEqual(store.queries[0].name, "Second")
         XCTAssertEqual(store.queries[1].name, "First")
+    }
+    // MARK: - One row per query (plan 15 F4, QA H3 and L19)
+
+    func testUpdatingAQueryReplacesItsRow() {
+        let store = makeStore()
+        var query = makeQuery(name: "SN 2023ixf")
+        store.save(query)
+        store.save(makeQuery(name: "Other"))
+        query.tags = ["stis"]
+        store.save(query)
+
+        XCTAssertEqual(store.queries.filter { $0.id == query.id }.count, 1)
+        XCTAssertEqual(store.queries.map(\.name), ["SN 2023ixf", "Other"], "the updated query comes first")
+        XCTAssertEqual(store.queries[0].tags, ["stis"])
+    }
+
+    func testAnOlderFileKeepsTheNewestRowPerQueryAndItsAmpersands() throws {
+        let fileName = "test_saved_queries_legacy_\(UUID().uuidString).json"
+        let id = UUID()
+        let old = SavedQuery(id: id, name: "Probe", adql: "SELECT 1", savedAt: Date(timeIntervalSince1970: 100))
+        let new = SavedQuery(id: id, name: "Probe (validated)", adql: "SELECT 1", savedAt: Date(timeIntervalSince1970: 200))
+        let escaped = SavedQuery(name: "Trumbo &amp; Brown 2023", adql: "SELECT 2", savedAt: Date(timeIntervalSince1970: 150),
+                                 description: "Trumbo &amp; Brown", tags: ["a&amp;b"])
+        DiskPersistence<[SavedQuery]>(subdirectory: "Verbinal", fileName: fileName, logger: .init())
+            .write([old, escaped, new])
+
+        let store = SavedQueryStore(fileName: fileName)
+        XCTAssertEqual(store.queries.map(\.name), ["Probe (validated)", "Trumbo & Brown 2023"])
+        XCTAssertEqual(store.queries[1].description, "Trumbo & Brown")
+        XCTAssertEqual(store.queries[1].tags, ["a&b"])
+
+        store.rename(store.queries[1], to: "Rock &amp; roll")
+        XCTAssertEqual(SavedQueryStore(fileName: fileName).queries[1].name, "Rock &amp; roll",
+                       "the clean-up ran once; a name typed since is kept as typed")
     }
 }

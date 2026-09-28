@@ -20,18 +20,27 @@ final class SavedQueryStore {
     private let persistence: DiskPersistence<[SavedQuery]>
     private(set) var queries: [SavedQuery] = []
 
+    /// v2: one row per query, text as typed. Files written before it can
+    /// hold several rows for one query (every update added a row) and
+    /// `&amp;` where the person typed `&`.
+    private static let schemaVersion = 2
+
     init(fileName: String = "saved_queries.json") {
         self.persistence = DiskPersistence(
             subdirectory: "Verbinal",
             fileName: fileName,
-            logger: Self.logger
+            logger: Self.logger,
+            schemaVersion: Self.schemaVersion
         )
-        self.queries = persistence.read() ?? []
+        self.queries = persistence.read(migrating: Self.migrate) ?? []
     }
 
+    /// Saves a new query, or replaces the one with its id; either way it is
+    /// the newest.
     func save(_ query: SavedQuery) {
         var updated = query
         updated.savedAt = Date()
+        queries.removeAll { $0.id == query.id }
         queries.insert(updated, at: 0)
         if queries.count > maxEntries {
             queries = Array(queries.prefix(maxEntries))
@@ -54,5 +63,27 @@ final class SavedQueryStore {
     func clear() {
         queries.removeAll()
         persistence.write(queries)
+    }
+
+    /// Brings a v1 file to v2: the newest row of each query, its `&amp;`
+    /// unescaped once.
+    private nonisolated static func migrate(_ rows: [SavedQuery], from version: Int) -> [SavedQuery] {
+        var seen = Set<UUID>()
+        let newest = rows.sorted { $0.savedAt > $1.savedAt }.filter { seen.insert($0.id).inserted }
+        return newest.map { row in
+            var row = row
+            row.name = unescaped(row.name)
+            row.description = unescaped(row.description)
+            row.tags = row.tags.map(unescaped)
+            row.agentAttribution = row.agentAttribution.map {
+                AgentAttribution(proposalID: $0.proposalID, originFingerprint: $0.originFingerprint,
+                                 originLabel: $0.originLabel, appliedAt: $0.appliedAt, summary: unescaped($0.summary))
+            }
+            return row
+        }
+    }
+
+    private nonisolated static func unescaped(_ text: String) -> String {
+        text.replacingOccurrences(of: "&amp;", with: "&")
     }
 }

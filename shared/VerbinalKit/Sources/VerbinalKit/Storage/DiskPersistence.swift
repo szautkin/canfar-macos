@@ -70,15 +70,21 @@ public struct DiskPersistence<T: Codable>: Sendable {
     /// place: its bytes survive for recovery, and the next read starts clean
     /// instead of failing forever. Logged at `.error`.
     public func readResult() -> ReadOutcome {
+        readStored().outcome
+    }
+
+    /// The outcome of a read and the schema version the file was written at
+    /// (a bare legacy value counts as v1).
+    private func readStored() -> (outcome: ReadOutcome, version: Int) {
         guard let fileURL, FileManager.default.fileExists(atPath: fileURL.path) else {
-            return .missing
+            return (.missing, schemaVersion)
         }
         let data: Data
         do {
             data = try Data(contentsOf: fileURL)
         } catch {
             logger.error("Read failed \(fileURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public) — quarantining")
-            return .corrupt(quarantinedTo: quarantineCorruptFile(at: fileURL))
+            return (.corrupt(quarantinedTo: quarantineCorruptFile(at: fileURL)), schemaVersion)
         }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -87,22 +93,35 @@ public struct DiskPersistence<T: Codable>: Sendable {
         if let envelope = try? decoder.decode(Envelope.self, from: data) {
             if envelope.schemaVersion > schemaVersion {
                 logger.error("Store \(fileURL.lastPathComponent, privacy: .public) is schema v\(envelope.schemaVersion), newer than supported v\(self.schemaVersion) — not loading to avoid clobbering newer data")
-                return .unsupported(foundVersion: envelope.schemaVersion)
+                return (.unsupported(foundVersion: envelope.schemaVersion), envelope.schemaVersion)
             }
             // Older or equal: additive field changes are absorbed by Codable's
-            // optional synthesis; explicit per-version migrations can be layered
-            // in later if a non-additive change is needed.
-            return .value(envelope.value)
+            // optional synthesis; a non-additive change is a migration
+            // (``read(migrating:)``).
+            return (.value(envelope.value), envelope.schemaVersion)
         }
 
         // Backward compatibility: a bare value written before versioning (treated
         // as v1). Going forward this is re-saved as an envelope on the next write.
         if let legacy = try? decoder.decode(T.self, from: data) {
-            return .value(legacy)
+            return (.value(legacy), 1)
         }
 
         logger.error("Corrupt store \(fileURL.lastPathComponent, privacy: .public): not a valid envelope or legacy value — quarantining instead of silently discarding")
-        return .corrupt(quarantinedTo: quarantineCorruptFile(at: fileURL))
+        return (.corrupt(quarantinedTo: quarantineCorruptFile(at: fileURL)), schemaVersion)
+    }
+
+    /// Read, bringing a file written at an older schema version up to this
+    /// one: `migrate` gets the value and the version it was written at, and
+    /// what it returns is written back at the current version — so each
+    /// migration runs once. `nil` as ``read()``.
+    public func read(migrating migrate: (T, _ fromVersion: Int) -> T) -> T? {
+        let stored = readStored()
+        guard case .value(let value) = stored.outcome else { return nil }
+        guard stored.version < schemaVersion else { return value }
+        let migrated = migrate(value, stored.version)
+        write(migrated)
+        return migrated
     }
 
     /// Decode and return the persisted value, or `nil` if the file is missing or

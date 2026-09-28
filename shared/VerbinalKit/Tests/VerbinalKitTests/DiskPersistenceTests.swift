@@ -135,6 +135,32 @@ final class DiskPersistenceTests: XCTestCase {
         XCTAssertNil(store.read())
     }
 
+    func testAnOlderFileIsMigratedOnceAndWrittenBack() throws {
+        let subdirectory = "VerbinalDiskPersistenceTests-\(UUID().uuidString)"
+        let v1 = DiskPersistence<Box>(subdirectory: subdirectory, fileName: "box.json", logger: logger)
+        let v2 = DiskPersistence<Box>(subdirectory: subdirectory, fileName: "box.json", logger: logger, schemaVersion: 2)
+        defer { v2.delete() }
+        v1.write(Box(name: "old", when: Date(timeIntervalSince1970: 0), count: 1))
+
+        var seen: [Int] = []
+        let migrate: (Box, Int) -> Box = { box, version in
+            seen.append(version)
+            return Box(name: box.name.uppercased(), when: box.when, count: box.count)
+        }
+        XCTAssertEqual(v2.read(migrating: migrate)?.name, "OLD")
+        XCTAssertEqual(v2.read(migrating: migrate)?.name, "OLD", "the migrated value was written back")
+        XCTAssertEqual(seen, [1], "a migration runs once, from the version the file was written at")
+        let url = try XCTUnwrap(v2.fileURL)
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        XCTAssertEqual(try decoder.decode(Env.self, from: Data(contentsOf: url)).schemaVersion, 2)
+    }
+
+    func testAMissingFileIsNotMigrated() {
+        let store = DiskPersistence<Box>(subdirectory: "VerbinalDiskPersistenceTests-\(UUID().uuidString)",
+                                         fileName: "box.json", logger: logger, schemaVersion: 2)
+        XCTAssertNil(store.read { box, _ in XCTFail("nothing to migrate"); return box })
+    }
+
     func testDeleteRemovesFileAndIsIdempotent() {
         let store = makeStore()
         store.write(Box(name: "x", when: Date(timeIntervalSince1970: 0), count: 1))
