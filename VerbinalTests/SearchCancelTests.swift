@@ -42,6 +42,24 @@ final class SearchCancelTests: XCTestCase {
         for _ in 0..<200 where !model.isSearching { try? await Task.sleep(for: .milliseconds(5)) }
     }
 
+    /// Plan 15 R2 (QA L13): what the checker is sure is wrong is not sent,
+    /// whoever runs it.
+    func testAQueryTheCheckerRefusesIsNotSent() async {
+        let model = makeModel()
+        final class Sent: @unchecked Sendable { var count = 0 }
+        let sent = Sent()
+        MockURLProtocol.requestHandler = { request in
+            sent.count += 1
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data())
+        }
+        let outcome = await model.executeRawQuery("SELECT * FROM caom2.Plane LIMIT 5", fromEditor: true)
+        guard case .failed(let message) = outcome else { return XCTFail("expected a refusal, got \(outcome)") }
+        XCTAssertTrue(message.contains("SELECT TOP 5"), message)
+        XCTAssertEqual(sent.count, 0, "nothing went to the server")
+        XCTAssertNotNil(model.searchError)
+        XCTAssertTrue(model.recentSearchStore.searches.isEmpty)
+    }
+
     func testACompletedSearchReportsItsRowsAndIsKeptAsRecent() async {
         let model = makeModel()
         model.formState.observationID = "obs"

@@ -295,6 +295,13 @@ final class SearchFormModel {
     @discardableResult
     func executeRawQuery(_ adql: String, fromEditor: Bool = false) async -> SearchOutcome {
         let attribution = takeAttribution()
+        // What the checker is sure CADC would refuse is not sent — from the
+        // editor, an assistant or a saved query alike (QA L13: LIMIT went out).
+        let problems = ADQLValidator.problems(in: adql, schema: tapSchema.cached)
+        guard problems.isEmpty else {
+            searchError = problems.map(\.localizedSummary).joined(separator: "; ")
+            return .failed(String(localized: "Not sent: \(problems.map(\.summary).joined(separator: "; "))"))
+        }
         let outcome = await runQuery(adql)
         if fromEditor, case .completed = outcome {
             recentSearchStore.save(RecentSearch(

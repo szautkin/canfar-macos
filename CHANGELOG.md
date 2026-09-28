@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **The ADQL checker catches a column two joined tables share** — a bare
+  `obsID` in a Plane–Observation join passed, and CADC then answered that
+  it was ambiguous. And a query the checker knows is wrong, `LIMIT` and
+  the like, is no longer sent at all, whether you run it, your assistant
+  does, or a saved query does: it says what to write instead.
 - **Each calibration level of an observation is its own search result** —
   the rows of one observation shared an id, so selecting or opening one
   could land on another (and an assistant could not choose the level with

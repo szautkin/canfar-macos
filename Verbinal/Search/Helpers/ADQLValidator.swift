@@ -68,9 +68,10 @@ struct ADQLProblem: Sendable, Equatable {
 /// `'o.obsID'` in a literal is never read as a column.
 ///
 /// Rules: `LIMIT` (ADQL writes `SELECT TOP n`); a table the service does
-/// not have; a column a table does not have; and a bare table name used as
-/// a qualifier for a column two joined tables share — CADC answers
-/// "Column [obsID] is ambiguous" (`caom2.Plane.obsID` or an alias is fine).
+/// not have; a column a table does not have; and a column two joined tables
+/// share, written bare (`obsID`) or with a bare table name (`Plane.obsID`)
+/// — CADC answers "Column [obsID] is ambiguous" (`caom2.Plane.obsID` or an
+/// alias is fine).
 enum ADQLValidator {
 
     /// Everything this is sure is wrong, in order. Empty means "nothing
@@ -116,7 +117,45 @@ enum ADQLValidator {
                 range: reference.range, kind: .unknownColumn(table: table, column: column),
                 fix: nearest(column, in: resolved.columns.map(\.name)).map { "\(qualifier).\($0)" }))
         }
+        problems += bareAmbiguities(tokens, from: from, schema: schema)
         return problems.sorted { $0.range.lowerBound < $1.range.lowerBound }
+    }
+
+    /// Words ADQL keeps for itself — never a column.
+    private static let keywords: Set<String> = clauseWords.union([
+        "from", "distinct", "all", "by", "asc", "desc", "not", "in", "between", "like", "ilike", "is", "null",
+        "true", "false", "case", "when", "then", "else", "end", "exists", "intersect", "except",
+    ])
+
+    /// A column written bare that more than one joined table has (QA M16:
+    /// `obsID` in a Plane–Observation join passed). Only where it can be
+    /// sure: one SELECT (a subquery's FROM would be mixed in), not a table,
+    /// an alias, a name given with AS, a function, or a USING column.
+    private static func bareAmbiguities(_ tokens: [Token], from: [FromEntry], schema: TapSchema) -> [ADQLProblem] {
+        guard from.count >= 2, tokens.filter({ same($0.text, "select") }).count == 1 else { return [] }
+        let tables = Set(from.map(\.range.lowerBound))
+        let aliases = Set(from.compactMap { $0.alias?.lowercased() })
+        let named = Set(tokens.indices.dropLast().filter { same(tokens[$0].text, "as") }.map { tokens[$0 + 1].text.lowercased() })
+        var problems: [ADQLProblem] = []
+        var usingDepth = 0, inUsing = false
+        for (i, token) in tokens.enumerated() {
+            if inUsing {
+                if token.text == "(" { usingDepth += 1 }
+                if token.text == ")" { usingDepth -= 1; if usingDepth <= 0 { inUsing = false } }
+                continue
+            }
+            if same(token.text, "using") { inUsing = true; usingDepth = 0; continue }
+            let word = token.text.lowercased()
+            guard token.isIdentifier, token.parts.count == 1, !tables.contains(token.range.lowerBound),
+                  !keywords.contains(word), !aliases.contains(word), !named.contains(word),
+                  !(i + 1 < tokens.count && tokens[i + 1].text == "(") else { continue }
+            let owners = from.filter { schema.table($0.written)?.column(token.text) != nil }.map(\.written)
+            guard owners.count > 1 else { continue }
+            problems.append(ADQLProblem(range: token.range,
+                                        kind: .ambiguous(reference: token.text, column: token.text, tables: owners),
+                                        fix: nil))
+        }
+        return problems
     }
 
     // MARK: - Rules

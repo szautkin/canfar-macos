@@ -9751,6 +9751,16 @@
         }
       }
     },
+    "Not sent: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non envoyée : %@"
+          }
+        }
+      }
+    },
     "Not set up" : {
       "localizations" : {
         "fr" : {

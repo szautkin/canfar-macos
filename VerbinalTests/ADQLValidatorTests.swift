@@ -113,4 +113,29 @@ final class ADQLValidatorTests: XCTestCase {
         _ = try await service.schema()
         XCTAssertEqual(calls.value, 2 * perFetch, "fetched again")
     }
+
+    // MARK: - A bare column two joined tables share (plan 15 R2, QA M16)
+
+    func testABareSharedColumnInAJoinIsAmbiguous() throws {
+        let adql = "SELECT TOP 5 obsID FROM caom2.Plane AS p JOIN caom2.Observation AS o ON p.obsID = o.obsID"
+        let found = problems(adql)
+        let problem = try XCTUnwrap(found.first)
+        XCTAssertEqual(found.count, 1)
+        XCTAssertEqual(problem.text(in: adql), "obsID")
+        XCTAssertEqual(problem.kind, .ambiguous(reference: "obsID", column: "obsID", tables: ["caom2.Plane", "caom2.Observation"]))
+    }
+
+    /// Only what it is sure of: these all run on CADC.
+    func testABareColumnItCannotBeSureOfIsLeftAlone() {
+        for adql in [
+            "SELECT TOP 5 calibrationLevel FROM caom2.Plane AS p JOIN caom2.Observation AS o ON p.obsID = o.obsID",
+            "SELECT TOP 5 obsID FROM caom2.Plane",
+            "SELECT TOP 5 o.obsID AS obsID FROM caom2.Plane AS p JOIN caom2.Observation AS o ON p.obsID = o.obsID ORDER BY obsID",
+            "SELECT TOP 5 p.planeID FROM caom2.Plane AS p JOIN caom2.Observation AS o USING (obsID)",
+            "SELECT TOP 5 p.planeID FROM caom2.Plane AS p WHERE p.obsID IN (SELECT obsID FROM caom2.Observation AS o WHERE o.collection = 'JWST')",
+            "SELECT TOP 5 COUNT(p.planeID) FROM caom2.Plane AS p JOIN caom2.Observation AS o ON p.obsID = o.obsID",
+        ] {
+            XCTAssertEqual(problems(adql), [], adql)
+        }
+    }
 }
