@@ -42,6 +42,29 @@ final class PortalDiscoveryParityToolsTests: XCTestCase {
         XCTAssertEqual(json["events"] as? String, "Scheduled: pod assigned")
     }
 
+    /// Plan 15 O3 (QA L15): the platform's `<none>` is no events, not an event.
+    func testNoEventsIsEmpty() async throws {
+        let tool = GetSessionEventsTool(fetch: { _ in "<none>\n" })
+        let json = try decodeJSON(await tool.invoke(arguments: argsData(["id": "s1"]), context: ctx()))
+        XCTAssertEqual(json["events"] as? String, "")
+        XCTAssertEqual(json["hasEvents"] as? Bool, false)
+    }
+
+    /// QA L7 and L8: a launch's project comes from its image when it was not
+    /// recorded, and a flexible session says so for cores and RAM.
+    func testALaunchKnowsItsProjectAndAFlexibleSessionSaysSo() {
+        XCTAssertEqual(ImageParser.project(of: "images.canfar.net/canucs/notebook:1.0"), "canucs")
+        XCTAssertEqual(RecentLaunch(image: "images.canfar.net/astroai/notebook:latest").imageProject, "astroai")
+        XCTAssertEqual(RecentLaunch(image: "images.canfar.net/astroai/notebook:latest", project: "skaha").imageProject, "skaha")
+
+        let flexible = Session(from: SkahaSessionResponse(
+            id: "xb0b7mu3", userid: nil, runAsUID: nil, runAsGID: nil, supplementalGroups: nil,
+            image: "images.canfar.net/skaha/notebook:1", type: "notebook", status: "Running", name: "nb",
+            startTime: "", expiryTime: "", connectURL: "", requestedRAM: nil, requestedCPUCores: nil,
+            requestedGPUCores: nil, ramInUse: nil, cpuCoresInUse: nil, isFixedResources: false))
+        XCTAssertEqual([flexible.coresGiven, flexible.ramGiven], ["flexible", "flexible"])
+    }
+
     func testGetSessionLogsTailsLongOutput() async throws {
         let long = String(repeating: "x", count: 3000)
         let tool = GetSessionLogsTool(fetch: { _ in long })

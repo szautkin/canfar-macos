@@ -45,6 +45,11 @@ struct Session: Identifiable, Equatable {
     var gpuAllocated: String
     var isFixedResources: Bool
 
+    /// What it was given, as a person reads it: a flexible session has no
+    /// fixed cores or RAM, and says so rather than nothing (QA L8).
+    var coresGiven: String { cpuAllocated.isEmpty && !isFixedResources ? "flexible" : cpuAllocated }
+    var ramGiven: String { memoryAllocated.isEmpty && !isFixedResources ? "flexible" : memoryAllocated }
+
     private var statusLower: String { status.lowercased() }
     var isPending: Bool { statusLower == "pending" || statusLower == "terminating" }
     var isRunning: Bool { statusLower == "running" }

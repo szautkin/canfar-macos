@@ -23,4 +23,8 @@ struct RecentLaunch: Codable, Identifiable, Equatable {
     /// the user applied it. `nil` for user-initiated launches via the
     /// in-app UI.
     var agentAttribution: AgentAttribution?
+
+    /// The project it launched from — as recorded, else read from its image
+    /// (an assistant's launches, and older ones, recorded none: QA L7).
+    var imageProject: String { project.isEmpty ? ImageParser.project(of: image) : project }
 }

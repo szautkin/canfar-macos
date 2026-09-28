@@ -12,6 +12,17 @@ import VerbinalKit
 /// and the Connect button. Capability closures are injected at wiring
 /// time.
 
+// MARK: - Kubernetes events
+
+/// The platform's events text as the tools give it: the platform writes
+/// `<none>` when there are none (QA L15), which is no event.
+enum KubernetesEvents {
+    static func text(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed == "<none>" ? "" : trimmed
+    }
+}
+
 // MARK: - get_session_events
 
 /// Kubernetes-level events for an interactive session — the session
@@ -24,12 +35,14 @@ struct GetSessionEventsTool: JSONReadTool {
 
     struct Output: Encodable, Sendable {
         let id: String
+        /// The events as the platform lists them; empty when there are none.
         let events: String
+        let hasEvents: Bool
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_session_events",
-        description: "Kubernetes-level scheduling/lifecycle events for one interactive session (by id from `list_sessions`) — the session card's Events sheet. Use to diagnose why a session is Pending or failed to schedule; use `get_session_logs` for the container's own output.",
+        description: "Kubernetes-level scheduling/lifecycle events for one interactive session (by id from `list_sessions`) — the session card's Events sheet. `events` is the platform's list as text, empty (and `hasEvents` false) when there are none. Use to diagnose why a session is Pending or failed to schedule; use `get_session_logs` for the container's own output.",
         schema: #"""
         {
           "type": "object",
@@ -43,7 +56,8 @@ struct GetSessionEventsTool: JSONReadTool {
     let fetch: @Sendable (String) async throws -> String
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        Output(id: args.id, events: try await fetch(args.id))
+        let events = KubernetesEvents.text(try await fetch(args.id))
+        return Output(id: args.id, events: events, hasEvents: !events.isEmpty)
     }
 }
 

@@ -8,6 +8,12 @@ import Foundation
 
 enum ImageParser {
 
+    /// The project of an image reference: `canucs` in
+    /// `images.canfar.net/canucs/notebook:1.0`; empty for a bare name.
+    static func project(of reference: String) -> String {
+        parse(RawImage(id: reference, types: [])).project
+    }
+
     static func parse(_ raw: RawImage) -> ParsedImage {
         let fullId = raw.id
         let parts = fullId.split(separator: "/", omittingEmptySubsequences: true).map(String.init)

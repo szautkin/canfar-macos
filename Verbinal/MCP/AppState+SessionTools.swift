@@ -121,7 +121,7 @@ extension AppState {
             store.launches.map {
                 RecentLaunchOut(
                     id: $0.id.uuidString, name: $0.name, type: $0.type,
-                    image: $0.image, project: $0.project,
+                    image: $0.image, project: $0.imageProject,
                     resourceType: $0.resourceType,
                     cores: $0.cores, ram: $0.ram, gpus: $0.gpus,
                     launchedAt: $0.launchedAt
@@ -140,8 +140,8 @@ extension AppState {
             status: s.status, image: s.containerImage,
             connectURL: s.connectUrl,
             startedTime: s.startedTime, expiresTime: s.expiresTime,
-            memoryAllocated: s.memoryAllocated, memoryUsage: s.memoryUsage,
-            cpuAllocated: s.cpuAllocated, cpuUsage: s.cpuUsage,
+            memoryAllocated: s.ramGiven, memoryUsage: s.memoryUsage,
+            cpuAllocated: s.coresGiven, cpuUsage: s.cpuUsage,
             gpuAllocated: s.gpuAllocated
         )
     }

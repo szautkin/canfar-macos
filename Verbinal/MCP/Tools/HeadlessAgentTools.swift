@@ -673,7 +673,9 @@ struct GetHeadlessJobEventsTool: JSONReadTool {
     /// report).
     struct Output: Encodable, Sendable {
         let id: String
+        /// The events as the platform lists them; empty when there are none.
         let events: String
+        let hasEvents: Bool
         /// `"ready"` once the K8s pod exists and events are
         /// fetchable; `"pending"` while the job is still queued
         /// at Skaha and no pod has been created yet (events are
@@ -698,13 +700,13 @@ struct GetHeadlessJobEventsTool: JSONReadTool {
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         do {
-            let events = try await fetch(args.id)
-            return Output(id: args.id, events: events, state: "ready")
+            let events = KubernetesEvents.text(try await fetch(args.id))
+            return Output(id: args.id, events: events, hasEvents: !events.isEmpty, state: "ready")
         } catch let net as NetworkError where Self.isPendingPodSignal(net) {
             // Pod not yet created — job is still Pending at
             // Skaha. Surface a structured status instead of
             // bubbling the 404 up as a generic backend error.
-            return Output(id: args.id, events: "", state: "pending")
+            return Output(id: args.id, events: "", hasEvents: false, state: "pending")
         } catch {
             throw ToolFailureReason.backendError(error.localizedDescription)
         }
