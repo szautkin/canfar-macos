@@ -58,23 +58,22 @@ actor DownloadService {
             throw SearchError.networkError("Invalid download URL")
         }
         Self.logger.info("DataLink and CAOM-2 artifacts unavailable, falling back to /pkg")
-        let result = try await fetchToTemp(url: pkgURL, publisherID: publisherID, requireNonEmpty: false)
-        if (fileSize(at: result.tempURL) ?? 0) > 0 {
+        let result = try await fetchToTemp(url: pkgURL, publisherID: publisherID, requireUsable: false)
+        guard let problem = DownloadedFileCheck.problem(at: result.tempURL) else {
             return result
         }
-        // Empty pkg body — try artifacts once more in case CAOM-2 was
-        // briefly unavailable on the first pass.
+        // An empty package (0 bytes, or an empty tar) — try artifacts once
+        // more in case CAOM-2 was briefly unavailable on the first pass.
+        try? deleteFile(at: result.tempURL)
         if let artifact = await resolveScienceArtifact(publisherID: publisherID) {
-            try? deleteFile(at: result.tempURL)
-            Self.logger.info("pkg was 0 bytes; retrying CAOM-2 science artifact: \(artifact.filename)")
+            Self.logger.info("pkg was empty; retrying CAOM-2 science artifact: \(artifact.filename)")
             return try await fetchToTemp(url: artifact.url, publisherID: publisherID, suggested: artifact.filename)
         }
-        try? deleteFile(at: result.tempURL)
         let faultNote = datalink.faults.isEmpty
             ? ""
             : " (DataLink: \(datalink.faults.joined(separator: "; ")))"
         throw SearchError.networkError(
-            "download produced an empty file for \(publisherID) — no DataLink #this and no CAOM-2 science artifact\(faultNote)"
+            "\(problem.message) Nothing to keep for \(publisherID): no DataLink #this and no CAOM-2 science artifact\(faultNote)."
         )
     }
 
@@ -95,7 +94,7 @@ actor DownloadService {
         url: URL,
         publisherID: String,
         suggested: String? = nil,
-        requireNonEmpty: Bool = true
+        requireUsable: Bool = true
     ) async throws -> (tempURL: URL, suggestedFilename: String) {
         let request = URLRequest(url: url)
         let (tempURL, response) = try await session.download(for: request)
@@ -115,9 +114,12 @@ actor DownloadService {
         try FileManager.default.moveItem(at: tempURL, to: stableTemp)
 
         let size = fileSize(at: stableTemp) ?? 0
-        if requireNonEmpty, size <= 0 {
+        // The announced length only counts when the body was not re-encoded on the way.
+        let encoded = !(["", "identity"].contains(httpResponse.value(forHTTPHeaderField: "Content-Encoding")?.lowercased() ?? ""))
+        let expected = encoded ? nil : httpResponse.expectedContentLength
+        if requireUsable, let problem = DownloadedFileCheck.problem(at: stableTemp, expectedBytes: expected) {
             try? deleteFile(at: stableTemp)
-            throw SearchError.networkError("download of \(name) was 0 bytes")
+            throw SearchError.networkError("\(name): \(problem.message)")
         }
 
         Self.logger.info("Downloaded to temp: \(name) (\(size) bytes)")

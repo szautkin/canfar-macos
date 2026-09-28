@@ -16,7 +16,9 @@ struct ObservationDetailView: View {
     /// The cutout editor, open on this observation.
     @State private var cutoutEditor: CutoutEditorModel?
     /// Why removing the file failed.
-    @State private var fileProblem: String?
+    @State private var removeFileError: String?
+    /// What is wrong with the kept file, checked when the record changes.
+    @State private var keptFileProblem: DownloadedFileCheck.Problem?
     /// True when the downloaded FITS file is a spectral cube, so the Open
     /// button can name the Cube Viewer the router will actually pick.
     @State private var isCube = false
@@ -102,6 +104,17 @@ struct ObservationDetailView: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .keyboardShortcut("r", modifiers: [.command, .shift])
+
+                        if keptFileProblem != nil {
+                            Button {
+                                Task { await model.download(observation) }
+                            } label: {
+                                Label("Download Again", systemImage: "arrow.down.circle")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .help("The kept file holds nothing — fetch it again into this record")
+                        }
                     } else {
                         Button {
                             Task { await model.download(observation) }
@@ -162,7 +175,7 @@ struct ObservationDetailView: View {
                             Button("Remove File", role: .destructive) {
                                 Task {
                                     do { try await model.removeFile(observation) } catch {
-                                        fileProblem = String(localized: "Could not remove the file: \(error.localizedDescription)")
+                                        removeFileError = String(localized: "Could not remove the file: \(error.localizedDescription)")
                                     }
                                 }
                             }
@@ -195,8 +208,8 @@ struct ObservationDetailView: View {
                     }
                 }
 
-                if let fileProblem {
-                    Text(fileProblem).font(.caption).foregroundStyle(.red)
+                if let removeFileError {
+                    Text(removeFileError).font(.caption).foregroundStyle(.red)
                 }
 
                 Divider()
@@ -228,6 +241,12 @@ struct ObservationDetailView: View {
                         }
                         metadataRow("Downloaded", formatDate(observation.downloadedAt))
                         metadataRow("Exists", observation.fileExists ? String(localized: "Yes") : String(localized: "Missing"))
+                        if let problem = keptFileProblem {
+                            Label(problem.message, systemImage: "exclamationmark.triangle")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     } else {
                         metadataRow("File", String(localized: "Not downloaded"))
                         metadataRow("Saved", formatDate(observation.downloadedAt))
@@ -242,6 +261,10 @@ struct ObservationDetailView: View {
                 )
             }
             .padding()
+        }
+        // The kept file looked at once per record and file, not on every redraw.
+        .task(id: "\(observation.id)|\(observation.localPath)|\(observation.downloadedAt.timeIntervalSince1970)") {
+            keptFileProblem = observation.fileProblem
         }
         .sheet(item: $cutoutEditor) { editor in
             CutoutEditorView(model: editor) { spec in

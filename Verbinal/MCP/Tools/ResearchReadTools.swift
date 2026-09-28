@@ -34,6 +34,9 @@ struct ListDownloadedObservationsTool: JSONReadTool {
             let cutoutSummary: String?
             let localPath: String
             let fileExists: Bool
+            /// What is wrong with the file when it is there but holds nothing
+            /// (empty, an empty archive); absent when it is fine.
+            let fileProblem: String?
             let fileSize: Int64?
             let downloadedAtISO: String
 
@@ -51,6 +54,7 @@ struct ListDownloadedObservationsTool: JSONReadTool {
                 cutoutSummary = obs.cutout?.summary
                 localPath = obs.localPath
                 fileExists = obs.fileExists
+                fileProblem = obs.fileProblem
                 fileSize = obs.fileSize
                 downloadedAtISO = SharedFormatters.iso8601.string(from: obs.downloadedAt)
             }
@@ -59,7 +63,7 @@ struct ListDownloadedObservationsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_downloaded_observations",
-        description: "List the observations kept in Research — downloaded, or kept without their file (`downloaded: false`; save_observation_to_research, remove_downloaded_file). Optional filter by collection (e.g. 'JWST').",
+        description: "List the observations kept in Research — downloaded, or kept without their file (`downloaded: false`; save_observation_to_research, remove_downloaded_file). `fileProblem` says when a kept file holds nothing (empty, an empty archive): download_observation fetches it again into the same record. Optional filter by collection (e.g. 'JWST').",
         schema: #"""
         {
           "type": "object",
@@ -195,6 +199,7 @@ struct DownloadedObservationOut: Sendable {
     let calLevel: String
     let localPath: String
     let fileExists: Bool
+    var fileProblem: String? = nil
     let fileSize: Int64?
     let downloadedAt: Date
     var cutout: CutoutSpec? = nil

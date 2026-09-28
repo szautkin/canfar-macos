@@ -97,6 +97,7 @@ extension AppState {
             calLevel: obs.calLevel,
             localPath: obs.localPath,
             fileExists: obs.fileExists,
+            fileProblem: obs.fileProblem?.message,
             fileSize: obs.fileSize,
             downloadedAt: obs.downloadedAt,
             cutout: obs.cutout

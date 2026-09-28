@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A download that holds nothing is not kept as one** — an observation
+  with no files came back as a 0-byte package or a tar of 1024 zero bytes,
+  and Research recorded it as downloaded. A download is now refused when
+  it lands empty, as an empty tar or zip, or short of the length the
+  server announced; and a record whose file holds nothing says so in its
+  detail, with **Download Again**. For assistants,
+  `list_downloaded_observations` reports `fileProblem`.
 - **fpack images decode correctly** — a Rice block that cfitsio stores
   raw (noise, cosmic rays, anything busy) was read as Rice codes, and the
   rest of the tile came out as horizontal streaks: every CFHT `.fz` frame

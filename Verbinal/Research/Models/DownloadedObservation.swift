@@ -107,6 +107,14 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
         resolvedReadableURL != nil
     }
 
+    /// What is wrong with the kept file — empty, an empty archive — or nil
+    /// when it holds something, or when there is no readable file to look at
+    /// (`fileExists` says that).
+    var fileProblem: DownloadedFileCheck.Problem? {
+        guard isDownloaded, let url = resolvedReadableURL else { return nil }
+        return DownloadedFileCheck.problem(at: url)
+    }
+
     /// First existing file URL for `localPath`, or `nil` if none of the
     /// sandbox/tilde candidates exist. Bookmark resolution is separate
     /// (FITS tools try the bookmark even when this is nil).

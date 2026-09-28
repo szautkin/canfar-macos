@@ -4933,6 +4933,16 @@
         }
       }
     },
+    "Download Again" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger de nouveau"
+          }
+        }
+      }
+    },
     "Download All" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -15031,12 +15041,52 @@
         }
       }
     },
+    "The download stopped short: %@ of %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le téléchargement s'est arrêté en cours : %1$@ sur %2$@."
+          }
+        }
+      }
+    },
+    "The file is an empty archive — the archive had no files to send." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier est une archive vide — l'archive n'avait aucun fichier à envoyer."
+          }
+        }
+      }
+    },
     "The file is deleted from this computer. The observation, its details and notes stay in Research, and Download fetches the file again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le fichier est supprimé de cet ordinateur. L'observation, ses détails et ses notes restent dans Recherche, et Télécharger récupère de nouveau le fichier."
+          }
+        }
+      }
+    },
+    "The file is empty — the archive sent nothing." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier est vide — l'archive n'a rien envoyé."
+          }
+        }
+      }
+    },
+    "The file is not on this Mac any more." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier n'est plus sur ce Mac."
           }
         }
       }
@@ -15067,6 +15117,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le dossier où la session lit les demandes et écrit les résultats"
+          }
+        }
+      }
+    },
+    "The kept file holds nothing — fetch it again into this record" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier conservé est vide — le récupérer de nouveau dans cet enregistrement"
           }
         }
       }
