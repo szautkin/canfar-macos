@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **The picture your assistant gets of the Cube Viewer shows what you see**
+  — a slice came back at the cube's own size (53×55 for the Europa cube)
+  whatever `maxPixels` asked, a volume came back on white while the viewer
+  was dark, and the spectrum was left out. `get_cube_image` now draws the
+  slice at the size asked for with its pixels kept sharp, on the viewer's
+  background, with its marks and the probed spectrum.
 - **The picture your assistant gets of the FITS Viewer shows the marks** —
   a callout on the image, and in a figure export, was missing from
   `get_fits_image`. The marks are now drawn on it the way the viewer and

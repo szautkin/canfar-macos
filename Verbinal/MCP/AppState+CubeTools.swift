@@ -28,12 +28,8 @@ extension AppState {
                 guard model.hasData else {
                     throw ToolFailureReason.targetNotResolved("No cube is open in the Cube Viewer — open one first")
                 }
-                let drawn: CGImage?
-                switch model.viewMode {
-                case .slice: drawn = model.sliceImage
-                case .volume: drawn = model.volumeSnapshot?(maxSide, maxSide * 3 / 4, nil)
-                }
-                guard let drawn else {
+                let marks = model.markTarget.map { self.marks.marks(on: $0) } ?? []
+                guard let drawn = CubeViewPicture.render(model: model, marks: marks, maxSide: maxSide) else {
                     throw ToolFailureReason.backendError("the Cube Viewer has not drawn its \(model.viewMode.rawValue) yet")
                 }
                 return ViewerPicture(
@@ -44,6 +40,9 @@ extension AppState {
                         "channel": .int(model.channel),
                         "channels": .int(model.nz),
                         "colormap": .string(model.colormap.rawValue),
+                        "background": .string(model.background.rawValue),
+                        "marks": .int(marks.count),
+                        "spectrumShown": .bool(CubeViewPicture.showsSpectrum(model)),
                     ])
             }
         }
