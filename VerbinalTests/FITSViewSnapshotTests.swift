@@ -81,4 +81,41 @@ final class FITSViewSnapshotTests: XCTestCase {
         let encoded = try XCTUnwrap(AgentImageEncoding.encode(big, maxBytes: 200 * 1024))
         XCTAssertLessThanOrEqual(encoded.data.count, 200 * 1024)
     }
+
+    // MARK: - Marks (plan 15 V1, QA M3)
+
+    /// A mark on the image is in the picture, where the viewer draws it.
+    @MainActor
+    func testTheMarksThePersonSeesAreInThePicture() throws {
+        let viewport = ViewportTransform(zoom: 2, rotation: 0, flipX: false, panX: 0, panY: 0,
+                                         imageSize: CGSize(width: naxis, height: naxis),
+                                         canvasSize: CGSize(width: 400, height: 300))
+        let plain = try XCTUnwrap(FITSViewSnapshot.make(rendered: image(), viewport: viewport, naxis2: naxis,
+                                                        crosshair: nil, maxSide: 200))
+        // Canvas points are the anchor's own numbers here; a circle of radius 40 at (200, 150).
+        let projection = MarkProjection(point: { CGPoint(x: $0.x, y: $0.y) },
+                                        halfSize: { extent, _ in CGSize(width: extent.halfWidth, height: extent.halfHeight) })
+        let circle = Mark(id: "m1", kind: .circle, anchor: .init(space: .imagePixel, x: 200, y: 150), extent: .square(40),
+                          author: .agent, createdAt: Date(timeIntervalSince1970: 0))
+
+        let marked = plain.drawingMarks([circle], projection: projection, canvas: viewport.canvasSize)
+
+        XCTAssertEqual(marked.image.width, plain.image.width)
+        XCTAssertEqual(marked.image.height, plain.image.height)
+        // The circle's right edge: canvas (240, 150) → picture (120, 75).
+        func colour(_ image: CGImage, _ u: Int, _ v: Int) -> Int {
+            var pixel = [UInt8](repeating: 0, count: 4)
+            let context = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                    space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            context.draw(image, in: CGRect(x: -u, y: -(image.height - 1 - v), width: image.width, height: image.height))
+            return Int(pixel[0]) + Int(pixel[1]) + Int(pixel[2])
+        }
+        let edge = (-2...2).flatMap { du in (-2...2).map { dv in colour(marked.image, 120 + du, 75 + dv) } }
+        let before = (-2...2).flatMap { du in (-2...2).map { dv in colour(plain.image, 120 + du, 75 + dv) } }
+        XCTAssertGreaterThan(edge.max() ?? 0, (before.max() ?? 0) + 150, "the mark is drawn")
+        XCTAssertEqual(brightness(of: marked.image, u: 100, v: 20), brightness(of: plain.image, u: 100, v: 20),
+                       "and the rest is the picture as it was")
+        XCTAssertTrue(plain.drawingMarks([], projection: projection, canvas: viewport.canvasSize).image === plain.image)
+    }
 }

@@ -58,7 +58,7 @@ struct ViewerImageTool: AITool {
     static func fits(picture: @escaping @Sendable (Int) async throws -> ViewerPicture) -> Self {
         Self(definition: AIToolDefinition.withStaticSchema(
             name: "get_fits_image",
-            description: "See what the FITS Viewer shows: a picture of its canvas as the user sees it — zoom, pan, rotation, colormap, stretch and crosshair — with a caption giving the file, HDU and view, and `toFITSPixel`, the exact map from a picture pixel (u right, v down, from the top-left) to the file's 0-based FITS pixel: x = a·u + b·v + c, y = d·u + e·v + f. Point at something you see by converting it, then use probe_fits_pixel or set_fits_view. Capped to stay under the client's response limit.",
+            description: "See what the FITS Viewer shows: a picture of its canvas as the user sees it — zoom, pan, rotation, colormap, stretch, crosshair and the marks on the image, drawn as the viewer and a figure export draw them — with a caption giving the file, HDU and view, and `toFITSPixel`, the exact map from a picture pixel (u right, v down, from the top-left) to the file's 0-based FITS pixel: x = a·u + b·v + c, y = d·u + e·v + f. Point at something you see by converting it, then use probe_fits_pixel or set_fits_view. Capped to stay under the client's response limit.",
             schema: ViewerImageArgs.schema), picture: picture)
     }
 

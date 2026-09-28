@@ -12,6 +12,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **The picture your assistant gets of the FITS Viewer shows the marks** —
+  a callout on the image, and in a figure export, was missing from
+  `get_fits_image`. The marks are now drawn on it the way the viewer and
+  a figure draw them, and the caption counts them.
 - **Remote Compute says when its session no longer matches Settings** — a
   session keeps the image and size it started with, and code went to an
   older one silently (Settings said 0.0.1, 4 cores, 8 GB; the session ran

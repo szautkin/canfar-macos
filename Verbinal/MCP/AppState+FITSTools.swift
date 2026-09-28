@@ -122,10 +122,15 @@ extension AppState {
                       let rendered = tab.renderedImage, let viewport = tab.displayTransform(canvasSize: tab.lastCanvasSize) else {
                     throw ToolFailureReason.targetNotResolved("No image is on screen in the FITS Viewer — open one first")
                 }
-                guard let snapshot = FITSViewSnapshot.make(
+                guard var snapshot = FITSViewSnapshot.make(
                     rendered: rendered, viewport: viewport, naxis2: hdu.header.naxis2,
                     crosshair: tab.crosshairPixel, maxSide: maxSide) else {
                     throw ToolFailureReason.backendError("the FITS view could not be drawn")
+                }
+                // The marks the person sees on it, drawn as the viewer draws them.
+                let marks = tab.markTarget.map { self.marks.marks(on: $0) } ?? []
+                if let projection = tab.markProjection(canvasSize: viewport.canvasSize) {
+                    snapshot = snapshot.drawingMarks(marks, projection: projection, canvas: viewport.canvasSize)
                 }
                 var caption: [String: JSONValue] = [
                     "file": .string(tab.fileURL?.path ?? ""),
@@ -136,6 +141,7 @@ extension AppState {
                     "flipX": .bool(tab.viewport.flipX),
                     "colormap": .string(tab.renderParams.colormap.rawValue),
                     "stretch": .string(tab.renderParams.stretch.rawValue),
+                    "marks": .int(marks.count),
                 ]
                 let centre = snapshot.fitsPixel(u: Double(snapshot.image.width) / 2, v: Double(snapshot.image.height) / 2)
                 var centreFacts: [String: JSONValue] = ["x": .double(centre.x), "y": .double(centre.y)]

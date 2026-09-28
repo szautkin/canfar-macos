@@ -6,6 +6,7 @@
 
 import CoreGraphics
 import Foundation
+import SwiftUI
 
 /// What the FITS viewer shows — the canvas with its zoom, pan, rotation,
 /// flip, colormap and crosshair — as a picture, with the exact map from a
@@ -74,5 +75,27 @@ struct FITSViewSnapshot {
 
     func fitsPixel(u: Double, v: Double) -> (x: Double, y: Double) {
         (toFITS.a * u + toFITS.b * v + toFITS.c, toFITS.d * u + toFITS.e * v + toFITS.f)
+    }
+}
+
+extension FITSViewSnapshot {
+    /// This picture with `marks` on it, drawn by `MarkOverlay` — as the
+    /// viewer draws them on screen and a figure export draws them — so the
+    /// picture an agent gets shows what the person sees (QA M3: a callout
+    /// on the image, and in the DS9 export, was not in `get_fits_image`).
+    /// `projection` places marks on the viewer's canvas of `canvas` points.
+    @MainActor
+    func drawingMarks(_ marks: [Mark], projection: MarkProjection, canvas: CGSize) -> FITSViewSnapshot {
+        guard !marks.isEmpty, canvas.width > 0 else { return self }
+        let scale = CGFloat(image.width) / canvas.width
+        let content = ZStack(alignment: .topLeading) {
+            Image(decorative: image, scale: scale)
+            MarkOverlay(marks: marks, selectedID: nil, projection: projection, showsGrips: false)
+        }
+        .frame(width: canvas.width, height: canvas.height)
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = scale
+        guard let drawn = renderer.cgImage else { return self }
+        return FITSViewSnapshot(image: drawn, toFITS: toFITS)
     }
 }
