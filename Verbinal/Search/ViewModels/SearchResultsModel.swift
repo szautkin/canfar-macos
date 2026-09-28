@@ -76,6 +76,9 @@ final class SearchResultsModel {
         let rowID: String
     }
     var pendingDetailRequest: PendingDetailRequest?
+    /// The row whose detail sheet is open, as the view reports it — the
+    /// sheet is its @State, and `get_current_view` must still see it.
+    var openDetailRowID: String?
 
     /// Look up a loaded row by its stable id (obsid / publisherID / synthetic).
     func result(forID id: String) -> SearchResult? {

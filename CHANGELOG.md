@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Your assistant sees and can point at more of the app** —
+  `get_current_view` now says which observation's detail is open in
+  Search and which Research record is selected; the home tiles, the
+  Search tabs, the Storage toolbar and every Settings section can be
+  pointed at; and `get_platform_load` says when the platform did not
+  report how many sessions are running, instead of promising counts it
+  did not have.
 - **A recent search is named after what you looked for** — an M101 search
   in CFHT was kept as "CFHT". It is now "M101 · CFHT", the target first.
 - **VizieR cone searches return the nearest rows, and only the columns

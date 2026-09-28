@@ -19,6 +19,21 @@ struct GetPlatformLoadTool: JSONReadTool {
         let instances: Instances?
         let cores: Cores?
         let ram: Ram?
+        /// Says what the platform left out — it has stopped reporting
+        /// instance counts (QA M20) — rather than leaving it to be guessed.
+        var note: String? {
+            instances == nil ? "The platform did not report how many sessions are running; list_sessions shows yours." : nil
+        }
+
+        private enum CodingKeys: String, CodingKey { case instances, cores, ram, note }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encodeIfPresent(instances, forKey: .instances)
+            try c.encodeIfPresent(cores, forKey: .cores)
+            try c.encodeIfPresent(ram, forKey: .ram)
+            try c.encodeIfPresent(note, forKey: .note)
+        }
 
         struct Instances: Encodable, Sendable {
             let session: Int?
@@ -40,7 +55,7 @@ struct GetPlatformLoadTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_platform_load",
-        description: "CANFAR platform load — CPU cores and RAM requested vs available, plus running instance counts (session / desktopApp / headless / total). Use this to judge whether the platform has room before launching sessions or headless jobs.",
+        description: "CANFAR platform load — CPU cores and RAM requested vs available, and running instance counts (session / desktopApp / headless / total) when the platform reports them; it currently often does not, and `note` then says so. Use this to judge whether the platform has room before launching sessions or headless jobs.",
         schema: #"""
         {
           "type": "object",

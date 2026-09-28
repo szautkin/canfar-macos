@@ -232,4 +232,26 @@ final class SearchControlToolsTests: XCTestCase {
         XCTAssertTrue(out.rows.isEmpty)
         XCTAssertTrue(out.rowIDs.isEmpty)
     }
+
+    /// Plan 15 O1 (QA M19): what the person has open is in the current view.
+    @MainActor
+    func testTheCurrentViewNamesTheOpenDetailAndResearchRecord() {
+        let state = AppState()
+        let results = state.searchModel.resultsModel
+        results.loadResults(headers: ["\"obsID\"", "\"publisherID\""],
+                            rows: [["oezt010e0", "ivo://cadc.nrc.ca/mirror/HST?oezt010e0/oezt010e0-CALIBRATED"]],
+                            query: "Q", maxRec: 10)
+        XCTAssertNil(state.snapshotCurrentView().openSearchDetail)
+
+        results.openDetailRowID = results.results.first?.id
+        let detail = state.snapshotCurrentView().openSearchDetail
+        XCTAssertEqual(detail?.observationID, "oezt010e0")
+        XCTAssertEqual(detail?.publisherID, "ivo://cadc.nrc.ca/mirror/HST?oezt010e0/oezt010e0-CALIBRATED")
+
+        let record = DownloadedObservation(publisherID: "ivo://cadc.nrc.ca/CFHT?1573200", collection: "CFHT",
+                                           observationID: "1573200", targetName: "", instrument: "", filter: "",
+                                           ra: "", dec: "", startDate: "", calLevel: "", localPath: "")
+        state.researchModel.selectedObservation = record
+        XCTAssertEqual(state.snapshotCurrentView().selectedResearchRecord?.id, record.id.uuidString)
+    }
 }

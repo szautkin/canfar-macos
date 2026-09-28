@@ -91,6 +91,7 @@ struct SearchResultsView: View {
             resultsStateContent
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onChange(of: selectedResult?.id, initial: true) { _, open in resultsModel.openDetailRowID = open }
         .sheet(item: $selectedResult) { result in
             ObservationDetailViewer(
                 model: ObservationDetailModel(

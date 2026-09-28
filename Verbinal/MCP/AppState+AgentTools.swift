@@ -380,7 +380,7 @@ extension AppState {
     }
 
     @MainActor
-    fileprivate func snapshotCurrentView() -> GetCurrentViewTool.Output {
+    func snapshotCurrentView() -> GetCurrentViewTool.Output {
         let hasResults = !searchModel.resultsModel.results.isEmpty
         var view = GetCurrentViewTool.Output(
             mode: Self.modeKey(currentMode),
@@ -408,6 +408,16 @@ extension AppState {
             followAgentActivityEnabled: agentsService.followAgentActivity
         )
         view.standingRules = aiGuideService.snapshot().standingRules
+        let results = searchModel.resultsModel
+        if let rowID = results.openDetailRowID, let row = results.result(forID: rowID) {
+            view.openSearchDetail = .init(id: rowID,
+                                          publisherID: results.columns.value(in: row, forID: "publisherid"),
+                                          observationID: results.columns.value(in: row, forID: "obsid"))
+        }
+        if let record = researchModel.selectedObservation {
+            view.selectedResearchRecord = .init(id: record.id.uuidString, publisherID: record.publisherID,
+                                                observationID: record.observationID)
+        }
         return view
     }
 

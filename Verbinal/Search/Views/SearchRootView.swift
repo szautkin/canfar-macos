@@ -59,6 +59,7 @@ struct SearchRootView: View {
                 .labelStyle(.titleAndIcon)
                 .frame(width: 420)
                 .controlSize(.large)
+                .pointable("search.tabs", label: String(localized: "Search, Results and ADQL tabs"), screen: "search")
                 Spacer()
             }
 

@@ -116,6 +116,7 @@ struct StorageBrowserRootView: View {
                 .disabled(model.currentPath.isEmpty)
                 .help("Navigate to parent folder")
                 .accessibilityLabel("Go up one folder")
+                .pointable("storage.up", label: String(localized: "Go up one folder"), screen: "storage")
 
                 Button { Task { await model.refresh() } } label: {
                     Image(systemName: "arrow.clockwise")
@@ -124,6 +125,7 @@ struct StorageBrowserRootView: View {
                 .help("Refresh folder contents")
                 .keyboardShortcut("r", modifiers: .command)
                 .accessibilityLabel("Refresh")
+                .pointable("storage.refresh", label: String(localized: "Refresh"), screen: "storage")
 
                 Divider().frame(height: 16)
 
@@ -136,6 +138,7 @@ struct StorageBrowserRootView: View {
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .help("Create a new folder")
                 .accessibilityLabel("New folder")
+                .pointable("storage.newFolder", label: String(localized: "New Folder"), screen: "storage")
 
                 #if os(macOS)
                 Button { Task { await model.uploadWithPicker() } } label: {
@@ -147,6 +150,7 @@ struct StorageBrowserRootView: View {
                 .disabled(model.isBusy)
                 .help("Upload a file to the current folder")
                 .accessibilityLabel("Upload file")
+                .pointable("storage.upload", label: String(localized: "Upload"), screen: "storage")
 
                 Button { Task { await model.downloadSelected() } } label: {
                     Label("Download", systemImage: "arrow.down.doc")
@@ -161,6 +165,7 @@ struct StorageBrowserRootView: View {
                       ? "Select a file to download"
                       : "Download the selected file")
                 .accessibilityLabel("Download selected file")
+                .pointable("storage.download", label: String(localized: "Download"), screen: "storage")
                 #endif
 
                 Button { showDeleteConfirm = true } label: {
@@ -175,6 +180,7 @@ struct StorageBrowserRootView: View {
                       ? "Select a file or folder to delete"
                       : "Delete the selected item")
                 .accessibilityLabel("Delete selected item")
+                .pointable("storage.delete", label: String(localized: "Delete"), screen: "storage")
                 .confirmationDialog(
                     "Delete \(model.selectedNode?.name ?? "")?",
                     isPresented: $showDeleteConfirm
