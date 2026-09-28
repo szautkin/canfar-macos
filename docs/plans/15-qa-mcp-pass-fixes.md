@@ -17,7 +17,7 @@ with its tests and a CHANGELOG entry; a tool change also updates
 | P Portal layout | done — P1 | `64a2500` |
 | F data you can trust | done — F1 Rice high-entropy blocks, 8/16/32-bit; F2 a compressed image's own header; F3 downloads that hold nothing; F4 one row per saved query; F5 Storage reads at an offset, one media type; F6 a record describes its plane, ids checked, a file by name; F7 jobs not seen finishing, probe failures that say why | `59af802`, `6e3a57e`, `fadd302`, `97dfe72`, `0a15669`, `e9edbb9`, F7 |
 | S agent safety and audit | done — S1 standing instructions wait for the person; S2 who applied a change; S3 the person's rules come first; S4 proposals expire after 3 hours; S5 public secrets flagged, Make Private; S6 a session that differs from Settings says so | `445d1e5`, `7662e58`, `bc245a2`, `d7a12bc`, `0079fbc`, `b793e65` |
-| V viewers | in progress — V1 marks in get_fits_image; V2 the cube picture as seen; V3 a linear first look; V4 North Up re-fits | `3753b7c`, `4c0b179`, `f3cb0de`, V4 |
+| V viewers | in progress — V1 marks in get_fits_image; V2 the cube picture as seen; V3 a linear first look; V4 North Up re-fits; V5 the spectrum with its axis and unit | `3753b7c`, `4c0b179`, `f3cb0de`, `675d2c3`, V5 |
 | R search, ADQL, resolver, VizieR | planned — R1–R5 | — |
 | O other surfaces | planned — O1–O4 | — |
 | Q capture and regression | planned — Q1–Q2 | — |

@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Your assistant's spectrum probe says what the numbers are** —
+  `probe_cube_spectrum` returned a whole spectrum as bare values (3610 of
+  them, about 60 KB) with no wavelength and no unit. It now gives the
+  cube's unit, each value's place on the spectral axis with the axis's
+  type and unit, and takes a channel range and a binning.
 - **North Up keeps the whole image in view** — turning an image north up
   kept its zoom, so a tilted frame lost its corners off the window. A view
   showing the whole image now shows all of it turned; one zoomed in on a

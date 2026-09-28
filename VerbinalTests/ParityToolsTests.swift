@@ -313,7 +313,7 @@ final class ParityToolsTests: XCTestCase {
     }
 
     func testProbeCubeSpectrumForwardsTypedFailure() async {
-        let tool = ProbeCubeSpectrumTool(probe: { _, _ in
+        let tool = ProbeCubeSpectrumTool(probe: { _ in
             throw ToolFailureReason.targetNotResolved("No cube is open in the Cube Viewer")
         })
         let result = await tool.invoke(arguments: argsData(["x": 1, "y": 2]), context: ctx())

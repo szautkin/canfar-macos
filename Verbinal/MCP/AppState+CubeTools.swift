@@ -212,9 +212,9 @@ extension AppState {
     }
 
     func makeProbeCubeSpectrumTool() -> ProbeCubeSpectrumTool {
-        ProbeCubeSpectrumTool(probe: { [weak self] x, y in
+        ProbeCubeSpectrumTool(probe: { [weak self] args in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
-            return try await self.probeCubeSpectrum(x: x, y: y)
+            return try await self.probeCubeSpectrum(args)
         })
     }
 
@@ -285,7 +285,8 @@ extension AppState {
         })
     }
 
-    private func probeCubeSpectrum(x: Int, y: Int) async throws -> ProbeCubeSpectrumTool.Output {
+    private func probeCubeSpectrum(_ args: ProbeCubeSpectrumTool.Args) async throws -> ProbeCubeSpectrumTool.Output {
+        let (x, y) = (args.x, args.y)
         let model = cubeViewer
         guard model.hasData else {
             throw ToolFailureReason.targetNotResolved(
@@ -302,11 +303,19 @@ extension AppState {
         guard let spectrum = model.probeSpectrum else {
             throw ToolFailureReason.backendError(model.probeUnavailableReason ?? "spectrum unavailable")
         }
+        let spectral = model.wcs?.spectral
+        let slice: CubeSpectrumSlice
+        switch CubeSpectrumSlice.make(spectrum, first: args.firstChannel, last: args.lastChannel, bin: args.bin,
+                                      axisValue: spectral.map { axis in { axis.value(atChannel: $0) } }) {
+        case .success(let made): slice = made
+        case .failure(let problem): throw ToolFailureReason.invalidArgument(problem.message)
+        }
+        let unit = model.bunit.trimmingCharacters(in: .whitespaces)
         return ProbeCubeSpectrumTool.Output(
-            x: x, y: y,
-            channelCount: model.nz,
-            spectrum: spectrum.prefix(8192).map { $0.isFinite ? Double($0) : nil },
-            blankedChannels: spectrum.prefix(8192).enumerated().compactMap { $0.element.isFinite ? nil : $0.offset },
-            truncated: spectrum.count > 8192)
+            x: x, y: y, channelCount: model.nz,
+            firstChannel: slice.first, lastChannel: slice.last, bin: slice.bin,
+            unit: unit.isEmpty ? nil : unit,
+            spectralAxis: spectral.map { .init(type: $0.ctype, unit: $0.cunit) },
+            axis: slice.axis, spectrum: slice.values, blankedChannels: slice.blanked, truncated: slice.truncated)
     }
 }

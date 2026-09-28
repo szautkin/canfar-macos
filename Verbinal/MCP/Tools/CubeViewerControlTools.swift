@@ -420,25 +420,43 @@ struct ProbeCubeSpectrumTool: JSONReadTool {
         let x: Int
         /// 0-based spatial pixel row (0…ny-1).
         let y: Int
+        /// First and last channel returned, 0-based and inclusive; the whole spectrum by default.
+        var firstChannel: Int?
+        var lastChannel: Int?
+        /// Channels averaged into each value; 1 by default.
+        var bin: Int?
     }
 
     struct Output: Encodable, Sendable {
         let x: Int
         let y: Int
-        /// Total channels in the cube (nz), even when truncated.
+        /// Total channels in the cube (nz), whatever was returned.
         let channelCount: Int
-        /// Per-channel values in the cube's native flux units.
-        /// Null values are FITS blanked/NaN voxels.
+        let firstChannel: Int
+        let lastChannel: Int
+        let bin: Int
+        /// The values' unit: the cube's BUNIT; nil when it has none.
+        let unit: String?
+        /// The spectral axis: its type (CTYPE3, e.g. WAVE) and unit (CUNIT3); nil without a spectral WCS.
+        let spectralAxis: SpectralAxis?
+        /// Each value's place on the spectral axis — `spectrum[i]` is at `axis[i]`.
+        let axis: [Double]?
+        /// The mean of each bin's measured channels; null where every channel was blanked.
         let spectrum: [Double?]
-        /// Channel indices whose source voxel was blanked.
+        /// Indices into `spectrum` whose channels were all blanked.
         let blankedChannels: [Int]
-        /// True when the spectrum was capped at 8192 values.
+        /// True when more than 8192 values were asked for; bin or narrow the range.
         let truncated: Bool
+
+        struct SpectralAxis: Encodable, Sendable {
+            let type: String
+            let unit: String
+        }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "probe_cube_spectrum",
-        description: "Extract the spectrum at one spatial pixel of the cube open in the Cube Viewer: per-channel values in the cube's native flux units (see the FITS BUNIT header), ordered by channel. (x, y) are 0-based spatial pixel coordinates (0…nx-1, 0…ny-1 from get_cube_view). The spectrum is capped at 8192 values; `truncated` is true when the cube has more channels, and `channelCount` always reports the full nz. Streamed cubes (too large to hold in RAM) cannot be probed — use get_cube_view / get_cube_channel_profile instead; there is no loadFullCube (OOM risk). Fails if no cube is open or the pixel is out of bounds.",
+        description: "Extract the spectrum at one spatial pixel of the cube open in the Cube Viewer, with its unit (`unit`, the cube's BUNIT) and each value's place on the spectral axis (`axis`, in `spectralAxis.unit`, e.g. µm for WAVE). (x, y) are 0-based spatial pixel coordinates (0…nx-1, 0…ny-1 from get_cube_view). `firstChannel`/`lastChannel` (0-based, inclusive) return part of it, and `bin` averages that many channels into each value — a 3610-channel spectrum is ~60 KB whole, so bin it or take the range you need. At most 8192 values; `truncated` says when more were asked for, and `channelCount` always reports the full nz. Streamed cubes (too large to hold in RAM) cannot be probed — use get_cube_view / get_cube_channel_profile instead; there is no loadFullCube (OOM risk). Fails if no cube is open or the pixel is out of bounds.",
         schema: #"""
         {
           "type": "object",
@@ -453,7 +471,10 @@ struct ProbeCubeSpectrumTool: JSONReadTool {
               "type": "integer",
               "minimum": 0,
               "description": "0-based spatial pixel row (0…ny-1)."
-            }
+            },
+            "firstChannel": { "type": "integer", "minimum": 0, "description": "First channel returned (0-based, inclusive). Default 0." },
+            "lastChannel": { "type": "integer", "minimum": 0, "description": "Last channel returned (0-based, inclusive). Default nz-1." },
+            "bin": { "type": "integer", "minimum": 1, "description": "Channels averaged into each value. Default 1." }
           },
           "additionalProperties": false
         }
@@ -465,10 +486,10 @@ struct ProbeCubeSpectrumTool: JSONReadTool {
     /// `ToolFailureReason.targetNotResolved` when no cube is open;
     /// other `ToolFailureReason`s (e.g. `invalidArgument` for an
     /// out-of-bounds pixel) pass through `invoke` typed.
-    let probe: @Sendable (Int, Int) async throws -> Output
+    let probe: @Sendable (Args) async throws -> Output
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        try await probe(args.x, args.y)
+        try await probe(args)
     }
 }
 

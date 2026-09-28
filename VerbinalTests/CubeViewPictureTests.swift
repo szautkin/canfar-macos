@@ -77,4 +77,40 @@ final class CubeViewPictureTests: XCTestCase {
         model.autoWindow()
         XCTAssertEqual(model.windowHi, model.firstLookWindow.hi)
     }
+
+    // MARK: - The spectrum as a researcher asks for it (plan 15 V5, QA M13)
+
+    func testASpectrumIsBinnedOverTheChannelsAskedFor() throws {
+        let spectrum: [Float] = [1, 2, 3, .nan, .nan, 6, 7]
+        let slice = try CubeSpectrumSlice.make(spectrum, first: 1, last: 6, bin: 2, axisValue: { Double($0) * 10 }).get()
+        XCTAssertEqual(slice.values, [2.5, nil, 6.5])
+        XCTAssertEqual(slice.axis, [15, 35, 55], "each value at its channels' mean place on the axis")
+        XCTAssertEqual(slice.blanked, [1])
+        XCTAssertFalse(slice.truncated)
+
+        let whole = try CubeSpectrumSlice.make(spectrum, first: nil, last: nil, bin: nil, axisValue: nil).get()
+        XCTAssertEqual(whole.values.count, 7)
+        XCTAssertNil(whole.axis)
+        guard case .failure(let problem) = CubeSpectrumSlice.make(spectrum, first: 5, last: 2, bin: 1, axisValue: nil) else {
+            return XCTFail("a backwards range is refused")
+        }
+        XCTAssertTrue(problem.message.contains("0…6"), problem.message)
+        XCTAssertTrue(try CubeSpectrumSlice.make([Float](repeating: 1, count: 9000), first: nil, last: nil, bin: 1,
+                                                 axisValue: nil).get().truncated)
+    }
+
+    /// The probe says the unit and where each value is on the spectral axis.
+    func testTheProbeSaysItsUnitAndAxis() async throws {
+        let model = try await openCube()
+        await model.probe(x: 1, y: 2)
+        let spectrum = try XCTUnwrap(model.probeSpectrum)
+        let axis = try XCTUnwrap(model.wcs?.spectral)
+        let slice = try CubeSpectrumSlice.make(spectrum, first: 1, last: 4, bin: 2,
+                                               axisValue: { axis.value(atChannel: $0) }).get()
+        // Voxel values are z*100 + y*10 + x; channels 1–2 and 3–4 at (1, 2).
+        XCTAssertEqual(slice.values, [171, 371])
+        XCTAssertEqual(slice.axis?.first ?? 0, 1.0015e9, accuracy: 1, "FREQ from 1 GHz in 1 MHz steps")
+        XCTAssertEqual(model.bunit, "Jy")
+        XCTAssertEqual(axis.ctype, "FREQ")
+    }
 }
