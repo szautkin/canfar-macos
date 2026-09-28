@@ -16,7 +16,9 @@ actor TargetResolverService {
         self.tapClient = tapClient
     }
 
-    /// Resolve a target name, using cache when available.
+    /// Resolve a target name, using cache when available. A transient
+    /// designation that finds nothing is tried in the spellings the
+    /// services know (``TransientName``); a miss says what was tried.
     func resolve(target: String, service: ResolverValue) async throws -> ResolverResult {
         let cacheKey = "\(target.lowercased())|\(service.rawValue)"
         if let cached = cache[cacheKey] {
@@ -24,9 +26,20 @@ actor TargetResolverService {
         }
 
         let serviceName = service == .all ? "all" : service.rawValue.lowercased()
-        let result = try await tapClient.resolveTarget(name: target, service: serviceName)
-        cache[cacheKey] = result
-        return result
+        let spellings = [target] + (TransientName(target)?.alternates(to: target) ?? [])
+        var firstError: Error?
+        for name in spellings {
+            do {
+                let result = try await tapClient.resolveTarget(name: name, service: serviceName)
+                cache[cacheKey] = result
+                return result
+            } catch {
+                firstError = firstError ?? error
+            }
+        }
+        guard spellings.count > 1 else { throw firstError ?? SearchError.networkError("Target resolution failed") }
+        throw SearchError.networkError(
+            "\"\(target)\" was not found as \(spellings.map { "\"\($0)\"" }.joined(separator: ", ")) by NED, SIMBAD or VizieR")
     }
 
     func clearCache() {

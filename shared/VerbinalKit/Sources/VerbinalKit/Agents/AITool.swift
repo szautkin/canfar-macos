@@ -122,7 +122,7 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
     /// which sub-mode applies.
     case unknownTarget(String)
     /// Name resolver couldn't translate the target string to coords
-    /// (e.g., a typo, or an object SIMBAD/NED don't index).
+    /// (e.g., a typo, or an object NED, SIMBAD and VizieR don't index).
     /// Distinct from `unknownTarget` so the agent can tell whether to
     /// fix the spelling vs. fall back to RA/Dec input. (Platform
     /// review F-8.)
@@ -179,7 +179,7 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         case .invalidArgument(let msg): return "invalidArgument: \(Self.clip(msg))"
         case .unknownTarget(let what): return "unknownTarget: \(Self.clip(what))"
         case .targetNotResolved(let name):
-            return "targetNotResolved: '\(Self.clip(name, max: 120))' did not resolve via SIMBAD/NED. Try a different spelling, or pass `ra`+`dec` directly."
+            return "targetNotResolved: '\(Self.clip(name, max: 120))' did not resolve via NED, SIMBAD or VizieR. Try a different spelling, or pass `ra`+`dec` directly."
         case .unsupportedIdScheme(let id):
             return "unsupportedIdScheme: '\(Self.clip(id, max: 120))' must be ivo://cadc.nrc.ca/<COLL>?<id>, ivo://cadc.nrc.ca/<COLL>/<id>, caom:<COLL>/<id>, or <COLL>?<id>."
         case .planePublisherIdNotSupported(let id):

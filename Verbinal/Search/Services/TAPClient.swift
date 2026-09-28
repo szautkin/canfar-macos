@@ -345,6 +345,10 @@ actor TAPClient {
         }
 
         let text = String(data: data, encoding: .utf8) ?? ""
+        // A miss can come back as 200 too, with `error=` and a 0, 0 position that is no position.
+        if text.split(whereSeparator: \.isNewline).contains(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("error=") }) {
+            throw SearchError.networkError("Target resolution failed for \"\(name)\"")
+        }
         return parseResolverResponse(text, target: name, service: service)
     }
 

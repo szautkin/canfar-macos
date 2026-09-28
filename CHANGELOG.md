@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A transient's name finds it however it is written** — `AT 2023ixf`
+  found nothing, though `SN2023ixf` did. A name such as `AT 2023ixf`,
+  `2023ixf` or `SN 2023ixf` that finds nothing is now tried in the
+  spellings NED and SIMBAD know, and a miss says which it tried and that
+  NED, SIMBAD and VizieR were asked.
 - **The ADQL checker catches a column two joined tables share** — a bare
   `obsID` in a Plane–Observation join passed, and CADC then answered that
   it was ambiguous. And a query the checker knows is wrong, `LIMIT` and
