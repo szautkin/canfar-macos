@@ -35,6 +35,12 @@ struct VOSpaceNode: Identifiable, Equatable, Hashable {
         FileHelper.isFITS(fileExtension)
     }
 
+    /// Readable by anyone, and of a kind that usually holds secrets
+    /// (``VOSpaceSensitivity``).
+    var isExposedSecret: Bool {
+        isPublic && VOSpaceSensitivity.isLikelySecret(path.isEmpty ? name : path)
+    }
+
     /// A file's media type, by the rule a read uses too
     /// (``VOSpaceContentType``); a folder has none.
     var mediaType: String? {

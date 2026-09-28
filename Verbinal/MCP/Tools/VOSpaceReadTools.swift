@@ -27,6 +27,8 @@ struct ListVOSpacePathTool: JSONReadTool {
         let nodes: [Node]
         /// The folder holds more than `limit` entries; these are the first.
         var truncated = false
+        /// Said when public entries here usually hold secrets.
+        var warning: String? = nil
         struct Node: Encodable, Sendable {
             let name: String
             let path: String
@@ -35,12 +37,15 @@ struct ListVOSpacePathTool: JSONReadTool {
             let contentType: String?
             let lastModifiedISO: String?
             let isPublic: Bool
+            /// True when it is public and of a kind that usually holds
+            /// secrets (`.token`, `.ssh`, `.netrc`, …); absent otherwise.
+            var exposedSecret: Bool? = nil
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_vospace_path",
-        description: "List contents of a VOSpace path relative to the user's home (empty string is the root). Absolute `/home/<user>/…` and `/arc/home/<user>/…` prefixes are stripped so they are not double-prepended. Optional `limit` (default 200, max 500); the response is always ≤ `limit` entries, and `truncated` is true when the folder holds more. `contentType` is the file's extension's type, else the server's — the rule `read_vospace_file` uses. Requires auth.",
+        description: "List contents of a VOSpace path relative to the user's home (empty string is the root). Absolute `/home/<user>/…` and `/arc/home/<user>/…` prefixes are stripped so they are not double-prepended. Optional `limit` (default 200, max 500); the response is always ≤ `limit` entries, and `truncated` is true when the folder holds more. `contentType` is the file's extension's type, else the server's — the rule `read_vospace_file` uses. A public entry that usually holds secrets (`.token`, `.ssh`, `.netrc`, …) has `exposedSecret: true`, and `warning` says so. Requires auth.",
         schema: #"""
         {
           "type": "object",
@@ -54,6 +59,14 @@ struct ListVOSpacePathTool: JSONReadTool {
     )
 
     let listNodes: @Sendable (_ path: String, _ limit: Int) async throws -> [VOSpaceNodeOut]
+
+    /// The public entries that usually hold secrets, said to the agent,
+    /// with what it may do; nil when there are none.
+    static func warning(_ nodes: [VOSpaceNodeOut]) -> String? {
+        let exposed = nodes.filter(\.exposedSecret).map(\.name)
+        guard !exposed.isEmpty else { return nil }
+        return "Public — anyone can read them — and of a kind that usually holds secrets: \(exposed.joined(separator: ", ")). Tell the person; set_vospace_acl with isPublic false makes one private, once they approve."
+    }
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let path = args.path ?? ""
@@ -76,10 +89,12 @@ struct ListVOSpacePathTool: JSONReadTool {
                         sizeBytes: $0.sizeBytes,
                         contentType: $0.contentType,
                         lastModifiedISO: $0.lastModified.map { iso.string(from: $0) },
-                        isPublic: $0.isPublic
+                        isPublic: $0.isPublic,
+                        exposedSecret: $0.exposedSecret ? true : nil
                     )
                 },
-                truncated: nodes.count > limit
+                truncated: nodes.count > limit,
+                warning: Self.warning(capped)
             )
         } catch {
             if error is VOSpaceError, (error as? VOSpaceError) == .invalidPath {
@@ -142,7 +157,8 @@ struct GetVOSpaceNodeTool: JSONReadTool {
                 sizeBytes: match.sizeBytes,
                 contentType: match.contentType,
                 lastModifiedISO: match.lastModified.map { iso.string(from: $0) },
-                isPublic: match.isPublic
+                isPublic: match.isPublic,
+                exposedSecret: match.exposedSecret ? true : nil
             )
         } catch let f as ToolFailureReason {
             throw f
@@ -164,4 +180,6 @@ struct VOSpaceNodeOut: Sendable {
     let contentType: String?
     let lastModified: Date?
     let isPublic: Bool
+    /// Public, and of a kind that usually holds secrets (`VOSpaceSensitivity`).
+    var exposedSecret = false
 }

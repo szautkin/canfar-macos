@@ -48,6 +48,9 @@ final class StorageBrowserModel {
     var sortKey: SortKey = .name
     var sortOrder: SortOrder = .ascending
 
+    /// The public files and folders here that usually hold secrets.
+    var exposedSecrets: [VOSpaceNode] { sortedNodes.filter(\.isExposedSecret) }
+
     var breadcrumbs: [BreadcrumbSegment] {
         BreadcrumbSegment.fromPath(currentPath)
     }
@@ -163,9 +166,34 @@ final class StorageBrowserModel {
         }
     }
 
+    /// A node here, as a path from the home folder.
+    private func homePath(of node: VOSpaceNode) -> String {
+        currentPath.isEmpty ? node.name : "\(currentPath)/\(node.name)"
+    }
+
+    /// Takes public access away — the person's own click, through the same
+    /// ACL call `set_vospace_acl` makes; groups are left as they are.
+    func makePrivate(_ targets: [VOSpaceNode]) async {
+        guard !targets.isEmpty else { return }
+        let label = targets.count == 1 ? targets[0].name : String(localized: "\(targets.count) items")
+        let paths = targets.map(homePath(of:))
+        do {
+            try await tasks.track(.storage, String(localized: "Make \(label) private")) { [service, username] _ in
+                for path in paths {
+                    try await service.setNodeACL(username: username, path: path, groupRead: nil, groupWrite: nil, isPublic: false)
+                }
+            }
+            await loadCurrentFolder()
+            statusMessage = String(localized: "Made \(label) private")
+        } catch {
+            await loadCurrentFolder()
+            reportError(error.localizedDescription)
+        }
+    }
+
     func deleteSelected() async {
         guard let node = selectedNode, !isDeleting else { return }
-        let path = currentPath.isEmpty ? node.name : "\(currentPath)/\(node.name)"
+        let path = homePath(of: node)
         // Folders always walk children first — ARC refuses DELETE on
         // non-empty containers (matches confirm copy + MCP recursive).
         let recursive = node.isContainer

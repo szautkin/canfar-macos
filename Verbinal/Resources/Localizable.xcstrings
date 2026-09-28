@@ -1771,6 +1771,16 @@
         }
       }
     },
+    "Anyone can read %@ — files like these usually hold secrets." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout le monde peut lire %@ — ce genre de fichier contient souvent des secrets."
+          }
+        }
+      }
+    },
     "Appearance" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8466,12 +8476,52 @@
         }
       }
     },
+    "Made %@ private" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ est maintenant privé"
+          }
+        }
+      }
+    },
     "Mag limit" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Magnitude limite"
+          }
+        }
+      }
+    },
+    "Make %@ private" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rendre %@ privé"
+          }
+        }
+      }
+    },
+    "Make All Private" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout rendre privé"
+          }
+        }
+      }
+    },
+    "Make Private" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rendre privé"
           }
         }
       }
@@ -11248,6 +11298,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Publiques uniquement"
+          }
+        }
+      }
+    },
+    "Public — anyone can read it, and files like this usually hold secrets" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Public — tout le monde peut le lire, et ce genre de fichier contient souvent des secrets"
+          }
+        }
+      }
+    },
+    "Public, and usually holds secrets" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Public, et contient souvent des secrets"
           }
         }
       }

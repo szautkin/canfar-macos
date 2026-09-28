@@ -61,7 +61,8 @@ extension AppState {
             sizeBytes: node.sizeBytes,
             contentType: node.mediaType,
             lastModified: node.lastModified,
-            isPublic: node.isPublic
+            isPublic: node.isPublic,
+            exposedSecret: node.isExposedSecret
         )
     }
 }

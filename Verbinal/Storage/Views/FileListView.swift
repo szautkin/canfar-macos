@@ -12,6 +12,8 @@ struct FileListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            exposedSecretsBanner
+
             // Sortable header
             HStack(spacing: 0) {
                 Text("")
@@ -73,6 +75,11 @@ struct FileListView: View {
                                 Button("Copy Path") {
                                     PlatformClipboard.copy(model.vospaceURI(for: node))
                                 }
+                                if node.isPublic {
+                                    Button("Make Private") {
+                                        Task { await model.makePrivate([node]) }
+                                    }
+                                }
                                 Divider()
                                 Button("Delete", role: .destructive) {
                                     model.selectedNode = node
@@ -107,6 +114,32 @@ struct FileListView: View {
         }
     }
 
+    /// Public files here that usually hold secrets, said once above the
+    /// list, with the way to close them.
+    @ViewBuilder
+    private var exposedSecretsBanner: some View {
+        let exposed = model.exposedSecrets
+        if !exposed.isEmpty {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.shield.fill")
+                    .foregroundStyle(.orange)
+                Text(String(localized: "Anyone can read \(exposed.map(\.name).joined(separator: ", ")) — files like these usually hold secrets."))
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Button(exposed.count == 1 ? String(localized: "Make Private") : String(localized: "Make All Private")) {
+                    Task { await model.makePrivate(exposed) }
+                }
+                .controlSize(.small)
+                .disabled(model.isBusy)
+                .pointable("storage.makePrivate", label: "Make exposed files private", screen: "storage")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.orange.opacity(0.12))
+        }
+    }
+
     private func rowBackground(for node: VOSpaceNode) -> some View {
         RoundedRectangle(cornerRadius: 4)
             .fill(model.selectedNode?.id == node.id
@@ -136,10 +169,19 @@ struct FileListView: View {
                 .frame(width: 30)
                 .foregroundStyle(node.isContainer ? Color.accentColor : Color.secondary)
 
-            Text(node.name)
-                .font(.caption)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 4) {
+                Text(node.name)
+                    .font(.caption)
+                    .lineLimit(1)
+                if node.isExposedSecret {
+                    Image(systemName: "exclamationmark.shield.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .help(String(localized: "Public — anyone can read it, and files like this usually hold secrets"))
+                        .accessibilityLabel(String(localized: "Public, and usually holds secrets"))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(node.formattedSize)
                 .font(.caption)

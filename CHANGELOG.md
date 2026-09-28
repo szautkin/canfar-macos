@@ -12,6 +12,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Storage warns when a file that usually holds secrets is public** — a
+  CANFAR home had `.token`, `.config`, `.globus-init.sh` and `.bashrc`
+  readable by anyone, and nothing said so. Storage now marks such a file
+  or folder and says so above the list, with **Make Private** (also on any
+  public item's context menu), which takes away public access and leaves
+  group access as it is. For assistants, `list_vospace_path` and
+  `get_vospace_node` flag it (`exposedSecret`) and the listing says what
+  to do.
 - **A proposed change nobody applies expires after 3 hours** — one sat in
   Pending for six days, ready to apply against a world that had moved on.
   Each proposal now says when it expires; once it has, it leaves Pending
