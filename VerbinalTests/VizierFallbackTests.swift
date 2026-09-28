@@ -30,43 +30,27 @@ final class VizierFallbackTests: XCTestCase {
             "primary must be TAPVizieR — tap.cds.unistra.fr/tap/sync is DNS-dead")
     }
 
-    /// Four mirrors total. Fewer than this and we've lost
-    /// geographically-distinct coverage; more and we're likely
-    /// trying servers that don't actually mirror the VizieR corpus.
-    func testMirrorCount() {
-        XCTAssertEqual(TAPClient.vizierEndpoints.count, 4,
-                       "expect exactly 4 VizieR TAP mirrors — see TAPClient.vizierEndpoints for rationale")
+    /// Only mirrors that answer (plan 15 R4, QA M8): CDS under its two DNS
+    /// zones. ESAC's host and `tap.cds.unistra.fr` no longer resolve, and
+    /// China-VO answers only plain HTTP, which Apple platforms refuse.
+    func testOnlyMirrorsThatAnswer() {
+        XCTAssertEqual(TAPClient.vizierEndpoints.map(\.host), ["tapvizier.cds.unistra.fr", "tapvizier.u-strasbg.fr"])
+        XCTAssertEqual(TAPClient.queryableVizierEndpoints, TAPClient.vizierEndpoints, "all of them HTTPS")
+        XCTAssertEqual(TAPClient.vizierEndpoints.first?.availabilityURL,
+                       "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/availability")
     }
 
-    /// All four mirror hostnames must be distinct — otherwise the
+    /// The health check probes the mirrors cone searches use, and no others.
+    func testTheHealthCheckProbesTheSameMirrors() {
+        XCTAssertEqual(GetServiceHealthTool.vizierMirrors.map(\.host), TAPClient.vizierEndpoints.map(\.host))
+    }
+
+    /// The mirror hostnames must be distinct — otherwise the
     /// "rotate to the next host" semantics degenerates.
     func testMirrorHostsAreDistinct() {
         let hosts = Set(TAPClient.vizierEndpoints.map(\.host))
         XCTAssertEqual(hosts.count, TAPClient.vizierEndpoints.count,
                        "mirrors must have distinct hostnames")
-    }
-
-    /// Fallback order must include both Strasbourg variants (the
-    /// `cds.unistra.fr` and `u-strasbg.fr` zones cover the same
-    /// physical CDS infrastructure but live in separate DNS zones —
-    /// having both is what gives us resilience against the exact
-    /// failure mode the QA report observed). Plus ESAC as the
-    /// non-Strasbourg fallback.
-    func testMirrorChainContainsStrasbourgAndESAC() {
-        let hosts = TAPClient.vizierEndpoints.map(\.host)
-        XCTAssertTrue(hosts.contains("tapvizier.cds.unistra.fr"))
-        XCTAssertTrue(hosts.contains("tapvizier.u-strasbg.fr"))
-        XCTAssertTrue(hosts.contains("tapvizier.esac.esa.int"))
-    }
-
-    /// At least one HTTP-only fallback exists for the case where
-    /// TLS itself is what's broken (e.g. an expired root CA on
-    /// macOS, a corporate MITM). The China-VO mirror is the
-    /// documented one.
-    func testHasHTTPFallback() {
-        let plainHTTP = TAPClient.vizierEndpoints.filter { $0.syncURL.hasPrefix("http://") }
-        XCTAssertFalse(plainHTTP.isEmpty,
-                       "need at least one HTTP-only mirror as TLS-failure fallback")
     }
 
     /// Each entry's `syncURL` must end with `/sync` — the TAP-1.1

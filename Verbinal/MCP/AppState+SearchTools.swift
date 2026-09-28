@@ -128,11 +128,11 @@ extension AppState {
     }
 
     func makeVizierConeSearchTool(tap: TAPClient) -> VizierConeSearchTool {
-        VizierConeSearchTool(search: { catalogue, ra, dec, radius, raCol, decCol, max in
+        VizierConeSearchTool(search: { catalogue, ra, dec, radius, raCol, decCol, columns, max in
             try await tap.vizierConeSearch(
                 catalogue: catalogue,
                 raDeg: ra, decDeg: dec, radiusDeg: radius,
-                raColumn: raCol, decColumn: decCol,
+                raColumn: raCol, decColumn: decCol, columns: columns,
                 maxRec: max
             )
         })

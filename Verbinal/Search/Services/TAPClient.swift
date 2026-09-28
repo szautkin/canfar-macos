@@ -145,22 +145,36 @@ actor TAPClient {
     /// also posted (HTTP 400 on every catalogue, 2026-08-28 QA). Row
     /// capping is `MAXREC` only. Position columns are qualified; Gaia DR3
     /// (`I/355/…`) defaults to `RA_ICRS`/`DE_ICRS` rather than `RAJ2000`.
+    /// The cone, nearest first, each row with its separation from the
+    /// centre (`sep_arcsec`) — with MAXREC the rows kept are the nearest,
+    /// not any (QA M9) — and only `columns` when given (Gaia DR3 has ~250).
     static func vizierConeADQL(
         catalogue: String,
         raDeg: Double,
         decDeg: Double,
         radiusDeg: Double,
         raColumn: String,
-        decColumn: String
+        decColumn: String,
+        columns: [String]? = nil
     ) -> String {
-        """
-        SELECT *
+        let chosen = (columns ?? []).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let list = chosen.isEmpty ? "*" : chosen.map(Self.adqlColumn).joined(separator: ", ")
+        return """
+        SELECT \(list),
+            DISTANCE(POINT('ICRS', \(raColumn), \(decColumn)), POINT('ICRS', \(raDeg), \(decDeg))) * 3600 AS sep_arcsec
         FROM "\(catalogue)"
         WHERE 1 = CONTAINS(
             POINT('ICRS', \(raColumn), \(decColumn)),
             CIRCLE('ICRS', \(raDeg), \(decDeg), \(radiusDeg))
         )
+        ORDER BY sep_arcsec
         """
+    }
+
+    /// A column name as ADQL takes it: quoted unless it is a plain identifier.
+    static func adqlColumn(_ name: String) -> String {
+        let plain = name.first.map { $0.isLetter || $0 == "_" } == true && name.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" }
+        return plain ? name : "\"\(name.replacingOccurrences(of: "\"", with: "\"\""))\""
     }
 
     /// Clement+2001 globular-cluster variables live in TAP_SCHEMA as
@@ -188,6 +202,7 @@ actor TAPClient {
         radiusDeg: Double,
         raColumn: String = "RAJ2000",
         decColumn: String = "DEJ2000",
+        columns: [String]? = nil,
         maxRec: Int = 500
     ) async throws -> (headers: [String], rows: [[String]]) {
         let adql = Self.vizierConeADQL(
@@ -196,7 +211,8 @@ actor TAPClient {
             decDeg: decDeg,
             radiusDeg: radiusDeg,
             raColumn: raColumn,
-            decColumn: decColumn
+            decColumn: decColumn,
+            columns: columns
         )
         var attempts: [(host: String, error: Error)] = []
         for endpoint in Self.queryableVizierEndpoints {
@@ -226,33 +242,33 @@ actor TAPClient {
     /// `host` is exposed separately so error messages can surface the
     /// rotation path without parsing URLs back out.
     struct VizierEndpoint: Sendable, Equatable {
+        /// Short name, for the service health check.
+        let name: String
         let host: String
         let syncURL: String
+
+        /// The TAP service's own availability page.
+        var availabilityURL: String {
+            syncURL.hasSuffix("/sync") ? String(syncURL.dropLast("/sync".count)) + "/availability" : syncURL
+        }
     }
 
-    /// Ordered fallback list of VizieR TAP mirrors. Primary is CDS's
-    /// TAPVizieR service (`tapvizier.cds.unistra.fr`) — the older
-    /// `tap.cds.unistra.fr/tap/sync` host is DNS-dead and is not a
-    /// TAPVizieR endpoint. Then the Strasbourg `u-strasbg.fr` alias
-    /// (separate DNS zone), then ESAC, then the China-VO HTTP mirror
-    /// (last-resort when TLS itself is broken). All four mirror the
-    /// same VizieR catalogue corpus.
+    /// Ordered fallback list of VizieR TAP mirrors: CDS's TAPVizieR under
+    /// its two DNS zones, `cds.unistra.fr` and `u-strasbg.fr`. Checked
+    /// 2026-09-28 (QA M8): `tap.cds.unistra.fr` and `tapvizier.esac.esa.int`
+    /// no longer resolve, China-VO answers only plain HTTP (refused on
+    /// Apple platforms; its HTTPS times out), and CfA's VizieR has no TAP.
+    /// The service health check probes this same list.
     static let vizierEndpoints: [VizierEndpoint] = [
         VizierEndpoint(
+            name: "cds-unistra",
             host: "tapvizier.cds.unistra.fr",
             syncURL: "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync"
         ),
         VizierEndpoint(
+            name: "cds-u-strasbg",
             host: "tapvizier.u-strasbg.fr",
             syncURL: "https://tapvizier.u-strasbg.fr/TAPVizieR/tap/sync"
-        ),
-        VizierEndpoint(
-            host: "tapvizier.esac.esa.int",
-            syncURL: "https://tapvizier.esac.esa.int/TAPVizieR/tap/sync"
-        ),
-        VizierEndpoint(
-            host: "vizier.china-vo.org",
-            syncURL: "http://vizier.china-vo.org/tap/sync"
         ),
     ]
 

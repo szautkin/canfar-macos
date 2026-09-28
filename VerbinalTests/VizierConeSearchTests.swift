@@ -28,10 +28,12 @@ final class VizierConeSearchTests: XCTestCase {
         var lastRaCol: String = ""
         var lastDecCol: String = ""
         var lastMaxRec: Int = 0
+        var lastColumns: [String]?
     }
 
     private func makeTool(spy: Spy, rows: [[String]] = []) -> VizierConeSearchTool {
-        VizierConeSearchTool(search: { cat, ra, dec, rad, raCol, decCol, max in
+        VizierConeSearchTool(search: { cat, ra, dec, rad, raCol, decCol, columns, max in
+            spy.lastColumns = columns
             spy.lastCatalogue = cat
             spy.lastRaDeg = ra
             spy.lastDecDeg = dec
@@ -151,6 +153,14 @@ final class VizierConeSearchTests: XCTestCase {
         XCTAssertFalse(adql.uppercased().contains("SELECT TOP"),
                        "VizieR TAP 1.1 rejects SELECT TOP when MAXREC is also posted")
         XCTAssertTrue(adql.contains("CIRCLE('ICRS'"))
+        // Plan 15 R4 (QA M9): nearest first, with the separation, so MAXREC keeps the nearest.
+        XCTAssertTrue(adql.contains("AS sep_arcsec"))
+        XCTAssertTrue(adql.hasSuffix("ORDER BY sep_arcsec"))
+        XCTAssertTrue(adql.hasPrefix("SELECT *,"))
+        let chosen = TAPClient.vizierConeADQL(catalogue: "I/355/gaiadr3", raDeg: 10.68, decDeg: 41.27, radiusDeg: 0.01,
+                                              raColumn: "RA_ICRS", decColumn: "DE_ICRS",
+                                              columns: ["Source", "Gmag", "BP-RP"])
+        XCTAssertTrue(chosen.hasPrefix("SELECT Source, Gmag, \"BP-RP\","), chosen)
         XCTAssertEqual(TAPClient.canonicalVizierCatalogue("V/97/catalog"), "V/97/variabls")
         XCTAssertEqual(TAPClient.canonicalVizierCatalogue("I/355/gaiadr3"), "I/355/gaiadr3")
         XCTAssertEqual(TAPClient.vizierDefaultPositionColumns(catalogue: "I/355/gaiadr3").ra, "RA_ICRS")

@@ -20,7 +20,7 @@ import VerbinalKit
 /// per-catalogue when needed.
 struct VizierConeSearchTool: JSONReadTool {
     // 90s deadline accommodates the multi-host VizieR fallback
-    // chain (CDS-unistra → CDS-u-strasbg → ESAC → China-VO).
+    // chain (CDS-unistra → CDS-u-strasbg).
     // Each host gets up to ~20s before fallback rotates to the
     // next; 90s is enough for two-host fallback under bad weather
     // without false-positives on a slow-but-working primary host.
@@ -33,6 +33,8 @@ struct VizierConeSearchTool: JSONReadTool {
         let radiusArcsec: Double
         var raColumn: String?
         var decColumn: String?
+        /// The catalogue's columns to return; all of them when omitted.
+        var columns: [String]?
         var maxRec: Int?
     }
 
@@ -49,7 +51,7 @@ struct VizierConeSearchTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "vizier_cone_search",
-        description: "Cone-search a VizieR catalogue at CDS. Standard pattern for catalogue cross-matches against any of VizieR's many holdings (Clement+2001 variables-in-globular-clusters as V/97/variabls, OGLE catalogues, ASAS-SN, ZTF, etc.). Public, no auth. `catalogue` is the VizieR identifier exactly (`V/97/variabls`, `B/vsx/vsx`, `I/355/gaiadr3`, …). Position columns default to RAJ2000 / DEJ2000, except Gaia DR3 (`I/355/…`) which defaults to RA_ICRS / DE_ICRS — override `raColumn` / `decColumn` if the catalogue uses different names. `radiusArcsec` is in arcseconds for the convenience of typical cluster work; the tool converts to degrees internally. Returns parsed rows + a `probablyTruncated` hint when the row count hit the cap.",
+        description: "Cone-search a VizieR catalogue at CDS. Standard pattern for catalogue cross-matches against any of VizieR's many holdings (Clement+2001 variables-in-globular-clusters as V/97/variabls, OGLE catalogues, ASAS-SN, ZTF, etc.). Public, no auth. `catalogue` is the VizieR identifier exactly (`V/97/variabls`, `B/vsx/vsx`, `I/355/gaiadr3`, …). Position columns default to RAJ2000 / DEJ2000, except Gaia DR3 (`I/355/…`) which defaults to RA_ICRS / DE_ICRS — override `raColumn` / `decColumn` if the catalogue uses different names. `radiusArcsec` is in arcseconds for the convenience of typical cluster work; the tool converts to degrees internally. Rows come nearest first, each with its separation from the centre in a last column, `sep_arcsec` — so with `maxRec` they are the nearest. `columns` picks the catalogue's columns to return (Gaia DR3 has ~250; e.g. [\"Source\", \"RA_ICRS\", \"DE_ICRS\", \"Gmag\"]); all of them when omitted. Returns parsed rows + a `probablyTruncated` hint when the row count hit the cap.",
         schema: #"""
         {
           "type": "object",
@@ -61,6 +63,7 @@ struct VizierConeSearchTool: JSONReadTool {
             "radiusArcsec": { "type": "number", "minimum": 0, "description": "Cone radius in arcseconds; converted to degrees internally." },
             "raColumn":     { "type": "string", "description": "Override the RA column name. Default: RAJ2000." },
             "decColumn":    { "type": "string", "description": "Override the Dec column name. Default: DEJ2000." },
+            "columns":      { "type": "array", "items": { "type": "string" }, "description": "The catalogue's columns to return; all when omitted. sep_arcsec is always added." },
             "maxRec":       { "type": "integer", "minimum": 1, "maximum": 5000, "description": "Row cap; default 500." }
           },
           "additionalProperties": false
@@ -77,6 +80,7 @@ struct VizierConeSearchTool: JSONReadTool {
         _ radiusDeg: Double,
         _ raColumn: String,
         _ decColumn: String,
+        _ columns: [String]?,
         _ maxRec: Int
     ) async throws -> (headers: [String], rows: [[String]])
 
@@ -88,7 +92,7 @@ struct VizierConeSearchTool: JSONReadTool {
         do {
             let (headers, rows) = try await search(
                 args.catalogue, args.raDeg, args.decDeg, radiusDeg,
-                raCol, decCol, maxRec
+                raCol, decCol, args.columns, maxRec
             )
             return Output(
                 catalogue: args.catalogue,

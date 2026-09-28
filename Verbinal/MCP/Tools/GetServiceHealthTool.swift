@@ -142,29 +142,10 @@ struct GetServiceHealthTool: JSONReadTool {
     }
 
     /// VizieR mirrors — deployment-independent; probed regardless of the
-    /// configured endpoints.
-    static let vizierMirrors: [Endpoint] = [
-        Endpoint(
-            name: "vizier-cds-unistra",
-            host: "tap.cds.unistra.fr",
-            url: "https://tap.cds.unistra.fr/tap/availability"
-        ),
-        Endpoint(
-            name: "vizier-cds-u-strasbg",
-            host: "tapvizier.u-strasbg.fr",
-            url: "https://tapvizier.u-strasbg.fr/TAPVizieR/tap/availability"
-        ),
-        Endpoint(
-            name: "vizier-esac",
-            host: "tapvizier.esac.esa.int",
-            url: "https://tapvizier.esac.esa.int/TAPVizieR/tap/availability"
-        ),
-        Endpoint(
-            name: "vizier-china-vo",
-            host: "vizier.china-vo.org",
-            url: "http://vizier.china-vo.org/tap/availability"
-        ),
-    ]
+    /// configured endpoints. The mirrors cone searches go to, and no others.
+    static let vizierMirrors: [Endpoint] = TAPClient.queryableVizierEndpoints.map {
+        Endpoint(name: "vizier-\($0.name)", host: $0.host, url: $0.availabilityURL)
+    }
 
     /// Canonical (classic-CANFAR) service set — the `deploymentEndpoints`
     /// derivation applied to the historical defaults. Tests pin this shape;

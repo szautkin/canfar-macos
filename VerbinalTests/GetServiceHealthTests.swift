@@ -44,16 +44,13 @@ final class GetServiceHealthTests: XCTestCase {
                       "primary VizieR mirror must be probed")
     }
 
-    /// All four VizieR mirrors named in the fallback chain must
-    /// be probed — when CDS Strasbourg goes down (the QA's
-    /// failure scenario) the user needs to see at a glance
-    /// which of the other three are reachable.
+    /// Every VizieR mirror in the fallback chain is probed — when one goes
+    /// down the person sees at a glance whether the other answers.
     func testCanonicalEndpointsCoverAllVizieRMirrors() {
         let names = Set(GetServiceHealthTool.canonicalEndpoints.map(\.name))
-        XCTAssertTrue(names.contains("vizier-cds-unistra"))
-        XCTAssertTrue(names.contains("vizier-cds-u-strasbg"))
-        XCTAssertTrue(names.contains("vizier-esac"))
-        XCTAssertTrue(names.contains("vizier-china-vo"))
+        for mirror in TAPClient.vizierEndpoints {
+            XCTAssertTrue(names.contains("vizier-\(mirror.name)"), mirror.host)
+        }
     }
 
     /// Each canonical endpoint has a non-empty host AND url.
@@ -111,7 +108,7 @@ final class GetServiceHealthTests: XCTestCase {
         XCTAssertEqual(byName["cadc-tap"], "https://archive.example.org/argus/availability")
         XCTAssertEqual(byName["cadc-registry"], "https://src.example.org/reg/availability")
         // VizieR mirrors stay global.
-        XCTAssertEqual(byName["vizier-cds-unistra"], "https://tap.cds.unistra.fr/tap/availability")
+        XCTAssertEqual(byName["vizier-cds-unistra"], "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/availability")
     }
 
     /// The Settings ▸ Endpoints "Test Connections" self-test scopes to the

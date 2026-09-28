@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **VizieR cone searches return the nearest rows, and only the columns
+  asked for** — with a row cap the rows were any in the cone, with no
+  separation, and a Gaia DR3 search brought back ~250 columns. Rows now
+  come nearest first with their separation (`sep_arcsec`), and
+  `vizier_cone_search` takes `columns`. Only the VizieR mirrors that
+  answer are tried and checked — two of the four listed no longer
+  existed, and one answers only over plain HTTP.
 - **A transient's name finds it however it is written** — `AT 2023ixf`
   found nothing, though `SN2023ixf` did. A name such as `AT 2023ixf`,
   `2023ixf` or `SN 2023ixf` that finds nothing is now tried in the
