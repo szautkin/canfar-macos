@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Batch Jobs History keeps jobs the app did not see finish** — a job
+  that ended while Verbinal was closed, or before its first look, was never
+  recorded, and CANFAR later forgot it. Every finished job the history
+  lacks is now kept when first seen, in its place by time; image-inspection
+  failures from before the history existed are added once. A probe job
+  that fails on CANFAR says so (`job_failed`) with the last line of its
+  log, rather than "unknown" and "Failed".
 - **A Research record describes the file it holds** — a record kept the
   details it was given, so one could say g band for a u-band file (the M31
   MegaPipe tile); and when DataLink had nothing, the science file could come

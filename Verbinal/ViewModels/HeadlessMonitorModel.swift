@@ -69,6 +69,10 @@ final class HeadlessMonitorModel: CadencedPoller {
                 wasInFlight: { !Self.isTerminalStatus($0) },
                 isSettled: { $0.isCompleted || $0.isFailed }))
 
+            // A job already finished when first seen — it ended while the
+            // app was closed, or between polls on the first — is kept too.
+            history?.recordMissing(fetched.filter(\.isTerminal).map { Self.record(of: $0) })
+
             previousStateMap = transitions.current
             jobs = fetched
             updateCounts()

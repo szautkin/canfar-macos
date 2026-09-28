@@ -18,6 +18,9 @@ enum ImageDiscoveryError: Error, Equatable, Sendable, LocalizedError {
     /// (default 5 min). Job may still be running on Skaha;
     /// caller can resubmit or wait via `list_headless_jobs`.
     case jobTimedOut
+    /// The probe job ended failed on Skaha: its status, and the last
+    /// thing its log said when there was a log to read.
+    case jobFailed(status: String, reason: String?)
     /// Skaha said the job succeeded but the manifest isn't in
     /// VOSpace at the expected path.
     case manifestFetchFailed(message: String)
@@ -33,6 +36,8 @@ enum ImageDiscoveryError: Error, Equatable, Sendable, LocalizedError {
         switch self {
         case .jobSubmitFailed(let m): return "Probe submit failed: \(m)"
         case .jobTimedOut: return "Probe timed out"
+        case .jobFailed(let status, let reason):
+            return "Probe job ended \(status.lowercased()) on CANFAR" + (reason.map { ": \($0)" } ?? " — its log said nothing; get_probe_logs has its events")
         case .manifestFetchFailed(let m): return "Manifest fetch failed: \(m)"
         case .manifestParseFailed(let d): return "Manifest parse failed: \(d)"
         case .cancelled: return "Discovery cancelled"
@@ -55,6 +60,7 @@ enum ImageDiscoveryError: Error, Equatable, Sendable, LocalizedError {
         switch self {
         case .jobSubmitFailed: return .jobSubmitFailed
         case .jobTimedOut: return .jobTimedOut
+        case .jobFailed: return .jobFailed
         case .manifestFetchFailed: return .manifestFetchFailed
         case .manifestParseFailed: return .manifestParseFailed
         case .cancelled: return .cancelled

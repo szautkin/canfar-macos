@@ -924,6 +924,11 @@ final class AppState {
         )
         imageDiscoveryCoordinator = coord
         imageDiscoveryModel = ImageDiscoveryModel(coordinator: coord)
+        // Probe failures from before the history kept them (plan 15 F7).
+        Task { [weak self] in
+            let records = await coord.failedProbeRecords()
+            self?.jobHistory.recordMissingOnce(records, key: "jobHistory.seededFromProbeFailures")
+        }
         canfarImagesModel = CanfarImagesModel(
             imageService: imageService,
             coordinator: coord,

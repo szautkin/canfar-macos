@@ -374,6 +374,7 @@ struct MatchingImagesPane: View {
         switch c {
         case .jobTimedOut:           return .orange.opacity(0.18)
         case .jobSubmitFailed:       return .red.opacity(0.18)
+        case .jobFailed:             return .red.opacity(0.18)
         case .manifestFetchFailed:   return .red.opacity(0.15)
         case .manifestParseFailed:   return .red.opacity(0.15)
         case .cancelled:             return .gray.opacity(0.18)
@@ -385,6 +386,7 @@ struct MatchingImagesPane: View {
         switch c {
         case .jobTimedOut:           return .orange
         case .jobSubmitFailed:       return .red
+        case .jobFailed:             return .red
         case .manifestFetchFailed:   return .red
         case .manifestParseFailed:   return .red
         case .cancelled:             return .secondary

@@ -944,6 +944,31 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertTrue(jobID?.hasPrefix("job-") ?? false)
     }
 
+    /// QA L17: a probe job that failed read "unknown" and "Failed". It is a
+    /// failed job, and its log's last line says why.
+    func testAFailedJobIsItsOwnCategoryAndSaysWhy() async throws {
+        let store = makeStore()
+        let h = MockHeadless()
+        h.failJobs = true
+        h.stubbedLogs["job-1"] = "Collecting packages\nModuleNotFoundError: No module named 'yaml'\n\n"
+        let coord = makeCoord(store: store, headless: h, vospace: MockVOSpace())
+
+        _ = try? await coord.discover("test:badimage")
+
+        guard case .failure(_, let category, let message, let attemptedAt, let jobID) = await store.outcome(for: "test:badimage") else {
+            return XCTFail("expected .failure outcome")
+        }
+        XCTAssertEqual(category, .jobFailed)
+        XCTAssertTrue(message.hasSuffix("ModuleNotFoundError: No module named 'yaml'"), message)
+
+        let records = await coord.failedProbeRecords()
+        XCTAssertEqual(records.map(\.id), [jobID].compactMap { $0 })
+        XCTAssertEqual(records.first?.failureReason, message)
+        XCTAssertEqual(records.first?.finishedAt, attemptedAt)
+        XCTAssertEqual(records.first?.targetImage, "test:badimage")
+        XCTAssertEqual(ImageDiscoveryCoordinator.lastWords("\n  \n"), nil)
+    }
+
     func testFetchLogsAndEventsRouteThroughHeadless() async throws {
         let store = makeStore()
         let h = MockHeadless()

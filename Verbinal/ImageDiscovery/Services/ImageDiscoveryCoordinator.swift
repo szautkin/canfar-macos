@@ -970,7 +970,8 @@ actor ImageDiscoveryCoordinator {
             }
             if job.isTerminal {
                 if job.isFailed {
-                    throw ImageDiscoveryError.unknown(message: "job ended in failed state: \(job.status)")
+                    let log = try? await headless.getLogs(id: jobID)
+                    throw ImageDiscoveryError.jobFailed(status: job.status, reason: log.flatMap(Self.lastWords))
                 }
                 return
             }
@@ -1004,10 +1005,34 @@ actor ImageDiscoveryCoordinator {
 
     /// A probe job's end, for the job history: it succeeded, or why not.
     private func recordProbe(jobID: String, imageID: String, failure: String?) async {
-        await recordJob?(JobRecord(
-            id: jobID, name: String(localized: "Image inspection"), image: imageID, origin: .imageProbe,
-            outcome: failure == nil ? .succeeded : .failed, status: failure == nil ? "Succeeded" : "Failed",
-            startedAt: "", finishedAt: Date(), failureReason: failure, targetImage: imageID))
+        await recordJob?(Self.probeRecord(jobID: jobID, imageID: imageID, failure: failure, at: Date()))
+    }
+
+    nonisolated static func probeRecord(jobID: String, imageID: String, failure: String?, at finished: Date) -> JobRecord {
+        JobRecord(id: jobID, name: String(localized: "Image inspection"), image: imageID, origin: .imageProbe,
+                  outcome: failure == nil ? .succeeded : .failed, status: failure == nil ? "Succeeded" : "Failed",
+                  startedAt: "", finishedAt: finished, failureReason: failure, targetImage: imageID)
+    }
+
+    /// The history's record of every stored failure that had a job — for
+    /// failures from before the history kept them.
+    func failedProbeRecords() async -> [JobRecord] {
+        var records: [JobRecord] = []
+        for id in await knownImages() {
+            if case .failure(let imageID, _, let message, let attemptedAt, let jobID?) = await outcome(for: id) {
+                records.append(Self.probeRecord(jobID: jobID, imageID: imageID, failure: message, at: attemptedAt))
+            }
+        }
+        return records
+    }
+
+    /// The last line a failed job's log has to say — usually the error that
+    /// stopped it — at most 300 characters; nil for an empty log.
+    nonisolated static func lastWords(_ log: String) -> String? {
+        let line = log.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .last { !$0.isEmpty }
+        return line.map { $0.count > 300 ? String($0.suffix(300)) : $0 }
     }
 
     // MARK: - Grace polling for late-landing manifests

@@ -42,6 +42,26 @@ final class JobHistoryStore {
         save()
     }
 
+    /// Remembers the jobs it has no record of, each in its place by when it
+    /// finished — a job seen already finished, or a failure from before the
+    /// history was kept. A job it knows is left as it is.
+    func recordMissing(_ found: [JobRecord]) {
+        let known = Set(jobs.map(\.id))
+        var seen = Set<String>()
+        let missing = found.filter { !$0.id.isEmpty && !known.contains($0.id) && seen.insert($0.id).inserted }
+        guard !missing.isEmpty else { return }
+        jobs = Array((jobs + missing).sorted { $0.finishedAt > $1.finishedAt }.prefix(Self.maxJobs))
+        save()
+    }
+
+    /// `recordMissing`, once per `key` on this Mac: a clean-up that must not
+    /// come back after the person clears the history.
+    func recordMissingOnce(_ found: [JobRecord], key: String, defaults: UserDefaults = .standard) {
+        guard !defaults.bool(forKey: key) else { return }
+        recordMissing(found)
+        defaults.set(true, forKey: key)
+    }
+
     func clear() {
         jobs = []
         save()

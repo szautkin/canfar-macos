@@ -35,7 +35,7 @@ struct ListProbeFailuresTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_probe_failures",
-        description: "List images whose last package-discovery probe FAILED (the discovery sheet's error rows): image id, failure category (job_submit_failed / job_timed_out / manifest_fetch_failed / manifest_parse_failed / cancelled / unknown), message, attempt time, and — when a probe job was actually launched — its jobID for `get_probe_logs`. Clear with `clear_probe_failures` or retry with `discover_image_packages` (force).",
+        description: "List images whose last package-discovery probe FAILED (the discovery sheet's error rows): image id, failure category (job_submit_failed / job_timed_out / job_failed — the job ran and failed, the message quoting the last line of its log / manifest_fetch_failed / manifest_parse_failed / cancelled / unknown), message, attempt time, and — when a probe job was actually launched — its jobID for `get_probe_logs`. Clear with `clear_probe_failures` or retry with `discover_image_packages` (force).",
         schema: #"""
         {
           "type": "object",

@@ -13,8 +13,8 @@ import VerbinalKit
 // MARK: - search_packages
 
 /// The vocabulary of what is installed. A search for "spectroscopy" matches
-/// nothing while nine images carry specutils, and a zero-hit search reads
-/// as "no image does that"; this says what the packages are CALLED, so the
+/// no package, though images carry the packages that do it, and a zero-hit
+/// search reads as "no image does that"; this says what the packages are CALLED, so the
 /// next search is one that can match.
 struct SearchPackagesTool: JSONReadTool {
     /// Names returned per ecosystem: enough to choose from, few enough to read.
@@ -42,7 +42,7 @@ struct SearchPackagesTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "search_packages",
-        description: "Find what a package is actually CALLED, across every image that has been probed. Use it BEFORE find_images_with_packages when working from a subject rather than a package name: \"spectroscopy\" matches nothing while nine images carry specutils, and a zero-hit search reads as \"no image does that\". Matches anywhere in the name, per ecosystem (python, r, dpkg, rpm, apk), the shortest — usually the package itself — first.",
+        description: "Find what a package is actually CALLED, across every image that has been probed. Use it BEFORE find_images_with_packages when working from a subject rather than a package name: a subject such as \"spectroscopy\" names no package, while the packages that do it (specutils, for one) are what images carry, and a zero-hit search reads as \"no image does that\". Matches anywhere in the name, per ecosystem (python, r, dpkg, rpm, apk), the shortest — usually the package itself — first.",
         schema: #"""
         {
           "type": "object",

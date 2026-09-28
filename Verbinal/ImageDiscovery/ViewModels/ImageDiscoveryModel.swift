@@ -585,6 +585,7 @@ final class ImageDiscoveryModel {
         switch category {
         case .jobSubmitFailed:    return "Submit failed"
         case .jobTimedOut:        return "Timed out"
+        case .jobFailed:          return "Job failed"
         case .manifestFetchFailed: return "No manifest"
         case .manifestParseFailed: return "Bad manifest"
         case .cancelled:          return "Cancelled"

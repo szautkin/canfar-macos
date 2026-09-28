@@ -56,6 +56,52 @@ final class JobHistoryTests: XCTestCase {
         XCTAssertEqual(other.jobs.first?.name, "job-p")
     }
 
+    // MARK: - Jobs not seen finishing (plan 15 F7, QA H8)
+
+    /// A job that ended while the app was closed is recorded when it is
+    /// first seen, in its place by time; one already known is left alone.
+    func testAJobNotSeenFinishingIsKeptInItsPlace() {
+        let history = JobHistoryStore(persistence: nil)
+        var older = job("old", reason: "OOMKilled")
+        older.finishedAt = Date(timeIntervalSinceNow: -3600)
+        history.record(job("new", .succeeded))
+        history.recordMissing([older, job("new"), older])
+        XCTAssertEqual(history.jobs.map(\.id), ["new", "old"])
+        XCTAssertEqual(history.jobs.first?.outcome, .succeeded, "a job it knows is left as it is")
+    }
+
+    func testTheMonitorKeepsAJobAlreadyFinishedWhenFirstSeen() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let body = #"""
+            [{"id": "qa1", "userid": "u", "image": "images.canfar.net/p/x:1", "type": "headless", "status": "Completed",
+              "name": "qa-test-headless", "startTime": "2026-09-21T10:00:00Z"},
+             {"id": "run1", "userid": "u", "image": "images.canfar.net/p/x:1", "type": "headless", "status": "Running",
+              "name": "still-going"}]
+            """#
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        defer { MockURLProtocol.requestHandler = nil }
+        let history = JobHistoryStore(persistence: nil)
+        let monitor = HeadlessMonitorModel(
+            headlessService: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())), history: history)
+        await monitor.loadJobs()
+        XCTAssertEqual(history.jobs.map(\.id), ["qa1"], "finished before the first poll, and still kept")
+        XCTAssertEqual(history.jobs.first?.name, "qa-test-headless")
+    }
+
+    func testProbeFailuresFromBeforeTheHistoryAreAddedOnce() {
+        let defaults = UserDefaults(suiteName: "JobHistoryTests-\(UUID().uuidString)")!
+        let failure = ImageDiscoveryCoordinator.probeRecord(jobID: "luqe9pc5", imageID: "images.canfar.net/astroai/improc-terminal:latest",
+                                                            failure: "job ended in failed state: Failed",
+                                                            at: Date(timeIntervalSinceNow: -86_400))
+        let history = JobHistoryStore(persistence: nil)
+        history.recordMissingOnce([failure], key: "seed", defaults: defaults)
+        XCTAssertEqual(history.jobs.first?.origin, .imageProbe)
+        history.clear()
+        history.recordMissingOnce([failure], key: "seed", defaults: defaults)
+        XCTAssertTrue(history.jobs.isEmpty, "cleared stays cleared")
+    }
+
     func testTheToolListsFailuresAlone() async throws {
         let jobs = [job("a", .succeeded), job("b", reason: "OOMKilled"), job("c")]
         let tool = ListJobHistoryTool(jobs: { jobs })

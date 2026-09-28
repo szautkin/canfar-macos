@@ -44,6 +44,9 @@ enum LastOutcome: Codable, Equatable, Sendable {
         /// Probe job ran but never reached terminal state inside our
         /// timeout (default 5 min).
         case jobTimedOut = "job_timed_out"
+        /// Probe job ran and ended failed on the platform — the image
+        /// would not start, or the probe inside it stopped.
+        case jobFailed = "job_failed"
         /// Probe job reached terminal state but we couldn't fetch the
         /// manifest from VOSpace.
         case manifestFetchFailed = "manifest_fetch_failed"
