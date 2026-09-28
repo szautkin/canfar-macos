@@ -112,7 +112,7 @@ struct CubeViewerView: View {
         case "v":
             model.viewMode = model.viewMode == .slice ? .volume : .slice; return .handled
         case "r":
-            model.autoWindowPercentile(); return .handled
+            model.autoWindow(); return .handled
         default:
             return .ignored
         }

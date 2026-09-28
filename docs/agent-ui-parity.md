@@ -124,7 +124,7 @@ every later agent is told; **read** = pure data.
 | UI interaction | Tool | Kind |
 |---|---|---|
 | Every side-panel control, playback, channel, camera, spectrum probe, figure export (with marks, PNG/PDF) | pre-existing (`set_cube_view`, `set_cube_camera`, `probe_cube_spectrum`, `export_cube_figure` `marks`/`format`) | mixed |
-| Auto (99.9%) / Full Range window buttons | `set_cube_view` `autoWindow` | live |
+| Auto / 99.9% / Full Range window buttons | `set_cube_view` `autoWindow` (`auto`, `percentile`, `full`) | live |
 | Recent cubes, spectrum inspector, channel profile, transfer curve | `list_recent_cubes`, `show_cube_spectrum`, `get_cube_channel_profile`, `set_cube_transfer` | read/live |
 | Cube document tabs | `switch_cube_tab`, `list_open_tabs` | live/read |
 | Draw a mark on the slice (Marks panel ▸ Draw) | `annotate_cube` | live |

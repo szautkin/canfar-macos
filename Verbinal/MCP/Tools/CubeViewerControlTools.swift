@@ -121,10 +121,10 @@ struct SetCubeViewTool: AITool {
         /// Opacity transfer-function control points: 2–16 [value, alpha]
         /// pairs, both 0–1, non-decreasing in value.
         let opacityCurve: [[Double]]?
-        /// "percentile" (the p0.1–p99.9 load-time default, the panel's
-        /// Auto button) or "full" (the data min–max, the panel's Full
-        /// Range button). Applied after windowLo/windowHi, so pass one
-        /// or the other.
+        /// "auto" (the load-time first look, the panel's Auto button),
+        /// "percentile" (p0.1–p99.9, the panel's 99.9%) or "full" (the data
+        /// min–max, Full Range). Applied after windowLo/windowHi, so pass
+        /// one or the other.
         let autoWindow: String?
         /// Navigate the user's window to the Cube Viewer so the change is
         /// visible immediately.
@@ -161,7 +161,7 @@ struct SetCubeViewTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "set_cube_view",
-        description: "Adjust the 3D Cube Viewer's settings — every control in its side panel. Live-applied; no proposal. All arguments are optional — pass only the fields to change. `channel` is 0-based (0…nz-1, see get_cube_view). `windowLo`/`windowHi` are normalized 0-1 over the cube's data range (lo < hi). `density` scales volume-render opacity. `opacityCurve` replaces the volume transfer function (2-16 [value, alpha] pairs, 0-1, non-decreasing value). `autoWindow` re-derives the window from the data (\"percentile\" = the panel's Auto, \"full\" = Full Range). Set `reveal` true to also navigate the user's window to the Cube Viewer so they see the change. Fails if no cube is open or a value is out of range. Use set_cube_camera to rotate/zoom the 3D view.",
+        description: "Adjust the 3D Cube Viewer's settings — every control in its side panel. Live-applied; no proposal. All arguments are optional — pass only the fields to change. `channel` is 0-based (0…nz-1, see get_cube_view). `windowLo`/`windowHi` are normalized 0-1 over the cube's data range (lo < hi). `density` scales volume-render opacity. `opacityCurve` replaces the volume transfer function (2-16 [value, alpha] pairs, 0-1, non-decreasing value). `autoWindow` re-derives the window from the data (\"auto\" = the load-time first look, a little below the background to where the brightest percent begins — the panel's Auto; \"percentile\" = p0.1–p99.9; \"full\" = Full Range). Set `reveal` true to also navigate the user's window to the Cube Viewer so they see the change. Fails if no cube is open or a value is out of range. Use set_cube_camera to rotate/zoom the 3D view.",
         schema: #"""
         {
           "type": "object",
@@ -254,7 +254,7 @@ struct SetCubeViewTool: AITool {
             },
             "autoWindow": {
               "type": "string",
-              "enum": ["percentile", "full"],
+              "enum": ["auto", "percentile", "full"],
               "description": "Auto-set the transfer window: \"percentile\" = robust p0.1-p99.9 (the panel's Auto button), \"full\" = data min-max (Full Range)."
             },
             "reveal": {

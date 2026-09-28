@@ -149,9 +149,10 @@ extension AppState {
                 }
                 if let auto = args.autoWindow {
                     switch auto {
+                    case "auto": model.autoWindow()
                     case "percentile": model.autoWindowPercentile()
                     case "full": model.autoWindowFullRange()
-                    default: return "Unknown autoWindow '\(auto)' — use percentile or full"
+                    default: return "Unknown autoWindow '\(auto)' — use auto, percentile or full"
                     }
                 }
                 // The UI's bindings request a slice re-render on every

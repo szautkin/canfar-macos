@@ -1196,6 +1196,16 @@
         }
       }
     },
+    "99.9%" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "99,9 %"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -1223,6 +1233,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un onglet lié a un WCS manquant, invalide ou approximatif. La synchronisation du réticule et du zoom entre les onglets peut ne pas tomber exactement sur la position céleste."
+          }
+        }
+      }
+    },
+    "A little below the background to where the brightest percent begins" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un peu sous le fond jusqu'au début du pour cent le plus brillant"
           }
         }
       }

@@ -16,10 +16,20 @@ public struct CubeStats: Sendable, Equatable {
     public let max: Float
     public let median: Float
     public let nanFrac: Float
+    /// The first look under a linear stretch (``LinearCut``), in data values.
+    public let firstLook: FirstLook
 
-    public init(lo: Float, hi: Float, min: Float, max: Float, median: Float, nanFrac: Float) {
+    public struct FirstLook: Sendable, Equatable {
+        public let lo: Float
+        public let hi: Float
+        public init(lo: Float, hi: Float) { self.lo = lo; self.hi = hi }
+    }
+
+    public init(lo: Float, hi: Float, min: Float, max: Float, median: Float, nanFrac: Float,
+                firstLook: FirstLook? = nil) {
         self.lo = lo; self.hi = hi; self.min = min; self.max = max
         self.median = median; self.nanFrac = nanFrac
+        self.firstLook = firstLook ?? FirstLook(lo: lo, hi: hi)
     }
 }
 
@@ -315,8 +325,10 @@ public actor CubeModel {
         var hi = q(0.999)
         if hi <= lo { lo = finite[0]; hi = finite[n - 1] }
         if hi <= lo { hi = lo + (abs(lo) == 0 ? 1 : abs(lo)) }   // constant cube
+        let look = LinearCut.firstLook(sorted: finite)
         return CubeStats(lo: lo, hi: hi, min: finite[0], max: finite[n - 1],
-                         median: q(0.5), nanFrac: Float(nan) / Float(seen))
+                         median: q(0.5), nanFrac: Float(nan) / Float(seen),
+                         firstLook: .init(lo: look.lo, hi: look.hi))
     }
 }
 

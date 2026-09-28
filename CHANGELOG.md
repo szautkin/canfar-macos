@@ -12,6 +12,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Images and cubes open on a better first look, still linear** — a JWST
+  deep field opened washed out, its sky mid-grey and every faint galaxy
+  white, and a cube opened nearly black. Both viewers now start with black
+  a little below the background and white where the brightest percent
+  begins, leaving out a mosaic's zero border; the FITS **Auto** button and
+  the Cube Viewer's **Auto** (and R) give the same, and the cube's old
+  window is its **99.9%** button. For assistants, `set_cube_view` takes
+  `autoWindow: "auto"`.
 - **The picture your assistant gets of the Cube Viewer shows what you see**
   — a slice came back at the cube's own size (53×55 for the Europa cube)
   whatever `maxPixels` asked, a volume came back on white while the viewer

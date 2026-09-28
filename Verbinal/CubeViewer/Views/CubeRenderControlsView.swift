@@ -117,7 +117,9 @@ struct CubeRenderControlsView: View {
                     .accessibilityLabel("Window high")
             }
             HStack(spacing: 6) {
-                Button("Auto (99.9%)") { model.autoWindowPercentile() }
+                Button("Auto") { model.autoWindow() }
+                    .help("A little below the background to where the brightest percent begins")
+                Button("99.9%") { model.autoWindowPercentile() }
                 Button("Full Range") { model.autoWindowFullRange() }
                 Spacer()
             }

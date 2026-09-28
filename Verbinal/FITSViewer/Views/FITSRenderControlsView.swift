@@ -62,7 +62,7 @@ struct FITSRenderControlsView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.mini)
                     .disabled(model.pixels.isEmpty)
-                    .help("Auto-stretch using median + sigma clipping")
+                    .help("A little below the background to where the brightest percent begins")
                 }
                 VStack(spacing: 2) {
                     HStack(spacing: 4) {

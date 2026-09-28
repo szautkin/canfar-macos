@@ -172,6 +172,7 @@ final class CubeViewerModel: Identifiable {
             self.instrument = cube.instrument
             self.bunit = cube.bunit
             self.stats = await cube.stats
+            (self.windowLo, self.windowHi) = firstLookWindow
             self.wcs = await cube.wcs
             self.volumeData = await cube.volume
             self.channelProfile = await cube.channelMeans()
@@ -489,7 +490,23 @@ final class CubeViewerModel: Identifiable {
         requestSliceRender()
     }
 
-    /// Window the robust p0.1…p99.9 percentile range (the load-time default).
+    /// Window the first look (``LinearCut``): black a little below the
+    /// background, white where the brightest percent begins — the load-time
+    /// default and the panel's Auto.
+    func autoWindow() {
+        (windowLo, windowHi) = firstLookWindow
+        requestSliceRender()
+    }
+
+    /// The first look as the normalized window.
+    var firstLookWindow: (lo: Float, hi: Float) {
+        guard let stats else { return (0, 1) }
+        let r = statsRange
+        return ((stats.firstLook.lo - stats.lo) / r, (stats.firstLook.hi - stats.lo) / r)
+    }
+
+    /// Window the robust p0.1…p99.9 percentile range — the range the volume
+    /// is normalised over.
     func autoWindowPercentile() {
         windowLo = 0
         windowHi = 1

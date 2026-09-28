@@ -6,6 +6,7 @@
 
 import CoreGraphics
 import XCTest
+import VerbinalKit
 @testable import Verbinal
 
 /// get_cube_image shows what the viewer shows (plan 15 V2, QA M4, L11): the
@@ -58,5 +59,22 @@ final class CubeViewPictureTests: XCTestCase {
         XCTAssertGreaterThan(picture.height, 300, "the spectrum strip is under the 400×300 slice")
         let corner = rgb(picture, 2, picture.height - 2)
         XCTAssertLessThan(corner.max() ?? 255, 40, "dark, as the viewer says — not white: \(corner)")
+    }
+
+    // MARK: - The first look (plan 15 V3, QA M5)
+
+    /// A cube opens on the first look, not on p0.1–p99.9; Auto and R return to it.
+    func testACubeOpensOnTheFirstLook() async throws {
+        let model = try await openCube()
+        let stats = try XCTUnwrap(model.stats)
+        var voxels: [Float] = []
+        for z in 0..<5 { for y in 0..<3 { for x in 0..<4 { voxels.append(Float(z * 100 + y * 10 + x)) } } }
+        XCTAssertEqual(stats.firstLook.lo, LinearCut.firstLook(samples: voxels).lo)
+        XCTAssertEqual(model.windowLo, model.firstLookWindow.lo)
+        XCTAssertEqual(model.windowHi, model.firstLookWindow.hi)
+        model.autoWindowPercentile()
+        XCTAssertEqual([model.windowLo, model.windowHi], [0, 1])
+        model.autoWindow()
+        XCTAssertEqual(model.windowHi, model.firstLookWindow.hi)
     }
 }

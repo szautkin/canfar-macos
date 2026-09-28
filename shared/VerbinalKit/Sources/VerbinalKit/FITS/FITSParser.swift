@@ -313,49 +313,9 @@ public enum FITSParser {
         return pixels
     }
 
-    /// Compute auto-cut using median + sigma clipping (matches DS9/SAOImage behavior).
-    /// Falls back to tighter percentiles (1%/99%) if sigma clipping produces a degenerate range.
-    public static func autoCut(pixels: [Float], lowPercentile: Float = 0.01, highPercentile: Float = 0.99) -> (min: Float, max: Float) {
-        let maxSamples = 100_000
-        let step = max(1, pixels.count / maxSamples)
-        var samples: [Float] = []
-        samples.reserveCapacity(min(pixels.count, maxSamples))
-
-        for i in Swift.stride(from: 0, to: pixels.count, by: step) {
-            let v = pixels[i]
-            if v.isFinite { samples.append(v) }
-        }
-
-        guard !samples.isEmpty else { return (0, 1) }
-        samples.sort()
-        // Safe min/max from the sorted, non-empty samples — avoids
-        // `samples.first!`/`.last!` so a future refactor of the guard above
-        // can't turn this into a crash.
-        guard let minSample = samples.first, let maxSample = samples.last else {
-            return (0, 1)
-        }
-
-        // Compute median
-        let median = samples[samples.count / 2]
-
-        // Compute MAD (median absolute deviation) for robust sigma estimate
-        var deviations = samples.map { abs($0 - median) }
-        deviations.sort()
-        let mad = deviations[deviations.count / 2]
-        let sigma = mad * 1.4826 // MAD to sigma conversion factor
-
-        if sigma > 0 {
-            // Use median ± 3*sigma for initial cut, then clamp to data range
-            let lo = max(minSample, median - 3 * sigma)
-            let hi = min(maxSample, median + 3 * sigma)
-            if hi > lo { return (lo, hi) }
-        }
-
-        // Fallback: percentile-based cuts
-        let lowIdx = Int(Float(samples.count - 1) * lowPercentile)
-        let highIdx = Int(Float(samples.count - 1) * highPercentile)
-        let lo = samples[lowIdx]
-        let hi = samples[highIdx]
-        return lo < hi ? (lo, hi) : (minSample, maxSample)
+    /// The viewer's first look and its Auto button: ``LinearCut/firstLook(samples:)``.
+    public static func autoCut(pixels: [Float]) -> (min: Float, max: Float) {
+        let cut = LinearCut.firstLook(samples: pixels)
+        return (cut.lo, cut.hi)
     }
 }
