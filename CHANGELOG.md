@@ -12,6 +12,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A recent search is named after what you looked for** — an M101 search
+  in CFHT was kept as "CFHT". It is now "M101 · CFHT", the target first.
 - **VizieR cone searches return the nearest rows, and only the columns
   asked for** — with a row cap the rows were any in the cone, with no
   separation, and a Gaia DR3 search brought back ~250 columns. Rows now

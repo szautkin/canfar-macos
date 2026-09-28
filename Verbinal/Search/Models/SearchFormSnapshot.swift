@@ -39,16 +39,14 @@ struct SearchFormSnapshot: Codable, Equatable {
     /// Generate a default name for this search snapshot. Uses locale-aware
     /// date formatting + catalog-resolved fallback label so recent-search
     /// chips render in the user's language.
+    /// What was looked for first — the target, then the first collection
+    /// ("M101 · CFHT"); an M101 search in CFHT was named "CFHT" (QA L3).
     func autoName() -> String {
         let timestamp = SharedFormatters.userMediumDateShortTime.string(from: Date())
-
-        if let first = selectedCollections.first, !first.isEmpty {
-            return "\(first) \u{2014} \(timestamp)"
-        }
-        if !target.isEmpty {
-            return "\(target) \u{2014} \(timestamp)"
-        }
-        return String(localized: "Search \u{2014} \(timestamp)")
+        let named = [target.trimmingCharacters(in: .whitespaces), selectedCollections.first ?? ""]
+            .filter { !$0.isEmpty }
+        guard !named.isEmpty else { return String(localized: "Search \u{2014} \(timestamp)") }
+        return "\(named.joined(separator: " \u{00B7} ")) \u{2014} \(timestamp)"
     }
 
     /// Summary of active filters for display in card. Each fragment goes

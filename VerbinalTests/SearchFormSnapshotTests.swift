@@ -180,6 +180,15 @@ final class SearchFormSnapshotTests: XCTestCase {
         XCTAssertTrue(name.hasPrefix("M31"), "Name should start with target, got: \(name)")
     }
 
+    /// Plan 15 R5 (QA L3): an M101 search in CFHT was saved as "CFHT".
+    func testAutoNameNamesTheTargetBeforeTheCollection() {
+        var snapshot = SearchFormSnapshot()
+        snapshot.target = "M101"
+        snapshot.selectedCollections = ["CFHT", "CFHTMEGAPIPE"]
+        let name = snapshot.autoName()
+        XCTAssertTrue(name.hasPrefix("M101 \u{00B7} CFHT \u{2014}"), "got: \(name)")
+    }
+
     func testAutoNameWithoutCollection() {
         let snapshot = SearchFormSnapshot()
         let name = snapshot.autoName()
