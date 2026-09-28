@@ -156,6 +156,24 @@ extension AppState {
         }
     }
 
+    /// `capture_view`: the front window, drawn from its layers.
+    func makeCaptureViewTool() -> ViewerImageTool {
+        ViewerImageTool.window { [weak self] maxSide in
+            guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
+            return try await MainActor.run {
+                guard let window = WindowCapture.frontWindow, let view = window.contentView,
+                      let image = WindowCapture.image(of: view, maxSide: maxSide) else {
+                    throw ToolFailureReason.targetNotResolved("No Verbinal window is showing to capture")
+                }
+                return ViewerPicture(image: image, caption: [
+                    "window": .string(window.title),
+                    "points": .object(["width": .double(view.bounds.width), "height": .double(view.bounds.height)]),
+                    "mode": .string(self.currentMode.key),
+                ])
+            }
+        }
+    }
+
     func makeProbeFITSPixelTool() -> ProbeFITSPixelTool {
         ProbeFITSPixelTool(probe: { [weak self] x, y in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }

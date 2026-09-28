@@ -19,8 +19,8 @@ with its tests and a CHANGELOG entry; a tool change also updates
 | S agent safety and audit | done — S1 standing instructions wait for the person; S2 who applied a change; S3 the person's rules come first; S4 proposals expire after 3 hours; S5 public secrets flagged, Make Private; S6 a session that differs from Settings says so | `445d1e5`, `7662e58`, `bc245a2`, `d7a12bc`, `0079fbc`, `b793e65` |
 | V viewers | done — V1 marks in get_fits_image; V2 the cube picture as seen; V3 a linear first look; V4 North Up re-fits; V5 the spectrum with its axis and unit; V6 fields apart said | `3753b7c`, `4c0b179`, `f3cb0de`, `675d2c3`, `eb97833`, `04ce64c` |
 | R search, ADQL, resolver, VizieR | done — R1 a row per plane, text proposal ids; R2 bare ambiguous columns, checked before sending; R3 transient names; R4 VizieR mirrors that answer, nearest first; R5 target-first names | `8befbf2`, `89e5a35`, `81645df`, `03bbe89`, `4fed789` |
-| O other surfaces | done — O1 view state, pointable targets, platform counts; O2 decimal GB; O3 launch project, flexible sessions, no events; O4 workflow copies, finished stages, bookmark id, untyped images | `db90e5b`, `6fca536`, `f83129b`, O4 |
-| Q capture and regression | planned — Q1–Q2 | — |
+| O other surfaces | done — O1 view state, pointable targets, platform counts; O2 decimal GB; O3 launch project, flexible sessions, no events; O4 workflow copies, finished stages, bookmark id, untyped images | `db90e5b`, `6fca536`, `f83129b`, `c1ba0e3` |
+| Q capture and regression | in progress — Q1 capture_view | Q1 |
 
 ## How the work is done
 

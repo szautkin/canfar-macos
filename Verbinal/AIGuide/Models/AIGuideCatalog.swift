@@ -74,6 +74,7 @@ enum AIGuideCatalog {
         "copy_to_clipboard": "foundational",
         "list_ui_targets": "navigation",
         "point_at_ui": "navigation",
+        "capture_view": "navigation",
         "open_settings": "navigation",
         "close_settings": "navigation",
         "get_auth_state": "foundational",

@@ -233,6 +233,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **Your assistant can see the window** — `capture_view` gives it a
+  picture of Verbinal's front window, whatever screen, sheet or Settings
+  section is showing, so it can check what the app shows instead of
+  asking you.
 - **A map of the tools for your assistant** — `list_apps` gives the app's
   areas and how many tools each has, `describe_app` with `app` gives one
   area's tools a line each, `search_tools` finds a tool by what it does

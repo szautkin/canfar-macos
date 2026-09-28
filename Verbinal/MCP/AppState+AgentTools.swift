@@ -290,6 +290,7 @@ extension AppState {
         tools.append(makeFITSGotoCoordinateTool())
         tools.append(makeProbeFITSPixelTool())
         tools.append(makeGetFITSImageTool())
+        tools.append(makeCaptureViewTool())
         // Marks on FITS images
         tools.append(makeAnnotateFITSTool())
         tools.append(makeListFITSAnnotationsTool())

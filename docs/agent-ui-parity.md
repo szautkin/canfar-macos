@@ -26,6 +26,7 @@ every later agent is told; **read** = pure data.
 | Copy text, or an observation's details | `copy_to_clipboard` | live |
 | What can be pointed at on screen | `list_ui_targets` | read |
 | Point at a control, with a message | `point_at_ui` | live |
+| See the window as the person does (any screen, sheet or Settings) | `capture_view` | read |
 | Open Settings at a section / close it | `open_settings` / `close_settings` | live |
 
 ## Long work
