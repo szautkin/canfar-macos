@@ -122,8 +122,8 @@ final class RiceDecoderTests: XCTestCase {
         let pixels = [Int16](repeating: 0, count: 32)
         let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 1)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: pixels.count, blockSize: 32)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: pixels.count, blockSize: 32, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 
     func testDecodeConstantValue() throws {
@@ -131,8 +131,8 @@ final class RiceDecoderTests: XCTestCase {
         let pixels = [Int16](repeating: 100, count: 16)
         let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 1)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: pixels.count, blockSize: 32)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: pixels.count, blockSize: 32, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 
     func testDecodeRamp() throws {
@@ -140,8 +140,8 @@ final class RiceDecoderTests: XCTestCase {
         let pixels: [Int16] = (0..<16).map { Int16($0 * 10) }
         let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 3)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: pixels.count, blockSize: 32)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: pixels.count, blockSize: 32, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 
     func testDecodeNegativeDeltas() throws {
@@ -149,8 +149,8 @@ final class RiceDecoderTests: XCTestCase {
         let pixels: [Int16] = (0..<16).map { Int16(200 - $0 * 5) }
         let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 3)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: pixels.count, blockSize: 32)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: pixels.count, blockSize: 32, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 
     func testDecodeMultipleBlocks() throws {
@@ -158,21 +158,21 @@ final class RiceDecoderTests: XCTestCase {
         let pixels: [Int16] = (0..<64).map { Int16($0 % 20 - 10) }
         let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 4)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: pixels.count, blockSize: 32)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: pixels.count, blockSize: 32, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 
     func testDecodeSinglePixel() throws {
         let pixels: [Int16] = [42]
         let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 2)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: 1, blockSize: 32)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: 1, blockSize: 32, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 
     func testDecodeEmptyReturnsEmpty() throws {
         let decoded = try RiceDecoder.decode(bytes: Data()[0...],
-                                             pixelCount: 0, blockSize: 32)
+                                             pixelCount: 0, blockSize: 32, bytePix: 2)
         XCTAssertEqual(decoded, [])
     }
 
@@ -181,7 +181,7 @@ final class RiceDecoderTests: XCTestCase {
         let compressed = Data()
         XCTAssertThrowsError(
             try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                   pixelCount: 1, blockSize: 32)
+                                   pixelCount: 1, blockSize: 32, bytePix: 2)
         )
     }
 
@@ -190,17 +190,19 @@ final class RiceDecoderTests: XCTestCase {
         let pixels = [Int16](repeating: 50, count: 8)
         let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 0)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: pixels.count, blockSize: 32)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: pixels.count, blockSize: 32, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 
-    func testDecodeFs14Mode() throws {
-        // fs=14 is the maximum non-escape value for BYTEPIX=2
+    /// fs = 14 is BYTEPIX 2's high-entropy block: raw 16-bit differences,
+    /// no Rice code — the block cfitsio writes for noise, which was once
+    /// read as Rice codes and turned CFHT frames into streaks.
+    func testDecodeHighEntropyBlock() throws {
         let pixels: [Int16] = [0, 100, -200, 300, -400]
         let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 14)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: pixels.count, blockSize: 32)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: pixels.count, blockSize: 32, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 
     func testDecodeNegativeFirstPixel() throws {
@@ -208,8 +210,8 @@ final class RiceDecoderTests: XCTestCase {
         let pixels: [Int16] = [-1000, -990, -980, -970]
         let compressed = riceEncodeTile(pixels, blockSize: 32, fs: 3)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: pixels.count, blockSize: 32)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: pixels.count, blockSize: 32, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 
     func testDecodeContinuousBitStream() throws {
@@ -219,8 +221,8 @@ final class RiceDecoderTests: XCTestCase {
         let pixels: [Int16] = [0, 1, 2, 3, 10, 11, 12, 13, 100, 101, 102, 103]
         let compressed = riceEncodeTile(pixels, blockSize: 4, fs: 2)
         let decoded = try RiceDecoder.decode(bytes: compressed[compressed.startIndex...],
-                                             pixelCount: pixels.count, blockSize: 4)
-        XCTAssertEqual(decoded, pixels)
+                                             pixelCount: pixels.count, blockSize: 4, bytePix: 2)
+        XCTAssertEqual(decoded, pixels.map(Int32.init))
     }
 }
 
@@ -267,8 +269,10 @@ final class FITSDecompressorIntegrationTests: XCTestCase {
         }
     }
 
-    func testUnsupportedBitpixThrows() {
-        let hdu = makeCompressedHDU(zcmptype: "RICE_1", zbitpix: 32)
+    /// Integer images of 8, 16 and 32 bits are read; quantised floating
+    /// point is refused, saying so, rather than decoded wrong.
+    func testQuantisedFloatingPointIsRefused() {
+        let hdu = makeCompressedHDU(zcmptype: "RICE_1", zbitpix: -32)
         let data = Data(repeating: 0, count: 2880)
         XCTAssertThrowsError(try FITSDecompressor.decompress(from: data, hdu: hdu)) { error in
             guard let decomp = error as? FITSDecompressor.Error,
@@ -276,7 +280,8 @@ final class FITSDecompressorIntegrationTests: XCTestCase {
                 XCTFail("Expected unsupportedBitpix, got \(error)")
                 return
             }
-            XCTAssertEqual(bp, 32)
+            XCTAssertEqual(bp, -32)
+            XCTAssertTrue(error.localizedDescription.contains("floating point"))
         }
     }
 

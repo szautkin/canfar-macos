@@ -12,6 +12,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **fpack images decode correctly** — a Rice block that cfitsio stores
+  raw (noise, cosmic rays, anything busy) was read as Rice codes, and the
+  rest of the tile came out as horizontal streaks: every CFHT `.fz` frame
+  was unviewable, and local cutouts of them were wrong. The decoder now
+  follows cfitsio block for block, reads 8- and 32-bit integer images as
+  well as 16-bit, and is checked value for value against files cfitsio
+  wrote; a truncated tile is an error, not quietly filled in. Quantised
+  floating-point fpack images are still refused, with a message saying so.
 - **The Portal fits its window** — the grid could give its first column
   the whole window, so Storage and Batch Jobs went off the right edge and
   the session and image cards were cut; and a row's cards were as tall and

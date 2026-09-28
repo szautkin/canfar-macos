@@ -1,0 +1,81 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (C) 2025-2026 Serhii Zautkin
+
+import XCTest
+@testable import VerbinalKit
+
+/// fpack RICE_1 files as cfitsio writes them, decoded value for value
+/// against the same images uncompressed. Their noise rows are compressed
+/// in high-entropy blocks — raw values, not Rice codes — which the decoder
+/// once read as codes, so every CFHT frame came out as streaks.
+final class RiceFixtureTests: XCTestCase {
+
+    private func fixture(_ name: String) throws -> Data {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: name, withExtension: nil, subdirectory: "Fixtures"), name)
+        return try Data(contentsOf: url)
+    }
+
+    /// The plain file's stored integers, as written: big-endian, BITPIX wide.
+    private func plainValues(_ name: String) throws -> (values: [Int64], width: Int, height: Int) {
+        let data = try fixture(name)
+        let hdu = try XCTUnwrap(try FITSParser.parse(from: data).hdus.first)
+        let width = hdu.header.naxis1, height = hdu.header.naxis2
+        let bytes = abs(hdu.header.bitpix) / 8
+        let values = (0..<(width * height)).map { index -> Int64 in
+            let start = hdu.dataOffset + index * bytes
+            let raw = data[start..<(start + bytes)].reduce(UInt64(0)) { $0 << 8 | UInt64($1) }
+            switch bytes {
+            case 1: return Int64(UInt8(raw))
+            case 2: return Int64(Int16(bitPattern: UInt16(raw)))
+            default: return Int64(Int32(bitPattern: UInt32(raw)))
+            }
+        }
+        return (values, width, height)
+    }
+
+    private func assertDecodesAsPlain(_ name: String, file: StaticString = #filePath, line: UInt = #line) throws {
+        let packed = try fixture(name + ".fits.fz")
+        let hdu = try XCTUnwrap(try FITSParser.parse(from: packed).firstImageHDU, file: file, line: line)
+        let decoded = try FITSDecompressor.storedValues(from: packed, hdu: hdu).map(Int64.init)
+        let plain = try plainValues(name + ".fits")
+        XCTAssertEqual(decoded.count, plain.values.count, file: file, line: line)
+        let firstWrong = zip(decoded, plain.values).enumerated().first { $0.element.0 != $0.element.1 }
+        XCTAssertNil(firstWrong.map { "pixel (\($0.offset % plain.width), \($0.offset / plain.width)): \($0.element.0) ≠ \($0.element.1)" },
+                     name, file: file, line: line)
+    }
+
+    func testSixteenBitRowTilesAsCFHTWritesThem() throws { try assertDecodesAsPlain("rice16") }
+
+    func testSixteenBitSquareTiles() throws { try assertDecodesAsPlain("rice16tiles") }
+
+    func testThirtyTwoBitTiles() throws { try assertDecodesAsPlain("rice32") }
+
+    func testEightBitTiles() throws { try assertDecodesAsPlain("rice8") }
+
+    /// What the viewer shows: BZERO 32768 turns the stored int16 back into the unsigned counts.
+    func testPixelsAreThePlainFilesValues() throws {
+        let packed = try fixture("rice16.fits.fz")
+        let plain = try fixture("rice16.fits")
+        let packedHDU = try XCTUnwrap(try FITSParser.parse(from: packed).firstImageHDU)
+        let plainHDU = try XCTUnwrap(try FITSParser.parse(from: plain).firstImageHDU)
+        XCTAssertEqual(try FITSParser.extractPixels(from: packed, hdu: packedHDU),
+                       try FITSParser.extractPixels(from: plain, hdu: plainHDU))
+    }
+
+    /// A local cutout of an fpack image is written at the image's own width:
+    /// its bytes are the plain file's bytes of the same box, 8, 16 or 32 bits.
+    func testACutoutOfEachWidthIsThePlainFilesBytes() throws {
+        let box = PixelBox(x0: 5, y0: 28, x1: 45, y1: 40)   // across the ramp and the noise
+        for name in ["rice8", "rice16", "rice32"] {
+            let packed = try fixture(name + ".fits.fz")
+            let plain = try fixture(name + ".fits")
+            let packedHDU = try XCTUnwrap(try FITSParser.parse(from: packed).firstImageHDU)
+            let plainHDU = try XCTUnwrap(try FITSParser.parse(from: plain).firstImageHDU)
+            XCTAssertEqual(try FITSCutter.pixels(of: packedHDU, box: box, in: packed),
+                           try FITSCutter.pixels(of: plainHDU, box: box, in: plain), name)
+        }
+    }
+}

@@ -78,12 +78,13 @@ public enum FITSCutter {
     }
 
     /// The images a local cut can take, with a WCS: 2-D images and cubes,
-    /// and fpack RICE_1 16-bit images (decoded a tile at a time).
+    /// and fpack RICE_1 integer images (decoded a tile at a time).
     public static func images(of file: FITSFile) -> [FITSHDUnit] {
         file.hdus.filter { hdu in
             guard hdu.isImage, hdu.wcs != nil else { return false }
             guard isCompressed(hdu) else { return (2...3).contains(hdu.header.naxis) }
-            return hdu.header.naxis == 2 && hdu.header.string("ZCMPTYPE") == "RICE_1" && hdu.header.int("ZBITPIX") == 16
+            return hdu.header.naxis == 2 && hdu.header.string("ZCMPTYPE") == "RICE_1"
+                && [8, 16, 32].contains(hdu.header.int("ZBITPIX"))
         }
     }
 
@@ -374,13 +375,21 @@ public enum FITSCutter {
 
     static func pixels(of hdu: FITSHDUnit, box: PixelBox, channels: Range<Int>? = nil, in data: Data) throws(Failure) -> Data {
         if isCompressed(hdu) {
-            // Only the tiles the box touches are decoded; the cut is written plain.
-            let values: [Int16]
+            // Only the tiles the box touches are decoded; the cut is written
+            // plain, at the image's own width (its BITPIX is ZBITPIX).
+            let values: [Int32]
             do { values = try FITSDecompressor.storedValues(from: data, hdu: hdu, box: box) } catch {
                 throw .unreadable(error.localizedDescription)
             }
-            var out = Data(capacity: values.count * 2)
-            for value in values { withUnsafeBytes(of: value.bigEndian) { out.append(contentsOf: $0) } }
+            let bytes = hdu.header.int("ZBITPIX") / 8
+            var out = Data(capacity: values.count * bytes)
+            for value in values {
+                switch bytes {
+                case 1: out.append(UInt8(truncatingIfNeeded: value))
+                case 2: withUnsafeBytes(of: Int16(truncatingIfNeeded: value).bigEndian) { out.append(contentsOf: $0) }
+                default: withUnsafeBytes(of: value.bigEndian) { out.append(contentsOf: $0) }
+                }
+            }
             return out
         }
         let bpp = abs(hdu.header.bitpix) / 8

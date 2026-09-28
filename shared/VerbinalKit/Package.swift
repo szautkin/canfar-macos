@@ -43,7 +43,10 @@ let package = Package(
         .testTarget(
             name: "VerbinalKitTests",
             dependencies: ["VerbinalKit"],
-            path: "Tests/VerbinalKitTests"
+            path: "Tests/VerbinalKitTests",
+            // Files written by other software (cfitsio, via astropy — see
+            // Tests/fixture-tools) that the readers are checked against.
+            resources: [.copy("Fixtures")]
         ),
         .testTarget(
             name: "MCPCoreTests",

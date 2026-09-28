@@ -35,7 +35,7 @@ public enum FITSDecompressor {
             case .truncatedHeap(let row, let needed, let available):
                 return "Compressed tile \(row): need \(needed) bytes but heap has \(available)."
             case .unsupportedBitpix(let bp):
-                return "RICE_1 decompressor does not support ZBITPIX=\(bp). Only 16 is currently implemented."
+                return "This fpack image has ZBITPIX=\(bp); RICE_1 integer images of 8, 16 and 32 bits can be read, quantised floating point cannot yet."
             case .decodingFailed(let row, let message):
                 return "Rice decode failed for tile \(row): \(message)"
             }
@@ -71,10 +71,10 @@ public enum FITSDecompressor {
         return floatPixels
     }
 
-    /// The image's stored 16-bit values, row-major — of the whole image, or
+    /// The image's stored integer values, row-major — of the whole image, or
     /// of `box` only, decoding just the tiles it touches (a small cutout of
     /// a large fpack tile reads a few rows, not the file).
-    public static func storedValues(from data: Data, hdu: FITSHDUnit, box: PixelBox? = nil) throws -> [Int16] {
+    public static func storedValues(from data: Data, hdu: FITSHDUnit, box: PixelBox? = nil) throws -> [Int32] {
         let h = hdu.header
 
         // Validate compression type
@@ -83,11 +83,13 @@ public enum FITSDecompressor {
             throw Error.unsupportedCompression(zcmptype.isEmpty ? "(none)" : zcmptype)
         }
 
-        // Only ZBITPIX=16 is currently implemented
+        // Integer images of 8, 16 or 32 bits; quantised floating point is not read yet.
         let zbitpix = h.int("ZBITPIX")
-        guard zbitpix == 16 else {
+        guard [8, 16, 32].contains(zbitpix) else {
             throw Error.unsupportedBitpix(zbitpix)
         }
+        // BYTEPIX when the file names it, else the image's own width.
+        let bytePix = h.string("ZNAME2")?.uppercased() == "BYTEPIX" ? h.int("ZVAL2", fallback: zbitpix / 8) : zbitpix / 8
 
         // Original image dimensions (these are now stored as NAXIS1/NAXIS2 in the header)
         let imageWidth  = h.int("NAXIS1")   // e.g. 2048
@@ -101,7 +103,6 @@ public enum FITSDecompressor {
 
         // Rice parameters
         let blockSize = h.int("ZVAL1", fallback: 32)  // pixels per Rice block
-        // ZVAL2 is BYTEPIX but we validate via ZBITPIX above
 
         // Raw binary table geometry (stashed by parser before NAXIS1/2 were overwritten)
         let tableRowBytes = h.int("_TNAXIS1")  // bytes per row in the main table (e.g. 8)
@@ -130,7 +131,7 @@ public enum FITSDecompressor {
         if let refusal = FITSMemoryBudget.refusal(width: area.width, height: area.height) {
             throw FITSError.invalidFile(refusal)
         }
-        var stored = [Int16](repeating: 0, count: totalPixels)
+        var stored = [Int32](repeating: 0, count: totalPixels)
 
         // Number of tiles along each axis
         let nTilesX = (imageWidth  + tileWidth  - 1) / tileWidth
@@ -185,13 +186,13 @@ public enum FITSDecompressor {
             let tileBytes = data[tileDataStart..<(tileDataStart + nelem)]
             let tilePxCount  = tilePxWidth * tilePxHeight
 
-            // Decode Rice-compressed bytes into signed 16-bit integers
-            let decoded: [Int16]
+            let decoded: [Int32]
             do {
                 decoded = try RiceDecoder.decode(
                     bytes: tileBytes,
                     pixelCount: tilePxCount,
-                    blockSize: blockSize
+                    blockSize: blockSize,
+                    bytePix: bytePix
                 )
             } catch let riceError as RiceDecoder.Error {
                 throw Error.decodingFailed(row: tileIdx, message: "\(riceError.description) (tilePxCount=\(tilePxCount), tileBytes=\(tileBytes.count), blockSize=\(blockSize))")
@@ -212,112 +213,99 @@ public enum FITSDecompressor {
 
 // MARK: - Rice Decoder
 
-/// Pure-Swift implementation of the FITS RICE_1 decompression algorithm.
-///
-/// This matches the cfitsio `fits_rdecomp` function for BYTEPIX=2 (16-bit pixels).
-///
-/// Algorithm overview (Pence et al. 2010, A&A 524, A51):
-/// - The first pixel of each tile is stored literally (big-endian int16).
-/// - Remaining pixels are delta-coded then Rice-entropy-coded in blocks of `blockSize`.
-/// - Within each block: one byte encodes the "fs" (fundamental sequence) parameter,
-///   followed by unary-coded quotients and `fs`-bit remainders for each pixel.
-/// - The signed delta is unfolded from an unsigned value using the fold mapping:
-///   0→0, 1→-1, 2→1, 3→-2, 4→2, …
+/// cfitsio's Rice parameters for one pixel width (`fits_rdecomp`,
+/// `_short`, `_byte`): how many bits name a block's `fs`, which `fs` means
+/// the block is stored raw, and how wide a raw value is.
+struct RiceParameters: Equatable {
+    let bytePix: Int
+    let fsBits: Int
+    /// A block whose `fs` is this is high-entropy: its differences are
+    /// stored raw, `bBits` each, with no Rice code.
+    let fsMax: Int
+    var bBits: Int { bytePix * 8 }
+
+    init?(bytePix: Int) {
+        switch bytePix {
+        case 1: (fsBits, fsMax) = (3, 6)
+        case 2: (fsBits, fsMax) = (4, 14)
+        case 4: (fsBits, fsMax) = (5, 25)
+        default: return nil
+        }
+        self.bytePix = bytePix
+    }
+}
+
+/// The FITS RICE_1 decoder, as cfitsio's `fits_rdecomp` family decodes
+/// (Pence et al. 2010, A&A 524, A51):
+/// - the first value of a tile is stored literally, `bytePix` bytes big-endian;
+/// - the rest are differences, in blocks of `blockSize`, each block led by
+///   its `fs` (`fsBits` bits, stored plus one): below zero, every difference
+///   is zero; at `fsMax`, each is stored raw in `bBits` bits; otherwise each
+///   is a unary quotient and an `fs`-bit remainder;
+/// - a difference is folded (0, −1, 1, −2, … as 0, 1, 2, 3, …), and values
+///   wrap at the pixel width.
 enum RiceDecoder {
 
     enum Error: Swift.Error {
         case bufferUnderrun
-        case badFsValue(Int)
+        case unsupportedWidth(Int)
 
         var description: String {
             switch self {
             case .bufferUnderrun: return "compressed data ended unexpectedly"
-            case .badFsValue(let fs): return "invalid fs=\(fs) in block header"
+            case .unsupportedWidth(let bytes): return "no Rice decoding for \(bytes)-byte pixels"
             }
         }
     }
 
-    /// Decode a Rice-compressed tile.
-    ///
-    /// - Parameters:
-    ///   - bytes:      Compressed byte sequence for this tile.
-    ///   - pixelCount: Number of pixels expected in the output.
-    ///   - blockSize:  Rice block size (ZVAL1, typically 32).
-    /// - Returns:      Decoded signed 16-bit pixel values (as Int16).
-    static func decode(bytes: Data.SubSequence, pixelCount: Int, blockSize: Int) throws -> [Int16] {
+    /// Decodes one tile into its stored values, as signed integers of the
+    /// pixel width (unsigned for 8-bit, as BITPIX 8 is).
+    static func decode(bytes: Data.SubSequence, pixelCount: Int, blockSize: Int, bytePix: Int) throws -> [Int32] {
         guard pixelCount > 0 else { return [] }
-
+        guard let rice = RiceParameters(bytePix: bytePix) else { throw Error.unsupportedWidth(bytePix) }
+        let mask: UInt32 = rice.bBits == 32 ? .max : (1 << rice.bBits) - 1
         var reader = BitReader(data: bytes)
-        var output = [Int16]()
+        guard var last = reader.readBits(rice.bBits) else { throw Error.bufferUnderrun }
+
+        var output = [Int32]()
         output.reserveCapacity(pixelCount)
-
-        // The first 2 bytes encode the literal first pixel value (big-endian int16).
-        // cfitsio loads this into lastpix but does NOT output it separately —
-        // the first block iteration outputs pixel[0].
-        guard let firstHigh = reader.readByte(), let firstLow = reader.readByte() else {
-            throw Error.bufferUnderrun
+        func append(_ difference: UInt32) {
+            // Unfold, add, and wrap at the width — unsigned, as cfitsio does.
+            let delta = difference & 1 == 0 ? difference >> 1 : ~(difference >> 1)
+            last = (last &+ delta) & mask
+            output.append(signed(last, bytePix: bytePix))
         }
-        var prev = Int32(Int16(bitPattern: (UInt16(firstHigh) << 8) | UInt16(firstLow)))
 
-        var pixelsRemaining = pixelCount
-        while pixelsRemaining > 0 {
-            let blockCount = min(blockSize, pixelsRemaining)
-
-            // Read fs nybble (4 bits) then SUBTRACT 1 (cfitsio: fs = raw - 1).
-            //   raw=0 → fs=-1 → all diffs zero (no bits consumed)
-            //   raw=1 → fs=0  → unary-only mode
-            //   raw=2..15 → fs=1..14 → fs remainder bits per pixel
-            guard let fsRaw = reader.readBits(4) else {
-                for _ in 0..<pixelsRemaining {
-                    output.append(Int16(truncatingIfNeeded: prev))
-                }
-                break
-            }
-            let fs = Int(fsRaw) - 1  // cfitsio: fs = (b >> nbits) - 1
-
+        while output.count < pixelCount {
+            let blockEnd = min(output.count + blockSize, pixelCount)
+            guard let stored = reader.readBits(rice.fsBits) else { throw Error.bufferUnderrun }
+            let fs = Int(stored) - 1
             if fs < 0 {
-                // All diffs zero — fill block with lastpix (no bits consumed)
-                for _ in 0..<blockCount {
-                    output.append(Int16(truncatingIfNeeded: prev))
+                while output.count < blockEnd { output.append(signed(last, bytePix: bytePix)) }
+            } else if fs == rice.fsMax {
+                while output.count < blockEnd {
+                    guard let raw = reader.readBits(rice.bBits) else { throw Error.bufferUnderrun }
+                    append(raw)
                 }
             } else {
-                // General case: unary quotient + fs-bit remainder
-                let fsMask = Int32((1 << fs) - 1)
-                for _ in 0..<blockCount {
-                    var q: Int32 = 0
-                    var exhausted = false
-                    while true {
-                        guard let bit = reader.readBit() else {
-                            exhausted = true
-                            break
-                        }
-                        if bit == 1 { break }
-                        q += 1
+                while output.count < blockEnd {
+                    guard let quotient = reader.readUnary(), let remainder = reader.readBits(fs) else {
+                        throw Error.bufferUnderrun
                     }
-                    if exhausted {
-                        // Stream exhausted mid-block: remaining pixels = prev (delta=0)
-                        output.append(Int16(truncatingIfNeeded: prev))
-                        continue
-                    }
-                    var r: Int32 = 0
-                    for _ in 0..<fs {
-                        guard let bit = reader.readBit() else {
-                            // Partial remainder — treat as zero
-                            break
-                        }
-                        r = (r << 1) | Int32(bit)
-                    }
-                    let delta = (q << fs) | (r & fsMask)
-                    let signedDelta = unfold(delta)
-                    prev = Int32(Int16(truncatingIfNeeded: prev + signedDelta))
-                    output.append(Int16(truncatingIfNeeded: prev))
+                    append(UInt32(truncatingIfNeeded: quotient) << fs | remainder)
                 }
             }
-
-            pixelsRemaining -= blockCount
         }
-
         return output
+    }
+
+    /// A stored value of the pixel width as a signed integer.
+    private static func signed(_ value: UInt32, bytePix: Int) -> Int32 {
+        switch bytePix {
+        case 1: return Int32(value & 0xFF)
+        case 2: return Int32(Int16(bitPattern: UInt16(truncatingIfNeeded: value)))
+        default: return Int32(bitPattern: value)
+        }
     }
 
     // MARK: - Fold/Unfold Mapping
@@ -338,58 +326,70 @@ enum RiceDecoder {
 
 // MARK: - Bit Reader
 
-/// A streaming MSB-first bit reader. Tracks a simple bit position into the data.
-/// No buffering — reads bits directly. Matches cfitsio's continuous bit stream.
+/// An MSB-first bit reader over a continuous stream, a word at a time.
 struct BitReader {
-    private let bytes: [UInt8]
-    private var bitPos: Int = 0
-    private let totalBits: Int
+    private let bytes: Data.SubSequence
+    private var next: Data.Index
+    /// Bits not yet read, left-aligned.
+    private var buffer: UInt64 = 0
+    private var buffered = 0
 
     init(data: Data.SubSequence) {
-        self.bytes = Array(data)
-        self.totalBits = bytes.count * 8
+        bytes = data
+        next = data.startIndex
     }
 
-    /// Read exactly N bits from the stream. Returns nil if not enough bits remain.
+    private mutating func refill() {
+        while buffered <= 56, next < bytes.endIndex {
+            buffer |= UInt64(bytes[next]) << (56 - buffered)
+            next += 1
+            buffered += 8
+        }
+    }
+
+    /// The next `n` bits (0…32), or nil if fewer remain.
     mutating func readBits(_ n: Int) -> UInt32? {
-        guard bitPos + n <= totalBits else { return nil }
-        var result: UInt32 = 0
-        for _ in 0..<n {
-            let byteIdx = bitPos >> 3
-            let bitIdx = 7 - (bitPos & 7)
-            result = (result << 1) | UInt32((bytes[byteIdx] >> bitIdx) & 1)
-            bitPos += 1
-        }
-        return result
+        guard n > 0 else { return 0 }
+        if buffered < n { refill() }
+        guard buffered >= n else { return nil }
+        let value = UInt32(buffer >> (64 - n))
+        buffer = n == 64 ? 0 : buffer << n
+        buffered -= n
+        return value
     }
 
-    /// Read a single bit. Returns 0 or 1, or nil if exhausted.
+    /// One bit, 0 or 1, or nil when the stream is done.
     mutating func readBit() -> UInt8? {
-        guard bitPos < totalBits else { return nil }
-        let byteIdx = bitPos >> 3
-        let bitIdx = 7 - (bitPos & 7)
-        let bit = (bytes[byteIdx] >> bitIdx) & 1
-        bitPos += 1
-        return bit
+        readBits(1).map(UInt8.init)
     }
 
-    /// Read up to 8 bits from the continuous bit stream, zero-padding if fewer remain.
-    ///
-    /// Returns nil only if the stream is fully exhausted (zero bits remain).
-    /// If 1-7 bits remain, they are returned in the high bits, zero-padded in the low bits.
+    /// Up to 8 bits, zero-padded when fewer remain; nil when none do.
     mutating func readByte() -> UInt8? {
-        guard bitPos < totalBits else { return nil }
-        let available = min(8, totalBits - bitPos)
-        var result: UInt32 = 0
-        for _ in 0..<available {
-            let byteIdx = bitPos >> 3
-            let bitIdx = 7 - (bitPos & 7)
-            result = (result << 1) | UInt32((bytes[byteIdx] >> bitIdx) & 1)
-            bitPos += 1
+        refill()
+        guard buffered > 0 else { return nil }
+        let take = min(8, buffered)
+        guard let value = readBits(take) else { return nil }
+        return UInt8(value << (8 - take))
+    }
+
+    /// The number of zeros before the next 1, which is read too; nil when
+    /// the stream ends first.
+    mutating func readUnary() -> Int? {
+        var zeros = 0
+        while true {
+            refill()
+            guard buffered > 0 else { return nil }
+            let leading = buffer.leadingZeroBitCount
+            if leading < buffered {
+                zeros += leading
+                buffer <<= (leading + 1)
+                buffered -= leading + 1
+                return zeros
+            }
+            zeros += buffered
+            buffer = 0
+            buffered = 0
         }
-        // Zero-pad low bits if fewer than 8 bits were available
-        result <<= (8 - available)
-        return UInt8(result)
     }
 }
 
