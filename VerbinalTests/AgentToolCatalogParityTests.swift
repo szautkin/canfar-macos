@@ -117,5 +117,16 @@ final class BackgroundApplyPolicyTests: XCTestCase {
         XCTAssertNotNil(AgentsService.backgroundRefusal(kind: "download_observation", verbClass: .semanticWrite, autoApplyOn: false))
         let destructive = AgentsService.backgroundRefusal(kind: "delete_vospace_node", verbClass: .destructive, autoApplyOn: true)
         XCTAssertTrue(destructive?.contains("destructive") ?? false)
+        let standing = AgentsService.backgroundRefusal(kind: "add_guide_tool", verbClass: .standingInstruction, autoApplyOn: true)
+        XCTAssertTrue(standing?.contains("standing instruction") ?? false)
+    }
+
+    /// Plan 15 S1 (QA H6): the tools that write what every later agent is
+    /// told — guide tools, tool descriptions — wait for the person.
+    func testStandingInstructionsWaitForThePerson() {
+        let classes = [SetToolDescriptionTool.verbClass, ClearToolDescriptionTool.verbClass,
+                       AddGuideToolTool.verbClass, UpdateGuideToolTool.verbClass]
+        XCTAssertEqual(classes, Array(repeating: .standingInstruction, count: 4))
+        XCTAssertEqual(DeleteGuideToolTool.verbClass, .destructive)
     }
 }

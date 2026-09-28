@@ -12,7 +12,8 @@ row here.
 
 Legend: **live** = view-state tool, applied immediately with a `.live`
 activity entry; **write** = proposal-gated (auto-apply or strip);
-**read** = pure data.
+**standing** = proposal-gated and never auto-applied — it changes what
+every later agent is told; **read** = pure data.
 
 ## Finding your way (tool map)
 
@@ -206,6 +207,7 @@ activity entry; **write** = proposal-gated (auto-apply or strip);
 | Download Cutout | `download_cutout` | write |
 | Search form: Spatial cutout / Spectral cutout boxes | `set_search_form` `spatialCutout`/`spectralCutout` (read by `get_search_form`) | live |
 | AI Guide content (overrides, guides) | pre-existing batch | mixed |
+| AI Guide: guide tools and tool descriptions agents read | `add_guide_tool`, `update_guide_tool`, `set_tool_description`, `clear_tool_description` | standing |
 
 ## Workflows
 

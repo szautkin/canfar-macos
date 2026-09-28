@@ -787,6 +787,14 @@ final class MCPBridgeServiceTests: XCTestCase {
         XCTAssertTrue(AutoApplyPolicy.toolSentence(for: .destructive)?.contains("always waits") ?? false)
     }
 
+    /// Plan 15 S1 (QA H6): an instruction every later agent reads is the
+    /// person's to approve, whatever auto-apply says.
+    func testStandingInstructionsNeverApplyWithoutTheUser() {
+        XCTAssertFalse(AutoApplyPolicy.appliesAtOnce(.standingInstruction, autoApplyOn: true))
+        XCTAssertTrue(AutoApplyPolicy.toolSentence(for: .standingInstruction)?.contains("always waits") ?? false)
+        XCTAssertEqual(AIToolRouter.dispatchCeiling(for: .standingInstruction), AIToolRouter.dispatchCeiling(for: .semanticWrite))
+    }
+
     func testAutoAppliedAckMergesExtraEnvelopeAndPayloadId() throws {
         let payload = try JSONSerialization.data(withJSONObject: ["id": "payload-uuid"])
         let proposal = PendingProposal(

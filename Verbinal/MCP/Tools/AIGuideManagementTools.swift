@@ -47,7 +47,7 @@ struct ListGuideToolsTool: JSONReadTool {
 // MARK: - set_tool_description / clear_tool_description
 
 struct SetToolDescriptionTool: JSONWriteTool {
-    static let verbClass: VerbClass = .semanticWrite
+    static let verbClass: VerbClass = .standingInstruction
 
     struct Args: Decodable, Sendable {
         let toolName: String
@@ -88,7 +88,7 @@ struct SetToolDescriptionTool: JSONWriteTool {
 }
 
 struct ClearToolDescriptionTool: JSONWriteTool {
-    static let verbClass: VerbClass = .semanticWrite
+    static let verbClass: VerbClass = .standingInstruction
 
     struct Args: Decodable, Sendable { let toolName: String }
     struct Payload: Codable, Sendable { let toolName: String }
@@ -120,7 +120,7 @@ struct ClearToolDescriptionTool: JSONWriteTool {
 // MARK: - add / update / delete guide tools
 
 struct AddGuideToolTool: JSONWriteTool {
-    static let verbClass: VerbClass = .semanticWrite
+    static let verbClass: VerbClass = .standingInstruction
 
     struct Args: Decodable, Sendable {
         let name: String
@@ -165,7 +165,7 @@ struct AddGuideToolTool: JSONWriteTool {
 }
 
 struct UpdateGuideToolTool: JSONWriteTool {
-    static let verbClass: VerbClass = .semanticWrite
+    static let verbClass: VerbClass = .standingInstruction
 
     struct Args: Decodable, Sendable {
         let id: String

@@ -16,8 +16,9 @@ import Foundation
 public protocol JSONWriteTool: AITool {
     associatedtype Args: Decodable & Sendable
 
-    /// Static — set by the conformer to either `.semanticWrite` or
-    /// `.destructive`. Drives the budget gate and audit bucket.
+    /// Static — set by the conformer to `.semanticWrite`, `.destructive`
+    /// or `.standingInstruction`. Drives the budget gate, whether it may
+    /// auto-apply (`AutoApplyPolicy`) and the audit bucket.
     static var verbClass: VerbClass { get }
 
     /// Build the proposal that goes onto the queue. Throw a

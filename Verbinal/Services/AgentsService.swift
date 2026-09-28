@@ -267,12 +267,15 @@ final class AgentsService {
     /// Why a pending proposal may not be started in the background, or nil.
     /// The person's approval is not the agent's to give: only what
     /// auto-apply would apply without them may start (never a destructive
-    /// change, and nothing while auto-apply is off).
+    /// change or a standing instruction, and nothing while auto-apply is off).
     nonisolated static func backgroundRefusal(kind: String, verbClass: VerbClass, autoApplyOn: Bool) -> String? {
         guard !AutoApplyPolicy.appliesAtOnce(verbClass, autoApplyOn: autoApplyOn) else { return nil }
-        return verbClass == .destructive
-            ? "'\(kind)' is a destructive change, so only the person can apply it: it waits for their approval in Verbinal's pending changes"
-            : "auto-apply is off, so the person applies each change: '\(kind)' waits for their approval in Verbinal's pending changes"
+        let waits = "'\(kind)' waits for their approval in Verbinal's pending changes"
+        switch verbClass {
+        case .destructive: return "'\(kind)' is a destructive change, so only the person can apply it: it waits for their approval in Verbinal's pending changes"
+        case .standingInstruction: return "'\(kind)' is a standing instruction every later agent will read, so only the person can apply it: \(waits)"
+        default: return "auto-apply is off, so the person applies each change: \(waits)"
+        }
     }
 
     /// Starts applying a pending proposal without holding the call open.

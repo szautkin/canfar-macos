@@ -16,7 +16,7 @@ with its tests and a CHANGELOG entry; a tool change also updates
 |---|---|---|
 | P Portal layout | done — P1 | `64a2500` |
 | F data you can trust | done — F1 Rice high-entropy blocks, 8/16/32-bit; F2 a compressed image's own header; F3 downloads that hold nothing; F4 one row per saved query; F5 Storage reads at an offset, one media type; F6 a record describes its plane, ids checked, a file by name; F7 jobs not seen finishing, probe failures that say why | `59af802`, `6e3a57e`, `fadd302`, `97dfe72`, `0a15669`, `e9edbb9`, F7 |
-| S agent safety and audit | planned — S1–S6 | — |
+| S agent safety and audit | in progress — S1 standing instructions wait for the person | S1 |
 | V viewers | planned — V1–V6 | — |
 | R search, ADQL, resolver, VizieR | planned — R1–R5 | — |
 | O other surfaces | planned — O1–O4 | — |

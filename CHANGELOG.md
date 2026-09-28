@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Instructions for future assistants always wait for you** — adding or
+  changing an AI Guide tool, or rewriting a tool's description, changes
+  what every assistant after it is told, and it applied at once when
+  auto-apply was on: an assistant, or text planted in a file it read, could
+  steer the next one unseen. These four changes now always wait in Pending
+  for your approval, as deletions do, and the tools and `describe_app` say
+  so.
 - **Batch Jobs History keeps jobs the app did not see finish** — a job
   that ended while Verbinal was closed, or before its first look, was never
   recorded, and CANFAR later forgot it. Every finished job the history

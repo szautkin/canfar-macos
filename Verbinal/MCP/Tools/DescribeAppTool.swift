@@ -186,6 +186,9 @@ struct DescribeAppTool: JSONReadTool {
 
     Destructive tools (`delete_*`, `clear_*`, `stop_compute`, …) are the
     exception to auto-apply. \(AutoApplyPolicy.toolSentence(for: .destructive) ?? "")
+    So are standing instructions — `add_guide_tool`, `update_guide_tool`,
+    `set_tool_description`, `clear_tool_description` change what every later
+    agent is told. \(AutoApplyPolicy.toolSentence(for: .standingInstruction) ?? "")
     Each such call returns a `proposalID`; tell the user it is waiting for
     their approval. Every proposing tool's description ends with the rule
     that applies to it. Be deliberate; the user is trusting you with their

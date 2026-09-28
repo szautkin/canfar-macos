@@ -16,7 +16,7 @@ public enum AutoApplyPolicy {
     public static func appliesAtOnce(_ verbClass: VerbClass, autoApplyOn: Bool) -> Bool {
         switch verbClass {
         case .semanticWrite: return autoApplyOn
-        case .destructive: return false
+        case .destructive, .standingInstruction: return false
         case .read, .viewState, .proposalLifecycle, .undo: return false
         }
     }
@@ -29,6 +29,8 @@ public enum AutoApplyPolicy {
             return "When it applies is the app's rule: with Auto-apply agent writes on (Settings ▸ AI Agent) at once, otherwise it waits in Pending until the user applies it — `get_current_view.autoApplyEnabled` says which."
         case .destructive:
             return "Destructive: it always waits in Pending for the user to approve, whatever Auto-apply says."
+        case .standingInstruction:
+            return "A standing instruction: what it says is read by every agent from now on, so it always waits in Pending for the user to approve, whatever Auto-apply says."
         case .read, .viewState, .proposalLifecycle, .undo:
             return nil
         }

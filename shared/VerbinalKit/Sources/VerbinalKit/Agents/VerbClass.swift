@@ -31,6 +31,12 @@ public enum VerbClass: String, Codable, Sendable, Equatable {
     /// UI to defend against agent or user slip.
     case destructive
 
+    /// A standing instruction to every agent that comes after — a guide
+    /// tool, a rewritten tool description. Not destructive, but an agent (or
+    /// text injected into a file it read) could use one to steer the next
+    /// agent unseen, so it always waits for the person, like `destructive`.
+    case standingInstruction
+
     /// Cosmetic UI state — sort order, current selection, theme, layout.
     /// Live-applied; does not consume proposal budget.
     case viewState

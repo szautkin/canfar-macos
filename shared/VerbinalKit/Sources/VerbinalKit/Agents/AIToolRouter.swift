@@ -109,7 +109,7 @@ public actor AIToolRouter {
         switch verbClass {
         case .read, .viewState, .proposalLifecycle, .undo:
             return 150
-        case .semanticWrite, .destructive:
+        case .semanticWrite, .destructive, .standingInstruction:
             return 660
         }
     }
@@ -219,7 +219,7 @@ public actor AIToolRouter {
                           verbClass: meta.verbClass,
                           durationMS: durationMS)
                 return result
-            case .semanticWrite, .destructive:
+            case .semanticWrite, .destructive, .standingInstruction:
                 // Auto-apply path: if the host opts this proposal in,
                 // run the apply synchronously and return success. The
                 // budget gate is bypassed by design — auto-applied
