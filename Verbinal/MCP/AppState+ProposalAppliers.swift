@@ -18,7 +18,13 @@ extension AppState {
                                        noteStore: ObservationNoteStore,
                                        observationStore: ObservationStore,
                                        vospace: VOSpaceBrowserService) {
-        let downloader = DownloadService(endpoints: endpoints)
+        // One archive client for the downloads and the details they keep, so
+        // a plane looked up for one is not fetched again for the other.
+        let caom2 = CAOM2Service()
+        let downloader = DownloadService(endpoints: endpoints, caom2: caom2)
+        let describe: ResearchRecordDescriber = { [weak self] described in
+            await self?.researchRecord(describing: described, caom2: caom2) ?? described
+        }
         let activity = agentsService.activityStore
         let recentLaunchStore = RecentLaunchStore()
         var appliers: [any ProposalApplier] = [
@@ -29,9 +35,11 @@ extension AppState {
             BulkUpdateObservationNotesApplier(store: noteStore, activity: activity),
             DownloadObservationApplier(downloadService: downloader,
                                        observationStore: observationStore,
+                                       describe: describe,
                                        activity: activity),
             DownloadObservationsBulkApplier(downloadService: downloader,
                                             observationStore: observationStore,
+                                            describe: describe,
                                             activity: activity),
             DeleteDownloadedObservationApplier(store: observationStore,
                                                downloadService: downloader,
@@ -230,7 +238,7 @@ extension AppState {
             },
             activity: activity))
         appliers.append(contentsOf: makeAIGuideAppliers(activity: activity))
-        appliers.append(contentsOf: makeResearchRecordAppliers(activity: activity))
+        appliers.append(contentsOf: makeResearchRecordAppliers(describe: describe, activity: activity))
         appliers.append(contentsOf: makeCutoutAppliers(activity: activity))
 
         // Recent-searches writes — mutate the live store inside the

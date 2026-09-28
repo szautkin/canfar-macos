@@ -101,4 +101,17 @@ extension AppState {
         }
         return fallback ?? SaveObservationToResearchTool.record(from: .init(publisherId: publisherID))
     }
+
+    /// A new record's details for what a request `described`: Research's
+    /// own record of the plane, else the search row, else the description —
+    /// then corrected and completed from the archive's record of the plane
+    /// (``ResearchRecordDetails``), when it answers within 20 seconds.
+    func researchRecord(describing described: DownloadedObservation, caom2: CAOM2Service) async -> DownloadedObservation {
+        let known = observationDetails(publisherID: described.publisherID, fallback: described)
+        let publisherID = described.publisherID
+        let archive = try? await withApplierTimeout(seconds: 20, label: "archive details") {
+            try await caom2.fetch(publisherID: publisherID)
+        }
+        return ResearchRecordDetails.completing(known, from: archive, endpoints: endpoints)
+    }
 }

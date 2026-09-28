@@ -12,6 +12,23 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A Research record describes the file it holds** — a record kept the
+  details it was given, so one could say g band for a u-band file (the M31
+  MegaPipe tile); and when DataLink had nothing, the science file could come
+  from another plane of the observation. A record's target, instrument,
+  filter, position, calibration level and preview are now the archive's for
+  the plane its file belongs to, completed by what was given and, for the
+  collection and observation id, by the publisher id; the file is only ever
+  that plane's. A malformed publisher id (`ivo://cadc.nrc.ca/CFHT/1525350`)
+  is refused, with the one it likely means. Records kept before are left as
+  they are.
+- **Choose which of an observation's files to download** — your assistant's
+  `download_observation` takes `file`, one of the names `get_data_links`
+  lists, so a STIS spectrum's 80 KB `_x1d` can be kept rather than the
+  10 MB `_flt` image.
+- **An observation's footprint is read from current archive records** —
+  CAOM 2.4 outlines (`points/point`) were not recognised, so
+  `get_observation_caom2` and the detail's Footprint had none.
 - **Reading a Storage file in chunks reads the whole file** — ARC answers
   some requests for part of a file with all of it, and `read_vospace_file`
   kept the first bytes, so every `offset` returned the file's start. The

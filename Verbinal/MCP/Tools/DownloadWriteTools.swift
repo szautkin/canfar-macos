@@ -11,15 +11,17 @@ import VerbinalKit
 // MARK: - download_observation (single)
 
 /// Propose downloading one observation by publisher_id. Optional
-/// fields let the agent supply CAOM-2 metadata it already fetched
-/// (collection, target name, instrument, filter, etc.) so the strip
-/// preview is informative; the applier falls back to defaults when
-/// fields are omitted.
+/// fields let the agent describe it (collection, target name,
+/// instrument, filter, etc.) so the strip preview is informative; the
+/// record keeps the archive's own details of the plane where it has
+/// them (`ResearchRecordDetails`). `file` picks one of the plane's
+/// files by name instead of the best pick.
 struct DownloadObservationTool: JSONWriteTool {
     static let verbClass: VerbClass = .semanticWrite
 
     struct Args: Decodable, Sendable {
         let publisher_id: String
+        var file: String?
         var collection: String?
         var observationID: String?
         var targetName: String?
@@ -35,6 +37,8 @@ struct DownloadObservationTool: JSONWriteTool {
 
     struct Payload: Codable, Sendable {
         let publisherID: String
+        /// One of the observation's files by name; nil for the best pick.
+        var file: String? = nil
         let collection: String
         let observationID: String
         let targetName: String
@@ -46,17 +50,39 @@ struct DownloadObservationTool: JSONWriteTool {
         let calLevel: String
         let thumbnailURL: String?
         let previewURL: String?
+
+        /// The record as the request describes it, before the archive has its say.
+        var described: DownloadedObservation {
+            DownloadedObservation(publisherID: publisherID, collection: collection, observationID: observationID,
+                                  targetName: targetName, instrument: instrument, filter: filter, ra: ra, dec: dec,
+                                  startDate: startDate, calLevel: calLevel, localPath: "",
+                                  thumbnailURL: thumbnailURL, previewURL: previewURL)
+        }
+    }
+
+    /// The payload for one request, or why its publisher ID is refused.
+    static func payload(_ args: Args) throws -> Payload {
+        guard PublisherID(args.publisher_id) != nil else {
+            throw ToolFailureReason.invalidArgument(PublisherID.malformed(args.publisher_id))
+        }
+        let file = args.file?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Payload(publisherID: args.publisher_id, file: file?.isEmpty == false ? file : nil,
+                       collection: args.collection ?? "", observationID: args.observationID ?? "",
+                       targetName: args.targetName ?? "", instrument: args.instrument ?? "", filter: args.filter ?? "",
+                       ra: args.ra ?? "", dec: args.dec ?? "", startDate: args.startDate ?? "",
+                       calLevel: args.calLevel ?? "", thumbnailURL: args.thumbnailURL, previewURL: args.previewURL)
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_observation",
-        description: "Download a single observation FITS to the user's Downloads folder. Uses DataLink #this when available; falls back to `/caom2ops/pkg`. Requires CADC sign-in for proprietary collections (NEOSSAT, embargoed JWST, …). Synchronous with a 10-min applier deadline. Returns the `downloaded_observation_id` (UUID) — an observation already in Research (kept without its file, or downloaded before) keeps its id — which you pass to `get_fits_header`/`get_fits_wcs`/`open_fits_file`/`upload_to_vospace`/`delete_downloaded_observation`.",
+        description: "Download a single observation FITS to the user's Downloads folder. `publisher_id` is `ivo://cadc.nrc.ca/COLLECTION?OBSERVATION/PRODUCT` (a malformed one is refused). Uses DataLink #this when available, else the plane's CAOM-2 science file, else `/caom2ops/pkg`; `file` fetches one of the plane's files by name instead — a filename from `get_data_links` (`files[].filename` or `caom2Artifacts[].filename`), e.g. the STIS `_x1d.fits` spectrum rather than the `_flt` image. The record's details (target, instrument, filter, position, calibration level, preview) are the archive's for that plane; the ones you pass fill only what the archive lacks. Requires CADC sign-in for proprietary collections (NEOSSAT, embargoed JWST, …). Synchronous with a 10-min applier deadline. Returns the `downloaded_observation_id` (UUID) — an observation already in Research (kept without its file, or downloaded before) keeps its id — which you pass to `get_fits_header`/`get_fits_wcs`/`open_fits_file`/`upload_to_vospace`/`delete_downloaded_observation`.",
         schema: #"""
         {
           "type": "object",
           "required": ["publisher_id"],
           "properties": {
             "publisher_id":  { "type": "string" },
+            "file":          { "type": "string", "description": "One of the plane's files by name, from get_data_links; omit for the best pick." },
             "collection":    { "type": "string" },
             "observationID": { "type": "string" },
             "targetName":    { "type": "string" },
@@ -78,30 +104,14 @@ struct DownloadObservationTool: JSONWriteTool {
         guard !args.publisher_id.isEmpty else {
             throw ToolFailureReason.invalidArgument("publisher_id is empty")
         }
-        let label = [args.targetName, args.instrument, args.filter]
+        let payload = try Self.payload(args)
+        let label = [args.targetName, args.instrument, args.filter, payload.file]
             .compactMap { $0?.isEmpty == false ? $0 : nil }
             .joined(separator: " · ")
         let summary = label.isEmpty
             ? "Download \(args.publisher_id)"
             : "Download \(label) (\(args.publisher_id))"
-        return try ProposalPlan.encoding(
-            kind: "download_observation",
-            summary: summary,
-            payload: Payload(
-                publisherID: args.publisher_id,
-                collection: args.collection ?? "",
-                observationID: args.observationID ?? "",
-                targetName: args.targetName ?? "",
-                instrument: args.instrument ?? "",
-                filter: args.filter ?? "",
-                ra: args.ra ?? "",
-                dec: args.dec ?? "",
-                startDate: args.startDate ?? "",
-                calLevel: args.calLevel ?? "",
-                thumbnailURL: args.thumbnailURL,
-                previewURL: args.previewURL
-            )
-        )
+        return try ProposalPlan.encoding(kind: "download_observation", summary: summary, payload: payload)
     }
 }
 
@@ -127,7 +137,7 @@ struct DownloadObservationsBulkTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_observations_bulk",
-        description: "Download up to 50 observations as one proposal envelope. Each item lands under a unique filename (observation id + artifact name) so a shared `pkg.txt` cannot abort the batch. The applier continues after per-item failures and returns `succeeded[]` / `failed[]`. Total in-flight time can exceed the MCP request timeout for large batches — prefer groups of ~10 for big FITS files.",
+        description: "Download up to 50 observations as one proposal envelope. Each item takes `download_observation`'s arguments (`publisher_id`, optional `file` and details); a malformed publisher ID refuses the batch. Each item lands under a unique filename (observation id + artifact name) so a shared `pkg.txt` cannot abort the batch. The applier continues after per-item failures and returns `succeeded[]` / `failed[]`. Total in-flight time can exceed the MCP request timeout for large batches — prefer groups of ~10 for big FITS files.",
         schema: #"""
         {
           "type": "object",
@@ -154,23 +164,8 @@ struct DownloadObservationsBulkTool: JSONWriteTool {
                 "max \(Self.maxBatchSize) items per bulk download (raised from 10 to 50 per platform review F-10)"
             )
         }
-        // Reuse the single-download payload encoder for each child.
-        let payloads = args.items.map { item in
-            DownloadObservationTool.Payload(
-                publisherID: item.publisher_id,
-                collection: item.collection ?? "",
-                observationID: item.observationID ?? "",
-                targetName: item.targetName ?? "",
-                instrument: item.instrument ?? "",
-                filter: item.filter ?? "",
-                ra: item.ra ?? "",
-                dec: item.dec ?? "",
-                startDate: item.startDate ?? "",
-                calLevel: item.calLevel ?? "",
-                thumbnailURL: item.thumbnailURL,
-                previewURL: item.previewURL
-            )
-        }
+        // The single download's payload for each child; one bad ID refuses the batch.
+        let payloads = try args.items.map(DownloadObservationTool.payload)
         return try ProposalPlan.encoding(
             kind: "download_observations_bulk",
             summary: "Download \(payloads.count) observation\(payloads.count == 1 ? "" : "s")",
@@ -200,12 +195,18 @@ func placeInDownloads(tempURL: URL, suggestedFilename: String,
 
 private let downloadLogger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "downloads")
 
+/// A record's details from what a request described: the app's own
+/// knowledge of the plane and the archive's, first (see
+/// `AppState.researchRecord(describing:)`).
+typealias ResearchRecordDescriber = @Sendable (_ described: DownloadedObservation) async -> DownloadedObservation
+
 /// Apply a single download proposal: fetch via DownloadService, move
 /// into Downloads, register in ObservationStore.
 struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
     let kind = "download_observation"
     let downloadService: DownloadService
     let observationStore: ObservationStore
+    var describe: ResearchRecordDescriber = { ResearchRecordDetails.completing($0, from: nil) }
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
@@ -219,7 +220,8 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
             payload,
             attribution: attribution,
             downloadService: downloadService,
-            observationStore: observationStore
+            observationStore: observationStore,
+            describe: describe
         )
         await MainActor.run {
             activity.append(.applied(proposal: proposal, kind: kind))
@@ -232,8 +234,11 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
         _ payload: DownloadObservationTool.Payload,
         attribution: AgentAttribution?,
         downloadService: DownloadService,
-        observationStore: ObservationStore
+        observationStore: ObservationStore,
+        describe: ResearchRecordDescriber
     ) async throws -> UUID {
+        // The details are looked up while the file comes down.
+        async let details = describe(payload.described)
         let result: (tempURL: URL, suggestedFilename: String)
         do {
             // 10-minute wall-clock deadline. A genuinely large FITS
@@ -243,9 +248,10 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
             // long-tail completes — the applier always emits a
             // terminal lifecycle event. Same rationale as the
             // VOSpace upload watchdog, per F-2026-05-13-A.
-            let publisherID = payload.publisherID
+            let publisherID = payload.publisherID, file = payload.file
             result = try await withApplierTimeout(seconds: 600, label: "download_observation") {
-                try await downloadService.downloadToTemp(publisherID: publisherID)
+                if let file { return try await downloadService.downloadToTemp(publisherID: publisherID, file: file) }
+                return try await downloadService.downloadToTemp(publisherID: publisherID)
             }
         } catch let pa as ProposalApplyError {
             throw pa
@@ -254,24 +260,13 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
         }
         let placed = try await placeInDownloads(tempURL: result.tempURL, suggestedFilename: result.suggestedFilename,
                                                 downloadService: downloadService)
-        let observation = DownloadedObservation(
-            publisherID: payload.publisherID,
-            collection: payload.collection,
-            observationID: payload.observationID,
-            targetName: payload.targetName,
-            instrument: payload.instrument,
-            filter: payload.filter,
-            ra: payload.ra,
-            dec: payload.dec,
-            startDate: payload.startDate,
-            calLevel: payload.calLevel,
-            localPath: placed.localPath,
-            fileSize: placed.size,
-            thumbnailURL: payload.thumbnailURL,
-            previewURL: payload.previewURL,
-            bookmarkData: placed.bookmark,
-            agentAttribution: attribution
-        )
+        var observation = await details
+        observation.id = UUID()
+        observation.localPath = placed.localPath
+        observation.fileSize = placed.size
+        observation.bookmarkData = placed.bookmark
+        observation.downloadedAt = Date()
+        observation.agentAttribution = attribution
         // Into Research's record of the observation when it has one (kept
         // without its file, or downloaded before): the id stays the same.
         let stored = await MainActor.run { observationStore.save(observation) }
@@ -286,6 +281,7 @@ struct DownloadObservationsBulkApplier: ProposalApplier, ResultReportingApplier 
     let kind = "download_observations_bulk"
     let downloadService: DownloadService
     let observationStore: ObservationStore
+    var describe: ResearchRecordDescriber = { ResearchRecordDetails.completing($0, from: nil) }
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
@@ -303,7 +299,8 @@ struct DownloadObservationsBulkApplier: ProposalApplier, ResultReportingApplier 
                     item,
                     attribution: attribution,
                     downloadService: downloadService,
-                    observationStore: observationStore
+                    observationStore: observationStore,
+                    describe: describe
                 )
                 succeeded.append(id.uuidString)
             } catch {

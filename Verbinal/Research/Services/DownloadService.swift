@@ -40,6 +40,24 @@ actor DownloadService {
         }
     }
 
+    /// Fetches one of the observation's files by name — `oezt010e0_x1d.fits`
+    /// rather than the `_flt` the observation's best pick would be — from
+    /// DataLink, else the archive's record of its plane. Names come from
+    /// `get_data_links` (`files[].filename`, `caom2Artifacts[].filename`).
+    func downloadToTemp(publisherID: String, file: String) async throws -> (tempURL: URL, suggestedFilename: String) {
+        try await tasks.track(.download, Self.label(publisherID, file: file)) { _ in
+            if let link = await self.resolveDataLink(publisherID: publisherID).directFiles.first(where: { $0.filename == file }) {
+                return try await self.fetchToTemp(url: link.url, publisherID: publisherID, suggested: file)
+            }
+            let artifact = await self.planeArtifacts(publisherID: publisherID)
+                .first { ($0.uri as NSString).lastPathComponent == file }
+            guard let artifact, let url = self.endpoints.dataPubURL(forArtifactURI: artifact.uri) else {
+                throw SearchError.networkError("\(publisherID) has no file named \(file) — get_data_links lists its files.")
+            }
+            return try await self.fetchToTemp(url: url, publisherID: publisherID, suggested: file)
+        }
+    }
+
     private func fetchWhole(publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
         let datalink = await resolveDataLink(publisherID: publisherID)
         if let directURL = datalink.bestDirectFileURL {
@@ -126,20 +144,28 @@ actor DownloadService {
         return (stableTemp, name)
     }
 
+    /// The artifacts of the plane `publisherID` names — only that plane's:
+    /// a MegaPipe tile's u-band ID must not fetch its g-band sibling. Every
+    /// plane's when the ID names no product.
+    private func planeArtifacts(publisherID: String) async -> [CAOM2Observation.Artifact] {
+        guard let observation = try? await caom2.fetch(publisherID: publisherID) else { return [] }
+        guard let id = PublisherID(publisherID), !id.productID.isEmpty else {
+            return observation.planes.flatMap(\.artifacts)
+        }
+        return ResearchRecordDetails.plane(of: id, in: observation)?.artifacts ?? []
+    }
+
     /// Prefer uncompressed FITS science artifacts, then any science product.
     private func resolveScienceArtifact(publisherID: String) async -> (url: URL, filename: String)? {
-        guard let obs = try? await caom2.fetch(publisherID: publisherID) else { return nil }
         var science: [(url: URL, filename: String, length: Int64, uncompressed: Bool)] = []
-        for plane in obs.planes {
-            for a in plane.artifacts {
-                let type = (a.productType ?? "").lowercased()
-                guard type == "science" else { continue }
-                guard let url = endpoints.dataPubURL(forArtifactURI: a.uri) else { continue }
-                let filename = (a.uri as NSString).lastPathComponent
-                let lower = filename.lowercased()
-                let uncompressed = lower.hasSuffix(".fits") || lower.hasSuffix(".fit") || lower.hasSuffix(".fts")
-                science.append((url, filename, a.contentLength ?? 0, uncompressed))
-            }
+        for a in await planeArtifacts(publisherID: publisherID) {
+            let type = (a.productType ?? "").lowercased()
+            guard type == "science" else { continue }
+            guard let url = endpoints.dataPubURL(forArtifactURI: a.uri) else { continue }
+            let filename = (a.uri as NSString).lastPathComponent
+            let lower = filename.lowercased()
+            let uncompressed = lower.hasSuffix(".fits") || lower.hasSuffix(".fit") || lower.hasSuffix(".fts")
+            science.append((url, filename, a.contentLength ?? 0, uncompressed))
         }
         let best = science.first(where: \.uncompressed) ?? science.max(by: { $0.length < $1.length })
         return best.map { ($0.url, $0.filename) }

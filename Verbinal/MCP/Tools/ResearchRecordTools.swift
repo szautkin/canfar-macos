@@ -34,7 +34,7 @@ struct SaveObservationToResearchTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "save_observation_to_research",
-        description: "Keep an observation in Research WITHOUT downloading its file — its details and a place for notes; the file can be downloaded later (download_observation, or Download in Research, into the same record). Details come from the current search results when the observation is among them, otherwise from what you give here (the collection and observation id are read from the publisher id). An observation already in Research is left as it is. Returns its downloaded_observation_id.",
+        description: "Keep an observation in Research WITHOUT downloading its file — its details and a place for notes; the file can be downloaded later (download_observation, or Download in Research, into the same record). Details come from Research's record or the current search results when the observation is among them, otherwise from what you give here — and the archive's own record of the plane corrects and completes them (the collection and observation id are read from the publisher id when nothing else says). A malformed publisher id is refused. An observation already in Research is left as it is. Returns its downloaded_observation_id.",
         schema: #"""
         {
           "type": "object",
@@ -59,6 +59,7 @@ struct SaveObservationToResearchTool: JSONWriteTool {
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
         let pid = args.publisherId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !pid.isEmpty else { throw ToolFailureReason.invalidArgument("publisherId is required") }
+        guard PublisherID(pid) != nil else { throw ToolFailureReason.invalidArgument(PublisherID.malformed(pid)) }
         var payload = args
         payload.publisherId = pid
         let label = [args.targetName, args.instrument].compactMap { $0?.isEmpty == false ? $0 : nil }.joined(separator: " · ")

@@ -177,18 +177,18 @@ public enum CAOM2Parser {
         )
     }
 
-    /// Position bounds — pulls polygon vertices when present. CAOM2 wraps
-    /// the polygon under `bounds/Polygon/points/vertex/{cval1, cval2}` (via
-    /// the `xsi:type="caom2:Polygon"` discriminator); only vertices with
-    /// `coord` ordinal in {1, 2, …} contribute (some files include extra
-    /// segment-control entries we should skip).
+    /// Position bounds — pulls polygon vertices when present. CAOM 2.4
+    /// writes `bounds/points/point/{cval1, cval2}` (with the
+    /// `xsi:type="caom2:Polygon"` discriminator on `bounds`); older
+    /// documents `points/vertex`. The `samples/vertices` that follow repeat
+    /// the outline with segment-control entries and are not read.
     private static func parsePosition(_ el: Node) -> CAOM2Observation.Position? {
         var polygon: [(Double, Double)] = []
         if let bounds = child(el, "bounds") {
             // Walk to the polygon points list — name varies slightly across versions.
             let polyContainer = child(bounds, "Polygon") ?? bounds
             if let points = child(polyContainer, "points") {
-                for vertexEl in children(of: points, named: "vertex") {
+                for vertexEl in children(of: points, named: "point") + children(of: points, named: "vertex") {
                     if let v = parseVertex(vertexEl) { polygon.append(v) }
                 }
             }
