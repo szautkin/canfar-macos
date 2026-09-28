@@ -12,6 +12,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Assistants meet your AI Guide tools before anything else** — rules
+  you wrote for them, such as where results go in Storage, were seen only
+  by an assistant that thought to list guide tools. `describe_app` now
+  opens with them, and `get_current_view` includes them.
 - **Pending's History says who applied each change** — you from Pending,
   auto-apply, or your assistant's background start. Before, the three
   looked the same, and a deletion could be put down to you only by its

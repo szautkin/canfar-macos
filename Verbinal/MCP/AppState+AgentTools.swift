@@ -30,6 +30,9 @@ extension AppState {
         }
         var describeApp = DescribeAppTool()
         describeApp.published = published
+        describeApp.standingRules = { [weak self] in
+            await MainActor.run { self?.aiGuideService.snapshot().standingRules ?? [] }
+        }
         tools.append(describeApp)
         tools.append(ListAppsTool(published: published))
         tools.append(SearchToolsTool(published: published))
@@ -379,7 +382,7 @@ extension AppState {
     @MainActor
     fileprivate func snapshotCurrentView() -> GetCurrentViewTool.Output {
         let hasResults = !searchModel.resultsModel.results.isEmpty
-        return GetCurrentViewTool.Output(
+        var view = GetCurrentViewTool.Output(
             mode: Self.modeKey(currentMode),
             modeTitle: Self.modeTitle(currentMode),
             isAuthenticated: isAuthenticated,
@@ -404,6 +407,8 @@ extension AppState {
             autoApplyEnabled: agentsService.autoApplyWrites,
             followAgentActivityEnabled: agentsService.followAgentActivity
         )
+        view.standingRules = aiGuideService.snapshot().standingRules
+        return view
     }
 
     // Immutable defaults; `nonisolated` so the snapshot closure

@@ -64,6 +64,30 @@ struct AIGuideSnapshot: Sendable, Equatable {
     func guideBody(forName name: String) -> String? {
         guides.first(where: { $0.name == name })?.callPayload
     }
+
+    /// One of the person's guide tools, as an agent is told of it before
+    /// anything else: its name, and what it says it is for.
+    struct StandingRule: Encodable, Sendable, Equatable {
+        let tool: String
+        let says: String
+    }
+
+    /// The person's guide tools — their standing instructions to every
+    /// agent — which an agent otherwise met only if it listed guide tools.
+    var standingRules: [StandingRule] {
+        guides.map { StandingRule(tool: $0.name, says: $0.description) }
+    }
+
+    /// The rules as the opening of a brief; nil when there are none.
+    static func briefSection(_ rules: [StandingRule]) -> String? {
+        guard !rules.isEmpty else { return nil }
+        let lines = rules.map { "- `\($0.tool)` — \($0.says)" }.joined(separator: "\n")
+        return """
+        ## The person's standing rules — read these first
+        They wrote these for every agent that works in Verbinal. Call each by name for its whole text, and follow it.
+        \(lines)
+        """
+    }
 }
 
 /// User-actionable validation failures surfaced by the edit sheets.

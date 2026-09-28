@@ -22,6 +22,10 @@ struct GetCurrentViewTool: JSONReadTool {
     typealias Args = EmptyArgs
 
     struct Output: Encodable, Sendable {
+        /// The person's standing rules — their guide tools — so an agent
+        /// that only looks here still meets them; the tool's description
+        /// names them first.
+        var standingRules: [AIGuideSnapshot.StandingRule] = []
         /// One of: "landing", "search", "research", "portal", "storage", "fitsViewer".
         let mode: String
         /// Human-readable: "FITS Viewer", "Search", "Research", etc.
@@ -111,7 +115,7 @@ struct GetCurrentViewTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_current_view",
-        description: "Return what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer/cubeViewer/aiGuide), auth state, the Search sub-tab and loaded-results counts, search-form focus when set, open FITS files when in FITS Viewer, `pendingViewerChoice` when the Open as… (2D FITS vs 3D Cube) sheet is showing — call `choose_viewer` to dismiss it — pending-proposal count, plus the two autonomy toggles: `autoApplyEnabled` (do writes return applied results, or queue for strip review?) and `followAgentActivityEnabled` (does the app auto-navigate to the relevant view after a write, so you don't need a redundant `navigate_to`?).",
+        description: "Return the person's standing rules (`standingRules`: their guide tools — call each for its whole text and follow it), then what the user is currently looking at: which mode (landing/search/research/portal/storage/fitsViewer/cubeViewer/aiGuide), auth state, the Search sub-tab and loaded-results counts, search-form focus when set, open FITS files when in FITS Viewer, `pendingViewerChoice` when the Open as… (2D FITS vs 3D Cube) sheet is showing — call `choose_viewer` to dismiss it — pending-proposal count, plus the two autonomy toggles: `autoApplyEnabled` (do writes return applied results, or queue for strip review?) and `followAgentActivityEnabled` (does the app auto-navigate to the relevant view after a write, so you don't need a redundant `navigate_to`?).",
         schema: #"""
         {
           "type": "object",

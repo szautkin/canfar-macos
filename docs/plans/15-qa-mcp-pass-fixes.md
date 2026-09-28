@@ -16,7 +16,7 @@ with its tests and a CHANGELOG entry; a tool change also updates
 |---|---|---|
 | P Portal layout | done — P1 | `64a2500` |
 | F data you can trust | done — F1 Rice high-entropy blocks, 8/16/32-bit; F2 a compressed image's own header; F3 downloads that hold nothing; F4 one row per saved query; F5 Storage reads at an offset, one media type; F6 a record describes its plane, ids checked, a file by name; F7 jobs not seen finishing, probe failures that say why | `59af802`, `6e3a57e`, `fadd302`, `97dfe72`, `0a15669`, `e9edbb9`, F7 |
-| S agent safety and audit | in progress — S1 standing instructions wait for the person; S2 who applied a change | `445d1e5`, S2 |
+| S agent safety and audit | in progress — S1 standing instructions wait for the person; S2 who applied a change; S3 the person's rules come first | `445d1e5`, `7662e58`, S3 |
 | V viewers | planned — V1–V6 | — |
 | R search, ADQL, resolver, VizieR | planned — R1–R5 | — |
 | O other surfaces | planned — O1–O4 | — |
@@ -66,7 +66,7 @@ leaving an empty row. — `64a2500`
 |---|---|---|
 | **S1** | H6 | A new approval class, `VerbClass.standingInstruction` (VerbinalKit): never applies at once, whatever auto-apply says, like `destructive` — one line in `AutoApplyPolicy`, whose sentence every tool description and `describe_app` already read. `set_tool_description`, `clear_tool_description`, `add_guide_tool` and `update_guide_tool` take it. |
 | **S2** | H7 | The applied event says who applied it: `proposalApplied(id, kind, by:)` with `person`, `autoApply` or `background`, set where each path applies (the strip, the auto-apply hook, `start_background_apply`). `list_events` and the activity feed show it. |
-| **S3** | M10 | The person's standing rules — guide tools they marked as rules — come first in `describe_app` and in `get_current_view`, from the AI Guide service that holds them. |
+| **S3** | M10 | The person's standing rules — their guide tools (there is no separate "rule" mark; `storage_rules` is a guide tool like any other, and since S1 only the person can add one) — come first in `describe_app` (its brief opens with them) and in `get_current_view` (named first in its description; JSON keys have no order), from the AI Guide snapshot that holds them (`AIGuideSnapshot.standingRules`). |
 | **S4** | L18 | A pending proposal expires after 3 hours and says so (`expired`), in the strip and to `get_proposal_state`. |
 | **S5** | M14 | Storage flags a public file whose name marks it as a secret (`.token`, `.netrc`, `.ssh/…`, `.config` and the like): a warning in the listing and on screen, and `list_vospace_path` says so; **Make Private** uses the existing ACL call. |
 | **S6** | M7 | Remote compute compares the running session with Settings: `get_compute_state` reports the difference, `run_code`'s answer says it ran on the older session, and the screen offers Stop and Start to take the new settings. |

@@ -85,4 +85,42 @@ final class ToolMapTests: XCTestCase {
             XCTAssertTrue(why.contains("cube"), why)
         }
     }
+
+    // MARK: - The person's standing rules (plan 15 S3, QA M10)
+
+    private let guides = AIGuideSnapshot(overrides: [:], guides: [
+        AIGuideToolEntry(id: UUID(), name: "storage_rules", description: "Where results go in my VOSpace home", body: "Write to /results only."),
+        AIGuideToolEntry(id: UUID(), name: "headless_jobs_rules", description: "How to launch batch jobs", body: nil),
+    ])
+
+    func testDescribeAppOpensWithThePersonsRules() async throws {
+        var describe = DescribeAppTool()
+        let rules = guides.standingRules
+        describe.standingRules = { rules }
+        let whole = try await describe.handle(.init(app: nil), context: ctx())
+        XCTAssertEqual(whole.standingRules?.map(\.tool), ["storage_rules", "headless_jobs_rules"])
+        let brief = try XCTUnwrap(whole.brief)
+        XCTAssertTrue(brief.hasPrefix("## The person's standing rules"), String(brief.prefix(80)))
+        XCTAssertTrue(brief.contains("- `storage_rules` — Where results go in my VOSpace home"))
+
+        var none = DescribeAppTool()
+        none.standingRules = { [] }
+        let plain = try await none.handle(.init(app: nil), context: ctx())
+        XCTAssertEqual(plain.brief, DescribeAppTool.brief, "no rules, no section")
+    }
+
+    func testTheCurrentViewNamesTheRules() throws {
+        var view = GetCurrentViewTool.Output(
+            mode: "landing", modeTitle: "Landing", isAuthenticated: false, username: "",
+            searchFocusRA: nil, searchFocusDec: nil, searchTab: nil, searchResultsTotal: nil, searchResultsFiltered: nil,
+            openFITSPaths: [], pendingViewerChoice: nil, pendingProposalsCount: 0,
+            agentsEnabled: true, autoApplyEnabled: true, followAgentActivityEnabled: true)
+        view.standingRules = guides.standingRules
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(view)) as? [String: Any])
+        let rules = try XCTUnwrap(json["standingRules"] as? [[String: String]])
+        XCTAssertEqual(rules.first, ["tool": "storage_rules", "says": "Where results go in my VOSpace home"])
+        let shown = view
+        XCTAssertTrue(GetCurrentViewTool(snapshot: { shown }).definition.description.hasPrefix("Return the person's standing rules"),
+                      "JSON keys have no order; the description is where they come first")
+    }
 }

@@ -21,6 +21,8 @@ struct DescribeAppTool: JSONReadTool {
     }
 
     struct Output: Encodable, Sendable {
+        /// The person's guide tools, before anything else about the app.
+        var standingRules: [AIGuideSnapshot.StandingRule]? = nil
         let brief: String?
         let serverVersion: String
         let app: ToolMap.Area?
@@ -29,7 +31,7 @@ struct DescribeAppTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "describe_app",
-        description: "Get a prose overview of Verbinal's capabilities, tool surface, and proposal model — call this once at the start of a session. With `app` (an area id from list_apps), get that area's tools with a one-line summary each instead; `man` gives one tool's arguments.",
+        description: "Get a prose overview of Verbinal's capabilities, tool surface, and proposal model — call this once at the start of a session. It opens with the person's standing rules (`standingRules`: their own guide tools; call each for its whole text and follow it). With `app` (an area id from list_apps), get that area's tools with a one-line summary each instead; `man` gives one tool's arguments.",
         schema: #"""
         {
           "type": "object",
@@ -42,11 +44,15 @@ struct DescribeAppTool: JSONReadTool {
     )
 
     var published: @Sendable () async -> [ToolDefinitionWire] = { [] }
+    /// The person's guide tools, read when asked.
+    var standingRules: @Sendable () async -> [AIGuideSnapshot.StandingRule] = { [] }
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         guard let wanted = args.app?.trimmingCharacters(in: .whitespacesAndNewlines), !wanted.isEmpty else {
-            return Output(brief: Self.brief, serverVersion: version, app: nil, tools: nil)
+            let rules = await standingRules()
+            let brief = [AIGuideSnapshot.briefSection(rules), Self.brief].compactMap { $0 }.joined(separator: "\n\n")
+            return Output(standingRules: rules, brief: brief, serverVersion: version, app: nil, tools: nil)
         }
         let tools = await published()
         let areas = ToolMap.areas(tools)
