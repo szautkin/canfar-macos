@@ -494,8 +494,12 @@ final class FITSViewerModel: Identifiable {
             Self.logger.warning("applyNorthUp: no WCS")
             return
         }
+        // A view showing the whole image goes on showing it, turned; one
+        // zoomed in on a part keeps its zoom (QA M6: the corners were cut).
+        let wasFitted = isFitted(canvasSize: lastCanvasSize)
         viewport.rotation = -wcs.northAngle * .pi / 180.0
         viewport.flipX = wcs.hasParityFlip
+        if wasFitted { fitZoomKeepingRotation(canvasSize: lastCanvasSize) }
         Self.logger.info("North Up: angle=\(wcs.northAngle)° rotation=\(self.viewport.rotation) flipX=\(self.viewport.flipX) pixelScale=\(wcs.pixelScaleArcsec)\"/px")
     }
 
@@ -624,14 +628,33 @@ final class FITSViewerModel: Identifiable {
 
     /// Fit image to canvas size by computing the right zoom level.
     func fitToWindow(canvasSize: CGSize) {
-        guard let hdu = selectedHDU else {
+        guard selectedHDU != nil else {
             resetViewport()
             return
         }
-        let imgSize = CGSize(width: hdu.header.naxis1, height: hdu.header.naxis2)
-        guard let fitZoom = ViewportTransform.fitZoom(imageSize: imgSize, canvasSize: canvasSize) else { return }
-        viewport.zoom = fitZoom * FITSViewerConstants.fitMargin
         viewport.rotation = 0
+        fitZoomKeepingRotation(canvasSize: canvasSize)
+    }
+
+    /// The zoom that shows the whole image at the view's rotation, with the
+    /// margin the viewer leaves.
+    private func fittedZoom(canvasSize: CGSize) -> Double? {
+        guard let hdu = selectedHDU else { return nil }
+        let imgSize = CGSize(width: hdu.header.naxis1, height: hdu.header.naxis2)
+        return ViewportTransform.fitZoom(imageSize: imgSize, canvasSize: canvasSize, rotation: viewport.rotation)
+            .map { $0 * FITSViewerConstants.fitMargin }
+    }
+
+    /// Whether the view shows the whole image as fitted, give or take 5%.
+    func isFitted(canvasSize: CGSize) -> Bool {
+        guard let fit = fittedZoom(canvasSize: canvasSize), fit > 0 else { return false }
+        return abs(viewport.zoom - fit) / fit < 0.05
+    }
+
+    /// Fits the whole image, turned as it is, and centres it (on the crosshair when there is one).
+    private func fitZoomKeepingRotation(canvasSize: CGSize) {
+        guard let fit = fittedZoom(canvasSize: canvasSize) else { return }
+        viewport.zoom = fit
         if let crosshair = crosshairPixel {
             centerOnPixel(crosshair, canvasSize: canvasSize)
         } else {

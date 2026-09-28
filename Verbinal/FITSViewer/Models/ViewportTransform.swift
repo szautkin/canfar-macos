@@ -80,10 +80,13 @@ struct ViewportTransform: Sendable, Equatable {
 
     /// Zoom level that fits `imageSize` into `canvasSize`. Returns nil if
     /// either dimension is non-positive (caller should reset viewport).
-    static func fitZoom(imageSize: CGSize, canvasSize: CGSize) -> Double? {
+    /// The zoom at which the image, turned by `rotation` radians, just fits
+    /// the canvas: its turned bounding box, not its own sides.
+    static func fitZoom(imageSize: CGSize, canvasSize: CGSize, rotation: Double = 0) -> Double? {
         guard imageSize.width > 0, imageSize.height > 0 else { return nil }
-        let zoomX = canvasSize.width / imageSize.width
-        let zoomY = canvasSize.height / imageSize.height
-        return min(zoomX, zoomY)
+        let c = abs(cos(rotation)), s = abs(sin(rotation))
+        let width = imageSize.width * c + imageSize.height * s
+        let height = imageSize.width * s + imageSize.height * c
+        return min(canvasSize.width / width, canvasSize.height / height)
     }
 }

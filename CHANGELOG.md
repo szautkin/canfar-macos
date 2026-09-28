@@ -12,6 +12,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **North Up keeps the whole image in view** — turning an image north up
+  kept its zoom, so a tilted frame lost its corners off the window. A view
+  showing the whole image now shows all of it turned; one zoomed in on a
+  part keeps its zoom.
 - **Images and cubes open on a better first look, still linear** — a JWST
   deep field opened washed out, its sky mid-grey and every faint galaxy
   white, and a cube opened nearly black. Both viewers now start with black
