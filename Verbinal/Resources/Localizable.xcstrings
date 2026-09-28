@@ -76,6 +76,16 @@
         }
       }
     },
+    "“%@” is no longer available." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "« %@ » n'est plus disponible."
+          }
+        }
+      }
+    },
     "“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the %@ entry at this app, launched in MCP mode. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating. The one-click “Configure Claude Desktop” is the normal path — the other buttons are manual alternatives for advanced setups." : {
       "localizations" : {
         "fr" : {
@@ -112,6 +122,16 @@
     },
     "(%lld)" : {
       "shouldTranslate" : false
+    },
+    "(none)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(aucune)"
+          }
+        }
+      }
     },
     "/ %@" : {
       "shouldTranslate" : false
@@ -168,6 +188,46 @@
         }
       }
     },
+    "%@ — by CADC" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — par le CADC"
+          }
+        }
+      }
+    },
+    "%@ — by the assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — par l'assistant"
+          }
+        }
+      }
+    },
+    "%@ — on this computer" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — sur cet ordinateur"
+          }
+        }
+      }
+    },
+    "%@ — write %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — écrivez %2$@"
+          }
+        }
+      }
+    },
     "%@ … %@" : {
       "localizations" : {
         "en" : {
@@ -178,6 +238,16 @@
         }
       },
       "shouldTranslate" : false
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
     },
     "%@ (%@)" : {
       "localizations" : {
@@ -271,6 +341,16 @@
         }
       }
     },
+    "%@ cannot be cut with this file: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de découper %@ avec ce fichier : %@"
+          }
+        }
+      }
+    },
     "%@ cards" : {
       "localizations" : {
         "fr" : {
@@ -291,6 +371,16 @@
         }
       }
     },
+    "%@ failed to start" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n’a pas pu démarrer"
+          }
+        }
+      }
+    },
     "%@ files" : {
       "localizations" : {
         "fr" : {
@@ -301,12 +391,42 @@
         }
       }
     },
+    "%@ finished successfully" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ s’est terminée avec succès"
+          }
+        }
+      }
+    },
     "%@ GB" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ Go"
+          }
+        }
+      }
+    },
+    "%@ has failed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ a échoué"
+          }
+        }
+      }
+    },
+    "%@ has no column \"%@\"" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ n’a pas de colonne « %2$@ »"
           }
         }
       }
@@ -327,12 +447,42 @@
         }
       }
     },
+    "%@ is ambiguous — %@ is in %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ est ambigu — %2$@ est dans %3$@"
+          }
+        }
+      }
+    },
     "%@ is available on macOS" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ est disponible sur macOS"
+          }
+        }
+      }
+    },
+    "%@ is not beside this file on this computer, so it cannot be cut with it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n'est pas à côté de ce fichier sur cet ordinateur ; il ne peut donc pas être découpé avec lui."
+          }
+        }
+      }
+    },
+    "%@ is running" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ est en cours d’exécution"
           }
         }
       }
@@ -427,6 +577,9 @@
     "%@ percent" : {
 
     },
+    "%@ pt" : {
+
+    },
     "%@ results" : {
       "localizations" : {
         "fr" : {
@@ -454,6 +607,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ lignes chargées — limite serveur atteinte, des résultats supplémentaires peuvent exister"
+          }
+        }
+      }
+    },
+    "%@ s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ s"
+          }
+        }
+      }
+    },
+    "%@ saved in Downloads" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ enregistré dans Téléchargements"
           }
         }
       }
@@ -489,12 +662,32 @@
         }
       }
     },
+    "%@, %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, %@"
+          }
+        }
+      }
+    },
     "%@, %lld items, %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@, %lld éléments, %@"
+          }
+        }
+      }
+    },
+    "%@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
           }
         }
       }
@@ -550,6 +743,16 @@
         }
       }
     },
+    "%g px" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%g px"
+          }
+        }
+      }
+    },
     "%lld" : {
       "shouldTranslate" : false
     },
@@ -598,12 +801,32 @@
         }
       }
     },
+    "%lld cores · %lld GB" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld cœurs · %lld Go"
+          }
+        }
+      }
+    },
     "%lld entries" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld entrées"
+          }
+        }
+      }
+    },
+    "%lld failed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld en échec"
           }
         }
       }
@@ -718,6 +941,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld en attente"
+          }
+        }
+      }
+    },
+    "%lld pt" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld pt"
+          }
+        }
+      }
+    },
+    "%lld tasks running" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tâches en cours"
           }
         }
       }
@@ -883,206 +1126,6 @@
         }
       }
     },
-    "50" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "50"
-          }
-        }
-      }
-    },
-    "100" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "100"
-          }
-        }
-      }
-    },
-    "500" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "500"
-          }
-        }
-      }
-    },
-    "%@ finished successfully" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ s’est terminée avec succès"
-          }
-        }
-      }
-    },
-    "%@ has failed" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ a échoué"
-          }
-        }
-      }
-    },
-    "%@ is running" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ est en cours d’exécution"
-          }
-        }
-      }
-    },
-    "%@ failed to start" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ n’a pas pu démarrer"
-          }
-        }
-      }
-    },
-    "%@ has no column \"%@\"" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ n’a pas de colonne « %2$@ »"
-          }
-        }
-      }
-    },
-    "%@ is ambiguous — %@ is in %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ est ambigu — %2$@ est dans %3$@"
-          }
-        }
-      }
-    },
-    "%@ — write %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ — écrivez %2$@"
-          }
-        }
-      }
-    },
-    "%@ — by the assistant" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ — par l'assistant"
-          }
-        }
-      }
-    },
-    "%lld pt" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld pt"
-          }
-        }
-      }
-    },
-    "%g px" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%g px"
-          }
-        }
-      }
-    },
-    "%@, %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@, %@"
-          }
-        }
-      }
-    },
-    "%@ — on this computer" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ — sur cet ordinateur"
-          }
-        }
-      }
-    },
-    "%@ — by CADC" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ — par le CADC"
-          }
-        }
-      }
-    },
-    "%@ saved in Downloads" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ enregistré dans Téléchargements"
-          }
-        }
-      }
-    },
-    "%@ is not beside this file on this computer, so it cannot be cut with it." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ n'est pas à côté de ce fichier sur cet ordinateur ; il ne peut donc pas être découpé avec lui."
-          }
-        }
-      }
-    },
-    "%@ cannot be cut with this file: %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossible de découper %@ avec ce fichier : %@"
-          }
-        }
-      }
-    },
-    "%lld cores · %lld GB" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld cœurs · %lld Go"
-          }
-        }
-      }
-    },
     "1. Get the watcher image: build verbinal-execution from its repository and push it to your project on images.canfar.net." : {
       "localizations" : {
         "fr" : {
@@ -1113,42 +1156,32 @@
         }
       }
     },
-    "(none)" : {
+    "50" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "(aucune)"
+            "value" : "50"
           }
         }
       }
     },
-    "%@ s" : {
+    "100" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ s"
+            "value" : "100"
           }
         }
       }
     },
-    "%lld tasks running" : {
+    "500" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld tâches en cours"
-          }
-        }
-      }
-    },
-    "%lld failed" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld en échec"
+            "value" : "500"
           }
         }
       }
@@ -3498,12 +3531,21 @@
       }
     },
     "Copy" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier"
+          }
+        }
+      }
+    },
+    "Copy “%@”" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier « %@ »"
           }
         }
       }
@@ -3707,16 +3749,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier les détails de cette observation — ID, position, instrument, date — en texte"
-          }
-        }
-      }
-    },
-    "Copy “%@”" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copier « %@ »"
           }
         }
       }
@@ -4370,22 +4402,22 @@
         }
       }
     },
-    "deg or hh:mm:ss" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "deg ou hh:mm:ss"
-          }
-        }
-      }
-    },
     "deg or ±dd:mm:ss" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "deg ou ±dd:mm:ss"
+          }
+        }
+      }
+    },
+    "deg or hh:mm:ss" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "deg ou hh:mm:ss"
           }
         }
       }
@@ -4484,8 +4516,7 @@
         }
       }
     },
-    "Delete Session" : {
-      "extractionState" : "stale",
+    "Delete session" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4495,7 +4526,8 @@
         }
       }
     },
-    "Delete session" : {
+    "Delete Session" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4760,7 +4792,6 @@
       }
     },
     "Dismiss" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5682,6 +5713,16 @@
         }
       }
     },
+    "error" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "erreur"
+          }
+        }
+      }
+    },
     "Error" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5689,16 +5730,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erreur"
-          }
-        }
-      }
-    },
-    "error" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "erreur"
           }
         }
       }
@@ -7848,22 +7879,22 @@
         }
       }
     },
-    "Launch %@ %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lancer %1$@ %2$@"
-          }
-        }
-      }
-    },
     "Launch (Custom Image)" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lancer (image personnalisée)"
+          }
+        }
+      }
+    },
+    "Launch %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer %1$@ %2$@"
           }
         }
       }
@@ -9846,6 +9877,16 @@
         }
       }
     },
+    "ok" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ok"
+          }
+        }
+      }
+    },
     "OK" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9853,16 +9894,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "OK"
-          }
-        }
-      }
-    },
-    "ok" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ok"
           }
         }
       }
@@ -10662,16 +10693,6 @@
         }
       }
     },
-    "pixel %lld, %lld" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "pixel %lld, %lld"
-          }
-        }
-      }
-    },
     "Pixel (%@, %@) · %@ channels" : {
       "localizations" : {
         "en" : {
@@ -10695,6 +10716,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pixel (%lld, %lld) · %lld canaux"
+          }
+        }
+      }
+    },
+    "pixel %lld, %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pixel %lld, %lld"
           }
         }
       }
@@ -11599,7 +11630,6 @@
       }
     },
     "Refresh" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -13066,16 +13096,6 @@
         }
       }
     },
-    "Search the registry for an image the catalogue does not list" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chercher dans le registre une image que le catalogue ne liste pas"
-          }
-        }
-      }
-    },
     "Search — %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13139,8 +13159,17 @@
         }
       }
     },
+    "Search the registry for an image the catalogue does not list" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chercher dans le registre une image que le catalogue ne liste pas"
+          }
+        }
+      }
+    },
     "Searching…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -13316,22 +13345,22 @@
         }
       }
     },
-    "Selected Run" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exécution choisie"
-          }
-        }
-      }
-    },
     "Selected — click \"Use this image\" or press Return" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sélectionnée — cliquez sur « Utiliser cette image » ou appuyez sur Retour"
+          }
+        }
+      }
+    },
+    "Selected Run" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécution choisie"
           }
         }
       }
@@ -15428,6 +15457,9 @@
         }
       }
     },
+    "Timeout: %@ s" : {
+
+    },
     "Timeout: %lld s" : {
       "localizations" : {
         "fr" : {
@@ -16405,6 +16437,7 @@
       }
     },
     "Visit canfar.net" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -17295,16 +17328,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajuster à la fenêtre"
-          }
-        }
-      }
-    },
-    "“%@” is no longer available." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« %@ » n'est plus disponible."
           }
         }
       }

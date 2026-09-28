@@ -67,7 +67,7 @@ leaving an empty row. — `64a2500`
 | **S1** | H6 | A new approval class, `VerbClass.standingInstruction` (VerbinalKit): never applies at once, whatever auto-apply says, like `destructive` — one line in `AutoApplyPolicy`, whose sentence every tool description and `describe_app` already read. `set_tool_description`, `clear_tool_description`, `add_guide_tool` and `update_guide_tool` take it. |
 | **S2** | H7 | The applied event says who applied it: `proposalApplied(id, kind, by:)` with `person`, `autoApply` or `background`, set where each path applies (the strip, the auto-apply hook, `start_background_apply`). `list_events` and the activity feed show it. |
 | **S3** | M10 | The person's standing rules — guide tools they marked as rules — come first in `describe_app` and in `get_current_view`, from the AI Guide service that holds them. |
-| **S4** | L18 | A pending proposal expires after a set time and says so (`expired`), in the strip and to `get_proposal_state`. *Question: how long — 24 hours?* |
+| **S4** | L18 | A pending proposal expires after 3 hours and says so (`expired`), in the strip and to `get_proposal_state`. |
 | **S5** | M14 | Storage flags a public file whose name marks it as a secret (`.token`, `.netrc`, `.ssh/…`, `.config` and the like): a warning in the listing and on screen, and `list_vospace_path` says so; **Make Private** uses the existing ACL call. |
 | **S6** | M7 | Remote compute compares the running session with Settings: `get_compute_state` reports the difference, `run_code`'s answer says it ran on the older session, and the screen offers Stop and Start to take the new settings. |
 
@@ -77,7 +77,7 @@ leaving an empty row. — `64a2500`
 |---|---|---|
 | **V1** | M3 | `get_fits_image` draws the marks, through the drawing the figure export already uses (one path for both). |
 | **V2** | M4, L11 | The cube slice capture honours `maxPixels`; the capture uses the background the state reports and includes the spectrum panel when it is shown. |
-| **V3** | M5 | Better first looks: a FITS auto-cut that does not saturate a deep-field background, and a cube window from the data's percentiles instead of 0–1. *Question: the default stretch — asinh?* |
+| **V3** | M5 | Better first looks, still linear: a FITS auto-cut that does not saturate a deep-field background, and a cube window from the data's percentiles instead of 0–1. |
 | **V4** | M6 | North-up fits the rotated image to the window. |
 | **V5** | M13 | `probe_cube_spectrum` returns the spectral axis values and BUNIT, and takes a channel range and a binning. |
 | **V6** | M18 | Linking the crosshair across images whose fields do not overlap says so, on screen and in the tool's answer. |
@@ -97,7 +97,7 @@ leaving an empty row. — `64a2500`
 | Step | Findings | Fix, and where |
 |---|---|---|
 | **O1** | M19, M20 | `get_current_view` includes the open detail sheet and the selected Research record; the home tiles, Search, Storage and every Settings section get pointable targets; `get_platform_load` returns the instance counts, or its description stops promising them. |
-| **O2** | M15 | Quota in the units it says: decimal GB, as Finder counts. *Question: or keep binary and label it GiB?* |
+| **O2** | M15 | Quota in the units it says: decimal GB, as Finder counts. |
 | **O3** | L7, L8, L15 | Recent launches show the project of every image shape; a flexible session says "flexible" for CPU and RAM; `get_session_events` answers an empty list. |
 | **O4** | L4, L9, L10, L14, L16 | Duplicate workflow templates merged; Research newest first, one path shown per file; a finished task drops its stage, and compute runs are their own kind; `save_fits_bookmark` returns the new id; a registry image with no session type says it cannot be launched from Standard. |
 
@@ -117,10 +117,10 @@ worth passing on: `Plane.time_exposure` is a median per pixel, so a short
 value is not a failed exposure — ObsCore `t_exptime` or the header
 `EXPTIME` is the total.
 
-## Questions for the person
+## Decisions (2026-09-27)
 
-1. **S4:** how long before a pending proposal expires — 24 hours?
-2. **V3:** the default stretch for a first look — asinh, or keep linear
-   with a better cut?
-3. **O2:** quota in decimal GB (as Finder) or binary, labelled GiB?
-4. Still open from plan 10: should destructive changes auto-apply too?
+1. **S4:** a pending proposal expires after **3 hours**.
+2. **V3:** the first look stays **linear**, with a better cut.
+3. **O2:** quota in **decimal GB**, as Finder counts.
+4. **Auto-apply:** only non-destructive writes; a destructive one always
+   waits for the person — and so, by S1, does a standing instruction.
