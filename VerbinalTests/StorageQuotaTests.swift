@@ -9,13 +9,14 @@ import XCTest
 
 final class StorageQuotaTests: XCTestCase {
 
+    /// Plan 15 O2 (QA M15): decimal GB, as Finder counts — a 200 GB quota is 200, not 186.26.
     func testQuotaGB() {
-        let quota = StorageQuota(quotaBytes: 1_073_741_824, usedBytes: 0)
-        XCTAssertEqual(quota.quotaGB, 1.0, accuracy: 0.001)
+        let quota = StorageQuota(quotaBytes: 200_000_000_000, usedBytes: 0)
+        XCTAssertEqual(quota.quotaGB, 200.0, accuracy: 0.001)
     }
 
     func testUsedGB() {
-        let quota = StorageQuota(quotaBytes: 0, usedBytes: 536_870_912)
+        let quota = StorageQuota(quotaBytes: 0, usedBytes: 500_000_000)
         XCTAssertEqual(quota.usedGB, 0.5, accuracy: 0.001)
     }
 
@@ -30,7 +31,7 @@ final class StorageQuotaTests: XCTestCase {
     }
 
     func testLargeQuota() {
-        let quota = StorageQuota(quotaBytes: 107_374_182_400, usedBytes: 53_687_091_200)
+        let quota = StorageQuota(quotaBytes: 100_000_000_000, usedBytes: 50_000_000_000)
         XCTAssertEqual(quota.quotaGB, 100.0, accuracy: 0.001)
         XCTAssertEqual(quota.usedGB, 50.0, accuracy: 0.001)
         XCTAssertEqual(quota.usagePercent, 50.0, accuracy: 0.001)

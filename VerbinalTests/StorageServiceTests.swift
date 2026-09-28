@@ -43,8 +43,8 @@ final class StorageServiceTests: XCTestCase {
 
         XCTAssertEqual(quota.quotaBytes, 107_374_182_400)
         XCTAssertEqual(quota.usedBytes, 53_687_091_200)
-        XCTAssertEqual(quota.quotaGB, 100.0, accuracy: 0.001)
-        XCTAssertEqual(quota.usedGB, 50.0, accuracy: 0.001)
+        XCTAssertEqual(quota.quotaGB, 107.374182400, accuracy: 0.001, "decimal GB")
+        XCTAssertEqual(quota.usedGB, 53.687091200, accuracy: 0.001)
         XCTAssertEqual(quota.usagePercent, 50.0, accuracy: 0.001)
     }
 

@@ -12,6 +12,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Storage quota in the gigabytes it says** — a 200 GB quota showed as
+  186.26 GB, counted in 2³⁰-byte units. It is now counted as Finder
+  counts, 10⁹ bytes to the GB, on the Portal and for assistants.
 - **Your assistant sees and can point at more of the app** —
   `get_current_view` now says which observation's detail is open in
   Search and which Research record is selected; the home tiles, the
