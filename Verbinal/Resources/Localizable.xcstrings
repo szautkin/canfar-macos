@@ -1186,6 +1186,16 @@
         }
       }
     },
+    "%@ cores · %@ GB" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ cœurs · %@ Go"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -12565,6 +12575,16 @@
         }
       }
     },
+    "Restart" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redémarrer"
+          }
+        }
+      }
+    },
     "Restart Now" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -12582,6 +12602,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Redémarrage requis"
+          }
+        }
+      }
+    },
+    "Restart the compute session with the new settings?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redémarrer la session de calcul avec les nouveaux réglages ?"
+          }
+        }
+      }
+    },
+    "Restart with New Settings" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redémarrer avec les nouveaux réglages"
           }
         }
       }
@@ -14439,6 +14479,16 @@
         }
       }
     },
+    "Starting with the new settings — a compute session takes a minute or two to come up." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrage avec les nouveaux réglages — une session de calcul met une minute ou deux à démarrer."
+          }
+        }
+      }
+    },
     "Starting — a compute session takes a minute or two to come up." : {
       "localizations" : {
         "fr" : {
@@ -15308,6 +15358,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le serveur a accepté le lancement mais n'a renvoyé aucun ID de session."
+          }
+        }
+      }
+    },
+    "The session differs from Settings: %@. Code goes to it as it is until it is restarted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La session diffère des Réglages : %@. Le code y est envoyé tel quel jusqu'à son redémarrage."
+          }
+        }
+      }
+    },
+    "The session is stopped — deleting it and anything running in it — and one is started with the settings." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La session est arrêtée — ce qui la supprime avec tout ce qui s'y exécute — et une autre est démarrée avec les réglages."
           }
         }
       }

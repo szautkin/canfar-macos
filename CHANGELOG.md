@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Remote Compute says when its session no longer matches Settings** — a
+  session keeps the image and size it started with, and code went to an
+  older one silently (Settings said 0.0.1, 4 cores, 8 GB; the session ran
+  0.0.2 with 1 core and 1.07 GB). The screen now says how it differs, with
+  **Restart with New Settings**, and its status shows the session's own
+  size. For assistants, `get_compute_state` reports `drift`, and `run_code`
+  says when it ran on such a session.
 - **Storage warns when a file that usually holds secrets is public** — a
   CANFAR home had `.token`, `.config`, `.globus-init.sh` and `.bashrc`
   readable by anyone, and nothing said so. Storage now marks such a file

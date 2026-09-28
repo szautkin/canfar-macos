@@ -101,6 +101,16 @@ final class RemoteComputeModel {
         await perform { _ = try await self.service.stop() }
     }
 
+    /// Stops the session and starts one with the settings — for a session
+    /// that differs from them (``ComputeDrift``).
+    func restartWithSettings() async {
+        await perform {
+            _ = try await self.service.stop()
+            try await self.service.ensureSession()
+            self.message = Message(kind: .info, text: String(localized: "Starting with the new settings — a compute session takes a minute or two to come up."))
+        }
+    }
+
     // MARK: - Runs
 
     /// Sends the Run code box as the person's.

@@ -63,11 +63,12 @@ final class FakeComputeFiles: ComputeFiles, @unchecked Sendable {
 extension Session {
     /// A session as the platform lists the compute one (or another, by name and type).
     static func compute(id: String, status: String, name: String = RunCodeContract.sessionName,
-                        type: String = RunCodeContract.sessionType, startedTime: String = "") -> Session {
+                        type: String = RunCodeContract.sessionType, startedTime: String = "",
+                        image: String = "images.canfar.net/p/compute:1", ram: String = "8G", cores: String = "2") -> Session {
         Session(from: SkahaSessionResponse(
             id: id, userid: nil, runAsUID: nil, runAsGID: nil, supplementalGroups: nil,
-            image: "images.canfar.net/p/compute:1", type: type, status: status, name: name,
-            startTime: startedTime, expiryTime: "", connectURL: "", requestedRAM: "8G", requestedCPUCores: "2",
+            image: image, type: type, status: status, name: name,
+            startTime: startedTime, expiryTime: "", connectURL: "", requestedRAM: ram, requestedCPUCores: cores,
             requestedGPUCores: nil, ramInUse: nil, cpuCoresInUse: nil, isFixedResources: true))
     }
 }

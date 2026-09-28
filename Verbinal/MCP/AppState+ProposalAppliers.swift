@@ -68,7 +68,7 @@ extension AppState {
             RunCodeApplier(
                 submit: { [weak self] request, launch in
                     guard let self else { throw ProposalApplyError.backendError("app state gone") }
-                    try await self.remoteCompute.submit(request, by: .agent, launch: launch)
+                    return try await self.remoteCompute.submit(request, by: .agent, launch: launch)
                 },
                 activity: activity),
             StartComputeApplier(

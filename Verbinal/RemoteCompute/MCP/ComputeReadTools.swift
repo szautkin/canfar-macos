@@ -33,6 +33,9 @@ struct GetComputeStateTool: JSONReadTool {
         let sessionImage: String?
         let sessionCores: String?
         let sessionRam: String?
+        /// How the live session differs from the settings above, and what
+        /// takes the settings; nil when it matches.
+        let drift: String?
 
         init(_ snapshot: ComputeSnapshot, now: Date = Date()) {
             let config = snapshot.configuration
@@ -54,6 +57,7 @@ struct GetComputeStateTool: JSONReadTool {
             sessionImage = given(session?.containerImage)
             sessionCores = given(session?.cpuAllocated)
             sessionRam = given(session?.memoryAllocated)
+            drift = snapshot.drift.map { "\($0.sentence) run_code goes to it as it is; stop_compute (the person approves), then run_code or start_compute, starts one with the settings." }
         }
 
         private static func note(configured: Bool, hasSession: Bool) -> String? {
@@ -69,7 +73,7 @@ struct GetComputeStateTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_compute_state",
-        description: "Whether remote compute (run_code) is set up, and the state of its session on the user's CANFAR account: notSetUp, stopped, starting, running, stopping or failed — with the image and size it launches at (image, cores, ram) and, while there is a session, what it actually runs and has (sessionImage, sessionCores, sessionRam, as list_sessions reports them; the platform can grant less than asked) and how long it has been up. The same status the Remote Compute screen shows.",
+        description: "Whether remote compute (run_code) is set up, and the state of its session on the user's CANFAR account: notSetUp, stopped, starting, running, stopping or failed — with the image and size it launches at (image, cores, ram) and, while there is a session, what it actually runs and has (sessionImage, sessionCores, sessionRam, as list_sessions reports them; the platform can grant less than asked) and how long it has been up. `drift` says how a live session differs from the settings — an older image, fewer cores or less RAM — since a session keeps what it started with and run_code reuses it. The same status the Remote Compute screen shows.",
         schema: #"""
         { "type": "object", "properties": {}, "additionalProperties": false }
         """#

@@ -127,17 +127,23 @@ final class RemoteComputeService {
     /// whether one was already there.
     @discardableResult
     func ensureSession(_ launch: Configuration? = nil) async throws -> Bool {
+        try await reuseOrLaunch(launch) != nil
+    }
+
+    /// The live session reused, or nil when one was launched from `launch`
+    /// (the Settings when nil).
+    private func reuseOrLaunch(_ launch: Configuration?) async throws -> Session? {
         let config = launch ?? configuration()
         guard config.isConfigured else { throw RemoteComputeError.notSetUp }
         let user = try signedInUser()
-        if try await warmSession() != nil { return true }
+        if let live = try await warmSession() { return live }
         let credentials = registryAuth()
         _ = try await sessions.launchSession(SessionLaunchParams(
             type: RunCodeContract.sessionType, name: RunCodeContract.sessionName, image: config.image,
             cores: RunCodeContract.clampCores(config.cores), ram: RunCodeContract.clampRam(config.ram), gpus: 0,
             cmd: nil, registryUsername: credentials?.username, registrySecret: credentials?.secret))
         await ensureTree(user)
-        return false
+        return nil
     }
 
     /// Deletes the running or starting session; false when there is none.
@@ -151,8 +157,11 @@ final class RemoteComputeService {
     // MARK: - Runs
 
     /// Sends `request` as `author`'s, starting the session if need be, and
-    /// returns without waiting for the result.
-    func submit(_ request: RunCodeContract.Request, by author: ComputeRun.Author, launch: Configuration? = nil) async throws {
+    /// returns without waiting for the result — with how the session it
+    /// went to differs from `launch` (the Settings when nil), when it does.
+    @discardableResult
+    func submit(_ request: RunCodeContract.Request, by author: ComputeRun.Author,
+                launch: Configuration? = nil) async throws -> ComputeDrift? {
         let user = try signedInUser()
         let request = RunCodeContract.Request(id: request.id, language: request.language,
                                               code: RunCodeContract.normalizeNewlines(request.code),
@@ -160,8 +169,10 @@ final class RemoteComputeService {
         runs.add(ComputeRun(request, author: author))
         let who = author == .agent ? String(localized: "Assistant") : String(localized: "You")
         let task = tasks.begin(.session, "\(who): \(request.language) on \(RunCodeContract.sessionName)")
+        let drift: ComputeDrift?
         do {
-            try await ensureSession(launch)
+            let reused = try await reuseOrLaunch(launch)
+            drift = reused.flatMap { ComputeDrift(session: $0, configuration: launch ?? configuration()) }
             // A just-launched session may not have made its inbox yet, and a missing parent 404s the PUT.
             await ensureTree(user)
             let file = FileManager.default.temporaryDirectory
@@ -176,6 +187,7 @@ final class RemoteComputeService {
         }
         task.stage(String(localized: "Waiting for the result"))
         watch(request, task)
+        return drift
     }
 
     /// Reads a run's result; whoever reads it first records it.

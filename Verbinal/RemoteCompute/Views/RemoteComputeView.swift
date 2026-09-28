@@ -15,6 +15,7 @@ struct RemoteComputeView: View {
     @Bindable var model: RemoteComputeModel
     @Environment(AppState.self) private var appState
     @State private var confirmStop = false
+    @State private var confirmRestart = false
 
     static let repository = URL(string: "https://github.com/szautkin/verbinal-execution")!
 
@@ -23,6 +24,7 @@ struct RemoteComputeView: View {
             header
             toolbar
             if let message = model.message { banner(message) }
+            if let drift = model.snapshot?.drift { driftBanner(drift) }
             if model.isConfigured { main } else { setup }
         }
         .padding(16)
@@ -40,6 +42,11 @@ struct RemoteComputeView: View {
             Button("Stop", role: .destructive) { Task { await model.stop() } }
         } message: {
             Text("Stopping deletes the session and anything running in it. Code sent but not yet run stays in the inbox and runs when the session starts again.")
+        }
+        .confirmationDialog("Restart the compute session with the new settings?", isPresented: $confirmRestart) {
+            Button("Restart", role: .destructive) { Task { await model.restartWithSettings() } }
+        } message: {
+            Text("The session is stopped — deleting it and anything running in it — and one is started with the settings.")
         }
         .uiPointerOverlay()
     }
@@ -67,10 +74,30 @@ struct RemoteComputeView: View {
         }
     }
 
+    /// A session that differs from Settings, said, with the way to take them.
+    private func driftBanner(_ drift: ComputeDrift) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.arrow.triangle.2.circlepath")
+                .foregroundStyle(.orange)
+            Text(String(localized: "The session differs from Settings: \(drift.differences.joined(separator: "; ")). Code goes to it as it is until it is restarted."))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Restart with New Settings") { confirmRestart = true }
+                .disabled(model.isBusy)
+                .pointable("compute.restart", label: "Restart with New Settings", screen: "remoteCompute")
+        }
+        .padding(10)
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+    }
+
     private var statusLine: String {
         let state = model.state.title
         guard model.state == .running, let config = model.snapshot?.configuration else { return state }
-        let size = String(localized: "\(config.cores) cores · \(config.ram) GB")
+        // What the session has, when the platform says; else what Settings asked.
+        let session = model.snapshot?.session
+        let cores = session.flatMap { ComputeDrift.cores($0.cpuAllocated) }.map(ComputeDrift.number) ?? "\(config.cores)"
+        let ram = session.flatMap { ComputeDrift.gigabytes($0.memoryAllocated) }.map(ComputeDrift.number) ?? "\(config.ram)"
+        let size = String(localized: "\(cores) cores · \(ram) GB")
         guard let up = ComputeState.uptime(startedAt: model.snapshot?.session?.startedTime) else { return "\(state) · \(size)" }
         let minutes = Int(up / 60)
         let uptime = minutes < 60

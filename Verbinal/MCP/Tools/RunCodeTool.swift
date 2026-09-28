@@ -127,28 +127,38 @@ struct RunCodeTool: JSONWriteTool {
 
 // MARK: - run_code applier (ensures the warm session + drops the request)
 
-struct RunCodeApplier: ProposalApplier {
+struct RunCodeApplier: ProposalApplier, ResultReportingApplier {
     let kind = "run_code"
     /// Sends the request as the assistant's, launching the session from the
-    /// configuration the proposal was planned with when there is none.
-    let submit: @Sendable (RunCodeContract.Request, RemoteComputeService.Configuration) async throws -> Void
+    /// configuration the proposal was planned with when there is none; says
+    /// how a reused session differs from it.
+    let submit: @Sendable (RunCodeContract.Request, RemoteComputeService.Configuration) async throws -> ComputeDrift?
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    /// The execution id, and — when the code went to a session older than
+    /// the settings — a note saying so.
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(RunCodeTool.Payload.self, from: proposal.payload)
         let request = RunCodeContract.Request(id: payload.id, language: payload.language,
                                               code: payload.code, timeout_seconds: payload.timeout_seconds)
         let launch = RemoteComputeService.Configuration(image: payload.image, cores: payload.cores, ram: payload.ram)
         let submit = submit
         // A 3-minute deadline so a stalled launch or upload always ends.
+        let drift: ComputeDrift?
         do {
-            try await withApplierTimeout(seconds: 180, label: "run_code") { try await submit(request, launch) }
+            drift = try await withApplierTimeout(seconds: 180, label: "run_code") { try await submit(request, launch) }
         } catch let pa as ProposalApplyError {
             throw pa
         } catch {
             throw ProposalApplyError.backendError("run_code: \(error.localizedDescription)")
         }
         await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
+        let note = drift.map { "Ran on the session already up. \($0.sentence) stop_compute, then run_code, starts one with the settings (the person approves the stop)." }
+        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(id: payload.id, note: note))) ?? Data()
     }
 }
 

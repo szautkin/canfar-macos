@@ -77,6 +77,52 @@ final class RemoteComputeServiceTests: XCTestCase {
         XCTAssertEqual(signedOut.state, .notSetUp)
     }
 
+    // MARK: - A session older than Settings (plan 15 S6, QA M7)
+
+    /// The reported case: Settings say 0.0.1, 4 cores, 8 GB; the session
+    /// runs 0.0.2 with 1 core and 1.07 GB.
+    func testASessionThatDiffersFromSettingsSaysHow() throws {
+        let settings = RemoteComputeService.Configuration(image: "images.canfar.net/verbinal/verbinal-execution:0.0.1", cores: 4, ram: 8)
+        let older = Session.compute(id: "kedczixz", status: "Running", image: "images.canfar.net/verbinal/verbinal-execution:0.0.2",
+                                    ram: "1.07G", cores: "1")
+        let drift = try XCTUnwrap(ComputeDrift(session: older, configuration: settings))
+        XCTAssertEqual(drift.differences, [
+            "runs images.canfar.net/verbinal/verbinal-execution:0.0.2, not images.canfar.net/verbinal/verbinal-execution:0.0.1",
+            "has 1 of the 4 cores Settings ask",
+            "has 1.07 of the 8 GB Settings ask",
+        ])
+        XCTAssertTrue(drift.sentence.hasSuffix("until it is stopped and started again."))
+
+        let same = Session.compute(id: "s", status: "Running", image: settings.image, ram: "8Gi", cores: "4")
+        XCTAssertNil(ComputeDrift(session: same, configuration: settings))
+        let gone = Session.compute(id: "g", status: "Succeeded", image: "other:1")
+        XCTAssertNil(ComputeDrift(session: gone, configuration: settings), "only a live session is compared")
+
+        let answer = GetComputeStateTool.Output(ComputeSnapshot(state: .running, session: older, configuration: settings))
+        XCTAssertTrue(answer.drift?.contains("stop_compute") == true)
+    }
+
+    func testMemoryAndCoresAsThePlatformWritesThem() {
+        XCTAssertEqual(ComputeDrift.gigabytes("8G"), 8)
+        XCTAssertEqual(ComputeDrift.gigabytes("8Gi"), 8)
+        XCTAssertEqual(ComputeDrift.gigabytes("1.07G"), 1.07)
+        XCTAssertEqual(ComputeDrift.gigabytes("512M"), 0.5)
+        XCTAssertNil(ComputeDrift.gigabytes(""))
+        XCTAssertEqual(ComputeDrift.cores("1.0"), 1)
+        XCTAssertEqual(ComputeDrift.number(1.5), "1.5")
+        XCTAssertEqual(ComputeDrift.number(4), "4")
+    }
+
+    /// run_code reusing an older session says so.
+    func testSendingCodeToAnOlderSessionSaysSo() async throws {
+        sessions = FakeComputeSessions([.compute(id: "old", status: "Running", image: "images.canfar.net/p/compute:0")])
+        let drift = try await service().submit(request(), by: .agent)
+        XCTAssertEqual(drift?.differences.first, "runs images.canfar.net/p/compute:0, not \(image)")
+        sessions = FakeComputeSessions([.compute(id: "same", status: "Running")])
+        let none = try await service().submit(request("r2"), by: .agent)
+        XCTAssertNil(none)
+    }
+
     // MARK: - The session
 
     func testASessionIsReusedOrLaunchedWithTheRegistryCredentials() async throws {
