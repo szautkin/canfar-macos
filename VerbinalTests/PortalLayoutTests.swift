@@ -39,6 +39,28 @@ final class PortalLayoutTests: XCTestCase {
         XCTAssertEqual(PortalLayout.arrangement(forWidth: 1000), PortalLayout.wide)
     }
 
+    /// Cards share the width: equal columns, spacing between, a span its
+    /// columns and the gaps inside it — never more than the width given.
+    func testACardIsItsColumnsWidthAndTheCardsNeverExceedTheWidth() {
+        let width: CGFloat = 1441
+        let one = PortalLayout.width(ofSpan: 1, in: width)
+        XCTAssertEqual(one * 3 + PortalLayout.spacing * 2, width, accuracy: 0.001)
+        XCTAssertEqual(PortalLayout.width(ofSpan: 2, in: width), one * 2 + PortalLayout.spacing, accuracy: 0.001)
+        XCTAssertEqual(PortalLayout.width(ofSpan: 3, in: width), width, accuracy: 0.001)
+        XCTAssertEqual(PortalLayout.width(ofSpan: 9, in: width), width, accuracy: 0.001, "a span past the columns is all of them")
+        XCTAssertEqual(PortalLayout.width(ofSpan: 1, in: 10), 0, "no negative width in a tiny window")
+    }
+
+    /// Batch jobs and images wait for sign-in: beside other cards their place
+    /// is kept; alone in a row (narrow), the row goes.
+    func testAnAbsentCardKeepsItsPlaceOnlyInARowOthersShare() {
+        let present = Set(PortalCard.allCases).subtracting([.batchJobs, .images])
+        let wide = PortalLayout.rows(PortalLayout.wide, present: present).map { $0.map(\.card) }
+        XCTAssertEqual(wide, [[.platformLoad, .storage, .batchJobs], [.sessions], [.images, .recentLaunches]])
+        let narrow = PortalLayout.rows(PortalLayout.narrow, present: present).map { $0.map(\.card) }
+        XCTAssertEqual(narrow, [[.platformLoad], [.storage], [.sessions], [.recentLaunches]])
+    }
+
     // MARK: - show_launch_form
 
     private func ctx() -> AIToolContext {

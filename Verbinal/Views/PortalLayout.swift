@@ -27,6 +27,18 @@ enum PortalLayout {
     static let columns = 3
     /// Narrower than this, the cards stack.
     static let breakpoint: CGFloat = 1000
+    /// Between columns and between rows.
+    static let spacing: CGFloat = 16
+
+    /// A card's width when it spans `span` of the columns across `width`:
+    /// the columns share the width equally, spacing between them. Given,
+    /// not left to the grid to work out from the cards' contents — which let
+    /// one column take the whole window and push the others off the edge.
+    static func width(ofSpan span: Int, in width: CGFloat) -> CGFloat {
+        let column = max(0, (width - spacing * CGFloat(columns - 1)) / CGFloat(columns))
+        let spanned = min(max(span, 1), columns)
+        return column * CGFloat(spanned) + spacing * CGFloat(spanned - 1)
+    }
 
     static let wide: [PortalCard: PortalCell] = [
         .platformLoad: PortalCell(row: 0, column: 0, span: 1),
@@ -45,10 +57,14 @@ enum PortalLayout {
         width >= breakpoint ? wide : narrow
     }
 
-    /// The arrangement row by row, each row's cards left to right.
-    static func rows(_ arrangement: [PortalCard: PortalCell]) -> [[(card: PortalCard, cell: PortalCell)]] {
+    /// The arrangement row by row, each row's cards left to right. A card
+    /// not `present` keeps its place in a row others share — the next card
+    /// must not slide into its column — and a row with none present goes.
+    static func rows(_ arrangement: [PortalCard: PortalCell],
+                     present: Set<PortalCard> = Set(PortalCard.allCases)) -> [[(card: PortalCard, cell: PortalCell)]] {
         Dictionary(grouping: arrangement.map { (card: $0.key, cell: $0.value) }, by: \.cell.row)
             .sorted { $0.key < $1.key }
             .map { $0.value.sorted { $0.cell.column < $1.cell.column } }
+            .filter { row in row.contains { present.contains($0.card) } }
     }
 }

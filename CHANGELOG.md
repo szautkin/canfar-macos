@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **The Portal fits its window** — the grid could give its first column
+  the whole window, so Storage and Batch Jobs went off the right edge and
+  the session and image cards were cut; and a row's cards were as tall and
+  wide as their contents. Each card is now its columns' share of the
+  window and its row's height, and a card still waiting for sign-in keeps
+  its place without leaving a gap.
 - **A full image reference on the launch form's Advanced tab** — pasted,
   or given by your assistant's `show_launch_form`, it was put under the
   chosen registry a second time (`images.canfar.net/images.canfar.net/…`)

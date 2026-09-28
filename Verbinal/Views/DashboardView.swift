@@ -20,19 +20,23 @@ struct DashboardView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            let width = max(0, geometry.size.width - 40)
             ScrollView {
-                Grid(alignment: .topLeading, horizontalSpacing: 16, verticalSpacing: 16) {
-                    ForEach(Array(PortalLayout.rows(PortalLayout.arrangement(forWidth: geometry.size.width - 40)).enumerated()),
+                Grid(alignment: .topLeading, horizontalSpacing: PortalLayout.spacing, verticalSpacing: PortalLayout.spacing) {
+                    ForEach(Array(PortalLayout.rows(PortalLayout.arrangement(forWidth: width), present: presentCards).enumerated()),
                             id: \.offset) { _, row in
                         GridRow(alignment: .top) {
                             ForEach(row, id: \.card) { placed in
                                 card(placed.card)
-                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                                    // Its columns' width exactly, and its row's height.
+                                    .frame(width: PortalLayout.width(ofSpan: placed.cell.span, in: width))
+                                    .frame(maxHeight: .infinity, alignment: .top)
                                     .gridCellColumns(placed.cell.span)
                             }
                         }
                     }
                 }
+                .groupBoxStyle(PortalCardStyle())
                 .padding(20)
             }
         }
@@ -103,6 +107,8 @@ struct DashboardView: View {
         case .batchJobs:
             if let hm = appState.headlessMonitor {
                 HeadlessJobsView(model: hm)
+            } else {
+                emptyCell
             }
         case .sessions:
             SessionListView(model: sessionListModel, onLaunch: { appState.launchFormPresented = true })
@@ -117,6 +123,8 @@ struct DashboardView: View {
                     },
                     registrySearch: appState.registrySearch
                 )
+            } else {
+                emptyCell
             }
         case .recentLaunches:
             RecentLaunchesView(
@@ -127,6 +135,20 @@ struct DashboardView: View {
                 }
             )
         }
+    }
+
+    /// The cards that can be shown now: batch jobs and images need what
+    /// sign-in sets up.
+    private var presentCards: Set<PortalCard> {
+        var cards = Set(PortalCard.allCases)
+        if appState.headlessMonitor == nil { cards.remove(.batchJobs) }
+        if appState.canfarImagesModel == nil { cards.remove(.images) }
+        return cards
+    }
+
+    /// A card not there yet keeps its place, so the next does not slide into it.
+    private var emptyCell: some View {
+        Color.clear.frame(height: 0)
     }
 
     // MARK: - The launch form
