@@ -20,7 +20,7 @@ with its tests and a CHANGELOG entry; a tool change also updates
 | V viewers | done — V1 marks in get_fits_image; V2 the cube picture as seen; V3 a linear first look; V4 North Up re-fits; V5 the spectrum with its axis and unit; V6 fields apart said | `3753b7c`, `4c0b179`, `f3cb0de`, `675d2c3`, `eb97833`, `04ce64c` |
 | R search, ADQL, resolver, VizieR | done — R1 a row per plane, text proposal ids; R2 bare ambiguous columns, checked before sending; R3 transient names; R4 VizieR mirrors that answer, nearest first; R5 target-first names | `8befbf2`, `89e5a35`, `81645df`, `03bbe89`, `4fed789` |
 | O other surfaces | done — O1 view state, pointable targets, platform counts; O2 decimal GB; O3 launch project, flexible sessions, no events; O4 workflow copies, finished stages, bookmark id, untyped images | `db90e5b`, `6fca536`, `f83129b`, `c1ba0e3` |
-| Q capture and regression | in progress — Q1 capture_view | Q1 |
+| Q capture and regression | Q1 `capture_view` done; Q2 handout written ([16](./16-qa-regression-plan15.md)) — the pass itself is the next live QA | `c5f32b2`, Q2 |
 
 ## How the work is done
 
