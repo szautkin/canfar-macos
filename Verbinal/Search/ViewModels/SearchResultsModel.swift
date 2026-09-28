@@ -156,12 +156,17 @@ final class SearchResultsModel {
             }
         }
 
+        // Each row its own id: a second row with the same one is numbered.
+        var taken: [String: Int] = [:]
         results = rows.enumerated().map { rowIndex, row in
-            Self.buildResult(
+            let base = Self.rowID(row, columns: columns, rowIndex: rowIndex)
+            let seen = (taken[base] ?? 0) + 1
+            taken[base] = seen
+            return Self.buildResult(
                 row: row,
+                id: seen == 1 ? base : "\(base)#\(seen)",
                 columns: columns,
-                selectedUnits: selectedUnits,
-                rowIndex: rowIndex
+                selectedUnits: selectedUnits
             )
         }
 
@@ -171,25 +176,30 @@ final class SearchResultsModel {
         refresh(resettingPage: true)
     }
 
-    /// Construct a ``SearchResult`` from a single CSV row, building its
-    /// stable id and per-column search haystack.
+    /// A row's id: its plane's publisher ID, which names one calibration
+    /// level of one observation — the observation ID is shared by all of
+    /// them (QA M1: `oezt010e0` at levels 1, 2 and 3 was one id) — else the
+    /// observation ID, else its place.
+    static func rowID(_ row: [String], columns: SearchResultColumns, rowIndex: Int) -> String {
+        var raw = row
+        while raw.count < columns.count { raw.append("") }
+        let pub = obtain(rawValue: raw, id: "publisherid", columns: columns)
+        if !pub.isEmpty { return pub }
+        let obsid = obtain(rawValue: raw, id: "obsid", columns: columns)
+        return obsid.isEmpty ? "row_\(rowIndex)" : obsid
+    }
+
+    /// Construct a ``SearchResult`` from a single CSV row and its id,
+    /// building its per-column search haystack.
     private static func buildResult(
         row: [String],
+        id: String,
         columns: SearchResultColumns,
-        selectedUnits: [String: String],
-        rowIndex: Int
+        selectedUnits: [String: String]
     ) -> SearchResult {
         // rawValues is the positional row; pad shorter rows so indexing is safe.
         var raw = row
         while raw.count < columns.count { raw.append("") }
-
-        // Stable id — prefer obsid, then publisherID, then synthetic row-index.
-        let obsid = obtain(rawValue: raw, id: "obsid", columns: columns)
-        let pub = obtain(rawValue: raw, id: "publisherid", columns: columns)
-        let id: String
-        if !obsid.isEmpty { id = obsid }
-        else if !pub.isEmpty { id = pub }
-        else { id = "row_\(rowIndex)" }
 
         // Per-column lowercased haystack (raw + formatted), built once using
         // the column's currently-selected unit if any. Unit changes trigger

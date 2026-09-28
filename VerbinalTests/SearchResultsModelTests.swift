@@ -92,6 +92,32 @@ final class SearchResultsModelTests: XCTestCase {
         XCTAssertTrue(model.results[0].id.hasPrefix("row_"))
     }
 
+    /// Plan 15 R1 (QA M1): each calibration level of an observation is its own
+    /// row — its plane's publisher ID — so a detail can be opened for one.
+    func testEachPlaneIsItsOwnRow() {
+        let model = makeModel()
+        let headers = ["\"obsID\"", "\"Cal. Lev.\"", "\"publisherID\""]
+        let rows = (1...3).map { ["oezt010e0", "\($0)", "ivo://cadc.nrc.ca/mirror/HST?oezt010e0/oezt010e0-L\($0)"] }
+        model.loadResults(headers: headers, rows: rows, query: "Q", maxRec: 10)
+        XCTAssertEqual(model.results.map(\.id), rows.map { $0[2] })
+    }
+
+    func testARepeatedIdIsNumbered() {
+        let model = makeModel()
+        model.loadResults(headers: ["\"obsID\""], rows: [["a"], ["a"], ["b"]], query: "Q", maxRec: 10)
+        XCTAssertEqual(model.results.map(\.id), ["a", "a#2", "b"])
+    }
+
+    /// QA L1: a proposal id is text whatever the first rows hold, and
+    /// Download holds a publisher ID, not a yes or no.
+    func testProposalIDAndDownloadAreText() {
+        let model = makeModel()
+        model.loadResults(headers: ["\"Proposal ID\"", "\"Download\""],
+                          rows: [["15326", "ivo://cadc.nrc.ca/HST?a/b"], ["17205", ""]], query: "Q", maxRec: 10)
+        XCTAssertEqual(model.columns.column(id: "proposalid")?.kind, .text)
+        XCTAssertEqual(model.columns.column(id: "download")?.kind, .text)
+    }
+
     // MARK: - Duplicate header disambiguation
 
     func testDuplicateCleanedHeadersAreDisambiguated() {

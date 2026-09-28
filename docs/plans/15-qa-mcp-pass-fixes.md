@@ -17,8 +17,8 @@ with its tests and a CHANGELOG entry; a tool change also updates
 | P Portal layout | done — P1 | `64a2500` |
 | F data you can trust | done — F1 Rice high-entropy blocks, 8/16/32-bit; F2 a compressed image's own header; F3 downloads that hold nothing; F4 one row per saved query; F5 Storage reads at an offset, one media type; F6 a record describes its plane, ids checked, a file by name; F7 jobs not seen finishing, probe failures that say why | `59af802`, `6e3a57e`, `fadd302`, `97dfe72`, `0a15669`, `e9edbb9`, F7 |
 | S agent safety and audit | done — S1 standing instructions wait for the person; S2 who applied a change; S3 the person's rules come first; S4 proposals expire after 3 hours; S5 public secrets flagged, Make Private; S6 a session that differs from Settings says so | `445d1e5`, `7662e58`, `bc245a2`, `d7a12bc`, `0079fbc`, `b793e65` |
-| V viewers | done — V1 marks in get_fits_image; V2 the cube picture as seen; V3 a linear first look; V4 North Up re-fits; V5 the spectrum with its axis and unit; V6 fields apart said | `3753b7c`, `4c0b179`, `f3cb0de`, `675d2c3`, `eb97833`, V6 |
-| R search, ADQL, resolver, VizieR | planned — R1–R5 | — |
+| V viewers | done — V1 marks in get_fits_image; V2 the cube picture as seen; V3 a linear first look; V4 North Up re-fits; V5 the spectrum with its axis and unit; V6 fields apart said | `3753b7c`, `4c0b179`, `f3cb0de`, `675d2c3`, `eb97833`, `04ce64c` |
+| R search, ADQL, resolver, VizieR | in progress — R1 a row per plane, text proposal ids | R1 |
 | O other surfaces | planned — O1–O4 | — |
 | Q capture and regression | planned — Q1–Q2 | — |
 
@@ -86,7 +86,7 @@ leaving an empty row. — `64a2500`
 
 | Step | Findings | Fix, and where |
 |---|---|---|
-| **R1** | M1, L1, L2, L12 | A result row is identified by its plane's publisher id, so `open_observation_detail` can pick a calibration level; "Proposal ID" is text, "Download" is the publisher id; column ids come from the column names; `get_search_results` with `includeRows: false` returns the columns. |
+| **R1** | M1, L1, L2, L12 | A result row is identified by its plane's publisher id (numbered when repeated), so `open_observation_detail` can pick a calibration level; "Proposal ID" is text, "Download" is the publisher id. L2 is kept as it is: the column ids (`ra(j20000)`) are the keys Verbinal for Windows uses too, and saved column settings are stored under them — the tool now says so, and `label` carries the name. L12 did not reproduce: with results loaded, `includeRows: false` returns the columns; a test pins it. |
 | **R2** | M16, L13 | The ADQL checker flags an unqualified column that more than one joined table has; the editor runs the checker before sending, so `LIMIT` is caught at home. |
 | **R3** | M12 | The resolver accepts transient names (`AT 2023ixf`, `SN 2023ixf`, `2023ixf`), and its error names every service it tried. |
 | **R4** | M8, M9 | The VizieR mirror list is corrected (hosts that resolve, HTTPS only); a cone search can choose its columns and returns the nearest rows first, with their separation. |

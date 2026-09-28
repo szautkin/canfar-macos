@@ -18,7 +18,8 @@ import os
 /// underlying raw value — resolving the long-standing filter/display
 /// mismatch (users saw `2024-03-15` but had to type the MJD `60384.x`).
 struct SearchResult: Identifiable {
-    /// Stable identifier — prefers `obsid`, falls back to publisherID, then UUID.
+    /// Stable identifier — the plane's publisherID, else `obsid`, else the
+    /// row's place; unique in its result set (``SearchResultsModel/rowID(_:columns:rowIndex:)``).
     let id: String
 
     /// Raw CSV values, positional. Index matches ``SearchResultColumns/list``.
@@ -217,7 +218,10 @@ struct SearchResultColumns {
         "enddate": .mjdDate,
         "datarelease": .isoDate,
         "provelastexecuted": .isoDate,
-        "download": .boolean,
+        // isDownloadable(Plane.publisherID): the publisher ID when the plane can be downloaded.
+        "download": .text,
+        // HST's are numbers, Gemini's GN-2011A-Q-1, CFHT's 23AC01 (QA L1).
+        "proposalid": .text,
         "movingtarget": .boolean,
         "ra(j20000)": .number,
         "dec(j20000)": .number,

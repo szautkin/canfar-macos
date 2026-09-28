@@ -216,4 +216,20 @@ final class SearchControlToolsTests: XCTestCase {
                             origin: .external(clientID: "test"), requestID: UUID()))
         XCTAssertTrue(store.searches.isEmpty)
     }
+
+    /// Plan 15 R1 (QA L12): state without rows still names the columns.
+    @MainActor
+    func testStateWithoutRowsStillHasItsColumns() async throws {
+        let state = AppState()
+        state.searchModel.resultsModel.loadResults(
+            headers: ["\"Collection\"", "\"Target Name\"", "\"publisherID\""],
+            rows: [["JWST", "M31", "ivo://cadc.nrc.ca/JWST?x/y"]], query: "Q", maxRec: 10)
+        let tool = state.makeGetSearchResultsTool()
+        let ctx = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(),
+                                budget: ProposalBudget(limit: 9))
+        let out = try await tool.handle(.init(allColumns: true, includeRows: false), context: ctx)
+        XCTAssertEqual(out.columns.map(\.id), ["collection", "targetname", "publisherid"])
+        XCTAssertTrue(out.rows.isEmpty)
+        XCTAssertTrue(out.rowIDs.isEmpty)
+    }
 }

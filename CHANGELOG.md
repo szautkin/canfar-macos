@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Each calibration level of an observation is its own search result** —
+  the rows of one observation shared an id, so selecting or opening one
+  could land on another (and an assistant could not choose the level with
+  `open_observation_detail`). A row is now its plane's publisher id.
+  Proposal IDs such as `GN-2011A-Q-1` are text, not numbers, and the
+  Download column is the plane's publisher id, not a yes or no.
 - **A linked crosshair says when a tab shows another part of the sky** —
   a GOODS-S frame linked to COSMOS frames gave no sign that the crosshair
   had nowhere to land. With the crosshair linked, the tab bar names the
