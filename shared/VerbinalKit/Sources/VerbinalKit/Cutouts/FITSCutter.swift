@@ -83,12 +83,12 @@ public enum FITSCutter {
         file.hdus.filter { hdu in
             guard hdu.isImage, hdu.wcs != nil else { return false }
             guard isCompressed(hdu) else { return (2...3).contains(hdu.header.naxis) }
-            return hdu.header.naxis == 2 && hdu.header.string("ZCMPTYPE") == "RICE_1"
-                && [8, 16, 32].contains(hdu.header.int("ZBITPIX"))
+            return hdu.header.naxis == 2 && hdu.compression?.algorithm == "RICE_1"
+                && [8, 16, 32].contains(hdu.header.bitpix)
         }
     }
 
-    static func isCompressed(_ hdu: FITSHDUnit) -> Bool { hdu.header.contains("_COMPRESSED") }
+    static func isCompressed(_ hdu: FITSHDUnit) -> Bool { hdu.isCompressed }
 
     /// Each channel's wavelength in metres, for a cube whose axis gives them.
     public static func wavelengths(of hdu: FITSHDUnit) -> [Double]? {
@@ -325,37 +325,21 @@ public enum FITSCutter {
         return cards
     }
 
-    /// The tile-compression convention's reserved keywords: the table's
-    /// shape and the Z-keywords that describe the image inside it.
-    static func isTileCompressionKeyword(_ key: String) -> Bool {
-        let fixed: Set<String> = ["ZIMAGE", "ZCMPTYPE", "ZBITPIX", "ZNAXIS", "ZMASKCMP", "ZQUANTIZ", "ZDITHER0", "ZSIMPLE",
-                                  "ZTENSION", "ZEXTEND", "ZBLOCKED", "ZPCOUNT", "ZGCOUNT", "ZHECKSUM", "ZDATASUM", "ZBLANK",
-                                  "TFIELDS", "THEAP"]
-        if fixed.contains(key) { return true }
-        for prefix in ["ZNAXIS", "ZTILE", "ZNAME", "ZVAL", "TTYPE", "TFORM", "TUNIT", "TDIM", "TNULL", "TSCAL", "TZERO", "TDISP"]
-        where key.hasPrefix(prefix) && key.dropFirst(prefix.count).allSatisfy(\.isNumber) && key.count > prefix.count {
-            return true
-        }
-        return false
-    }
-
     /// The image a tile-compressed table holds, as its own header: its
-    /// shape from the Z-keywords, its null value from ZBLANK, and every
-    /// other card as written (a real keyword such as ZD survives).
+    /// shape from the image's header, then the table's cards as written,
+    /// each by its fate in the convention (`TileCompression.fate`) — ZBLANK
+    /// the BLANK, the table's structure gone, a real keyword such as ZD kept.
     static func uncompressedCards(_ table: [String], hdu: FITSHDUnit) -> [String] {
         let h = hdu.header
-        let axes = h.int("ZNAXIS")
-        var cards = [card("XTENSION", "'IMAGE   '", "image extension"), card("BITPIX", "\(h.int("ZBITPIX"))"),
-                     card("NAXIS", "\(axes)")]
-        cards += (1...max(axes, 1)).map { card("NAXIS\($0)", "\(h.int("ZNAXIS\($0)"))") }
+        var cards = [card("XTENSION", "'IMAGE   '", "image extension"), card("BITPIX", "\(h.bitpix)"), card("NAXIS", "\(h.naxis)")]
+        cards += (1...max(h.naxis, 1)).map { card("NAXIS\($0)", "\(h.int("NAXIS\($0)"))") }
         cards += [card("PCOUNT", "0"), card("GCOUNT", "1")]
-        let structural: Set<String> = ["XTENSION", "SIMPLE", "BITPIX", "NAXIS", "PCOUNT", "GCOUNT", "EXTEND"]
         for original in table {
-            let key = keyword(of: original)
-            if structural.contains(key) || (key.hasPrefix("NAXIS") && key.dropFirst(5).allSatisfy(\.isNumber)) { continue }
-            if key == "ZBLANK" { cards.append(card("BLANK", "\(h.int("ZBLANK"))")); continue }
-            if isTileCompressionKeyword(key) { continue }
-            cards.append(original)
+            switch TileCompression.fate(of: keyword(of: original)) {
+            case .keep: cards.append(original)
+            case .rename(let name): cards.append(name.padding(toLength: 8, withPad: " ", startingAt: 0) + original.dropFirst(8))
+            case .drop: continue
+            }
         }
         return cards
     }
@@ -381,7 +365,7 @@ public enum FITSCutter {
             do { values = try FITSDecompressor.storedValues(from: data, hdu: hdu, box: box) } catch {
                 throw .unreadable(error.localizedDescription)
             }
-            let bytes = hdu.header.int("ZBITPIX") / 8
+            let bytes = hdu.header.bitpix / 8
             var out = Data(capacity: values.count * bytes)
             for value in values {
                 switch bytes {

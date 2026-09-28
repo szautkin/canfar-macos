@@ -48,18 +48,15 @@ public enum FITSDecompressor {
     ///
     /// - Parameters:
     ///   - data: Full FITS file data (memory-mapped is fine).
-    ///   - hdu:  The compressed-image HDU. Its header must contain `_COMPRESSED`,
-    ///           `_TNAXIS1`, `_TNAXIS2`, `_PCOUNT`, and all ZNAXIS/ZTILE/ZVAL keywords.
+    ///   - hdu:  The compressed-image HDU, with its `compression` layout.
     /// - Returns: Decompressed pixels as Float32, in row-major order, BSCALE/BZERO applied.
     /// - Throws:  `FITSDecompressor.Error` or `FITSError` on malformed data.
     public static func decompress(from data: Data, hdu: FITSHDUnit) throws -> [Float] {
-        let h = hdu.header
         let stored = try storedValues(from: data, hdu: hdu)
-        // For fpack-compressed files the BSCALE/BZERO in the binary-table header
-        // apply to the *original* integer values (not the compressed form).
-        // BZERO=32768 is standard for unsigned-uint16 stored as int16 in FITS.
-        let bscale = Float(h.double("BSCALE", fallback: 1.0))
-        let bzero  = Float(h.double("BZERO",  fallback: 0.0))
+        // BSCALE/BZERO apply to the stored integers, as in a plain image;
+        // BZERO=32768 is the usual unsigned 16-bit.
+        let bscale = Float(hdu.header.bscale)
+        let bzero  = Float(hdu.header.bzero)
         var floatPixels = stored.map { Float($0) }
         if bscale != 1.0 || bzero != 0.0 {
             var scale = bscale
@@ -75,39 +72,30 @@ public enum FITSDecompressor {
     /// of `box` only, decoding just the tiles it touches (a small cutout of
     /// a large fpack tile reads a few rows, not the file).
     public static func storedValues(from data: Data, hdu: FITSHDUnit, box: PixelBox? = nil) throws -> [Int32] {
-        let h = hdu.header
+        guard let layout = hdu.compression else { throw Error.unsupportedCompression("(none)") }
 
-        // Validate compression type
-        let zcmptype = h.string("ZCMPTYPE") ?? ""
-        guard zcmptype == "RICE_1" else {
-            throw Error.unsupportedCompression(zcmptype.isEmpty ? "(none)" : zcmptype)
+        guard layout.algorithm == "RICE_1" else {
+            throw Error.unsupportedCompression(layout.algorithm.isEmpty ? "(none)" : layout.algorithm)
         }
-
         // Integer images of 8, 16 or 32 bits; quantised floating point is not read yet.
-        let zbitpix = h.int("ZBITPIX")
-        guard [8, 16, 32].contains(zbitpix) else {
-            throw Error.unsupportedBitpix(zbitpix)
+        guard [8, 16, 32].contains(layout.bitpix) else {
+            throw Error.unsupportedBitpix(layout.bitpix)
         }
-        // BYTEPIX when the file names it, else the image's own width.
-        let bytePix = h.string("ZNAME2")?.uppercased() == "BYTEPIX" ? h.int("ZVAL2", fallback: zbitpix / 8) : zbitpix / 8
 
-        // Original image dimensions (these are now stored as NAXIS1/NAXIS2 in the header)
-        let imageWidth  = h.int("NAXIS1")   // e.g. 2048
-        let imageHeight = h.int("NAXIS2")   // e.g. 2048
+        // The image's own size — its header is the image's.
+        let imageWidth  = hdu.header.naxis1
+        let imageHeight = hdu.header.naxis2
         let area = box ?? PixelBox(x0: 0, y0: 0, x1: imageWidth, y1: imageHeight)
 
-        // Tile dimensions from ZTILE keywords (ZTILE1=width, ZTILE2=height per tile)
-        let tileWidth  = h.int("ZTILE1", fallback: imageWidth)
-        let tileHeight = h.int("ZTILE2", fallback: 1)
+        let tileWidth  = layout.tileWidth
+        let tileHeight = layout.tileHeight
         guard tileWidth > 0, tileHeight > 0 else { throw FITSError.invalidFile("Compressed FITS: tiles of no size") }
+        let blockSize = layout.blockSize
+        let bytePix = layout.bytePix
 
-        // Rice parameters
-        let blockSize = h.int("ZVAL1", fallback: 32)  // pixels per Rice block
-
-        // Raw binary table geometry (stashed by parser before NAXIS1/2 were overwritten)
-        let tableRowBytes = h.int("_TNAXIS1")  // bytes per row in the main table (e.g. 8)
-        let tableNRows    = h.int("_TNAXIS2")  // number of rows = number of tiles
-        let pcount        = h.int("_PCOUNT")   // heap size in bytes
+        let tableRowBytes = layout.rowBytes
+        let tableNRows    = layout.rows
+        let pcount        = layout.heapBytes
 
         // Heap starts immediately after the main table data
         let tableStart = hdu.dataOffset

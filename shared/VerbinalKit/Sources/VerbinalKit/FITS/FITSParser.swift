@@ -87,23 +87,10 @@ public enum FITSParser {
                 dataLength = size
             }
 
-            // Detect fpack-compressed extensions (ZCMPTYPE present)
-            // and use ZNAXIS/ZBITPIX for the actual image dimensions
-            var effectiveHeader = header
-            if header.contains("ZCMPTYPE"), header.contains("ZNAXIS1") {
-                // Preserve the raw binary table geometry before overwriting with image dimensions.
-                // These are needed by FITSDecompressor to locate the heap and variable-length arrays.
-                effectiveHeader.add(FITSCard(keyword: "_TNAXIS1", value: String(header.int("NAXIS1")), comment: "raw table bytes-per-row"))
-                effectiveHeader.add(FITSCard(keyword: "_TNAXIS2", value: String(header.int("NAXIS2")), comment: "raw table row count"))
-                effectiveHeader.add(FITSCard(keyword: "_PCOUNT", value: String(header.int("PCOUNT")), comment: "heap size in bytes"))
-                // Replace NAXIS/BITPIX with the original (uncompressed) values
-                effectiveHeader.add(FITSCard(keyword: "NAXIS", value: String(header.int("ZNAXIS")), comment: "from ZNAXIS"))
-                effectiveHeader.add(FITSCard(keyword: "NAXIS1", value: String(header.int("ZNAXIS1")), comment: "from ZNAXIS1"))
-                effectiveHeader.add(FITSCard(keyword: "NAXIS2", value: String(header.int("ZNAXIS2")), comment: "from ZNAXIS2"))
-                effectiveHeader.add(FITSCard(keyword: "BITPIX", value: String(header.int("ZBITPIX")), comment: "from ZBITPIX"))
-                // Mark as compressed — extractPixels will need to handle this
-                effectiveHeader.add(FITSCard(keyword: "_COMPRESSED", value: "T", comment: "fpack compressed"))
-            }
+            // A tile-compressed image (fpack): readers see the image's own
+            // header; where its tiles are travels beside it.
+            let compression = TileCompression.Layout(table: header)
+            let effectiveHeader = compression == nil ? header : TileCompression.imageHeader(fromTable: header)
 
             let wcs = FITSWCSTransform.fromHeader(effectiveHeader)
 
@@ -113,7 +100,8 @@ public enum FITSParser {
                 dataOffset: dataOffset,
                 dataLength: dataLength,
                 wcs: wcs,
-                headerOffset: offset
+                headerOffset: offset,
+                compression: compression
             ))
 
             // Advance to next 2880-byte boundary
@@ -228,7 +216,7 @@ public enum FITSParser {
         let header = hdu.header
 
         // fpack-compressed: delegate to the Rice decompressor
-        if header.contains("_COMPRESSED") {
+        if hdu.isCompressed {
             return try FITSDecompressor.decompress(from: data, hdu: hdu)
         }
 

@@ -52,10 +52,10 @@ struct LocalCutoutSource: CutoutSource {
         }
         let images = FITSCutter.images(of: fits)
         guard !images.isEmpty else {
-            let compressed = fits.hdus.contains { $0.header.contains("_COMPRESSED") }
+            let compressed = fits.hdus.contains(where: \.isCompressed)
             return LocalCutoutSource(url: url, localFile: empty, fitsFile: fits, wholeFileBytes: size,
                                      unavailable: compressed
-                                        ? "the file is compressed in a way this computer does not cut (it cuts RICE_1 16-bit fpack) — cut it with cutBy soda"
+                                        ? "the file is compressed in a way this computer does not cut (it cuts RICE_1 integer fpack images) — cut it with cutBy soda"
                                         : FITSCutter.Failure.noImage.message)
         }
         let corners = images.flatMap(skyCorners)

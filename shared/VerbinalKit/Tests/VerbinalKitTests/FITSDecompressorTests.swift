@@ -505,7 +505,15 @@ final class FITSDecompressorIntegrationTests: XCTestCase {
         bzero: Double = 0.0,
         bscale: Double = 1.0
     ) -> FITSHDUnit {
+        // The table as fpack writes it; the parser's image header and layout come from it.
         var h = FITSHeader()
+        h.add(FITSCard(keyword: "XTENSION", value: "'BINTABLE'", comment: ""))
+        h.add(FITSCard(keyword: "BITPIX",   value: "8", comment: ""))
+        h.add(FITSCard(keyword: "NAXIS",    value: "2", comment: ""))
+        h.add(FITSCard(keyword: "NAXIS1",   value: String(tableRowBytes), comment: ""))
+        h.add(FITSCard(keyword: "NAXIS2",   value: String(tableNRows), comment: ""))
+        h.add(FITSCard(keyword: "PCOUNT",   value: String(pcount), comment: ""))
+        h.add(FITSCard(keyword: "ZIMAGE",   value: "T", comment: ""))
         h.add(FITSCard(keyword: "ZCMPTYPE", value: zcmptype, comment: ""))
         h.add(FITSCard(keyword: "ZBITPIX",  value: String(zbitpix), comment: ""))
         h.add(FITSCard(keyword: "ZNAXIS",   value: "2", comment: ""))
@@ -513,18 +521,10 @@ final class FITSDecompressorIntegrationTests: XCTestCase {
         h.add(FITSCard(keyword: "ZNAXIS2",  value: String(imageHeight), comment: ""))
         h.add(FITSCard(keyword: "ZTILE1",   value: String(tileWidth), comment: ""))
         h.add(FITSCard(keyword: "ZTILE2",   value: String(tileHeight), comment: ""))
-        h.add(FITSCard(keyword: "ZVAL1",    value: "32", comment: "blocksize"))
-        h.add(FITSCard(keyword: "ZVAL2",    value: "2", comment: "bytepix"))
-        // Private keywords stashed by FITSParser
-        h.add(FITSCard(keyword: "_TNAXIS1", value: String(tableRowBytes), comment: ""))
-        h.add(FITSCard(keyword: "_TNAXIS2", value: String(tableNRows), comment: ""))
-        h.add(FITSCard(keyword: "_PCOUNT",  value: String(pcount), comment: ""))
-        h.add(FITSCard(keyword: "_COMPRESSED", value: "T", comment: ""))
-        // Patched image dimensions (as FITSParser does)
-        h.add(FITSCard(keyword: "NAXIS",    value: "2", comment: ""))
-        h.add(FITSCard(keyword: "NAXIS1",   value: String(imageWidth), comment: ""))
-        h.add(FITSCard(keyword: "NAXIS2",   value: String(imageHeight), comment: ""))
-        h.add(FITSCard(keyword: "BITPIX",   value: String(zbitpix), comment: ""))
+        h.add(FITSCard(keyword: "ZNAME1",   value: "'BLOCKSIZE'", comment: ""))
+        h.add(FITSCard(keyword: "ZVAL1",    value: "32", comment: ""))
+        h.add(FITSCard(keyword: "ZNAME2",   value: "'BYTEPIX'", comment: ""))
+        h.add(FITSCard(keyword: "ZVAL2",    value: "2", comment: ""))
         if bzero != 0.0 {
             h.add(FITSCard(keyword: "BZERO", value: String(bzero), comment: ""))
         }
@@ -534,10 +534,11 @@ final class FITSDecompressorIntegrationTests: XCTestCase {
 
         return FITSHDUnit(
             id: 1,
-            header: h,
+            header: TileCompression.imageHeader(fromTable: h),
             dataOffset: dataOffset,
             dataLength: tableRowBytes * tableNRows + pcount,
-            wcs: nil
+            wcs: nil,
+            compression: TileCompression.Layout(table: h)
         )
     }
 }

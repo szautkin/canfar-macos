@@ -68,10 +68,13 @@ final class RecentFilesTests: XCTestCase {
         let plain = FITSHDUnit(id: 0, header: header, dataOffset: 0, dataLength: 0, wcs: nil)
         XCTAssertTrue(FITSViewerModel.readingStage(of: plain).hasPrefix("Reading"))
         XCTAssertTrue(FITSViewerModel.readingStage(of: plain).filter(\.isNumber).hasPrefix("20484096"))
-        for (key, value) in [("ZIMAGE", "T"), ("_COMPRESSED", "T"), ("ZNAXIS1", "20315"), ("ZNAXIS2", "20475")] {
-            header.add(FITSCard(keyword: key, value: value, comment: ""))
+        var table = FITSHeader()
+        for (key, value) in [("ZIMAGE", "T"), ("ZCMPTYPE", "'RICE_1'"), ("ZBITPIX", "16"), ("ZNAXIS", "2"),
+                             ("ZNAXIS1", "20315"), ("ZNAXIS2", "20475")] {
+            table.add(FITSCard(keyword: key, value: value, comment: ""))
         }
-        let packed = FITSHDUnit(id: 1, header: header, dataOffset: 0, dataLength: 0, wcs: nil)
+        let packed = FITSHDUnit(id: 1, header: TileCompression.imageHeader(fromTable: table), dataOffset: 0, dataLength: 0,
+                                wcs: nil, compression: TileCompression.Layout(table: table))
         XCTAssertTrue(FITSViewerModel.readingStage(of: packed).hasPrefix("Uncompressing"))
         XCTAssertTrue(FITSViewerModel.readingStage(of: packed).filter(\.isNumber).hasPrefix("2031520475"))
     }

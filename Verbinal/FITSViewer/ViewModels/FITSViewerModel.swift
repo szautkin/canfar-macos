@@ -220,11 +220,8 @@ final class FITSViewerModel: Identifiable {
     /// What reading an image's pixels is, for the loading screen: its size,
     /// and whether its tiles are being uncompressed.
     nonisolated static func readingStage(of hdu: FITSHDUnit) -> String {
-        let header = hdu.header
-        let width = header.int("ZNAXIS1", fallback: header.naxis1)
-        let height = header.int("ZNAXIS2", fallback: header.naxis2)
-        let size = "\(width.formatted()) × \(height.formatted())"
-        return header.contains("_COMPRESSED")
+        let size = "\(hdu.header.naxis1.formatted()) × \(hdu.header.naxis2.formatted())"
+        return hdu.isCompressed
             ? String(localized: "Uncompressing \(size) pixels")
             : String(localized: "Reading \(size) pixels")
     }

@@ -31,15 +31,23 @@ public struct FITSHDUnit: Sendable, Identifiable {
     public let wcs: FITSWCSTransform?
     /// Where the header's first card is — its cards run to `dataOffset`.
     public let headerOffset: Int
+    /// For a tile-compressed image, where its tiles are; `header` is then the
+    /// image's own header, not the table's.
+    public let compression: TileCompression.Layout?
 
-    public init(id: Int, header: FITSHeader, dataOffset: Int, dataLength: Int, wcs: FITSWCSTransform?, headerOffset: Int = 0) {
+    public init(id: Int, header: FITSHeader, dataOffset: Int, dataLength: Int, wcs: FITSWCSTransform?, headerOffset: Int = 0,
+                compression: TileCompression.Layout? = nil) {
         self.id = id
         self.header = header
         self.dataOffset = dataOffset
         self.dataLength = dataLength
         self.wcs = wcs
         self.headerOffset = headerOffset
+        self.compression = compression
     }
+
+    /// A tile-compressed image (fpack).
+    public var isCompressed: Bool { compression != nil }
 
     public var isImage: Bool { header.naxis >= 2 && header.naxis1 > 0 && header.naxis2 > 0 }
     public var label: String { "HDU \(id)\(isImage ? " [\(header.naxis1)×\(header.naxis2)]" : "")" }

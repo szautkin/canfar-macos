@@ -20,6 +20,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
   well as 16-bit, and is checked value for value against files cfitsio
   wrote; a truncated tile is an error, not quietly filled in. Quantised
   floating-point fpack images are still refused, with a message saying so.
+  The header of a compressed image is the image's own, as cfitsio shows
+  it: `BITPIX`, `NAXIS1` and `EXTNAME` once each, without the table's
+  cards mixed in (`get_fits_header` and the header panel).
 - **The Portal fits its window** — the grid could give its first column
   the whole window, so Storage and Batch Jobs went off the right edge and
   the session and image cards were cut; and a row's cards were as tall and
