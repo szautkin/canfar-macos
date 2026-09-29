@@ -272,7 +272,9 @@ struct LaunchHeadlessJobTool: JSONWriteTool {
 
 struct LaunchHeadlessJobApplier: ProposalApplier, ResultReportingApplier {
     let kind = "launch_headless_job"
-    let service: HeadlessService
+    /// Launches through `HeadlessLaunches`, as the Batch Jobs form does, so
+    /// the launch is on the activity bar as the assistant's (plan 19 T1).
+    let launch: @Sendable (HeadlessLaunchParams) async throws -> [String]
     let recentLaunchStore: RecentLaunchStore
     let activity: AgentActivityStore
     /// Notes the jobs as the assistant's, so the history says so when they
@@ -375,16 +377,16 @@ struct LaunchHeadlessJobApplier: ProposalApplier, ResultReportingApplier {
 
         let launchedIDs: [String]
         do {
-            launchedIDs = try await service.launchHeadlessJob(params)
-        } catch let HeadlessLaunchError.partialReplicaFailure(launched, idx, message) {
+            launchedIDs = try await launch(params)
+        } catch let failure as HeadlessLaunchError {
             // Persist what DID land so the user / agent can reason about
             // the partial state.
-            await persist(ids: launched, payload: payload, proposal: proposal)
-            throw ProposalApplyError.backendError(
-                "Replica \(idx + 1) failed: \(message). \(launched.count) replicas already running (ids: \(launched.joined(separator: ", ")))."
-            )
-        } catch HeadlessLaunchError.emptyResponse {
-            throw ProposalApplyError.backendError("Skaha returned an empty response.")
+            if case .partialReplicaFailure(let launched, _, _) = failure {
+                await persist(ids: launched, payload: payload, proposal: proposal)
+                throw ProposalApplyError.backendError(
+                    "\(failure.localizedDescription) (ids: \(launched.joined(separator: ", ")))")
+            }
+            throw ProposalApplyError.backendError(failure.localizedDescription)
         } catch {
             throw ProposalApplyError.backendError("headless launch failed: \(error.localizedDescription)")
         }

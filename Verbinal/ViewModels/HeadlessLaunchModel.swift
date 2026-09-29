@@ -19,9 +19,9 @@ import Observation
 @Observable
 @MainActor
 final class HeadlessLaunchModel {
-    private let headlessService: HeadlessService
+    /// Launching, on the activity bar, by the rule an assistant's launches follow too.
+    private let launches: HeadlessLaunches
     private let recentLaunchStore: RecentLaunchStore
-    private let tasks: TaskRegistry
 
     // MARK: - Form state
 
@@ -48,9 +48,8 @@ final class HeadlessLaunchModel {
     private(set) var lastLaunchedJobIDs: [String] = []
 
     init(headlessService: HeadlessService, recentLaunchStore: RecentLaunchStore, tasks: TaskRegistry = .shared) {
-        self.headlessService = headlessService
+        self.launches = HeadlessLaunches(service: headlessService, tasks: tasks)
         self.recentLaunchStore = recentLaunchStore
-        self.tasks = tasks
     }
 
     // MARK: - External image selection
@@ -124,11 +123,8 @@ final class HeadlessLaunchModel {
             replicas: replicas
         )
 
-        let task = tasks.begin(.launch, String(localized: "Launch batch job \(trimmedName)"))
-        // Whatever the outcome below, it is said on the activity bar too.
-        defer { hasError ? task.fail(errorMessage) : task.succeed() }
         do {
-            let ids = try await headlessService.launchHeadlessJob(params)
+            let ids = try await launches.launch(params)
             lastLaunchedJobIDs = ids
             launchSuccess = true
             launchStatus = ids.count == 1
@@ -138,15 +134,10 @@ final class HeadlessLaunchModel {
         } catch let HeadlessLaunchError.partialReplicaFailure(launchedIDs, failedIdx, message) {
             lastLaunchedJobIDs = launchedIDs
             hasError = true
-            errorMessage = String(
-                localized: "Replica \(failedIdx + 1) failed: \(message). \(launchedIDs.count) replicas already running."
-            )
+            errorMessage = HeadlessLaunchError.partialReplicaFailure(
+                launchedIDs: launchedIDs, failedAtIndex: failedIdx, underlyingMessage: message).localizedDescription
             launchStatus = String(localized: "Partial launch — see error below")
             persistRecentLaunches(ids: launchedIDs, params: params, image: image)
-        } catch HeadlessLaunchError.emptyResponse {
-            hasError = true
-            errorMessage = String(localized: "Skaha returned an empty response.")
-            launchStatus = String(localized: "Launch failed")
         } catch {
             hasError = true
             errorMessage = error.localizedDescription

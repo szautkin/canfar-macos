@@ -31,7 +31,7 @@ The rules are those of plans 15 and 17:
 | Phase | State | Commits |
 |---|---|---|
 | S say what happened | in progress — S1 an unknown session id is not deleted; S2 every use a numbered copy, its id returned; S3 start_compute says the size it kept; S4 an apply says since when, one cut short by a quit fails saying so; K1 every Python interpreter probed, a cache hit says so | `3d2f55a`, `98e6872`, `176d858`, `3214bc4`, K1 |
-| T the trail | in progress — T2 a detached probe keeps who started it | T2 |
+| T the trail | done — T2 a detached probe keeps who started it; T1 an assistant's batch job on the bar | `35911ca`, T1 |
 | F figures and files | planned — F1–F2 | — |
 | C capture | planned — C1 (decision 1) | — |
 | R Research | planned — R1–R4 | — |

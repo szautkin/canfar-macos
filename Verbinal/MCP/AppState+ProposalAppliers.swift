@@ -86,7 +86,7 @@ extension AppState {
                 },
                 activity: activity),
             LaunchHeadlessJobApplier(
-                service: headlessService,
+                launch: { [headlessLaunches] params in try await headlessLaunches.launch(params) },
                 recentLaunchStore: recentLaunchStore,
                 activity: activity,
                 history: jobHistory,

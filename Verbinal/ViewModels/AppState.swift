@@ -542,6 +542,8 @@ final class AppState {
     /// FITS tools and the Research UI must share one store so ids
     /// survive relaunch and in-session downloads are visible both ways.
     let researchModel = ResearchModel()
+    /// Launching batch jobs for an assistant, by the Batch Jobs form's rule (plan 19 T1).
+    @ObservationIgnored private(set) lazy var headlessLaunches = HeadlessLaunches(service: headlessService)
     /// Deleting and renewing sessions for an assistant, by the Portal's rule (plan 17 A1).
     @ObservationIgnored private(set) lazy var sessionActions = SessionActions(service: sessionService)
     /// Brings older Research records up to the archive once (plan 17 G3).

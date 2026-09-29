@@ -85,3 +85,15 @@ enum HeadlessLaunchError: Error, Equatable {
     /// to roll back if desired. `failedAtIndex` is 0-based.
     case partialReplicaFailure(launchedIDs: [String], failedAtIndex: Int, underlyingMessage: String)
 }
+
+/// One wording for the form, an assistant's answer and the activity bar.
+extension HeadlessLaunchError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .emptyResponse:
+            return String(localized: "Skaha returned an empty response.")
+        case .partialReplicaFailure(let launched, let index, let message):
+            return String(localized: "Replica \(index + 1) failed: \(message). \(launched.count) replicas already running.")
+        }
+    }
+}

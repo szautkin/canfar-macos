@@ -50,8 +50,11 @@ final class JobHistoryTests: XCTestCase {
             (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("abc123\n".utf8))
         }
         let history = JobHistoryStore(persistence: nil)
+        let registry = TaskRegistry()
+        let launches = HeadlessLaunches(service: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())),
+                                        tasks: registry)
         let applier = LaunchHeadlessJobApplier(
-            service: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())),
+            launch: { params in try await launches.launch(params) },
             recentLaunchStore: RecentLaunchStore(fileName: "test-launches-\(UUID().uuidString).json"),
             activity: AgentActivityStore(fileName: "test-activity-\(UUID().uuidString).json"),
             history: history, vospace: nil, username: nil)
@@ -60,8 +63,14 @@ final class JobHistoryTests: XCTestCase {
                                                     pendingScriptUpload: nil)
         let proposal = PendingProposal(toolName: "launch_headless_job", kind: "launch_headless_job", summary: "Launch fit",
                                        payload: try JSONEncoder().encode(payload), origin: .external(clientID: "t"))
-        let extra = try JSONDecoder().decode(AutoAppliedAck.Extra.self, from: try await applier.applyReturningResult(proposal))
+        let extra = try JSONDecoder().decode(AutoAppliedAck.Extra.self, from: try await Initiator.$current.withValue(.assistant) {
+            try await applier.applyReturningResult(proposal)
+        })
         XCTAssertEqual(extra.id, "abc123")
+        // Plan 19 T1 (QA A1): on the activity bar, as the assistant's.
+        XCTAssertEqual(registry.tasks.map(\.label), ["Launch batch job fit"])
+        XCTAssertEqual(registry.tasks.first?.startedBy, .assistant)
+        XCTAssertEqual(registry.tasks.first?.message, "Job abc123")
         XCTAssertEqual(extra.succeeded, ["abc123"])
         history.record(job("abc123", .succeeded))
         XCTAssertEqual(history.jobs.first?.origin, .agent)
