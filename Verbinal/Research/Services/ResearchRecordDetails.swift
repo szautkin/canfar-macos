@@ -18,13 +18,31 @@ import VerbinalKit
 /// publisher ID what nobody said.
 enum ResearchRecordDetails {
 
-    /// The plane `publisherID` names in `observation`: by its product ID,
-    /// or the only plane when the ID names none.
-    static func plane(of publisherID: PublisherID, in observation: CAOM2Observation) -> CAOM2Observation.Plane? {
-        guard !publisherID.productID.isEmpty else {
-            return observation.planes.count == 1 ? observation.planes.first : nil
+    /// The plane `publisherID` names in `observation`: by its product ID;
+    /// when the ID names none — `CFHT?1573200`, whose observation has an
+    /// `i` and an `o` plane — the plane that holds `file`, the record's
+    /// downloaded file, else the only plane (plan 19 R2, QA M2).
+    static func plane(of publisherID: PublisherID, in observation: CAOM2Observation,
+                      file: String = "") -> CAOM2Observation.Plane? {
+        guard publisherID.productID.isEmpty else {
+            return observation.planes.first { $0.productID == publisherID.productID }
         }
-        return observation.planes.first { $0.productID == publisherID.productID }
+        if !file.isEmpty, let holding = observation.planes.first(where: { $0.artifacts.contains { sameFile($0.uri, file) } }) {
+            return holding
+        }
+        return observation.planes.count == 1 ? observation.planes.first : nil
+    }
+
+    /// An artifact's file and a file on this computer are the same, compressed
+    /// or not: `cadc:CFHT/1573200o.fits.fz` and `1573200o.fits`.
+    static func sameFile(_ artifactURI: String, _ file: String) -> Bool {
+        func stem(_ name: String) -> String {
+            var name = name.lowercased()
+            while let suffix = [".fz", ".gz"].first(where: name.hasSuffix) { name.removeLast(suffix.count) }
+            return name
+        }
+        let name = artifactURI.split(separator: "/").last.map(String.init) ?? artifactURI
+        return stem(name) == stem(file)
     }
 
     /// `described`, its details taken from `observation` — the archive's
@@ -36,7 +54,10 @@ enum ResearchRecordDetails {
         var record = described
         let id = PublisherID(described.publisherID)
         var plane: CAOM2Observation.Plane?
-        if let id, let observation { plane = Self.plane(of: id, in: observation) }
+        if let id, let observation {
+            let file = described.localPath.isEmpty ? "" : URL(fileURLWithPath: described.localPath).lastPathComponent
+            plane = Self.plane(of: id, in: observation, file: file)
+        }
 
         func first(_ values: String?...) -> String? { values.compactMap { $0 }.first { !$0.isEmpty } }
         record.collection = first(observation?.collection, described.collection, id?.collection) ?? ""

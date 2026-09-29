@@ -157,6 +157,42 @@ final class ResearchRecordDetailsTests: XCTestCase {
         return (ObservationStore(fileName: name, spotlight: nil), file)
     }
 
+    private func archiveRecord(_ name: String) throws -> CAOM2Observation {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: name, withExtension: "xml"))
+        return try CAOM2Parser.parse(data: try Data(contentsOf: url))
+    }
+
+    /// Plan 19 R2 (QA M2): CFHT?1573200 names no product, and its
+    /// observation has two (`i`, level 2; `o`, level 1). The plane is the one
+    /// that holds the downloaded file; with none downloaded, the observation's
+    /// target and instrument still come (the archive's own answer, fetched
+    /// live 2026-09-29).
+    func testARecordWithoutAProductTakesThePlaneOfItsFile() throws {
+        let caom = try archiveRecord("cfht-1573200")
+        var raw = described("ivo://cadc.nrc.ca/CFHT?1573200")
+        raw.localPath = "/Users/u/Downloads/1573200o.fits"
+        let withFile = ResearchRecordDetails.completing(raw, from: caom)
+        XCTAssertEqual(withFile.calLevel, "1", "the o plane holds 1573200o.fits.fz")
+        XCTAssertEqual(withFile.targetName, "Betelgeuse")
+        XCTAssertEqual(withFile.instrument, "ESPaDOnS")
+
+        let withoutFile = ResearchRecordDetails.completing(described("ivo://cadc.nrc.ca/CFHT?1573200"), from: caom)
+        XCTAssertEqual(withoutFile.targetName, "Betelgeuse")
+        XCTAssertEqual(withoutFile.instrument, "ESPaDOnS")
+        XCTAssertEqual(withoutFile.calLevel, "", "no plane to choose without a file")
+        XCTAssertTrue(ResearchRecordDetails.sameFile("cadc:CFHT/1573200o.fits.fz", "1573200O.FITS"))
+        XCTAssertFalse(ResearchRecordDetails.sameFile("cadc:CFHT/1573200i.fits", "1573200o.fits"))
+    }
+
+    /// QA M2: the DECam-era NOAO records' instrument stayed blank. The
+    /// archive has it; the check that never got an answer is what missed it.
+    func testANOAORecordGetsItsInstrument() throws {
+        let caom = try archiveRecord("noao-tu636792")
+        let record = ResearchRecordDetails.completing(described("ivo://cadc.nrc.ca/NOAO?tu636792/tu636792"), from: caom)
+        XCTAssertEqual(record.instrument, "mosaic_2")
+        XCTAssertEqual(record.observationID, "tu636792")
+    }
+
     /// The archive, as the check sees it: what this Mac keeps, and what the
     /// network answers — slowly, and counted.
     private final class FakeArchive: ArchiveObservations, @unchecked Sendable {

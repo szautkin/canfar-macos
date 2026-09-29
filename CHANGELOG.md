@@ -242,7 +242,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
   database, so it is asked once: after each sign-in the records it has
   not answered for are asked, two at a time, with the progress on the
   activity bar and at the top of Research; the check of 35 records had
-  taken about twenty minutes, one at a time.
+  taken about twenty minutes, one at a time. A record whose publisher id
+  names no product (`CFHT?1573200`, whose observation has two) takes its
+  details from the product whose file it downloaded.
 - **Choose which of an observation's files to download** — your assistant's
   `download_observation` takes `file`, one of the names `get_data_links`
   lists, so a STIS spectrum's 80 KB `_x1d` can be kept rather than the
