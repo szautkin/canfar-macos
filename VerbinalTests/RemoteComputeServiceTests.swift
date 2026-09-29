@@ -127,14 +127,14 @@ final class RemoteComputeServiceTests: XCTestCase {
 
     func testASessionIsReusedOrLaunchedWithTheRegistryCredentials() async throws {
         let compute = service()
-        let reused = try await compute.ensureSession()
-        XCTAssertFalse(reused)
+        let first = try await compute.ensureSession()
+        XCTAssertEqual(first, .launched(cores: 2, ram: 8))
         XCTAssertEqual(sessions.launched.map(\.image), [image])
         XCTAssertEqual(sessions.launched.first?.cores, 2)
         XCTAssertEqual(sessions.launched.first?.registryUsername, "robot")
         XCTAssertEqual(files.folders, [".verbinal", ".verbinal/exec", ".verbinal/exec/inbox", ".verbinal/exec/out"])
         let again = try await compute.ensureSession()
-        XCTAssertTrue(again, "a starting session is reused, not launched beside")
+        XCTAssertTrue(again.reusedExisting, "a starting session is reused, not launched beside")
         XCTAssertEqual(sessions.launched.count, 1)
 
         let stopped = try await compute.stop()
@@ -142,6 +142,19 @@ final class RemoteComputeServiceTests: XCTestCase {
         XCTAssertEqual(sessions.deleted, ["launched-1"])
         let stoppedAgain = try await compute.stop()
         XCTAssertFalse(stoppedAgain, "nothing left to stop")
+    }
+
+    /// Plan 19 S3 (QA N18): kept a 1-core session and said "4 cores / 8 GB".
+    func testKeepingARunningSessionSaysTheSizeItHas() async throws {
+        sessions = FakeComputeSessions([.compute(id: "small", status: "Running", image: image, ram: "1.07G", cores: "1")])
+        let start = try await service().ensureSession(.init(image: image, cores: 4, ram: 8))
+        guard case .reused(let cores, let memory, let drift) = start else { return XCTFail("\(start)") }
+        XCTAssertEqual([cores, memory], ["1", "1.07G"])
+        XCTAssertNotNil(drift)
+        XCTAssertTrue(start.sentence.hasPrefix("Kept the verbinal-compute session already running, which has 1 core and 1.07 GB."),
+                      start.sentence)
+        XCTAssertTrue(start.sentence.contains("of the 4 cores"), start.sentence)
+        XCTAssertTrue(sessions.launched.isEmpty)
     }
 
     func testNothingLaunchesWithoutAnImageOrSomeoneSignedIn() async {

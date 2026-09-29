@@ -124,10 +124,15 @@ final class RemoteComputeService {
 
     /// Reuses the running or starting session, or launches one from
     /// `launch` (the Settings when nil) without waiting for it. Returns
-    /// whether one was already there.
+    /// which, with the size a kept session has.
     @discardableResult
-    func ensureSession(_ launch: Configuration? = nil) async throws -> Bool {
-        try await reuseOrLaunch(launch) != nil
+    func ensureSession(_ launch: Configuration? = nil) async throws -> ComputeStart {
+        let asked = launch ?? configuration()
+        guard let kept = try await reuseOrLaunch(launch) else {
+            return .launched(cores: RunCodeContract.clampCores(asked.cores), ram: RunCodeContract.clampRam(asked.ram))
+        }
+        return .reused(cores: kept.cpuAllocated, memory: kept.memoryAllocated,
+                       drift: ComputeDrift(session: kept, configuration: asked))
     }
 
     /// The live session reused, or nil when one was launched from `launch`

@@ -54,7 +54,7 @@ struct StartComputeTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "start_compute",
-        description: "Launch OR reuse the warm `verbinal-compute` contributed session that `run_code` runs on — an OPTIONAL pre-warm/sizing step (run_code self-launches a default-sized instance on its own, so you only need this when you want to control the size or warm the session up before iterating). `cores`/`ram` set the instance size: pass them to size it, otherwise the configured Settings ▸ AI Compute default is used. IMPORTANT: resources are FIXED once the instance is running — you CANNOT resize a live instance. If one is already running, this no-ops and keeps the current size; to change size you must `stop_compute` first, then `start_compute` again with the new size. Out-of-range values are clamped to 1–64 cores / 1–256 GB; the sizes your CANFAR deployment actually offers may be narrower, and an unavailable size surfaces as a launch error you can then adjust. Requires an AI compute image configured in Settings ▸ AI Compute.",
+        description: "Launch OR reuse the warm `verbinal-compute` contributed session that `run_code` runs on — an OPTIONAL pre-warm/sizing step (run_code self-launches a default-sized instance on its own, so you only need this when you want to control the size or warm the session up before iterating). `cores`/`ram` set the instance size: pass them to size it, otherwise the configured Settings ▸ AI Compute default is used. IMPORTANT: resources are FIXED once the instance is running — you CANNOT resize a live instance. If one is already running, this no-ops and keeps the current size — the answer's `note` says which happened and the size the session has; to change size you must `stop_compute` first, then `start_compute` again with the new size. Out-of-range values are clamped to 1–64 cores / 1–256 GB; the sizes your CANFAR deployment actually offers may be narrower, and an unavailable size surfaces as a launch error you can then adjust. Requires an AI compute image configured in Settings ▸ AI Compute.",
         schema: #"""
         {
           "type": "object",
@@ -88,19 +88,26 @@ struct StartComputeTool: JSONWriteTool {
 
 // MARK: - start_compute applier (reuse-or-launch + ensure the /arc tree)
 
-struct StartComputeApplier: ProposalApplier {
+/// Starts or keeps the compute session, and says which — with the size
+/// the session has, not the size asked (plan 19 S3, QA N18) — in the
+/// answer and the activity feed alike.
+struct StartComputeApplier: ProposalApplier, ResultReportingApplier {
     let kind = "start_compute"
-    /// Reuses or launches the session at this size; true when one was already there.
-    let ensure: @Sendable (RemoteComputeService.Configuration) async throws -> Bool
+    /// Reuses or launches the session at this size.
+    let ensure: @Sendable (RemoteComputeService.Configuration) async throws -> ComputeStart
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(StartComputeTool.Payload.self, from: proposal.payload)
         let launch = RemoteComputeService.Configuration(image: payload.image, cores: payload.cores, ram: payload.ram)
         let ensure = ensure
-        let reusedExisting: Bool
+        let start: ComputeStart
         do {
-            reusedExisting = try await withApplierTimeout(seconds: 180, label: "start_compute") {
+            start = try await withApplierTimeout(seconds: 180, label: "start_compute") {
                 try await ensure(launch)
             }
         } catch let pa as ProposalApplyError {
@@ -108,13 +115,8 @@ struct StartComputeApplier: ProposalApplier {
         } catch {
             throw ProposalApplyError.backendError("start_compute: \(error.localizedDescription)")
         }
-
-        // Say whether a running instance was reused (and so kept its size)
-        // or a new one launched — why a resize "didn't take".
-        let summary = reusedExisting
-            ? "Reused the existing \(RunCodeContract.sessionName) instance at its current size — a running instance can't be resized (stop_compute then start_compute to change it)."
-            : proposal.summary
-        await MainActor.run { activity.append(.applied(proposal: proposal.summarised(summary), kind: kind)) }
+        await MainActor.run { activity.append(.applied(proposal: proposal.summarised(start.sentence), kind: kind)) }
+        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(note: start.sentence))) ?? Data()
     }
 }
 

@@ -92,8 +92,10 @@ final class RemoteComputeModel {
 
     func start() async {
         await perform {
-            try await self.service.ensureSession()
-            self.message = Message(kind: .info, text: String(localized: "Starting — a compute session takes a minute or two to come up."))
+            let start = try await self.service.ensureSession()
+            self.message = Message(kind: .info, text: start.reusedExisting
+                ? String(localized: "The compute session is already running — it keeps its size until it is stopped.")
+                : String(localized: "Starting — a compute session takes a minute or two to come up."))
         }
     }
 

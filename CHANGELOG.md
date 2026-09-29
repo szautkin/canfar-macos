@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Starting the compute session says the size it has** — when a
+  session was already running, `start_compute` answered with the size
+  asked (4 cores, 8 GB) while it kept a smaller one. The answer, the
+  activity feed and the Remote Compute screen now say whether a session
+  was launched or kept, the cores and memory it has, and how it differs
+  from what was asked.
 - **Deleting a session that does not exist says so** — CANFAR answers a
   delete of an id it does not have with success, so a typo or a stale id
   read as deleted: a bulk delete of one real and one made-up id said

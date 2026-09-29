@@ -15594,6 +15594,16 @@
         }
       }
     },
+    "The compute session is already running — it keeps its size until it is stopped." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La session de calcul est déjà en cours — elle garde sa taille jusqu'à son arrêt."
+          }
+        }
+      }
+    },
     "The container for \"%@\" will be killed immediately and any unsaved work inside it will be lost." : {
       "localizations" : {
         "fr" : {
