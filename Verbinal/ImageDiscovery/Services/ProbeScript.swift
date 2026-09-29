@@ -29,7 +29,9 @@ enum ProbeScript {
     /// VOSpace; this version field is mirrored into the manifest so
     /// the parser can branch on schema if we ever ship multiple at
     /// once.
-    static let schemaVersion: Int = 3
+    /// 4: every Python interpreter's packages, each by its path (plan 19
+    /// K1) — a manifest from an older probe is probed again when asked for.
+    static let schemaVersion: Int = 4
 
     /// Hash of the script body. Used to derive the upload path
     /// (`/arc/home/$USER/.verbinal/probe-<scriptHash>.sh`) so that
@@ -159,17 +161,38 @@ enum ProbeScript {
         fi
     fi
 
-    # System python (if no conda env labeled "base", otherwise covered by conda block)
-    if [ -z "$CONDA" ]; then
-        for py in python3 python; do
-            if command -v "$py" >/dev/null 2>&1; then
-                "$py" -m pip list --format=freeze 2>/dev/null \
-                  | sed -E 's/^([^=]+)==(.*)$/\1|\2/' \
-                  > "$STAGE/python-system.txt" || true
-                break
-            fi
-        done
-    fi
+    # Every Python interpreter the image has, each asked for its own
+    # packages. The python3 first on PATH can be a separate build with
+    # none, while apt's packages belong to /usr/bin/python3 — astroai/improc
+    # listed pip alone (QA N4). importlib.metadata needs no pip; pip is the
+    # fallback for a Python older than 3.8. Conda envs' interpreters are
+    # dropped by the aggregator: conda lists those.
+    DEFAULT_PY=""
+    command -v python3 >/dev/null 2>&1 && DEFAULT_PY=$(readlink -f "$(command -v python3)" 2>/dev/null || command -v python3)
+    : > "$STAGE/python-interpreters.txt"
+    for py in $(type -ap python3 python 2>/dev/null) /usr/bin/python3 /usr/local/bin/python3 \
+              /opt/*/bin/python3 /opt/*/envs/*/bin/python3; do
+        [ -x "$py" ] || continue
+        real=$(readlink -f "$py" 2>/dev/null || echo "$py")
+        grep -qxF "$real" "$STAGE/python-interpreters.txt" || echo "$real" >> "$STAGE/python-interpreters.txt"
+    done
+    n=0
+    while IFS= read -r real; do
+        n=$((n + 1))
+        "$real" -c 'import importlib.metadata as m
+    seen = set()
+    for d in m.distributions():
+        name = d.metadata.get("Name")
+        if name and name.lower() not in seen:
+            seen.add(name.lower())
+            print(name + "|" + d.version)' > "$STAGE/python-env-$n.txt" 2>/dev/null || true
+        if [ ! -s "$STAGE/python-env-$n.txt" ]; then
+            "$real" -m pip list --format=freeze 2>/dev/null \
+              | sed -E 's/^([^=]+)==(.*)$/\1|\2/' > "$STAGE/python-env-$n.txt" || true
+        fi
+        printf '%s' "$real" > "$STAGE/python-env-$n.path"
+    done < "$STAGE/python-interpreters.txt"
+    export DEFAULT_PY
 
     # R packages
     if command -v Rscript >/dev/null 2>&1; then
@@ -218,7 +241,7 @@ enum ProbeScript {
     # a hung job.
     if ! command -v python3 >/dev/null 2>&1; then
         cat > "$TMP" <<MINIMAL
-    {"schemaVersion":3,"imageID":"$IMAGE_ID","contentHash":"$CONTENT_HASH","capturedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","osFamily":"unknown","osVersion":"unknown","osRelease":"unknown","kernel":"unknown","dpkgPackages":[],"rpmPackages":[],"apkPackages":[],"pythonPackages":[],"rPackages":[],"condaEnvs":[],"capabilities":[],"pythonVersion":"unknown","shells":[],"probeNotes":"python3 not found in image"}
+    {"schemaVersion":4,"imageID":"$IMAGE_ID","contentHash":"$CONTENT_HASH","capturedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","osFamily":"unknown","osVersion":"unknown","osRelease":"unknown","kernel":"unknown","dpkgPackages":[],"rpmPackages":[],"apkPackages":[],"pythonPackages":[],"rPackages":[],"condaEnvs":[],"capabilities":[],"pythonVersion":"unknown","shells":[],"probeNotes":"python3 not found in image"}
     MINIMAL
         mv "$TMP" "$OUT"
         exit 0
@@ -301,19 +324,29 @@ enum ProbeScript {
             })
         return envs
 
-    def python_system():
-        # Only used when no conda found.
-        return [
-            {"name": p["name"], "version": p["version"], "source": "pip", "env": ""}
-            for p in read_pkgs(os.path.join(stage, "python-system.txt"))
-        ]
+    def python_interpreters():
+        # Each interpreter's packages, by its path; the python3 on PATH is
+        # env "", as the system Python always was. A conda env's own
+        # interpreter is skipped: conda lists its packages.
+        conda_prefixes = [open(m).read().strip().rstrip("/") + "/"
+                          for m in glob.glob(os.path.join(stage, "conda-meta-*.txt"))]
+        default = os.environ.get("DEFAULT_PY", "")
+        out = []
+        for path_file in sorted(glob.glob(os.path.join(stage, "python-env-*.path"))):
+            interpreter = open(path_file).read().strip()
+            if any(interpreter.startswith(p) for p in conda_prefixes):
+                continue
+            env = "" if interpreter == default else interpreter
+            out.extend({"name": p["name"], "version": p["version"], "source": "pip", "env": env}
+                       for p in read_pkgs(path_file[:-len(".path")] + ".txt"))
+        return out
 
     os_family, os_version, os_release = parse_os_release()
 
     # Flatten conda envs into pythonPackages so the UI can search uniformly,
     # but keep condaEnvs[] populated for env-aware filters.
     envs = conda_envs()
-    flat_python = python_system()
+    flat_python = python_interpreters()
     for env in envs:
         flat_python.extend(env["packages"])
 
@@ -332,7 +365,7 @@ enum ProbeScript {
             capabilities = [line.strip() for line in f if line.strip()]
 
     manifest = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "imageID": image_id,
         "contentHash": content_hash,
         "capturedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

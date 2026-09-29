@@ -30,7 +30,7 @@ The rules are those of plans 15 and 17:
 
 | Phase | State | Commits |
 |---|---|---|
-| S say what happened | in progress — S1 an unknown session id is not deleted; S2 every use a numbered copy, its id returned; S3 start_compute says the size it kept; S4 an apply says since when, one cut short by a quit fails saying so | `3d2f55a`, `98e6872`, `176d858`, S4 |
+| S say what happened | in progress — S1 an unknown session id is not deleted; S2 every use a numbered copy, its id returned; S3 start_compute says the size it kept; S4 an apply says since when, one cut short by a quit fails saying so; K1 every Python interpreter probed, a cache hit says so | `3d2f55a`, `98e6872`, `176d858`, `3214bc4`, K1 |
 | T the trail | planned — T1–T2 | — |
 | F figures and files | planned — F1–F2 | — |
 | C capture | planned — C1 (decision 1) | — |
@@ -80,7 +80,7 @@ The rules are those of plans 15 and 17:
 
 - **L2:** column ids such as `ra(j20000)` stay, by decision. They are the keys Verbinal for Windows uses.
 - **N9:** `list_local_folder` lists every file the person's permissions allow (plan 17 decision 2).
-- **N4:** plan 17 P1 is still to do. It fixes a cached probe answering "applied" at once and the `astroai/improc` manifest undercounting packages. It is carried here as step **K1**, done with phase S.
+- **N4** (*found:* `astroai/improc` is Debian 13 — its science packages are apt's, for `/usr/bin/python3`, while the `python3` first on PATH is a separate 3.13.15 build that has only pip, and the probe asked only that one): plan 17 P1 is still to do. It fixes a cached probe answering "applied" at once and the `astroai/improc` manifest undercounting packages. It is carried here as step **K1**, done with phase S.
 - **`cpu_count()` returns 192 on the compute image:** CANFAR's node, not Verbinal. `run_code`'s description and the Remote Compute screen will advise `len(os.sched_getaffinity(0))` for sizing pools (**K2**).
 - **`notebook1`** (deleted Sept 28, 05:23 local): the Portal's confirmed **Delete** is the only code path that writes that line (plan 17). Since A1, the bar says who; handout 20 checks it.
 

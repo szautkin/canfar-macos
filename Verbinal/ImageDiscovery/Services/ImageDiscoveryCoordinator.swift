@@ -273,11 +273,30 @@ actor ImageDiscoveryCoordinator {
     /// probe job, polls until terminal, fetches and parses the
     /// manifest, persists it, returns it.
     func discover(_ imageID: String, force: Bool = false) async throws -> ImageManifest {
-        // Cache hit short-circuit.
-        if !force, case .success(let manifest) = await store.outcome(for: imageID) {
-            return manifest
-        }
+        try await discoverReportingCache(imageID, force: force).manifest
+    }
 
+    /// `discover`, saying whether the answer came from the cache — a
+    /// cached probe answered "applied" at once, with nothing to say it
+    /// had not just run (plan 19 K1, QA N4).
+    func discoverReportingCache(_ imageID: String, force: Bool = false) async throws -> (manifest: ImageManifest, cached: Bool) {
+        if !force, let manifest = await currentManifest(imageID) { return (manifest, true) }
+        return (try await probe(imageID, force: force), false)
+    }
+
+    /// The cached manifest, unless an older probe made it: the in-image
+    /// probe before schema 4 asked only the python3 on PATH, and missed
+    /// apt's packages when that was a separate build (QA N4).
+    private func currentManifest(_ imageID: String) async -> ImageManifest? {
+        guard case .success(let manifest) = await store.outcome(for: imageID), Self.isCurrent(manifest) else { return nil }
+        return manifest
+    }
+
+    nonisolated static func isCurrent(_ manifest: ImageManifest) -> Bool {
+        manifest.contentHash == InspectorScript.contentHash || manifest.schemaVersion >= ProbeScript.schemaVersion
+    }
+
+    private func probe(_ imageID: String, force: Bool) async throws -> ImageManifest {
         // Already in flight? Coalesce with the existing task.
         if let existing = inFlight[imageID] {
             return try await existing.value
@@ -375,7 +394,7 @@ actor ImageDiscoveryCoordinator {
         continuation: AsyncStream<DiscoveryEvent>.Continuation
     ) async {
         // Cache hit: yield .completed immediately, no .started event.
-        if case .success(let manifest) = await store.outcome(for: id) {
+        if let manifest = await currentManifest(id) {
             continuation.yield(.completed(imageID: id, manifest: manifest))
             return
         }
@@ -420,7 +439,8 @@ actor ImageDiscoveryCoordinator {
         // but our poll loop timed out before catching its terminal
         // state. The manifest is sitting at the expected path —
         // strategy-agnostic, so the recovery just works for both.
-        if !force, let manifest = try? await fetchManifestIfPresent(for: imageID) {
+        // One an older probe left there is not recovered (plan 19 K1).
+        if !force, let manifest = try? await fetchManifestIfPresent(for: imageID), Self.isCurrent(manifest) {
             try await store.setManifest(manifest)
             return manifest
         }

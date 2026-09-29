@@ -292,7 +292,7 @@ struct DiscoverImagePackagesTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "discover_image_packages",
-        description: "Run a probe job to enumerate the named image's installed packages (apt/rpm/apk + pip + conda + R) and cache the result. Cache-hit short-circuits with no Skaha cost. Routing is automatic from the image's `types`: images that include `headless` run an in-target probe (the script runs inside the target image itself); all other types (notebook/desktop/carta/firefly/contributed) launch a known-good headless host (`terminal:1.1.2` by default) that introspects the target via syft against the registry — the target image is never executed. Cache-miss runs one small Skaha job (visible in the Background Jobs panel; delete_session to cancel). Skaha can hit a K8s `jobs.batch not found` race after submit; the coordinator retries with exponential backoff (~25s total budget) before failing with a structured message. Pass force=true to bypass cache for a known-fresh manifest (e.g. after an image rebuild). You DO NOT need force=true to retry after a transient probe failure — the coordinator auto-invalidates `probeNotes`-tagged stub manifests on the next call, so a plain re-invocation re-runs the probe. Returns when the manifest is cached and queryable via find_images_with_packages.",
+        description: "Run a probe job to enumerate the named image's installed packages (apt/rpm/apk + pip + conda + R) and cache the result. Cache-hit short-circuits with no Skaha cost; the answer's `note` says whether it probed now or answered from the cache, and when the manifest was taken. A manifest from an older version of the probe is probed again. Every Python interpreter in the image is listed (a package's `env` is its interpreter's path; \"\" for the python3 on PATH). Routing is automatic from the image's `types`: images that include `headless` run an in-target probe (the script runs inside the target image itself); all other types (notebook/desktop/carta/firefly/contributed) launch a known-good headless host (`terminal:1.1.2` by default) that introspects the target via syft against the registry — the target image is never executed. Cache-miss runs one small Skaha job (visible in the Background Jobs panel; delete_session to cancel). Skaha can hit a K8s `jobs.batch not found` race after submit; the coordinator retries with exponential backoff (~25s total budget) before failing with a structured message. Pass force=true to bypass cache for a known-fresh manifest (e.g. after an image rebuild). You DO NOT need force=true to retry after a transient probe failure — the coordinator auto-invalidates `probeNotes`-tagged stub manifests on the next call, so a plain re-invocation re-runs the probe. Returns when the manifest is cached and queryable via find_images_with_packages.",
         schema: #"""
         {
           "type": "object",
@@ -326,12 +326,18 @@ struct DiscoverImagePackagesTool: JSONWriteTool {
 /// captured coordinator reference would either be nil-fixed or
 /// require re-registration after auth. The closure pattern mirrors
 /// what the read tools do.
-struct DiscoverImagePackagesApplier: ProposalApplier {
+struct DiscoverImagePackagesApplier: ProposalApplier, ResultReportingApplier {
     let kind = "discover_image_packages"
     let resolveCoordinator: @Sendable () async -> ImageDiscoveryCoordinator?
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    /// Says whether it probed or answered from the cache, and when the
+    /// manifest was taken (plan 19 K1, QA N4).
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(
             DiscoverImagePackagesTool.Payload.self,
             from: proposal.payload
@@ -341,12 +347,11 @@ struct DiscoverImagePackagesApplier: ProposalApplier {
                 "Image discovery requires authentication."
             )
         }
+        let answer: (manifest: ImageManifest, cached: Bool)
         do {
-            if payload.force {
-                _ = try await coord.rediscover(payload.image)
-            } else {
-                _ = try await coord.discover(payload.image)
-            }
+            answer = payload.force
+                ? (try await coord.rediscover(payload.image), false)
+                : try await coord.discoverReportingCache(payload.image)
         } catch let err as ImageDiscoveryError {
             throw ProposalApplyError.backendError(err.displayMessage)
         } catch {
@@ -355,5 +360,14 @@ struct DiscoverImagePackagesApplier: ProposalApplier {
         await MainActor.run {
             activity.append(.applied(proposal: proposal, kind: kind))
         }
+        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(note: Self.note(answer.manifest, cached: answer.cached)))) ?? Data()
+    }
+
+    static func note(_ manifest: ImageManifest, cached: Bool) -> String {
+        let taken = ISO8601DateFormatter().string(from: manifest.capturedAt)
+        let python = manifest.pythonPackages.count
+        return cached
+            ? "Answered from the cache: probed \(taken), \(python) Python packages. force: true probes it again."
+            : "Probed now (\(taken)): \(python) Python packages."
     }
 }

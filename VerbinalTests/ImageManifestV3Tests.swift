@@ -28,12 +28,14 @@ final class ImageManifestV3Tests: XCTestCase {
     /// probe but forgot the parser" failure mode that would
     /// silently reject every fresh probe.
     func testParserAcceptsV3() {
-        XCTAssertEqual(ManifestParser.maxSupportedSchemaVersion, 3,
+        XCTAssertEqual(ManifestParser.maxSupportedSchemaVersion, 4,
                        "parser must keep pace with probe / inspector schemaVersion bumps")
     }
 
-    func testProbeScriptIsV3() {
-        XCTAssertEqual(ProbeScript.schemaVersion, 3)
+    /// 4: every Python interpreter listed (plan 19 K1).
+    func testProbeScriptIsV4() {
+        XCTAssertEqual(ProbeScript.schemaVersion, 4)
+        XCTAssertTrue(ProbeScript.body.contains(#""schemaVersion": 4"#))
     }
 
     func testInspectorScriptIsV3() {

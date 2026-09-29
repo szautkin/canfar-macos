@@ -227,7 +227,7 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
 
     private func sampleManifestJSON(imageID: String, packages: [String] = ["astropy"]) -> Data {
         let body: [String: Any] = [
-            "schemaVersion": 1,
+            "schemaVersion": ProbeScript.schemaVersion,
             "imageID": imageID,
             "contentHash": "sha256:test",
             "capturedAt": "2026-04-30T18:00:00Z",
@@ -249,7 +249,7 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
     func testDiscoverReturnsCachedManifestWithoutProbe() async throws {
         let store = makeStore()
         let cached = ImageManifest(
-            schemaVersion: 1,
+            schemaVersion: ProbeScript.schemaVersion,
             imageID: "test:1",
             contentHash: "sha256:cached",
             capturedAt: Date(),
@@ -268,6 +268,38 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(got.contentHash, "sha256:cached")
         XCTAssertTrue(h.launchCalls.isEmpty, "must not probe on cache hit")
         XCTAssertTrue(v.uploads.isEmpty)
+    }
+
+    /// Plan 19 K1 (QA N4): astroai/improc's cached manifest listed pip
+    /// alone — the older probe asked only the python3 on PATH. A manifest
+    /// that probe made is probed again; syft's stand; and the answer says
+    /// when it came from the cache.
+    func testAnOlderProbesManifestIsProbedAgainAndACacheHitSaysSo() async throws {
+        let store = makeStore()
+        func manifest(_ id: String, schema: Int, hash: String) -> ImageManifest {
+            ImageManifest(schemaVersion: schema, imageID: id, contentHash: hash, capturedAt: Date(timeIntervalSince1970: 1_790_000_000),
+                          osFamily: "debian", osVersion: "13", kernel: "Linux")
+        }
+        try await store.setManifest(manifest("old:1", schema: 3, hash: "sha256:075d"))
+        try await store.setManifest(manifest("syft:1", schema: 3, hash: InspectorScript.contentHash))
+        let h = MockHeadless()
+        let v = MockVOSpace()
+        wireLaunchToWriteManifest(v, h, packages: ["astropy", "numpy"])
+        let coord = makeCoord(store: store, headless: h, vospace: v)
+
+        let old = try await coord.discoverReportingCache("old:1")
+        XCTAssertFalse(old.cached)
+        XCTAssertEqual(h.launchCalls.count, 1, "the older probe's manifest is probed again")
+        XCTAssertEqual(Set(old.manifest.pythonPackages.map(\.name)), ["astropy", "numpy"])
+
+        let syft = try await coord.discoverReportingCache("syft:1")
+        XCTAssertTrue(syft.cached, "a syft manifest is not the older probe's")
+        let again = try await coord.discoverReportingCache("old:1")
+        XCTAssertTrue(again.cached)
+        XCTAssertEqual(h.launchCalls.count, 1)
+
+        let note = DiscoverImagePackagesApplier.note(syft.manifest, cached: true)
+        XCTAssertTrue(note.hasPrefix("Answered from the cache: probed 2026-09-21"), note)
     }
 
     // MARK: - Full pipeline
@@ -452,10 +484,10 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
     func testDiscoverAllStreamsCompletionEventsInOrderOfFinish() async throws {
         let store = makeStore()
         // Pre-cache two images so they yield .completed instantly.
-        let cachedA = ImageManifest(schemaVersion: 1, imageID: "a:1",
+        let cachedA = ImageManifest(schemaVersion: ProbeScript.schemaVersion, imageID: "a:1",
                                      contentHash: "x", capturedAt: Date(),
                                      osFamily: "ubuntu", osVersion: "22.04", kernel: "Linux")
-        let cachedB = ImageManifest(schemaVersion: 1, imageID: "b:1",
+        let cachedB = ImageManifest(schemaVersion: ProbeScript.schemaVersion, imageID: "b:1",
                                      contentHash: "x", capturedAt: Date(),
                                      osFamily: "ubuntu", osVersion: "22.04", kernel: "Linux")
         try await store.setManifest(cachedA)
@@ -674,7 +706,11 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         // body references the env var the coordinator sets, and the
         // upload filename is hash-derived (so bumping the body busts
         // the prior upload automatically).
-        XCTAssertEqual(InspectorScript.schemaVersion, ManifestParser.maxSupportedSchemaVersion)
+        // The parser reads the newer of the two scripts' contracts; the
+        // inspector's stayed at 3 when the probe's went to 4 (plan 19 K1),
+        // its manifests told apart by their content hash.
+        XCTAssertEqual(max(InspectorScript.schemaVersion, ProbeScript.schemaVersion), ManifestParser.maxSupportedSchemaVersion)
+        XCTAssertTrue(InspectorScript.body.contains(InspectorScript.contentHash))
         XCTAssertTrue(InspectorScript.body.contains("TARGET_IMAGE"))
         XCTAssertTrue(InspectorScript.body.contains(".verbinal/manifests"))
         XCTAssertTrue(InspectorScript.body.contains("syft"))
@@ -1074,10 +1110,10 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
 
         // Seed two successes and one failure (failures count too — the
         // store's count() is total records, not just successes).
-        let mA = ImageManifest(schemaVersion: 1, imageID: "a:1",
+        let mA = ImageManifest(schemaVersion: ProbeScript.schemaVersion, imageID: "a:1",
                                contentHash: "x", capturedAt: Date(),
                                osFamily: "ubuntu", osVersion: "22.04", kernel: "Linux")
-        let mB = ImageManifest(schemaVersion: 1, imageID: "b:1",
+        let mB = ImageManifest(schemaVersion: ProbeScript.schemaVersion, imageID: "b:1",
                                contentHash: "x", capturedAt: Date(),
                                osFamily: "ubuntu", osVersion: "22.04", kernel: "Linux")
         try await store.setManifest(mA)
@@ -1098,7 +1134,7 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         let v = MockVOSpace()
         let coord = makeCoord(store: store, headless: h, vospace: v)
 
-        let m = ImageManifest(schemaVersion: 1, imageID: "z:1",
+        let m = ImageManifest(schemaVersion: ProbeScript.schemaVersion, imageID: "z:1",
                               contentHash: "x", capturedAt: Date(),
                               osFamily: "ubuntu", osVersion: "22.04", kernel: "Linux")
         try await store.setManifest(m)

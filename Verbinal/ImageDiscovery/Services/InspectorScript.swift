@@ -38,6 +38,10 @@ enum InspectorScript {
     // care about.
     static let schemaVersion: Int = 3
 
+    /// The content hash every syft manifest carries — how its manifests
+    /// are told from the in-image probe's.
+    static let contentHash = "sha256:syft"
+
     /// 12-hex-char identity for the inspector script body. Used to
     /// derive the upload filename — bumping the body auto-busts
     /// any prior upload in VOSpace.

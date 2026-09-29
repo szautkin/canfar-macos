@@ -12,6 +12,16 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Image inspection finds every Python in an image** — `astroai/improc`
+  listed one Python package, pip, though it ships astropy and numpy: its
+  science packages come from apt, for Debian's `/usr/bin/python3`, while
+  the `python3` first on its PATH is a separate build with none, and the
+  probe asked only that one. The probe now asks every interpreter it
+  finds for its own packages (each by its path), without needing pip. A
+  manifest the older probe made is probed again the next time the image
+  is inspected, and an answer from the cache says so, with when it was
+  taken — your assistant's `discover_image_packages` answered "applied"
+  at once, as if it had probed.
 - **Starting the compute session says the size it has** — when a
   session was already running, `start_compute` answered with the size
   asked (4 cores, 8 GB) while it kept a smaller one. The answer, the
