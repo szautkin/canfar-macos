@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A suggested cutout is cut the way its file is** — `get_cutout_options`
+  listed a downloaded JADES file as cut locally and suggested a cutout of
+  it by CADC, and `download_cutout` with no region asked CADC for a file
+  only this computer could cut. The suggestion now names the file's own
+  way of cutting.
 - **No empty tab beside an opened cube** — opening a cube left the Cube
   Viewer's empty starting tab open beside it, which `list_open_tabs`
   listed with no path. A file that opens now replaces a tab nothing was

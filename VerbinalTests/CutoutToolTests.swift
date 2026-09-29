@@ -90,9 +90,23 @@ final class CutoutToolTests: XCTestCase {
         XCTAssertNotNil(only?.suggestedBytes)
         XCTAssertNil(options.sodaProblems)
 
+        XCTAssertEqual(only?.suggested.cutBy, .soda)
+
         let none = CutoutOptionsOutput.from(publisherId: "p", sources: [], hints: nil, problems: ["the SODA service's accessURL is not https"])
         XCTAssertEqual(none.note, CutoutOptionsOutput.noneCanBeCut)
         XCTAssertEqual(none.sodaProblems, ["the SODA service's accessURL is not https"])
+    }
+
+    /// Plan 17 U5 (QA N5): a file cut locally is suggested a local cut —
+    /// JADES listed `cutBy: local` and a suggested cutout by `soda`.
+    func testASuggestionNamesTheSameCutterAsItsFile() throws {
+        let url = try FITSTestFixtures.writeCube()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let local = LocalCutoutSource.open(url)
+        XCTAssertNil(local.unavailable)
+        let options = CutoutOptionsOutput.from(publisherId: "p", sources: [local], hints: nil, problems: [])
+        XCTAssertEqual(options.files.first?.cutBy, "local")
+        XCTAssertEqual(options.files.first?.suggested.cutBy, .local)
     }
 
     func testACutoutIsCheckedBeforeItIsProposed() async throws {

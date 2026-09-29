@@ -27,9 +27,13 @@ protocol CutoutSource: Sendable {
 extension CutoutSource {
     var unavailable: String? { nil }
 
-    /// The cutout an editor opens on — from the search, when it looked at this file.
+    /// The cutout an editor opens on — from the search, when it looked at
+    /// this file — cut this way: a local file's suggestion said `soda`
+    /// (QA N5), and a download_cutout left to it asked CADC.
     func suggest(_ hints: CutoutHints?) -> CutoutSpec {
-        CutoutPrefill.suggest(file, hints: hints)
+        var spec = CutoutPrefill.suggest(file, hints: hints)
+        spec.cutBy = method
+        return spec
     }
 }
 
