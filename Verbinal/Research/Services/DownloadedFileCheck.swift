@@ -21,12 +21,15 @@ enum DownloadedFileCheck {
         case emptyArchive
         /// Fewer bytes than the server said it would send.
         case shortOf(expected: Int64, got: Int64)
+        /// There, but Verbinal may not open it where it is.
+        case unreadable
 
         var message: String {
             switch self {
             case .missing: return String(localized: "The file is not on this Mac any more.")
             case .empty: return String(localized: "The file is empty — the archive sent nothing.")
             case .emptyArchive: return String(localized: "The file is an empty archive — the archive had no files to send.")
+            case .unreadable: return String(localized: "Verbinal may not open the file where it is — open it once from Research to give it access again.")
             case .shortOf(let expected, let got):
                 return String(localized: "The download stopped short: \(ByteCountFormatter.string(fromByteCount: got, countStyle: .file)) of \(ByteCountFormatter.string(fromByteCount: expected, countStyle: .file)).")
             }
@@ -39,7 +42,9 @@ enum DownloadedFileCheck {
         guard let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize.map(Int64.init) else { return .missing }
         if size == 0 { return .empty }
         if let expectedBytes, expectedBytes > 0, size < expectedBytes { return .shortOf(expected: expectedBytes, got: size) }
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        // A file that cannot be opened is not one known to hold something
+        // (QA regression run, H2: an empty tar outside the sandbox passed).
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return .unreadable }
         defer { try? handle.close() }
         let head = (try? handle.read(upToCount: 512)) ?? Data()
         return isEmptyArchive(head: head, size: size) ? .emptyArchive : nil

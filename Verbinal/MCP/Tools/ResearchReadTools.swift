@@ -27,7 +27,8 @@ struct ListDownloadedObservationsTool: JSONReadTool {
             let instrument: String
             let filter: String
             let calLevel: String
-            /// Research keeps a file for it; false for one kept without.
+            /// Research keeps a usable file for it; false for one kept
+            /// without, and for one whose file has a `fileProblem`.
             let downloaded: Bool
             /// For a cutout: what part of which file it is.
             let cutout: CutoutSpec?
@@ -49,7 +50,7 @@ struct ListDownloadedObservationsTool: JSONReadTool {
                 instrument = obs.instrument
                 filter = obs.filter
                 calLevel = obs.calLevel
-                downloaded = !obs.localPath.isEmpty
+                downloaded = !obs.localPath.isEmpty && obs.fileProblem == nil
                 cutout = obs.cutout
                 cutoutSummary = obs.cutout?.summary
                 localPath = obs.localPath
@@ -63,7 +64,7 @@ struct ListDownloadedObservationsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_downloaded_observations",
-        description: "List the observations kept in Research — downloaded, or kept without their file (`downloaded: false`; save_observation_to_research, remove_downloaded_file). `fileProblem` says when a kept file holds nothing (empty, an empty archive): download_observation fetches it again into the same record. Optional filter by collection (e.g. 'JWST').",
+        description: "List the observations kept in Research — downloaded, or kept without their file (`downloaded: false`; save_observation_to_research, remove_downloaded_file). `fileProblem` says when a kept file is missing, cannot be opened, or holds nothing (empty, an empty archive) — such a record is `downloaded: false` — and download_observation fetches it again into the same record. Optional filter by collection (e.g. 'JWST').",
         schema: #"""
         {
           "type": "object",

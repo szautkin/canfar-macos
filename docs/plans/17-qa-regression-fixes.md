@@ -19,9 +19,9 @@ parity doc for tool changes.
 
 | Phase | State | Commits |
 |---|---|---|
-| G what still fails | in progress — G1 done | `871bfb9` |
+| G what still fails | in progress — G1 BYTEPIX; G2 files checked through their bookmark | `871bfb9`, G2 |
 | A audit | planned — A1–A5 | — |
-| U the screen | in progress — U1 the robot on every view | U1 |
+| U the screen | in progress — U1 the robot on every view | `9b56ce0` |
 | P probes and privacy | planned — P1–P3 | — |
 
 ## The open question: who deleted `notebook1`?

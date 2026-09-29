@@ -15426,6 +15426,16 @@
         }
       }
     },
+    "The kept file is missing, cannot be opened, or holds nothing — fetch it again into this record" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier conservé est absent, ne peut pas être ouvert ou est vide — téléchargez-le à nouveau dans cette fiche"
+          }
+        }
+      }
+    },
     "The loop" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -16548,6 +16558,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connexion à Verbinal"
+          }
+        }
+      }
+    },
+    "Verbinal may not open the file where it is — open it once from Research to give it access again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal ne peut pas ouvrir le fichier là où il se trouve — ouvrez-le une fois depuis Recherche pour lui en redonner l'accès."
           }
         }
       }

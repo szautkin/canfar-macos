@@ -370,14 +370,7 @@ final class ResearchModel {
     /// reference type — instead we let the FITS viewer / NSWorkspace
     /// callers manage scope explicitly (see ``openFile``).
     private func resolvedURL(for observation: DownloadedObservation) -> URL? {
-        guard let data = observation.bookmarkData else { return nil }
-        var stale = false
-        guard let url = try? URL(
-            resolvingBookmarkData: data,
-            options: [.withSecurityScope],
-            relativeTo: nil,
-            bookmarkDataIsStale: &stale
-        ) else { return nil }
+        guard let (url, stale) = observation.bookmarkedFile() else { return nil }
 
         // Liveness probe: if start fails, the bookmark is unusable (volume
         // missing, file removed, sandbox revoked the grant). Treat as no

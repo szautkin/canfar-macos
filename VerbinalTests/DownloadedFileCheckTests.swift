@@ -72,4 +72,32 @@ final class DownloadedFileCheckTests: XCTestCase {
             XCTAssertTrue(error.localizedDescription.contains("empty archive"), error.localizedDescription)
         }
     }
+
+    /// Plan 17 G2 (QA regression, H2): a file that cannot be opened is not
+    /// one known to hold something, and such a record is not `downloaded`.
+    func testAFileThatCannotBeOpenedIsAProblem() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("locked-\(UUID().uuidString).tar")
+        try Data(count: 1024).write(to: url)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+            try? FileManager.default.removeItem(at: url)
+        }
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        XCTAssertEqual(DownloadedFileCheck.problem(at: url), .unreadable)
+    }
+
+    func testARecordWhoseFileHoldsNothingIsNotDownloaded() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("empty-\(UUID().uuidString).tar")
+        try Data(count: 1024).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let record = DownloadedObservation(publisherID: "ivo://cadc.nrc.ca/NOAO?tu636792/tu636792", collection: "NOAO",
+                                           observationID: "tu636792", targetName: "", instrument: "", filter: "",
+                                           ra: "", dec: "", startDate: "", calLevel: "", localPath: url.path)
+        XCTAssertEqual(record.fileProblem, .emptyArchive)
+        let entry = ListDownloadedObservationsTool.Output.Entry(DownloadedObservationOut(
+            id: record.id.uuidString, publisherID: record.publisherID, collection: "NOAO", observationID: "tu636792",
+            targetName: "", instrument: "", filter: "", calLevel: "", localPath: record.localPath, fileExists: true,
+            fileProblem: record.fileProblem?.message, fileSize: 1024, downloadedAt: Date(), cutout: nil))
+        XCTAssertFalse(entry.downloaded)
+    }
 }

@@ -103,16 +103,47 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// Whether the local file still exists on disk — including the
     /// sandbox-mapped Downloads twin of `localPath`. Do not treat a
     /// raw-string miss as "file gone"; the bookmark may still open it.
+    /// The file is there — found through its bookmark or at its path.
     var fileExists: Bool {
-        resolvedReadableURL != nil
+        withReadableFile { FileManager.default.fileExists(atPath: $0.path) } ?? false
     }
 
-    /// What is wrong with the kept file — empty, an empty archive — or nil
-    /// when it holds something, or when there is no readable file to look at
-    /// (`fileExists` says that).
+    /// What is wrong with the kept file — missing, unreadable, empty, an
+    /// empty archive — or nil when it holds something; nil too for a record
+    /// kept without a file.
     var fileProblem: DownloadedFileCheck.Problem? {
-        guard isDownloaded, let url = resolvedReadableURL else { return nil }
-        return DownloadedFileCheck.problem(at: url)
+        guard isDownloaded else { return nil }
+        return withReadableFile { DownloadedFileCheck.problem(at: $0) } ?? .missing
+    }
+
+    /// The file through its security-scoped bookmark — how Verbinal reaches
+    /// a file outside its own folders, such as one saved to ~/Documents —
+    /// and whether the bookmark wants renewing; nil without a bookmark, or
+    /// when it no longer resolves.
+    func bookmarkedFile() -> (url: URL, stale: Bool)? {
+        #if os(macOS)
+        guard let data = bookmarkData else { return nil }
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope],
+                                 relativeTo: nil, bookmarkDataIsStale: &stale) else { return nil }
+        return (url, stale)
+        #else
+        return nil
+        #endif
+    }
+
+    /// Runs `body` on the record's file, opened as Verbinal may open it:
+    /// through its bookmark first (with the access that grants), else at
+    /// its path. Nil when there is no file to open. The one way every
+    /// reader of a record's file gets at it.
+    func withReadableFile<T>(_ body: (URL) throws -> T) rethrows -> T? {
+        guard isDownloaded else { return nil }
+        if let bookmarked = bookmarkedFile()?.url, bookmarked.startAccessingSecurityScopedResource() {
+            defer { bookmarked.stopAccessingSecurityScopedResource() }
+            return try body(bookmarked)
+        }
+        guard let url = resolvedReadableURL else { return nil }
+        return try body(url)
     }
 
     /// First existing file URL for `localPath`, or `nil` if none of the

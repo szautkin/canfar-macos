@@ -113,7 +113,7 @@ struct ObservationDetailView: View {
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-                            .help("The kept file holds nothing — fetch it again into this record")
+                            .help("The kept file is missing, cannot be opened, or holds nothing — fetch it again into this record")
                         }
                     } else {
                         Button {
