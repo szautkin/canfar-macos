@@ -126,20 +126,22 @@ final class FITSTabHostModel {
     var tabCount: Int { tabs.count }
     var hasMultipleTabs: Bool { tabs.count > 1 }
 
-    /// True when a sync mode (linked crosshair or linked zoom) is active and
-    /// any open tab has missing / invalid / approximate WCS — meaning the
-    /// cross-tab crosshair or zoom sync may land off the true sky position.
-    /// Drives a warning next to the sync toggles. Mirrors Windows
-    /// `UpdateWcsSyncWarning`, which flags missing/invalid/approximate alike.
-    /// Recomputes automatically (observable) on toggle, tab switch, and open.
-    var syncUsesImpreciseWCS: Bool {
-        guard linkedState.linkCrosshair || linkedState.linkZoom else { return false }
-        guard tabs.count > 1 else { return false }
-        return tabs.contains { tab in
+    /// With a sync mode (linked crosshair or linked zoom) on, the open tabs
+    /// whose WCS is missing, invalid or approximate — where the cross-tab
+    /// crosshair or zoom sync may land off the true sky position. The
+    /// warning next to the sync toggles names them, as it names fields apart
+    /// (QA M18). Mirrors Windows `UpdateWcsSyncWarning`, which flags
+    /// missing/invalid/approximate alike. Recomputes automatically
+    /// (observable) on toggle, tab switch, and open.
+    var tabsWithImpreciseWCS: [FITSViewerModel] {
+        guard linkedState.linkCrosshair || linkedState.linkZoom, tabs.count > 1 else { return [] }
+        return tabs.filter { tab in
             guard let wcs = tab.wcs else { return true }
             return !wcs.isValid || wcs.isApproximate
         }
     }
+
+    var syncUsesImpreciseWCS: Bool { !tabsWithImpreciseWCS.isEmpty }
 
     /// Open tabs whose image shares no sky with the active tab's — with the
     /// crosshair linked, it has nowhere to land in them (QA M18: a JWST

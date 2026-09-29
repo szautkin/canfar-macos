@@ -168,8 +168,10 @@ struct FITSTabView: View {
 
                     // Cross-tab sync is only as accurate as the least-precise
                     // linked WCS — warn when any tab is missing/invalid/approximate.
-                    if tabHost.syncUsesImpreciseWCS {
-                        Label("Approximate WCS — sync may be imprecise", systemImage: "exclamationmark.triangle.fill")
+                    let imprecise = tabHost.tabsWithImpreciseWCS
+                    if !imprecise.isEmpty {
+                        Label(String(localized: "No precise WCS in \(imprecise.map(\.displayName).joined(separator: ", ")) — sync may be imprecise"),
+                              systemImage: "exclamationmark.triangle.fill")
                             .font(.caption2)
                             .foregroundStyle(.orange)
                             .help("A linked tab has missing, invalid, or approximate WCS. Crosshair and zoom sync across tabs may not land on the exact sky position.")

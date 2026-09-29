@@ -69,7 +69,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   a GOODS-S frame linked to COSMOS frames gave no sign that the crosshair
   had nowhere to land. With the crosshair linked, the tab bar names the
   tabs that share no sky with the one you are in, and `set_tab_sync`
-  returns them (`fieldsApart`).
+  returns them (`fieldsApart`). The warning that a sync may be imprecise
+  names the tabs without a precise WCS too (`impreciseWCS`).
 - **Your assistant's spectrum probe says what the numbers are** —
   `probe_cube_spectrum` returned a whole spectrum as bare values (3610 of
   them, about 60 KB) with no wavelength and no unit. It now gives the

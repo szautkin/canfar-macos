@@ -137,7 +137,7 @@ final class FITSViewerParityToolsTests: XCTestCase {
     func testSetTabSyncRequiresAtLeastOneFlagAndEchoesState() async throws {
         let tool = SetTabSyncTool(apply: { args in
             XCTAssertEqual(args.linkCrosshair, true)
-            return .applied(.init(linkCrosshair: true, syncZoom: false, usesImpreciseWCS: true))
+            return .applied(.init(linkCrosshair: true, syncZoom: false, impreciseWCS: ["flat.fits"]))
         })
         let noop = await tool.invoke(arguments: Data("{}".utf8), context: ctx())
         guard case .failed = noop else { return XCTFail("expected .failed for no flags") }
@@ -146,6 +146,7 @@ final class FITSViewerParityToolsTests: XCTestCase {
             arguments: argsData(["linkCrosshair": true]), context: ctx()))
         XCTAssertEqual(json["linkCrosshair"] as? Bool, true)
         XCTAssertEqual(json["usesImpreciseWCS"] as? Bool, true)
+        XCTAssertEqual(json["impreciseWCS"] as? [String], ["flat.fits"], "the tabs are named (QA M18)")
     }
 
     // MARK: - search_at_crosshair

@@ -38,6 +38,18 @@ final class FITSFieldsApartTests: XCTestCase {
         XCTAssertTrue(host.fieldsApartFromActive.isEmpty)
     }
 
+    /// Plan 17 G8 (QA M18): a tab with no sky WCS is named too, not only
+    /// counted as making the sync imprecise.
+    func testATabWithoutASkyWCSIsNamed() throws {
+        let host = FITSTabHostModel()
+        _ = field(host, "cosmos-a", ra: 150.1, dec: 2.2)
+        FITSTestFixtures.loadRamp(into: host.addTab(), path: "/tmp/flat.fits")
+        XCTAssertTrue(host.tabsWithImpreciseWCS.isEmpty, "nothing to say while nothing is synced")
+        host.linkedState.linkZoom = true
+        XCTAssertEqual(host.tabsWithImpreciseWCS.map(\.displayName), ["flat.fits"])
+        XCTAssertTrue(host.syncUsesImpreciseWCS)
+    }
+
     func testTheImageCornersAreOnTheSky() throws {
         let host = FITSTabHostModel()
         let tab = field(host, "one", ra: 150.1, dec: 2.2)

@@ -552,7 +552,7 @@ extension AppState {
                 return .applied(.init(
                     linkCrosshair: host.linkedState.linkCrosshair,
                     syncZoom: host.linkedState.linkZoom,
-                    usesImpreciseWCS: host.syncUsesImpreciseWCS,
+                    impreciseWCS: host.tabsWithImpreciseWCS.map(\.displayName),
                     fieldsApart: host.fieldsApartFromActive.map(\.displayName)))
             }
         })

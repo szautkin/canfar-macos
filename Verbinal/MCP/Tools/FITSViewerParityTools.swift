@@ -354,6 +354,8 @@ struct SetTabSyncTool: AITool {
         let linkCrosshair: Bool
         let syncZoom: Bool
         let usesImpreciseWCS: Bool
+        /// The tabs whose WCS is missing or approximate; absent when none.
+        let impreciseWCS: [String]?
         /// Tabs whose image shares no sky with the active tab's; absent when none.
         let fieldsApart: [String]?
     }
@@ -361,8 +363,9 @@ struct SetTabSyncTool: AITool {
     struct State: Sendable {
         let linkCrosshair: Bool
         let syncZoom: Bool
-        let usesImpreciseWCS: Bool
+        var impreciseWCS: [String] = []
         var fieldsApart: [String] = []
+        var usesImpreciseWCS: Bool { !impreciseWCS.isEmpty }
     }
 
     enum Result_: Sendable {
@@ -372,7 +375,7 @@ struct SetTabSyncTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "set_tab_sync",
-        description: "Toggle the FITS viewer's cross-tab sync modes — `linkCrosshair` mirrors the crosshair across tabs via WCS (enabling it norths-up unrotated tabs, like the UI toggle), `syncZoom` matches angular extent. Needs 2+ open tabs. Returns the resulting state plus `usesImpreciseWCS` (true when any tab's WCS is missing or approximate, so the sync may land off the true sky position) and, with the crosshair linked, `fieldsApart`: the tabs whose image shares no sky with the active tab's, where the crosshair has no place — tell the person. Live-applied; no proposal.",
+        description: "Toggle the FITS viewer's cross-tab sync modes — `linkCrosshair` mirrors the crosshair across tabs via WCS (enabling it norths-up unrotated tabs, like the UI toggle), `syncZoom` matches angular extent. Needs 2+ open tabs. Returns the resulting state plus `usesImpreciseWCS` (true when any tab's WCS is missing or approximate, so the sync may land off the true sky position) with `impreciseWCS` naming those tabs, and, with the crosshair linked, `fieldsApart`: the tabs whose image shares no sky with the active tab's, where the crosshair has no place — tell the person. Live-applied; no proposal.",
         schema: #"""
         {
           "type": "object",
@@ -407,6 +410,7 @@ struct SetTabSyncTool: AITool {
                     linkCrosshair: state.linkCrosshair,
                     syncZoom: state.syncZoom,
                     usesImpreciseWCS: state.usesImpreciseWCS,
+                    impreciseWCS: state.impreciseWCS.isEmpty ? nil : state.impreciseWCS,
                     fieldsApart: state.fieldsApart.isEmpty ? nil : state.fieldsApart))
                 return .data(bytes)
             } catch {

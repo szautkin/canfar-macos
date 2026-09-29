@@ -9496,6 +9496,16 @@
         }
       }
     },
+    "No precise WCS in %@ — sync may be imprecise" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de WCS précis dans %@ — la synchronisation peut être imprécise"
+          }
+        }
+      }
+    },
     "No preview available" : {
       "localizations" : {
         "fr" : {
