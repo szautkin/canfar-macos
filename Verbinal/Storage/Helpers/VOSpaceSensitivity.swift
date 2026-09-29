@@ -11,11 +11,12 @@ import Foundation
 /// them. One rule for the Storage screen and the agent's listing.
 ///
 /// A CANFAR home held `.token`, `.config`, `.globus-init.sh` and `.bashrc`
-/// readable by anyone, and nothing said so (QA M14).
+/// readable by anyone, and nothing said so (QA M14). A desktop session
+/// leaves its VNC password in `.vnc` and its X11 cookie in `.Xauthority`.
 enum VOSpaceSensitivity {
     private static let names: Set<String> = [
         ".token", ".netrc", ".pgpass", ".git-credentials", ".env", ".npmrc", ".pypirc",
-        ".ssh", ".aws", ".kube", ".docker", ".gnupg", ".config",
+        ".ssh", ".aws", ".kube", ".docker", ".gnupg", ".config", ".vnc", ".xauthority", ".iceauthority",
         ".bashrc", ".bash_profile", ".profile", ".zshrc", ".zprofile",
         "id_rsa", "id_ecdsa", "id_ed25519",
     ]

@@ -111,7 +111,7 @@ Catching up with Verbinal for Windows 1.4.1 (see
   public item's context menu), which takes away public access and leaves
   group access as it is. For assistants, `list_vospace_path` and
   `get_vospace_node` flag it (`exposedSecret`) and the listing says what
-  to do.
+  to do. A desktop session's `.vnc` folder and `.Xauthority` count too.
 - **A proposed change nobody applies expires after 3 hours** — one sat in
   Pending for six days, ready to apply against a world that had moved on.
   Each proposal now says when it expires; once it has, it leaves Pending

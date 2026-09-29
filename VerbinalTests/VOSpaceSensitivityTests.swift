@@ -15,7 +15,8 @@ final class VOSpaceSensitivityTests: XCTestCase {
 
     func testTheNamesThatUsuallyHoldSecrets() {
         for path in [".token", ".config", ".globus-init.sh", ".bashrc", ".ssh/id_rsa", ".config/gh/hosts.yml",
-                     ".netrc", "certs/cadcproxy.pem", "keys/deploy.KEY", "/home/u/.aws/credentials"] {
+                     ".netrc", "certs/cadcproxy.pem", "keys/deploy.KEY", "/home/u/.aws/credentials",
+                     ".vnc/passwd", "home/u/.Xauthority"] {
             XCTAssertTrue(VOSpaceSensitivity.isLikelySecret(path), path)
         }
         for path in ["results/stack.fits", "notes.md", "tokens.txt", "config.yaml", "analysis/profile.py"] {
