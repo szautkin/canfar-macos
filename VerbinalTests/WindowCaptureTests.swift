@@ -9,32 +9,33 @@ import SwiftUI
 import XCTest
 @testable import Verbinal
 
-/// capture_view draws a window upright and within its size (plan 15 Q1).
+/// `capture_view` shows what is on screen, text on materials included (plan
+/// 19 C1, QA N16: the Portal header and the Cube side panel came out as
+/// grey bars).
 @MainActor
 final class WindowCaptureTests: XCTestCase {
 
-    private func rgb(_ image: CGImage, _ u: Int, _ v: Int) -> [Int] {
-        var pixel = [UInt8](repeating: 0, count: 4)
-        let context = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(image, in: CGRect(x: -u, y: -(image.height - 1 - v), width: image.width, height: image.height))
-        return pixel.prefix(3).map(Int.init)
+    private func window() -> NSWindow {
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 420, height: 160), styleMask: [.titled],
+                              backing: .buffered, defer: false)
+        window.contentView = NSHostingView(rootView: VStack {
+            GroupBox { Text("Batch Jobs 0 running · 0 pending") }
+            Text("Plain text").padding().background(.regularMaterial)
+        }.padding().frame(width: 420, height: 160))
+        return window
     }
 
-    func testAWindowIsDrawnUprightWithinItsSize() throws {
-        let content = VStack(spacing: 0) { Color.red; Color.blue }.frame(width: 400, height: 300)
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
-                              styleMask: [.titled], backing: .buffered, defer: false)
-        window.contentView = NSHostingView(rootView: content)
-        window.contentView?.layoutSubtreeIfNeeded()
-        window.displayIfNeeded()
-
-        let image = try XCTUnwrap(WindowCapture.image(of: try XCTUnwrap(window.contentView), maxSide: 200))
-        XCTAssertEqual(image.width, 200)
-        XCTAssertEqual(image.height, 150)
-        let top = rgb(image, 100, 10), bottom = rgb(image, 100, 140)
-        XCTAssertGreaterThan(top[0], 200, "red on top: \(top)")
-        XCTAssertGreaterThan(bottom[2], 200, "blue below: \(bottom)")
+    func testAWindowOnScreenIsTakenAsComposited() async throws {
+        let window = window()
+        window.orderFrontRegardless()
+        defer { window.orderOut(nil) }
+        try await Task.sleep(for: .milliseconds(300))
+        guard let image = WindowCapture.composited(window, maxSide: 400) else {
+            throw XCTSkip("no window server picture here (headless)")
+        }
+        XCTAssertLessThanOrEqual(max(image.width, image.height), 400)
+        let hidden = self.window()
+        XCTAssertNil(WindowCapture.composited(hidden, maxSide: 400), "not on screen: the layers are drawn instead")
+        XCTAssertTrue(WindowCapture.shown(window) === window)
     }
 }

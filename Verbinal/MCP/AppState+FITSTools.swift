@@ -203,19 +203,27 @@ extension AppState {
         }
     }
 
-    /// `capture_view`: the front window, drawn from its layers.
+    /// `capture_view`: the front window — its sheet when one is open — as on screen.
     func makeCaptureViewTool() -> ViewerImageTool {
         ViewerImageTool.window { [weak self] maxSide in
             guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
             return try await MainActor.run {
-                guard let window = WindowCapture.frontWindow, let view = window.contentView,
-                      let image = WindowCapture.image(of: view, maxSide: maxSide) else {
+                guard let front = WindowCapture.frontWindow else {
+                    throw ToolFailureReason.targetNotResolved("No Verbinal window is showing to capture")
+                }
+                let window = WindowCapture.shown(front)
+                guard let view = window.contentView else {
+                    throw ToolFailureReason.targetNotResolved("No Verbinal window is showing to capture")
+                }
+                let screen = WindowCapture.composited(window, maxSide: maxSide)
+                guard let image = screen ?? WindowCapture.image(of: view, maxSide: maxSide) else {
                     throw ToolFailureReason.targetNotResolved("No Verbinal window is showing to capture")
                 }
                 return ViewerPicture(image: image, caption: [
-                    "window": .string(window.title),
+                    "window": .string(window.title.isEmpty ? front.title : window.title),
                     "points": .object(["width": .double(view.bounds.width), "height": .double(view.bounds.height)]),
                     "mode": .string(self.currentMode.key),
+                    "drawnBy": .string(screen == nil ? "layers" : "screen"),
                 ])
             }
         }

@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Your assistant's picture of the window shows all its text** —
+  `capture_view` drew the window's layers itself, which leaves out what
+  macOS composites: the Portal's header and the Cube Viewer's side panel
+  came out as grey bars, and the spectrum's axes blank. It now takes the
+  window as it is on screen — a sheet when one is open — and needs no
+  Screen Recording permission, as the window is Verbinal's own.
 - **A Research record saved under a malformed ID is corrected** — a
   record kept in September as `ivo://cadc.nrc.ca/CFHT/1525350` (a slash
   where `?` belongs) was never looked up in the archive, so it showed

@@ -7,10 +7,15 @@
 import AppKit
 import VerbinalKit
 
-/// A window as the person sees it, drawn from its layers — how the Portal
-/// layout was checked offscreen (plan 15 P1), where `ImageRenderer` and
-/// `cacheDisplay` drew nothing for it. A Metal-drawn view may come out
-/// blank; the viewers' own picture tools draw those.
+/// A window as the person sees it.
+///
+/// Drawing the window's layers ourselves (plan 15 P1) left out what the
+/// window server composites — materials, vibrancy and the text on them —
+/// so the Portal header and the Cube side panel came out as grey bars and
+/// the spectrum's axes blank (plan 19 C1, QA N16). The window server's own
+/// picture of Verbinal's window needs no Screen Recording permission: the
+/// app's windows are its own. The layers are the fallback, for a window
+/// the window server has no picture of.
 @MainActor
 enum WindowCapture {
     /// Verbinal's frontmost visible window that can be a main window — the
@@ -19,7 +24,30 @@ enum WindowCapture {
         NSApp.orderedWindows.first { $0.isVisible && $0.canBecomeMain && $0.contentView != nil }
     }
 
-    /// `view` drawn upright, its longer side at most `maxSide` pixels.
+    /// What the person sees of `window`: its sheet when one is open.
+    static func shown(_ window: NSWindow) -> NSWindow {
+        window.attachedSheet.map(shown) ?? window
+    }
+
+    /// `window` as the window server composites it, its longer side at most
+    /// `maxSide` pixels; nil when it has no picture of it (off screen).
+    static func composited(_ window: NSWindow, maxSide: Int) -> CGImage? {
+        guard window.isVisible, window.windowNumber > 0,
+              let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber),
+                                                  [.boundsIgnoreFraming, .bestResolution]),
+              image.width > 1, image.height > 1 else { return nil }
+        let scale = min(1, CGFloat(maxSide) / CGFloat(max(image.width, image.height)))
+        guard scale < 1 else { return image }
+        let width = max(1, Int((CGFloat(image.width) * scale).rounded())), height = max(1, Int((CGFloat(image.height) * scale).rounded()))
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.interpolationQuality = .high
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage()
+    }
+
+    /// `view` drawn upright from its layers, its longer side at most `maxSide` pixels.
     static func image(of view: NSView, maxSide: Int) -> CGImage? {
         let size = view.bounds.size
         guard size.width >= 1, size.height >= 1, let layer = view.layer else { return nil }
@@ -42,7 +70,7 @@ extension ViewerImageTool {
     static func window(picture: @escaping @Sendable (Int) async throws -> ViewerPicture) -> Self {
         Self(definition: AIToolDefinition.withStaticSchema(
             name: "capture_view",
-            description: "See Verbinal's window as the person sees it — whatever screen, sheet or Settings section is in front — as a picture, with a caption naming the window, its size and the mode. For checking what the app shows (a layout, a message, a state) rather than asking. Drawn from the window's layers: a Metal-drawn view can come out blank, so use get_fits_image and get_cube_image for the viewers' images. Capped to stay under the client's response limit.",
+            description: "See Verbinal's window as the person sees it — whatever screen, sheet or Settings section is in front — as a picture, with a caption naming the window, its size and the mode. For checking what the app shows (a layout, a message, a state) rather than asking. The picture is the window as composited on screen (`drawnBy: \"screen\"`); for a window not on screen it is drawn from its layers (`drawnBy: \"layers\"`), where a material's text can be missing and a Metal-drawn view blank — get_fits_image and get_cube_image draw the viewers' images. Capped to stay under the client's response limit.",
             schema: ViewerImageArgs.schema), picture: picture)
     }
 }

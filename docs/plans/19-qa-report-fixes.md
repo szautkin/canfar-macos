@@ -33,7 +33,7 @@ The rules are those of plans 15 and 17:
 | S say what happened | in progress — S1 an unknown session id is not deleted; S2 every use a numbered copy, its id returned; S3 start_compute says the size it kept; S4 an apply says since when, one cut short by a quit fails saying so; K1 every Python interpreter probed, a cache hit says so | `3d2f55a`, `98e6872`, `176d858`, `3214bc4`, K1 |
 | T the trail | done — T2 a detached probe keeps who started it; T1 an assistant's batch job on the bar | `35911ca`, T1 |
 | F figures and files | done — F2 one Downloads, one path; F1 a spectrum exports as a figure | `563aba8`, F1 |
-| C capture | planned — C1 (decision 1) | — |
+| C capture | done — C1 the window as composited on screen | C1 |
 | R Research | done — R3 a slash-form record corrected; R1 the archive's answers kept in SQLite, records completed when added, 2 at a time with progress; R2 the plane of the downloaded file; R4 by R1–R3 | `8ca2773`, `cdb9d58`, R2 |
 | K kept | — | — |
 | Q handout 20 | planned | — |
@@ -65,7 +65,7 @@ The rules are those of plans 15 and 17:
 
 | Step | Finding | Cause (found) | Fix |
 |---|---|---|---|
-| **C1** | N16 (Medium), and the checks by eye (N12, N14, spectrum axes) | `capture_view` draws the window's layers itself (`layer.render(in:)`). That leaves out what the window server composites: materials and vibrancy, and text drawn over them. Hence the grey bars in the Portal header and the Cube side panel, and the Charts axis labels. | Decision 1. **Recommended:** the answer also carries the window's text, read from its accessibility tree (labels, values, counts — what VoiceOver reads). That needs no permission and makes labels checkable. Also spike a true window capture: ScreenCaptureKit, or `CGWindowListCreateImage` of the app's own window. Adopt it only if it needs no Screen Recording prompt. |
+| **C1** | N16 (Medium), and the checks by eye (N12, N14, spectrum axes) | `capture_view` drew the window's layers itself (`layer.render(in:)`), which leaves out what the window server composites: materials and vibrancy, and the text on them. Hence the grey bars in the Portal header and the Cube side panel, and the blank Charts axes. | *Spiked (2026-09-29):* the window server's own picture of Verbinal's window (`CGWindowListCreateImage` of the app's own window: deprecated, still working at the macOS 14 target) shows everything, with no Screen Recording prompt. So `capture_view` takes it, of the sheet when one is open, and draws the layers only for a window not on screen (`drawnBy`). The window's accessibility text was dropped: SwiftUI builds that tree only for an attached assistive client, and reaching it otherwise needs private API or the Accessibility prompt. |
 
 ## R — Research
 
