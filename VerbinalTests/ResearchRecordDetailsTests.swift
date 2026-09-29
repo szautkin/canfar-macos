@@ -157,38 +157,93 @@ final class ResearchRecordDetailsTests: XCTestCase {
         return (ObservationStore(fileName: name, spotlight: nil), file)
     }
 
+    /// The archive, as the check sees it: what this Mac keeps, and what the
+    /// network answers — slowly, and counted.
+    private final class FakeArchive: ArchiveObservations, @unchecked Sendable {
+        private let lock = NSLock()
+        private var keptAnswers: [String: CAOM2Observation] = [:]
+        private let answers: [String: CAOM2Observation]
+        private(set) var asked: [String] = []
+        private(set) var mostAtOnce = 0
+        private var atOnce = 0
+        init(answers: [String: CAOM2Observation] = [:], kept: [String: CAOM2Observation] = [:]) {
+            (self.answers, self.keptAnswers) = (answers, kept)
+        }
+        func kept(publisherID: String) async -> CAOM2Observation? { lock.withLock { keptAnswers[publisherID] } }
+        func observation(publisherID: String, within seconds: TimeInterval) async -> CAOM2Observation? {
+            lock.withLock { asked.append(publisherID); atOnce += 1; mostAtOnce = max(mostAtOnce, atOnce) }
+            try? await Task.sleep(for: .milliseconds(20))
+            return lock.withLock {
+                atOnce -= 1
+                if let answer = answers[publisherID] { keptAnswers[publisherID] = answer }
+                return answers[publisherID]
+            }
+        }
+    }
+
+    /// Plan 17 G3, plan 19 R1: a record kept before is brought up to the
+    /// archive; asked once, as the answer is then kept on this Mac.
     @MainActor
-    func testRecordsKeptBeforeAreBroughtUpToTheArchiveOnce() async throws {
+    func testRecordsKeptBeforeAreBroughtUpToTheArchiveAndAskedOnce() async throws {
         let caom = try CAOM2Parser.parse(data: try megaPipe())
         let (store, file) = temporaryStore()
         defer { try? FileManager.default.removeItem(at: file) }
         var legacy = described(uBand, filter: "G.MP9401", target: "M31")
         legacy.localPath = "/tmp/MegaPipe.016.263.U.MP9301.fits"
         store.save(legacy)
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "repair-\(UUID().uuidString)"))
-        final class Asked: @unchecked Sendable { var count = 0 }
-        let asked = Asked()
-        let repair = ResearchRecordRepair(store: store, tasks: TaskRegistry(), defaults: defaults) { _ in
-            asked.count += 1
-            return caom
-        }
+        let archive = FakeArchive(answers: [uBand: caom])
+        let repair = ResearchRecordRepair(store: store, tasks: TaskRegistry(), archive: archive)
 
-        let corrected = await repair.runOnce()
+        let changed = await repair.run()
 
-        XCTAssertEqual(corrected, 1)
+        XCTAssertEqual(changed, 1)
         let record = try XCTUnwrap(store.observations.first)
         XCTAssertEqual(record.filter, "u.MP9301")
         XCTAssertEqual(record.observationID, "MegaPipe.016.263", "M2: no longer blank")
         XCTAssertEqual(record.localPath, legacy.localPath, "the file stays the record's")
         XCTAssertEqual(record.id, legacy.id)
-        let again = await repair.runOnce()
+        let again = await repair.run()
         XCTAssertEqual(again, 0)
-        XCTAssertEqual(asked.count, 1, "once")
+        XCTAssertEqual(archive.asked, [uBand], "the second check reads what this Mac keeps")
+        XCTAssertNil(repair.progress)
+    }
+
+    /// Plan 19 R1: a record the archive did not answer is asked again at
+    /// the next check — the first check marked itself done regardless.
+    @MainActor
+    func testARecordTheArchiveDidNotAnswerIsAskedAgain() async throws {
+        let (store, file) = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: file) }
+        store.save(described("ivo://cadc.nrc.ca/CFHT?1573200"))
+        let archive = FakeArchive()
+        let repair = ResearchRecordRepair(store: store, tasks: TaskRegistry(), archive: archive)
+        await repair.run()
+        XCTAssertEqual(store.observations.first?.collection, "CFHT", "the publisher id fills what it can meanwhile")
+        await repair.run()
+        XCTAssertEqual(archive.asked.count, 2)
+    }
+
+    /// Plan 19 R1 (QA N15: 35 records in about 20 minutes, one at a time):
+    /// two requests at once, the progress on the bar.
+    @MainActor
+    func testTheArchiveIsAskedTwoAtATimeWithProgress() async throws {
+        let (store, file) = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: file) }
+        for n in 1...5 { store.save(described("ivo://cadc.nrc.ca/CFHT?15732\(n)")) }
+        let registry = TaskRegistry()
+        let archive = FakeArchive()
+        let repair = ResearchRecordRepair(store: store, tasks: registry, archive: archive)
+        await repair.run()
+        XCTAssertEqual(archive.asked.count, 5)
+        XCTAssertEqual(archive.mostAtOnce, ResearchRecordRepair.concurrentRequests)
+        XCTAssertEqual(registry.tasks.map(\.label), ["Get archive details for Research records"])
+        XCTAssertEqual(registry.tasks.first?.startedBy, .app)
+        XCTAssertEqual(registry.tasks.first?.message, "The archive answered for 0 of 5")
     }
 
     /// Plan 19 R3: `1525350`, blank in the person's Research, was kept under
     /// the slash form and never looked up; its ID is corrected, its note
-    /// goes with it, and the archive fills it in.
+    /// goes with it, and the archive is asked under the ID it means.
     @MainActor
     func testARecordKeptUnderTheSlashFormIsCorrectedAndFilledIn() async throws {
         let (store, file) = temporaryStore()
@@ -196,18 +251,12 @@ final class ResearchRecordDetailsTests: XCTestCase {
         let slash = "ivo://cadc.nrc.ca/CFHT/1525350", canonical = "ivo://cadc.nrc.ca/CFHT?1525350"
         let legacy = store.save(described(slash))
         let notes = ObservationNoteStore(database: try AppDatabase.makeInMemory(), legacyNotesSource: nil)
-        notes.save(ObservationNote(publisherID: slash, text: "check the seeing", rating: 3, tags: ["qa"],
-                                   createdAt: Date(), modifiedAt: Date()))
-        final class Asked: @unchecked Sendable { var ids: [String] = [] }
-        let asked = Asked()
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "repair-\(UUID().uuidString)"))
-        let repair = ResearchRecordRepair(store: store, notes: notes, tasks: TaskRegistry(), defaults: defaults) { id in
-            asked.ids.append(id)
-            return nil
-        }
-        await repair.runOnce()
+        notes.save(ObservationNote(publisherID: slash, text: "check the seeing", rating: 3, tags: ["qa"]))
+        let archive = FakeArchive()
+        let repair = ResearchRecordRepair(store: store, notes: notes, tasks: TaskRegistry(), archive: archive)
+        await repair.run()
 
-        XCTAssertEqual(asked.ids, [canonical], "looked up under the ID it means")
+        XCTAssertEqual(archive.asked, [canonical], "looked up under the ID it means")
         let record = try XCTUnwrap(store.observations.first)
         XCTAssertEqual(record.publisherID, canonical)
         XCTAssertEqual(record.id, legacy.id, "the same record")
@@ -218,16 +267,50 @@ final class ResearchRecordDetailsTests: XCTestCase {
         XCTAssertNil(PublisherID.likely("not an id"))
     }
 
-    /// Offline, nothing is marked done: the next sign-in checks again.
+    /// Plan 19 R1 (the person's blank records): a record added from Search
+    /// gets its details from the archive when it is added, in the background.
     @MainActor
-    func testACheckTheArchiveNeverAnsweredIsMadeAgain() async throws {
+    func testARecordAddedGetsItsDetailsFromTheArchive() async throws {
+        let caom = try CAOM2Parser.parse(data: try megaPipe())
         let (store, file) = temporaryStore()
         defer { try? FileManager.default.removeItem(at: file) }
-        store.save(described("ivo://cadc.nrc.ca/CFHT?1573200"))
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "repair-\(UUID().uuidString)"))
-        let repair = ResearchRecordRepair(store: store, tasks: TaskRegistry(), defaults: defaults) { _ in nil }
-        await repair.runOnce()
-        XCTAssertEqual(store.observations.first?.collection, "CFHT", "the publisher id fills what it can meanwhile")
-        XCTAssertFalse(defaults.bool(forKey: ResearchRecordRepair.doneKey))
+        let model = ResearchModel(observationStore: store,
+                                  noteStore: ObservationNoteStore(database: try AppDatabase.makeInMemory(), legacyNotesSource: nil))
+        let registry = TaskRegistry()
+        model.tasks = registry
+        model.archive = FakeArchive(answers: [uBand: caom])
+        let added = store.save(described(uBand))
+        model.completeFromArchive(added)
+        for _ in 0..<100 where store.observations.first?.filter != "u.MP9301" {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(store.observations.first?.filter, "u.MP9301")
+        XCTAssertEqual(store.observations.first?.targetName, "M 31 LL")
+        XCTAssertEqual(registry.tasks.first?.label, "Archive details of \(uBand)")
+    }
+
+    /// The archive's answer, kept in the app's database, is read by the next
+    /// client without the network (plan 19 R1).
+    func testTheArchivesAnswerIsKeptInTheDatabase() async throws {
+        let body = try megaPipe()
+        final class Count: @unchecked Sendable { var requests = 0 }
+        let count = Count()
+        MockURLProtocol.requestHandler = { request in
+            count.requests += 1
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, body)
+        }
+        defer { MockURLProtocol.requestHandler = nil }
+        let kept = DatabaseArchiveObservationStore(database: try AppDatabase.makeInMemory())
+        let first = CAOM2Service(session: MockURLProtocol.mockSession(), store: kept)
+        let missing = await first.kept(publisherID: uBand)
+        XCTAssertNil(missing)
+        let fetched = await first.observation(publisherID: uBand, within: 10)
+        XCTAssertNotNil(fetched)
+
+        let second = CAOM2Service(session: MockURLProtocol.mockSession(), store: kept)
+        let fromDisk = await second.kept(publisherID: uBand)
+        XCTAssertEqual(fromDisk?.observationID, "MegaPipe.016.263")
+        _ = try await second.fetch(publisherID: uBand)
+        XCTAssertEqual(count.requests, 1, "asked of the archive once")
     }
 }

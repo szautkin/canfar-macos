@@ -34,7 +34,7 @@ The rules are those of plans 15 and 17:
 | T the trail | done — T2 a detached probe keeps who started it; T1 an assistant's batch job on the bar | `35911ca`, T1 |
 | F figures and files | done — F2 one Downloads, one path; F1 a spectrum exports as a figure | `563aba8`, F1 |
 | C capture | planned — C1 (decision 1) | — |
-| R Research | in progress — R3 a slash-form record corrected | R3 |
+| R Research | in progress — R3 a slash-form record corrected; R1 the archive's answers kept in SQLite, records completed when added, 2 at a time with progress | `8ca2773`, R1 |
 | K kept | — | — |
 | Q handout 20 | planned | — |
 

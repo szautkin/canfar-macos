@@ -45,6 +45,12 @@ final class ResearchModel {
     /// Called when the user opens a file; routes FITS/notebook files to in-app viewers.
     var onOpenFile: ((URL) -> Void)?
 
+    /// Where a record just added gets its details (set by the app, one
+    /// archive client for Research and the check of older records).
+    var archive: (any ArchiveObservations)?
+    /// Where the lookup of a record just added shows.
+    @ObservationIgnored var tasks: TaskRegistry = .shared
+
     // Defaults are constructed inline at the @MainActor init site
     // rather than as parameter defaults — parameter defaults are
     // evaluated in the caller's isolation context, and `@State
@@ -170,6 +176,7 @@ final class ResearchModel {
 
             let stored = observationStore.save(observation)
             if selectedObservation?.recordKey == stored.recordKey { selectedObservation = stored }
+            completeFromArchive(stored)
             lastSuccess = String(localized: "Saved: \(suggestedFilename)") + (companionNote.map { " — \($0)" } ?? "")
 
             // Clean up active download indicator
@@ -246,7 +253,28 @@ final class ResearchModel {
     /// One already there is left as it is; returns whether it was added.
     @discardableResult
     func saveToResearch(from result: SearchResult, columns: SearchResultColumns, dataLink: DataLinkResult? = nil) -> Bool {
-        observationStore.keep(DownloadedObservation.from(result: result, columns: columns, localPath: "", dataLink: dataLink)).added
+        let kept = observationStore.keep(DownloadedObservation.from(result: result, columns: columns, localPath: "", dataLink: dataLink))
+        if kept.added { completeFromArchive(kept.record) }
+        return kept.added
+    }
+
+    /// A record just added, brought up to the archive in the background, on
+    /// the activity bar: one added from Search kept only what the search row
+    /// had, and stayed blank where it had nothing (plan 19 R1).
+    func completeFromArchive(_ record: DownloadedObservation) {
+        guard let archive else { return }
+        let name = record.observationID.isEmpty ? record.publisherID : record.observationID
+        let tasks = tasks
+        Task { [weak self] in
+            let observation = await tasks.track(.research, String(localized: "Archive details of \(name)")) { _ in
+                await archive.observation(publisherID: record.publisherID, within: ResearchRecordRepair.requestSeconds)
+            }
+            guard let self else { return }
+            if self.observationStore.complete(recordID: record.id, from: observation),
+               self.selectedObservation?.id == record.id {
+                self.selectedObservation = self.observationStore.observations.first { $0.id == record.id }
+            }
+        }
     }
 
     /// Delete `observation`'s file from this computer and keep the

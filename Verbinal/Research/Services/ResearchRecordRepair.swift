@@ -5,69 +5,105 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import Observation
 import VerbinalKit
 
-/// Brings the Research records kept before a record's details came from
-/// the archive (plan 15 F6) up to it, once: each is completed as a new one
-/// is (``ResearchRecordDetails``) and saved when that changes it.
+/// Brings Research's records up to the archive, after each sign-in.
 ///
-/// The regression run still found the M31 MegaPipe record saying g band
-/// for its u-band file, and records with no observation id (QA H5, M2).
+/// Records kept before their details came from the archive said what they
+/// were given (plan 17 G3). The first check asked `caom2ops/meta` for every
+/// record, one at a time — 30–50 s each under load, 35 records in about
+/// 20 minutes (QA N15) — and was done once, whether the archive answered or
+/// not. Now what the archive once answered is kept on this Mac
+/// (`ArchiveObservations`): a record it answered for is completed from that,
+/// at once; only the others are asked, two at a time, with the progress on
+/// the activity bar and in Research; one the archive does not answer is
+/// asked again at the next sign-in (plan 19 R1).
+@Observable
 @MainActor
 final class ResearchRecordRepair {
-    /// v2: records kept under a slash-form publisher ID are corrected too
-    /// (plan 19 R3), so a Mac that ran the first check runs this one.
-    static let doneKey = "research.recordsCheckedAgainstArchive.v2"
-    /// One check at a time, however many sign-ins ask for one.
-    private var running = false
+    /// How far the check has got; nil when none is running.
+    struct Progress: Equatable {
+        var done: Int
+        let total: Int
+    }
+
+    private(set) var progress: Progress?
+    /// Archive requests at once — CADC serves everyone else too.
+    static let concurrentRequests = 2
+    /// How long one record waits for the archive.
+    static let requestSeconds: TimeInterval = 60
 
     private let store: ObservationStore
     /// A corrected record's note goes with it.
     private let notes: ObservationNoteStore?
     private let tasks: TaskRegistry
-    private let defaults: UserDefaults
-    /// The archive's record of an observation; nil when it does not answer.
-    private let fetch: @Sendable (_ publisherID: String) async -> CAOM2Observation?
+    private let archive: any ArchiveObservations
+    /// One check at a time, however many sign-ins ask for one.
+    @ObservationIgnored private var running = false
 
     init(store: ObservationStore, notes: ObservationNoteStore? = nil, tasks: TaskRegistry = .shared,
-         defaults: UserDefaults = .standard, fetch: @escaping @Sendable (String) async -> CAOM2Observation?) {
+         archive: any ArchiveObservations) {
         self.store = store
         self.notes = notes
         self.tasks = tasks
-        self.defaults = defaults
-        self.fetch = fetch
+        self.archive = archive
     }
 
-    /// Checks every record, unless that has been done; returns how many it
-    /// corrected. Done once the archive has answered at least once — a
-    /// check made offline is made again.
+    /// Checks every record; returns how many it changed.
     @discardableResult
-    func runOnce() async -> Int {
-        let records = store.observations
-        guard !running, !defaults.bool(forKey: Self.doneKey), !records.isEmpty else { return 0 }
+    func run() async -> Int {
+        guard !running, !store.observations.isEmpty else { return 0 }
         running = true
-        defer { running = false }
-        let task = tasks.begin(.research, String(localized: "Check Research records against the archive"), by: .app)
-        var corrected = 0, answered = 0
-        for (index, kept) in records.enumerated() {
-            task.stage(String(localized: "\(index + 1) of \(records.count)"))
-            var record = kept
-            // Saved under the slash form, it was never looked up: `1525350`,
-            // blank in the person's Research (plan 19 R3).
-            if PublisherID(record.publisherID) == nil, let likely = PublisherID.likely(record.publisherID),
-               let corrected = store.correctPublisherID(of: record.id, to: likely) {
-                notes?.move(from: record.publisherID, to: likely)
-                record = corrected
+        defer { running = false; progress = nil }
+
+        var changed = correctSlashFormIDs()
+        var toAsk: [DownloadedObservation] = []
+        for record in store.observations {
+            if let kept = await archive.kept(publisherID: record.publisherID) {
+                if store.complete(recordID: record.id, from: kept) { changed += 1 }
+            } else {
+                toAsk.append(record)
             }
-            let archive = await fetch(record.publisherID)
-            if archive != nil { answered += 1 }
-            let completed = ResearchRecordDetails.completing(record, from: archive)
-            guard completed != kept else { continue }
-            store.save(completed)
+        }
+        guard !toAsk.isEmpty else { return changed }
+
+        let task = tasks.begin(.research, String(localized: "Get archive details for Research records"), by: .app)
+        progress = Progress(done: 0, total: toAsk.count)
+        task.stage(String(localized: "\(0) of \(toAsk.count)"))
+        var answered = 0
+        let archive = archive, seconds = Self.requestSeconds
+        await withTaskGroup(of: (UUID, CAOM2Observation?).self) { group in
+            var next = 0
+            func ask() {
+                let id = toAsk[next].id, publisherID = toAsk[next].publisherID
+                next += 1
+                group.addTask { (id, await archive.observation(publisherID: publisherID, within: seconds)) }
+            }
+            while next < min(Self.concurrentRequests, toAsk.count) { ask() }
+            for await (id, observation) in group {
+                if observation != nil { answered += 1 }
+                if store.complete(recordID: id, from: observation) { changed += 1 }
+                progress?.done += 1
+                task.stage(String(localized: "\(progress?.done ?? 0) of \(toAsk.count)"))
+                if next < toAsk.count { ask() }
+            }
+        }
+        task.succeed(String(localized: "The archive answered for \(answered) of \(toAsk.count)"))
+        return changed
+    }
+
+    /// Records saved under the slash form, `ivo://cadc.nrc.ca/CFHT/1525350`,
+    /// were never looked up — the person's blank `1525350` (plan 19 R3).
+    /// Each gets the ID it means, with its note.
+    private func correctSlashFormIDs() -> Int {
+        var corrected = 0
+        for record in store.observations where PublisherID(record.publisherID) == nil {
+            guard let likely = PublisherID.likely(record.publisherID),
+                  store.correctPublisherID(of: record.id, to: likely) != nil else { continue }
+            notes?.move(from: record.publisherID, to: likely)
             corrected += 1
         }
-        if answered > 0 { defaults.set(true, forKey: Self.doneKey) }
-        task.succeed(String(localized: "Corrected \(corrected) of \(records.count)"))
         return corrected
     }
 }

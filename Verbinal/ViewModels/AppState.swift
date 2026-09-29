@@ -333,6 +333,9 @@ final class AppState {
             self.preferredLocaleIdentifier = stored
         }
 
+        // Records added to Research get their details from the archive.
+        researchModel.archive = caom2
+
         // Wire controller callbacks now that `self` is fully initialised.
         auth.onAuthenticated = { [weak self] in
             self?.afterAuthenticated()
@@ -546,13 +549,13 @@ final class AppState {
     @ObservationIgnored private(set) lazy var headlessLaunches = HeadlessLaunches(service: headlessService)
     /// Deleting and renewing sessions for an assistant, by the Portal's rule (plan 17 A1).
     @ObservationIgnored private(set) lazy var sessionActions = SessionActions(service: sessionService)
-    /// Brings older Research records up to the archive once (plan 17 G3).
-    @ObservationIgnored private(set) lazy var researchRecordRepair: ResearchRecordRepair = {
-        let caom2 = CAOM2Service()
-        return ResearchRecordRepair(store: researchModel.observationStore, notes: researchModel.noteStore) { id in
-            try? await caom2.fetch(publisherID: id)
-        }
-    }()
+    /// The one archive client for Research, its answers kept in the app's
+    /// database (plan 19 R1): records added, an assistant's downloads, and
+    /// the check of older records all ask it.
+    @ObservationIgnored private(set) lazy var caom2 = CAOM2Service(store: DatabaseArchiveObservationStore(database: .shared))
+    /// Brings Research's records up to the archive after each sign-in (plan 17 G3, plan 19 R1).
+    @ObservationIgnored private(set) lazy var researchRecordRepair = ResearchRecordRepair(
+        store: researchModel.observationStore, notes: researchModel.noteStore, archive: caom2)
 
     #if os(macOS)
     /// Hoisted viewer state. Previously each viewer root view owned its
@@ -867,7 +870,7 @@ final class AppState {
 
         // Records kept before their details came from the archive are
         // brought up to it once, in the background (plan 17 G3).
-        Task { await researchRecordRepair.runOnce() }
+        Task { await researchRecordRepair.run() }
 
         // Idempotent: silent reauth no longer fires this hook, but guard
         // against any future double-apply so we don't stack monitors.

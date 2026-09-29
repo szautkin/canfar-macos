@@ -45,8 +45,20 @@ enum CAOM2ServiceError: Error, LocalizedError {
 /// Note: the URI scheme accepted by the metadata service is **`caom:`**,
 /// not the `ivo://` publisher form that appears in TAP results. The mapping
 /// lives in ``CAOM2Observation/observationURI(fromPublisherID:)``.
-actor CAOM2Service {
+/// The archive's record of an observation, as Research needs it: what
+/// this Mac already keeps, or the archive asked within a time (plan 19 R1).
+protocol ArchiveObservations: Sendable {
+    /// What this Mac keeps of it; nil when the archive must be asked.
+    func kept(publisherID: String) async -> CAOM2Observation?
+    /// The archive's record, kept on this Mac once had; nil when it did not
+    /// answer within `seconds` — its answer is still kept if it comes later.
+    func observation(publisherID: String, within seconds: TimeInterval) async -> CAOM2Observation?
+}
+
+actor CAOM2Service: ArchiveObservations {
     private let session: URLSession
+    /// The archive's answers kept on this Mac; nil keeps them in memory only.
+    private let store: (any ArchiveObservationStore)?
 
     /// In-memory cache keyed by observation URI. Same LRU discipline as
     /// `TAPClient.datalinkCache` — bounded so browsing 10 000 results
@@ -55,8 +67,31 @@ actor CAOM2Service {
     private var cacheOrder: [String] = []
     private static let cacheCapacity = 100
 
-    init(session: URLSession = .shared) {
+    init(session: URLSession = .shared, store: (any ArchiveObservationStore)? = nil) {
         self.session = session
+        self.store = store
+    }
+
+    func kept(publisherID: String) async -> CAOM2Observation? {
+        guard let uri = CAOM2Observation.observationURI(fromPublisherID: publisherID) else { return nil }
+        return keptObservation(uri)
+    }
+
+    func observation(publisherID: String, within seconds: TimeInterval) async -> CAOM2Observation? {
+        await withHardDeadline(seconds: seconds, cancelsWork: false, onDeadline: { nil }) {
+            try? await self.fetch(publisherID: publisherID)
+        }
+    }
+
+    /// Memory first, then what this Mac keeps.
+    private func keptObservation(_ uri: String) -> CAOM2Observation? {
+        if let cached = cache[uri] {
+            promote(uri)
+            return cached
+        }
+        guard let answer = store?.answer(for: uri), let observation = try? CAOM2Parser.parse(data: answer) else { return nil }
+        insertIntoCache(uri, observation)
+        return observation
     }
 
     /// Fetch the CAOM2 observation document for the given publisher ID.
@@ -70,10 +105,7 @@ actor CAOM2Service {
 
     /// Fetch by canonical CAOM2 URI (`caom:COLLECTION/observationID`).
     func fetch(observationURI: String) async throws -> CAOM2Observation {
-        if let cached = cache[observationURI] {
-            promote(observationURI)
-            return cached
-        }
+        if let kept = keptObservation(observationURI) { return kept }
 
         guard var components = URLComponents(string: TAPConfig.metaURL) else {
             throw CAOM2ServiceError.transport(URLError(.badURL))
@@ -106,6 +138,7 @@ actor CAOM2Service {
             do {
                 let observation = try CAOM2Parser.parse(data: data)
                 insertIntoCache(observationURI, observation)
+                store?.keep(data, for: observationURI)
                 return observation
             } catch let err as CAOM2ParserError {
                 throw CAOM2ServiceError.parse(err)

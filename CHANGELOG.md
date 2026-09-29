@@ -235,9 +235,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   the plane its file belongs to, completed by what was given and, for the
   collection and observation id, by the publisher id; the file is only ever
   that plane's. A malformed publisher id (`ivo://cadc.nrc.ca/CFHT/1525350`)
-  is refused, with the one it likely means. Records kept before are checked
-  against the archive once after you sign in, in the background on the
-  activity bar, and corrected the same way.
+  is refused, with the one it likely means. A record gets these details
+  when it is added — from Search's Download and Save to Research too, in
+  the background — rather than staying blank where the search row had
+  nothing. What the archive answers is kept on this Mac, in Verbinal's
+  database, so it is asked once: after each sign-in the records it has
+  not answered for are asked, two at a time, with the progress on the
+  activity bar and at the top of Research; the check of 35 records had
+  taken about twenty minutes, one at a time.
 - **Choose which of an observation's files to download** — your assistant's
   `download_observation` takes `file`, one of the names `get_data_links`
   lists, so a STIS spectrum's 80 KB `_x1d` can be kept rather than the

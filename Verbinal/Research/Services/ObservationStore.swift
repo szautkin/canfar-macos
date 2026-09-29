@@ -61,6 +61,19 @@ final class ObservationStore {
         return stored
     }
 
+    /// Completes the record `id` — as it is now, not as it was when the
+    /// archive was asked, so a download that finished meanwhile stands —
+    /// from the archive's answer (`ResearchRecordDetails`). True when that
+    /// changed it (plan 19 R1).
+    @discardableResult
+    func complete(recordID id: UUID, from archive: CAOM2Observation?) -> Bool {
+        guard let current = observations.first(where: { $0.id == id }) else { return false }
+        let completed = ResearchRecordDetails.completing(current, from: archive)
+        guard completed != current else { return false }
+        save(completed)
+        return true
+    }
+
     /// Gives the record `id` the publisher ID it should have had — one kept
     /// under the slash form (plan 19 R3). Nil when there is no such record,
     /// or Research already keeps one under the corrected ID.

@@ -20,7 +20,7 @@ extension AppState {
                                        vospace: VOSpaceBrowserService) {
         // One archive client for the downloads and the details they keep, so
         // a plane looked up for one is not fetched again for the other.
-        let caom2 = CAOM2Service()
+        let caom2 = self.caom2
         let downloader = DownloadService(endpoints: endpoints, caom2: caom2)
         let describe: ResearchRecordDescriber = { [weak self] described in
             await self?.researchRecord(describing: described, caom2: caom2) ?? described

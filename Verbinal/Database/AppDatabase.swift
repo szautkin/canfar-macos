@@ -180,6 +180,20 @@ struct AppDatabase {
             }
         }
 
+        // v3 — the archive's answers, kept on this Mac (plan 19 R1): CADC's
+        // caom2ops/meta takes 30–50 s a record under load, and a Research
+        // record's details were asked for again at every check. Keyed by the
+        // observation's URI (caom:COLLECTION/OBSERVATION); the answer is the
+        // archive's XML as it came, so the parser that reads the network
+        // reads it. A cache, device-local: no sync columns, never exported.
+        migrator.registerMigration("v3") { db in
+            try db.create(table: "archiveObservation") { t in
+                t.primaryKey("uri", .text).notNull()
+                t.column("xml", .blob).notNull()
+                t.column("fetchedAt", .text).notNull()
+            }
+        }
+
         return migrator
     }
 }

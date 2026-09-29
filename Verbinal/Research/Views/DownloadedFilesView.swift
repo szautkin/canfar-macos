@@ -84,6 +84,22 @@ struct DownloadedFilesView: View {
 
             Divider()
 
+            // The records' details coming from the archive, while they do (plan 19 R1).
+            if let progress = appState.researchRecordRepair.progress {
+                HStack(spacing: 8) {
+                    ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1)))
+                        .frame(width: 80)
+                    Text("Getting archive details — \(progress.done) of \(progress.total)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .accessibilityElement(children: .combine)
+                Divider()
+            }
+
             // File list grouped by collection — cross-fade only the
             // empty↔content BOUNDARY. Narrowing the list with the filter
             // keeps the state at `.content`, so rows re-filter instantly.

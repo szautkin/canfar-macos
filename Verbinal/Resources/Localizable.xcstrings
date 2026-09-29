@@ -2002,6 +2002,16 @@
         }
       }
     },
+    "Archive details of %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Détails d'archive de %@"
+          }
+        }
+      }
+    },
     "Are you sure you want to delete '%@'? This action cannot be undone." : {
       "localizations" : {
         "fr" : {
@@ -7070,6 +7080,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Généré : %@"
+          }
+        }
+      }
+    },
+    "Get archive details for Research records" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obtenir les détails d'archive des fiches Research"
+          }
+        }
+      }
+    },
+    "Getting archive details — %lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obtention des détails d'archive — %1$lld sur %2$lld"
           }
         }
       }
@@ -15600,6 +15630,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La tuile Guide IA de l'écran d'accueil vous permet d'ajuster les descriptions que le serveur MCP annonce pour chaque outil et de créer vos propres outils d'instructions en lecture seule. Masquer la tuile ne supprime que le raccourci — vos remplacements enregistrés et vos outils guides restent actifs."
+          }
+        }
+      }
+    },
+    "The archive answered for %lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'archive a répondu pour %1$lld sur %2$lld"
           }
         }
       }

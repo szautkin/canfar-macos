@@ -108,10 +108,7 @@ extension AppState {
     /// (``ResearchRecordDetails``), when it answers within 20 seconds.
     func researchRecord(describing described: DownloadedObservation, caom2: CAOM2Service) async -> DownloadedObservation {
         let known = observationDetails(publisherID: described.publisherID, fallback: described)
-        let publisherID = described.publisherID
-        let archive = try? await withApplierTimeout(seconds: 20, label: "archive details") {
-            try await caom2.fetch(publisherID: publisherID)
-        }
+        let archive = await caom2.observation(publisherID: described.publisherID, within: 20)
         return ResearchRecordDetails.completing(known, from: archive, endpoints: endpoints)
     }
 }
