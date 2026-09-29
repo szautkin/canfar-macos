@@ -53,8 +53,11 @@ final class SearchCancelTests: XCTestCase {
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data())
         }
         let outcome = await model.executeRawQuery("SELECT * FROM caom2.Plane LIMIT 5", fromEditor: true)
-        guard case .failed(let message) = outcome else { return XCTFail("expected a refusal, got \(outcome)") }
+        guard case .refused(let message) = outcome else { return XCTFail("expected a refusal, got \(outcome)") }
         XCTAssertTrue(message.contains("SELECT TOP 5"), message)
+        let report = AppState.report(outcome)
+        XCTAssertFalse(report.executed, "a refused query was not executed (plan 17 G9)")
+        XCTAssertEqual(report.searchError, message)
         XCTAssertEqual(sent.count, 0, "nothing went to the server")
         XCTAssertNotNil(model.searchError)
         XCTAssertTrue(model.recentSearchStore.searches.isEmpty)

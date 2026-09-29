@@ -4,8 +4,6 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
-import AppKit
-import SwiftUI
 import XCTest
 @testable import Verbinal
 
@@ -18,17 +16,7 @@ final class PendingChangesToolbarTests: XCTestCase {
     private func targets(in mode: AppMode) async throws -> Set<String> {
         let state = AppState()
         state.currentMode = mode
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
-                              styleMask: [.titled], backing: .buffered, defer: false)
-        window.contentView = NSHostingView(rootView: ContentView()
-            .environment(state)
-            .environment(state.uiPointer))
-        window.orderFrontRegardless()
-        defer { window.orderOut(nil) }
-        for _ in 0..<250 where state.uiPointer.targets["agent.pending"] == nil {
-            try await Task.sleep(for: .milliseconds(20))
-        }
-        return Set(state.uiPointer.targets.keys)
+        return try await HostedContentView.pointTargets(state, waitingFor: "agent.pending")
     }
 
     func testTheRobotIsOnLandingAndPortal() async throws {

@@ -467,15 +467,17 @@ extension AppState {
         }
     }
 
-    /// What an executed search tells the agent — the form and the editor
-    /// tools report it the same way.
-    private nonisolated static func report(
+    /// What a search asked to run tells the agent — the form and the editor
+    /// tools report it the same way. A query the checker refused was not
+    /// executed, and says why.
+    nonisolated static func report(
         _ outcome: SearchFormModel.SearchOutcome
-    ) -> (resultCount: Int?, searchError: String?, cancelled: Bool) {
+    ) -> (executed: Bool, resultCount: Int?, searchError: String?, cancelled: Bool) {
         switch outcome {
-        case .completed(let rows): return (rows, nil, false)
-        case .failed(let message): return (nil, message, false)
-        case .cancelled: return (nil, nil, true)
+        case .completed(let rows): return (true, rows, nil, false)
+        case .failed(let message): return (true, nil, message, false)
+        case .cancelled: return (true, nil, nil, true)
+        case .refused(let reason): return (false, nil, reason, false)
         }
     }
 
@@ -720,9 +722,8 @@ extension AppState {
                     model.nextSearchAttribution = .forLiveTool(
                         label: "set_search_form", summary: "Ran a search from the form")
                 }
-                let report = Self.report(await model.executeSearch())
-                outcome.executed = true
-                (outcome.resultCount, outcome.searchError, outcome.cancelled) = report
+                (outcome.executed, outcome.resultCount, outcome.searchError, outcome.cancelled) =
+                    Self.report(await model.executeSearch())
             } else if targetTouched {
                 // Kick the UI's normal debounced resolution so the form
                 // shows the resolver status the user expects to see.
@@ -850,9 +851,8 @@ extension AppState {
                     model.nextSearchAttribution = .forLiveTool(
                         label: "set_adql_editor", summary: "Ran a query from the ADQL editor")
                 }
-                let report = Self.report(await model.executeRawQuery(adql, fromEditor: true))
-                outcome.executed = true
-                (outcome.resultCount, outcome.searchError, outcome.cancelled) = report
+                (outcome.executed, outcome.resultCount, outcome.searchError, outcome.cancelled) =
+                    Self.report(await model.executeRawQuery(adql, fromEditor: true))
             }
             await MainActor.run {
                 activity.append(.live(

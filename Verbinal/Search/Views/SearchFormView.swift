@@ -17,16 +17,20 @@ struct SearchFormView: View {
                     // 4-column constraint row — top aligned
                     HStack(alignment: .top, spacing: 12) {
                         ObservationConstraintsView(formState: searchModel.formState)
+                            .pointable("search.observation", label: String(localized: "Observation constraints"), screen: "search")
                             .frame(maxWidth: .infinity)
                         SpatialConstraintsView(
                             formState: searchModel.formState,
                             resolverStatus: searchModel.resolverStatus,
                             onTargetChanged: { searchModel.targetChanged() }
                         )
+                        .pointable("search.spatial", label: String(localized: "Spatial constraints"), screen: "search")
                         .frame(maxWidth: .infinity)
                         TemporalConstraintsView(formState: searchModel.formState)
+                            .pointable("search.temporal", label: String(localized: "Temporal constraints"), screen: "search")
                             .frame(maxWidth: .infinity)
                         SpectralConstraintsView(formState: searchModel.formState)
+                            .pointable("search.spectral", label: String(localized: "Spectral constraints"), screen: "search")
                             .frame(maxWidth: .infinity)
                     }
 
@@ -35,6 +39,7 @@ struct SearchFormView: View {
                         dataTrainModel: searchModel.dataTrainModel,
                         formState: searchModel.formState
                     )
+                    .pointable("search.dataTrain", label: String(localized: "Collection, instrument and filter lists"), screen: "search")
                 }
                 .padding(16)
             }

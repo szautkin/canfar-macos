@@ -192,6 +192,7 @@ struct SearchResultsView: View {
                     .help(Text("Next page"))
                     .accessibilityLabel("Next page")
                 }
+                .pointable("results.pages", label: String(localized: "Previous and next page"), screen: "search.results")
             }
 
             if !resultsModel.results.isEmpty {
@@ -204,6 +205,7 @@ struct SearchResultsView: View {
                 .pickerStyle(.menu)
                 .frame(width: 130)
                 .help(Text("Rows per page"))
+                .pointable("results.rowsPerPage", label: String(localized: "Rows per page"), screen: "search.results")
             }
 
             exportMenu
@@ -233,6 +235,7 @@ struct SearchResultsView: View {
         }
         .disabled(resultsModel.results.isEmpty || isExporting)
         .keyboardShortcut("e", modifiers: [.command, .shift])
+        .pointable("results.export", label: String(localized: "Export"), screen: "search.results")
     }
 
     private var columnsMenu: some View {
@@ -247,6 +250,7 @@ struct SearchResultsView: View {
         .popover(isPresented: $showColumnsPicker, arrowEdge: .top) {
             ColumnsPickerPopover(model: resultsModel)
         }
+        .pointable("results.columns", label: String(localized: "Columns"), screen: "search.results")
     }
 
     // MARK: - Results Table
@@ -265,7 +269,10 @@ struct SearchResultsView: View {
                         } header: {
                             VStack(spacing: 0) {
                                 sortableHeaderRow(columns: visibleCols)
+                                    .pointable("results.header", label: String(localized: "Column headers — sort and units"),
+                                               screen: "search.results")
                                 filterRow(columns: visibleCols)
+                                    .pointable("results.filters", label: String(localized: "Column filters"), screen: "search.results")
                                 Divider()
                             }
                         }

@@ -450,7 +450,7 @@ struct SetADQLEditorTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "set_adql_query",
-        description: "Set the ADQL editor tab's text without saving anything: pass `adql` to set it directly, or `generateFromForm: true` to regenerate it from the current form (the editor's \"Generate from Form\" button) — not both. Pass `execute: true` to run the editor's (possibly new) content afterwards; with neither source given, `execute` runs the current editor text. Switches the Search view to the ADQL tab. Live-applied; no proposal. (Windows wire name; macOS also exposes `set_adql_editor` and `execute_adql_query` aliases.)",
+        description: "Set the ADQL editor tab's text without saving anything: pass `adql` to set it directly, or `generateFromForm: true` to regenerate it from the current form (the editor's \"Generate from Form\" button) — not both. Pass `execute: true` to run the editor's (possibly new) content afterwards; with neither source given, `execute` runs the current editor text; a query the checker is sure CADC would refuse is not sent — `executed: false`, the reason in `searchError`. Switches the Search view to the ADQL tab. Live-applied; no proposal. (Windows wire name; macOS also exposes `set_adql_editor` and `execute_adql_query` aliases.)",
         schema: #"""
         {
           "type": "object",

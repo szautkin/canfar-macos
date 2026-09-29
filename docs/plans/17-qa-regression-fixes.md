@@ -19,7 +19,7 @@ parity doc for tool changes.
 
 | Phase | State | Commits |
 |---|---|---|
-| G what still fails | in progress — G1 BYTEPIX; G2 files checked through their bookmark; G3 records kept before, corrected once; G4 the image's header, `keywords`; G5 dotfiles are text; G6 a probe's error line; G7 `.vnc`; G8 tabs without a sky WCS named | `871bfb9`, `1d32617`, `8400303`, `23a9b3b`, `09069c7`, `2d91b62`, `d8dca97`, G8 |
+| G what still fails | done — G1 BYTEPIX; G2 files checked through their bookmark; G3 records kept before, corrected once; G4 the image's header, `keywords`; G5 dotfiles are text; G6 a probe's error line; G7 `.vnc`; G8 tabs without a sky WCS named; G9 Search pointable, a refused query not executed | `871bfb9`, `1d32617`, `8400303`, `23a9b3b`, `09069c7`, `2d91b62`, `d8dca97`, `3ae626c`, G9 |
 | A audit | planned — A1–A5 | — |
 | U the screen | in progress — U1 the robot on every view | `9b56ce0` |
 | P probes and privacy | planned — P1–P3 | — |

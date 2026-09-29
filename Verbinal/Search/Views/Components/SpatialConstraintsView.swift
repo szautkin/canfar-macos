@@ -29,6 +29,7 @@ struct SpatialConstraintsView: View {
                     resolverStatusIndicator
                 }
             }
+            .pointable("search.target", label: String(localized: "Target / Coordinates"), screen: "search")
 
             Picker("Resolver", selection: $formState.resolver) {
                 ForEach(ResolverValue.allCases) { resolver in

@@ -36,7 +36,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
 - **Your assistant sees and can point at more of the app** —
   `get_current_view` now says which observation's detail is open in
   Search and which Research record is selected; the home tiles, the
-  Search tabs, the Storage toolbar and every Settings section can be
+  Search tabs, form sections and results controls (export, columns,
+  pages, filters), the Storage toolbar and every Settings section can be
   pointed at; and `get_platform_load` says when the platform did not
   report how many sessions are running, instead of promising counts it
   did not have.
@@ -58,7 +59,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   `obsID` in a Plane–Observation join passed, and CADC then answered that
   it was ambiguous. And a query the checker knows is wrong, `LIMIT` and
   the like, is no longer sent at all, whether you run it, your assistant
-  does, or a saved query does: it says what to write instead.
+  does, or a saved query does: it says what to write instead, and
+  `set_adql_editor` answers `executed: false` for it.
 - **Each calibration level of an observation is its own search result** —
   the rows of one observation shared an id, so selecting or opening one
   could land on another (and an assistant could not choose the level with

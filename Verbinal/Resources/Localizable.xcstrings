@@ -3177,6 +3177,16 @@
         }
       }
     },
+    "Collection, instrument and filter lists" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listes des collections, instruments et filtres"
+          }
+        }
+      }
+    },
     "Collection: %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3219,8 +3229,27 @@
         }
       }
     },
+    "Column filters" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtres de colonnes"
+          }
+        }
+      }
+    },
+    "Column headers — sort and units" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En-têtes de colonnes — tri et unités"
+          }
+        }
+      }
+    },
     "Columns" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10013,6 +10042,16 @@
         }
       }
     },
+    "Observation constraints" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraintes d'observation"
+          }
+        }
+      }
+    },
     "Observation Date" : {
       "localizations" : {
         "fr" : {
@@ -11246,6 +11285,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Précédent"
+          }
+        }
+      }
+    },
+    "Previous and next page" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page précédente et suivante"
           }
         }
       }
@@ -14452,6 +14501,16 @@
         }
       }
     },
+    "Spatial constraints" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraintes spatiales"
+          }
+        }
+      }
+    },
     "Spatial cutout" : {
       "localizations" : {
         "fr" : {
@@ -14468,6 +14527,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Spectral"
+          }
+        }
+      }
+    },
+    "Spectral constraints" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraintes spectrales"
           }
         }
       }
@@ -15147,6 +15216,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Temporel"
+          }
+        }
+      }
+    },
+    "Temporal constraints" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraintes temporelles"
           }
         }
       }

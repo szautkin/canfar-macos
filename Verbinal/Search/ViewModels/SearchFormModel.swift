@@ -34,11 +34,13 @@ final class SearchFormModel {
     var searchError: String?
 
     /// How a search ended. Agent tools report it: a search the person
-    /// cancelled is neither a result nor an error.
+    /// cancelled is neither a result nor an error, and one the checker
+    /// refused was never sent (QA L13).
     enum SearchOutcome: Equatable, Sendable {
         case completed(rows: Int)
         case failed(String)
         case cancelled
+        case refused(String)
     }
 
     /// The query in flight; `cancelSearch()` stops it.
@@ -300,7 +302,7 @@ final class SearchFormModel {
         let problems = ADQLValidator.problems(in: adql, schema: tapSchema.cached)
         guard problems.isEmpty else {
             searchError = problems.map(\.localizedSummary).joined(separator: "; ")
-            return .failed(String(localized: "Not sent: \(problems.map(\.summary).joined(separator: "; "))"))
+            return .refused(String(localized: "Not sent: \(problems.map(\.summary).joined(separator: "; "))"))
         }
         let outcome = await runQuery(adql)
         if fromEditor, case .completed = outcome {
