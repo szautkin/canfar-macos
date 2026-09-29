@@ -179,7 +179,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
   was unviewable, and local cutouts of them were wrong. The decoder now
   follows cfitsio block for block, reads 8- and 32-bit integer images as
   well as 16-bit, and is checked value for value against files cfitsio
-  wrote; a truncated tile is an error, not quietly filled in. Quantised
+  wrote; a truncated tile is an error, not quietly filled in. A file that
+  does not say how wide its Rice integers are is read as cfitsio reads
+  it, 32 bits — CFHT's frames are such files, and refused to open. Quantised
   floating-point fpack images are still refused, with a message saying so.
   The header of a compressed image is the image's own, as cfitsio shows
   it: `BITPIX`, `NAXIS1` and `EXTNAME` once each, without the table's

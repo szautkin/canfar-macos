@@ -55,6 +55,15 @@ final class RiceFixtureTests: XCTestCase {
 
     func testEightBitTiles() throws { try assertDecodesAsPlain("rice8") }
 
+    /// QA regression run, H1: CFHT's frames name no BYTEPIX, and cfitsio then
+    /// takes 4 — a 16-bit image Rice-coded as 32-bit integers. Read as 2,
+    /// every tile ran out ("compressed data ended unexpectedly").
+    func testSixteenBitImageWithoutBytepixIsThirtyTwoBitRice() throws {
+        try assertDecodesAsPlain("rice16nobytepix")
+        let table = try FITSParser.parse(from: try fixture("rice16nobytepix.fits.fz")).hdus[1]
+        XCTAssertEqual(table.compression?.bytePix, 4, "the default is 4, as FITS 4.0 and cfitsio have it")
+    }
+
     /// What the viewer shows: BZERO 32768 turns the stored int16 back into the unsigned counts.
     func testPixelsAreThePlainFilesValues() throws {
         let packed = try fixture("rice16.fits.fz")

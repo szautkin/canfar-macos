@@ -361,6 +361,16 @@
         }
       }
     },
+    "%@ cores · %@ GB" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ cœurs · %@ Go"
+          }
+        }
+      }
+    },
     "%@ details" : {
       "localizations" : {
         "fr" : {
@@ -574,12 +584,8 @@
         }
       }
     },
-    "%@ percent" : {
-
-    },
-    "%@ pt" : {
-
-    },
+    "%@ percent" : {},
+    "%@ pt" : {},
     "%@ results" : {
       "localizations" : {
         "fr" : {
@@ -1055,9 +1061,7 @@
     "•" : {
       "shouldTranslate" : false
     },
-    "• %@" : {
-
-    },
+    "• %@" : {},
     "•••••••• (set)" : {
       "localizations" : {
         "fr" : {
@@ -1166,6 +1170,16 @@
         }
       }
     },
+    "99.9%" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "99,9 %"
+          }
+        }
+      }
+    },
     "100" : {
       "localizations" : {
         "fr" : {
@@ -1182,26 +1196,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "500"
-          }
-        }
-      }
-    },
-    "%@ cores · %@ GB" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ cœurs · %@ Go"
-          }
-        }
-      }
-    },
-    "99.9%" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "99,9 %"
           }
         }
       }
@@ -6879,6 +6873,7 @@
       }
     },
     "Go To (degrees)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8846,6 +8841,7 @@
       }
     },
     "Narrow search to %@ = %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11341,6 +11337,16 @@
         }
       }
     },
+    "Public — anyone can read it, and files like this usually hold secrets" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Public — tout le monde peut le lire, et ce genre de fichier contient souvent des secrets"
+          }
+        }
+      }
+    },
     "Public only" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11348,16 +11354,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Publiques uniquement"
-          }
-        }
-      }
-    },
-    "Public — anyone can read it, and files like this usually hold secrets" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Public — tout le monde peut le lire, et ce genre de fichier contient souvent des secrets"
           }
         }
       }
@@ -11840,6 +11836,7 @@
       }
     },
     "Refresh batch jobs from Skaha now (auto-refresh fires every 45s)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14529,22 +14526,22 @@
         }
       }
     },
-    "Starting with the new settings — a compute session takes a minute or two to come up." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Démarrage avec les nouveaux réglages — une session de calcul met une minute ou deux à démarrer."
-          }
-        }
-      }
-    },
     "Starting — a compute session takes a minute or two to come up." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Démarrage — une session de calcul met une minute ou deux à démarrer."
+          }
+        }
+      }
+    },
+    "Starting with the new settings — a compute session takes a minute or two to come up." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrage avec les nouveaux réglages — une session de calcul met une minute ou deux à démarrer."
           }
         }
       }
@@ -15757,9 +15754,7 @@
         }
       }
     },
-    "Timeout: %@ s" : {
-
-    },
+    "Timeout: %@ s" : {},
     "Timeout: %lld s" : {
       "localizations" : {
         "fr" : {

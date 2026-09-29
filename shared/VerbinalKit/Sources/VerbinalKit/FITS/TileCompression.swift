@@ -25,7 +25,10 @@ public enum TileCompression {
         public let tileHeight: Int
         /// Rice's pixels per block (the BLOCKSIZE parameter), 32 by default.
         public let blockSize: Int
-        /// Bytes per pixel as compressed (the BYTEPIX parameter), the image's width by default.
+        /// Bytes per integer as Rice coded them (the BYTEPIX parameter): 4
+        /// when the file does not say, as FITS 4.0 and cfitsio have it —
+        /// older fpack, CFHT's frames among them, coded 16-bit images as
+        /// 32-bit integers and wrote only BLOCKSIZE.
         public let bytePix: Int
         /// The table's shape: bytes per row, rows (one per tile), and the heap after it.
         public let rowBytes: Int
@@ -47,7 +50,7 @@ public enum TileCompression {
                 parameters[name] = table.int("ZVAL\(index)")
             }
             blockSize = parameters["BLOCKSIZE"] ?? 32
-            bytePix = parameters["BYTEPIX"] ?? max(1, abs(bitpix) / 8)
+            bytePix = parameters["BYTEPIX"] ?? 4
             rowBytes = table.int("NAXIS1")
             rows = table.int("NAXIS2")
             heapBytes = max(0, table.int("PCOUNT"))

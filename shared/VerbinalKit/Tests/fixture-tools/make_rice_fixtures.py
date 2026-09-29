@@ -46,4 +46,28 @@ write("rice16", image(np.uint16, 0, 65535, 16), (1, W))
 write("rice16tiles", image(np.uint16, 0, 65535, 17), (16, 16))
 write("rice32", image(np.int32, -2**31, 2**31 - 1, 32), (1, W))
 write("rice8", image(np.uint8, 0, 255, 8), (1, W))
+
+
+def write_without_bytepix(name, data16, tile_shape):
+    """A 16-bit image as older fpack wrote it — CFHT's frames among them:
+    Rice-coded as 32-bit integers, and no BYTEPIX card, which cfitsio then
+    takes as 4. Compressed from int32 and relabelled ZBITPIX 16."""
+    wide = data16.astype(np.int32)
+    comp = fits.CompImageHDU(wide, compression_type="RICE_1", tile_shape=tile_shape)
+    hdul = fits.HDUList([fits.PrimaryHDU(), comp])
+    path = os.path.join(OUT, name + ".fits.fz")
+    hdul.writeto(path, overwrite=True)
+    with fits.open(path, mode="update", disable_image_compression=True) as raw:
+        table = raw[1].header
+        table["ZBITPIX"] = 16
+        for index in range(1, 10):
+            if table.get(f"ZNAME{index}", "").strip().upper() == "BYTEPIX":
+                del table[f"ZVAL{index}"]
+                del table[f"ZNAME{index}"]
+    fits.PrimaryHDU(data16).writeto(os.path.join(OUT, name + ".fits"), overwrite=True)
+    with fits.open(path) as check:   # cfitsio, through astropy, reads it back as written
+        assert np.array_equal(check[1].data, data16), "the relabelled file must decode to the 16-bit image"
+
+
+write_without_bytepix("rice16nobytepix", image(np.int16, -32768, 32767, 18), (1, W))
 print("written to", os.path.normpath(OUT))
