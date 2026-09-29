@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
+import VerbinalKit
 @testable import Verbinal
 
 final class ImageDiscoveryCoordinatorTests: XCTestCase {
@@ -179,7 +180,8 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         vospace: MockVOSpace,
         timeout: TimeInterval = 5.0,
         imageTypesLookup: (@Sendable (String) async -> [String]?)? = { _ in ["headless"] },
-        recordJob: (@Sendable (JobRecord) async -> Void)? = nil
+        recordJob: (@Sendable (JobRecord) async -> Void)? = nil,
+        tasks: TaskRegistry = TaskRegistry()
     ) -> ImageDiscoveryCoordinator {
         // Default `imageTypesLookup` returns `["headless"]` for any
         // image so the coordinator routes through `.inTarget` — the
@@ -199,7 +201,7 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
             pollInterval: 0.01,         // fast polling for tests
             maxConcurrentProbes: 3,
             imageTypesLookup: imageTypesLookup,
-            tasks: TaskRegistry(),
+            tasks: tasks,
             recordJob: recordJob
         )
     }
@@ -300,6 +302,21 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
 
         let note = DiscoverImagePackagesApplier.note(syft.manifest, cached: true)
         XCTAssertTrue(note.hasPrefix("Answered from the cache: probed 2026-09-21"), note)
+    }
+
+    /// Plan 19 T2 (QA N19): the probe runs in a detached task, which drops
+    /// the task-local initiator; an assistant's probe read "You" on the bar.
+    func testAnAssistantsProbeIsTheAssistantsOnTheBar() async throws {
+        let h = MockHeadless()
+        let v = MockVOSpace()
+        wireLaunchToWriteManifest(v, h)
+        let registry = TaskRegistry()
+        let coord = makeCoord(store: makeStore(), headless: h, vospace: v, tasks: registry)
+        _ = try await Initiator.$current.withValue(.assistant) { try await coord.discover("assistant:1") }
+        _ = try await coord.discover("person:1")
+        let byLabel = await MainActor.run { Dictionary(uniqueKeysWithValues: registry.tasks.map { ($0.label, $0.startedBy) }) }
+        XCTAssertEqual(byLabel["Inspect assistant:1"], .assistant)
+        XCTAssertEqual(byLabel["Inspect person:1"], .person)
     }
 
     // MARK: - Full pipeline

@@ -68,7 +68,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   itself — on the bar and in `list_activity` (`startedBy`), and an
   assistant's `delete_session`, `renew_session` and `delete_sessions_bulk`
   go the Portal's way, onto the bar; a bulk delete is one task that names
-  the sessions it could not delete.
+  the sessions it could not delete. An image inspection your assistant
+  starts is labelled as its own too — it read "You".
 - **Session and launch details say what they are** — for assistants, a
   recent launch now names the project its image came from (an assistant's
   launches recorded none), a flexible session's cores and RAM say

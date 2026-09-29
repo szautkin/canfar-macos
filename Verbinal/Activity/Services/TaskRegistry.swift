@@ -49,9 +49,11 @@ final class TaskRegistry {
 
     /// Runs `work` as a task, from any actor: succeeded when it returns,
     /// failed with its error's words when it throws, abandoned when cancelled.
-    nonisolated func track<T: Sendable>(_ kind: TaskKind, _ label: String,
+    /// `by` defaults to the caller's initiator; work run in a detached task,
+    /// which drops it, passes the one it captured (plan 19 T2).
+    nonisolated func track<T: Sendable>(_ kind: TaskKind, _ label: String, by initiator: Initiator = Initiator.current,
                                         _ work: @Sendable (TaskHandle) async throws -> T) async rethrows -> T {
-        let handle = await begin(kind, label)
+        let handle = await begin(kind, label, by: initiator)
         do {
             let result = try await work(handle)
             await handle.succeed()

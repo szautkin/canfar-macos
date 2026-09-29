@@ -303,11 +303,14 @@ actor ImageDiscoveryCoordinator {
         }
 
         // Launch the probe in a detached task so caller cancellation
-        // doesn't kill it. Other joiners wait on the same Task.
+        // doesn't kill it. Other joiners wait on the same Task. A detached
+        // task drops the task-local initiator, so it is carried in: an
+        // assistant's probe read "You" on the bar (plan 19 T2, QA N19).
         let tasks = self.tasks
+        let initiator = Initiator.current
         let task = Task.detached { [weak self] () async throws -> ImageManifest in
             guard let self else { throw ImageDiscoveryError.cancelled }
-            return try await tasks.track(.discovery, String(localized: "Inspect \(imageID)")) { handle in
+            return try await tasks.track(.discovery, String(localized: "Inspect \(imageID)"), by: initiator) { handle in
                 try await self.runDiscovery(for: imageID, force: force, task: handle)
             }
         }
