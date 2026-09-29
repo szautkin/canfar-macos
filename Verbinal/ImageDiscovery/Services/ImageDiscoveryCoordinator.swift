@@ -971,7 +971,8 @@ actor ImageDiscoveryCoordinator {
             if job.isTerminal {
                 if job.isFailed {
                     let log = try? await headless.getLogs(id: jobID)
-                    throw ImageDiscoveryError.jobFailed(status: job.status, reason: log.flatMap(Self.lastWords))
+                    let events = try? await headless.getEvents(id: jobID)
+                    throw ImageDiscoveryError.jobFailed(status: job.status, reason: ProbeFailureReason.from(log: log, events: events))
                 }
                 return
             }
@@ -1024,15 +1025,6 @@ actor ImageDiscoveryCoordinator {
             }
         }
         return records
-    }
-
-    /// The last line a failed job's log has to say — usually the error that
-    /// stopped it — at most 300 characters; nil for an empty log.
-    nonisolated static func lastWords(_ log: String) -> String? {
-        let line = log.split(whereSeparator: \.isNewline)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .last { !$0.isEmpty }
-        return line.map { $0.count > 300 ? String($0.suffix(300)) : $0 }
     }
 
     // MARK: - Grace polling for late-landing manifests

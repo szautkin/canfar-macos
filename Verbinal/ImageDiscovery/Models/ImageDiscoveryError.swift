@@ -37,7 +37,7 @@ enum ImageDiscoveryError: Error, Equatable, Sendable, LocalizedError {
         case .jobSubmitFailed(let m): return "Probe submit failed: \(m)"
         case .jobTimedOut: return "Probe timed out"
         case .jobFailed(let status, let reason):
-            return "Probe job ended \(status.lowercased()) on CANFAR" + (reason.map { ": \($0)" } ?? " — its log said nothing; get_probe_logs has its events")
+            return "Probe job ended \(status.lowercased()) on CANFAR" + (reason.map { ": \($0)" } ?? " — neither its log nor its events said why; get_probe_logs has both")
         case .manifestFetchFailed(let m): return "Manifest fetch failed: \(m)"
         case .manifestParseFailed(let d): return "Manifest parse failed: \(d)"
         case .cancelled: return "Discovery cancelled"

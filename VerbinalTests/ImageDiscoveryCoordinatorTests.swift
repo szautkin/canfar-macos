@@ -966,7 +966,40 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(records.first?.failureReason, message)
         XCTAssertEqual(records.first?.finishedAt, attemptedAt)
         XCTAssertEqual(records.first?.targetImage, "test:badimage")
-        XCTAssertEqual(ImageDiscoveryCoordinator.lastWords("\n  \n"), nil)
+    }
+
+    /// Plan 17 G6 (QA L17): the reason is the line that reads as an error,
+    /// not a status line printed after it; a job that logged nothing says
+    /// why through its last Warning event.
+    func testAFailedProbeGivesTheLineThatReadsAsAnError() async throws {
+        let log = "Collecting packages\nTraceback (most recent call last):\n  File \"probe.py\", line 3\n"
+            + "ModuleNotFoundError: No module named 'yaml'\nWriting manifest\nprobe finished\n"
+        XCTAssertEqual(ProbeFailureReason.from(log: log, events: nil), "ModuleNotFoundError: No module named 'yaml'")
+        XCTAssertEqual(ProbeFailureReason.from(log: "step 1\n/bin/sh: line 1: 12 Killed python3 probe.py\ndone", events: nil),
+                       "/bin/sh: line 1: 12 Killed python3 probe.py")
+
+        let events = """
+        TYPE      REASON      MESSAGE
+        Normal    Scheduled   Successfully assigned skaha-workload/probe to node-7
+        Warning   Failed      Error: ErrImagePull
+        Normal    BackOff     Back-off pulling image
+        """
+        XCTAssertEqual(ProbeFailureReason.from(log: "", events: events), "Failed Error: ErrImagePull")
+        XCTAssertEqual(ProbeFailureReason.from(log: "all fine\nbye", events: "<none>"), nil)
+        XCTAssertEqual(ProbeFailureReason.from(log: "\n  \n", events: nil), nil)
+        XCTAssertEqual(ProbeFailureReason.from(log: "Error: " + String(repeating: "x", count: 400), events: nil)?.count,
+                       ProbeFailureReason.maxLength)
+
+        let store = makeStore()
+        let h = MockHeadless()
+        h.failJobs = true
+        h.stubbedEvents["job-1"] = events
+        let coord = makeCoord(store: store, headless: h, vospace: MockVOSpace())
+        _ = try? await coord.discover("test:unpullable")
+        guard case .failure(_, _, let message, _, _) = await store.outcome(for: "test:unpullable") else {
+            return XCTFail("expected .failure outcome")
+        }
+        XCTAssertTrue(message.hasSuffix("Failed Error: ErrImagePull"), message)
     }
 
     func testFetchLogsAndEventsRouteThroughHeadless() async throws {
