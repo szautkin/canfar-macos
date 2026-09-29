@@ -32,12 +32,14 @@ struct ListPendingProposalsTool: AITool {
             let originTag: String
             /// Why its last apply failed, when one did.
             let failureReason: String?
+            /// When the apply now running began, when one is.
+            let applyingSince: String?
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_pending_proposals",
-        description: "List proposals currently waiting for user review in the strip. Returns id, the tool that created it, kind, summary, origin, `failureReason` when its last apply failed, and `expiresAtISO` — a proposal nobody applies within 3 hours expires and leaves Pending.",
+        description: "List proposals currently waiting for user review in the strip. Returns id, the tool that created it, kind, summary, origin, `failureReason` when its last apply failed, `applyingSince` while one runs (an image probe can take ten minutes — list_activity shows how far it has got), and `expiresAtISO` — a proposal nobody applies within 3 hours expires and leaves Pending.",
         schema: #"""
         {
           "type": "object",
@@ -61,7 +63,8 @@ struct ListPendingProposalsTool: AITool {
                 createdAtISO: iso.string(from: p.createdAt),
                 expiresAtISO: iso.string(from: p.expiresAt),
                 originTag: AuditOrigin.from(p.origin).tag,
-                failureReason: await context.proposals.failureReason(p.id)
+                failureReason: await context.proposals.failureReason(p.id),
+                applyingSince: await context.proposals.applyingSince(p.id).map(iso.string(from:))
             ))
         }
         do {
@@ -95,11 +98,13 @@ struct GetProposalStateTool: AITool {
         let state: String
         /// Why the last apply failed, while the state is `failed`.
         var failureReason: String?
+        /// When the apply began, while the state is `applying`.
+        var applyingSince: String?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_proposal_state",
-        description: "Look up the lifecycle state of a proposal by `id` or `proposalId` (pending, applying, applied, rejected, withdrawn, failed, expired, unknown). `failed` means the last apply threw and the item is still in the strip for retry, with `failureReason` saying why; `expired` means nobody applied it within 3 hours, so it was not applied and has left Pending (remembered for a day). Other outcomes are remembered ~5 min.",
+        description: "Look up the lifecycle state of a proposal by `id` or `proposalId` (pending, applying, applied, rejected, withdrawn, failed, expired, unknown). `applying` means it is being applied now, since `applyingSince` (an image probe can take ten minutes; list_activity shows how far it has got); `failed` means the last apply threw — or the app quit while it ran — and the item is still in the strip for retry, with `failureReason` saying why; `expired` means nobody applied it within 3 hours, so it was not applied and has left Pending (remembered for a day). Other outcomes are remembered ~5 min.",
         schema: #"""
         {
           "type": "object",
@@ -127,8 +132,10 @@ struct GetProposalStateTool: AITool {
         }
         let state = await context.proposals.state(uuid)
         let reason = state == .failed ? await context.proposals.failureReason(uuid) : nil
+        let since = state == .applying ? await context.proposals.applyingSince(uuid) : nil
         do {
-            let bytes = try JSONEncoder().encode(Output(id: raw, state: state.rawValue, failureReason: reason))
+            let bytes = try JSONEncoder().encode(Output(id: raw, state: state.rawValue, failureReason: reason,
+                                                        applyingSince: since.map { ISO8601DateFormatter().string(from: $0) }))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))

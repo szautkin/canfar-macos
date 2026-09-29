@@ -596,6 +596,36 @@ final class InMemoryProposalStoreTests: XCTestCase {
         XCTAssertNil(gone)
     }
 
+    /// Plan 19 S4 (QA N7): an apply running says since when; one the app
+    /// quit during comes back failed, saying so, not plain pending.
+    func testAnApplyCutShortByAQuitFailsAndSaysWhy() async {
+        let persistence = DiskPersistence<ProposalJournal>(
+            subdirectory: "VerbinalProposalJournalTests-\(UUID().uuidString)", fileName: "journal.json",
+            logger: Logger(subsystem: "com.codebg.Verbinal.tests", category: "ProposalJournal"))
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        let store = InMemoryProposalStore(journal: persistence, now: { start })
+        let p = await store.enqueue(makeProposal())
+        _ = await store.beginApply(p.id)
+        let since = await store.applyingSince(p.id)
+        XCTAssertEqual(since, start)
+        let state = await store.state(p.id)
+        XCTAssertEqual(state, .applying)
+
+        let relaunched = InMemoryProposalStore(journal: persistence, now: { start })
+        let after = await relaunched.state(p.id)
+        XCTAssertEqual(after, .failed)
+        let reason = await relaunched.failureReason(p.id)
+        XCTAssertEqual(reason, InMemoryProposalStore.interruptedReason)
+        let sinceAfter = await relaunched.applyingSince(p.id)
+        XCTAssertNil(sinceAfter)
+
+        _ = await relaunched.beginApply(p.id)
+        _ = await relaunched.markApplied(p.id, by: .person)
+        let third = InMemoryProposalStore(journal: persistence, now: { start })
+        let resolved = await third.state(p.id)
+        XCTAssertEqual(resolved, .applied, "a finished apply is not taken for an interrupted one")
+    }
+
     /// Plan 17 A4 (QA N7): a withdrawn proposal gives its slot back.
     func testReleasingGivesASlotBack() async {
         let budget = ProposalBudget(limit: 2)

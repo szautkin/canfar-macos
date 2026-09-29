@@ -17,6 +17,9 @@ public struct ProposalJournal: Codable, Sendable, Equatable {
     /// Why each of `failedIDs` failed, by id (plan 17 A4); absent in
     /// journals written before it was kept.
     public var failureReasons: [String: String]?
+    /// Ids being applied, with when each began (plan 19 S4). One still here
+    /// when the journal is read was cut short by the app quitting.
+    public var applying: [String: Date]?
 
     public struct Tombstone: Codable, Sendable, Equatable {
         public var id: UUID
@@ -28,12 +31,14 @@ public struct ProposalJournal: Codable, Sendable, Equatable {
         pending: [PendingProposal] = [],
         tombstones: [Tombstone] = [],
         failedIDs: [UUID] = [],
-        failureReasons: [String: String]? = nil
+        failureReasons: [String: String]? = nil,
+        applying: [String: Date]? = nil
     ) {
         self.pending = pending
         self.tombstones = tombstones
         self.failedIDs = failedIDs
         self.failureReasons = failureReasons
+        self.applying = applying
     }
 }
 
@@ -82,6 +87,9 @@ public protocol ProposalStore: Sendable {
     /// Why the last apply of a pending proposal failed; nil when it has not.
     func failureReason(_ id: UUID) async -> String?
 
+    /// When the apply now running began; nil when none is.
+    func applyingSince(_ id: UUID) async -> Date?
+
     /// Claim a pending proposal for applying. False when it is not pending
     /// or already being applied — so one change never applies twice.
     /// Released by `markApplied`, `markApplyFailed` or any resolution.
@@ -105,6 +113,11 @@ public actor InMemoryProposalStore: ProposalStore {
     /// Being applied now. Not journaled: after a restart an interrupted
     /// apply is simply pending again.
     private var applyingIDs: Set<UUID> = []
+    /// When each apply now running began — journaled, so one the app quit
+    /// during is known after a relaunch (plan 19 S4, QA N7).
+    private var applyingStarts: [UUID: Date] = [:]
+    /// Why a journaled apply did not finish.
+    public static let interruptedReason = "Verbinal quit while this was being applied — apply it again, or withdraw it"
     private var tombstones: [(UUID, ProposalState, Date)] = []
     private let eventLog: EventLog?
     private let journal: DiskPersistence<ProposalJournal>?
@@ -135,19 +148,28 @@ public actor InMemoryProposalStore: ProposalStore {
             for (key, reason) in snap.failureReasons ?? [:] {
                 if let id = UUID(uuidString: key), failedIDs.contains(id) { failureReasons[id] = reason }
             }
+            // An apply the app quit during did not finish: it failed, and says why.
+            for key in (snap.applying ?? [:]).keys {
+                guard let id = UUID(uuidString: key), pending[id] != nil else { continue }
+                failedIDs.insert(id)
+                failureReasons[id] = Self.interruptedReason
+            }
             let current = now()
             let shortTTL = tombstoneTTL, expiredTTL = expiredTombstoneTTL
             let liveTombs = snap.tombstones.filter {
                 $0.resolvedAt >= current.addingTimeInterval(-($0.state == .expired ? expiredTTL : shortTTL))
             }
             tombstones = liveTombs.map { ($0.id, $0.state, $0.resolvedAt) }
-            // Persist GC using locals so actor init does not hop back onto self.
-            if liveTombs.count != snap.tombstones.count {
+            // Persist the GC and any interrupted apply from locals, so the
+            // actor's init does not hop back onto self.
+            if liveTombs.count != snap.tombstones.count || !(snap.applying ?? [:]).isEmpty {
+                let failed = failedIDs, reasons = failureReasons
                 journal.write(ProposalJournal(
                     pending: snap.pending,
                     tombstones: liveTombs,
-                    failedIDs: snap.failedIDs,
-                    failureReasons: snap.failureReasons
+                    failedIDs: Array(failed),
+                    failureReasons: reasons.isEmpty ? nil
+                        : Dictionary(uniqueKeysWithValues: reasons.map { ($0.key.uuidString, $0.value) })
                 ))
             }
         }
@@ -204,9 +226,11 @@ public actor InMemoryProposalStore: ProposalStore {
         await expireStale()
         guard pending[id] != nil, !applyingIDs.contains(id) else { return false }
         applyingIDs.insert(id)
+        applyingStarts[id] = now()
         // A new attempt: the last one's failure is no longer the news.
         failedIDs.remove(id)
         failureReasons.removeValue(forKey: id)
+        persist()
         return true
     }
 
@@ -214,6 +238,7 @@ public actor InMemoryProposalStore: ProposalStore {
     public func markApplyFailed(_ id: UUID, reason: String?) async -> Bool {
         guard pending[id] != nil else { return false }
         applyingIDs.remove(id)
+        applyingStarts.removeValue(forKey: id)
         failedIDs.insert(id)
         failureReasons[id] = reason.flatMap { $0.isEmpty ? nil : $0 }
         persist()
@@ -228,6 +253,10 @@ public actor InMemoryProposalStore: ProposalStore {
         failedIDs.contains(id) ? failureReasons[id] : nil
     }
 
+    public func applyingSince(_ id: UUID) -> Date? {
+        applyingIDs.contains(id) ? applyingStarts[id] : nil
+    }
+
     // MARK: - Internals
 
     private func resolve(_ id: UUID, as state: ProposalState, by actor: ApplyActor = .person) async -> Bool {
@@ -238,6 +267,7 @@ public actor InMemoryProposalStore: ProposalStore {
         failedIDs.remove(id)
         failureReasons.removeValue(forKey: id)
         applyingIDs.remove(id)
+        applyingStarts.removeValue(forKey: id)
         let kind = kindByID.removeValue(forKey: id) ?? ""
         tombstones.append((id, state, now()))
         if tombstones.count > tombstoneCap {
@@ -288,7 +318,9 @@ public actor InMemoryProposalStore: ProposalStore {
             },
             failedIDs: Array(failedIDs),
             failureReasons: failureReasons.isEmpty ? nil
-                : Dictionary(uniqueKeysWithValues: failureReasons.map { ($0.key.uuidString, $0.value) })
+                : Dictionary(uniqueKeysWithValues: failureReasons.map { ($0.key.uuidString, $0.value) }),
+            applying: applyingStarts.isEmpty ? nil
+                : Dictionary(uniqueKeysWithValues: applyingStarts.map { ($0.key.uuidString, $0.value) })
         ))
     }
 }

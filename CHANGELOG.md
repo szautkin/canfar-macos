@@ -178,7 +178,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
   budget back. The reason now stays on the proposal — in Pending, in
   `get_proposal_state` and `list_pending_proposals` (`failureReason`),
   across a restart — until it is tried again; and `withdraw_proposal`
-  returns the slot (`budgetRemaining`).
+  returns the slot (`budgetRemaining`). A change still being applied —
+  an image probe can take ten minutes — says since when
+  (`applyingSince`), and one Verbinal quit during comes back failed,
+  saying so, rather than quietly pending again.
 - **A batch job your assistant launched says so** — in the Batch Jobs
   History and `list_job_history` (`origin: agent`), even when it ends
   after Verbinal restarts; and `launch_headless_job` answers with the ids

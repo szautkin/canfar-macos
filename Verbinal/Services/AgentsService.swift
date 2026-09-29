@@ -150,7 +150,8 @@ final class AgentsService {
             name: "Verbinal",
             version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
             instructions: "Call `describe_app` for the tool surface and the autonomy model. Call `get_current_view` to see the user's current screen and `autoApplyEnabled` — it tells you whether your writes apply immediately or queue for the user to review in the strip."
-        )
+        ),
+        proposals injected: (any ProposalStore)? = nil
     ) {
         self.identity = identity
         self.auditSink = CapturingAuditSink()
@@ -163,7 +164,8 @@ final class AgentsService {
             fileName: "pending_proposals.json",
             logger: Logger(subsystem: "com.codebg.Verbinal.agent", category: "proposals")
         )
-        self.proposals = InMemoryProposalStore(eventLog: log, journal: journal)
+        // A test hands in its own store, so it never reads or writes the person's.
+        self.proposals = injected ?? InMemoryProposalStore(eventLog: log, journal: journal)
         self.isEnabled = UserDefaults.standard.bool(forKey: Self.userDefaultsKey)
         // First-launch default for the autonomy toggle: ON. Subsequent
         // launches honour whatever the user last set. UserDefaults
