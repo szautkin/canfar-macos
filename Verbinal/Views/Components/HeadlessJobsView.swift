@@ -68,11 +68,13 @@ struct HeadlessJobsView: View {
                     }
                     .padding(.vertical, 8)
                 } empty: {
-                    Label("No batch jobs", systemImage: "tray")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                    VStack(alignment: .leading, spacing: 6) {
+                        summaryRow
+                        Label("No batch jobs", systemImage: "tray")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 } error: {
                     EmptyView()
                 } content: {
@@ -102,31 +104,35 @@ struct HeadlessJobsView: View {
 
     // MARK: - Summary
 
+    /// Every count, zeros too (plan 17 U2): "0 running · 0 pending · 1 done · 1 failed".
     private var summaryRow: some View {
         HStack(spacing: 10) {
-            if model.runningCount > 0 {
-                statusPill(count: model.runningCount, label: String(localized: "running"), color: .green)
+            ForEach(model.statusCounts, id: \.status) { count in
+                statusPill(count, color: Self.color(count.status))
             }
-            if model.pendingCount > 0 {
-                statusPill(count: model.pendingCount, label: String(localized: "pending"), color: .orange)
-            }
-            if model.completedCount > 0 {
-                statusPill(count: model.completedCount, label: String(localized: "done"), color: .blue)
-            }
-            if model.failedCount > 0 {
-                statusPill(count: model.failedCount, label: String(localized: "failed"), color: .red)
-            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(model.statusSummary)
+    }
+
+    private static func color(_ status: HeadlessMonitorModel.StatusCount.Status) -> Color {
+        switch status {
+        case .running: return .green
+        case .pending: return .orange
+        case .done: return .blue
+        case .failed: return .red
         }
     }
 
-    private func statusPill(count: Int, label: String, color: Color) -> some View {
+    private func statusPill(_ count: HeadlessMonitorModel.StatusCount, color: Color) -> some View {
         HStack(spacing: 3) {
             Circle()
                 .fill(color)
                 .frame(width: 6, height: 6)
-            Text(verbatim: String(localized: "\(count) \(label)"))
+                .opacity(count.count == 0 ? 0.35 : 1)
+            Text(verbatim: count.text)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(count.count == 0 ? .tertiary : .secondary)
         }
     }
 }

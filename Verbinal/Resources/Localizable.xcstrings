@@ -950,7 +950,6 @@
       }
     },
     "%lld pending" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1218,6 +1217,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld sur %lld"
+          }
+        }
+      }
+    },
+    "%lld running" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld en cours"
+          }
+        }
+      }
+    },
+    "%lld done" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld terminées"
           }
         }
       }

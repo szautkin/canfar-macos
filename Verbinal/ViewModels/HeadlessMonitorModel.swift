@@ -20,6 +20,30 @@ final class HeadlessMonitorModel: CadencedPoller {
     var failedCount = 0
     var totalActive: Int { runningCount + pendingCount }
 
+    /// The Batch Jobs summary, every count, zeros too — an empty queue is
+    /// not a view that has not loaded (plan 17 U2, QA N12).
+    struct StatusCount: Equatable {
+        enum Status: String { case running, pending, done, failed }
+        let status: Status
+        let count: Int
+        var text: String {
+            switch status {
+            case .running: return String(localized: "\(count) running")
+            case .pending: return String(localized: "\(count) pending")
+            case .done: return String(localized: "\(count) done")
+            case .failed: return String(localized: "\(count) failed")
+            }
+        }
+    }
+
+    var statusCounts: [StatusCount] {
+        [.init(status: .running, count: runningCount), .init(status: .pending, count: pendingCount),
+         .init(status: .done, count: completedCount), .init(status: .failed, count: failedCount)]
+    }
+
+    /// "0 running · 0 pending · 1 done · 1 failed".
+    var statusSummary: String { statusCounts.map(\.text).joined(separator: " · ") }
+
     var isLoading = false
     var isPolling = false
     var pollCountdown = 0

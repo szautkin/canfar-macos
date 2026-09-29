@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Batch Jobs always says how many are running, pending, done and
+  failed** — counts of zero were left out, and with no jobs there was no
+  summary at all, so an empty queue looked like a card that had not
+  loaded. The Portal's Batch Jobs card now always reads, for example,
+  "0 running · 0 pending · 1 done · 1 failed".
 - **Pending changes are one click away on every screen** — the robot that
   opens Pending, where a destructive change always waits for you, was
   missing from the home screen and the Portal, where sessions are launched
