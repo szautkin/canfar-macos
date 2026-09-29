@@ -22,6 +22,20 @@ private struct EchoReadTool: AITool {
     }
 }
 
+/// Answers with who the router says is acting.
+private struct WhoTool: AITool {
+    static let verbClass: VerbClass = .read
+    static let agentSafe: Bool = true
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "who", description: "Says who is acting", schema: #"{"type":"object","properties":{}}"#)
+
+    func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
+        let inner = await Task { Initiator.current }.value
+        return .data(Data("\(Initiator.current.rawValue),\(inner.rawValue)".utf8))
+    }
+}
+
 private struct StrictReadTool: AITool {
     static let verbClass: VerbClass = .read
     static let agentSafe: Bool = true
@@ -110,6 +124,21 @@ final class AIToolRouterTests: XCTestCase {
                      proposals: any ProposalStore = InMemoryProposalStore(),
                      budget: ProposalBudget = ProposalBudget(limit: 8)) -> AIToolContext {
         AIToolContext(origin: origin, proposals: proposals, budget: budget)
+    }
+
+    /// Plan 17 A1: what an assistant's call sets going is the assistant's,
+    /// down to the tasks it starts; the person's own calls stay theirs.
+    func testAnAssistantsCallActsAsTheAssistant() async {
+        let router = makeRouter([WhoTool()])
+        for (origin, expected) in [(OperationOrigin.external(clientID: "t"), "assistant,assistant"),
+                                   (.user, "person,person")] {
+            guard case .data(let bytes) = await router.dispatch(name: "who", rawArguments: Data("{}".utf8),
+                                                                  context: ctx(origin)) else {
+                return XCTFail("expected .data")
+            }
+            XCTAssertEqual(String(data: bytes, encoding: .utf8), expected)
+        }
+        XCTAssertEqual(Initiator.current, .person, "outside a call, the person")
     }
 
     func testReadToolReturnsData() async {

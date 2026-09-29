@@ -4611,6 +4611,16 @@
         }
       }
     },
+    "Delete %lld sessions" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer %lld sessions"
+          }
+        }
+      }
+    },
     "Delete cancelled" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4764,6 +4774,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld éléments supprimés"
+          }
+        }
+      }
+    },
+    "Deleted %lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sur %lld supprimées"
+          }
+        }
+      }
+    },
+    "Deleted %lld of %lld — %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sur %lld supprimées — %@"
           }
         }
       }
@@ -17714,7 +17744,6 @@
       }
     },
     "You" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -17750,6 +17779,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Votre client IA lance lui-même Verbinal en mode MCP. Ceci confirme que le serveur MCP est joignable ; la preuve finale est de redémarrer votre client et de voir apparaître les outils Verbinal."
+          }
+        }
+      }
+    },
+    "Your assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre assistant"
           }
         }
       }

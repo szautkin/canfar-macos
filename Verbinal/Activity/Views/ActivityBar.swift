@@ -87,7 +87,11 @@ private struct ActivityList: View {
                 .foregroundStyle(Self.color(line.progress))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
-                Text(line.title).lineLimit(1).truncationMode(.middle)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(line.title).lineLimit(1).truncationMode(.middle)
+                    Spacer(minLength: 8)
+                    Text(line.startedBy).font(.caption2).foregroundStyle(.secondary)
+                }
                 // A failure's reason can be a paragraph — the one thing the
                 // list was opened for, so it is never cut.
                 Text(line.detail)

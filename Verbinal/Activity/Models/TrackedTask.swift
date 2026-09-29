@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// What kind of work it is, for the icon and for an agent's reading.
 enum TaskKind: String, Codable, Sendable {
@@ -39,6 +40,8 @@ struct TrackedTask: Identifiable, Equatable, Sendable {
     let id: Int
     let kind: TaskKind
     let label: String
+    /// The person, their assistant, or the app itself (plan 17 A1).
+    var startedBy = Initiator.person
     /// Where it has got to — what separates a slow task from a stuck one.
     var stage = ""
     var progress = TaskProgress.running

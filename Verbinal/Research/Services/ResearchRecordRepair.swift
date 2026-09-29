@@ -42,7 +42,7 @@ final class ResearchRecordRepair {
         guard !running, !defaults.bool(forKey: Self.doneKey), !records.isEmpty else { return 0 }
         running = true
         defer { running = false }
-        let task = tasks.begin(.research, String(localized: "Check Research records against the archive"))
+        let task = tasks.begin(.research, String(localized: "Check Research records against the archive"), by: .app)
         var corrected = 0, answered = 0
         for (index, record) in records.enumerated() {
             task.stage(String(localized: "\(index + 1) of \(records.count)"))

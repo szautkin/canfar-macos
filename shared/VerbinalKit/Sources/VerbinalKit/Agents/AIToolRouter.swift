@@ -137,7 +137,9 @@ public actor AIToolRouter {
         let verbClass = metadata[name]?.verbClass ?? .read
         let ceiling = dispatchCeilingOverride ?? Self.dispatchCeiling(for: verbClass)
         let deadlineHit = DeadlineFlag()
-        let result = await withHardDeadline(
+        // What an assistant's call sets going is the assistant's (plan 17 A1).
+        let initiator: Initiator = context.origin == .user ? .person : .assistant
+        let result = await Initiator.$current.withValue(initiator) { await withHardDeadline(
             seconds: ceiling,
             onDeadline: {
                 deadlineHit.set()
@@ -145,7 +147,7 @@ public actor AIToolRouter {
                     "\(name) exceeded the \(Int(ceiling))s dispatch deadline — the app-side operation was asked to cancel and may still be finishing in the background. The server stays responsive; check state with a read tool before retrying."))
             },
             work: { await self.dispatchInner(name: name, rawArguments: rawArguments, context: context) }
-        )
+        ) }
         if deadlineHit.value {
             emitAudit(name: name, args: rawArguments, context: context,
                       outcome: .failed(tag: "dispatchDeadline"),

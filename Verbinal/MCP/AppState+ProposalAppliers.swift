@@ -60,8 +60,10 @@ extension AppState {
             LaunchSessionApplier(service: sessionService,
                                   recentLaunchStore: recentLaunchStore,
                                   activity: activity),
-            DeleteSessionApplier(service: sessionService, activity: activity),
-            DeleteSessionsBulkApplier(service: sessionService, activity: activity),
+            DeleteSessionApplier(delete: { [sessionActions] id in try await sessionActions.delete(id: id) },
+                                 activity: activity),
+            DeleteSessionsBulkApplier(deleteAll: { [sessionActions] ids in await sessionActions.delete(ids: ids) },
+                                      activity: activity),
             ClearResearchArchiveApplier(store: observationStore, activity: activity),
             // Remote compute — all through the one service the Remote
             // Compute screen uses, so a run is remembered as the assistant's.
@@ -134,9 +136,8 @@ extension AppState {
         // bookmarks. Capabilities captured here (MainActor) so the
         // Sendable applier closures never touch `self` off-actor except
         // through explicit hops.
-        let sessionSvc = sessionService
         appliers.append(RenewSessionApplier(
-            renew: { id in try await sessionSvc.renewSession(id: id) },
+            renew: { [sessionActions] id in try await sessionActions.renew(id: id) },
             activity: activity))
         appliers.append(ExportSearchResultsApplier(
             run: { [weak self] format, adql, maxRecords in

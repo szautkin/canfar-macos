@@ -25,6 +25,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   bookmark's id; a registry image with no session type says, to your
   assistant as on screen, that the Standard launch tab cannot offer it;
   and Research lists observations newest first, a re-download at the top.
+- **The activity bar says who started each task** — a "Delete session"
+  line could not say whether you or your assistant had asked, and an
+  assistant's session deletes and renewals never reached the bar at all.
+  Every task now says who set it going — you, your assistant, or Verbinal
+  itself — on the bar and in `list_activity` (`startedBy`), and an
+  assistant's `delete_session`, `renew_session` and `delete_sessions_bulk`
+  go the Portal's way, onto the bar; a bulk delete is one task that names
+  the sessions it could not delete.
 - **Session and launch details say what they are** — for assistants, a
   recent launch now names the project its image came from (an assistant's
   launches recorded none), a flexible session's cores and RAM say

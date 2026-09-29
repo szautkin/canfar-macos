@@ -223,11 +223,13 @@ final class AgentsService {
         defer { applyingIDs.remove(id) }
         let extra: Data?
         do {
-            if let reporting = applier as? any ResultReportingApplier {
-                extra = try await reporting.applyReturningResult(proposal)
-            } else {
+            // The change is the assistant's, whoever approved it (plan 17 A1).
+            extra = try await Initiator.$current.withValue(.assistant) {
+                if let reporting = applier as? any ResultReportingApplier {
+                    return try await reporting.applyReturningResult(proposal)
+                }
                 try await applier.apply(proposal)
-                extra = nil
+                return nil
             }
         } catch let pa as ProposalApplyError {
             _ = await proposals.markApplyFailed(id)

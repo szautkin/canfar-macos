@@ -120,7 +120,7 @@ final class ActivityTests: XCTestCase {
         try await compute.submit(RunCodeContract.Request(id: "r", language: "python", code: "1", timeout_seconds: 5), by: .agent)
         XCTAssertEqual(registry.tasks.first?.stage, "Waiting for the result")
         XCTAssertEqual(registry.tasks.first?.kind, .compute, "a code run is its own kind (QA L10)")
-        XCTAssertTrue(registry.tasks.first?.label.hasPrefix("Assistant") == true)
+        XCTAssertEqual(registry.tasks.first?.startedBy, .assistant, "said once, by who started it (plan 17 A1)")
         files.put(RunCodeContract.outPath(id: "r"), #"{"status":"timeout"}"#)
         for _ in 0..<100 where registry.runningCount > 0 { try await Task.sleep(for: .milliseconds(10)) }
         XCTAssertEqual(registry.tasks.first?.progress, .failed)

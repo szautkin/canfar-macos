@@ -164,15 +164,17 @@ struct DeleteSessionTool: JSONWriteTool {
     }
 }
 
+/// Deletes through `SessionActions`, as the Portal does, so the delete is
+/// on the activity bar as the assistant's.
 struct DeleteSessionApplier: ProposalApplier {
     let kind = "delete_session"
-    let service: SessionService
+    let delete: @Sendable (_ id: String) async throws -> Void
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(DeleteSessionTool.Payload.self, from: proposal.payload)
         do {
-            try await service.deleteSession(id: payload.id)
+            try await delete(payload.id)
         } catch {
             throw ProposalApplyError.backendError("delete failed: \(error.localizedDescription)")
         }
@@ -250,38 +252,23 @@ struct DeleteSessionsBulkTool: JSONWriteTool {
     }
 }
 
+/// Deletes through `SessionActions` — in parallel, every id attempted
+/// whatever the others do, as one task on the activity bar that names the
+/// ones that failed.
 struct DeleteSessionsBulkApplier: ProposalApplier {
     let kind = "delete_sessions_bulk"
-    let service: SessionService
+    /// The reason for each id that failed.
+    let deleteAll: @Sendable (_ ids: [String]) async -> [String: String]
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(DeleteSessionsBulkTool.Payload.self, from: proposal.payload)
-        // Fan out in parallel — Skaha's DELETE per id is
-        // independent and cheap (no body, no K8s wait). A linear
-        // loop over 50 ids at ~200 ms each adds up to 10 s; the
-        // TaskGroup completes in roughly the slowest single
-        // request. Wrapped in `withApplierTimeout` so the bulk
-        // never silently hangs (F-2026-05-13-A protection).
-        let svc = service
+        // Wrapped in `withApplierTimeout` so the bulk never silently hangs
+        // (F-2026-05-13-A protection).
+        let deleteAll = deleteAll
         let ids = payload.ids
         try await withApplierTimeout(seconds: 180, label: "delete_sessions_bulk") {
-            await withTaskGroup(of: Void.self) { group in
-                for id in ids {
-                    group.addTask {
-                        // We don't propagate errors here — every
-                        // attempt should run regardless of others'
-                        // outcomes. The success of the bulk is
-                        // measured by the activity-feed entry; the
-                        // applier doesn't currently round-trip
-                        // per-id failures back to the agent
-                        // because the proposal-apply protocol only
-                        // expresses succeed / throw. Surface
-                        // detail in a follow-up if any.
-                        _ = try? await svc.deleteSession(id: id)
-                    }
-                }
-            }
+            _ = await deleteAll(ids)
         }
         await MainActor.run {
             activity.append(.applied(proposal: proposal, kind: kind))

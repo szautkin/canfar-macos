@@ -193,7 +193,7 @@ every later agent is told; **read** = pure data.
 |---|---|---|
 | Navigate between modes (now incl. AI Guide) | `navigate_to` (`aiGuide` added) | live |
 | Current view incl. Search sub-tab + result counts | `get_current_view` (enriched) | read |
-| Activity bar: what is running, its stage, what failed and why | `list_activity` | read |
+| Activity bar: what is running, who started it, its stage, what failed and why | `list_activity` | read |
 | Local file-browser panel: browse | `list_local_folder` | read |
 | Local file-browser panel: open file | `open_local_file` (optional `viewer` skips Open as…) | live |
 | Settings ▸ Endpoints (effective URLs) | `get_endpoints` | read |

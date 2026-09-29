@@ -6,6 +6,7 @@
 
 import Foundation
 import Observation
+import VerbinalKit
 
 /// What the app is doing, in one place.
 ///
@@ -33,10 +34,11 @@ final class TaskRegistry {
     private(set) var tasks: [TrackedTask] = []
     private var nextID = 0
 
-    /// Starts tracking work; the handle owns its outcome.
-    func begin(_ kind: TaskKind, _ label: String) -> TaskHandle {
+    /// Starts tracking work; the handle owns its outcome. Who started it is
+    /// the task's initiator unless the caller knows better.
+    func begin(_ kind: TaskKind, _ label: String, by initiator: Initiator = Initiator.current) -> TaskHandle {
         nextID += 1
-        tasks.append(TrackedTask(id: nextID, kind: kind, label: label, started: Date()))
+        tasks.append(TrackedTask(id: nextID, kind: kind, label: label, startedBy: initiator, started: Date()))
         // The oldest FINISHED go first: running work is what a reader most
         // needs to see, and is never dropped to make room.
         while tasks.count > Self.maxTasks, let finished = tasks.firstIndex(where: \.isFinished) {

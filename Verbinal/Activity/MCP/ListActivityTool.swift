@@ -27,6 +27,8 @@ struct ListActivityTool: JSONReadTool {
         /// discovery, launch, session, compute, storage, download or research.
         let kind: String
         let label: String
+        /// person, assistant or app — who set it going.
+        let startedBy: String
         /// running, succeeded, failed or cancelled (abandoned before it finished).
         let status: String
         let stage: String?
@@ -40,6 +42,7 @@ struct ListActivityTool: JSONReadTool {
             let iso = ISO8601DateFormatter()
             kind = task.kind.rawValue
             label = task.label
+            startedBy = task.startedBy.rawValue
             status = task.progress.rawValue
             stage = task.stage.isEmpty ? nil : task.stage
             message = task.message
@@ -51,7 +54,7 @@ struct ListActivityTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_activity",
-        description: "What the app is doing — the activity bar at the bottom of the window: its slow work (image probes, launches, session actions, Storage transfers, downloads, remote-compute runs), newest first, each with its stage while running (\"Waiting for job …\"), how long it has taken, and a failure's reason. Finished work stays until the person clears it, so a failure from a sheet closed long ago can still be read. Read-only.",
+        description: "What the app is doing — the activity bar at the bottom of the window: its slow work (image probes, launches, session actions, Storage transfers, downloads, remote-compute runs), newest first, each with who started it (`startedBy`: the person, an assistant — you or another — or the app itself), its stage while running (\"Waiting for job …\"), how long it has taken, and a failure's reason. Finished work stays until the person clears it, so a failure from a sheet closed long ago can still be read. Read-only.",
         schema: #"""
         {
           "type": "object",

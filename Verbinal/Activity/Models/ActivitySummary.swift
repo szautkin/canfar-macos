@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// The tasks as words on the activity bar — the part worth being sure of:
 /// "Idle" while something runs, or a permanent "0 failed", is how a status
@@ -15,6 +16,17 @@ enum ActivitySummary {
         let title: String
         let detail: String
         let progress: TaskProgress
+        /// Who started it, in words.
+        var startedBy = ""
+    }
+
+    /// Who started a task, as the bar says it.
+    static func who(_ initiator: Initiator) -> String {
+        switch initiator {
+        case .person: return String(localized: "You")
+        case .assistant: return String(localized: "Your assistant")
+        case .app: return String(localized: "Verbinal")
+        }
     }
 
     /// The one line the bar costs. A single running task names itself, with
@@ -56,7 +68,7 @@ enum ActivitySummary {
         case .running:
             detail = task.stage.isEmpty ? took : "\(task.stage) · \(took)"
         }
-        return Line(title: task.label, detail: detail, progress: task.progress)
+        return Line(title: task.label, detail: detail, progress: task.progress, startedBy: who(task.startedBy))
     }
 
     /// At the precision a person reads: under a second is "just now".

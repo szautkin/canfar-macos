@@ -20,7 +20,7 @@ parity doc for tool changes.
 | Phase | State | Commits |
 |---|---|---|
 | G what still fails | done — G1 BYTEPIX; G2 files checked through their bookmark; G3 records kept before, corrected once; G4 the image's header, `keywords`; G5 dotfiles are text; G6 a probe's error line; G7 `.vnc`; G8 tabs without a sky WCS named; G9 Search pointable, a refused query not executed | `871bfb9`, `1d32617`, `8400303`, `23a9b3b`, `09069c7`, `2d91b62`, `d8dca97`, `3ae626c`, G9 |
-| A audit | planned — A1–A5 | — |
+| A audit | in progress — A1 who started each task; session deletes on the bar | A1 |
 | U the screen | in progress — U1 the robot on every view | `9b56ce0` |
 | P probes and privacy | planned — P1–P3 | — |
 
@@ -54,7 +54,7 @@ runs rightly found is that the trail cannot say whose (A1).
 
 | Step | Finding | Fix |
 |---|---|---|
-| **A1** | notebook1 | Every task on the activity bar says who started it — the person, an assistant, or the app itself — and `list_activity` reports it. The assistant's `delete_session`, `renew_session` and bulk deletes go through the same owner as the Portal (`SessionListModel`), so they appear on the bar too. |
+| **A1** | notebook1 | Every task on the activity bar says who started it — the person, an assistant, or the app itself — and `list_activity` reports it. The assistant's `delete_session`, `renew_session` and bulk deletes go through the same owner as the Portal (`SessionActions`, which `SessionListModel` uses), so they appear on the bar too. Who acts is a task-local (`Initiator`): the router runs an assistant's call as the assistant, and applying its proposal is the assistant's work, whoever approved it. |
 | **A2** | N2 | A headless job an assistant launched is recorded `origin: agent` (the launch notes its job ids for the history). |
 | **A3** | N3, N8 | `launch_headless_job` returns the job ids; `export_fits_figure` and `export_cube_figure` return the file they wrote. |
 | **A4** | N7 | A failed apply keeps its reason on the proposal — the strip and `get_proposal_state` show it; withdrawing a proposal gives its budget back. |
