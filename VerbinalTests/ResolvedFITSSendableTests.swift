@@ -97,4 +97,24 @@ final class ResolvedFITSSendableTests: XCTestCase {
         XCTAssertEqual(output.cards.map(\.keyword),
                        ["SIMPLE", "BITPIX", "NAXIS", "NAXIS1", "NAXIS2"])
     }
+
+    /// Plan 17 G4 (QA M17): the cards asked for, by keyword or prefix, and
+    /// never the blank ones that pad a header.
+    func testGetFITSHeaderReturnsTheKeywordsAskedFor() async throws {
+        var header = FITSHeader()
+        for (keyword, value) in [("SIMPLE", "T"), ("NAXIS", "2"), ("NAXIS1", "4"), ("", "   "), ("CRVAL1", "10.5"),
+                                 ("DATE-OBS", "2024-01-01"), ("", "  a note")] {
+            header.add(FITSCard(keyword: keyword, value: value, comment: ""))
+        }
+        let hdu = FITSHDUnit(id: 0, header: header, dataOffset: 0, dataLength: 0, wcs: nil)
+        let resolved = ResolvedFITS(observationID: "o", file: FITSFile(url: URL(fileURLWithPath: "/tmp/k.fits"), hdus: [hdu]))
+        let tool = GetFITSHeaderTool(resolve: { @Sendable _ in resolved })
+
+        let chosen = try await tool.handle(.init(downloaded_observation_id: "o", hduIndex: 0, keywords: ["naxis", "DATE-OBS"]),
+                                           context: ctx())
+        XCTAssertEqual(chosen.cards.map(\.keyword), ["NAXIS", "NAXIS1", "DATE-OBS"])
+        XCTAssertEqual(chosen.totalCards, 6)
+        let whole = try await tool.handle(.init(downloaded_observation_id: "o", hduIndex: 0), context: ctx())
+        XCTAssertEqual(whole.cards.map(\.keyword), ["SIMPLE", "NAXIS", "NAXIS1", "CRVAL1", "DATE-OBS", ""])
+    }
 }

@@ -64,13 +64,22 @@ public enum TileCompression {
         case rename(String)
     }
 
+    /// The name fpack and astropy give the table when the image had none.
+    public static let tableName = "COMPRESSED_IMAGE"
+
     /// The table's structure and the convention's own keywords are dropped
     /// (the image's shape is rebuilt from the Z-keywords); ZBLANK is the
-    /// image's BLANK; checksums, which vouched for the table, go; every
-    /// other card — EXTNAME, WCS, BZERO, OBJECT, a keyword such as ZD —
-    /// is the image's as written.
-    public static func fate(of keyword: String) -> Fate {
-        switch keyword {
+    /// image's BLANK; checksums, which vouched for the table, go; so do the
+    /// table's own name and the blank cards that reserve room in it, as
+    /// cfitsio drops them (QA M17). Every other card — an EXTNAME the image
+    /// was given, WCS, BZERO, OBJECT, a keyword such as ZD — is the image's
+    /// as written.
+    public static func fate(of card: FITSCard) -> Fate {
+        switch card.keyword {
+        case "":
+            return card.value.allSatisfy(\.isWhitespace) ? .drop : .keep
+        case "EXTNAME" where card.text == tableName:
+            return .drop
         case "ZBLANK":
             return .rename("BLANK")
         case "XTENSION", "SIMPLE", "BITPIX", "NAXIS", "PCOUNT", "GCOUNT", "EXTEND", "TFIELDS", "THEAP", "END",
@@ -80,6 +89,7 @@ public enum TileCompression {
         default:
             let numbered = ["NAXIS", "ZNAXIS", "ZTILE", "ZNAME", "ZVAL",
                             "TTYPE", "TFORM", "TUNIT", "TDIM", "TNULL", "TSCAL", "TZERO", "TDISP"]
+            let keyword = card.keyword
             let isNumbered = numbered.contains { prefix in
                 keyword.count > prefix.count && keyword.hasPrefix(prefix) && keyword.dropFirst(prefix.count).allSatisfy(\.isNumber)
             }
@@ -105,7 +115,7 @@ public enum TileCompression {
             header.add(FITSCard(keyword: keyword, value: value, comment: ""))
         }
         for card in table.orderedCards {
-            switch fate(of: card.keyword) {
+            switch fate(of: card) {
             case .keep: header.add(card)
             case .rename(let name): header.add(FITSCard(keyword: name, value: card.value, comment: card.comment))
             case .drop: break

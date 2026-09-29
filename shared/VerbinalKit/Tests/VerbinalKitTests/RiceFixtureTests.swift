@@ -100,22 +100,46 @@ final class TileCompressionHeaderTests: XCTestCase {
         XCTAssertEqual(Array(keywords.prefix(6)), ["XTENSION", "BITPIX", "NAXIS", "NAXIS1", "NAXIS2", "PCOUNT"])
         XCTAssertEqual(hdu.header.string("XTENSION"), "IMAGE")
         XCTAssertEqual([hdu.header.bitpix, hdu.header.naxis1, hdu.header.naxis2], [16, 64, 48])
-        for keyword in ["BITPIX", "NAXIS1", "NAXIS2", "EXTNAME", "BZERO"] where keywords.contains(keyword) {
+        for keyword in ["BITPIX", "NAXIS1", "NAXIS2", "BZERO"] {
             XCTAssertEqual(keywords.filter { $0 == keyword }.count, 1, keyword)
         }
+        XCTAssertNil(hdu.header.string("EXTNAME"), "COMPRESSED_IMAGE names the table, not the image (QA M17)")
         XCTAssertFalse(keywords.contains { $0.hasPrefix("ZTILE") || $0.hasPrefix("TFORM") || $0 == "ZCMPTYPE" || $0.hasPrefix("_") })
         XCTAssertEqual(hdu.header.bzero, 32768)
         let layout = try XCTUnwrap(hdu.compression)
         XCTAssertEqual([layout.tileWidth, layout.tileHeight, layout.blockSize, layout.bytePix, layout.rows], [64, 1, 32, 2, 48])
     }
 
+    private func card(_ keyword: String, _ value: String = "1") -> FITSCard {
+        FITSCard(keyword: keyword, value: value, comment: "")
+    }
+
     func testEachCardHasOneFate() {
-        XCTAssertEqual(TileCompression.fate(of: "ZBLANK"), .rename("BLANK"))
+        XCTAssertEqual(TileCompression.fate(of: card("ZBLANK")), .rename("BLANK"))
         for dropped in ["ZTILE1", "ZNAXIS2", "TFORM1", "TTYPE1", "ZCMPTYPE", "ZQUANTIZ", "CHECKSUM", "ZHECKSUM", "NAXIS1", "THEAP"] {
-            XCTAssertEqual(TileCompression.fate(of: dropped), .drop, dropped)
+            XCTAssertEqual(TileCompression.fate(of: card(dropped)), .drop, dropped)
         }
         for kept in ["EXTNAME", "BZERO", "CRVAL1", "OBJECT", "ZD", "ZTILEX", "HISTORY"] {
-            XCTAssertEqual(TileCompression.fate(of: kept), .keep, kept)
+            XCTAssertEqual(TileCompression.fate(of: card(kept)), .keep, kept)
         }
+    }
+
+    /// Plan 17 G4 (QA M17): the table's own name and its blank cards go, as
+    /// cfitsio drops them; a name the image was given, and commentary, stay.
+    func testTheTablesNameAndBlankCardsAreNotTheImages() {
+        XCTAssertEqual(TileCompression.fate(of: card("EXTNAME", "COMPRESSED_IMAGE")), .drop)
+        XCTAssertEqual(TileCompression.fate(of: card("EXTNAME", "'COMPRESSED_IMAGE'  ")), .drop)
+        XCTAssertEqual(TileCompression.fate(of: card("EXTNAME", "SCI")), .keep)
+        XCTAssertEqual(TileCompression.fate(of: card("", String(repeating: " ", count: 72))), .drop)
+        XCTAssertEqual(TileCompression.fate(of: card("", "  a note under no keyword")), .keep)
+
+        let blank = String(repeating: " ", count: 80)
+        let table = ["XTENSION= 'BINTABLE'", "ZIMAGE  =                    T", "ZBITPIX =                   16",
+                     "ZNAXIS  =                    1", "ZNAXIS1 =                    4", "EXTNAME = 'COMPRESSED_IMAGE'",
+                     blank, "OBJECT  = 'M31     '", blank]
+        var header = FITSHeader()
+        for text in table { header.add(FITSParser.parseCard(text.padding(toLength: 80, withPad: " ", startingAt: 0))) }
+        XCTAssertEqual(TileCompression.imageHeader(fromTable: header).orderedCards.map(\.keyword),
+                       ["XTENSION", "BITPIX", "NAXIS", "NAXIS1", "PCOUNT", "GCOUNT", "OBJECT"])
     }
 }

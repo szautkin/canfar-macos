@@ -17,6 +17,11 @@ public struct FITSCard: Sendable {
         self.value = value
         self.comment = comment
     }
+
+    /// The value as text: a string's quotes and padding gone.
+    public var text: String {
+        value.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "'")).trimmingCharacters(in: .whitespaces)
+    }
 }
 
 /// Parsed FITS header with typed accessors.
@@ -32,8 +37,7 @@ public struct FITSHeader: Sendable {
     }
 
     public func string(_ key: String) -> String? {
-        guard let card = cards[key] else { return nil }
-        return card.value.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "'")).trimmingCharacters(in: .whitespaces)
+        cards[key]?.text
     }
 
     public func int(_ key: String, fallback: Int = 0) -> Int {

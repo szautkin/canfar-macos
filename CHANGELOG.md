@@ -193,7 +193,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
   floating-point fpack images are still refused, with a message saying so.
   The header of a compressed image is the image's own, as cfitsio shows
   it: `BITPIX`, `NAXIS1` and `EXTNAME` once each, without the table's
-  cards mixed in (`get_fits_header` and the header panel).
+  cards mixed in (`get_fits_header` and the header panel) — nor fpack's
+  name for the table, `COMPRESSED_IMAGE`, nor the blank cards that
+  reserve room in it. `get_fits_header` takes `keywords`, to return only
+  the cards asked for (`NAXIS`, `CRVAL`, `DATE-OBS`).
 - **The Portal fits its window** — the grid could give its first column
   the whole window, so Storage and Batch Jobs went off the right edge and
   the session and image cards were cut; and a row's cards were as tall and

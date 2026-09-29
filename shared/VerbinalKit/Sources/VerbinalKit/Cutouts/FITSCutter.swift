@@ -335,7 +335,7 @@ public enum FITSCutter {
         cards += (1...max(h.naxis, 1)).map { card("NAXIS\($0)", "\(h.int("NAXIS\($0)"))") }
         cards += [card("PCOUNT", "0"), card("GCOUNT", "1")]
         for original in table {
-            switch TileCompression.fate(of: keyword(of: original)) {
+            switch TileCompression.fate(of: FITSParser.parseCard(original)) {
             case .keep: cards.append(original)
             case .rename(let name): cards.append(name.padding(toLength: 8, withPad: " ", startingAt: 0) + original.dropFirst(8))
             case .drop: continue

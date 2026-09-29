@@ -16,11 +16,14 @@ struct GetFITSHeaderTool: JSONReadTool {
     struct Args: Decodable, Sendable {
         let downloaded_observation_id: String
         var hduIndex: Int?
+        var keywords: [String]?
     }
 
     struct Output: Encodable, Sendable {
         let observationID: String
         let hduIndex: Int
+        /// The header's cards with a keyword or words, before `keywords` chose.
+        let totalCards: Int
         let cards: [Card]
         struct Card: Encodable, Sendable {
             let keyword: String
@@ -31,19 +34,29 @@ struct GetFITSHeaderTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_fits_header",
-        description: "Return FITS header cards for one HDU of a previously-downloaded observation. Argument is the `downloaded_observation_id` (UUID from `list_downloaded_observations`), NOT a `publisher_id` — the file must already be on disk. Call `download_observation` first if you don't have a local copy. Defaults to the first image HDU.",
+        description: "Return FITS header cards for one HDU of a previously-downloaded observation. Argument is the `downloaded_observation_id` (UUID from `list_downloaded_observations`), NOT a `publisher_id` — the file must already be on disk. Call `download_observation` first if you don't have a local copy. Defaults to the first image HDU. `keywords` returns only the cards whose keyword starts with one of them (`[\"NAXIS\", \"CRVAL\", \"DATE-OBS\"]`); blank cards are never returned.",
         schema: #"""
         {
           "type": "object",
           "required": ["downloaded_observation_id"],
           "properties": {
             "downloaded_observation_id": { "type": "string" },
-            "hduIndex": { "type": "integer", "minimum": 0 }
+            "hduIndex": { "type": "integer", "minimum": 0 },
+            "keywords": { "type": "array", "items": { "type": "string" }, "description": "Keywords or their prefixes, any case" }
           },
           "additionalProperties": false
         }
         """#
     )
+
+    /// The cards worth reading — a blank card holds nothing — and, when
+    /// keywords are given, those whose keyword starts with one (QA M17).
+    static func cards(of header: FITSHeader, keywords: [String]?) -> (all: [FITSCard], chosen: [FITSCard]) {
+        let all = header.orderedCards.filter { !$0.keyword.isEmpty || !$0.value.allSatisfy(\.isWhitespace) }
+        let prefixes = (keywords ?? []).map { $0.trimmingCharacters(in: .whitespaces).uppercased() }.filter { !$0.isEmpty }
+        guard !prefixes.isEmpty else { return (all, all) }
+        return (all, all.filter { card in prefixes.contains { card.keyword.hasPrefix($0) } })
+    }
 
     /// Closure resolves the observation id (full UUID or unique hex
     /// prefix) to a *security-scoped* FITSFile snapshot.
@@ -70,13 +83,12 @@ struct GetFITSHeaderTool: JSONReadTool {
             hduIndex = firstImage.id
             hdu = firstImage
         }
-        let cards = hdu.header.orderedCards.map {
-            Output.Card(keyword: $0.keyword, value: $0.value, comment: $0.comment)
-        }
+        let (all, chosen) = Self.cards(of: hdu.header, keywords: args.keywords)
         return Output(
             observationID: resolved.observationID,
             hduIndex: hduIndex,
-            cards: cards
+            totalCards: all.count,
+            cards: chosen.map { Output.Card(keyword: $0.keyword, value: $0.value, comment: $0.comment) }
         )
     }
 }
