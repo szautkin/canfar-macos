@@ -34,7 +34,7 @@ The rules are those of plans 15 and 17:
 | T the trail | planned — T1–T2 | — |
 | F figures and files | planned — F1–F2 | — |
 | C capture | planned — C1 (decision 1) | — |
-| R Research | planned — R1–R2 | — |
+| R Research | planned — R1–R4 | — |
 | K kept | — | — |
 | Q handout 20 | planned | — |
 
@@ -43,7 +43,7 @@ The rules are those of plans 15 and 17:
 | Step | Finding | Cause (found) | Fix |
 |---|---|---|---|
 | **S1** | N20 (Medium) | Skaha answers a DELETE for an id it does not have with success. `SessionService.deleteSession` sees 2xx, so both `delete_session` and `delete_sessions_bulk` report a typo as deleted. | `SessionActions` looks the ids up on the platform (interactive and headless) before deleting. An id not listed is not sent, and fails with "no session *id*". The bulk task names it: "Deleted 1 of 2 — *id*: no such session". The Portal is unaffected, since it deletes only what it lists. |
-| **S2** | N17 (Medium) | `WorkflowApplier` discards the id `useWorkflow` returns (`_ = try store.useWorkflow`). An unstarted copy of the template is reused by the plan 15 rule (QA L4), and the answer never says so. | `use_workflow` reports the copy's `id`. When it reuses an unstarted copy, it says so in `note`: "an unstarted copy already exists — pass `name` for another". The rule stays (decision 2). |
+| **S2** | N17 (Medium) | `WorkflowApplier` discards the id `useWorkflow` returns (`_ = try store.useWorkflow`). An unstarted copy of the template was reused by the plan 15 rule (QA L4), and the answer never said so. | Every `use_workflow` makes a new copy, numbered when its title is taken ("… (2)", "… (3)"), and returns its `id` (decision 2). The plan 15 reuse rule goes. |
 | **S3** | N18 (Low) | The start_compute answer (and the ack) repeats the proposal's summary, which states the configured size. Only the activity entry says a session was reused. | `StartComputeApplier` reports what it found: the session's own cores and RAM, whether it was reused, and the drift from the configuration (`ComputeDrift`, as `run_code` does). |
 | **S4** | N7 (Medium) | A probe may run up to 600 s (QA's failed at 509 s). Until it ends, the proposal is rightly `applying`, but nothing says since when or how far it has got. An apply interrupted by a quit comes back plain `pending`, with no reason, because `applyingIDs` is not journaled. Both apply paths do record a failure's reason (plan 17 A4). | `get_proposal_state` and `list_pending_proposals` give an applying proposal's `applyingSince` and its activity stage ("Waiting for job …"). The store journals what is being applied, and after a relaunch marks it failed with "Verbinal quit while this was being applied". A test reproduces QA's path: a background-applied probe that fails reads `failed` with its reason. |
 
@@ -71,8 +71,10 @@ The rules are those of plans 15 and 17:
 
 | Step | Finding | Cause (found) | Fix |
 |---|---|---|---|
-| **R1** | N15 (Low) | `ResearchRecordRepair` asks `caom2ops/meta` for one record at a time, and that endpoint takes 30–50 s under load (its own comment). So 35 records took about 20 minutes. | Ask for a few at once: 4 in flight (decision 3). Cap each record at 60 s. The stage reads "12 of 35". Estimated 35 records in about 5 minutes. |
-| **R2** | M2 (Low) | Target and instrument come from the observation, and filter and calibration level from its plane. CFHT?1573200's publisher ID has no product part, and `plane(of:in:)` then picks a plane only when there is exactly one. Its blank target and instrument mean the observation itself did not arrive, probably the 60 s timeout during the slow run. A live check could not confirm this here: `caom2ops/meta` gave no answer within 60 s. The DECam records' instrument is the same question. | With no product part, the plane is the one whose artifact is the downloaded file, else the only one. A record whose archive did not answer is retried at the next check, rather than counted done. Before coding, fetch `caom:CFHT/1573200` and one DECam observation live, and add them as fixtures. |
+| **R1** | N15 (Low), and the blank records in Research | `ResearchRecordRepair` asks `caom2ops/meta` for one record at a time, and that endpoint takes 30–50 s under load. So 35 records took about 20 minutes. Worse, a record added from Search (Download, Save to Research) keeps only what the search row had: only an assistant's download asks the archive. So a record starts blank, and every check asks again. | The archive's answer is kept on this Mac, in the app's SQLite database (`AppDatabase` v3, an `archiveObservation` table: the observation's URI, the archive's XML, and when it was fetched). `CAOM2Service` owns it: memory first, then the database, then the network. One `ResearchArchiveDetails` completes a record from it, and every way into Research uses it: the Search's Download and Save to Research, and an assistant's download and save. So a record gets its details when it is added, in the background, on the activity bar. The check reads the database, and asks the network only for what is missing, 2 requests at a time. Its progress shows on the activity bar ("12 of 35") and at the top of the Research list (decision 3). |
+| **R2** | M2 (Low) | Target and instrument come from the observation, and filter and calibration level from its plane. With no product part in the publisher ID (CFHT?1573200), `plane(of:in:)` picks a plane only when there is exactly one. A record the archive did not answer (a timeout during the slow run) stayed blank and was counted done. | With no product part, the plane is the one whose artifact is the downloaded file, else the only one. A record the archive did not answer is asked again at the next check. Before coding, fetch `caom:CFHT/1573200` and one DECam observation live, as fixtures. |
+| **R3** | The blank `1525350` record (the person's screenshot) | It was saved in September under the slash form, `ivo://cadc.nrc.ca/CFHT/1525350`. `PublisherID` does not parse that form, so the archive is never asked. Plan 15 only refuses the form for new saves. | `PublisherID.likely(_:)` — the ID a slash form most likely means, already worked out inside `malformed`'s message, now one function both use. The check rewrites such a record to `ivo://cadc.nrc.ca/CFHT?1525350`, moves its note with it, and completes it from the archive. |
+| **R4** | Records in the list say nothing | A row shows only the observation ID and size when the details are blank. | Covered by R1–R3; the handout checks that the rows fill in. |
 
 ## K — Kept as they are
 
@@ -84,7 +86,7 @@ The rules are those of plans 15 and 17:
 
 ## Q — Handout 20
 
-Handout 20 covers S1–S4, T1–T2, F1–F2, R1–R2 and C1 (or the checks by eye, if C1 is declined). It adds the four items handout 18 left untested:
+Handout 20 covers S1–S4, T1–T2, F1–F2, R1–R4 and C1 (or the checks by eye, if C1 is declined). It adds the four items handout 18 left untested:
 
 - a delete made from the Portal, labelled You;
 - a failure's reason surviving a relaunch;
@@ -103,11 +105,12 @@ Handout 20 covers S1–S4, T1–T2, F1–F2, R1–R2 and C1 (or the checks by ey
   - the two figure exports
   - VOSpace `sn2023ixf-verbinal-qa/`
 
-## Decisions (proposed)
+## Decisions (2026-09-29)
 
-1. **C1 capture:**
-   - The window's text in `capture_view`'s answer, from accessibility. This is recommended: no permission needed.
-   - Plus a true window capture, only if it needs no Screen Recording prompt.
-   - Alternatively, accept a one-time Screen Recording permission for pixel-exact captures.
-2. **S2 workflows:** keep reusing an unstarted copy (the plan 15 rule) and say so, recommended. The alternative is for every `use_workflow` to make a new numbered copy.
-3. **R1:** 4 archive requests at once, recommended. The alternatives are 2, which is gentler on CADC, or one batched TAP query, which is fast but reads the details a second way.
+1. **C1 capture:** as recommended. The window's text goes in `capture_view`'s answer, from accessibility. A true window capture is adopted only if it needs no Screen Recording prompt.
+2. **S2 workflows:** every `use_workflow` makes a new, numbered copy.
+3. **R1 Research:** the archive's answers are kept on this Mac, in SQLite. Records get their details when added. The network is asked 2 requests at a time, with the progress shown.
+
+## Order
+
+S1–S4 and K1, T1–T2, F2 then F1, R3 then R1 then R2, C1, K2, then Q.
