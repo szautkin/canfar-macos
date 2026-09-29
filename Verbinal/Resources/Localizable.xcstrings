@@ -77,6 +77,7 @@
       }
     },
     "“%@” is no longer available." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -124,6 +125,7 @@
       "shouldTranslate" : false
     },
     "(none)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -362,6 +364,7 @@
       }
     },
     "%@ cores · %@ GB" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -584,8 +587,12 @@
         }
       }
     },
-    "%@ percent" : {},
-    "%@ pt" : {},
+    "%@ percent" : {
+
+    },
+    "%@ pt" : {
+
+    },
     "%@ results" : {
       "localizations" : {
         "fr" : {
@@ -618,6 +625,7 @@
       }
     },
     "%@ s" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -808,6 +816,7 @@
       }
     },
     "%lld cores · %lld GB" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1061,7 +1070,9 @@
     "•" : {
       "shouldTranslate" : false
     },
-    "• %@" : {},
+    "• %@" : {
+
+    },
     "•••••••• (set)" : {
       "localizations" : {
         "fr" : {
@@ -1171,6 +1182,7 @@
       }
     },
     "99.9%" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1211,6 +1223,7 @@
       }
     },
     "A compute session from another install is on your account, holding your cores. Stop it here, or set an image in Settings ▸ AI Compute to use it." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1232,6 +1245,7 @@
       }
     },
     "A little below the background to where the brightest percent begins" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1776,6 +1790,7 @@
       }
     },
     "Annotations (header + legend)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1796,6 +1811,7 @@
       }
     },
     "Anyone can read %@ — files like these usually hold secrets." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1817,6 +1833,7 @@
       }
     },
     "Applied by you" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1827,6 +1844,7 @@
       }
     },
     "Applied in the background" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1962,6 +1980,7 @@
       }
     },
     "Assistant" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2014,6 +2033,7 @@
       }
     },
     "Auto-applied" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3096,6 +3116,7 @@
       }
     },
     "Code" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3625,6 +3646,7 @@
       }
     },
     "Copy Code" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3880,6 +3902,7 @@
       }
     },
     "Could not save the figure: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4508,6 +4531,7 @@
       }
     },
     "Delete %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5282,6 +5306,7 @@
       }
     },
     "Drag or scroll to pan, ⌘-scroll or pinch to zoom, double-click to reset, click to probe a spectrum" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5313,6 +5338,7 @@
       }
     },
     "Drawing" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5809,6 +5835,7 @@
       }
     },
     "Errors" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5903,6 +5930,7 @@
       }
     },
     "exit %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5913,6 +5941,7 @@
       }
     },
     "Expires %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7708,6 +7737,7 @@
       }
     },
     "It never reached the session — see the message above." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8502,6 +8532,7 @@
       }
     },
     "Made %@ private" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8522,6 +8553,7 @@
       }
     },
     "Make %@ private" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8532,6 +8564,7 @@
       }
     },
     "Make All Private" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8542,6 +8575,7 @@
       }
     },
     "Make Private" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8944,6 +8978,7 @@
       }
     },
     "New folder %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9182,6 +9217,7 @@
       }
     },
     "No compute image is set — choose one in Settings ▸ AI Compute." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9493,6 +9529,7 @@
       }
     },
     "no result" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9503,6 +9540,7 @@
       }
     },
     "No result came back" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9575,6 +9613,7 @@
       }
     },
     "No shared sky with %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9738,6 +9777,7 @@
       }
     },
     "not sent" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9758,6 +9798,7 @@
       }
     },
     "Not set up" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9809,6 +9850,7 @@
       }
     },
     "Nothing came back in the time it could take. The session may have stopped before it ran; the code is still in the inbox and runs when it starts again." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10236,6 +10278,7 @@
       }
     },
     "Open FITS File…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10257,6 +10300,7 @@
       }
     },
     "Open Folder in Storage" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10350,6 +10394,7 @@
       }
     },
     "Open the Repository" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10504,6 +10549,7 @@
       }
     },
     "Output" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10514,6 +10560,7 @@
       }
     },
     "output cut short" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10524,6 +10571,7 @@
       }
     },
     "Outside the image, at pixel %lld, %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10763,6 +10811,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En attente (%lld)"
+          }
+        }
+      }
+    },
+    "Pending changes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifications en attente"
+          }
+        }
+      }
+    },
+    "Pending changes — what your assistant proposed; destructive changes always wait here" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifications en attente — ce que votre assistant a proposé ; les modifications destructives attendent toujours ici"
           }
         }
       }
@@ -11069,6 +11137,7 @@
       }
     },
     "Position copied" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -11338,6 +11407,7 @@
       }
     },
     "Public — anyone can read it, and files like this usually hold secrets" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -11359,6 +11429,7 @@
       }
     },
     "Public, and usually holds secrets" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -11684,6 +11755,7 @@
       }
     },
     "Reading %@ pixels" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -11694,6 +11766,7 @@
       }
     },
     "Reading the header" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -12644,6 +12717,7 @@
       }
     },
     "Restart the compute session with the new settings?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -12654,6 +12728,7 @@
       }
     },
     "Restart with New Settings" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -12822,6 +12897,7 @@
       }
     },
     "Run Again" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -13156,6 +13232,7 @@
       }
     },
     "Saved %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -13909,6 +13986,7 @@
       }
     },
     "Show" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14153,6 +14231,7 @@
       }
     },
     "Sign in to CANFAR to use remote compute." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14496,6 +14575,7 @@
       }
     },
     "Start Session" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14517,6 +14597,7 @@
       }
     },
     "Starting" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14527,6 +14608,7 @@
       }
     },
     "Starting — a compute session takes a minute or two to come up." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14537,6 +14619,7 @@
       }
     },
     "Starting with the new settings — a compute session takes a minute or two to come up." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14639,6 +14722,7 @@
       }
     },
     "Stop Session" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14649,6 +14733,7 @@
       }
     },
     "Stop the compute session?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14679,6 +14764,7 @@
       }
     },
     "Stopping" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15119,6 +15205,7 @@
       }
     },
     "That position has no pixel on this image" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15319,6 +15406,7 @@
       }
     },
     "The folder the session reads requests from and writes results to" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15390,6 +15478,7 @@
       }
     },
     "The result is no longer in your storage." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15410,6 +15499,7 @@
       }
     },
     "The session differs from Settings: %@. Code goes to it as it is until it is restarted." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15492,6 +15582,7 @@
       }
     },
     "These tabs show another part of the sky, so the linked crosshair has no place in them." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15754,8 +15845,11 @@
         }
       }
     },
-    "Timeout: %@ s" : {},
+    "Timeout: %@ s" : {
+
+    },
     "Timeout: %lld s" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15829,6 +15923,7 @@
       }
     },
     "Toggle the marks panel: draw, list and export marks" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15955,6 +16050,7 @@
       }
     },
     "Uncompressing %@ pixels" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -16041,6 +16137,7 @@
       }
     },
     "up %lld h %lld min" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -16051,6 +16148,7 @@
       }
     },
     "up %lld min" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -16092,6 +16190,7 @@
       }
     },
     "Upload %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -16527,6 +16626,7 @@
       }
     },
     "verbinal-execution on GitHub" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -16820,6 +16920,7 @@
       }
     },
     "Waiting for the result" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -17474,6 +17575,7 @@
       }
     },
     "You" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {

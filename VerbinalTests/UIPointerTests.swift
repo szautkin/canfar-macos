@@ -26,6 +26,20 @@ final class UIPointerTests: XCTestCase {
     }
 
     /// "agent" is in two labels: a question, not an answer.
+    /// A control shown in two places stays registered while either shows
+    /// it — the new toolbar appears before the old one goes (plan 17 U1).
+    @MainActor
+    func testAControlInTwoPlacesStaysWhileOneShowsIt() {
+        let registry = UIPointerRegistry()
+        let robot = UIPointerMatcher.Target(id: "agent.pending", label: "Pending changes", screen: "window")
+        registry.register(robot)      // the Portal's toolbar appears
+        registry.register(robot)      // …the landing toolbar, before the Portal's goes
+        registry.unregister(robot.id) // the Portal's goes
+        XCTAssertNotNil(registry.targets[robot.id])
+        registry.unregister(robot.id)
+        XCTAssertNil(registry.targets[robot.id])
+    }
+
     func testTwoEqualMatchesPointAtNothing() {
         XCTAssertNil(UIPointerMatcher.best(targets, for: "agent"))
         XCTAssertNil(UIPointerMatcher.best(targets, for: "nothing like this"))

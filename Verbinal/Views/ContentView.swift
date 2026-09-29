@@ -269,13 +269,11 @@ struct ContentView: View {
         // "Checking authentication…" interstitial blocked the whole app on
         // one network round-trip.
         VStack(spacing: 0) {
-            // Portal / Storage while signed out render a standalone
-            // login-required screen with NO mode toolbar (matches the
-            // pre-hoist behaviour, which never wrapped that screen in chrome).
-            if showsModeChrome {
-                hoistedModeToolbar
-                Divider()
-            }
+            // Every screen has its toolbar — the signed-out Portal and
+            // Storage too — so Pending, where destructive changes wait, is
+            // always one click away (plan 17 U1).
+            hoistedModeToolbar
+            Divider()
             modeBody
             // What the app is doing, whatever the mode.
             Divider()
@@ -287,17 +285,6 @@ struct ContentView: View {
     }
 
     #if os(macOS)
-    /// Whether the persistent mode chrome (toolbar + Divider) should be shown.
-    /// Hidden for the signed-out Portal / Storage login-required screen, which
-    /// is a standalone prompt with its own buttons — wrapping it in a back-arrow
-    /// mode toolbar would be redundant and was never done before the hoist.
-    private var showsModeChrome: Bool {
-        if appState.currentMode.requiresAuthentication {
-            return appState.isAuthenticated
-        }
-        return true
-    }
-
     /// The persistent macOS mode toolbar, chosen by `currentMode`. It lives
     /// above the transitioning `modeBody` so it does NOT fade with the body;
     /// only the title text cross-fades in place (each `make…Toolbar` renders a

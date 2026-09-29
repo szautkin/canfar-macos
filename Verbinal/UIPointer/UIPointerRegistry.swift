@@ -27,11 +27,22 @@ final class UIPointerRegistry {
     private(set) var targets: [String: UIPointerMatcher.Target] = [:]
     private(set) var hint: Hint?
     private var serial = 0
+    /// How many views show each target now. One control can be in several
+    /// places — the Pending robot is in every toolbar — and on a switch the
+    /// new one appears before the old one goes; counting keeps it registered.
+    private var shown: [String: Int] = [:]
 
-    func register(_ target: UIPointerMatcher.Target) { targets[target.id] = target }
+    func register(_ target: UIPointerMatcher.Target) {
+        targets[target.id] = target
+        shown[target.id, default: 0] += 1
+    }
 
-    /// Leaving a screen takes its targets — and any hint on them — along.
+    /// Leaving a screen takes its targets — and any hint on them — along,
+    /// once no other view shows them.
     func unregister(_ id: String) {
+        let left = (shown[id] ?? 1) - 1
+        shown[id] = left > 0 ? left : nil
+        guard left <= 0 else { return }
         targets[id] = nil
         if hint?.targetID == id { hint = nil }
     }

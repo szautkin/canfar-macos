@@ -21,7 +21,7 @@ parity doc for tool changes.
 |---|---|---|
 | G what still fails | in progress — G1 done | `871bfb9` |
 | A audit | planned — A1–A5 | — |
-| U the screen | planned — U1–U5 | — |
+| U the screen | in progress — U1 the robot on every view | U1 |
 | P probes and privacy | planned — P1–P3 | — |
 
 ## The open question: who deleted `notebook1`?
@@ -64,10 +64,10 @@ runs rightly found is that the trail cannot say whose (A1).
 
 | Step | Finding | Fix |
 |---|---|---|
-| **U1** | N11 | The pending-changes robot sits in the window's toolbar beside Settings and Info on every view, with its count, and is pointable (`agent.pending`). |
+| **U1** | N11 | The pending-changes robot is always in the window's toolbar beside Settings and Info — on every view, Landing and Portal included — with its count; it opens Pending, where destructive changes wait. Pointable (`agent.pending`). |
 | **U2** | N12 | Batch Jobs always shows its summary — "0 running · 0 pending · 1 done · 1 failed" — including zeros. |
 | **U3** | N6 | No empty cube tab: opening a cube replaces an empty tab, and `list_open_tabs` never lists one. |
-| **U4** | N1 | A FITS file whose extensions are tables (a spectrum's `_x1d`) opens with a message naming the tables and their columns, not a blank 38946×1 image. Plotting a spectrum is a feature for its own plan. |
+| **U4** | N1 | A FITS file whose extension is a table (a spectrum's `_x1d`) opens as a spectrum: its wavelength and flux columns plotted (with errors when the table has them), not a blank 38946×1 image; a table with no spectrum in it says so and lists its columns. The plot is readable by assistants too. |
 | **U5** | N5 | A suggested cutout names the same cutter as the file's options. |
 
 ## P — Probes and privacy
@@ -75,10 +75,11 @@ runs rightly found is that the trail cannot say whose (A1).
 | Step | Finding | Fix |
 |---|---|---|
 | **P1** | N4 | A probe answered from the cache says `cached: true` and when it was taken. Investigate the one-package manifest of `astroai/improc:latest` — likely the probe's `python3` is not the image's environment (conda) — and probe each Python it finds. |
-| **P2** | N9 | `list_local_folder` never lists a file whose name marks it as a secret (`cadcproxy.pem`, `.netrc`, keys — the rule `VOSpaceSensitivity` has, made one for both), and by default lists the files Verbinal opens (FITS, tables, images, archives); `all: true` lists the rest. |
+| **P2** | N9 | No change: `list_local_folder` lists every file in the folders the person has given Verbinal, as the person's own permissions allow (decision 2). |
 | **P3** | — | Regression handout 18 for these steps, as handout 16 was for plan 15. |
 
-## To confirm
+## Decisions (2026-09-28)
 
-1. **U4:** a clear message for table files now, a spectrum plot later as its own feature — or the plot now?
-2. **P2:** `list_local_folder` shows only files Verbinal opens by default, secrets never — or all files except secrets?
+1. **U4:** build the spectrum plot now.
+2. **P2:** `list_local_folder` lists all files, as the person's permissions allow.
+3. **U1:** the robot that opens Pending — where destructive changes wait — is always visible, Landing and Portal included.

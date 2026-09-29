@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Pending changes are one click away on every screen** — the robot that
+  opens Pending, where a destructive change always waits for you, was
+  missing from the home screen and the Portal, where sessions are launched
+  and deleted, and showed only while external agents were on. It is now in
+  every toolbar, always, with its count, and your assistant can point at it.
 - **Smaller things the QA pass found** — using a workflow template again
   no longer makes a lookalike copy: an unstarted copy is reused, and a new
   one is numbered ("… (2)"); a finished task on the activity bar no longer
