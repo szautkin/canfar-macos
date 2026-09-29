@@ -279,6 +279,20 @@ final class ReadVOSpaceFileTests: XCTestCase {
         XCTAssertNil(VOSpaceNode(name: "results", path: "results", type: .container).mediaType)
     }
 
+    /// Plan 17 G5 (QA L5): `.bashrc` has no extension, so the server's
+    /// `octet-stream` stood; a dotfile is a settings file, text.
+    func testADotfileIsText() {
+        let stated = "application/octet-stream"
+        XCTAssertEqual(VOSpaceContentType.of(path: "home/me/.bashrc", stated: stated), "text/plain")
+        XCTAssertEqual(VOSpaceContentType.of(path: ".token", stated: nil), "text/plain")
+        XCTAssertEqual(VOSpaceContentType.of(path: ".config.yaml", stated: stated), "application/yaml", "its extension first")
+        XCTAssertEqual(VOSpaceContentType.of(path: "home/me/.DS_Store", stated: stated), stated)
+        XCTAssertEqual(VOSpaceContentType.of(path: ".Xauthority", stated: nil), "application/octet-stream")
+        XCTAssertEqual(VOSpaceContentType.of(path: ".", stated: nil), "application/octet-stream")
+        XCTAssertEqual(VOSpaceNode(name: ".bashrc", path: "home/me/.bashrc", type: .dataNode, contentType: stated).mediaType,
+                       "text/plain")
+    }
+
     // MARK: - A server that ignores Range (QA H4)
 
     private func response(_ status: Int, _ headers: [String: String] = [:]) -> HTTPURLResponse {

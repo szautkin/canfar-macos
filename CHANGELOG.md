@@ -164,7 +164,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   whole answer is now cut at the offset, and `totalBytes` is the file's
   size. A file's `contentType` is decided one way everywhere — its
   extension's type, else the server's — so a `.py` is Python in a listing
-  as when read; and `list_vospace_path` says `truncated` when the folder
+  as when read, and a dotfile such as `.bashrc` is text (`.DS_Store`
+  excepted); and `list_vospace_path` says `truncated` when the folder
   holds more than `limit` entries.
 - **Updating a saved query changes it, not a copy** — an update, yours or
   your assistant's `update_saved_query`, added a second row with the same
