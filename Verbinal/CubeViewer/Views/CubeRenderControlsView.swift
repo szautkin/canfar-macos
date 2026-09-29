@@ -503,7 +503,7 @@ func exportCubeFigureHeadless(model: CubeViewerModel, request: CubeFigureRequest
             "No rendered image is available yet — call navigate_to(mode: cubeViewer) so the render lands, then retry export_cube_figure.")
     }
     let plate = CubeExportPlate.make(model: model, content: content, marks: marks, style: style)
-    let dest = FileHelper.timestampedDownloadsURL(stem: model.figureBaseName, ext: request.format.rawValue)
+    let dest = DownloadsFolder.timestampedURL(stem: model.figureBaseName, ext: request.format.rawValue)
     try FigureFile.write(plate, as: request.format, scale: request.scale, to: dest)
     return dest
 }

@@ -620,12 +620,7 @@ func makeVOSpaceAppliers(
         service: service,
         username: { @Sendable in await MainActor.run { appState.username } },
         observationStore: observationStore,
-        downloadsDirectory: { @Sendable in
-            (try? FileManager.default.url(
-                for: .downloadsDirectory, in: .userDomainMask,
-                appropriateFor: nil, create: true
-            )) ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
-        },
+        downloadsDirectory: { @Sendable in DownloadsFolder.url },
         activity: activity
     )
     return [

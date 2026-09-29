@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Every file in Downloads reads as `~/Downloads`** — figure exports
+  reported a path inside Verbinal's own container, other files
+  `~/Downloads`, so they seemed to land in two places. It is one folder
+  (the container's Downloads is a link to yours); every export,
+  download and answer now names it as `~/Downloads/…`, and a record's
+  path is shown the same way.
 - **Image inspection finds every Python in an image** — `astroai/improc`
   listed one Python package, pip, though it ships astropy and numpy: its
   science packages come from apt, for Debian's `/usr/bin/python3`, while

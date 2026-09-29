@@ -114,8 +114,7 @@ extension AppState {
         observationStore: ObservationStore,
         noteStore: ObservationNoteStore
     ) async throws {
-        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
+        let downloads = DownloadsFolder.url
         let exporter = ResearchExporter(observationStore: observationStore, noteStore: noteStore)
         let service = ExportService()
         let options = ExportOptions(includeFileCopies: includeFileCopies)

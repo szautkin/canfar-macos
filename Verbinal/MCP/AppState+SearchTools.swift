@@ -96,7 +96,7 @@ extension AppState {
     }
 
     private nonisolated static func moveExportToDownloads(tempURL: URL, ext: String) throws -> String {
-        let dest = FileHelper.timestampedDownloadsURL(stem: "verbinal-results", ext: ext)
+        let dest = DownloadsFolder.timestampedURL(stem: "verbinal-results", ext: ext)
         try FileHelper.moveReplacing(from: tempURL, to: dest)
         return dest.path
     }

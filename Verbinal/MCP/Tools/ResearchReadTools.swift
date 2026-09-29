@@ -53,7 +53,7 @@ struct ListDownloadedObservationsTool: JSONReadTool {
                 downloaded = !obs.localPath.isEmpty && obs.fileProblem == nil
                 cutout = obs.cutout
                 cutoutSummary = obs.cutout?.summary
-                localPath = obs.localPath
+                localPath = DownloadsFolder.displayPath(obs.localPath)
                 fileExists = obs.fileExists
                 fileProblem = obs.fileProblem
                 fileSize = obs.fileSize

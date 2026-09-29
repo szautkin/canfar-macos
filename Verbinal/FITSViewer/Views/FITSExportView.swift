@@ -231,7 +231,7 @@ func exportFITSFigureHeadless(model: FITSViewerModel, request: FITSFigureRequest
     if let annotate = request.annotate { style.annotate = annotate }
     if let dark = request.dark { style.theme = dark ? .dark : .light }
     let plate = FITSExportPlate.make(model: model, figure: figure, style: style)
-    let dest = FileHelper.timestampedDownloadsURL(stem: FITSExportPlate.baseName(for: model), ext: request.format.rawValue)
+    let dest = DownloadsFolder.timestampedURL(stem: FITSExportPlate.baseName(for: model), ext: request.format.rawValue)
     try FigureFile.write(plate, as: request.format, scale: request.scale, to: dest)
     return dest
 }

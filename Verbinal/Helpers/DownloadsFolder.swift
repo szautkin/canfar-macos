@@ -7,13 +7,31 @@
 import Foundation
 
 /// The person's Downloads folder — where files land that nobody chose a
-/// place for (an agent's downloads, a cutout's companions).
+/// place for (an agent's downloads, a cutout's companions, an export) —
+/// the one place that finds it.
+///
+/// In the sandbox, FileManager names the container's Downloads, a link to
+/// `~/Downloads` (the `files.downloads.read-write` entitlement): the same
+/// folder by another path, so figure exports read as landing somewhere
+/// else than downloads (plan 19 F2, QA L9). Every path here is resolved.
 enum DownloadsFolder {
 
-    /// Downloads for the running app sandbox.
+    /// `~/Downloads`, as the person knows it.
     static var url: URL {
-        (try? FileManager.default.url(for: .downloadsDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads", isDirectory: true)
+        ((try? FileManager.default.url(for: .downloadsDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads", isDirectory: true))
+            .resolvingSymlinksInPath()
+    }
+
+    /// `~/Downloads/<stem>-<yyyyMMdd-HHmmss>.<ext>`, for an export.
+    static func timestampedURL(stem: String, ext: String, at date: Date = Date()) -> URL {
+        url.appendingPathComponent("\(stem)-\(SharedFormatters.fileNameStamp.string(from: date)).\(ext)")
+    }
+
+    /// A path kept before, as the person knows it: through the container's
+    /// link, `~/Downloads/…`; any other path as it is.
+    static func displayPath(_ path: String) -> String {
+        path.isEmpty ? path : URL(fileURLWithPath: path).resolvingSymlinksInPath().path
     }
 
     /// Moves `file` into `folder` (default Downloads) as `name`; a file of
