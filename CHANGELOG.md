@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Deleting a session that does not exist says so** — CANFAR answers a
+  delete of an id it does not have with success, so a typo or a stale id
+  read as deleted: a bulk delete of one real and one made-up id said
+  "Deleted 2 of 2". Verbinal now checks the ids against the platform's
+  list first; one it does not list is not sent, and the delete — single
+  or bulk, yours or your assistant's — names it: "no such session".
 - **A suggested cutout is cut the way its file is** — `get_cutout_options`
   listed a downloaded JADES file as cut locally and suggested a cutout of
   it by CADC, and `download_cutout` with no region asked CADC for a file

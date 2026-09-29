@@ -343,6 +343,27 @@
         }
       }
     },
+    "%@ against %@ · %@ points" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ against %2$@ · %3$@ points"
+          }
+        }
+      }
+    },
+    "%@ against %@ · %lld points" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ en fonction de %2$@ · %3$lld points"
+          }
+        }
+      }
+    },
     "%@ cannot be cut with this file: %@" : {
       "localizations" : {
         "fr" : {
@@ -566,6 +587,9 @@
           }
         }
       }
+    },
+    "%@ orders" : {
+
     },
     "%@ packages" : {
       "localizations" : {
@@ -826,6 +850,16 @@
         }
       }
     },
+    "%lld done" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld terminées"
+          }
+        }
+      }
+    },
     "%lld entries" : {
       "localizations" : {
         "fr" : {
@@ -909,6 +943,16 @@
         }
       }
     },
+    "%lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sur %lld"
+          }
+        }
+      }
+    },
     "%lld of %lld discovered" : {
       "localizations" : {
         "fr" : {
@@ -925,6 +969,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld outils sur %lld correspondent à « %@ »"
+          }
+        }
+      }
+    },
+    "%lld orders" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ordres"
           }
         }
       }
@@ -965,6 +1020,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld pt"
+          }
+        }
+      }
+    },
+    "%lld running" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld en cours"
           }
         }
       }
@@ -1207,56 +1272,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "500"
-          }
-        }
-      }
-    },
-    "%lld of %lld" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld sur %lld"
-          }
-        }
-      }
-    },
-    "%lld running" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld en cours"
-          }
-        }
-      }
-    },
-    "%lld done" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld terminées"
-          }
-        }
-      }
-    },
-    "%lld orders" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld ordres"
-          }
-        }
-      }
-    },
-    "%@ against %@ · %lld points" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ en fonction de %2$@ · %3$lld points"
           }
         }
       }
@@ -1588,6 +1603,7 @@
       }
     },
     "Agent proposals" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4031,6 +4047,7 @@
       }
     },
     "Couldn't apply this proposal: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6817,6 +6834,7 @@
       }
     },
     "Flux" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9635,6 +9653,7 @@
       }
     },
     "No precise WCS in %@ — sync may be imprecise" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9812,6 +9831,7 @@
       }
     },
     "No spectrum in this table" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9827,6 +9847,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune donnée de stockage pour l'instant"
+          }
+        }
+      }
+    },
+    "no such session %@ — the platform lists none by that id" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucune session %@ — la plateforme n'en liste aucune sous cet identifiant"
           }
         }
       }
@@ -13053,6 +13083,7 @@
       }
     },
     "Review pending agent proposals" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15665,6 +15696,7 @@
       }
     },
     "The kept file holds nothing — fetch it again into this record" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -17220,6 +17252,7 @@
       }
     },
     "Wavelength" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {

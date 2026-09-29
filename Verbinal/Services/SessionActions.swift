@@ -6,10 +6,18 @@
 
 import Foundation
 
-/// What ends or extends a session on the platform.
+/// What ends or extends a session on the platform, and what it lists.
 protocol SessionEnding: Sendable {
     func deleteSession(id: String) async throws
     func renewSession(id: String) async throws
+    func allSessionIDs() async throws -> Set<String>
+}
+
+/// A session id the platform does not list. CANFAR answers a DELETE of one
+/// with success, so a typo or a stale id read as deleted (QA N20).
+struct NoSuchSession: LocalizedError, Equatable {
+    let id: String
+    var errorDescription: String? { String(localized: "no such session \(id) — the platform lists none by that id") }
 }
 
 extension SessionService: SessionEnding {}
@@ -31,6 +39,7 @@ final class SessionActions {
 
     func delete(id: String) async throws {
         try await tasks.track(.session, String(localized: "Delete session \(id)")) { [service] _ in
+            guard try await service.allSessionIDs().contains(id) else { throw NoSuchSession(id: id) }
             try await service.deleteSession(id: id)
         }
     }
@@ -41,13 +50,22 @@ final class SessionActions {
         }
     }
 
-    /// Deletes every one, whichever fail, as one task on the bar; returns
-    /// the reason for each that failed, by id.
+    /// Deletes every one the platform lists, whichever fail, as one task on
+    /// the bar; returns the reason for each that failed, by id — an id the
+    /// platform does not list among them, never sent.
     func delete(ids: [String]) async -> [String: String] {
         let task = tasks.begin(.session, String(localized: "Delete \(ids.count) sessions"))
         let service = service
+        let listed: Set<String>
+        do {
+            listed = try await service.allSessionIDs()
+        } catch {
+            task.fail(error.localizedDescription)
+            return Dictionary(ids.map { ($0, error.localizedDescription) }, uniquingKeysWith: { first, _ in first })
+        }
+        let unknown = ids.filter { !listed.contains($0) }
         let failed = await withTaskGroup(of: (String, String?).self) { group in
-            for id in ids {
+            for id in ids where listed.contains(id) {
                 group.addTask {
                     do {
                         try await service.deleteSession(id: id)
@@ -57,7 +75,7 @@ final class SessionActions {
                     }
                 }
             }
-            var failed: [String: String] = [:]
+            var failed = Dictionary(unknown.map { ($0, NoSuchSession(id: $0).localizedDescription) }, uniquingKeysWith: { first, _ in first })
             for await (id, reason) in group {
                 if let reason { failed[id] = reason }
             }

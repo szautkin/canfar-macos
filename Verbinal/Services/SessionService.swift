@@ -45,6 +45,15 @@ final class SessionService: SessionLaunching {
             .map { Session(from: $0) }
     }
 
+    /// The id of every session the platform lists, of any type — headless
+    /// and desktop-app included — to tell a session from a typo (QA N20).
+    func allSessionIDs() async throws -> Set<String> {
+        struct Listed: Decodable { let id: String }
+        let (data, _) = try await network.get(endpoints.sessionsURL, accept: "application/json")
+        let listed = try JSONDecoder().decode([SafeDecodable<Listed>].self, from: data)
+        return Set(listed.compactMap(\.value?.id))
+    }
+
     private static let defaultRegistry = "images.canfar.net"
 
     /// Launches a new session. Returns the session ID on success.

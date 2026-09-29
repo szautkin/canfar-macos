@@ -16,13 +16,18 @@ final class SessionActionsTests: XCTestCase {
 
     private final class FakeSessions: SessionEnding, @unchecked Sendable {
         var deleted: [String] = []
+        let listed: Set<String>
         let refuse: Set<String>
-        init(refuse: Set<String> = []) { self.refuse = refuse }
+        init(listed: Set<String> = ["xb0b7mu3", "notebook2", "r1", "a", "b", "s1"], refuse: Set<String> = []) {
+            (self.listed, self.refuse) = (listed, refuse)
+        }
+        /// As CANFAR does: a DELETE of an id it does not have succeeds.
         func deleteSession(id: String) async throws {
-            if refuse.contains(id) { throw URLError(.fileDoesNotExist) }
+            if refuse.contains(id) { throw URLError(.cannotConnectToHost) }
             deleted.append(id)
         }
         func renewSession(id: String) async throws {}
+        func allSessionIDs() async throws -> Set<String> { listed }
     }
 
     func testTheBarSaysWhoDeletedASession() async throws {
@@ -47,14 +52,31 @@ final class SessionActionsTests: XCTestCase {
 
     func testABulkDeleteIsOneTaskThatNamesWhatFailed() async throws {
         let registry = TaskRegistry()
-        let sessions = FakeSessions(refuse: ["gone"])
+        let sessions = FakeSessions(refuse: ["b"])
         let actions = SessionActions(service: sessions, tasks: registry)
-        let failed = await actions.delete(ids: ["a", "gone", "b"])
-        XCTAssertEqual(Set(failed.keys), ["gone"])
-        XCTAssertEqual(Set(sessions.deleted), ["a", "b"])
+        let failed = await actions.delete(ids: ["a", "typo", "b"])
+        XCTAssertEqual(Set(failed.keys), ["typo", "b"])
+        XCTAssertEqual(sessions.deleted, ["a"], "an id the platform does not list is never sent")
         XCTAssertEqual(registry.tasks.count, 1)
         XCTAssertEqual(registry.tasks[0].progress, .failed)
-        XCTAssertTrue(registry.tasks[0].message?.hasPrefix("Deleted 2 of 3 — gone:") == true, registry.tasks[0].message ?? "")
+        let message = registry.tasks[0].message ?? ""
+        XCTAssertTrue(message.hasPrefix("Deleted 1 of 3 — ") && message.contains("typo: no such session typo"), message)
+    }
+
+    /// Plan 19 S1 (QA N20): "Deleted 2 of 2" for a made-up id — CANFAR
+    /// answers a DELETE of an unknown id with success.
+    func testAnIdThePlatformDoesNotListIsNotDeleted() async throws {
+        let registry = TaskRegistry()
+        let sessions = FakeSessions()
+        let actions = SessionActions(service: sessions, tasks: registry)
+        do {
+            try await actions.delete(id: "qa-typo")
+            XCTFail("an unknown id is not deleted")
+        } catch let error as NoSuchSession {
+            XCTAssertEqual(error, NoSuchSession(id: "qa-typo"))
+        }
+        XCTAssertTrue(sessions.deleted.isEmpty)
+        XCTAssertEqual(registry.tasks.first?.progress, .failed)
     }
 
     /// An assistant's delete_session goes through the same actions, so the
