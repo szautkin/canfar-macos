@@ -144,6 +144,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
   steer the next one unseen. These four changes now always wait in Pending
   for your approval, as deletions do, and the tools and `describe_app` say
   so.
+- **A batch job your assistant launched says so** — in the Batch Jobs
+  History and `list_job_history` (`origin: agent`), even when it ends
+  after Verbinal restarts; and `launch_headless_job` answers with the ids
+  of the jobs it started.
 - **Batch Jobs History keeps jobs the app did not see finish** — a job
   that ended while Verbinal was closed, or before its first look, was never
   recorded, and CANFAR later forgot it. Every finished job the history

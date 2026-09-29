@@ -22,19 +22,57 @@ final class JobHistoryStore {
 
     private let persistence: DiskPersistence<[JobRecord]>?
 
-    init(persistence: DiskPersistence<[JobRecord]>? = JobHistoryStore.productionPersistence) {
+    /// Who launched a job not yet finished, when it was not the person: the
+    /// record is made when the job ends, maybe after a restart (plan 17 A2).
+    struct Launch: Codable, Equatable, Sendable {
+        let id: String
+        let origin: JobRecord.Origin
+    }
+
+    /// Oldest first, the most a busy week of launches needs.
+    private var launches: [Launch] = []
+    nonisolated static let maxLaunches = 200
+    private let launchPersistence: DiskPersistence<[Launch]>?
+
+    init(persistence: DiskPersistence<[JobRecord]>? = JobHistoryStore.productionPersistence,
+         launchPersistence: DiskPersistence<[Launch]>? = nil) {
         self.persistence = persistence
+        self.launchPersistence = launchPersistence
         if case .value(let stored) = persistence?.readResult() { jobs = stored }
+        if case .value(let stored) = launchPersistence?.readResult() { launches = stored }
     }
 
     nonisolated static let productionPersistence = DiskPersistence<[JobRecord]>(
         subdirectory: "Verbinal", fileName: "job_history.json",
         logger: Logger(subsystem: "com.codebg.Verbinal", category: "JobHistory"))
 
+    nonisolated static let productionLaunchPersistence = DiskPersistence<[Launch]>(
+        subdirectory: "Verbinal", fileName: "job_launches.json",
+        logger: Logger(subsystem: "com.codebg.Verbinal", category: "JobHistory"))
+
+    /// Notes who launched these jobs, so their records say so when they end.
+    func noteLaunch(ids: [String], by origin: JobRecord.Origin) {
+        let ids = Set(ids.filter { !$0.isEmpty })
+        guard !ids.isEmpty else { return }
+        launches.removeAll { ids.contains($0.id) }
+        launches += ids.sorted().map { Launch(id: $0, origin: origin) }
+        launches = Array(launches.suffix(Self.maxLaunches))
+        _ = launchPersistence?.write(launches)
+    }
+
+    /// A job's record with who launched it, when a launch was noted.
+    private func attributed(_ job: JobRecord) -> JobRecord {
+        guard job.origin == .user, let noted = launches.last(where: { $0.id == job.id }) else { return job }
+        var job = job
+        job.origin = noted.origin
+        return job
+    }
+
     /// Remembers a finished job at the top, merged with any earlier record
     /// of it — the one that carries the reason must not be lost.
     func record(_ job: JobRecord) {
         guard !job.id.isEmpty else { return }
+        let job = attributed(job)
         let earlier = jobs.first { $0.id == job.id }
         jobs.removeAll { $0.id == job.id }
         jobs.insert(earlier.map(job.keeping) ?? job, at: 0)
@@ -49,6 +87,7 @@ final class JobHistoryStore {
         let known = Set(jobs.map(\.id))
         var seen = Set<String>()
         let missing = found.filter { !$0.id.isEmpty && !known.contains($0.id) && seen.insert($0.id).inserted }
+            .map(attributed)
         guard !missing.isEmpty else { return }
         jobs = Array((jobs + missing).sorted { $0.finishedAt > $1.finishedAt }.prefix(Self.maxJobs))
         save()

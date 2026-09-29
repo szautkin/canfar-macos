@@ -514,7 +514,7 @@ final class AppState {
     /// What the app is doing — the activity bar's tasks.
     let tasks = TaskRegistry.shared
     /// Finished batch jobs, kept after the platform forgets them.
-    let jobHistory = JobHistoryStore()
+    let jobHistory = JobHistoryStore(launchPersistence: JobHistoryStore.productionLaunchPersistence)
     /// What an agent can point at (`point_at_ui`), and its hint.
     let uiPointer = UIPointerRegistry()
     /// Marks kept with each file, for both viewers.

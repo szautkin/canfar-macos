@@ -270,11 +270,14 @@ struct LaunchHeadlessJobTool: JSONWriteTool {
     }
 }
 
-struct LaunchHeadlessJobApplier: ProposalApplier {
+struct LaunchHeadlessJobApplier: ProposalApplier, ResultReportingApplier {
     let kind = "launch_headless_job"
     let service: HeadlessService
     let recentLaunchStore: RecentLaunchStore
     let activity: AgentActivityStore
+    /// Notes the jobs as the assistant's, so the history says so when they
+    /// end (plan 17 A2).
+    var history: JobHistoryStore?
     /// VOSpace handle for the auto-script-stage path. Optional —
     /// instances built before the auto-stage feature shipped (or
     /// in tests that don't need it) can leave it `nil` and just
@@ -285,6 +288,12 @@ struct LaunchHeadlessJobApplier: ProposalApplier {
     let username: (@Sendable () async -> String)?
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    /// The launched jobs' ids — the first as `id`, all as `succeeded` —
+    /// for `get_headless_job` and the history (QA N3).
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         var payload = try JSONDecoder().decode(LaunchHeadlessJobTool.Payload.self, from: proposal.payload)
 
         // Auto-stage long scripts to VOSpace. The `script` plan
@@ -381,6 +390,8 @@ struct LaunchHeadlessJobApplier: ProposalApplier {
         }
 
         await persist(ids: launchedIDs, payload: payload, proposal: proposal)
+        let extra = AutoAppliedAck.Extra(id: launchedIDs.first, succeeded: launchedIDs)
+        return (try? JSONEncoder().encode(extra)) ?? Data()
     }
 
     /// 12-hex-char content-address derived from the script
@@ -402,6 +413,7 @@ struct LaunchHeadlessJobApplier: ProposalApplier {
         proposal: PendingProposal
     ) async {
         let attribution = AgentAttribution.from(proposal: proposal)
+        history?.noteLaunch(ids: ids, by: .agent)
         for (idx, _) in ids.enumerated() {
             let displayName = ids.count == 1 ? payload.name : "\(payload.name)-\(idx + 1)"
             let launch = RecentLaunch(

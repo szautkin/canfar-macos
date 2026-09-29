@@ -89,6 +89,7 @@ extension AppState {
                 service: headlessService,
                 recentLaunchStore: recentLaunchStore,
                 activity: activity,
+                history: jobHistory,
                 // Auto-stage long inline scripts to VOSpace under
                 // `~/.verbinal-scripts/`. Injected here because
                 // the auth-scoped vospace + username live in

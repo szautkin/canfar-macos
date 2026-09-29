@@ -19,9 +19,11 @@ struct JobRecord: Codable, Equatable, Identifiable, Sendable {
         case failed
     }
 
-    /// What launched it: the person, or image discovery on their behalf.
+    /// What launched it: the person, their assistant, or image discovery
+    /// on their behalf.
     enum Origin: String, Codable, Sendable {
         case user
+        case agent
         case imageProbe
     }
 
@@ -43,16 +45,21 @@ struct JobRecord: Codable, Equatable, Identifiable, Sendable {
 
     /// What it was, for a row: a batch job, or the inspection of an image.
     var summary: String {
-        guard origin == .imageProbe else { return String(localized: "Batch job") }
-        return targetImage.map { String(localized: "Image inspection — \($0)") } ?? String(localized: "Image inspection")
+        switch origin {
+        case .user: return String(localized: "Batch job")
+        case .agent: return String(localized: "Batch job by your assistant")
+        case .imageProbe:
+            return targetImage.map { String(localized: "Image inspection — \($0)") } ?? String(localized: "Image inspection")
+        }
     }
 
     /// This record, keeping what `earlier` knew that it does not: a probe
-    /// stays a probe, and a reason once had is not lost to a later
-    /// sighting of the same job that knows only its status.
+    /// stays a probe and an assistant's job the assistant's, and a reason
+    /// once had is not lost to a later sighting of the same job that knows
+    /// only its status.
     func keeping(_ earlier: JobRecord) -> JobRecord {
         var merged = self
-        if earlier.origin == .imageProbe { merged.origin = .imageProbe }
+        if origin == .user { merged.origin = earlier.origin }
         merged.targetImage = targetImage ?? earlier.targetImage
         if outcome == earlier.outcome, let reason = earlier.failureReason, (failureReason ?? "").count < reason.count {
             merged.failureReason = reason

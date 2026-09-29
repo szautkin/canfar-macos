@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
+import os
 import VerbinalKit
 @testable import Verbinal
 
@@ -18,6 +19,52 @@ final class JobHistoryTests: XCTestCase {
         JobRecord(id: id, name: "job-\(id)", image: "images.canfar.net/p/x:1", origin: origin, outcome: outcome,
                   status: outcome == .failed ? "Failed" : "Succeeded", startedAt: "2026-09-27T10:00:00Z",
                   finishedAt: Date(), failureReason: reason, targetImage: target)
+    }
+
+    /// Plan 17 A2 (QA N2): a job an assistant launched is recorded as the
+    /// assistant's when it ends — after a restart too — and a later
+    /// sighting that knows only the platform's listing keeps it so.
+    func testAJobAnAssistantLaunchedIsRecordedAsTheAssistants() throws {
+        let folder = "VerbinalTests-\(UUID().uuidString)"
+        let notes = DiskPersistence<[JobHistoryStore.Launch]>(subdirectory: folder, fileName: "launches.json",
+                                                              logger: Logger(subsystem: "tests", category: "jobs"))
+        defer {
+            let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            try? FileManager.default.removeItem(at: support.appendingPathComponent(folder))
+        }
+        JobHistoryStore(persistence: nil, launchPersistence: notes).noteLaunch(ids: ["j1", "j2"], by: .agent)
+
+        let history = JobHistoryStore(persistence: nil, launchPersistence: notes)
+        history.record(job("j1", .succeeded))
+        history.recordMissing([job("j2"), job("mine")])
+        XCTAssertEqual(Dictionary(uniqueKeysWithValues: history.jobs.map { ($0.id, $0.origin) }),
+                       ["j1": .agent, "j2": .agent, "mine": .user])
+        history.record(job("j1", .succeeded))
+        XCTAssertEqual(history.jobs.first { $0.id == "j1" }?.origin, .agent)
+        XCTAssertEqual(history.jobs.first { $0.id == "j1" }?.summary, "Batch job by your assistant")
+    }
+
+    /// Plan 17 A3 (QA N3): the launch answers with the jobs it started.
+    func testLaunchingAHeadlessJobReturnsItsIDs() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("abc123\n".utf8))
+        }
+        let history = JobHistoryStore(persistence: nil)
+        let applier = LaunchHeadlessJobApplier(
+            service: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())),
+            recentLaunchStore: RecentLaunchStore(fileName: "test-launches-\(UUID().uuidString).json"),
+            activity: AgentActivityStore(fileName: "test-activity-\(UUID().uuidString).json"),
+            history: history, vospace: nil, username: nil)
+        let payload = LaunchHeadlessJobTool.Payload(name: "fit", image: "images.canfar.net/p/x:1", cmd: "echo", args: nil,
+                                                    env: [], cores: 1, ram: 1, gpus: nil, replicas: 1,
+                                                    pendingScriptUpload: nil)
+        let proposal = PendingProposal(toolName: "launch_headless_job", kind: "launch_headless_job", summary: "Launch fit",
+                                       payload: try JSONEncoder().encode(payload), origin: .external(clientID: "t"))
+        let extra = try JSONDecoder().decode(AutoAppliedAck.Extra.self, from: try await applier.applyReturningResult(proposal))
+        XCTAssertEqual(extra.id, "abc123")
+        XCTAssertEqual(extra.succeeded, ["abc123"])
+        history.record(job("abc123", .succeeded))
+        XCTAssertEqual(history.jobs.first?.origin, .agent)
     }
 
     func testTheNewestIsFirstAndEachJobIsThereOnce() {

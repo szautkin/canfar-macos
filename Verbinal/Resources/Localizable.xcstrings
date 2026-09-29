@@ -2223,6 +2223,16 @@
         }
       }
     },
+    "Batch job by your assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâche par lots de votre assistant"
+          }
+        }
+      }
+    },
     "Batch Job Completed" : {
       "localizations" : {
         "fr" : {

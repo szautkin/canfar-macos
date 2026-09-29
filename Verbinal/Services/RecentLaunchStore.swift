@@ -19,14 +19,12 @@ import VerbinalKit
 final class RecentLaunchStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "RecentLaunches")
     private let maxEntries = 10
-    private let persistence = DiskPersistence<[RecentLaunch]>(
-        subdirectory: "Verbinal",
-        fileName: "recent_launches.json",
-        logger: logger
-    )
+    private let persistence: DiskPersistence<[RecentLaunch]>
     private(set) var launches: [RecentLaunch] = []
 
-    init() {
+    /// `fileName` lets a test keep its own list, as the other stores do.
+    init(fileName: String = "recent_launches.json") {
+        persistence = DiskPersistence<[RecentLaunch]>(subdirectory: "Verbinal", fileName: fileName, logger: Self.logger)
         launches = persistence.read() ?? []
     }
 
