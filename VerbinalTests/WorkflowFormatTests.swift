@@ -42,20 +42,26 @@ final class WorkflowFormatTests: XCTestCase {
         XCTAssertEqual(store.get(id)?.document.doneCount, 1)
     }
 
-    /// Plan 15 O4 (QA L4): using a template twice does not make two copies
-    /// with one title — an unstarted copy is reused, a started one kept and
-    /// the next numbered.
-    @MainActor func testUsingATemplateAgainMakesNoLookalike() throws {
+    /// Plan 19 S2 (QA N17, L4): every use of a template is a new copy,
+    /// numbered so none reads as another, and the answer names it.
+    @MainActor func testEveryUseOfATemplateIsANewNumberedCopy() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = WorkflowStore(directory: directory, builtins: { [("cfht", "# CFHT imaging recon\n- [ ] **Step**\n")] })
         let first = try store.useWorkflow("builtin:cfht")
-        XCTAssertEqual(try store.useWorkflow("builtin:cfht"), first, "an unstarted copy is the copy")
-        try store.setStepDone(first, index: 0, done: true)
         let second = try store.useWorkflow("builtin:cfht")
-        XCTAssertNotEqual(second, first)
-        XCTAssertEqual(store.listLocal().map(\.document.title), ["CFHT imaging recon", "CFHT imaging recon (2)"])
+        XCTAssertNotEqual(second, first, "an unstarted copy is not reused")
+        XCTAssertEqual(Set(store.listLocal().map(\.document.title)), ["CFHT imaging recon", "CFHT imaging recon (2)"])
         XCTAssertEqual(WorkflowFormat.withTitle("> no title\n", "T"), "# T\n> no title\n")
+
+        let applier = WorkflowApplier(kind: "use_workflow", store: store,
+                                      activity: AgentActivityStore(fileName: "test-activity-\(UUID().uuidString).json"))
+        let proposal = PendingProposal(toolName: "use_workflow", kind: "use_workflow", summary: "Use",
+                                       payload: try JSONEncoder().encode(UseWorkflowTool.Payload(id: "builtin:cfht", name: nil)),
+                                       origin: .external(clientID: "t"))
+        let extra = try JSONDecoder().decode(AutoAppliedAck.Extra.self, from: try await applier.applyReturningResult(proposal))
+        let third = try XCTUnwrap(extra.id)
+        XCTAssertEqual(store.get(third)?.document.title, "CFHT imaging recon (3)")
     }
 
     @MainActor func testStoreUpdateTextAndDeleteLocal() throws {

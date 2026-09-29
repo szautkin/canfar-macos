@@ -48,7 +48,7 @@ struct SetWorkflowStepTool: JSONWriteTool {
 struct UseWorkflowTool: JSONWriteTool {
     static let verbClass: VerbClass = .semanticWrite
     struct Args: Decodable, Sendable { let id: String; let name: String? }; struct Payload: Codable, Sendable { let id: String; let name: String? }
-    let definition = AIToolDefinition.withStaticSchema(name: "use_workflow", description: "Copy a template or workflow into a LOCAL working copy that can track progress.", schema: #"{"type":"object","required":["id"],"properties":{"id":{"type":"string"},"name":{"type":"string"}},"additionalProperties":false}"#)
+    let definition = AIToolDefinition.withStaticSchema(name: "use_workflow", description: "Copy a template or workflow into a new LOCAL working copy that can track progress — a new copy every time, numbered when its title is taken (\"… (2)\"); the answer's `id` is the copy's.", schema: #"{"type":"object","required":["id"],"properties":{"id":{"type":"string"},"name":{"type":"string"}},"additionalProperties":false}"#)
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan { try ProposalPlan.encoding(kind: "use_workflow", summary: "Use workflow \(args.id)", payload: Payload(id: args.id, name: args.name)) }
 }
 struct DeleteWorkflowTool: JSONWriteTool {
@@ -58,25 +58,33 @@ struct DeleteWorkflowTool: JSONWriteTool {
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan { guard args.id.hasPrefix(WorkflowStore.localPrefix) else { throw ToolFailureReason.invalidArgument("id must be a local:… workflow") }; return try ProposalPlan.encoding(kind: "delete_workflow", summary: "Delete workflow \(args.id)", payload: Payload(id: args.id)) }
 }
 
-struct WorkflowApplier: ProposalApplier {
+/// A workflow's changes; a new copy's id comes back in the answer — the
+/// copy `use_workflow` or `save_workflow` made (plan 19 S2, QA N17).
+struct WorkflowApplier: ProposalApplier, ResultReportingApplier {
     let kind: String; let store: WorkflowStore; let activity: AgentActivityStore
     func apply(_ proposal: PendingProposal) async throws {
-        try await MainActor.run {
+        _ = try await applyReturningResult(proposal)
+    }
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
+        let made: String? = try await MainActor.run {
             // Robot-badge provenance: agent-created working copies carry the
             // same attribution stamp as saved queries / notes / downloads.
             let attribution = AgentAttribution.from(proposal: proposal)
+            let made: String?
             switch kind {
-            case "save_workflow": let p = try JSONDecoder().decode(SaveWorkflowTool.Payload.self, from: proposal.payload); _ = try store.saveNew(name: p.name, text: p.text, attribution: attribution)
-            case "update_workflow": let p = try JSONDecoder().decode(UpdateWorkflowTool.Payload.self, from: proposal.payload); try store.updateText(p.id, text: p.text)
-            case "set_workflow_step": let p = try JSONDecoder().decode(SetWorkflowStepTool.Payload.self, from: proposal.payload); try store.setStepDone(p.id, index: p.index, done: p.done)
-            case "use_workflow": let p = try JSONDecoder().decode(UseWorkflowTool.Payload.self, from: proposal.payload); _ = try store.useWorkflow(p.id, name: p.name, attribution: attribution)
-            case "delete_workflow": let p = try JSONDecoder().decode(DeleteWorkflowTool.Payload.self, from: proposal.payload); try store.delete(p.id)
+            case "save_workflow": let p = try JSONDecoder().decode(SaveWorkflowTool.Payload.self, from: proposal.payload); made = try store.saveNew(name: p.name, text: p.text, attribution: attribution)
+            case "update_workflow": let p = try JSONDecoder().decode(UpdateWorkflowTool.Payload.self, from: proposal.payload); try store.updateText(p.id, text: p.text); made = nil
+            case "set_workflow_step": let p = try JSONDecoder().decode(SetWorkflowStepTool.Payload.self, from: proposal.payload); try store.setStepDone(p.id, index: p.index, done: p.done); made = nil
+            case "use_workflow": let p = try JSONDecoder().decode(UseWorkflowTool.Payload.self, from: proposal.payload); made = try store.useWorkflow(p.id, name: p.name, attribution: attribution)
+            case "delete_workflow": let p = try JSONDecoder().decode(DeleteWorkflowTool.Payload.self, from: proposal.payload); try store.delete(p.id); made = nil
             // A kind we're registered for but don't handle means the switch
             // and the registration list in AppState+AgentTools drifted —
             // fail loudly rather than mark the proposal applied.
             default: throw ProposalApplyError.backendError("WorkflowApplier has no handler for kind '\(kind)'")
             }
             activity.append(.applied(proposal: proposal, kind: kind))
+            return made
         }
+        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(id: made))) ?? Data()
     }
 }

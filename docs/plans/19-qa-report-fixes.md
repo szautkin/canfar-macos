@@ -30,7 +30,7 @@ The rules are those of plans 15 and 17:
 
 | Phase | State | Commits |
 |---|---|---|
-| S say what happened | in progress — S1 an unknown session id is not deleted | S1 |
+| S say what happened | in progress — S1 an unknown session id is not deleted; S2 every use a numbered copy, its id returned | `3d2f55a`, S2 |
 | T the trail | planned — T1–T2 | — |
 | F figures and files | planned — F1–F2 | — |
 | C capture | planned — C1 (decision 1) | — |

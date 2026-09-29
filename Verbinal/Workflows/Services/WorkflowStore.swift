@@ -58,14 +58,13 @@ final class WorkflowStore {
         if map.removeValue(forKey: String(id.dropFirst(Self.localPrefix.count))) != nil { saveAttributions(map) }
         changeID = UUID()
     }
-    /// A working copy of `id`. A copy nobody has started — its text still
-    /// the template's — is that copy, not another; a new one takes a title
-    /// no other copy has ("… (2)"): three copies of the CFHT template
-    /// once shared one title (QA L4).
+    /// A new working copy of `id`, every time, with a title no other copy
+    /// has ("… (2)"): three copies of the CFHT template once shared one
+    /// title (QA L4), and reusing an unstarted copy made a second use a
+    /// success that made nothing (plan 19 S2, QA N17). Returns its id.
     @discardableResult func useWorkflow(_ id: String, name: String? = nil, attribution: AgentAttribution? = nil) throws -> String {
         guard let item = get(id) else { throw WorkflowError.missing(id) }
         let copies = listLocal()
-        if name == nil, let unstarted = copies.first(where: { $0.rawText == item.rawText }) { return unstarted.id }
         let title = Self.untakenTitle(name ?? item.document.title, taken: copies.map(\.document.title))
         let text = title == item.document.title ? item.rawText : WorkflowFormat.withTitle(item.rawText, title)
         return try saveNew(name: title, text: text, attribution: attribution)

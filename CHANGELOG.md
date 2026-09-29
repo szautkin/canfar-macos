@@ -38,8 +38,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   and deleted, and showed only while external agents were on. It is now in
   every toolbar, always, with its count, and your assistant can point at it.
 - **Smaller things the QA pass found** — using a workflow template again
-  no longer makes a lookalike copy: an unstarted copy is reused, and a new
-  one is numbered ("… (2)"); a finished task on the activity bar no longer
+  makes a new copy every time, numbered so it is not a lookalike
+  ("… (2)"), and your assistant's `use_workflow` returns the copy's id; a finished task on the activity bar no longer
   shows the stage it had reached, and remote-compute runs are their own
   kind (`compute`); your assistant's `save_fits_bookmark` returns the new
   bookmark's id; a registry image with no session type says, to your
