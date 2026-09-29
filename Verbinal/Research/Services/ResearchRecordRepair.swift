@@ -15,19 +15,24 @@ import VerbinalKit
 /// for its u-band file, and records with no observation id (QA H5, M2).
 @MainActor
 final class ResearchRecordRepair {
-    static let doneKey = "research.recordsCheckedAgainstArchive"
+    /// v2: records kept under a slash-form publisher ID are corrected too
+    /// (plan 19 R3), so a Mac that ran the first check runs this one.
+    static let doneKey = "research.recordsCheckedAgainstArchive.v2"
     /// One check at a time, however many sign-ins ask for one.
     private var running = false
 
     private let store: ObservationStore
+    /// A corrected record's note goes with it.
+    private let notes: ObservationNoteStore?
     private let tasks: TaskRegistry
     private let defaults: UserDefaults
     /// The archive's record of an observation; nil when it does not answer.
     private let fetch: @Sendable (_ publisherID: String) async -> CAOM2Observation?
 
-    init(store: ObservationStore, tasks: TaskRegistry = .shared, defaults: UserDefaults = .standard,
-         fetch: @escaping @Sendable (String) async -> CAOM2Observation?) {
+    init(store: ObservationStore, notes: ObservationNoteStore? = nil, tasks: TaskRegistry = .shared,
+         defaults: UserDefaults = .standard, fetch: @escaping @Sendable (String) async -> CAOM2Observation?) {
         self.store = store
+        self.notes = notes
         self.tasks = tasks
         self.defaults = defaults
         self.fetch = fetch
@@ -44,12 +49,20 @@ final class ResearchRecordRepair {
         defer { running = false }
         let task = tasks.begin(.research, String(localized: "Check Research records against the archive"), by: .app)
         var corrected = 0, answered = 0
-        for (index, record) in records.enumerated() {
+        for (index, kept) in records.enumerated() {
             task.stage(String(localized: "\(index + 1) of \(records.count)"))
+            var record = kept
+            // Saved under the slash form, it was never looked up: `1525350`,
+            // blank in the person's Research (plan 19 R3).
+            if PublisherID(record.publisherID) == nil, let likely = PublisherID.likely(record.publisherID),
+               let corrected = store.correctPublisherID(of: record.id, to: likely) {
+                notes?.move(from: record.publisherID, to: likely)
+                record = corrected
+            }
             let archive = await fetch(record.publisherID)
             if archive != nil { answered += 1 }
             let completed = ResearchRecordDetails.completing(record, from: archive)
-            guard completed != record else { continue }
+            guard completed != kept else { continue }
             store.save(completed)
             corrected += 1
         }

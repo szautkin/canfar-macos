@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A Research record saved under a malformed ID is corrected** — a
+  record kept in September as `ivo://cadc.nrc.ca/CFHT/1525350` (a slash
+  where `?` belongs) was never looked up in the archive, so it showed
+  only its number and size. The check of Research records now gives it
+  the ID it means, `ivo://cadc.nrc.ca/CFHT?1525350`, keeps its note with
+  it, and fills in its details; it runs again on Macs that already had
+  the first check.
 - **A spectrum exports as a figure** — Export Figure on a spectrum
   answered "No rendered FITS image is open". The spectrum view now has
   Export Figure (PNG 2×, 4× or PDF): the plot as shown, titled by the

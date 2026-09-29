@@ -186,6 +186,38 @@ final class ResearchRecordDetailsTests: XCTestCase {
         XCTAssertEqual(asked.count, 1, "once")
     }
 
+    /// Plan 19 R3: `1525350`, blank in the person's Research, was kept under
+    /// the slash form and never looked up; its ID is corrected, its note
+    /// goes with it, and the archive fills it in.
+    @MainActor
+    func testARecordKeptUnderTheSlashFormIsCorrectedAndFilledIn() async throws {
+        let (store, file) = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let slash = "ivo://cadc.nrc.ca/CFHT/1525350", canonical = "ivo://cadc.nrc.ca/CFHT?1525350"
+        let legacy = store.save(described(slash))
+        let notes = ObservationNoteStore(database: try AppDatabase.makeInMemory(), legacyNotesSource: nil)
+        notes.save(ObservationNote(publisherID: slash, text: "check the seeing", rating: 3, tags: ["qa"],
+                                   createdAt: Date(), modifiedAt: Date()))
+        final class Asked: @unchecked Sendable { var ids: [String] = [] }
+        let asked = Asked()
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "repair-\(UUID().uuidString)"))
+        let repair = ResearchRecordRepair(store: store, notes: notes, tasks: TaskRegistry(), defaults: defaults) { id in
+            asked.ids.append(id)
+            return nil
+        }
+        await repair.runOnce()
+
+        XCTAssertEqual(asked.ids, [canonical], "looked up under the ID it means")
+        let record = try XCTUnwrap(store.observations.first)
+        XCTAssertEqual(record.publisherID, canonical)
+        XCTAssertEqual(record.id, legacy.id, "the same record")
+        XCTAssertEqual(record.observationID, "1525350")
+        XCTAssertEqual(notes.note(for: canonical)?.text, "check the seeing")
+        XCTAssertNil(notes.note(for: slash))
+        XCTAssertEqual(PublisherID.malformed(slash).hasSuffix("did you mean \(canonical)?"), true)
+        XCTAssertNil(PublisherID.likely("not an id"))
+    }
+
     /// Offline, nothing is marked done: the next sign-in checks again.
     @MainActor
     func testACheckTheArchiveNeverAnsweredIsMadeAgain() async throws {

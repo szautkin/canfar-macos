@@ -61,6 +61,22 @@ final class ObservationStore {
         return stored
     }
 
+    /// Gives the record `id` the publisher ID it should have had — one kept
+    /// under the slash form (plan 19 R3). Nil when there is no such record,
+    /// or Research already keeps one under the corrected ID.
+    @discardableResult
+    func correctPublisherID(of id: UUID, to publisherID: String) -> DownloadedObservation? {
+        guard let idx = observations.firstIndex(where: { $0.id == id }) else { return nil }
+        var corrected = observations[idx]
+        corrected.publisherID = publisherID
+        guard !observations.contains(where: { $0.id != id && $0.recordKey == corrected.recordKey }) else { return nil }
+        spotlight?.deindex(observations[idx])
+        observations[idx] = corrected
+        persistence.write(observations)
+        spotlight?.index(corrected)
+        return corrected
+    }
+
     /// Keeps an observation without its file. One Research already has is
     /// left as it is. Returns the record, and whether it is new.
     func keep(_ observation: DownloadedObservation) -> (record: DownloadedObservation, added: Bool) {

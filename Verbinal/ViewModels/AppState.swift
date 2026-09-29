@@ -549,7 +549,7 @@ final class AppState {
     /// Brings older Research records up to the archive once (plan 17 G3).
     @ObservationIgnored private(set) lazy var researchRecordRepair: ResearchRecordRepair = {
         let caom2 = CAOM2Service()
-        return ResearchRecordRepair(store: researchModel.observationStore) { id in
+        return ResearchRecordRepair(store: researchModel.observationStore, notes: researchModel.noteStore) { id in
             try? await caom2.fetch(publisherID: id)
         }
     }()

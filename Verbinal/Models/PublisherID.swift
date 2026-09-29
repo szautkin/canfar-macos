@@ -41,16 +41,21 @@ struct PublisherID: Equatable, Sendable {
     /// slash form some tables print, `ivo://cadc.nrc.ca/CFHT/1525350` — the
     /// ID it most likely means.
     static func malformed(_ text: String) -> String {
-        var message = "\"\(text)\" is not a publisher ID: one is ivo://cadc.nrc.ca/COLLECTION?OBSERVATION/PRODUCT"
-        if let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)), url.scheme?.lowercased() == "ivo",
-           url.query == nil, let host = url.host {
-            let path = url.path.split(separator: "/").map(String.init)
-            if path.count >= 2 {
-                let collection = path[path.count - 2], observation = path[path.count - 1]
-                let prefix = path.dropLast(2).map { "/\($0)" }.joined()
-                message += " — did you mean ivo://\(host)\(prefix)/\(collection)?\(observation)?"
-            }
-        }
-        return message
+        let message = "\"\(text)\" is not a publisher ID: one is ivo://cadc.nrc.ca/COLLECTION?OBSERVATION/PRODUCT"
+        return likely(text).map { message + " — did you mean \($0)?" } ?? message
+    }
+
+    /// The publisher ID a slash form most likely means —
+    /// `ivo://cadc.nrc.ca/CFHT/1525350` is `ivo://cadc.nrc.ca/CFHT?1525350` —
+    /// nil for any other text. A record saved under the slash form was
+    /// never looked up in the archive (plan 19 R3).
+    static func likely(_ text: String) -> String? {
+        guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)), url.scheme?.lowercased() == "ivo",
+              url.query == nil, let host = url.host else { return nil }
+        let path = url.path.split(separator: "/").map(String.init)
+        guard path.count >= 2 else { return nil }
+        let collection = path[path.count - 2], observation = path[path.count - 1]
+        let prefix = path.dropLast(2).map { "/\($0)" }.joined()
+        return "ivo://\(host)\(prefix)/\(collection)?\(observation)"
     }
 }

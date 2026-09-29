@@ -104,6 +104,15 @@ final class ObservationNoteStore {
         }
     }
 
+    /// Moves the note kept under `old` to `new` — a record's publisher ID
+    /// corrected (plan 19 R3) — unless a note is kept under `new` already.
+    func move(from old: String, to new: String) {
+        guard var note = notes[old], notes[new] == nil, old != new else { return }
+        note.publisherID = new
+        save(note)
+        remove(publisherID: old)
+    }
+
     /// Soft-delete the note (tombstone) so the deletion can sync later; drops it
     /// from the live mirror and the FTS index.
     func remove(publisherID: String) {
