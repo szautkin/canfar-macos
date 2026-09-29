@@ -218,7 +218,8 @@ extension AppState {
                     groupRead: groupRead, groupWrite: groupWrite, isPublic: isPublic)
             },
             activity: activity))
-        appliers.append(ExportCubeFigureApplier(
+        appliers.append(FigureExportApplier<CubeFigureRequest>(
+            kind: "export_cube_figure",
             run: { [weak self] request in
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
                 return try await MainActor.run {
@@ -229,7 +230,8 @@ extension AppState {
                 }
             },
             activity: activity))
-        appliers.append(ExportFITSFigureApplier(
+        appliers.append(FigureExportApplier<FITSFigureRequest>(
+            kind: "export_fits_figure",
             run: { [weak self] request in
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
                 return try await MainActor.run {

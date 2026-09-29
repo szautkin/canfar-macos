@@ -61,6 +61,8 @@ public struct AutoAppliedAck: Codable, Sendable {
     /// Optional agent-facing guidance (e.g. poll a read tool because
     /// the write continues app-side after this ack).
     public let note: String?
+    /// The file the write made on this Mac — a figure export's (QA N8).
+    public let file: String?
 
     public struct FailedItem: Codable, Sendable, Equatable {
         public let id: String
@@ -82,6 +84,7 @@ public struct AutoAppliedAck: Codable, Sendable {
         self.succeeded = extra?.succeeded
         self.failed = extra?.failed
         self.note = extra?.note
+        self.file = extra?.file
     }
 
     /// Encode extra ack fields from an applier. Keep this the single
@@ -92,11 +95,14 @@ public struct AutoAppliedAck: Codable, Sendable {
         public var succeeded: [String]?
         public var failed: [FailedItem]?
         public var note: String?
-        public init(id: String? = nil, succeeded: [String]? = nil, failed: [FailedItem]? = nil, note: String? = nil) {
+        public var file: String?
+        public init(id: String? = nil, succeeded: [String]? = nil, failed: [FailedItem]? = nil, note: String? = nil,
+                    file: String? = nil) {
             self.id = id
             self.succeeded = succeeded
             self.failed = failed
             self.note = note
+            self.file = file
         }
     }
 
@@ -108,7 +114,7 @@ public struct AutoAppliedAck: Codable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case applied, proposalID, kind, summary, id, succeeded, failed, note
+        case applied, proposalID, kind, summary, id, succeeded, failed, note, file
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -121,6 +127,7 @@ public struct AutoAppliedAck: Codable, Sendable {
         try c.encodeIfPresent(succeeded, forKey: .succeeded)
         try c.encodeIfPresent(failed, forKey: .failed)
         try c.encodeIfPresent(note, forKey: .note)
+        try c.encodeIfPresent(file, forKey: .file)
     }
 
     public init(from decoder: Decoder) throws {
@@ -133,6 +140,7 @@ public struct AutoAppliedAck: Codable, Sendable {
         succeeded = try c.decodeIfPresent([String].self, forKey: .succeeded)
         failed = try c.decodeIfPresent([FailedItem].self, forKey: .failed)
         note = try c.decodeIfPresent(String.self, forKey: .note)
+        file = try c.decodeIfPresent(String.self, forKey: .file)
     }
 }
 

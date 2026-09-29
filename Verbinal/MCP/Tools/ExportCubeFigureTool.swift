@@ -24,7 +24,7 @@ struct ExportCubeFigureTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "export_cube_figure",
-        description: "Export the Cube Viewer's current view (slice or 3D volume) as an annotated publication figure, PNG or PDF, in the user's Downloads folder, using the export style the user last configured — with the cube's marks drawn on it (on the slice, those on the channel shown) unless `marks` is false. `scale` is the PNG raster multiplier 1-4 (default 2). Requires a cube to be open; the export navigates to the Cube Viewer so the render can land. If nothing is open, call `open_cube` then `navigate_to(mode: cubeViewer)`. Proposal-gated.",
+        description: "Export the Cube Viewer's current view (slice or 3D volume) as an annotated publication figure, PNG or PDF, in the user's Downloads folder, using the export style the user last configured — with the cube's marks drawn on it (on the slice, those on the channel shown) unless `marks` is false. `scale` is the PNG raster multiplier 1-4 (default 2). Requires a cube to be open; the export navigates to the Cube Viewer so the render can land. If nothing is open, call `open_cube` then `navigate_to(mode: cubeViewer)`. Proposal-gated; once applied, the answer's `file` is the path it wrote.",
         schema: #"""
         {
           "type": "object",
@@ -51,26 +51,5 @@ struct ExportCubeFigureTool: JSONWriteTool {
             summary: "Export the current cube view as a \(format == .pdf ? "PDF" : "\(Int(scale))× PNG") figure to Downloads",
             payload: CubeFigureRequest(scale: scale, format: format, marks: args.marks)
         )
-    }
-}
-
-struct ExportCubeFigureApplier: ProposalApplier {
-    let kind = "export_cube_figure"
-    /// Returns the written file path.
-    let run: @Sendable (CubeFigureRequest) async throws -> String
-    let activity: AgentActivityStore
-
-    func apply(_ proposal: PendingProposal) async throws {
-        let payload = try JSONDecoder().decode(ExportCubeFigureTool.Payload.self, from: proposal.payload)
-        do {
-            _ = try await run(payload)
-        } catch let pa as ProposalApplyError {
-            throw pa
-        } catch let f as ToolFailureReason {
-            throw ProposalApplyError.backendError("\(f)")
-        } catch {
-            throw ProposalApplyError.backendError("figure export failed: \(error.localizedDescription)")
-        }
-        await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
     }
 }

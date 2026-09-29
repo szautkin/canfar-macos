@@ -495,7 +495,7 @@ struct ExportFITSFigureTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "export_fits_figure",
-        description: "Save a publication figure of the active FITS image to the user's Downloads folder, as PNG or PDF: the picture, the marks drawn on it with their labels, the stretch and cuts it was drawn with, a colorbar, and the region's sky centre and field of view. Say which part of the image with `region`: the view on screen (the default), the whole image, a pixel box, a circle on the sky, or around a mark by its id. The style is the one the person last chose in the Export Figure sheet unless `marks`, `annotate` or `dark` say otherwise. Proposal-gated.",
+        description: "Save a publication figure of the active FITS image to the user's Downloads folder, as PNG or PDF: the picture, the marks drawn on it with their labels, the stretch and cuts it was drawn with, a colorbar, and the region's sky centre and field of view. Say which part of the image with `region`: the view on screen (the default), the whole image, a pixel box, a circle on the sky, or around a mark by its id. The style is the one the person last chose in the Export Figure sheet unless `marks`, `annotate` or `dark` say otherwise. Proposal-gated; once applied, the answer's `file` is the path it wrote.",
         schema: #"""
         {
           "type": "object",
@@ -577,26 +577,5 @@ struct ExportFITSFigureTool: JSONWriteTool {
         }
         return FITSFigureRequest(scale: scale, format: format, region: region,
                                  marks: args.marks, annotate: args.annotate, dark: args.dark)
-    }
-}
-
-struct ExportFITSFigureApplier: ProposalApplier {
-    let kind = "export_fits_figure"
-    /// Returns the written file path.
-    let run: @Sendable (FITSFigureRequest) async throws -> String
-    let activity: AgentActivityStore
-
-    func apply(_ proposal: PendingProposal) async throws {
-        let payload = try JSONDecoder().decode(ExportFITSFigureTool.Payload.self, from: proposal.payload)
-        do {
-            _ = try await run(payload)
-        } catch let pa as ProposalApplyError {
-            throw pa
-        } catch let f as ToolFailureReason {
-            throw ProposalApplyError.backendError("\(f)")
-        } catch {
-            throw ProposalApplyError.backendError("figure export failed: \(error.localizedDescription)")
-        }
-        await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
     }
 }

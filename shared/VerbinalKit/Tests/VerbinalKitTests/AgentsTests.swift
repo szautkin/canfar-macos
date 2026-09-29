@@ -846,6 +846,11 @@ final class MCPBridgeServiceTests: XCTestCase {
 
         let withNote = try JSONEncoder().encode(AutoAppliedAck.Extra(note: "poll list_vospace_path"))
         XCTAssertEqual(AutoAppliedAck(proposal: proposal, extraJSON: withNote).note, "poll list_vospace_path")
+        let withFile = try JSONEncoder().encode(AutoAppliedAck.Extra(file: "/Users/u/Downloads/fig.pdf"))
+        let fileAck = AutoAppliedAck(proposal: proposal, extraJSON: withFile)
+        XCTAssertEqual(fileAck.file, "/Users/u/Downloads/fig.pdf", "a figure export says what it wrote (QA N8)")
+        XCTAssertEqual(try JSONDecoder().decode(AutoAppliedAck.self, from: JSONEncoder().encode(fileAck)).file,
+                       "/Users/u/Downloads/fig.pdf")
 
         let extraWins = try JSONEncoder().encode(AutoAppliedAck.Extra(id: "extra-uuid"))
         XCTAssertEqual(AutoAppliedAck(proposal: proposal, extraJSON: extraWins).id, "extra-uuid")
