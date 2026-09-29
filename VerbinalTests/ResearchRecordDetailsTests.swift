@@ -145,4 +145,57 @@ final class ResearchRecordDetailsTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: got.tempURL) }
         XCTAssertEqual(got.suggestedFilename, "MegaPipe.016.263.U.MP9301.fits")
     }
+
+    // MARK: - Records kept before (plan 17 G3, QA regression H5, M2)
+
+    /// A store of its own, and the file to remove after.
+    @MainActor
+    private func temporaryStore() -> (ObservationStore, URL) {
+        let name = "test_observations_\(UUID().uuidString).json"
+        let file = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Verbinal").appendingPathComponent(name)
+        return (ObservationStore(fileName: name, spotlight: nil), file)
+    }
+
+    @MainActor
+    func testRecordsKeptBeforeAreBroughtUpToTheArchiveOnce() async throws {
+        let caom = try CAOM2Parser.parse(data: try megaPipe())
+        let (store, file) = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: file) }
+        var legacy = described(uBand, filter: "G.MP9401", target: "M31")
+        legacy.localPath = "/tmp/MegaPipe.016.263.U.MP9301.fits"
+        store.save(legacy)
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "repair-\(UUID().uuidString)"))
+        final class Asked: @unchecked Sendable { var count = 0 }
+        let asked = Asked()
+        let repair = ResearchRecordRepair(store: store, tasks: TaskRegistry(), defaults: defaults) { _ in
+            asked.count += 1
+            return caom
+        }
+
+        let corrected = await repair.runOnce()
+
+        XCTAssertEqual(corrected, 1)
+        let record = try XCTUnwrap(store.observations.first)
+        XCTAssertEqual(record.filter, "u.MP9301")
+        XCTAssertEqual(record.observationID, "MegaPipe.016.263", "M2: no longer blank")
+        XCTAssertEqual(record.localPath, legacy.localPath, "the file stays the record's")
+        XCTAssertEqual(record.id, legacy.id)
+        let again = await repair.runOnce()
+        XCTAssertEqual(again, 0)
+        XCTAssertEqual(asked.count, 1, "once")
+    }
+
+    /// Offline, nothing is marked done: the next sign-in checks again.
+    @MainActor
+    func testACheckTheArchiveNeverAnsweredIsMadeAgain() async throws {
+        let (store, file) = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: file) }
+        store.save(described("ivo://cadc.nrc.ca/CFHT?1573200"))
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "repair-\(UUID().uuidString)"))
+        let repair = ResearchRecordRepair(store: store, tasks: TaskRegistry(), defaults: defaults) { _ in nil }
+        await repair.runOnce()
+        XCTAssertEqual(store.observations.first?.collection, "CFHT", "the publisher id fills what it can meanwhile")
+        XCTAssertFalse(defaults.bool(forKey: ResearchRecordRepair.doneKey))
+    }
 }

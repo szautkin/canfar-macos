@@ -20,6 +20,8 @@ enum TaskKind: String, Codable, Sendable {
     case storage
     /// Fetching an observation's file, or a cutout of it.
     case download
+    /// Keeping Research's records in order.
+    case research
 }
 
 /// Where a task got to.

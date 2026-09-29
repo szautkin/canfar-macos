@@ -542,6 +542,13 @@ final class AppState {
     /// FITS tools and the Research UI must share one store so ids
     /// survive relaunch and in-session downloads are visible both ways.
     let researchModel = ResearchModel()
+    /// Brings older Research records up to the archive once (plan 17 G3).
+    @ObservationIgnored private(set) lazy var researchRecordRepair: ResearchRecordRepair = {
+        let caom2 = CAOM2Service()
+        return ResearchRecordRepair(store: researchModel.observationStore) { id in
+            try? await caom2.fetch(publisherID: id)
+        }
+    }()
 
     #if os(macOS)
     /// Hoisted viewer state. Previously each viewer root view owned its
@@ -853,6 +860,10 @@ final class AppState {
             }
             pendingModeAfterLogin = nil
         }
+
+        // Records kept before their details came from the archive are
+        // brought up to it once, in the background (plan 17 G3).
+        Task { await researchRecordRepair.runOnce() }
 
         // Idempotent: silent reauth no longer fires this hook, but guard
         // against any future double-apply so we don't stack monitors.

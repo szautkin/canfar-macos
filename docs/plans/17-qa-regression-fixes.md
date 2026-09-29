@@ -19,7 +19,7 @@ parity doc for tool changes.
 
 | Phase | State | Commits |
 |---|---|---|
-| G what still fails | in progress — G1 BYTEPIX; G2 files checked through their bookmark | `871bfb9`, G2 |
+| G what still fails | in progress — G1 BYTEPIX; G2 files checked through their bookmark; G3 records kept before, corrected once | `871bfb9`, `1d32617`, G3 |
 | A audit | planned — A1–A5 | — |
 | U the screen | in progress — U1 the robot on every view | `9b56ce0` |
 | P probes and privacy | planned — P1–P3 | — |

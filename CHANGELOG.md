@@ -148,8 +148,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
   the plane its file belongs to, completed by what was given and, for the
   collection and observation id, by the publisher id; the file is only ever
   that plane's. A malformed publisher id (`ivo://cadc.nrc.ca/CFHT/1525350`)
-  is refused, with the one it likely means. Records kept before are left as
-  they are.
+  is refused, with the one it likely means. Records kept before are checked
+  against the archive once after you sign in, in the background on the
+  activity bar, and corrected the same way.
 - **Choose which of an observation's files to download** — your assistant's
   `download_observation` takes `file`, one of the names `get_data_links`
   lists, so a STIS spectrum's 80 KB `_x1d` can be kept rather than the

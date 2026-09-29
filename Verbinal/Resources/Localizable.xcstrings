@@ -1212,6 +1212,16 @@
         }
       }
     },
+    "%lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sur %lld"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -2598,6 +2608,16 @@
         }
       }
     },
+    "Check Research records against the archive" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifier les fiches de Recherche auprès de l'archive"
+          }
+        }
+      }
+    },
     "Checking authentication..." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3856,6 +3876,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cœurs"
+          }
+        }
+      }
+    },
+    "Corrected %lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld corrigées sur %lld"
           }
         }
       }
