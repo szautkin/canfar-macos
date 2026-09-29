@@ -9,16 +9,33 @@ import SwiftUI
 import VerbinalKit
 
 /// A table HDU in the FITS viewer: its spectrum plotted — flux against
-/// wavelength, an echelle order per line, the error as a band — or, when
-/// it holds no spectrum, what its columns are (plan 17 U4, QA N1).
+/// wavelength, an echelle order per line, the error as a band — with
+/// Export Figure; or, when it holds no spectrum, what its columns are
+/// (plan 17 U4, plan 19 F1).
 struct FITSTableContentView: View {
     let content: FITSTableContent
-    let fileName: String
+    let caption: FITSFigureCaption
+
+    @State private var message: String?
 
     var body: some View {
         switch content {
         case .spectrum(let spectrum):
-            FITSSpectrumPlot(spectrum: spectrum, fileName: fileName)
+            VStack(alignment: .leading, spacing: 0) {
+                FITSSpectrumPlot(spectrum: spectrum, title: caption.title, subtitle: caption.subtitle)
+                HStack {
+                    if let message { Text(message).font(.caption).foregroundStyle(.secondary) }
+                    Spacer()
+                    Menu("Export Figure") {
+                        Button("PNG 2×") { save(spectrum, .png, scale: 2) }
+                        Button("PNG 4×") { save(spectrum, .png, scale: 4) }
+                        Button("PDF…") { save(spectrum, .pdf, scale: 1) }
+                    }
+                    .fixedSize()
+                    .pointable("fits.spectrumExport", label: String(localized: "Export Figure"), screen: "fits")
+                }
+                .padding([.horizontal, .bottom], 16)
+            }
         case .columns(let columns):
             ContentUnavailableView {
                 Label("No spectrum in this table", systemImage: "tablecells")
@@ -27,6 +44,33 @@ struct FITSTableContentView: View {
                     .textSelection(.enabled)
             }
         }
+    }
+
+    private func save(_ spectrum: FITSSpectrum, _ format: FigureFile.Format, scale: CGFloat) {
+        let figure = FITSSpectrumFigure(spectrum: spectrum, caption: caption,
+                                        dark: FITSExportStyle.stored().theme == .dark)
+        switch FigureFile.save(figure, as: format, scale: scale, name: caption.baseName) {
+        case .success(let url)?: message = String(localized: "Saved \(url.lastPathComponent)")
+        case .failure(let error)?: message = String(localized: "Could not save the figure: \(error.localizedDescription)")
+        case nil: break
+        }
+    }
+}
+
+/// A spectrum as a publication figure: the plot the viewer draws, on a
+/// plate of fixed size, light or dark (plan 19 F1, QA N13).
+struct FITSSpectrumFigure: View {
+    let spectrum: FITSSpectrum
+    let caption: FITSFigureCaption
+    let dark: Bool
+
+    static let size = CGSize(width: 900, height: 540)
+
+    var body: some View {
+        FITSSpectrumPlot(spectrum: spectrum, title: caption.title, subtitle: caption.subtitle)
+            .frame(width: Self.size.width, height: Self.size.height)
+            .background(dark ? Color(white: 0.05) : .white)
+            .environment(\.colorScheme, dark ? .dark : .light)
     }
 }
 
@@ -50,28 +94,30 @@ enum SpectrumAxis {
     }
 }
 
-private struct FITSSpectrumPlot: View {
+/// The plot itself — on screen and in a figure alike.
+struct FITSSpectrumPlot: View {
     let spectrum: FITSSpectrum
-    let fileName: String
+    let title: String
+    var subtitle = ""
 
     /// Enough points for any screen, few enough to draw at once.
     private static let maxPoints = 4000
 
-    private var segments: [[FITSSpectrum.Point]] { spectrum.binned(maxPoints: Self.maxPoints) }
     private var exponent: Int { SpectrumAxis.exponent(for: spectrum.fluxRange) }
 
     var body: some View {
         let scale = pow(10, Double(exponent))
-        let segments = segments
+        let segments = spectrum.binned(maxPoints: Self.maxPoints)
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(fileName).font(.headline)
-                Text("\(spectrum.fluxColumn) against \(spectrum.wavelengthColumn) · \(spectrum.pointCount) points")
-                    .font(.caption).foregroundStyle(.secondary)
-                if spectrum.segments.count > 1 {
-                    Text("\(spectrum.segments.count) orders").font(.caption).foregroundStyle(.secondary)
-                }
+                Text(title).font(.headline)
+                if !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
             }
+            HStack(spacing: 8) {
+                Text("\(spectrum.fluxColumn) against \(spectrum.wavelengthColumn) · \(spectrum.pointCount) points")
+                if spectrum.segments.count > 1 { Text("\(spectrum.segments.count) orders") }
+            }
+            .font(.caption).foregroundStyle(.secondary)
             Chart {
                 ForEach(segments.indices, id: \.self) { index in
                     ForEach(segments[index].indices, id: \.self) { point in
@@ -93,7 +139,7 @@ private struct FITSSpectrumPlot: View {
             .chartXScale(domain: spectrum.wavelengthRange ?? 0...1)
             .chartXAxisLabel(SpectrumAxis.title(String(localized: "Wavelength"), unit: spectrum.wavelengthUnit, exponent: 0))
             .chartYAxisLabel(SpectrumAxis.title(String(localized: "Flux"), unit: spectrum.fluxUnit, exponent: exponent))
-            .accessibilityLabel(Text("Spectrum of \(fileName)"))
+            .accessibilityLabel(Text("Spectrum of \(title)"))
         }
         .padding(16)
     }

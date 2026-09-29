@@ -1370,6 +1370,26 @@
         }
       }
     },
+    "A spectrum has no marks — leave marks out" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un spectre n'a pas de repères — omettez marks"
+          }
+        }
+      }
+    },
+    "A spectrum is drawn whole — region is for images; leave it out" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un spectre se trace en entier — region est pour les images ; omettez-le"
+          }
+        }
+      }
+    },
     "A timestamped folder will be created inside the selected directory." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6750,6 +6770,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajuster à la fenêtre"
+          }
+        }
+      }
+    },
+    "FITS image" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image FITS"
           }
         }
       }
@@ -16090,6 +16120,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cela retire l'observation de Recherche. Ses notes sont conservées."
+          }
+        }
+      }
+    },
+    "This table holds no spectrum to draw" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette table ne contient aucun spectre à tracer"
           }
         }
       }

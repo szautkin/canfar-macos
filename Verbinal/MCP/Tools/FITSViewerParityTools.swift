@@ -495,7 +495,7 @@ struct ExportFITSFigureTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "export_fits_figure",
-        description: "Save a publication figure of the active FITS image to the user's Downloads folder, as PNG or PDF: the picture, the marks drawn on it with their labels, the stretch and cuts it was drawn with, a colorbar, and the region's sky centre and field of view. Say which part of the image with `region`: the view on screen (the default), the whole image, a pixel box, a circle on the sky, or around a mark by its id. The style is the one the person last chose in the Export Figure sheet unless `marks`, `annotate` or `dark` say otherwise. Proposal-gated; once applied, the answer's `file` is the path it wrote.",
+        description: "Save a publication figure of the active FITS image to the user's Downloads folder, as PNG or PDF: the picture, the marks drawn on it with their labels, the stretch and cuts it was drawn with, a colorbar, and the region's sky centre and field of view. Say which part of the image with `region`: the view on screen (the default), the whole image, a pixel box, a circle on the sky, or around a mark by its id. The style is the one the person last chose in the Export Figure sheet unless `marks`, `annotate` or `dark` say otherwise. A tab showing a spectrum (get_fits_spectrum) exports its plot — whole, so `region` and `marks` are for images and refused. Proposal-gated; once applied, the answer's `file` is the path it wrote.",
         schema: #"""
         {
           "type": "object",

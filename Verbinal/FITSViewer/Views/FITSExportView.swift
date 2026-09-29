@@ -225,6 +225,24 @@ struct FITSExportView: View {
 /// ~/Downloads).
 @MainActor
 func exportFITSFigureHeadless(model: FITSViewerModel, request: FITSFigureRequest, marks: [Mark]) throws -> URL {
+    // A table's spectrum is its own figure (plan 19 F1, QA N13: "No rendered
+    // FITS image is open"); what only an image has is refused, saying so.
+    if let table = model.table {
+        guard let spectrum = table.spectrum else {
+            throw FITSFigureProblem(kind: .spectrum, message: String(localized: "This table holds no spectrum to draw"))
+        }
+        guard request.region == .view || request.region == .image else {
+            throw FITSFigureProblem(kind: .spectrum, message: String(localized: "A spectrum is drawn whole — region is for images; leave it out"))
+        }
+        guard request.marks != true else {
+            throw FITSFigureProblem(kind: .spectrum, message: String(localized: "A spectrum has no marks — leave marks out"))
+        }
+        let dark = request.dark ?? (FITSExportStyle.stored().theme == .dark)
+        let figure = FITSSpectrumFigure(spectrum: spectrum, caption: model.figureCaption, dark: dark)
+        let dest = DownloadsFolder.timestampedURL(stem: model.figureCaption.baseName, ext: request.format.rawValue)
+        try FigureFile.write(figure, as: request.format, scale: request.scale, to: dest)
+        return dest
+    }
     let figure = try model.figure(request.region, marks: marks)
     var style = FITSExportStyle.stored()
     if let showMarks = request.marks { style.marks = showMarks }
@@ -252,17 +270,11 @@ private struct FITSExportPlate: View {
     /// here, once, so the View itself stays a value snapshot).
     @MainActor
     static func make(model: FITSViewerModel, figure: FITSFigure, style: FITSExportStyle) -> FITSExportPlate {
-        let header = model.selectedHDU?.header
-        let object = header?.string("OBJECT") ?? ""
-        let telescope = header?.string("TELESCOP") ?? ""
-        let instrument = header?.string("INSTRUME") ?? ""
-        let dateObs = header?.string("DATE-OBS") ?? ""
-        let subtitleParts = [telescope, instrument, dateObs].filter { !$0.isEmpty }
-
+        let caption = model.figureCaption
         return FITSExportPlate(
-            title: object.isEmpty ? (model.fileURL?.deletingPathExtension().lastPathComponent ?? "FITS image") : object,
-            subtitle: subtitleParts.joined(separator: " · "),
-            fileName: model.fileURL?.lastPathComponent ?? "",
+            title: caption.title,
+            subtitle: caption.subtitle,
+            fileName: caption.fileName,
             date: Date.now.formatted(date: .abbreviated, time: .shortened),
             figure: figure,
             stops: colormapPreviewStops(model.renderParams.colormap),
@@ -271,11 +283,7 @@ private struct FITSExportPlate: View {
 
     @MainActor
     static func baseName(for model: FITSViewerModel) -> String {
-        let object = model.selectedHDU?.header.string("OBJECT") ?? ""
-        if !object.isEmpty {
-            return object.replacingOccurrences(of: " ", with: "_")
-        }
-        return model.fileURL?.deletingPathExtension().lastPathComponent ?? "fits_figure"
+        model.figureCaption.baseName
     }
 
     var body: some View {

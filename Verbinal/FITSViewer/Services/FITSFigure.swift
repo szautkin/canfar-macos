@@ -69,11 +69,37 @@ struct FITSFigureRequest: Codable, Sendable, Equatable {
 
 /// Why a figure could not be made.
 struct FITSFigureProblem: LocalizedError, Equatable {
-    enum Kind: Equatable { case nothingOpen, badRegion, noMark }
+    /// `spectrum`: an option only an image has, asked of a spectrum.
+    enum Kind: Equatable { case nothingOpen, badRegion, noMark, spectrum }
     let kind: Kind
     let message: String
 
     var errorDescription: String? { message }
+}
+
+/// What a figure of a FITS file is called — its object, else its file's
+/// name — and where it comes from, from the HDU shown and the primary
+/// (an `_x1d`'s OBJECT is in the primary, its spectrum in a table). One
+/// caption for an image's plate and a spectrum's.
+struct FITSFigureCaption: Equatable {
+    let title: String
+    /// Telescope · instrument · date of observation, those there are.
+    let subtitle: String
+    let fileName: String
+    /// The name a figure's file starts with.
+    let baseName: String
+
+    init(headers: [FITSHeader], fileURL: URL?) {
+        func first(_ key: String) -> String {
+            headers.lazy.compactMap { $0.string(key) }.first { !$0.isEmpty } ?? ""
+        }
+        let object = first("OBJECT")
+        let stem = fileURL?.deletingPathExtension().lastPathComponent
+        title = object.isEmpty ? (stem ?? String(localized: "FITS image")) : object
+        subtitle = [first("TELESCOP"), first("INSTRUME"), first("DATE-OBS")].filter { !$0.isEmpty }.joined(separator: " · ")
+        fileName = fileURL?.lastPathComponent ?? ""
+        baseName = object.isEmpty ? (stem ?? "fits_figure") : object.replacingOccurrences(of: " ", with: "_")
+    }
 }
 
 /// A figure ready to be laid out: the part of the rendered image it shows,

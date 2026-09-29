@@ -258,7 +258,7 @@ struct FITSTabView: View {
                             }
                             Spacer()
                         } else if let table = activeModel.table {
-                            FITSTableContentView(content: table, fileName: activeModel.displayName)
+                            FITSTableContentView(content: table, caption: activeModel.figureCaption)
                         } else if activeModel.renderedImage != nil {
                             FITSImageView(model: activeModel, tabHost: tabHost, marks: appState.fitsMarkEditor)
                             Divider()

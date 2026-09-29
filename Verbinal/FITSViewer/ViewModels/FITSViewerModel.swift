@@ -122,6 +122,11 @@ final class FITSViewerModel: Identifiable {
         return file.hdus[selectedHDUIndex]
     }
 
+    /// What a figure of the file is called, from the HDU shown and the primary.
+    var figureCaption: FITSFigureCaption {
+        FITSFigureCaption(headers: [selectedHDU?.header, file?.hdus.first?.header].compactMap { $0 }, fileURL: fileURL)
+    }
+
     /// The HDUs a person can look at: images, and tables.
     var viewableHDUs: [FITSHDUnit] {
         file?.hdus.filter { $0.isImage || $0.isTable } ?? []

@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A spectrum exports as a figure** — Export Figure on a spectrum
+  answered "No rendered FITS image is open". The spectrum view now has
+  Export Figure (PNG 2×, 4× or PDF): the plot as shown, titled by the
+  object and instrument, with its axis units and error band, in your
+  export style's light or dark. Your assistant's `export_fits_figure`
+  writes it too, and says that a region or marks are for images.
 - **Every file in Downloads reads as `~/Downloads`** — figure exports
   reported a path inside Verbinal's own container, other files
   `~/Downloads`, so they seemed to land in two places. It is one folder
