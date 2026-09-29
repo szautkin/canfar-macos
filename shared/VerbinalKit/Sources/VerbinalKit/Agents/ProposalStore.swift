@@ -14,6 +14,9 @@ public struct ProposalJournal: Codable, Sendable, Equatable {
     /// Ids still in `pending` whose last apply threw. Cleared on a
     /// successful apply / reject / withdraw.
     public var failedIDs: [UUID]
+    /// Why each of `failedIDs` failed, by id (plan 17 A4); absent in
+    /// journals written before it was kept.
+    public var failureReasons: [String: String]?
 
     public struct Tombstone: Codable, Sendable, Equatable {
         public var id: UUID
@@ -24,11 +27,13 @@ public struct ProposalJournal: Codable, Sendable, Equatable {
     public init(
         pending: [PendingProposal] = [],
         tombstones: [Tombstone] = [],
-        failedIDs: [UUID] = []
+        failedIDs: [UUID] = [],
+        failureReasons: [String: String]? = nil
     ) {
         self.pending = pending
         self.tombstones = tombstones
         self.failedIDs = failedIDs
+        self.failureReasons = failureReasons
     }
 }
 
@@ -68,10 +73,14 @@ public protocol ProposalStore: Sendable {
     @discardableResult
     func withdraw(_ id: UUID) async -> Bool
 
-    /// Record that apply threw. The item stays in the queue (user can
-    /// retry); `state` reports `.failed` until the next resolution.
+    /// Record that apply threw, and why. The item stays in the queue (user
+    /// can retry); `state` reports `.failed`, and `failureReason` the
+    /// reason, until the next attempt or resolution.
     @discardableResult
-    func markApplyFailed(_ id: UUID) async -> Bool
+    func markApplyFailed(_ id: UUID, reason: String?) async -> Bool
+
+    /// Why the last apply of a pending proposal failed; nil when it has not.
+    func failureReason(_ id: UUID) async -> String?
 
     /// Claim a pending proposal for applying. False when it is not pending
     /// or already being applied — so one change never applies twice.
@@ -92,6 +101,7 @@ public actor InMemoryProposalStore: ProposalStore {
     private var pendingOrder: [UUID] = []
     private var kindByID: [UUID: String] = [:]   // surfaced into events post-resolve
     private var failedIDs: Set<UUID> = []
+    private var failureReasons: [UUID: String] = [:]
     /// Being applied now. Not journaled: after a restart an interrupted
     /// apply is simply pending again.
     private var applyingIDs: Set<UUID> = []
@@ -122,6 +132,9 @@ public actor InMemoryProposalStore: ProposalStore {
                 kindByID[p.id] = p.kind
             }
             failedIDs = Set(snap.failedIDs)
+            for (key, reason) in snap.failureReasons ?? [:] {
+                if let id = UUID(uuidString: key), failedIDs.contains(id) { failureReasons[id] = reason }
+            }
             let current = now()
             let shortTTL = tombstoneTTL, expiredTTL = expiredTombstoneTTL
             let liveTombs = snap.tombstones.filter {
@@ -133,7 +146,8 @@ public actor InMemoryProposalStore: ProposalStore {
                 journal.write(ProposalJournal(
                     pending: snap.pending,
                     tombstones: liveTombs,
-                    failedIDs: snap.failedIDs
+                    failedIDs: snap.failedIDs,
+                    failureReasons: snap.failureReasons
                 ))
             }
         }
@@ -145,6 +159,7 @@ public actor InMemoryProposalStore: ProposalStore {
         pendingOrder.append(proposal.id)
         kindByID[proposal.id] = proposal.kind
         failedIDs.remove(proposal.id)
+        failureReasons.removeValue(forKey: proposal.id)
         persist()
         if let eventLog {
             await eventLog.append(.proposalArrived(
@@ -189,20 +204,28 @@ public actor InMemoryProposalStore: ProposalStore {
         await expireStale()
         guard pending[id] != nil, !applyingIDs.contains(id) else { return false }
         applyingIDs.insert(id)
+        // A new attempt: the last one's failure is no longer the news.
+        failedIDs.remove(id)
+        failureReasons.removeValue(forKey: id)
         return true
     }
 
     @discardableResult
-    public func markApplyFailed(_ id: UUID) async -> Bool {
+    public func markApplyFailed(_ id: UUID, reason: String?) async -> Bool {
         guard pending[id] != nil else { return false }
         applyingIDs.remove(id)
         failedIDs.insert(id)
+        failureReasons[id] = reason.flatMap { $0.isEmpty ? nil : $0 }
         persist()
         if let eventLog {
             let kind = kindByID[id] ?? ""
             await eventLog.append(.proposalFailed(id: id, kind: kind))
         }
         return true
+    }
+
+    public func failureReason(_ id: UUID) -> String? {
+        failedIDs.contains(id) ? failureReasons[id] : nil
     }
 
     // MARK: - Internals
@@ -213,6 +236,7 @@ public actor InMemoryProposalStore: ProposalStore {
             pendingOrder.remove(at: i)
         }
         failedIDs.remove(id)
+        failureReasons.removeValue(forKey: id)
         applyingIDs.remove(id)
         let kind = kindByID.removeValue(forKey: id) ?? ""
         tombstones.append((id, state, now()))
@@ -262,7 +286,9 @@ public actor InMemoryProposalStore: ProposalStore {
             tombstones: tombstones.map {
                 ProposalJournal.Tombstone(id: $0.0, state: $0.1, resolvedAt: $0.2)
             },
-            failedIDs: Array(failedIDs)
+            failedIDs: Array(failedIDs),
+            failureReasons: failureReasons.isEmpty ? nil
+                : Dictionary(uniqueKeysWithValues: failureReasons.map { ($0.key.uuidString, $0.value) })
         ))
     }
 }

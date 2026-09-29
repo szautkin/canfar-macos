@@ -560,7 +560,7 @@ final class InMemoryProposalStoreTests: XCTestCase {
     func testFailedApplyStaysPendingAndIsNotRejected() async {
         let store = InMemoryProposalStore()
         let p = await store.enqueue(makeProposal())
-        let marked = await store.markApplyFailed(p.id)
+        let marked = await store.markApplyFailed(p.id, reason: nil)
         XCTAssertTrue(marked)
         let state = await store.state(p.id)
         XCTAssertEqual(state, .failed)
@@ -570,6 +570,47 @@ final class InMemoryProposalStoreTests: XCTestCase {
         XCTAssertTrue(applied)
         let after = await store.state(p.id)
         XCTAssertEqual(after, .applied)
+    }
+
+    /// Plan 17 A4 (QA N7): a failed apply keeps its reason — across a
+    /// restart — until the next attempt or the proposal's resolution.
+    func testAFailedApplyKeepsItsReason() async {
+        let persistence = DiskPersistence<ProposalJournal>(
+            subdirectory: "VerbinalProposalJournalTests-\(UUID().uuidString)", fileName: "journal.json",
+            logger: Logger(subsystem: "com.codebg.Verbinal.tests", category: "ProposalJournal"))
+        let store = InMemoryProposalStore(journal: persistence)
+        let p = await store.enqueue(makeProposal())
+        _ = await store.markApplyFailed(p.id, reason: "HTTP 403: quota exceeded")
+        let reason = await store.failureReason(p.id)
+        XCTAssertEqual(reason, "HTTP 403: quota exceeded")
+
+        let restarted = InMemoryProposalStore(journal: persistence)
+        let kept = await restarted.failureReason(p.id)
+        XCTAssertEqual(kept, "HTTP 403: quota exceeded")
+        _ = await restarted.beginApply(p.id)
+        let retrying = await restarted.failureReason(p.id)
+        XCTAssertNil(retrying, "a new attempt is not the old failure")
+        _ = await restarted.markApplyFailed(p.id, reason: "again")
+        _ = await restarted.withdraw(p.id)
+        let gone = await restarted.failureReason(p.id)
+        XCTAssertNil(gone)
+    }
+
+    /// Plan 17 A4 (QA N7): a withdrawn proposal gives its slot back.
+    func testReleasingGivesASlotBack() async {
+        let budget = ProposalBudget(limit: 2)
+        let origin = OperationOrigin.external(clientID: "c")
+        _ = await budget.tryAccept(origin: origin)
+        _ = await budget.tryAccept(origin: origin)
+        var remaining = await budget.remaining(for: origin)
+        XCTAssertEqual(remaining, 0)
+        await budget.release(origin: origin)
+        remaining = await budget.remaining(for: origin)
+        XCTAssertEqual(remaining, 1)
+        await budget.release(origin: origin)
+        await budget.release(origin: origin)
+        remaining = await budget.remaining(for: origin)
+        XCTAssertEqual(remaining, 2, "never more than the limit")
     }
 
     func testJournalRehydratesPendingUnderOriginalIDs() async {

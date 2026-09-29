@@ -3991,6 +3991,16 @@
         }
       }
     },
+    "Couldn't apply this proposal: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d'appliquer cette proposition : %@"
+          }
+        }
+      }
+    },
     "Couldn't load this folder: %@" : {
       "extractionState" : "stale",
       "localizations" : {

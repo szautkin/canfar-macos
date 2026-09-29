@@ -144,6 +144,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
   steer the next one unseen. These four changes now always wait in Pending
   for your approval, as deletions do, and the tools and `describe_app` say
   so.
+- **A change that failed to apply says why** — a background apply that
+  failed put its proposal back in Pending with no word of what went
+  wrong, and withdrawing it did not give its place in the assistant's
+  budget back. The reason now stays on the proposal — in Pending, in
+  `get_proposal_state` and `list_pending_proposals` (`failureReason`),
+  across a restart — until it is tried again; and `withdraw_proposal`
+  returns the slot (`budgetRemaining`).
 - **A batch job your assistant launched says so** — in the Batch Jobs
   History and `list_job_history` (`origin: agent`), even when it ends
   after Verbinal restarts; and `launch_headless_job` answers with the ids

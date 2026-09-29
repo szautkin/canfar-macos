@@ -87,6 +87,8 @@ final class AgentsService {
     /// Snapshot of pending proposals for SwiftUI binding. Refreshed
     /// after each enqueue/apply/reject so the strip stays current.
     private(set) var pendingProposals: [PendingProposal] = []
+    /// Why the last apply of a pending proposal failed, by id.
+    private(set) var applyFailures: [UUID: String] = [:]
     /// Proposals being applied now — by the strip, auto-apply, or a
     /// background job — so the strip shows them as applying, not "Apply".
     private(set) var applyingIDs: Set<UUID> = []
@@ -231,14 +233,13 @@ final class AgentsService {
                 try await applier.apply(proposal)
                 return nil
             }
-        } catch let pa as ProposalApplyError {
-            _ = await proposals.markApplyFailed(id)
-            await refreshPending()
-            throw pa
         } catch {
-            _ = await proposals.markApplyFailed(id)
+            // The reason stays on the proposal, for the strip and
+            // get_proposal_state, however the apply was started (QA N7).
+            let failure = error as? ProposalApplyError ?? .backendError("\(error)")
+            _ = await proposals.markApplyFailed(id, reason: failure.message)
             await refreshPending()
-            throw ProposalApplyError.backendError("\(error)")
+            throw failure
         }
         _ = await proposals.markApplied(id, by: actor)
         activityStore.markApplied(forProposal: id, by: actor)
@@ -368,6 +369,11 @@ final class AgentsService {
     /// store. Called after lifecycle transitions; the strip rebinds.
     func refreshPending() async {
         let snapshot = await proposals.list(origin: nil)
+        var failures: [UUID: String] = [:]
+        for proposal in snapshot {
+            if let reason = await proposals.failureReason(proposal.id) { failures[proposal.id] = reason }
+        }
+        applyFailures = failures
         // What left Pending by waiting out its time goes into History.
         let still = Set(snapshot.map(\.id))
         for gone in pendingProposals where !still.contains(gone.id) {

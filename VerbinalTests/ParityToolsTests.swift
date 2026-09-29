@@ -479,6 +479,32 @@ final class ParityToolsTests: XCTestCase {
         XCTAssertEqual(json["id"] as? String, proposal.id.uuidString)
     }
 
+    /// Plan 17 A4 (QA N7): a failed apply says why, to the tools that list
+    /// and look up proposals; a withdrawn one gives its budget back.
+    func testAFailedProposalSaysWhyAndAWithdrawnOneRefunds() async throws {
+        let store = InMemoryProposalStore()
+        let origin = OperationOrigin.external(clientID: "test")
+        let budget = ProposalBudget(limit: 8)
+        _ = await budget.tryAccept(origin: origin)
+        let proposal = await store.enqueue(PendingProposal(toolName: "t", kind: "k", summary: "s",
+                                                           payload: Data("{}".utf8), origin: origin))
+        _ = await store.markApplyFailed(proposal.id, reason: "probe job failed to submit")
+        let context = AIToolContext(origin: origin, proposals: store, budget: budget)
+
+        let state = try decodeJSON(await GetProposalStateTool().invoke(
+            arguments: argsData(["id": proposal.id.uuidString]), context: context))
+        XCTAssertEqual(state["state"] as? String, "failed")
+        XCTAssertEqual(state["failureReason"] as? String, "probe job failed to submit")
+        let listed = try decodeJSON(await ListPendingProposalsTool().invoke(arguments: argsData([:]), context: context))
+        XCTAssertEqual((listed["proposals"] as? [[String: Any]])?.first?["failureReason"] as? String,
+                       "probe job failed to submit")
+
+        let withdrawn = try decodeJSON(await WithdrawProposalTool().invoke(
+            arguments: argsData(["id": proposal.id.uuidString]), context: context))
+        XCTAssertEqual(withdrawn["withdrew"] as? Bool, true)
+        XCTAssertEqual(withdrawn["budgetRemaining"] as? Int, 8, "7 of 8 before; the slot is back")
+    }
+
     func testGetProposalStateRequiresAnId() async {
         let tool = GetProposalStateTool()
         let result = await tool.invoke(arguments: argsData([:]), context: ctx())

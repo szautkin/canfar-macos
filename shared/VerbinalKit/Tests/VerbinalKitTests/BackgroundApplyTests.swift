@@ -82,7 +82,7 @@ final class BackgroundApplyTests: XCTestCase {
         XCTAssertFalse(second, "a second Apply while the first runs would do the work twice")
         let applying = await store.state(p.id)
         XCTAssertEqual(applying, .applying)
-        _ = await store.markApplyFailed(p.id)
+        _ = await store.markApplyFailed(p.id, reason: nil)
         let retry = await store.beginApply(p.id)
         XCTAssertTrue(retry, "a failed apply can be tried again")
         _ = await store.markApplied(p.id, by: .person)

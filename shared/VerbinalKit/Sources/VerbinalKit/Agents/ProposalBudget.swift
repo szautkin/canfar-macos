@@ -39,6 +39,13 @@ public actor ProposalBudget {
         return true
     }
 
+    /// Gives a slot back — a proposal its agent withdrew never reached the
+    /// person, so it does not count against the cap (QA N7).
+    public func release(origin: OperationOrigin) {
+        let current = counts[origin, default: 0]
+        if current > 1 { counts[origin] = current - 1 } else { counts.removeValue(forKey: origin) }
+    }
+
     /// Snapshot of remaining budget for an origin; surfaces in MCP
     /// responses so agents can self-throttle.
     public func remaining(for origin: OperationOrigin) -> Int {

@@ -30,12 +30,14 @@ struct ListPendingProposalsTool: AITool {
             /// When it expires unapplied (`PendingProposal.lifetime` after it arrived).
             let expiresAtISO: String
             let originTag: String
+            /// Why its last apply failed, when one did.
+            let failureReason: String?
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_pending_proposals",
-        description: "List proposals currently waiting for user review in the strip. Returns id, the tool that created it, kind, summary, origin, and `expiresAtISO` — a proposal nobody applies within 3 hours expires and leaves Pending.",
+        description: "List proposals currently waiting for user review in the strip. Returns id, the tool that created it, kind, summary, origin, `failureReason` when its last apply failed, and `expiresAtISO` — a proposal nobody applies within 3 hours expires and leaves Pending.",
         schema: #"""
         {
           "type": "object",
@@ -49,16 +51,18 @@ struct ListPendingProposalsTool: AITool {
         let pending = await context.proposals.list(origin: nil)
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime]
-        let items = pending.map { p in
-            Output.Item(
+        var items: [Output.Item] = []
+        for p in pending {
+            items.append(Output.Item(
                 id: p.id.uuidString,
                 toolName: p.toolName,
                 kind: p.kind,
                 summary: p.summary,
                 createdAtISO: iso.string(from: p.createdAt),
                 expiresAtISO: iso.string(from: p.expiresAt),
-                originTag: AuditOrigin.from(p.origin).tag
-            )
+                originTag: AuditOrigin.from(p.origin).tag,
+                failureReason: await context.proposals.failureReason(p.id)
+            ))
         }
         do {
             let bytes = try JSONEncoder().encode(Output(proposals: items))
@@ -89,11 +93,13 @@ struct GetProposalStateTool: AITool {
     struct Output: Encodable, Sendable {
         let id: String
         let state: String
+        /// Why the last apply failed, while the state is `failed`.
+        var failureReason: String?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_proposal_state",
-        description: "Look up the lifecycle state of a proposal by `id` or `proposalId` (pending, applying, applied, rejected, withdrawn, failed, expired, unknown). `failed` means the last apply threw and the item is still in the strip for retry; `expired` means nobody applied it within 3 hours, so it was not applied and has left Pending (remembered for a day). Other outcomes are remembered ~5 min.",
+        description: "Look up the lifecycle state of a proposal by `id` or `proposalId` (pending, applying, applied, rejected, withdrawn, failed, expired, unknown). `failed` means the last apply threw and the item is still in the strip for retry, with `failureReason` saying why; `expired` means nobody applied it within 3 hours, so it was not applied and has left Pending (remembered for a day). Other outcomes are remembered ~5 min.",
         schema: #"""
         {
           "type": "object",
@@ -120,8 +126,9 @@ struct GetProposalStateTool: AITool {
             return .failed(.invalidArgument("id is not a UUID"))
         }
         let state = await context.proposals.state(uuid)
+        let reason = state == .failed ? await context.proposals.failureReason(uuid) : nil
         do {
-            let bytes = try JSONEncoder().encode(Output(id: raw, state: state.rawValue))
+            let bytes = try JSONEncoder().encode(Output(id: raw, state: state.rawValue, failureReason: reason))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))
@@ -146,11 +153,13 @@ struct WithdrawProposalTool: AITool {
     struct Output: Encodable, Sendable {
         let id: String
         let withdrew: Bool
+        /// Proposals this client may still make; a withdrawn one's slot is given back.
+        let budgetRemaining: Int
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "withdraw_proposal",
-        description: "Retract one of your own pending proposals. Only meaningful for a proposal still waiting in Pending — every destructive one, and any other while Auto-apply is off (with it on, other writes apply at once, leaving nothing to withdraw). Use when you realised mid-flow that the proposal was wrong; the user no longer sees it in the strip. Returns withdrew=false if the id is unknown or already resolved.",
+        description: "Retract one of your own pending proposals. Only meaningful for a proposal still waiting in Pending — every destructive one, and any other while Auto-apply is off (with it on, other writes apply at once, leaving nothing to withdraw). Use when you realised mid-flow that the proposal was wrong; the user no longer sees it in the strip, and its slot in your proposal budget is given back (`budgetRemaining`). Returns withdrew=false if the id is unknown or already resolved.",
         schema: #"""
         {
           "type": "object",
@@ -171,9 +180,12 @@ struct WithdrawProposalTool: AITool {
         guard let uuid = UUID(uuidString: args.id) else {
             return .failed(.invalidArgument("id is not a UUID"))
         }
+        let origin = await context.proposals.list(origin: nil).first { $0.id == uuid }?.origin
         let didWithdraw = await context.proposals.withdraw(uuid)
+        if didWithdraw, let origin { await context.budget.release(origin: origin) }
         do {
-            let bytes = try JSONEncoder().encode(Output(id: args.id, withdrew: didWithdraw))
+            let bytes = try JSONEncoder().encode(Output(id: args.id, withdrew: didWithdraw,
+                                                        budgetRemaining: await context.budget.remaining(for: context.origin)))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))

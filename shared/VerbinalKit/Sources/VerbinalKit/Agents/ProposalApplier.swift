@@ -65,4 +65,12 @@ public enum ProposalApplyError: Error, Equatable {
     case noApplierForKind(String)
     /// Applier ran but reported a typed failure.
     case backendError(String)
+
+    /// The failure in words, as the proposal keeps it.
+    public var message: String {
+        switch self {
+        case .noApplierForKind(let kind): return "no handler for kind '\(kind)'"
+        case .backendError(let message): return message
+        }
+    }
 }

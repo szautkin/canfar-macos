@@ -236,7 +236,8 @@ struct ProposalStripSheet: View {
                     .foregroundStyle(.secondary)
                 Spacer()
             }
-            if let error = perRowError[proposal.id] {
+            if let error = appState.agentsService.applyFailures[proposal.id]
+                .map({ String(localized: "Couldn't apply this proposal: \($0)") }) ?? perRowError[proposal.id] {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption2)
                     .foregroundStyle(.red)
