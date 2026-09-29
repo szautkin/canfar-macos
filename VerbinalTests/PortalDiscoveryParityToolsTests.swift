@@ -31,6 +31,37 @@ final class PortalDiscoveryParityToolsTests: XCTestCase {
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 
+    // MARK: - get_session
+
+    private func session(_ id: String, _ status: String) -> SessionOut {
+        SessionOut(id: id, name: "nb", type: "notebook", status: status, image: "i:1", connectURL: "", startedTime: "",
+                   expiresTime: "", memoryAllocated: "", memoryUsage: "", cpuAllocated: "", cpuUsage: "", gpuAllocated: "")
+    }
+
+    /// Plan 17 A5 (QA N10): `p7g9540f` said Pending after its container had
+    /// started — CANFAR's status, which get_session now explains.
+    func testAPendingSessionWhoseContainerStartedSaysSo() async throws {
+        final class Asked: @unchecked Sendable { var ids: [String] = [] }
+        let asked = Asked()
+        let events = """
+        TYPE     REASON     MESSAGE
+        Normal   Scheduled  Successfully assigned skaha-workload/p7g9540f to node-3
+        Normal   Pulled     Container image already present on machine
+        Normal   Started    Started container notebook
+        """
+        let sessions = [session("p7g9540f", "Pending"), session("r1", "Running")]
+        let tool = GetSessionTool(fetchAll: { sessions }, events: { id in asked.ids.append(id); return events })
+        let pending = try await tool.handle(.init(id: "p7g9540f"), context: ctx())
+        XCTAssertEqual(pending.status, "Pending", "the platform's word, unchanged")
+        XCTAssertTrue(pending.note?.contains("container has started") == true, pending.note ?? "")
+        let running = try await tool.handle(.init(id: "r1"), context: ctx())
+        XCTAssertNil(running.note)
+        XCTAssertEqual(asked.ids, ["p7g9540f"], "events are read only for a Pending session")
+
+        XCTAssertFalse(KubernetesEvents.containerStarted("Normal  Scheduled  Successfully assigned x\nNormal  Pulling  image"))
+        XCTAssertFalse(KubernetesEvents.containerStarted("<none>"))
+    }
+
     // MARK: - get_session_events / logs
 
     func testGetSessionEventsForwardsID() async throws {

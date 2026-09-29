@@ -20,7 +20,7 @@ parity doc for tool changes.
 | Phase | State | Commits |
 |---|---|---|
 | G what still fails | done — G1 BYTEPIX; G2 files checked through their bookmark; G3 records kept before, corrected once; G4 the image's header, `keywords`; G5 dotfiles are text; G6 a probe's error line; G7 `.vnc`; G8 tabs without a sky WCS named; G9 Search pointable, a refused query not executed | `871bfb9`, `1d32617`, `8400303`, `23a9b3b`, `09069c7`, `2d91b62`, `d8dca97`, `3ae626c`, G9 |
-| A audit | in progress — A1 who started each task; session deletes on the bar; A2 an assistant's jobs `origin: agent`, launch returns ids; A3 figure exports return their file; A4 a failed apply's reason kept, withdraw refunds | `f20b44e`, `8dd1197`, `5e1516a`, A4 |
+| A audit | done — A1 who started each task; session deletes on the bar; A2 an assistant's jobs `origin: agent`, launch returns ids; A3 figure exports return their file; A4 a failed apply's reason kept, withdraw refunds; A5 Pending with a started container explained | `f20b44e`, `8dd1197`, `5e1516a`, `76c9aa1`, A5 |
 | U the screen | in progress — U1 the robot on every view | `9b56ce0` |
 | P probes and privacy | planned — P1–P3 | — |
 
@@ -58,7 +58,7 @@ runs rightly found is that the trail cannot say whose (A1).
 | **A2** | N2 | A headless job an assistant launched is recorded `origin: agent` (the launch notes its job ids for the history). |
 | **A3** | N3, N8 | `launch_headless_job` returns the job ids; `export_fits_figure` and `export_cube_figure` return the file they wrote. |
 | **A4** | N7 | A failed apply keeps its reason on the proposal — the strip and `get_proposal_state` show it; withdrawing a proposal gives its budget back. |
-| **A5** | N10 | Investigate: a session Pending after its container started is Skaha's status; if its events show the container running, say "Starting". `get_session` not loading through the client's tool search is on the client. |
+| **A5** | N10 | *Found:* Pending is Skaha's status, which it keeps until the session is ready, after its container has started. `get_session` reads a Pending session's events and, when a container has started, says so (`note`); the status stays the platform's. `get_session` not loading through the client's tool search is on the client. |
 
 ## U — The screen (asked for by the person)
 

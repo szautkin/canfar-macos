@@ -21,6 +21,14 @@ enum KubernetesEvents {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed == "<none>" ? "" : trimmed
     }
+
+    /// Whether the events say a container started — Kubernetes' `Started`
+    /// reason, "Started container …".
+    static func containerStarted(_ raw: String) -> Bool {
+        text(raw).split(whereSeparator: \.isNewline).contains { line in
+            line.split(whereSeparator: \.isWhitespace).contains("Started")
+        }
+    }
 }
 
 // MARK: - get_session_events

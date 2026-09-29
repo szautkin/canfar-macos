@@ -21,11 +21,12 @@ extension AppState {
     }
 
     func makeGetSessionTool() -> GetSessionTool {
-        GetSessionTool(fetchAll: { [weak self] in
+        let service = sessionService
+        return GetSessionTool(fetchAll: { [weak self] in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
             let raw = try await self.sessionService.getSessions()
             return raw.map(Self.flatten)
-        })
+        }, events: { id in try await service.getSessionEvents(id: id) })
     }
 
     func makeListSessionImagesTool() -> ListSessionImagesTool {

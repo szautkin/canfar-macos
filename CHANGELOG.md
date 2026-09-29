@@ -37,7 +37,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
   recent launch now names the project its image came from (an assistant's
   launches recorded none), a flexible session's cores and RAM say
   "flexible" rather than nothing, and a session with no events has none,
-  rather than one called `<none>`.
+  rather than one called `<none>`. A session CANFAR still calls Pending
+  after its container has started is explained by `get_session`
+  (`note`): the platform says Pending until the session is ready.
 - **Storage quota in the gigabytes it says** — a 200 GB quota showed as
   186.26 GB, counted in 2³⁰-byte units. It is now counted as Finder
   counts, 10⁹ bytes to the GB, on the Portal and for assistants.

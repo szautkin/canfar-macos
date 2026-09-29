@@ -35,6 +35,9 @@ struct ListSessionsTool: JSONReadTool {
             let cpuAllocated: String
             let cpuUsage: String
             let gpuAllocated: String
+            /// What the status leaves out — `get_session` on a session still
+            /// Pending once its container has started (plan 17 A5, QA N10).
+            var note: String?
         }
     }
 
@@ -55,7 +58,7 @@ struct ListSessionsTool: JSONReadTool {
     func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
         do {
             let raw = try await fetchAll()
-            return Output(sessions: raw.map(Self.flatten))
+            return Output(sessions: raw.map(Self.item))
         } catch {
             let msg = "\(error)"
             if msg.lowercased().contains("auth") { throw ToolFailureReason.authRequired }
@@ -63,7 +66,8 @@ struct ListSessionsTool: JSONReadTool {
         }
     }
 
-    private static func flatten(_ s: SessionOut) -> Output.Item {
+    /// One session as the session tools give it.
+    static func item(_ s: SessionOut) -> Output.Item {
         Output.Item(
             id: s.id, name: s.name, type: s.type,
             status: s.status, image: s.image,
@@ -90,7 +94,7 @@ struct GetSessionTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_session",
-        description: "Look up one session by id. Returns the same shape as list_sessions[i].",
+        description: "Look up one session by id. Returns the same shape as list_sessions[i]; a session still `Pending` whose container has already started carries a `note` saying so — CANFAR says Pending until the session is ready.",
         schema: #"""
         {
           "type": "object",
@@ -102,24 +106,20 @@ struct GetSessionTool: JSONReadTool {
     )
 
     let fetchAll: @Sendable () async throws -> [SessionOut]
+    /// The session's Kubernetes events, read only for a Pending session.
+    var events: (@Sendable (_ id: String) async throws -> String)?
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let all = try await fetchAll()
         guard let match = all.first(where: { $0.id == args.id }) else {
             throw ToolFailureReason.unknownTarget("session \(args.id)")
         }
-        return Output(
-            id: match.id, name: match.name, type: match.type,
-            status: match.status, image: match.image,
-            connectURL: match.connectURL,
-            startedTime: match.startedTime,
-            expiresTime: match.expiresTime,
-            memoryAllocated: match.memoryAllocated,
-            memoryUsage: match.memoryUsage,
-            cpuAllocated: match.cpuAllocated,
-            cpuUsage: match.cpuUsage,
-            gpuAllocated: match.gpuAllocated
-        )
+        var item = ListSessionsTool.item(match)
+        if match.status.caseInsensitiveCompare("Pending") == .orderedSame, let events,
+           let text = try? await events(match.id), KubernetesEvents.containerStarted(text) {
+            item.note = "Its container has started; CANFAR says Pending until the session is ready, and Running soon after."
+        }
+        return item
     }
 }
 
