@@ -25,6 +25,20 @@ final class CubeTabHostModelTests: XCTestCase {
         XCTAssertNil(host.activeTab.loadError)
     }
 
+    /// Plan 17 U3 (QA N6): a cube opened leaves no empty tab beside it,
+    /// and `list_open_tabs` never lists one with no path.
+    func testOpeningACubeReplacesTheEmptyTab() async throws {
+        let host = CubeTabHostModel()
+        let url = try FITSTestFixtures.writeCube()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let err = await host.openFileDiscardingFailure(url: url)
+        XCTAssertNil(err)
+        XCTAssertEqual(host.tabPaths, [url.path], "no ghost tab with an empty path")
+        XCTAssertEqual(host.activeTabIndex, 0)
+        XCTAssertTrue(host.activeTab.hasData)
+    }
+
     func testFailedOpenRestoresPreviouslyFocusedTab() async throws {
         let host = CubeTabHostModel()
         let first = host.activeTab

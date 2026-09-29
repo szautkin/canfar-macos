@@ -12,6 +12,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **No empty tab beside an opened cube** — opening a cube left the Cube
+  Viewer's empty starting tab open beside it, which `list_open_tabs`
+  listed with no path. A file that opens now replaces a tab nothing was
+  ever opened in, in the Cube and FITS viewers alike.
 - **Batch Jobs always says how many are running, pending, done and
   failed** — counts of zero were left out, and with no jobs there was no
   summary at all, so an empty queue looked like a card that had not

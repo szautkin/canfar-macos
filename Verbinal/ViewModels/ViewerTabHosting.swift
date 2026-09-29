@@ -43,10 +43,15 @@ extension ViewerTabHosting {
     /// Opens `url` — unless a tab already shows it, loaded or still
     /// loading: that tab is focused (and awaited) instead of a duplicate
     /// being added. A tab whose open failed does not count; the file is
-    /// opened afresh.
+    /// opened afresh. Once it has loaded, the empty tab a viewer keeps
+    /// while nothing is open goes: it was a ghost beside the cube (QA N6).
     @discardableResult
     func openFile(url: URL) async -> Document {
-        guard let existing = tab(showing: url) else { return await openNewTab(url: url) }
+        guard let existing = tab(showing: url) else {
+            let opened = await openNewTab(url: url)
+            if opened.isLoaded { closeEmptyTabs(besides: opened) }
+            return opened
+        }
         if let index = tabs.firstIndex(where: { $0 === existing }) { activeTabIndex = index }
         while existing.isLoading, !Task.isCancelled {
             try? await Task.sleep(for: .milliseconds(100))
@@ -65,6 +70,14 @@ extension ViewerTabHosting {
             guard let open = tab.fileURL, FileIdentity.key(open) == wanted else { return false }
             return tab.isLoaded || tab.isLoading
         }
+    }
+
+    /// Closes the tabs nothing was ever opened in, keeping `kept` focused.
+    private func closeEmptyTabs(besides kept: Document) {
+        for tab in tabs where tab !== kept && tab.fileURL == nil && !tab.isLoading {
+            closeTab(tab)
+        }
+        if let index = tabs.firstIndex(where: { $0 === kept }) { activeTabIndex = index }
     }
 
     func closeTab(_ tab: Document) {
