@@ -21,7 +21,7 @@ parity doc for tool changes.
 |---|---|---|
 | G what still fails | done — G1 BYTEPIX; G2 files checked through their bookmark; G3 records kept before, corrected once; G4 the image's header, `keywords`; G5 dotfiles are text; G6 a probe's error line; G7 `.vnc`; G8 tabs without a sky WCS named; G9 Search pointable, a refused query not executed | `871bfb9`, `1d32617`, `8400303`, `23a9b3b`, `09069c7`, `2d91b62`, `d8dca97`, `3ae626c`, G9 |
 | A audit | done — A1 who started each task; session deletes on the bar; A2 an assistant's jobs `origin: agent`, launch returns ids; A3 figure exports return their file; A4 a failed apply's reason kept, withdraw refunds; A5 Pending with a started container explained | `f20b44e`, `8dd1197`, `5e1516a`, `76c9aa1`, A5 |
-| U the screen | in progress — U1 the robot on every view; U2 every Batch Jobs count; U3 no ghost cube tab; U5 a suggestion's cutter | `9b56ce0`, `b743b60`, `229ac05`, U5 |
+| U the screen | in progress — U1 the robot on every view; U2 every Batch Jobs count; U3 no ghost cube tab; U5 a suggestion's cutter; U4 a table's spectrum plotted | `9b56ce0`, `b743b60`, `229ac05`, `8a6e9fd`, U4 |
 | P probes and privacy | planned — P1–P3 | — |
 
 ## The open question: who deleted `notebook1`?

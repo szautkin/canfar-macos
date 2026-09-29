@@ -112,6 +112,9 @@ final class FITSViewerModel: Identifiable {
     @ObservationIgnored var recentFiles = RecentFiles.fits
     var loadError: String?
     var fileURL: URL?
+    /// What the selected HDU shows when it is a table — its spectrum, or
+    /// its columns — rather than a picture of its rows (plan 17 U4, QA N1).
+    var table: FITSTableContent?
     var lastCanvasSize: CGSize = CGSize(width: 800, height: 600)
 
     var selectedHDU: FITSHDUnit? {
@@ -119,8 +122,9 @@ final class FITSViewerModel: Identifiable {
         return file.hdus[selectedHDUIndex]
     }
 
-    var imageHDUs: [FITSHDUnit] {
-        file?.hdus.filter(\.isImage) ?? []
+    /// The HDUs a person can look at: images, and tables.
+    var viewableHDUs: [FITSHDUnit] {
+        file?.hdus.filter { $0.isImage || $0.isTable } ?? []
     }
 
     var wcs: FITSWCSTransform? { selectedHDU?.wcs }
@@ -152,7 +156,15 @@ final class FITSViewerModel: Identifiable {
                 return (data, try FITSParser.parse(from: data))
             }.value
             guard let firstImageHDU = fitsFile.firstImageHDU else {
-                throw FITSError.noImageHDU
+                // No image: a table's spectrum, or its columns (plan 17 U4).
+                let first = await Task.detached { FITSTableContent.first(of: fitsFile, in: data) }.value
+                guard let (hdu, content) = first else { throw FITSError.noImageHDU }
+                file = fitsFile
+                selectedHDUIndex = hdu.id
+                showTable(content)
+                recentFiles.add(url)
+                isLoading = false
+                return
             }
             loadStage = Self.readingStage(of: firstImageHDU)
             let image = try await Task.detached { try LoadedImage(data: data, hdu: firstImageHDU) }.value
@@ -160,6 +172,7 @@ final class FITSViewerModel: Identifiable {
 
             file = fitsFile
             selectedHDUIndex = firstImageHDU.id
+            table = nil
             apply(image)
             Self.logger.info("Loaded \(image.pixels.count) pixels (drawn at \(image.picture.width)×\(image.picture.height)), HDUs=\(fitsFile.hdus.count), WCS=\(fitsFile.firstImageHDU?.wcs != nil)")
 
@@ -175,7 +188,7 @@ final class FITSViewerModel: Identifiable {
     }
 
     func selectHDU(_ index: Int) async {
-        guard let file, index < file.hdus.count, file.hdus[index].isImage else { return }
+        guard let file, index < file.hdus.count, file.hdus[index].isImage || file.hdus[index].isTable else { return }
         selectedHDUIndex = index
 
         guard let url = fileURL else { return }
@@ -185,6 +198,19 @@ final class FITSViewerModel: Identifiable {
         // sandbox-restricted location that requires explicit access.
         let didStartScope = url.startAccessingSecurityScopedResource()
         defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
+
+        if hdu.isTable {
+            do {
+                let content = try await Task.detached {
+                    FITSTableContent.read(hdu, in: try Data(contentsOf: url, options: .mappedIfSafe))
+                }.value
+                if let content { showTable(content) }
+            } catch {
+                loadError = error.localizedDescription
+            }
+            return
+        }
+        table = nil
 
         do {
             let image = try await Task.detached {
@@ -227,6 +253,13 @@ final class FITSViewerModel: Identifiable {
         return hdu.isCompressed
             ? String(localized: "Uncompressing \(size) pixels")
             : String(localized: "Reading \(size) pixels")
+    }
+
+    /// Shows a table instead of a picture.
+    private func showTable(_ content: FITSTableContent) {
+        table = content
+        pixels = []
+        renderedImage = nil
     }
 
     private func apply(_ image: LoadedImage) {

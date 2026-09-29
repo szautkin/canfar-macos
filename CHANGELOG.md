@@ -288,6 +288,16 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **A spectrum opens as a spectrum** — a FITS file whose data is a table,
+  such as HST's `_x1d`, opened in the FITS Viewer as a blank image a row
+  of bytes tall (38946×1). It now plots its flux against wavelength, with
+  the units the file gives, each echelle order its own line and the error
+  as a band, and a very small or very large flux written in a power of
+  ten. A table holding no spectrum says so and lists its columns. Tables
+  are in the HDU list with the images. For assistants, `get_fits_spectrum`
+  reads the spectrum as plotted — columns, units, ranges and the points
+  binned to `maxPoints` — from a Research record or the open tab, and
+  `get_fits_view` says when the tab shows a table (`shows`).
 - **Your assistant can see the window** — `capture_view` gives it a
   picture of Verbinal's front window, whatever screen, sheet or Settings
   section is showing, so it can check what the app shows instead of

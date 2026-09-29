@@ -204,7 +204,9 @@ struct FITSTabView: View {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 0) {
                                 hduList(activeModel)
-                                FITSRenderControlsView(model: activeModel, marks: appState.marks)
+                                if activeModel.table == nil {
+                                    FITSRenderControlsView(model: activeModel, marks: appState.marks)
+                                }
                                 if showHeader {
                                     Divider()
                                     FITSImageInfoPanel(model: activeModel)
@@ -255,6 +257,8 @@ struct FITSTabView: View {
                                 .buttonStyle(.bordered).controlSize(.small)
                             }
                             Spacer()
+                        } else if let table = activeModel.table {
+                            FITSTableContentView(content: table, fileName: activeModel.displayName)
                         } else if activeModel.renderedImage != nil {
                             FITSImageView(model: activeModel, tabHost: tabHost, marks: appState.fitsMarkEditor)
                             Divider()
@@ -402,10 +406,10 @@ struct FITSTabView: View {
 
     private func hduList(_ model: FITSViewerModel) -> some View {
         Group {
-            if !model.imageHDUs.isEmpty {
+            if !model.viewableHDUs.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("HDUs").font(.caption.bold()).padding(.horizontal, 8)
-                    ForEach(model.imageHDUs) { hdu in
+                    ForEach(model.viewableHDUs) { hdu in
                         Button {
                             Task { await model.selectHDU(hdu.id) }
                         } label: {

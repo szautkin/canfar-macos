@@ -133,6 +133,7 @@ extension AppState {
         // FITS domain — uses the already-instantiated observationStore
         tools.append(makeGetFITSHeaderTool(store: observationStore))
         tools.append(makeGetFITSWCSTool(store: observationStore))
+        tools.append(makeGetFITSSpectrumTool(store: observationStore))
 
         // Write tools — saved queries + observation notes
         tools.append(SaveQueryTool())

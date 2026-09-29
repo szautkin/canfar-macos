@@ -33,6 +33,50 @@ extension AppState {
         return tool
     }
 
+    func makeGetFITSSpectrumTool(store: ObservationStore) -> GetFITSSpectrumTool {
+        GetFITSSpectrumTool(read: { [weak self] id, hduIndex in
+            if let id {
+                let obs = await MainActor.run { store.observation(matching: id) }
+                guard let obs else { throw ToolFailureReason.observationNotFound(id: id, localPath: nil) }
+                guard let table = try obs.withReadableFile({ try Self.table(in: $0, hduIndex: hduIndex) }) else {
+                    throw ToolFailureReason.observationNotFound(id: obs.id.uuidString, localPath: obs.localPath)
+                }
+                return table
+            }
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let tab = await MainActor.run { () -> (url: URL?, index: Int, table: FITSTableContent?) in
+                let tab = self.fitsTabHost.activeTab
+                return (tab?.fileURL, tab?.selectedHDUIndex ?? 0, tab?.table)
+            }
+            guard let url = tab.url else { throw ToolFailureReason.invalidArgument("No FITS tab is open — pass downloaded_observation_id") }
+            if hduIndex == nil, let shown = tab.table {
+                return .init(file: url.lastPathComponent, hduIndex: tab.index, content: shown)
+            }
+            let didStart = url.startAccessingSecurityScopedResource()
+            defer { if didStart { url.stopAccessingSecurityScopedResource() } }
+            return try Self.table(in: url, hduIndex: hduIndex)
+        })
+    }
+
+    /// The table at `hduIndex` of the FITS file at `url`, or its first with a spectrum.
+    nonisolated static func table(in url: URL, hduIndex: Int?) throws -> GetFITSSpectrumTool.Table {
+        let data = try Data(contentsOf: url, options: .mappedIfSafe)
+        let file = try FITSParser.parse(from: data)
+        if let hduIndex {
+            guard file.hdus.indices.contains(hduIndex) else {
+                throw ToolFailureReason.invalidArgument("hduIndex \(hduIndex) out of range [0, \(file.hdus.count - 1)]")
+            }
+            guard let content = FITSTableContent.read(file.hdus[hduIndex], in: data) else {
+                throw ToolFailureReason.invalidArgument("HDU \(hduIndex) is not a binary table")
+            }
+            return .init(file: url.lastPathComponent, hduIndex: hduIndex, content: content)
+        }
+        guard let first = FITSTableContent.first(of: file, in: data) else {
+            throw ToolFailureReason.invalidArgument("\(url.lastPathComponent) has no binary table")
+        }
+        return .init(file: url.lastPathComponent, hduIndex: first.hdu.id, content: first.content)
+    }
+
     /// Open the local FITS file for a downloaded observation, parse it,
     /// and return the snapshot. Tries the security-scoped bookmark
     /// *before* `fileExists` on the stored path — a sandbox miss on the
@@ -118,6 +162,9 @@ extension AppState {
         ViewerImageTool.fits { [weak self] maxSide in
             guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
             return try await MainActor.run {
+                if self.fitsTabHost.activeTab?.table != nil {
+                    throw ToolFailureReason.targetNotResolved(GetFITSSpectrumTool.tableShown)
+                }
                 guard let tab = self.fitsTabHost.activeTab, tab.isLoaded, let hdu = tab.selectedHDU,
                       let rendered = tab.renderedImage, let viewport = tab.displayTransform(canvasSize: tab.lastCanvasSize) else {
                     throw ToolFailureReason.targetNotResolved("No image is on screen in the FITS Viewer — open one first")
@@ -181,6 +228,7 @@ extension AppState {
                 guard let tab = self.fitsTabHost.activeTab, let hdu = tab.selectedHDU else {
                     throw ToolFailureReason.targetNotResolved("No FITS image is open in the viewer")
                 }
+                guard tab.table == nil else { throw ToolFailureReason.targetNotResolved(GetFITSSpectrumTool.tableShown) }
                 guard let result = tab.probePixel(x: x, y: y) else {
                     throw ToolFailureReason.invalidArgument(
                         "pixel (\(x), \(y)) outside \(hdu.header.naxis1)×\(hdu.header.naxis2)")
@@ -300,8 +348,8 @@ extension AppState {
             isOpen: true,
             filePath: tab.fileURL?.path,
             hduIndex: tab.selectedHDUIndex,
-            imageWidth: hdu.header.naxis1,
-            imageHeight: hdu.header.naxis2,
+            imageWidth: tab.table == nil ? hdu.header.naxis1 : nil,
+            imageHeight: tab.table == nil ? hdu.header.naxis2 : nil,
             stretch: tab.renderParams.stretch.rawValue,
             colormap: tab.renderParams.colormap.rawValue,
             minCut: Double(tab.renderParams.minCut),
@@ -310,7 +358,8 @@ extension AppState {
             rotationRadians: tab.viewport.rotation,
             crosshair: crosshair,
             openTabPaths: paths,
-            activeTabIndex: host.activeTabIndex)
+            activeTabIndex: host.activeTabIndex,
+            shows: tab.table.map { $0.spectrum == nil ? "table" : "spectrum" })
     }
 
     private func applyFITSView(_ args: SetFITSViewTool.Args) -> String? {

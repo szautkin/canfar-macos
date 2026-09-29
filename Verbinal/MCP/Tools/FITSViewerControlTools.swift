@@ -33,6 +33,9 @@ struct GetFITSViewTool: JSONReadTool {
         let crosshair: Crosshair?
         let openTabPaths: [String]
         let activeTabIndex: Int?
+        /// "spectrum" or "table" when the tab shows a table rather than an
+        /// image — `get_fits_spectrum` reads it; absent for an image.
+        var shows: String?
 
         /// `x`/`y` are the 0-based FITS array indices of the pixel under
         /// the crosshair — the convention `probe_fits_pixel` takes.
@@ -47,7 +50,7 @@ struct GetFITSViewTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_fits_view",
-        description: "Read the active FITS-viewer tab's full render/view state: file path, HDU, image dimensions in pixels, stretch, colormap, cut levels (normalized 0-1), zoom factor, rotation (radians), crosshair position (0-based FITS array pixel, same convention as probe_fits_pixel, + RA/Dec in degrees when a WCS is present), and the list of open tabs. `openTabPaths` has one entry per tab, index-aligned with `activeTabIndex` and set_fits_view `tabIndex`. `isOpen` is false when the active tab has no loaded image.",
+        description: "Read the active FITS-viewer tab's full render/view state: file path, HDU, image dimensions in pixels, stretch, colormap, cut levels (normalized 0-1), zoom factor, rotation (radians), crosshair position (0-based FITS array pixel, same convention as probe_fits_pixel, + RA/Dec in degrees when a WCS is present), and the list of open tabs. `openTabPaths` has one entry per tab, index-aligned with `activeTabIndex` and set_fits_view `tabIndex`. `isOpen` is false when the active tab has no loaded file; `shows` is \"spectrum\" or \"table\" when it shows a table rather than an image (read it with get_fits_spectrum).",
         schema: #"""
         {
           "type": "object",

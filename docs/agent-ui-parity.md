@@ -41,6 +41,7 @@ every later agent is told; **read** = pure data.
 | Need | Tool | Kind |
 |---|---|---|
 | The FITS canvas as shown, with the map back to file pixels | `get_fits_image` | read |
+| A table HDU's spectrum plot (an `_x1d`), or its columns | `get_fits_spectrum` | read |
 | The cube's slice or volume as shown | `get_cube_image` | read |
 
 ## Search — form

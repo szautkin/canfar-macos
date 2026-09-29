@@ -18,7 +18,7 @@ public struct FITSFile: Sendable {
 
     /// First image HDU (NAXIS >= 2).
     public var firstImageHDU: FITSHDUnit? {
-        hdus.first { $0.header.naxis >= 2 && $0.header.naxis1 > 0 && $0.header.naxis2 > 0 }
+        hdus.first(where: \.isImage)
     }
 }
 
@@ -49,8 +49,18 @@ public struct FITSHDUnit: Sendable, Identifiable {
     /// A tile-compressed image (fpack).
     public var isCompressed: Bool { compression != nil }
 
-    public var isImage: Bool { header.naxis >= 2 && header.naxis1 > 0 && header.naxis2 > 0 }
-    public var label: String { "HDU \(id)\(isImage ? " [\(header.naxis1)×\(header.naxis2)]" : "")" }
+    /// A table's rows are not pixels: an `_x1d` read as an image was a blank
+    /// 38946×1 picture (QA N1). A compressed image's header is the image's.
+    public var isTable: Bool {
+        let xtension = header.string("XTENSION") ?? ""
+        return xtension.hasPrefix("BINTABLE") || xtension.hasPrefix("TABLE")
+    }
+
+    public var isImage: Bool { !isTable && header.naxis >= 2 && header.naxis1 > 0 && header.naxis2 > 0 }
+    public var label: String {
+        if isTable { return "HDU \(id) [table\(header.string("EXTNAME").map { " \($0)" } ?? "")]" }
+        return "HDU \(id)\(isImage ? " [\(header.naxis1)×\(header.naxis2)]" : "")"
+    }
 }
 
 /// Render parameters (value type, drives Metal uniforms).

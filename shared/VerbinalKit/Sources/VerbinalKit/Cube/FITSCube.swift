@@ -121,49 +121,13 @@ public enum FITSCube {
         )
     }
 
-    /// Minimal single-row BINTABLE column reader (floats/doubles) — enough for
-    /// JWST WAVE-TAB wavelength lookup tables (one array-valued column).
+    /// A single-row BINTABLE's real-valued column — enough for JWST
+    /// WAVE-TAB wavelength lookup tables (one array-valued column).
     public static func readBintableColumn(source: CubeDataSource, hdu: FITSHDUnit, column: String) async throws -> [Double]? {
-        let h = hdu.header
-        guard let xt = h.string("XTENSION"), xt.hasPrefix("BINTABLE") else { return nil }
-        let tfields = h.int("TFIELDS")
-        let rowBytes = h.naxis1
-        let nrows = h.naxis2
-        guard nrows >= 1, tfields >= 1 else { return nil }
-
-        // Width in bytes per element of each BINTABLE TFORM code.
-        let elementBytes: [Character: Double] = [
-            "L": 1, "X": 0.125, "B": 1, "I": 2, "J": 4, "K": 8,
-            "A": 1, "E": 4, "D": 8, "C": 8, "M": 16, "P": 8, "Q": 16,
-        ]
-        var colOffset = 0
-        for i in 1...tfields {
-            let tform = (h.string("TFORM\(i)") ?? "").trimmingCharacters(in: .whitespaces)
-            guard let (repeatCount, code) = parseTForm(tform) else { return nil }
-            let width = Int((Double(repeatCount) * (elementBytes[code] ?? 1)).rounded(.up))
-            let ttype = (h.string("TTYPE\(i)") ?? "").trimmingCharacters(in: .whitespaces).lowercased()
-            if ttype == column.lowercased() {
-                guard code == "E" || code == "D" else { return nil }
-                let raw = try await source.read(offset: hdu.dataOffset + colOffset, length: width)
-                guard raw.count >= width else { return nil }
-                var out = [Double](repeating: 0, count: repeatCount)
-                out.withUnsafeMutableBufferPointer { dst in
-                    raw.withUnsafeBytes { rb in
-                        if code == "E" {
-                            let p = rb.bindMemory(to: UInt32.self)
-                            for k in 0..<repeatCount { dst[k] = Double(Float(bitPattern: p[k].bigEndian)) }
-                        } else {
-                            let p = rb.bindMemory(to: UInt64.self)
-                            for k in 0..<repeatCount { dst[k] = Double(bitPattern: p[k].bigEndian) }
-                        }
-                    }
-                }
-                return out
-            }
-            colOffset += width
-            if colOffset > rowBytes { return nil }
-        }
-        return nil
+        guard let table = FITSBinaryTable(header: hdu.header), table.rows >= 1,
+              let wanted = table.column(named: column), wanted.type == "E" || wanted.type == "D" else { return nil }
+        let row = try await source.read(offset: hdu.dataOffset, length: table.rowBytes)
+        return table.values(of: wanted, inRow: row)
     }
 
     // MARK: - Helpers
@@ -185,16 +149,5 @@ public enum FITSCube {
         let pcount = header.int("PCOUNT")
         let gcount = header.int("GCOUNT", fallback: 1)
         return unit * gcount * (nelem + pcount)
-    }
-
-    /// Split a TFORM like "3600E" / "1D" / "E" into (repeat, type code).
-    private static func parseTForm(_ s: String) -> (Int, Character)? {
-        var digits = ""
-        var idx = s.startIndex
-        while idx < s.endIndex, s[idx].isNumber { digits.append(s[idx]); idx = s.index(after: idx) }
-        guard idx < s.endIndex else { return nil }
-        let code = s[idx]
-        let repeatCount = digits.isEmpty ? 1 : (Int(digits) ?? 1)
-        return (repeatCount, code)
     }
 }

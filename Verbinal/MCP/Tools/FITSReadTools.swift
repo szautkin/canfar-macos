@@ -93,6 +93,86 @@ struct GetFITSHeaderTool: JSONReadTool {
     }
 }
 
+// MARK: - get_fits_spectrum
+
+/// The spectrum a FITS table holds — an HST `_x1d`, a JWST `x1d` — as the
+/// FITS viewer plots it, binned to `maxPoints` (plan 17 U4, QA N1).
+struct GetFITSSpectrumTool: JSONReadTool {
+    struct Args: Decodable, Sendable {
+        var downloaded_observation_id: String?
+        var hduIndex: Int?
+        var maxPoints: Int?
+    }
+
+    /// Which table of which file, and what it holds.
+    struct Table: Sendable {
+        let file: String
+        let hduIndex: Int
+        let content: FITSTableContent
+    }
+
+    struct Output: Encodable, Sendable {
+        let file: String
+        let hduIndex: Int
+        let isSpectrum: Bool
+        /// The table's columns, when it holds no spectrum.
+        let columns: [String]?
+        let wavelengthColumn: String?
+        let wavelengthUnit: String?
+        let fluxColumn: String?
+        let fluxUnit: String?
+        let errorColumn: String?
+        /// Rows of arrays are segments, one per echelle order.
+        let segmentCount: Int?
+        let pointCount: Int?
+        let wavelengthRange: [Double]?
+        let fluxRange: [Double]?
+        /// Per segment, each point the mean of its stretch: [wavelength, flux] or [wavelength, flux, error].
+        let segments: [[[Double]]]?
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "get_fits_spectrum",
+        description: "Read the spectrum a FITS table holds — an HST `_x1d`, a JWST `x1d`, an SDSS coadd — as the FITS viewer plots it: its wavelength, flux and error columns with their units, ranges, and the points binned to `maxPoints` (default 200), one list per segment (a table of arrays has a segment per row, an echelle order each). Pass `downloaded_observation_id` for a file in Research, or nothing for the file in the active FITS tab. A table with no spectrum answers `isSpectrum: false` and its columns. Read-only.",
+        schema: #"""
+        {
+          "type": "object",
+          "properties": {
+            "downloaded_observation_id": { "type": "string", "description": "A Research record's id; left out, the active FITS tab." },
+            "hduIndex": { "type": "integer", "minimum": 0, "description": "The table HDU; left out, the first table with a spectrum." },
+            "maxPoints": { "type": "integer", "minimum": 2, "maximum": 4000 }
+          },
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    /// What the image tools say to a tab that shows a table.
+    static let tableShown = "The active FITS tab shows a table, not an image — get_fits_spectrum reads it"
+
+    /// The table asked for, from a Research record or the active tab.
+    let read: @Sendable (_ observationID: String?, _ hduIndex: Int?) async throws -> Table
+
+    func handle(_ args: Args, context: AIToolContext) async throws -> Output {
+        let table = try await read(args.downloaded_observation_id, args.hduIndex)
+        guard let spectrum = table.content.spectrum else {
+            guard case .columns(let columns) = table.content else { throw ToolFailureReason.backendError("no table") }
+            return Output(file: table.file, hduIndex: table.hduIndex, isSpectrum: false, columns: columns,
+                          wavelengthColumn: nil, wavelengthUnit: nil, fluxColumn: nil, fluxUnit: nil, errorColumn: nil,
+                          segmentCount: nil, pointCount: nil, wavelengthRange: nil, fluxRange: nil, segments: nil)
+        }
+        let points = spectrum.binned(maxPoints: min(max(args.maxPoints ?? 200, 2), 4000))
+        return Output(
+            file: table.file, hduIndex: table.hduIndex, isSpectrum: true, columns: nil,
+            wavelengthColumn: spectrum.wavelengthColumn, wavelengthUnit: spectrum.wavelengthUnit,
+            fluxColumn: spectrum.fluxColumn, fluxUnit: spectrum.fluxUnit, errorColumn: spectrum.errorColumn,
+            segmentCount: spectrum.segments.count, pointCount: spectrum.pointCount,
+            wavelengthRange: spectrum.wavelengthRange.map { [$0.lowerBound, $0.upperBound] },
+            fluxRange: spectrum.fluxRange.map { [$0.lowerBound, $0.upperBound] },
+            segments: points.map { $0.map { p in [p.wavelength, p.flux] + (p.error.map { [$0] } ?? []) } })
+    }
+}
+
 // MARK: - get_fits_wcs
 
 /// Pixel↔world transform parameters for a FITS HDU.

@@ -1241,6 +1241,26 @@
         }
       }
     },
+    "%lld orders" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ordres"
+          }
+        }
+      }
+    },
+    "%@ against %@ · %lld points" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ en fonction de %2$@ · %3$lld points"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -6796,6 +6816,16 @@
         }
       }
     },
+    "Flux" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flux"
+          }
+        }
+      }
+    },
     "Folder" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7860,6 +7890,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inversée"
+          }
+        }
+      }
+    },
+    "It has no wavelength and flux columns. Its columns: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elle n'a pas de colonnes de longueur d'onde et de flux. Ses colonnes : %@"
           }
         }
       }
@@ -9767,6 +9807,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "AUCUN SIGNAL"
+          }
+        }
+      }
+    },
+    "No spectrum in this table" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun spectre dans cette table"
           }
         }
       }
@@ -14700,6 +14750,16 @@
         }
       }
     },
+    "Spectrum of %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spectre de %@"
+          }
+        }
+      }
+    },
     "Spectrum probe" : {
       "localizations" : {
         "fr" : {
@@ -17160,7 +17220,6 @@
       }
     },
     "Wavelength" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {

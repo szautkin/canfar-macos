@@ -132,7 +132,8 @@ struct DescribeAppTool: JSONReadTool {
         "headless"|"notebook"|…` narrows everything to images
         launchable as that session type. See "Image content
         discovery" below.
-      * `get_fits_header`, `get_fits_wcs` — local-file FITS introspection.
+      * `get_fits_header`, `get_fits_wcs` — local-file FITS introspection;
+        `get_fits_spectrum` — the spectrum a table holds (an `_x1d`), as plotted.
       * `list_pending_proposals`, `get_proposal_state`, `list_events` —
         introspect the proposal lifecycle when in strip-confirm mode.
 
