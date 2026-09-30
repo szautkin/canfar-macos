@@ -14,15 +14,15 @@ the reported case first, one owner per rule, and one green commit per step.
 
 | Step | State | Commit |
 |---|---|---|
-| V version | done — 1.4.0, build 17; `buildCommit` | V |
-| D2 pool sizing | done — the cgroup quota | D2 |
-| D3 archive outage | done — stops after 4 unanswered, fails | D3 |
-| D4 spectrum figure | done — TARGNAME; the error's size said | D4 |
-| D5 TAP timeout | done — no retry after a timeout; the wait shown | D5 |
-| D6 limit banner | done — interactive tabs only | D6 |
-| R registry | done — `cadc-west-01.canfar.net/reg` by default (the person's request) | R |
-| N small items | done — N1 a typed id names its likely record; any identifier finds it; N2 each card's Renew and Delete pointable; N3 a slash-form duplicate marked; N4 a repeat of a failed task says "again"; N5 pinned by a test (not a defect) | `0e9653d`, `3362a69`, `4424489`, `1612e5e`, N5 |
-| Q handout 22 | done — [handout 22](./22-qa-regression-plan21.md) | Q |
+| V version | done — 1.4.0, build 17; `buildCommit` | `6174fc6` |
+| D2 pool sizing | done — the cgroup quota | `3bd49ac` |
+| D3 archive outage | done — stops after 4 unanswered, fails | `3ce7de5` |
+| D4 spectrum figure | done — TARGNAME; the error's size said | `5c682cb`, `4b3378b` |
+| D5 TAP timeout | done — no retry after a timeout; the wait shown | `eed4862` |
+| D6 limit banner | done — interactive tabs only | `6b3252b` |
+| R registry | done — `cadc-west-01.canfar.net/reg` by default (the person's request) | `b660a3e` |
+| N small items | done — N1 a typed id names its likely record; any identifier finds it; N2 each card's Renew and Delete pointable; N3 a slash-form duplicate marked; N4 a repeat of a failed task says "again"; N5 pinned by a test (not a defect) | `0e9653d`, `3362a69`, `4424489`, `1612e5e`, `8efadbe` |
+| Q handout 22 | done — [handout 22](./22-qa-regression-plan21.md) | `a8fae9a` |
 
 ## What the report got wrong
 
