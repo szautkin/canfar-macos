@@ -13,7 +13,8 @@ public struct APIEndpoints: Sendable, Equatable {
     public var storageBaseURL: String
     /// IVOA registry service base. Serves `resource-caps` (the map from
     /// `ivo://` resource IDs to VOSI capabilities documents) plus the
-    /// registry's own availability endpoint.
+    /// registry's own availability endpoint. CADC's west registry, off the
+    /// archive's host, so the map is there when that host is down (plan 21).
     public var registryBaseURL: String
     /// CADC archive base — TAP, CAOM2 metadata, DataLink, packaging.
     /// Single root means changing CADC's host name happens in one place.
@@ -29,7 +30,7 @@ public struct APIEndpoints: Sendable, Equatable {
         skahaBaseURL: String = "https://ws-uv.canfar.net/skaha",
         acBaseURL: String = "https://ws-uv.canfar.net/ac",
         storageBaseURL: String = "https://ws-uv.canfar.net/arc/nodes/home",
-        registryBaseURL: String = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg",
+        registryBaseURL: String = "https://cadc-west-01.canfar.net/reg",
         archiveBaseURL: String = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca",
         externalBaseURL: String = "https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca",
         tapMaxRecords: Int = 30000

@@ -87,7 +87,7 @@ final class GetServiceHealthTests: XCTestCase {
         XCTAssertEqual(byName["cadc-resolver"], "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cadc-target-resolver/availability")
         XCTAssertEqual(byName["vospace"], "https://ws-uv.canfar.net/arc/availability")
         XCTAssertEqual(byName["skaha"], "https://ws-uv.canfar.net/skaha/availability")
-        XCTAssertEqual(byName["cadc-registry"], "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg/availability")
+        XCTAssertEqual(byName["cadc-registry"], "https://cadc-west-01.canfar.net/reg/availability")
     }
 
     /// Custom endpoint settings must flow into the probe URLs (the

@@ -20,6 +20,7 @@ the reported case first, one owner per rule, and one green commit per step.
 | D4 spectrum figure | done — TARGNAME; the error's size said | D4 |
 | D5 TAP timeout | done — no retry after a timeout; the wait shown | D5 |
 | D6 limit banner | planned | — |
+| R registry | done — `cadc-west-01.canfar.net/reg` by default (the person's request) | R |
 | N small items | planned | — |
 | Q handout 22 | planned | — |
 

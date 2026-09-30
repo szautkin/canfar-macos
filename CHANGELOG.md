@@ -638,6 +638,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **The service registry is CADC's west registry by default** —
+  `https://cadc-west-01.canfar.net/reg/resource-caps`, off the archive's
+  own host, so the map of CADC's services is still there when that host
+  is down, as it was for a whole QA pass. An override in Settings ▸
+  Endpoints still wins; the services are looked up afresh from the new
+  registry on the next launch.
 - **The home screen's tiles in Windows' order** — your account's screens
   first (Portal, Remote Compute, Storage), then Search, Research, the
   viewers, the notebook, Workflows, and the AI tiles last.
