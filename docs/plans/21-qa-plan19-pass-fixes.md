@@ -21,7 +21,7 @@ the reported case first, one owner per rule, and one green commit per step.
 | D5 TAP timeout | done — no retry after a timeout; the wait shown | D5 |
 | D6 limit banner | done — interactive tabs only | D6 |
 | R registry | done — `cadc-west-01.canfar.net/reg` by default (the person's request) | R |
-| N small items | in progress — N1 a typed id names its likely record; any identifier finds it; N2 each card's Renew and Delete pointable; N3 a slash-form duplicate marked; N4 a repeat of a failed task says "again" | `0e9653d`, `3362a69`, `4424489`, N4 |
+| N small items | in progress — N1 a typed id names its likely record; any identifier finds it; N2 each card's Renew and Delete pointable; N3 a slash-form duplicate marked; N4 a repeat of a failed task says "again"; N5 pinned by a test (not a defect) | `0e9653d`, `3362a69`, `4424489`, `1612e5e`, N5 |
 | Q handout 22 | planned | — |
 
 ## What the report got wrong
@@ -50,7 +50,7 @@ the reported case first, one owner per rule, and one green commit per step.
 | **N2** | The Portal session card's Delete and Renew are not pointable | Each card's Delete and Renew are pointable targets, by session id. |
 | **N3** | `2A7511B7-…`: a second `1525350` record under the slash form, with the 0-byte `pkg-….txt` file | R3 leaves it, rightly, as the corrected id is taken by `33AFFFB8-…`. It is marked as a duplicate of that record, in Research and in `list_downloaded_observations` (`duplicateOf`), for the person to delete. |
 | **N4** | 1.1: the same failed delete appears twice on the bar, 5 s apart | A failed proposal stays in Pending for retry, and the person applied it again. Any task that repeats one that failed says "again", on the bar and in `list_activity` (`again`). *Not done:* withholding the retry of an apply that can never succeed (no such session). That would need a failure marked permanent, one that keeps its reason after leaving Pending, and a retry fails again saying the same. |
-| **N5** | "`get_proposal_state` forgets failed proposals after ~5 min though the item stays in Pending" | *Not reproduced from the code:* a pending proposal's state is read from the live queue, not a tombstone, until it expires (3 h). What the pass likely saw is an auto-applied write that failed inline (e.g. `renew_session`), which is withdrawn, with the failure in the tool's answer. Handout 22 asks for the id and the times if it recurs. |
+| **N5** | "`get_proposal_state` forgets failed proposals after ~5 min though the item stays in Pending" | *Not reproduced from the code:* a pending proposal's state is read from the live queue, not a tombstone, until it expires (3 h). What the pass likely saw is an auto-applied write that failed inline (e.g. `renew_session`), which is withdrawn, with the failure in the tool's answer. A test now pins it: a failed proposal still pending reads `failed`, with its reason, 30 minutes on. Handout 22 asks for the id and the times if it recurs. |
 
 ## Handout corrections (for handout 22)
 

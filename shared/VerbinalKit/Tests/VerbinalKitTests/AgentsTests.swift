@@ -626,6 +626,23 @@ final class InMemoryProposalStoreTests: XCTestCase {
         XCTAssertEqual(resolved, .applied, "a finished apply is not taken for an interrupted one")
     }
 
+    /// Plan 21 N5: "get_proposal_state forgets failed proposals after ~5 min
+    /// though the item stays in Pending" — it does not: a pending proposal's
+    /// state is read from the queue, not a tombstone, until it expires.
+    func testAFailedProposalStillPendingIsNotForgottenAfterFiveMinutes() async {
+        final class Clock: @unchecked Sendable { var now = Date(timeIntervalSince1970: 2_000_000) }
+        let clock = Clock()
+        let store = InMemoryProposalStore(now: { clock.now })
+        let p = await store.enqueue(makeProposal())
+        _ = await store.beginApply(p.id)
+        _ = await store.markApplyFailed(p.id, reason: "no such session x")
+        clock.now = clock.now.addingTimeInterval(30 * 60)
+        let state = await store.state(p.id)
+        XCTAssertEqual(state, .failed)
+        let reason = await store.failureReason(p.id)
+        XCTAssertEqual(reason, "no such session x")
+    }
+
     /// Plan 17 A4 (QA N7): a withdrawn proposal gives its slot back.
     func testReleasingGivesASlotBack() async {
         let budget = ProposalBudget(limit: 2)
