@@ -93,10 +93,10 @@ enum SpectrumAxis {
     /// line": a high-S/N spectrum's band can be too thin to see, and was
     /// taken for missing (plan 21 D4).
     static func errorNote(column: String, size: (ofFlux: Double, ofRange: Double)) -> String {
-        let percent = (size.ofFlux * 100).formatted(.number.precision(.significantDigits(2)))
+        let percent = size.ofFlux.formatted(.percent.precision(.significantDigits(2)))
         return 2 * size.ofRange * plotHeight < 2.5
-            ? String(localized: "±1σ band from \(column) — median \(percent)% of the flux, narrower than the line")
-            : String(localized: "±1σ band from \(column) — median \(percent)% of the flux")
+            ? String(localized: "±1σ band from \(column) — median \(percent) of the flux, narrower than the line")
+            : String(localized: "±1σ band from \(column) — median \(percent) of the flux")
     }
 
     /// "Flux (10^-14 erg/s/cm**2/Angstrom)".
