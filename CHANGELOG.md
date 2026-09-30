@@ -140,8 +140,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   `get_current_view` now says which observation's detail is open in
   Search and which Research record is selected; the home tiles, the
   Search tabs, form sections and results controls (export, columns,
-  pages, filters), the Storage toolbar and every Settings section can be
-  pointed at; and `get_platform_load` says when the platform did not
+  pages, filters), each Portal session card's Renew and Delete, the
+  Storage toolbar and every Settings section can be pointed at; and `get_platform_load` says when the platform did not
   report how many sessions are running, instead of promising counts it
   did not have.
 - **A recent search is named after what you looked for** — an M101 search
