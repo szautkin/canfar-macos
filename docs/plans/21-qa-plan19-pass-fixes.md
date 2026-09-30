@@ -15,7 +15,7 @@ the reported case first, one owner per rule, and one green commit per step.
 | Step | State | Commit |
 |---|---|---|
 | V version | done — 1.4.0, build 17; `buildCommit` | V |
-| D2 pool sizing | planned | — |
+| D2 pool sizing | done — the cgroup quota | D2 |
 | D3 archive outage | planned | — |
 | D4 spectrum figure | planned | — |
 | D5 TAP timeout | planned | — |
@@ -36,7 +36,7 @@ the reported case first, one owner per rule, and one green commit per step.
 | Step | Finding | Cause (found) | Fix |
 |---|---|---|---|
 | **V** | 0.1 | See above. | `MARKETING_VERSION` 1.4.0 on this branch (decision 1). `describe_app` also reports the build's git commit (`buildCommit`, written into Info.plist at build time), so a handout's "`@ 62bdbf6` or later" can be checked. |
-| **D2** | 6.2 (High) | K2's advice was wrong. CANFAR limits a session with a CFS quota (`/sys/fs/cgroup/cpu.max` = `400000 100000`), not a cpuset, so `sched_getaffinity` covers all 192 node CPUs, as `cpu_count()` does. | `run_code`'s description and the Remote Compute screen give the working signal: the cgroup quota (`quota ÷ period` from `/sys/fs/cgroup/cpu.max`), with a two-line snippet. `get_compute_state` reports the session's cores. |
+| **D2** | 6.2 (High) | K2's advice was wrong. CANFAR limits a session with a CFS quota (`/sys/fs/cgroup/cpu.max` = `400000 100000`), not a cpuset, so `sched_getaffinity` covers all 192 node CPUs, as `cpu_count()` does. | `run_code`'s description and the Remote Compute screen give the working signal: the cgroup quota (`quota ÷ period` from `/sys/fs/cgroup/cpu.max`), with a two-line snippet. `get_compute_state` already reports `sessionCores`. |
 | **D3** | 4.1 (Medium) | With the archive down, each record waited out `caom2ops/meta`'s 60 s timeout, two at a time: 36 records took 18 minutes, and the task still ended **succeeded**: "answered for 0 of 36". | The check stops once the archive has answered none of its first four requests: "The archive is not answering — Research records are asked again at the next sign-in". It **fails** when the archive answered for none. A partial answer succeeds and says how many. |
 | **D4** | 3.1 (Medium) | *Checked on the pass's own file:* an HST file has no `OBJECT`; its target is `TARGNAME` (SN2023IXF), so the caption fell back to the file name. The error band is drawn, but this spectrum's median error is 0.76% of the flux, about 0.5 pt at the figure's scale: thinner than the 1 pt line. Rendered here to confirm. | `FITSFigureCaption` reads `OBJECT`, else `TARGNAME`, for images too. The spectrum names its error: "±1σ band from ERROR — median 0.8% of the flux", and says when the band is narrower than the line, rather than leaving the reader to look for it. The band's opacity rises so a thin band shows. |
 | **D5** | 7.3, Search (Medium) | A TAP search on a dead host: `timedOut` is "transient", so the query is tried three times at 120 s each, about 6 minutes behind a spinner. | The TAP path does not retry after a timeout (the host has had two minutes), and has an overall budget. The Search screen says "Waiting for CADC — *n* s" with Cancel, and after a timeout "CADC's archive is not answering" (as `get_service_health` saw). `search_observations` answers the same. |
