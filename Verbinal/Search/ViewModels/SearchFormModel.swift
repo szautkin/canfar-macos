@@ -31,6 +31,8 @@ final class SearchFormModel {
 
     // Search execution state
     var isSearching = false
+    /// When the running search began — the screen says how long it has waited.
+    private(set) var searchStartedAt: Date?
     var searchError: String?
 
     /// How a search ended. Agent tools report it: a search the person
@@ -222,12 +224,14 @@ final class SearchFormModel {
         let task = Task { try await client.tapQueryRows(adql: query) }
         runningQuery = task
         isSearching = true
+        searchStartedAt = Date()
         searchError = nil
         defer {
             // A newer search owns the spinner now.
             if runningQuery == task {
                 runningQuery = nil
                 isSearching = false
+                searchStartedAt = nil
             }
         }
         do {
@@ -239,8 +243,9 @@ final class SearchFormModel {
             return .completed(rows: rows.count)
         } catch {
             if task.isCancelled || error is CancellationError { return .cancelled }
-            searchError = error.localizedDescription
-            return .failed(error.localizedDescription)
+            let message = SearchError.describing(error)
+            searchError = message
+            return .failed(message)
         }
     }
 

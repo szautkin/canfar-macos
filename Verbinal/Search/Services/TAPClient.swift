@@ -56,7 +56,9 @@ actor TAPClient {
             throw SearchError.networkError("Invalid TAP URL")
         }
 
-        return try await retrying(.default) {
+        // A query may take two minutes; one that gave no answer in them is
+        // not asked again (plan 21 D5).
+        return try await retrying(.longRequests) {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")

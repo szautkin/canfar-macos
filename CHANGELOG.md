@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A search on an archive that is down says so** — with CADC's archive
+  not answering, a search kept its spinner for about four minutes, trying
+  again after each two-minute timeout, then said "The request timed out."
+  A search that gets no answer in two minutes now stops and says CADC's
+  archive is not answering; after ten seconds the screen shows how long
+  it has waited, beside Cancel; your assistant's `search_observations`
+  says the same.
 - **Your assistant can tell which build it is talking to** — this
   release reported itself as 1.3.4, and a QA pass took it for the wrong
   build. It now says 1.4.0, and `describe_app` gives the commit the build

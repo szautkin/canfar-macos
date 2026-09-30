@@ -27,19 +27,25 @@ public struct RetryPolicy: Sendable {
     /// burn `maxAttempts × timeoutInterval` (3 × 120s on the TAP path)
     /// while holding the caller. `nil` = attempts-only (legacy).
     public var overallBudget: Duration?
+    /// Whether a request that timed out is tried again. Not for requests
+    /// that wait minutes: a host that gave no answer in two is down, and a
+    /// TAP search on a dead CADC held its spinner four minutes (plan 21 D5).
+    public var retriesTimeouts: Bool
 
     public init(
         maxAttempts: Int = 3,
         initialDelay: Duration = .milliseconds(300),
         maxDelay: Duration = .seconds(5),
         backoffMultiplier: Double = 2.0,
-        overallBudget: Duration? = .seconds(180)
+        overallBudget: Duration? = .seconds(180),
+        retriesTimeouts: Bool = true
     ) {
         self.maxAttempts = max(1, maxAttempts)
         self.initialDelay = initialDelay
         self.maxDelay = maxDelay
         self.backoffMultiplier = backoffMultiplier
         self.overallBudget = overallBudget
+        self.retriesTimeouts = retriesTimeouts
     }
 
     /// Conservative default for short-lived metadata calls.
@@ -48,6 +54,10 @@ public struct RetryPolicy: Sendable {
     /// No retries. Use for user-facing actions where a single failure should
     /// surface immediately (e.g., login).
     public static let none = RetryPolicy(maxAttempts: 1)
+
+    /// For requests allowed minutes (a TAP query): a dropped connection or
+    /// a 5xx is tried again, a timeout is not.
+    public static let longRequests = RetryPolicy(retriesTimeouts: false)
 
     /// Next backoff delay after `current`: exponential scaling by
     /// `backoffMultiplier`, clamped to `maxDelay` and floored at zero.
@@ -115,6 +125,9 @@ public func retrying<T: Sendable>(
             // Don't retry on cancellation — the caller meant for us to stop.
             if error is CancellationError { throw error }
             if attempt >= policy.maxAttempts || !isTransient(error) {
+                throw error
+            }
+            if !policy.retriesTimeouts, (error as? URLError)?.code == .timedOut {
                 throw error
             }
             // Wall-clock budget: give up rather than start an attempt

@@ -167,6 +167,23 @@ enum SearchError: LocalizedError {
     case networkError(String)
     case queryError(String)
 
+    /// A search's failure in words: an archive that did not answer, or
+    /// could not be reached, says so — "The request timed out." did not
+    /// say who (plan 21 D5).
+    static func describing(_ error: Error) -> String {
+        guard let urlError = error as? URLError else { return error.localizedDescription }
+        switch urlError.code {
+        case .timedOut:
+            return String(localized: "CADC's archive is not answering — no reply in two minutes. Try again later.")
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed, .networkConnectionLost:
+            return String(localized: "CADC's archive cannot be reached. Try again later.")
+        case .notConnectedToInternet:
+            return String(localized: "This Mac is not connected to the internet.")
+        default:
+            return urlError.localizedDescription
+        }
+    }
+
     var errorDescription: String? {
         switch self {
         case .parseError(let msg): return msg

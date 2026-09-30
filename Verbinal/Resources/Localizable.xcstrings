@@ -2556,6 +2556,26 @@
         }
       }
     },
+    "CADC's archive cannot be reached. Try again later." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'archive du CADC est injoignable. Réessayez plus tard."
+          }
+        }
+      }
+    },
+    "CADC's archive is not answering — no reply in two minutes. Try again later." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'archive du CADC ne répond pas — aucune réponse en deux minutes. Réessayez plus tard."
+          }
+        }
+      }
+    },
     "Cal" : {
       "localizations" : {
         "fr" : {
@@ -16168,6 +16188,16 @@
         }
       }
     },
+    "This Mac is not connected to the internet." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce Mac n'est pas connecté à Internet."
+          }
+        }
+      }
+    },
     "This observation requires CADC sign-in." : {
       "localizations" : {
         "fr" : {
@@ -17339,6 +17369,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "voxel %lld, %lld, canal %lld"
+          }
+        }
+      }
+    },
+    "Waiting for CADC — %lld s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente du CADC — %lld s"
           }
         }
       }

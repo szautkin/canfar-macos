@@ -107,7 +107,12 @@ extension AppState {
                                             resolver: TargetResolverService) -> SearchObservationsTool {
         SearchObservationsTool(
             runQuery: { adql, maxRec in
-                try await tap.tapQueryRows(adql: adql, maxRec: maxRec)
+                do {
+                    return try await tap.tapQueryRows(adql: adql, maxRec: maxRec)
+                } catch let failure as URLError {
+                    // Said as the Search screen says it (plan 21 D5).
+                    throw ToolFailureReason.backendError(SearchError.describing(failure))
+                }
             },
             resolveTarget: { name in
                 let result = try await resolver.resolve(target: name, service: .all)

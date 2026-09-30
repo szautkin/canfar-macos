@@ -240,6 +240,40 @@ final class RetryPolicyTests: XCTestCase {
                        accuracy: 1e-12)
     }
 
+    /// Plan 21 D5: a TAP search on a dead CADC waited out its 120 s timeout
+    /// and tried again. On the long-request policy a timeout is final; a
+    /// dropped connection or a 5xx is still tried again.
+    func testALongRequestThatTimedOutIsNotTriedAgain() async {
+        var long = fast
+        long.retriesTimeouts = false
+        let timeouts = Locked(0)
+        do {
+            _ = try await retrying(long) { () async throws -> Int in
+                _ = timeouts.increment()
+                throw URLError(.timedOut)
+            }
+            XCTFail("it throws")
+        } catch {}
+        XCTAssertEqual(timeouts.value, 1)
+
+        let drops = Locked(0)
+        let answer = try? await retrying(long) { () async throws -> Int in
+            if drops.increment() < 2 { throw URLError(.networkConnectionLost) }
+            return 7
+        }
+        XCTAssertEqual(answer, 7)
+        XCTAssertFalse(RetryPolicy.longRequests.retriesTimeouts)
+        XCTAssertTrue(RetryPolicy.default.retriesTimeouts)
+    }
+
+    /// Plan 21 D5: the search says who did not answer.
+    func testASearchFailureSaysTheArchiveIsNotAnswering() {
+        XCTAssertEqual(SearchError.describing(URLError(.timedOut)),
+                       "CADC's archive is not answering — no reply in two minutes. Try again later.")
+        XCTAssertEqual(SearchError.describing(URLError(.cannotConnectToHost)), "CADC's archive cannot be reached. Try again later.")
+        XCTAssertEqual(SearchError.describing(SearchError.queryError("bad ADQL")), "bad ADQL")
+    }
+
     func testTimeInSecondsForZero() {
         XCTAssertEqual(Duration.zero.timeInSeconds, 0.0)
     }
