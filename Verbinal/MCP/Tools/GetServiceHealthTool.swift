@@ -30,6 +30,44 @@ struct GetServiceHealthTool: JSONReadTool {
         let probeStartedISO: String
         /// Count of services with `ok == true` (healthy enough to use).
         let healthyCount: Int
+        /// What the app's own requests showed in the last 15 minutes, by
+        /// service — how CADC has been, without asking it again (plan 23 L6).
+        var seenByApp: [Seen] = []
+
+        struct Seen: Encodable, Sendable, Equatable {
+            /// The id the probes use: `cadc-tap`, `skaha`, …
+            let service: String
+            let name: String
+            let calls: Int
+            let failures: Int
+            let medianSeconds: Double?
+            /// Three failures of its own in a row, and no answer since.
+            let failing: Bool
+            let lastAnswerAt: String?
+            let lastFailure: Failure?
+
+            struct Failure: Encodable, Sendable, Equatable {
+                let at: String
+                let outcome: String
+                let meaning: String
+                let code: String?
+            }
+
+            init(_ stats: RequestLedger.ServiceStats) {
+                let iso = ISO8601DateFormatter()
+                service = stats.service.id
+                name = stats.service.name
+                calls = stats.calls
+                failures = stats.failures
+                medianSeconds = stats.medianSeconds.map { ($0 * 10).rounded() / 10 }
+                failing = stats.isFailing
+                lastAnswerAt = stats.lastAnswer.map(iso.string(from:))
+                lastFailure = stats.lastFailure.map {
+                    Failure(at: iso.string(from: $0.finished ?? $0.started), outcome: $0.outcome?.rawValue ?? "failed",
+                            meaning: $0.outcome?.meaning ?? "", code: $0.code)
+                }
+            }
+        }
 
         struct Service: Encodable, Sendable {
             /// Stable canonical name. Agents key on this for
@@ -60,7 +98,7 @@ struct GetServiceHealthTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_service_health",
-        description: "Probe the upstream services Verbinal depends on (CADC auth/TAP, VOSpace, Skaha, VizieR mirrors) and return a per-service health snapshot. Use BEFORE long pipelines to decide whether to proceed or pause: when `vizier-cds-unistra` is down your cone searches will fail; when `skaha` is down no Skaha session will launch. Each entry has `status` (`ok`/`degraded`/`down`/`skipped`), `ok` (bool — usable?), and the summary's `healthyCount`. Auth is probed at `/whoami` (not the AC base URL, which always 404s). A 404/5xx is NOT healthy. `skipped` = plaintext-http blocked by App Transport Security.",
+        description: "Probe the upstream services Verbinal depends on (CADC auth/TAP, VOSpace, Skaha, VizieR mirrors) and return a per-service health snapshot. Use BEFORE long pipelines to decide whether to proceed or pause: when `vizier-cds-unistra` is down your cone searches will fail; when `skaha` is down no Skaha session will launch. Each entry has `status` (`ok`/`degraded`/`down`/`skipped`), `ok` (bool — usable?), and the summary's `healthyCount`. Auth is probed at `/whoami` (not the AC base URL, which always 404s). A 404/5xx is NOT healthy. `skipped` = plaintext-http blocked by App Transport Security. `seenByApp` adds what Verbinal's own requests showed in the last 15 minutes, by service: calls, failures, median seconds, whether it is failing now, the last answer and the last failure with what it means.",
         schema: #"""
         {
           "type": "object",
@@ -74,9 +112,13 @@ struct GetServiceHealthTool: JSONReadTool {
     /// wireup layer plugs in the real network probe; tests
     /// inject a synthetic closure with pre-canned results.
     let probe: @Sendable () async -> Output
+    /// What the app's own traffic showed.
+    var seen: @Sendable () -> [RequestLedger.ServiceStats] = { RequestLedger.shared.stats() }
 
     func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
-        await probe()
+        var output = await probe()
+        output.seenByApp = seen().map(Output.Seen.init)
+        return output
     }
 
     // MARK: - Canonical endpoint list
