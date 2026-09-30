@@ -14,10 +14,16 @@ final class HeadlessService: Sendable {
     /// asks: the person, an assistant, or an image probe (plan 23 C).
     private let changes: ChangeLog
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared) {
+    /// Deleting is the sessions' owner's: one delete, checked (the person,
+    /// 2026-09-30).
+    private let sessions: SessionService
+
+    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared,
+         sessions: SessionService? = nil) {
         self.network = network
         self.endpoints = endpoints
         self.changes = changes
+        self.sessions = sessions ?? SessionService(network: network, endpoints: endpoints, changes: changes)
     }
 
     /// Fetches only headless sessions, filtering client-side.
@@ -41,11 +47,10 @@ final class HeadlessService: Sendable {
         try await network.getText(endpoints.sessionEventsURL(id))
     }
 
-    /// Deletes a headless job by ID.
+    /// Deletes a headless job by ID — as every session is deleted, and
+    /// checked gone.
     func deleteJob(id: String) async throws {
-        try await changes.run("delete_session", "batch job \(id)") {
-            _ = try await network.delete(endpoints.sessionURL(id))
-        }
+        try await sessions.deleteSession(id: id)
     }
 
     /// Launch one or more replicas of a headless Skaha job. Returns

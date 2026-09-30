@@ -150,14 +150,9 @@ final class HeadlessMonitorModel: CadencedPoller {
         deletingJobIDs.insert(id)
         defer { deletingJobIDs.remove(id) }
         do {
+            // The delete returns once the platform lists the job as gone
+            // or going (SessionService asks), so the list is current.
             try await headlessService.deleteJob(id: id)
-            // Skaha returns from DELETE before the underlying K8s
-            // pod is fully gone. The 3s pause matches the average
-            // Skaha→K8s propagation delay; without it, the
-            // immediate `loadJobs()` would still show the job in
-            // the list and the user perceives the delete as
-            // not-working.
-            try? await Task.sleep(for: .seconds(3))
             await loadJobs()
         } catch {
             hasError = true

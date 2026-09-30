@@ -72,9 +72,8 @@ final class SessionListModel: CadencedPoller {
 
     func deleteSession(id: String) async {
         do {
+            // The delete returns once the platform no longer runs it.
             try await actions.delete(id: id)
-            // Grace period for backend state synchronization (matches Linux client)
-            try? await Task.sleep(for: .seconds(3))
             await loadSessions()
         } catch {
             hasError = true
