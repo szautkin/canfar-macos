@@ -19,12 +19,6 @@ import VerbinalKit
 /// of holdings (Clement+2001 V/97, OGLE, ASAS-SN, ZTF). Override
 /// per-catalogue when needed.
 struct VizierConeSearchTool: JSONReadTool {
-    // 90s deadline accommodates the multi-host VizieR fallback
-    // chain (CDS-unistra → CDS-u-strasbg).
-    // Each host gets up to ~20s before fallback rotates to the
-    // next; 90s is enough for two-host fallback under bad weather
-    // without false-positives on a slow-but-working primary host.
-    var toolTimeoutSeconds: TimeInterval { 90 }
 
     struct Args: Decodable, Sendable {
         let catalogue: String

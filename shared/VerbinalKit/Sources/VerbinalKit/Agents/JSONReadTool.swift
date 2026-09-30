@@ -47,11 +47,11 @@ extension JSONReadTool {
     public static var verbClass: VerbClass { .read }
     public static var agentSafe: Bool { true }
 
-    /// 60 seconds is the comfortable default for CADC services
-    /// (TAP, DataLink, target-resolver, VOSpace listing, Skaha
-    /// session/headless listing). Per-tool overrides tighten this
-    /// for fast-list endpoints and loosen for known-slow queries.
-    public var toolTimeoutSeconds: TimeInterval { 60 }
+    /// The requests' own patience and a little more
+    /// (`RequestTimeout.toolDeadline`): a tool never gives up on CADC
+    /// before the request would (plan 23 L7). An override is for a tool
+    /// with a reason of its own — a fallback to try in time.
+    public var toolTimeoutSeconds: TimeInterval { RequestTimeout.toolDeadline }
 
     public func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         let args: Args

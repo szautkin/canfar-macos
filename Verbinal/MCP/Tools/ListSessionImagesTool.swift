@@ -19,10 +19,6 @@ import VerbinalKit
 /// catalogue itself is gated by the Skaha bearer token, same as the
 /// in-app launch form).
 struct ListSessionImagesTool: JSONReadTool {
-    // The Skaha image catalogue is small and quick to fetch; 30s
-    // bounds the transport-stall failure mode the 2026-05-15 QA
-    // report flagged for list_* tools.
-    var toolTimeoutSeconds: TimeInterval { 30 }
 
     struct Args: Decodable, Sendable {
         /// Optional filter — keep only images whose `types` array

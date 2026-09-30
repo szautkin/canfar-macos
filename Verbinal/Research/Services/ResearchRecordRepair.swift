@@ -32,7 +32,7 @@ final class ResearchRecordRepair {
     /// Archive requests at once — CADC serves everyone else too.
     static let concurrentRequests = 2
     /// How long one record waits for the archive.
-    static let requestSeconds: TimeInterval = 60
+    static let requestSeconds = RequestTimeout.standard
     /// No answer to this many requests, and none before: the archive is
     /// down. With it down, 36 records waited out 18 minutes and the check
     /// said it had succeeded (plan 21 D3).

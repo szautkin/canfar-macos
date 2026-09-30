@@ -686,6 +686,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **An assistant's tools wait as long as their requests do.** A read
+  tool gave up after 60 s — 30 s for sessions, storage listings and batch
+  jobs — while its request to CADC could wait 120 s, so a slow answer read
+  as a failure. Every read tool now waits the request's timeout and 10 s
+  more, so the request's own timeout, which names the service that did
+  not answer, comes first. `get_data_links`, `get_preview_image` and
+  `get_service_health` keep their shorter deadlines, each for a reason of
+  its own; a test holds the rest.
 - **Verbinal waits longer for CADC and CANFAR.** Signing in and every
   ordinary call (sessions, storage, archive details, DataLink, target
   lookup) wait two minutes for a reply, not one; the stored sign-in

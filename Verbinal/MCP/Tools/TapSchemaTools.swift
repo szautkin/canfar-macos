@@ -66,7 +66,6 @@ struct DescribeTapSchemaTool: JSONReadTool {
 
     static let maxMatches = 60
 
-    var toolTimeoutSeconds: TimeInterval { 90 }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "describe_tap_schema",
@@ -150,7 +149,6 @@ struct ValidateADQLQueryTool: JSONReadTool {
         let problems: [ProblemView]
     }
 
-    var toolTimeoutSeconds: TimeInterval { 90 }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "validate_adql_query",

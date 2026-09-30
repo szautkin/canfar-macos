@@ -39,8 +39,6 @@ struct RegistryImageEntry: Encodable, Sendable, Equatable {
 // MARK: - search_image_registry
 
 struct SearchImageRegistryTool: JSONReadTool {
-    /// Up to two dozen repositories, four at a time — a search can honestly take a while.
-    var toolTimeoutSeconds: TimeInterval { 90 }
 
     struct Args: Decodable, Sendable { let query: String }
 

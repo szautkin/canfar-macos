@@ -27,8 +27,8 @@
 | L3 reading the log: `get_session_log`, `explain_log_entry`, `list_session_logs` | done — one reader, `SessionLogQuery`; `now` from the app's live state | `7c23d89` |
 | L4 managing the logs: view, export, delete, retention | done — Settings ▸ AI Agent ▸ Session Logs; `export_session_log`, `delete_session_logs` | `a1d59b7` |
 | L5 timing on every reply | done — a second block when it asked a service, took 2 s or failed; its log token | `88dced3` |
-| L6 activity and health read the ledger | done — `waitingOn`, `requests`; `seenByApp` | (this commit) |
-| L7 tool deadlines follow the timeouts | not started | |
+| L6 activity and health read the ledger | done — `waitingOn`, `requests`; `seenByApp` | `294fb77` |
+| L7 tool deadlines follow the timeouts | done — `RequestTimeout.toolDeadline`; overrides only with a reason | (this commit) |
 | L8 words for the assistant, handout | not started | |
 
 ## Do we have it?
@@ -524,6 +524,12 @@ including the 30 s list tools (sessions, VOSpace listing, batch jobs, session im
 - `get_data_links`: 30 s, with its CAOM-2 fallback
 - `get_preview_image`: 30 s
 - `get_service_health`: 30 s; its probes take 15 s
+
+**As built.** `RequestTimeout.toolDeadline` (standard + 10 s) is every read tool's default, and
+`run_code_output` takes it too. The overrides that only set a number are gone; a test fails on a
+read tool that would stop before its request, apart from the three with reasons. The Research
+check's own 60 s is the standard timeout now. Note for QA: `vizier_cone_search` falls back to its
+second mirror only after the first's own timeout, so a mirror that hangs uses most of the call.
 
 ### L8 — Words for the assistant, and the handout
 

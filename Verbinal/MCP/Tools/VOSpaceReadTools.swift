@@ -12,11 +12,6 @@ import VerbinalKit
 /// List the contents of a VOSpace path. Returns a flat array of node
 /// records (file or container). Paths are slash-separated, root is "".
 struct ListVOSpacePathTool: JSONReadTool {
-    // VOSpace listing is a fast XML directory walk; 30s is well
-    // above the median response time and catches the transport-
-    // stall failure mode the 2026-05-15 QA report flagged for
-    // other list_* tools.
-    var toolTimeoutSeconds: TimeInterval { 30 }
     struct Args: Decodable, Sendable {
         var path: String?
         var limit: Int?

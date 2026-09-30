@@ -440,12 +440,6 @@ struct LaunchHeadlessJobApplier: ProposalApplier, ResultReportingApplier {
 // MARK: - list_headless_jobs (read)
 
 struct ListHeadlessJobsTool: JSONReadTool {
-    // The 2026-05-15 QA report named this tool as the recurring
-    // 5-minute hang on the MCP transport. 30s is enough for a
-    // healthy Skaha to return; past that the agent should see a
-    // typed deadline error and decide whether to retry or move
-    // on, not sit in `try await` indefinitely.
-    var toolTimeoutSeconds: TimeInterval { 30 }
     typealias Args = EmptyArgs
 
     struct Output: Encodable, Sendable {

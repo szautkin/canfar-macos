@@ -39,4 +39,9 @@ public enum RequestTimeout {
 
     /// An upload or a download may stall this long.
     public static let transfer: TimeInterval = 300
+
+    /// A read tool's deadline: the standard timeout and 10 s more, so the
+    /// request's own timeout — which names who did not answer — fires
+    /// first (plan 23 L7). Below the router's read ceiling (150 s).
+    public static let toolDeadline: TimeInterval = standard + 10
 }

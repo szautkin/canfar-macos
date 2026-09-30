@@ -171,7 +171,8 @@ struct RunCodeOutputTool: AITool {
     /// Reads the run's result file (and records it). Injected for testing.
     let fetchOut: @Sendable (_ executionID: String) async throws -> RunCodeContract.Fetched
 
-    var toolTimeoutSeconds: TimeInterval { 30 }
+    /// As every read tool's (plan 23 L7).
+    var toolTimeoutSeconds: TimeInterval { RequestTimeout.toolDeadline }
 
     struct Args: Decodable, Sendable { let execution_id: String }
 

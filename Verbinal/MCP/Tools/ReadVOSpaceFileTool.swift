@@ -20,10 +20,6 @@ typealias ReadVOSpaceFetchResult = VOSpaceBrowserService.FetchResult
 /// it just wrote.
 struct ReadVOSpaceFileTool: JSONReadTool {
 
-    // VOSpace reads are typically <1s for bounded slices. 30s
-    // catches the same transport-stall failure mode the
-    // 2026-05-15 QA report flagged for the other VOSpace tools.
-    var toolTimeoutSeconds: TimeInterval { 30 }
 
     struct Args: Decodable, Sendable {
         let path: String

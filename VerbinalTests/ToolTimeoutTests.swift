@@ -146,7 +146,7 @@ final class ToolTimeoutTests: XCTestCase {
         }
     }
 
-    /// A JSONReadTool with the default 60s deadline that returns
+    /// A JSONReadTool with the default deadline that returns
     /// fast must produce a data envelope — verifies the wrapper
     /// doesn't strangle the happy path through the protocol's
     /// default property.
