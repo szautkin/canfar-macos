@@ -57,6 +57,13 @@ struct ObservationDetailView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.title2.bold())
+                    if let original = model.observationStore.original(of: observation) {
+                        Label(String(localized: "A duplicate of \(original.observationID.isEmpty ? original.publisherID : original.observationID), kept under a malformed ID — Research keeps the observation under the corrected one, so this record can be deleted."),
+                              systemImage: "doc.on.doc")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     Text("\(observation.collection) \u{2014} \(observation.observationID)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)

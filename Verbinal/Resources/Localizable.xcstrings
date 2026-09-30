@@ -1307,6 +1307,16 @@
         }
       }
     },
+    "A duplicate of %@, kept under a malformed ID — Research keeps the observation under the corrected one, so this record can be deleted." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un doublon de %@, conservé sous un identifiant mal formé — Research conserve l'observation sous l'identifiant corrigé ; cette fiche peut être supprimée."
+          }
+        }
+      }
+    },
     "A linked tab has missing, invalid, or approximate WCS. Crosshair and zoom sync across tabs may not land on the exact sky position." : {
       "extractionState" : "stale",
       "localizations" : {

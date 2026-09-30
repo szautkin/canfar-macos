@@ -40,6 +40,10 @@ struct ListDownloadedObservationsTool: JSONReadTool {
             let fileProblem: String?
             let fileSize: Int64?
             let downloadedAtISO: String
+            /// The id of the record this one duplicates — kept under a
+            /// malformed publisher id, its observation kept already. The
+            /// person's to delete.
+            let duplicateOf: String?
 
             init(_ obs: DownloadedObservationOut) {
                 id = obs.id
@@ -58,6 +62,7 @@ struct ListDownloadedObservationsTool: JSONReadTool {
                 fileProblem = obs.fileProblem
                 fileSize = obs.fileSize
                 downloadedAtISO = SharedFormatters.iso8601.string(from: obs.downloadedAt)
+                duplicateOf = obs.duplicateOf
             }
         }
     }
@@ -202,6 +207,8 @@ struct DownloadedObservationOut: Sendable {
     let fileSize: Int64?
     let downloadedAt: Date
     var cutout: CutoutSpec? = nil
+    /// The record this one duplicates, when it was kept under a malformed id.
+    var duplicateOf: String? = nil
 }
 
 struct ObservationNoteOut: Sendable {

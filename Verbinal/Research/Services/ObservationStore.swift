@@ -61,6 +61,17 @@ final class ObservationStore {
         return stored
     }
 
+    /// The record `record` duplicates: it was kept under the slash form, and
+    /// Research keeps the observation under the corrected id already, so
+    /// the check leaves it rather than make two records one (plan 21 N3:
+    /// the second `1525350`, with the empty `pkg-….txt`). Nil for any other.
+    func original(of record: DownloadedObservation) -> DownloadedObservation? {
+        guard PublisherID(record.publisherID) == nil, let likely = PublisherID.likely(record.publisherID) else { return nil }
+        var corrected = record
+        corrected.publisherID = likely
+        return observations.first { $0.id != record.id && $0.recordKey == corrected.recordKey }
+    }
+
     /// Completes the record `id` — as it is now, not as it was when the
     /// archive was asked, so a download that finished meanwhile stands —
     /// from the archive's answer (`ResearchRecordDetails`). True when that

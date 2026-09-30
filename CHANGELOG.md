@@ -52,7 +52,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
   only its number and size. The check of Research records now gives it
   the ID it means, `ivo://cadc.nrc.ca/CFHT?1525350`, keeps its note with
   it, and fills in its details; it runs again on Macs that already had
-  the first check.
+  the first check. A second such record, whose observation Research keeps
+  already, is marked as a duplicate — in its detail and, for your
+  assistant, `duplicateOf` — for you to delete.
 - **A spectrum exports as a figure** — Export Figure on a spectrum
   answered "No rendered FITS image is open". The spectrum view now has
   Export Figure (PNG 2×, 4× or PDF): the plot as shown, titled by the

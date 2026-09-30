@@ -12,13 +12,14 @@ import VerbinalKit
 extension AppState {
     func makeListDownloadedObservationsTool(store: ObservationStore) -> ListDownloadedObservationsTool {
         ListDownloadedObservationsTool(snapshot: { @MainActor in
-            store.observations.map { Self.flatten($0) }
+            store.observations.map { Self.flatten($0, duplicateOf: store.original(of: $0)?.id.uuidString) }
         })
     }
 
     func makeGetDownloadedObservationTool(store: ObservationStore) -> GetDownloadedObservationTool {
         GetDownloadedObservationTool(lookup: { @MainActor raw in
-            Self.flatten(try store.recordForTool(raw))
+            let record = try store.recordForTool(raw)
+            return Self.flatten(record, duplicateOf: store.original(of: record)?.id.uuidString)
         })
     }
 
@@ -87,7 +88,7 @@ extension AppState {
         ]
     }
 
-    private nonisolated static func flatten(_ obs: DownloadedObservation) -> DownloadedObservationOut {
+    private nonisolated static func flatten(_ obs: DownloadedObservation, duplicateOf: String? = nil) -> DownloadedObservationOut {
         DownloadedObservationOut(
             id: obs.id.uuidString,
             publisherID: obs.publisherID,
@@ -102,7 +103,8 @@ extension AppState {
             fileProblem: obs.fileProblem?.message,
             fileSize: obs.fileSize,
             downloadedAt: obs.downloadedAt,
-            cutout: obs.cutout
+            cutout: obs.cutout,
+            duplicateOf: duplicateOf
         )
     }
 

@@ -217,6 +217,23 @@ final class ResearchRecordDetailsTests: XCTestCase {
         XCTAssertEqual(try store.recordForTool("475879F9").id, cube.id, "an id prefix finds it")
     }
 
+    /// Plan 21 N3: the second `1525350` — kept under the slash form, with the
+    /// empty `pkg-….txt` — duplicates the record kept under the corrected id.
+    /// The check leaves it; it is marked, for the person to delete.
+    @MainActor
+    func testASlashFormRecordWhoseObservationIsKeptIsMarkedADuplicate() async throws {
+        let (store, file) = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let kept = store.save(described("ivo://cadc.nrc.ca/CFHT?1525350"))
+        let duplicate = store.save(described("ivo://cadc.nrc.ca/CFHT/1525350", target: "Betelgeuse"))
+        XCTAssertEqual(store.original(of: duplicate)?.id, kept.id)
+        XCTAssertNil(store.original(of: kept))
+
+        await ResearchRecordRepair(store: store, tasks: TaskRegistry(), archive: FakeArchive()).run()
+        XCTAssertEqual(store.observations.count, 2, "never merged or deleted by the check")
+        XCTAssertEqual(store.observations.first { $0.id == duplicate.id }?.publisherID, "ivo://cadc.nrc.ca/CFHT/1525350")
+    }
+
     /// The archive, as the check sees it: what this Mac keeps, and what the
     /// network answers — slowly, and counted.
     private final class FakeArchive: ArchiveObservations, @unchecked Sendable {
