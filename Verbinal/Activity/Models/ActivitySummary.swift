@@ -68,7 +68,8 @@ enum ActivitySummary {
         case .running:
             detail = task.stage.isEmpty ? took : "\(task.stage) · \(took)"
         }
-        return Line(title: task.label, detail: detail, progress: task.progress, startedBy: who(task.startedBy))
+        let title = task.isAgain ? String(localized: "\(task.label), again") : task.label
+        return Line(title: title, detail: detail, progress: task.progress, startedBy: who(task.startedBy))
     }
 
     /// At the precision a person reads: under a second is "just now".

@@ -42,6 +42,9 @@ struct TrackedTask: Identifiable, Equatable, Sendable {
     let label: String
     /// The person, their assistant, or the app itself (plan 17 A1).
     var startedBy = Initiator.person
+    /// It repeats a task of the same name that failed — a failed change
+    /// applied again read as the same delete twice (plan 21 N4).
+    var isAgain = false
     /// Where it has got to — what separates a slow task from a stuck one.
     var stage = ""
     var progress = TaskProgress.running

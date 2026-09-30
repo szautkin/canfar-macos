@@ -29,6 +29,8 @@ struct ListActivityTool: JSONReadTool {
         let label: String
         /// person, assistant or app — who set it going.
         let startedBy: String
+        /// It repeats a task of the same name that failed.
+        let again: Bool
         /// running, succeeded, failed or cancelled (abandoned before it finished).
         let status: String
         let stage: String?
@@ -43,6 +45,7 @@ struct ListActivityTool: JSONReadTool {
             kind = task.kind.rawValue
             label = task.label
             startedBy = task.startedBy.rawValue
+            again = task.isAgain
             status = task.progress.rawValue
             stage = task.stage.isEmpty ? nil : task.stage
             message = task.message

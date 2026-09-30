@@ -128,6 +128,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   the sessions it could not delete. An image inspection your assistant
   starts is labelled as its own too — it read "You" — and a batch job
   your assistant launches is on the bar at all, as its own, with its id.
+  A task that repeats one that failed — a failed change applied again —
+  says "again", rather than looking like the same task twice.
 - **Session and launch details say what they are** — for assistants, a
   recent launch now names the project its image came from (an assistant's
   launches recorded none), a flexible session's cores and RAM say

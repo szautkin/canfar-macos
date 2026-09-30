@@ -38,7 +38,8 @@ final class TaskRegistry {
     /// the task's initiator unless the caller knows better.
     func begin(_ kind: TaskKind, _ label: String, by initiator: Initiator = Initiator.current) -> TaskHandle {
         nextID += 1
-        tasks.append(TrackedTask(id: nextID, kind: kind, label: label, startedBy: initiator, started: Date()))
+        let again = tasks.contains { $0.label == label && $0.progress == .failed }
+        tasks.append(TrackedTask(id: nextID, kind: kind, label: label, startedBy: initiator, isAgain: again, started: Date()))
         // The oldest FINISHED go first: running work is what a reader most
         // needs to see, and is never dropped to make room.
         while tasks.count > Self.maxTasks, let finished = tasks.firstIndex(where: \.isFinished) {

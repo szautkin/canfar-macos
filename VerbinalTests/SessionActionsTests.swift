@@ -92,4 +92,16 @@ final class SessionActionsTests: XCTestCase {
         XCTAssertEqual(registry.tasks.map(\.label), ["Delete session s1"])
         XCTAssertEqual(registry.tasks.first?.startedBy, .assistant)
     }
+
+    /// Plan 21 N4: a failed delete applied again showed as the same line
+    /// twice; the second says it is a retry.
+    func testATaskThatRepeatsAFailedOneSaysSo() async throws {
+        let registry = TaskRegistry()
+        let actions = SessionActions(service: FakeSessions(), tasks: registry)
+        for _ in 0..<2 { try? await actions.delete(id: "no-such-session-qa") }
+        XCTAssertEqual(registry.tasks.map(\.isAgain), [false, true])
+        XCTAssertEqual(ActivitySummary.describe(registry.tasks[1]).title, "Delete session no-such-session-qa, again")
+        try await actions.renew(id: "r1")
+        XCTAssertFalse(registry.tasks[2].isAgain, "only a repeat of a failure")
+    }
 }
