@@ -119,7 +119,19 @@ public actor ResilientBridge {
 
     private func answerWhileClosed(_ request: JSONRPCRequest) async {
         let message = configuration.notRunningMessage
+        // A modern request (2026-07-28) declares its version; it is answered
+        // in its own shape, and a version Verbinal does not speak refused
+        // (plan 25 V).
+        let declared = MCPProtocol.declaredVersion(in: request.params)
+        if let declared, !MCPProtocol.supported.contains(declared) {
+            await send(MCPProtocol.unsupported(id: request.id, requested: declared))
+            return
+        }
+        let modern = declared != nil
         switch request.method {
+        case "server/discover":
+            await reply(request.id, DiscoverResult(capabilities: ServerCapabilities(tools: .init(listChanged: nil)),
+                                                   instructions: message), modern: true, isList: true)
         case "initialize":
             let version = request.params
                 .flatMap { try? JSONDecoder().decode(InitializeParams.self, from: $0) }?
@@ -133,11 +145,11 @@ public actor ResilientBridge {
                 serverInfo: ServerInfo(name: configuration.serverName, version: configuration.serverVersion),
                 instructions: message))
         case "tools/list":
-            await reply(request.id, ListToolsResult(tools: manifest.load()))
+            await reply(request.id, ListToolsResult(tools: manifest.load()), modern: modern, isList: true)
         case "tools/call":
-            await reply(request.id, CallToolResult(content: [.text(message)], isError: true))
+            await reply(request.id, CallToolResult(content: [.text(message)], isError: true), modern: modern)
         case "resources/list":
-            await reply(request.id, ListResourcesResult(resources: []))
+            await reply(request.id, ListResourcesResult(resources: []), modern: modern, isList: true)
         case "ping", "logging/setLevel":
             await reply(request.id, JSONValue.object([:]))
         default:
@@ -279,9 +291,14 @@ public actor ResilientBridge {
 
     // MARK: - Sending
 
-    private func reply<Body: Encodable>(_ id: JSONRPCID, _ body: Body) async {
+    private func reply<Body: Encodable>(_ id: JSONRPCID, _ body: Body, modern: Bool = false, isList: Bool = false) async {
         do {
-            await send(.success(id: id, result: try JSONEncoder().encode(body)))
+            var result = try JSONEncoder().encode(body)
+            if modern {
+                result = MCPProtocol.modernized(result, server: ServerInfo(name: configuration.serverName,
+                                                                           version: configuration.serverVersion), isList: isList)
+            }
+            await send(.success(id: id, result: result))
         } catch {
             await send(.failure(id: id, error: JSONRPCErrorPayload(
                 code: JSONRPCErrorCode.internalError, message: "\(error)")))

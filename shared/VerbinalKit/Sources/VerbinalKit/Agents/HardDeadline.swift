@@ -43,6 +43,10 @@ private final class DeadlineOnce: @unchecked Sendable {
 /// With `cancelsWork: false` the work is not asked to stop — for work
 /// that should finish anyway, like a large file an agent opened, where
 /// the caller only needs an answer in time ("still loading").
+///
+/// The caller's own cancellation reaches the work too (unless
+/// `cancelsWork` is false): a client that stops waiting for a call stops
+/// the call (plan 25). An infinite `seconds` sets no deadline at all.
 public func withHardDeadline<T: Sendable>(
     seconds: TimeInterval,
     cancelsWork: Bool = true,
@@ -50,19 +54,50 @@ public func withHardDeadline<T: Sendable>(
     work: @escaping @Sendable () async -> T
 ) async -> T {
     let once = DeadlineOnce()
-    return await withCheckedContinuation { continuation in
-        let workTask = Task {
-            let value = await work()
-            if once.claim() {
-                continuation.resume(returning: value)
+    let held = HeldTask()
+    return await withTaskCancellationHandler {
+        await withCheckedContinuation { continuation in
+            let workTask = Task {
+                let value = await work()
+                if once.claim() {
+                    continuation.resume(returning: value)
+                }
+            }
+            held.hold(workTask)
+            guard seconds.isFinite else { return }
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                if once.claim() {
+                    if cancelsWork { workTask.cancel() }
+                    continuation.resume(returning: onDeadline())
+                }
             }
         }
-        Task {
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-            if once.claim() {
-                if cancelsWork { workTask.cancel() }
-                continuation.resume(returning: onDeadline())
-            }
+    } onCancel: {
+        if cancelsWork { held.cancel() }
+    }
+}
+
+/// The work's task, to cancel from the caller's cancellation — which may
+/// come before the task exists.
+private final class HeldTask: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelWork: (@Sendable () -> Void)?
+    private var cancelled = false
+
+    func hold<T: Sendable>(_ task: Task<T, Never>) {
+        let cancelNow = lock.withLock { () -> Bool in
+            cancelWork = { task.cancel() }
+            return cancelled
         }
+        if cancelNow { task.cancel() }
+    }
+
+    func cancel() {
+        let cancelWork = lock.withLock { () -> (@Sendable () -> Void)? in
+            cancelled = true
+            return self.cancelWork
+        }
+        cancelWork?()
     }
 }

@@ -239,4 +239,53 @@ final class ResilientBridgeTests: XCTestCase {
         }
         return nil
     }
+
+    // MARK: - Every MCP version (plan 25 V)
+
+    private let modernMeta = #""_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"future","version":"9"}}"#
+
+    func testWhileClosedAModernClientIsAnsweredInItsOwnShape() async throws {
+        let app = FakeApp()
+        let (client, inbox, task) = start(app, cached: ["run_search"])
+        defer { task.cancel() }
+
+        try await send(client, #"{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"# + modernMeta + "}}")
+        let discovered = result(try await inbox.take(id(1)))
+        XCTAssertEqual(discovered["resultType"] as? String, "complete")
+        XCTAssertEqual((discovered["supportedVersions"] as? [String])?.first, "2026-07-28")
+        XCTAssertEqual(discovered["instructions"] as? String, notRunning)
+
+        try await send(client, #"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"# + modernMeta + "}}")
+        let listed = result(try await inbox.take(id(2)))
+        XCTAssertEqual(listed["resultType"] as? String, "complete")
+        XCTAssertNotNil(listed["ttlMs"])
+        XCTAssertEqual((listed["tools"] as? [[String: Any]])?.first?["name"] as? String, "run_search")
+
+        try await send(client, #"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"run_search","arguments":{},"# + modernMeta + "}}")
+        let called = result(try await inbox.take(id(3)))
+        XCTAssertEqual(called["isError"] as? Bool, true)
+        XCTAssertEqual(called["resultType"] as? String, "complete")
+
+        try await send(client, #"{"jsonrpc":"2.0","id":4,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"1900-01-01"}}}"#)
+        let refused = try await inbox.take(id(4))
+        XCTAssertEqual((refused["error"] as? [String: Any])?["code"] as? Int, -32022)
+    }
+
+    /// A modern client has no handshake to replay: its requests, and its
+    /// cancellations, go straight to the app.
+    func testAModernClientsRequestsAndCancellationsReachTheApp() async throws {
+        let app = FakeApp()
+        app.setRunning(true)
+        let (client, _, task) = start(app)
+        defer { task.cancel() }
+        for _ in 0..<100 where app.latest == nil { try await Task.sleep(for: .milliseconds(10)) }
+        let appSide = try XCTUnwrap(app.latest)
+
+        try await send(client, #"{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"run_search","arguments":{},"# + modernMeta + "}}")
+        _ = try await appSide.inbox.take(id(7))
+        try await send(client, #"{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":7}}"#)
+        _ = try await appSide.inbox.take(method("notifications/cancelled"))
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertTrue(appSide.inbox.isEmpty, "no handshake was replayed: there was none")
+    }
 }

@@ -76,6 +76,11 @@ public actor MCPBridgeService {
     /// Keyed so completed handlers can remove themselves; drained with
     /// cancellation when the transport closes.
     private var inFlightCalls: [UUID: Task<Void, Never>] = [:]
+    /// Each in-flight call's key, by its request id — for
+    /// `notifications/cancelled` (plan 25 V).
+    private var inFlightByRequest: [JSONRPCID: UUID] = [:]
+    /// Calls the client cancelled: no answer is sent for them.
+    private var cancelledRequests: Set<JSONRPCID> = []
     /// Cap on concurrent `tools/call` handling per connection. Beyond
     /// this, frames fall back to inline (serial) handling — natural
     /// backpressure instead of unbounded task growth.
@@ -121,21 +126,43 @@ public actor MCPBridgeService {
     /// (`initialize`, `tools/list`, …) stay inline: they're cheap and
     /// order-sensitive.
     private func routeFrame(_ frame: Data, transport: any MCPTransport) async {
-        let method = ((try? JSONSerialization.jsonObject(with: frame)) as? [String: Any])?["method"] as? String
+        let object = (try? JSONSerialization.jsonObject(with: frame)) as? [String: Any]
+        let method = object?["method"] as? String
+        if method == "notifications/cancelled" {
+            cancel(object?["params"] as? [String: Any])
+            return
+        }
         guard method == "tools/call", inFlightCalls.count < Self.maxConcurrentCalls else {
             await handleIncoming(frame: frame, transport: transport)
             return
         }
         let key = UUID()
+        let requestID = (try? JSONDecoder().decode(JSONRPCRequest.self, from: frame))?.id
+        if let requestID { inFlightByRequest[requestID] = key }
         inFlightCalls[key] = Task { [weak self] in
             guard let self else { return }
             await self.handleIncoming(frame: frame, transport: transport)
-            await self.finishInFlightCall(key)
+            await self.finishInFlightCall(key, requestID: requestID)
         }
     }
 
-    private func finishInFlightCall(_ key: UUID) {
+    private func finishInFlightCall(_ key: UUID, requestID: JSONRPCID?) {
         inFlightCalls[key] = nil
+        if let requestID {
+            inFlightByRequest[requestID] = nil
+            cancelledRequests.remove(requestID)
+        }
+    }
+
+    /// The client stopped waiting for a request: the call is cancelled —
+    /// an approval window closes with it — and no answer is sent.
+    private func cancel(_ params: [String: Any]?) {
+        let raw = params?["requestId"]
+        let id: JSONRPCID? = (raw as? Int).map(JSONRPCID.int) ?? (raw as? String).map(JSONRPCID.string)
+        guard let id, let key = inFlightByRequest[id] else { return }
+        logger.info("call cancelled by the client")
+        cancelledRequests.insert(id)
+        inFlightCalls[key]?.cancel()
     }
 
     private func cancelInFlightCalls() {
@@ -183,8 +210,21 @@ public actor MCPBridgeService {
             return
         }
 
-        let response: JSONRPCResponse
+        // A modern request declares its version in `_meta`: one Verbinal
+        // does not speak is refused, naming those it does (plan 25 V).
+        let declared = MCPProtocol.declaredVersion(in: request.params)
+        if let declared, !MCPProtocol.supported.contains(declared) {
+            await send(MCPProtocol.unsupported(id: request.id, requested: declared), transport: transport, method: methodForLog)
+            return
+        }
+        if declared != nil, request.method != "server/discover" { await openStatelessClient(request) }
+
+        var response: JSONRPCResponse
         switch request.method {
+        case "server/discover":
+            response = successResponse(id: request.id, body: DiscoverResult(
+                capabilities: ServerCapabilities(tools: .init(listChanged: nil)),
+                instructions: identity.instructions))
         case "initialize":
             response = await handleInitialize(request)
         case "tools/list":
@@ -212,14 +252,37 @@ public actor MCPBridgeService {
             )
         }
 
+        // A cancelled request gets no answer.
+        if cancelledRequests.contains(request.id) { return }
+        // A modern request's result carries its type and Verbinal's identity.
+        if declared != nil || request.method == "server/discover", let result = response.result {
+            let isList = ["tools/list", "resources/list", "server/discover"].contains(request.method)
+            response = .success(id: request.id, result: MCPProtocol.modernized(
+                result, server: ServerInfo(name: identity.name, version: identity.version), isList: isList))
+        }
+        await send(response, transport: transport, method: methodForLog)
+    }
+
+    private func send(_ response: JSONRPCResponse, transport: any MCPTransport, method: String) async {
         do {
             let bytes = try JSONEncoder().encode(response)
             try await transport.send(bytes)
             let outcome = response.error != nil ? "error" : "ok"
-            logger.debug("send \(methodForLog, privacy: .public) id=\(idForLog, privacy: .public) (\(bytes.count) bytes, \(outcome, privacy: .public))")
+            logger.debug("send \(method, privacy: .public) (\(bytes.count) bytes, \(outcome, privacy: .public))")
         } catch {
             logger.error("send failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// A modern client has no handshake: its first request opens the
+    /// connection's session, with the identity it declares (plan 25 V).
+    private func openStatelessClient(_ request: JSONRPCRequest) async {
+        guard !initialized else { return }
+        let info = MCPProtocol.declaredClient(in: request.params)
+        clientID = info.map { "\($0.name)/\($0.version)" } ?? "unnamed client"
+        initialized = true
+        logger.info("stateless client=\(self.clientID ?? "", privacy: .public)")
+        await services.recorder?.opened(session, client: clientID ?? "unnamed client")
     }
 
     // MARK: - initialize
@@ -258,7 +321,7 @@ public actor MCPBridgeService {
         if !reopened { await services.recorder?.opened(session, client: cid) }
 
         let result = InitializeResult(
-            protocolVersion: params.protocolVersion,
+            protocolVersion: MCPProtocol.negotiated(params.protocolVersion),
             capabilities: ServerCapabilities(
                 // The bridge (`ResilientBridge`) sends list_changed when it
                 // reconnects to a restarted app.
