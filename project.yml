@@ -14,7 +14,7 @@ settings:
     SWIFT_VERSION: "5.9"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
-    MARKETING_VERSION: "1.3.4"
+    MARKETING_VERSION: "1.4.0"
     CURRENT_PROJECT_VERSION: "17"
     PRODUCT_NAME: Verbinal
     CODE_SIGN_STYLE: Automatic
@@ -89,6 +89,18 @@ targets:
         INFOPLIST_FILE: Verbinal/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
         CODE_SIGN_ENTITLEMENTS: Verbinal/Verbinal.entitlements
+    # The commit a build was made from, for `describe_app` (plan 21 V): a
+    # handout says "release/1.4.0 @ 62bdbf6 or later", and a pass could not
+    # tell which build it had. "+" marks uncommitted changes.
+    postBuildScripts:
+      - name: Stamp the build's commit
+        basedOnDependencyAnalysis: false
+        script: |
+          commit=$(git -C "$SRCROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)
+          if [ "$commit" != unknown ] && ! git -C "$SRCROOT" diff --quiet HEAD -- 2>/dev/null; then commit="$commit+"; fi
+          plist="$TARGET_BUILD_DIR/$INFOPLIST_PATH"
+          /usr/libexec/PlistBuddy -c "Set :VerbinalBuildCommit $commit" "$plist" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Add :VerbinalBuildCommit string $commit" "$plist"
   VerbinalIOS:
     type: application
     platform: iOS

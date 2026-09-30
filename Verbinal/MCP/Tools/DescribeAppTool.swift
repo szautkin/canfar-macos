@@ -25,13 +25,16 @@ struct DescribeAppTool: JSONReadTool {
         var standingRules: [AIGuideSnapshot.StandingRule]? = nil
         let brief: String?
         let serverVersion: String
+        /// The commit the build was made from ("+" when it had uncommitted
+        /// changes), so a pass can say which build it tested.
+        var buildCommit: String? = Bundle.main.infoDictionary?["VerbinalBuildCommit"] as? String
         let app: ToolMap.Area?
         let tools: [ToolMap.Entry]?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "describe_app",
-        description: "Get a prose overview of Verbinal's capabilities, tool surface, and proposal model — call this once at the start of a session. It opens with the person's standing rules (`standingRules`: their own guide tools; call each for its whole text and follow it). With `app` (an area id from list_apps), get that area's tools with a one-line summary each instead; `man` gives one tool's arguments.",
+        description: "Get a prose overview of Verbinal's capabilities, tool surface, and proposal model — call this once at the start of a session; `serverVersion` and `buildCommit` say which build answers. It opens with the person's standing rules (`standingRules`: their own guide tools; call each for its whole text and follow it). With `app` (an area id from list_apps), get that area's tools with a one-line summary each instead; `man` gives one tool's arguments.",
         schema: #"""
         {
           "type": "object",

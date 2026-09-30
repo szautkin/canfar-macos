@@ -933,6 +933,16 @@
         }
       }
     },
+    "%lld jobs" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tâches"
+          }
+        }
+      }
+    },
     "%lld ms" : {
       "localizations" : {
         "fr" : {
@@ -1272,16 +1282,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "500"
-          }
-        }
-      }
-    },
-    "%lld jobs" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld tâches"
           }
         }
       }
@@ -2714,6 +2714,7 @@
       }
     },
     "Check Research records against the archive" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3262,6 +3263,7 @@
       }
     },
     "Code your AI assistant runs with run_code, and code you run here, goes to one session on your CANFAR account named verbinal-compute. It uses your cores, has no shell and no inbound network, and writes its results to your storage." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4025,6 +4027,7 @@
       }
     },
     "Corrected %lld of %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {

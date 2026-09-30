@@ -89,7 +89,7 @@ struct DownloadedFilesView: View {
                 HStack(spacing: 8) {
                     ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1)))
                         .frame(width: 80)
-                    Text("Getting archive details — \(progress.done) of \(progress.total)")
+                    Text(String(localized: "Getting archive details — \(progress.done) of \(progress.total)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()

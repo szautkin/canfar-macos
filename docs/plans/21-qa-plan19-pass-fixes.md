@@ -14,7 +14,7 @@ the reported case first, one owner per rule, and one green commit per step.
 
 | Step | State | Commit |
 |---|---|---|
-| V version | planned (decision 1) | — |
+| V version | done — 1.4.0, build 17; `buildCommit` | V |
 | D2 pool sizing | planned | — |
 | D3 archive outage | planned | — |
 | D4 spectrum figure | planned | — |
@@ -64,4 +64,4 @@ the reported case first, one owner per rule, and one green commit per step.
 
 ## Decisions
 
-1. **V:** set `MARKETING_VERSION` to 1.4.0 now, keep build 17 until an App Store upload, and add `buildCommit` to `describe_app`?
+1. **V (2026-09-29):** 1.4.0, the same build number (17) — nothing has been published as 1.4.0.

@@ -12,6 +12,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Your assistant can tell which build it is talking to** — this
+  release reported itself as 1.3.4, and a QA pass took it for the wrong
+  build. It now says 1.4.0, and `describe_app` gives the commit the build
+  was made from (`buildCommit`).
 - **Remote Compute says how many cores code may use** — on CANFAR,
   Python's `os.cpu_count()` counts the whole node (192), not the four
   cores a session has. The Remote Compute screen and your assistant's
