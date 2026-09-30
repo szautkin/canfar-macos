@@ -72,7 +72,7 @@ enum ResultExportService {
         var request = URLRequest(url: url)
         request.timeoutInterval = Timeout.request
 
-        let (tempURL, response) = try await session.download(for: request)
+        let (tempURL, response) = try await session.recordedDownload(for: request)
 
         guard let http = response as? HTTPURLResponse else {
             try? FileManager.default.removeItem(at: tempURL)

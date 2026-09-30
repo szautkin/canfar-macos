@@ -52,7 +52,7 @@ struct RegistrySearch: Sendable {
 
     let fetch: Fetch
 
-    init(fetch: @escaping Fetch = { try await URLSession.shared.data(for: $0) }) {
+    init(fetch: @escaping Fetch = { try await URLSession.shared.recordedData(for: $0) }) {
         self.fetch = fetch
     }
 

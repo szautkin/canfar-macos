@@ -310,7 +310,7 @@ final class ImageDiscoverySettingsService {
         pingRequest.timeoutInterval = RequestTimeout.lookup
         let pingResponse: HTTPURLResponse
         do {
-            let (_, raw) = try await session.data(for: pingRequest)
+            let (_, raw) = try await session.recordedData(for: pingRequest)
             guard let http = raw as? HTTPURLResponse else {
                 return .networkError(message: "Registry returned a non-HTTP response.")
             }
@@ -364,7 +364,7 @@ final class ImageDiscoverySettingsService {
         )
 
         do {
-            let (_, raw) = try await session.data(for: tokenRequest)
+            let (_, raw) = try await session.recordedData(for: tokenRequest)
             guard let http = raw as? HTTPURLResponse else {
                 return .networkError(message: "Token endpoint returned a non-HTTP response.")
             }

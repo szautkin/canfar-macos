@@ -77,7 +77,7 @@ actor TAPClient {
                 .joined(separator: "&")
                 .data(using: .utf8)
 
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await session.recordedData(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.invalidResponse
@@ -355,7 +355,7 @@ actor TAPClient {
         // upstream, all of which can stall.
         request.timeoutInterval = RequestTimeout.standard
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.recordedData(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             throw SearchError.networkError("Target resolution failed for \"\(name)\"")
@@ -411,7 +411,7 @@ actor TAPClient {
         // patience.
         request.timeoutInterval = RequestTimeout.standard
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.recordedData(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             return DataLinkResult(thumbnails: [], previews: [], directFiles: [])

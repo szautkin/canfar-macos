@@ -36,9 +36,11 @@ public struct RegistryClient: Sendable {
     public static let availabilityStandardID = "ivo://ivoa.net/std/VOSI#availability"
 
     private let session: URLSession
+    private let ledger: RequestLedger
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = .shared, ledger: RequestLedger = .shared) {
         self.session = session
+        self.ledger = ledger
     }
 
     // MARK: - Fetching
@@ -60,7 +62,7 @@ public struct RegistryClient: Sendable {
         guard let url = URL(string: urlString) else { throw URLError(.badURL) }
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.recordedData(for: request, in: ledger)
         if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
             throw URLError(.badServerResponse)
         }

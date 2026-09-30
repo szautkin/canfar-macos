@@ -8,6 +8,8 @@ import Foundation
 
 public actor NetworkClient {
     private let session: URLSession
+    /// Where every request it sends is recorded (plan 23).
+    private let ledger: RequestLedger
     public private(set) var token: String?
     /// Hosts the bearer token may be attached to. Token is *not* sent to any
     /// other host — important defense against forwarding the user's CADC
@@ -32,10 +34,12 @@ public actor NetworkClient {
 
     public init(
         session: URLSession = .shared,
-        trustedAuthHostSuffixes: [String] = NetworkClient.defaultCADCHosts
+        trustedAuthHostSuffixes: [String] = NetworkClient.defaultCADCHosts,
+        ledger: RequestLedger = .shared
     ) {
         self.session = session
         self.trustedAuthHostSuffixes = trustedAuthHostSuffixes
+        self.ledger = ledger
     }
 
     public func setUnauthorizedHandler(_ handler: UnauthorizedHandler?) {
@@ -302,17 +306,15 @@ public actor NetworkClient {
         let delegate = onProgress.map {
             TransferProgressTaskDelegate(fallbackTotal: fileSize, onProgress: $0)
         }
+        let session = session
         let data: Data
         let response: URLResponse
         do {
-            if let delegate {
-                (data, response) = try await session.upload(
-                    for: request,
-                    fromFile: fileURL,
-                    delegate: delegate
-                )
-            } else {
-                (data, response) = try await session.upload(for: request, fromFile: fileURL)
+            (data, response) = try await ledger.send(request) { request in
+                if let delegate {
+                    return try await session.upload(for: request, fromFile: fileURL, delegate: delegate)
+                }
+                return try await session.upload(for: request, fromFile: fileURL)
             }
         } catch {
             throw mapTransferCancellation(error)
@@ -352,15 +354,16 @@ public actor NetworkClient {
         let location: URL
         let response: URLResponse
         do {
-            if let onProgress {
-                if expectedTotal > 0 { onProgress(0, expectedTotal) }
-                (location, response) = try await downloadWithProgressDelegate(
-                    request,
-                    expectedTotal: expectedTotal,
-                    onProgress: onProgress
-                )
-            } else {
-                (location, response) = try await session.download(for: request)
+            (location, response) = try await ledger.send(request) { request in
+                if let onProgress {
+                    if expectedTotal > 0 { onProgress(0, expectedTotal) }
+                    return try await downloadWithProgressDelegate(
+                        request,
+                        expectedTotal: expectedTotal,
+                        onProgress: onProgress
+                    )
+                }
+                return try await session.download(for: request)
             }
         } catch {
             throw mapTransferCancellation(error)
@@ -476,7 +479,8 @@ public actor NetworkClient {
     }
 
     private func execute(_ request: URLRequest, allowAuthRetry: Bool = true) async throws -> (Data, HTTPURLResponse) {
-        let (data, response) = try await session.data(for: request)
+        let session = session
+        let (data, response) = try await ledger.send(request) { try await session.data(for: $0) }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }

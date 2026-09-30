@@ -138,7 +138,7 @@ actor CutoutService {
         var request = URLRequest(url: url)
         request.setValue("application/x-votable+xml", forHTTPHeaderField: "Accept")
         request.timeoutInterval = RequestTimeout.standard
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.recordedData(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw CutoutFailure.noService("DataLink answered HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)")
         }

@@ -147,6 +147,15 @@ struct GetServiceHealthTool: JSONReadTool {
         Endpoint(name: "vizier-\($0.name)", host: $0.host, url: $0.availabilityURL)
     }
 
+    /// Names the mirrors in the request ledger by the ids this tool
+    /// reports, so the session log and `seenByApp` say "vizier-cds-unistra"
+    /// as the probe does (plan 23). CADC's own services are named by path.
+    static func nameServicesInLedger() {
+        for mirror in vizierMirrors {
+            RequestService.register(host: mirror.host, id: mirror.name, name: "the VizieR mirror \(mirror.host)")
+        }
+    }
+
     /// Canonical (classic-CANFAR) service set — the `deploymentEndpoints`
     /// derivation applied to the historical defaults. Tests pin this shape;
     /// the live wireup passes the effective endpoints instead.
@@ -223,7 +232,7 @@ struct GetServiceHealthTool: JSONReadTool {
         request.timeoutInterval = budget
         let start = Date()
         do {
-            let (_, response) = try await session.data(for: request)
+            let (_, response) = try await session.recordedData(for: request)
             let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
             guard let http = response as? HTTPURLResponse else {
                 return Output.Service(
@@ -237,10 +246,12 @@ struct GetServiceHealthTool: JSONReadTool {
                 statusCode: http.statusCode, latencyMs: latencyMs
             )
         } catch {
+            // How it failed, in the one classification (plan 23).
+            let outcome = RequestOutcome(error: error)
             return Output.Service(
                 name: endpoint.name, host: endpoint.host,
                 status: "down", ok: false, latencyMs: nil,
-                message: error.localizedDescription
+                message: "\(outcome.rawValue): \(outcome.meaning) (\(error.localizedDescription))"
             )
         }
     }

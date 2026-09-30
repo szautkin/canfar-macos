@@ -19,7 +19,7 @@
 | Step | State | Commit |
 |---|---|---|
 | P plan | done — every decision taken (below) | |
-| L1 request ledger | not started | |
+| L1 request ledger | done — every request recorded; one classification; the source guardrail | (this commit) |
 | K cause: who and why travel with the work | not started | |
 | C every change recorded by its owner | not started | |
 | A the app's decisions say their rule | not started | |

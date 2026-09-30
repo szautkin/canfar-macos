@@ -122,7 +122,7 @@ actor CAOM2Service: ArchiveObservations {
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            (data, response) = try await session.recordedData(for: request)
         } catch {
             throw CAOM2ServiceError.transport(error)
         }

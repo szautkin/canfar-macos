@@ -304,6 +304,9 @@ final class AppState {
         // Search/Research read endpoints through the TAPConfig static —
         // configure it before any of their models exist.
         TAPConfig.configure(endpoints)
+        #if os(macOS)
+        GetServiceHealthTool.nameServicesInLedger()
+        #endif
         let authService = AuthService(network: network, endpoints: endpoints)
         self.authService = authService
         self.sessionService = SessionService(network: network, endpoints: endpoints)

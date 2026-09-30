@@ -115,7 +115,7 @@ actor DownloadService {
         requireUsable: Bool = true
     ) async throws -> (tempURL: URL, suggestedFilename: String) {
         let request = URLRequest(url: url)
-        let (tempURL, response) = try await session.download(for: request)
+        let (tempURL, response) = try await session.recordedDownload(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
@@ -238,7 +238,7 @@ actor DownloadService {
         do {
             var request = URLRequest(url: url)
             request.setValue("application/x-votable+xml", forHTTPHeaderField: "Accept")
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await session.recordedData(for: request)
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200,
                   let xml = String(data: data, encoding: .utf8) else {

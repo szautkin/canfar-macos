@@ -170,16 +170,17 @@ enum SearchError: LocalizedError {
 
     /// A search's failure in words: an archive that did not answer, or
     /// could not be reached, says so — "The request timed out." did not
-    /// say who (plan 21 D5).
+    /// say who (plan 21 D5). How it ended is `RequestOutcome`'s to say
+    /// (plan 23); this words it for the search.
     static func describing(_ error: Error) -> String {
         guard let urlError = error as? URLError else { return error.localizedDescription }
-        switch urlError.code {
+        switch RequestOutcome(error: urlError) {
         case .timedOut:
             let wait = Duration.seconds(RequestTimeout.standard).formatted(.units(allowed: [.minutes, .seconds], width: .wide))
             return String(localized: "CADC's archive is not answering — no reply in \(wait). Try again later.")
-        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed, .networkConnectionLost:
+        case .unreachable:
             return String(localized: "CADC's archive cannot be reached. Try again later.")
-        case .notConnectedToInternet:
+        case .offline:
             return String(localized: "This Mac is not connected to the internet.")
         default:
             return urlError.localizedDescription
