@@ -12,6 +12,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **The login's password field shows and hides the password** — an eye
+  beside the field shows what was typed and hides it again, keeping the
+  cursor in the field. Return in the password field and the Log In
+  shortcut could send two sign-ins for one key press; it now sends one.
 - **A Research record is found however your assistant names it** —
   `open_cube`, `open_fits_file`, `get_downloaded_observation` and the FITS
   tools took only a record's id, and one typed a digit off read as a

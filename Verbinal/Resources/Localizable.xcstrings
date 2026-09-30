@@ -7483,6 +7483,16 @@
         }
       }
     },
+    "Hide password" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Masquer le mot de passe"
+          }
+        }
+      }
+    },
     "High" : {
       "localizations" : {
         "fr" : {
@@ -14504,6 +14514,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Afficher ou masquer l'inspecteur de spectre"
+          }
+        }
+      }
+    },
+    "Show password" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le mot de passe"
           }
         }
       }

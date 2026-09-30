@@ -41,11 +41,9 @@ struct LoginSheet: View {
                     .textContentType(.username)
                     .focused($focusedField, equals: .username)
 
-                SecureField("Password", text: $password)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.password)
-                    .focused($focusedField, equals: .password)
-                    .onSubmit { Task { await login() } }
+                PasswordField("Password", text: $password, focus: $focusedField, field: .password) {
+                    Task { await login() }
+                }
 
                 Toggle("Remember me", isOn: $rememberMe)
                     #if os(macOS)
@@ -94,6 +92,9 @@ struct LoginSheet: View {
     }
 
     private func login() async {
+        // Return in the password field submits it, and Return is also Log
+        // In's shortcut: one key could send two sign-ins.
+        guard !isLoggingIn, !username.isEmpty, !password.isEmpty else { return }
         isLoggingIn = true
         hasError = false
 
