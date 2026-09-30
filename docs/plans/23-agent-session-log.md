@@ -25,8 +25,8 @@
 | A the app's decisions say their rule | done — auto-apply, retries, deadlines (with what was waiting), the sign-in; expiry from the event log | `26fd739` |
 | L2 session journal, stored | done — `AppEventHub`, `SessionJournal`, `SessionLogStore`, `SessionLogLine`; a session per connection | `88aa107` |
 | L3 reading the log: `get_session_log`, `explain_log_entry`, `list_session_logs` | done — one reader, `SessionLogQuery`; `now` from the app's live state | `7c23d89` |
-| L4 managing the logs: view, export, delete, retention | done — Settings ▸ AI Agent ▸ Session Logs; `export_session_log`, `delete_session_logs` | (this commit) |
-| L5 timing on every reply | not started | |
+| L4 managing the logs: view, export, delete, retention | done — Settings ▸ AI Agent ▸ Session Logs; `export_session_log`, `delete_session_logs` | `a1d59b7` |
+| L5 timing on every reply | done — a second block when it asked a service, took 2 s or failed; its log token | (this commit) |
 | L6 activity and health read the ledger | not started | |
 | L7 tool deadlines follow the timeouts | not started | |
 | L8 words for the assistant, handout | not started | |

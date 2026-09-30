@@ -325,7 +325,7 @@ public actor MCPBridgeService {
             // A guide read is a call too: the session log keeps every one.
             let call = UUID()
             await services.recorder?.callBegan(session, call: call, tool: params.name)
-            await services.recorder?.callEnded(session, call: call, tool: params.name, traced: AIToolRouter.Traced(
+            _ = await services.recorder?.callEnded(session, call: call, tool: params.name, traced: AIToolRouter.Traced(
                 result: .data(Data(body.utf8)), seconds: 0, trace: RequestTrace(parent: nil)))
             let payload = CallToolResult(content: [.text(body)], isError: false)
             return successResponse(id: request.id, body: payload)
@@ -361,7 +361,7 @@ public actor MCPBridgeService {
             rawArguments: argBytes,
             context: context
         )
-        await services.recorder?.callEnded(session, call: context.requestID, tool: params.name, traced: traced)
+        let token = await services.recorder?.callEnded(session, call: context.requestID, tool: params.name, traced: traced)
         let result = traced.result
         switch result {
         case .data(let bytes):
@@ -373,18 +373,24 @@ public actor MCPBridgeService {
         case .image(let data, let mimeType, _):
             logger.info("tools/call \(params.name, privacy: .public) -> image (\(mimeType, privacy: .public), \(data.count) bytes)")
         }
-        return mapToolResult(id: request.id, result: result)
+        // What the call took and what it means, when it asked CADC or
+        // CANFAR, took a while, or failed (plan 23 L5).
+        let note = CallTiming.isWorthNoting(traced) ? CallTiming.Note(CallTiming(traced), logToken: token ?? nil) : nil
+        return mapToolResult(id: request.id, result: result, note: note)
     }
 
     // MARK: - Result mapping
 
-    private func mapToolResult(id: JSONRPCID, result: ToolResult) -> JSONRPCResponse {
+    private func mapToolResult(id: JSONRPCID, result: ToolResult, note: CallTiming.Note? = nil) -> JSONRPCResponse {
+        // The timing note is its own block after the reply's: the reply
+        // stays byte for byte as it was.
+        let timing: [CallToolContent] = note.map { [.text($0.json)] } ?? []
         switch result {
         case .data(let bytes):
             // Wrap raw JSON in a single text content block. Agents that
             // want structured content can parse the JSON.
             let text = String(data: bytes, encoding: .utf8) ?? ""
-            let payload = CallToolResult(content: [.text(text)], isError: false)
+            let payload = CallToolResult(content: [.text(text)] + timing, isError: false)
             return successResponse(id: id, body: payload)
 
         case .proposed(let proposal):
@@ -397,12 +403,12 @@ public actor MCPBridgeService {
               "summary": \(escapeJSON(proposal.summary))
             }
             """
-            let payload = CallToolResult(content: [.text(summary)], isError: false)
+            let payload = CallToolResult(content: [.text(summary)] + timing, isError: false)
             return successResponse(id: id, body: payload)
 
         case .failed(let reason):
             let payload = CallToolResult(
-                content: [.text(reason.description)],
+                content: [.text(reason.description)] + timing,
                 isError: true
             )
             return successResponse(id: id, body: payload)
@@ -412,7 +418,7 @@ public actor MCPBridgeService {
             // optional metadata text block.
             var blocks: [CallToolContent] = [.image(base64: data.base64EncodedString(), mimeType: mimeType)]
             if let caption, !caption.isEmpty { blocks.append(.text(caption)) }
-            let payload = CallToolResult(content: blocks, isError: false)
+            let payload = CallToolResult(content: blocks + timing, isError: false)
             return successResponse(id: id, body: payload)
         }
     }

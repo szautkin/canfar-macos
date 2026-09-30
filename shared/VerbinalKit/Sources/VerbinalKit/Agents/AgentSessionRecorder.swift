@@ -16,8 +16,9 @@ public protocol AgentSessionRecorder: Sendable {
     func opened(_ session: UUID, client: String) async
     /// A call arrived.
     func callBegan(_ session: UUID, call: UUID, tool: String) async
-    /// A call ended: what came of it, how long it took, the requests it made.
-    func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async
+    /// A call ended: what came of it, how long it took, the requests it
+    /// made. Answers the call's token in the session log, if it has one.
+    func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async -> Int?
     /// The assistant left, or the connection dropped.
     func closed(_ session: UUID) async
 }

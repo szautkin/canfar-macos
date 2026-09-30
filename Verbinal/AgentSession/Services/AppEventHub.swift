@@ -95,9 +95,12 @@ actor AppEventHub: AgentSessionRecorder {
 
     func opened(_ session: UUID, client: String) async { await submit(.opened(session, client: client)) }
     func callBegan(_ session: UUID, call: UUID, tool: String) async { await submit(.callBegan(session, call: call)) }
-    func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async {
+    func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async -> Int? {
         await submit(.callEnded(session, call: call, tool: tool, traced: traced))
+        return callTokens.removeValue(forKey: call)
     }
+    /// Each ended call's token, until its reply takes it.
+    private var callTokens: [UUID: Int] = [:]
     func closed(_ session: UUID) async { await submit(.closed(session)) }
 
     /// Waits until every event before now is told — for tests.
@@ -122,7 +125,8 @@ actor AppEventHub: AgentSessionRecorder {
     private func end(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async {
         guard let journal = journals[session] else { return }
         if let proposal = traced.result.proposal { proposals[proposal.id] = (proposal.summary, session) }
-        await journal.record(SessionLogLine.call(tool: tool, call: call, session: session, traced: traced))
+        let entry = await journal.record(SessionLogLine.call(tool: tool, call: call, session: session, traced: traced))
+        callTokens[call] = entry.token
         await journal.callEnded(call)
     }
 

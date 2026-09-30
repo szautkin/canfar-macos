@@ -779,8 +779,9 @@ final class MCPBridgeServiceTests: XCTestCase {
             var session: UUID?
             func opened(_ session: UUID, client: String) { self.session = session; events.append("opened \(client)") }
             func callBegan(_ session: UUID, call: UUID, tool: String) { events.append("began \(tool)") }
-            func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) {
+            func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) -> Int? {
                 events.append("ended \(tool) \(traced.result.isFailure ? "failed" : "ok")")
+                return nil
             }
             func closed(_ session: UUID) { events.append("closed") }
         }
@@ -805,6 +806,64 @@ final class MCPBridgeServiceTests: XCTestCase {
         XCTAssertEqual(events, ["opened test/1.0", "began echo", "ended echo ok", "closed"])
         let session = await heard.session
         XCTAssertEqual(session, bridge.session)
+    }
+
+    /// Plan 23 L5: a reply that asked CADC or CANFAR, took a while or failed
+    /// carries its timing in its own block; the reply's own is untouched.
+    func testAReplyCarriesItsTimingWhenItAskedAService() async throws {
+        struct AskingTool: JSONReadTool {
+            struct Args: Decodable, Sendable { var status: Int }
+            struct Output: Encodable, Sendable { let answered: Bool }
+            let definition = AIToolDefinition.withStaticSchema(
+                name: "ask_archive", description: "Asks the archive.",
+                schema: #"{"type":"object","required":["status"],"properties":{"status":{"type":"integer"}},"additionalProperties":false}"#)
+            func handle(_ args: Args, context: AIToolContext) async throws -> Output {
+                let request = URLRequest(url: URL(string: "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus/sync")!, timeoutInterval: 120)
+                _ = try await RequestLedger().send(request) { request in
+                    (Data(), HTTPURLResponse(url: request.url!, statusCode: args.status, httpVersion: nil, headerFields: nil)!)
+                }
+                if args.status >= 400 { throw ToolFailureReason.backendError("the archive said \(args.status)") }
+                return Output(answered: true)
+            }
+        }
+        let router = AIToolRouter(tools: [AskingTool(), EchoReadTool()], auditSink: CapturingAuditSink())
+        let bridge = MCPBridgeService(router: router, identity: MCPBridgeService.ServerIdentity(name: "X", version: "1"),
+                                      services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8)))
+        let (clientSide, serverSide) = InMemoryTransport.pair()
+        let serveTask = Task { await bridge.serve(on: serverSide) }
+        try await clientSide.send(makeRPC(method: "initialize", id: .int(1),
+                                          params: InitializeParams(protocolVersion: "2024-11-05",
+                                                                   clientInfo: ClientInfo(name: "test", version: "1.0"))))
+        _ = try await readResponse(from: clientSide)
+        func call(_ id: Int, _ name: String, _ args: JSONValue) async throws -> CallToolResult {
+            try await clientSide.send(makeRPC(method: "tools/call", id: .int(id), params: CallToolParams(name: name, arguments: args)))
+            let response = try await readResponse(from: clientSide)
+            return try JSONDecoder().decode(CallToolResult.self, from: try XCTUnwrap(response.result))
+        }
+        func texts(_ result: CallToolResult) -> [String] {
+            result.content.compactMap { if case .text(let text) = $0 { return text } else { return nil } }
+        }
+
+        let answered = texts(try await call(2, "ask_archive", .object(["status": .int(200)])))
+        XCTAssertEqual(answered.count, 2)
+        XCTAssertEqual(answered[0], #"{"answered":true}"#, "the reply's own block, as it was")
+        XCTAssertTrue(answered[1].hasPrefix(#"{"timing":"#), answered[1])
+        XCTAssertTrue(answered[1].contains(#""service":"cadc-tap""#), answered[1])
+        XCTAssertTrue(answered[1].contains("the CADC archive search answered in"), answered[1])
+
+        let failed = try await call(3, "ask_archive", .object(["status": .int(503)]))
+        XCTAssertEqual(failed.isError, true)
+        let failedTexts = texts(failed)
+        XCTAssertEqual(failedTexts.count, 2)
+        XCTAssertTrue(failedTexts[1].contains("is busy and asked to be asked later"), failedTexts[1])
+        XCTAssertTrue(failedTexts[1].contains(#""retry":"later""#), failedTexts[1])
+
+        let quick = texts(try await call(4, "echo", .object(["k": .string("v")])))
+        XCTAssertEqual(quick.count, 1, "a quick local answer is left as it is")
+
+        await serverSide.close()
+        await clientSide.close()
+        _ = await serveTask.value
     }
 
     func testCallBeforeInitializeFails() async throws {

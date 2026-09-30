@@ -36,6 +36,37 @@ public struct CallTiming: Codable, Sendable, Equatable {
     /// Slower than this, an answer is called slow.
     public static let slow: TimeInterval = 10
 
+    /// Whether a reply carries its timing: it asked CADC or CANFAR, took 2 s
+    /// or more, or failed. A quick local answer is left as it is.
+    public static func isWorthNoting(_ traced: AIToolRouter.Traced) -> Bool {
+        !traced.trace.records.isEmpty || traced.seconds >= 2 || traced.result.isFailure
+    }
+
+    /// The reply's second block: `{"timing": {...}}`, with the call's token
+    /// in the session log for `explain_log_entry`.
+    public struct Note: Encodable, Sendable {
+        public struct Body: Encodable, Sendable {
+            public let seconds: Double
+            public let requests: [Request]
+            public let verdict: String
+            public let retry: RequestOutcome.Retry?
+            /// The call's entry in the session log.
+            public let logToken: Int?
+        }
+        public let timing: Body
+
+        public init(_ timing: CallTiming, logToken: Int?) {
+            self.timing = Body(seconds: (timing.seconds * 10).rounded() / 10, requests: timing.requests,
+                               verdict: timing.verdict, retry: timing.retry, logToken: logToken)
+        }
+
+        public var json: String {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+            return (try? encoder.encode(self)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+        }
+    }
+
     public init(_ traced: AIToolRouter.Traced, now: Date = Date()) {
         seconds = traced.seconds
         let records = traced.trace.records

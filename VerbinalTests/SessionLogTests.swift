@@ -189,8 +189,8 @@ final class SessionLogTests: XCTestCase {
             }
         }
         await rig.hub.settle()
-        await rig.hub.callEnded(session, call: call, tool: "search_observations",
-                                traced: .init(result: .failed(.backendError("HTTP 503")), seconds: 1.2, trace: trace))
+        let token = await rig.hub.callEnded(session, call: call, tool: "search_observations",
+                                            traced: .init(result: .failed(.backendError("HTTP 503")), seconds: 1.2, trace: trace))
         _ = try await rig.requests.send(URLRequest(url: URL(string: "https://ws-uv.canfar.net/skaha/v1/session")!), answer(500))
         await rig.hub.settle()
         let entries = await entries(rig, session)
@@ -198,6 +198,7 @@ final class SessionLogTests: XCTestCase {
         XCTAssertEqual(callEntry.requests?.map(\.service), ["cadc-tap"])
         XCTAssertTrue(callEntry.line.contains("the CADC archive search is busy"), callEntry.line)
         XCTAssertEqual(callEntry.retry, "later")
+        XCTAssertEqual(token, callEntry.token, "the reply's note points at the call's entry")
         let requests = entries.filter { $0.kind == .request }
         XCTAssertEqual(requests.count, 1, "the call's own failure is not told twice")
         XCTAssertTrue(requests.first?.line.hasPrefix("CANFAR sessions failed on its side: a request by the person") == true)
