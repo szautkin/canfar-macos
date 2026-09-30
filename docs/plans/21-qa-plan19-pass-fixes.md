@@ -19,7 +19,7 @@ the reported case first, one owner per rule, and one green commit per step.
 | D3 archive outage | done — stops after 4 unanswered, fails | D3 |
 | D4 spectrum figure | done — TARGNAME; the error's size said | D4 |
 | D5 TAP timeout | done — no retry after a timeout; the wait shown | D5 |
-| D6 limit banner | planned | — |
+| D6 limit banner | done — interactive tabs only | D6 |
 | R registry | done — `cadc-west-01.canfar.net/reg` by default (the person's request) | R |
 | N small items | planned | — |
 | Q handout 22 | planned | — |

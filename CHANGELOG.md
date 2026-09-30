@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **The session limit is said only where it applies** — the launch
+  sheet's "Session limit reached (3/3)" showed on the Headless tab too,
+  though the limit is for interactive sessions and CANFAR takes batch
+  jobs past it; a QA pass read your assistant's batch launches as
+  bypassing it. It now shows on the Standard and Advanced tabs only.
 - **A search on an archive that is down says so** — with CADC's archive
   not answering, a search kept its spinner for about four minutes, trying
   again after each two-minute timeout, then said "The request timed out."

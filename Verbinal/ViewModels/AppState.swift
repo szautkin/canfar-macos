@@ -175,6 +175,12 @@ final class AppState {
         case standard = 0
         case advanced = 1
         case headless = 2
+
+        /// Whether what this tab launches counts against the limit of three
+        /// interactive sessions. A batch job does not — CANFAR takes them
+        /// past it — and the banner on the Headless tab read as though the
+        /// assistant had bypassed a limit (plan 21 D6).
+        var isBoundBySessionLimit: Bool { self != .headless }
     }
     var launchFormTab: LaunchFormTab = .standard
 

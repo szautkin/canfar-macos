@@ -40,7 +40,7 @@ struct LaunchFormView: View {
                 Label("Launch Session", systemImage: "play.circle")
                     .font(.headline)
 
-                if model.isAtSessionLimit {
+                if model.isAtSessionLimit, appState.launchFormTab.isBoundBySessionLimit {
                     Label(model.sessionLimitMessage, systemImage: "exclamationmark.triangle.fill")
                         .font(.caption)
                         .foregroundStyle(.orange)

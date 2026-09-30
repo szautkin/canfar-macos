@@ -248,4 +248,12 @@ final class AppNavigationTests: XCTestCase {
         XCTAssertEqual(state.currentMode, .storage)
         XCTAssertNil(state.pendingModeAfterLogin)
     }
+
+    /// Plan 21 D6: the limit of three interactive sessions is not a batch
+    /// job's; its banner shows only where a session is launched.
+    func testOnlyInteractiveLaunchesAreBoundBySessionLimit() {
+        XCTAssertTrue(AppState.LaunchFormTab.standard.isBoundBySessionLimit)
+        XCTAssertTrue(AppState.LaunchFormTab.advanced.isBoundBySessionLimit)
+        XCTAssertFalse(AppState.LaunchFormTab.headless.isBoundBySessionLimit)
+    }
 }
