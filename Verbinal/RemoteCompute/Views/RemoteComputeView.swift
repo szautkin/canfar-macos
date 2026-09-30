@@ -57,7 +57,7 @@ struct RemoteComputeView: View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Remote Compute").font(.title2.bold())
-                Text("Code your AI assistant runs with run_code, and code you run here, goes to one session on your CANFAR account named verbinal-compute. It uses your cores, has no shell and no inbound network, and writes its results to your storage.")
+                Text("Code your AI assistant runs with run_code, and code you run here, goes to one session on your CANFAR account named verbinal-compute. It uses your cores, has no shell and no inbound network, and writes its results to your storage. To size a pool of workers, count the cores it may use with len(os.sched_getaffinity(0)) — os.cpu_count() counts the whole node's.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: 820, alignment: .leading)

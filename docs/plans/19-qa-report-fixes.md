@@ -81,7 +81,7 @@ The rules are those of plans 15 and 17:
 - **L2:** column ids such as `ra(j20000)` stay, by decision. They are the keys Verbinal for Windows uses.
 - **N9:** `list_local_folder` lists every file the person's permissions allow (plan 17 decision 2).
 - **N4** (*found:* `astroai/improc` is Debian 13 — its science packages are apt's, for `/usr/bin/python3`, while the `python3` first on PATH is a separate 3.13.15 build that has only pip, and the probe asked only that one): plan 17 P1 is still to do. It fixes a cached probe answering "applied" at once and the `astroai/improc` manifest undercounting packages. It is carried here as step **K1**, done with phase S.
-- **`cpu_count()` returns 192 on the compute image:** CANFAR's node, not Verbinal. `run_code`'s description and the Remote Compute screen will advise `len(os.sched_getaffinity(0))` for sizing pools (**K2**).
+- **`cpu_count()` returns 192 on the compute image:** CANFAR's node, not Verbinal. `run_code`'s description and the Remote Compute screen advise `len(os.sched_getaffinity(0))` for sizing pools (**K2**, done).
 - **`notebook1`** (deleted Sept 28, 05:23 local): the Portal's confirmed **Delete** is the only code path that writes that line (plan 17). Since A1, the bar says who; handout 20 checks it.
 
 ## Q — Handout 20

@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Remote Compute says how many cores code may use** — on CANFAR,
+  Python's `os.cpu_count()` counts the whole node (192), not the four
+  cores a session has. The Remote Compute screen and your assistant's
+  `run_code` point to `len(os.sched_getaffinity(0))` for sizing a pool
+  of workers.
 - **Your assistant's picture of the window shows all its text** —
   `capture_view` drew the window's layers itself, which leaves out what
   macOS composites: the Portal's header and the Cube Viewer's side panel

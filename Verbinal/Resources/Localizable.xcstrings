@@ -3271,6 +3271,16 @@
         }
       }
     },
+    "Code your AI assistant runs with run_code, and code you run here, goes to one session on your CANFAR account named verbinal-compute. It uses your cores, has no shell and no inbound network, and writes its results to your storage. To size a pool of workers, count the cores it may use with len(os.sched_getaffinity(0)) — os.cpu_count() counts the whole node's." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le code que votre assistant IA exécute avec run_code, et celui que vous exécutez ici, va dans une session de votre compte CANFAR nommée verbinal-compute. Elle utilise vos cœurs, n'a ni shell ni réseau entrant, et écrit ses résultats dans votre stockage. Pour dimensionner un groupe de processus, comptez les cœurs qu'elle peut utiliser avec len(os.sched_getaffinity(0)) — os.cpu_count() compte ceux de tout le nœud."
+          }
+        }
+      }
+    },
     "Collection" : {
       "extractionState" : "stale",
       "localizations" : {
