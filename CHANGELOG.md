@@ -258,7 +258,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
   database, so it is asked once: after each sign-in the records it has
   not answered for are asked, two at a time, with the progress on the
   activity bar and at the top of Research; the check of 35 records had
-  taken about twenty minutes, one at a time. A record whose publisher id
+  taken about twenty minutes, one at a time. When the archive does not
+  answer — CADC down — the check stops after its first few requests and
+  says so, rather than waiting each one out and calling it a success. A record whose publisher id
   names no product (`CFHT?1573200`, whose observation has two) takes its
   details from the product whose file it downloaded.
 - **Choose which of an observation's files to download** — your assistant's

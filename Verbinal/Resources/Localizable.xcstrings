@@ -15668,6 +15668,16 @@
         }
       }
     },
+    "The archive is not answering — Research records are asked again at the next sign-in" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'archive ne répond pas — les fiches Research seront redemandées à la prochaine connexion"
+          }
+        }
+      }
+    },
     "The CLI coding agent. Run one command to register Verbinal." : {
       "localizations" : {
         "fr" : {

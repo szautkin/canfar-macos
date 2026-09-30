@@ -16,7 +16,7 @@ the reported case first, one owner per rule, and one green commit per step.
 |---|---|---|
 | V version | done — 1.4.0, build 17; `buildCommit` | V |
 | D2 pool sizing | done — the cgroup quota | D2 |
-| D3 archive outage | planned | — |
+| D3 archive outage | done — stops after 4 unanswered, fails | D3 |
 | D4 spectrum figure | planned | — |
 | D5 TAP timeout | planned | — |
 | D6 limit banner | planned | — |

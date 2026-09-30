@@ -33,6 +33,12 @@ final class ResearchRecordRepair {
     static let concurrentRequests = 2
     /// How long one record waits for the archive.
     static let requestSeconds: TimeInterval = 60
+    /// No answer to this many requests, and none before: the archive is
+    /// down. With it down, 36 records waited out 18 minutes and the check
+    /// said it had succeeded (plan 21 D3).
+    static let givesUpAfter = 4
+    /// Why a check ended without the archive's answers.
+    static let notAnswering = String(localized: "The archive is not answering — Research records are asked again at the next sign-in")
 
     private let store: ObservationStore
     /// A corrected record's note goes with it.
@@ -71,7 +77,7 @@ final class ResearchRecordRepair {
         let task = tasks.begin(.research, String(localized: "Get archive details for Research records"), by: .app)
         progress = Progress(done: 0, total: toAsk.count)
         task.stage(String(localized: "\(0) of \(toAsk.count)"))
-        var answered = 0
+        var answered = 0, asked = 0
         let archive = archive, seconds = Self.requestSeconds
         await withTaskGroup(of: (UUID, CAOM2Observation?).self) { group in
             var next = 0
@@ -82,14 +88,21 @@ final class ResearchRecordRepair {
             }
             while next < min(Self.concurrentRequests, toAsk.count) { ask() }
             for await (id, observation) in group {
+                asked += 1
                 if observation != nil { answered += 1 }
                 if store.complete(recordID: id, from: observation) { changed += 1 }
                 progress?.done += 1
                 task.stage(String(localized: "\(progress?.done ?? 0) of \(toAsk.count)"))
-                if next < toAsk.count { ask() }
+                let archiveDown = answered == 0 && asked >= Self.givesUpAfter
+                if next < toAsk.count, !archiveDown { ask() }
             }
         }
-        task.succeed(String(localized: "The archive answered for \(answered) of \(toAsk.count)"))
+        // An archive that answered for none has not been checked against.
+        if answered == 0 {
+            task.fail(Self.notAnswering)
+        } else {
+            task.succeed(String(localized: "The archive answered for \(answered) of \(toAsk.count)"))
+        }
         return changed
     }
 

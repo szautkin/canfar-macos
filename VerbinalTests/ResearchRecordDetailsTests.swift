@@ -274,7 +274,35 @@ final class ResearchRecordDetailsTests: XCTestCase {
         XCTAssertEqual(archive.mostAtOnce, ResearchRecordRepair.concurrentRequests)
         XCTAssertEqual(registry.tasks.map(\.label), ["Get archive details for Research records"])
         XCTAssertEqual(registry.tasks.first?.startedBy, .app)
-        XCTAssertEqual(registry.tasks.first?.message, "The archive answered for 0 of 5")
+        XCTAssertEqual(registry.tasks.first?.progress, .failed, "no answer is not a success (plan 21 D3)")
+    }
+
+    /// Plan 21 D3: with CADC down, 36 records waited out 18 minutes and the
+    /// check said it had succeeded, "answered for 0 of 36". It stops once the
+    /// archive has answered none of its first requests, and fails, saying so;
+    /// an archive that answers for some is a success that says how many.
+    @MainActor
+    func testACheckStopsAndFailsWhenTheArchiveIsDown() async throws {
+        let (store, file) = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: file) }
+        for n in 10...45 { store.save(described("ivo://cadc.nrc.ca/CFHT?15732\(n)")) }
+        let registry = TaskRegistry()
+        let down = FakeArchive()
+        await ResearchRecordRepair(store: store, tasks: registry, archive: down).run()
+        XCTAssertLessThanOrEqual(down.asked.count, ResearchRecordRepair.givesUpAfter + ResearchRecordRepair.concurrentRequests,
+                                 "not all 36")
+        XCTAssertEqual(registry.tasks.first?.progress, .failed)
+        XCTAssertEqual(registry.tasks.first?.message, ResearchRecordRepair.notAnswering)
+
+        let caom = try CAOM2Parser.parse(data: try megaPipe())
+        let (some, someFile) = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: someFile) }
+        some.save(described(uBand))
+        some.save(described("ivo://cadc.nrc.ca/CFHT?1573200"))
+        let partial = TaskRegistry()
+        await ResearchRecordRepair(store: some, tasks: partial, archive: FakeArchive(answers: [uBand: caom])).run()
+        XCTAssertEqual(partial.tasks.first?.progress, .succeeded)
+        XCTAssertEqual(partial.tasks.first?.message, "The archive answered for 1 of 2")
     }
 
     /// Plan 19 R3: `1525350`, blank in the person's Research, was kept under
