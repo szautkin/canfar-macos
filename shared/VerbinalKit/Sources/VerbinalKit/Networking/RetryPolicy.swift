@@ -112,11 +112,18 @@ public func isTransient(_ error: Error) -> Bool {
 /// throw `CancellationError` immediately rather than waiting out the backoff.
 public func retrying<T: Sendable>(
     _ policy: RetryPolicy = .default,
+    decisions: DecisionLog = .shared,
     operation: @Sendable () async throws -> T
 ) async throws -> T {
     var attempt = 0
     var delay = policy.initialDelay
     let started = ContinuousClock.now
+    // Each decision says its rule, and names the request's service when the
+    // work has a trace (plan 23 A).
+    func decide(_ rule: Decision.Rule, _ error: Error, _ why: String) {
+        let service = RequestTrace.current?.records.last(where: \.isFinished)?.service.name ?? "the request"
+        decisions.record(rule, "\(service) \(RequestOutcome(error: error).meaning); \(why)")
+    }
     while true {
         attempt += 1
         do {
@@ -124,18 +131,23 @@ public func retrying<T: Sendable>(
         } catch {
             // Don't retry on cancellation — the caller meant for us to stop.
             if error is CancellationError { throw error }
-            if attempt >= policy.maxAttempts || !isTransient(error) {
+            guard isTransient(error) else { throw error }
+            if attempt >= policy.maxAttempts {
+                decide(.notRetried, error, "not asked again: \(attempt) attempts made")
                 throw error
             }
             if !policy.retriesTimeouts, (error as? URLError)?.code == .timedOut {
+                decide(.notRetried, error, "not asked again: a request that timed out would wait its whole timeout again")
                 throw error
             }
             // Wall-clock budget: give up rather than start an attempt
             // that would push total time past the ceiling.
             if let budget = policy.overallBudget,
                ContinuousClock.now - started + delay >= budget {
+                decide(.notRetried, error, "not asked again: the time allowed for it is spent")
                 throw error
             }
+            decide(.retried, error, "asked again in \(delay.formatted(.units(allowed: [.seconds, .milliseconds], width: .abbreviated))), attempt \(attempt + 1) of \(policy.maxAttempts)")
             try await Task.sleep(for: delay)
             // Exponential backoff, clamped to maxDelay.
             delay = policy.nextDelay(after: delay)

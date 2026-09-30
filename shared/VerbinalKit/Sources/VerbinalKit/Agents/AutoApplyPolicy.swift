@@ -36,6 +36,22 @@ public enum AutoApplyPolicy {
         }
     }
 
+    /// Why a change of `verbClass` was applied at once or held, in words,
+    /// for the session log (plan 23 A).
+    public static func rule(for verbClass: VerbClass, appliedAtOnce: Bool) -> String {
+        switch verbClass {
+        case .semanticWrite:
+            return appliedAtOnce ? "applied at once: Auto-apply is on and this is not a delete"
+                                 : "waits in Pending: Auto-apply is off, so the person applies each change"
+        case .destructive:
+            return "waits in Pending: a delete always waits for the person, whatever Auto-apply says"
+        case .standingInstruction:
+            return "waits in Pending: what every later assistant is told always waits for the person"
+        case .read, .viewState, .proposalLifecycle, .undo:
+            return appliedAtOnce ? "applied at once" : "waits in Pending"
+        }
+    }
+
     /// `description` ending with the rule for `verbClass`.
     public static func describe(_ description: String, verbClass: VerbClass) -> String {
         guard let sentence = toolSentence(for: verbClass) else { return description }

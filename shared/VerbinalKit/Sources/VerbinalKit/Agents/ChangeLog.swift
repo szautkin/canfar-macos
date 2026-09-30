@@ -57,11 +57,10 @@ public struct Change: Codable, Sendable, Equatable, Identifiable {
 /// The log keeps no history of its own: observers — the session journal —
 /// keep what they need. Shared by default, as a cross-cutting log is; a
 /// test hands in its own.
-public final class ChangeLog: @unchecked Sendable {
+public final class ChangeLog: Sendable {
     public static let shared = ChangeLog()
 
-    private let lock = NSLock()
-    private var observers: [UUID: @Sendable (Change) -> Void] = [:]
+    public let observers = Observers<Change>()
 
     public init() {}
 
@@ -120,7 +119,7 @@ public final class ChangeLog: @unchecked Sendable {
         let change = Change(id: UUID(), kind: kind, verb: ChangeVerb.of(kind: kind) ?? ChangeVerb.fallback,
                             what: what, startedBy: Initiator.current, cause: cause, started: started,
                             finished: Date(), outcome: outcome, failure: failure, task: task ?? cause.task)
-        for observer in lock.withLock({ Array(observers.values) }) { observer(change) }
+        observers.notify(change)
     }
 
     /// An error in words: the apply's own message, the error's description.
@@ -132,17 +131,14 @@ public final class ChangeLog: @unchecked Sendable {
 
     // MARK: - Observing
 
-    /// Calls `observer` with every change until `stopObserving`, on the
-    /// thread that made it: hand heavy work off.
+    /// Calls `observer` with every change until `stopObserving`.
     @discardableResult
     public func observe(_ observer: @escaping @Sendable (Change) -> Void) -> UUID {
-        let id = UUID()
-        lock.withLock { observers[id] = observer }
-        return id
+        observers.observe(observer)
     }
 
     public func stopObserving(_ id: UUID) {
-        lock.withLock { observers[id] = nil }
+        observers.stopObserving(id)
     }
 }
 

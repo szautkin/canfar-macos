@@ -407,3 +407,46 @@ final class AuthLifecycleControllerTests: XCTestCase {
         XCTAssertNil(controller.userInfo)
     }
 }
+
+/// Plan 23 A: the sign-in's decisions are said, with their reasons.
+@MainActor
+final class SignInDecisionTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        KeychainStorage.clearToken()
+    }
+
+    override func tearDown() {
+        KeychainStorage.clearToken()
+        MockURLProtocol.requestHandler = nil
+        super.tearDown()
+    }
+
+    func testAnExpiredSignInWithNoPasswordEndsAndSaysWhy() async throws {
+        KeychainStorage.saveToken("old-token", username: "alice")
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!, Data())
+        }
+        let controller = AuthLifecycleController(authService: AuthService(network: NetworkClient(session: MockURLProtocol.mockSession())))
+        controller.connectivityProvider = { .satisfied }
+        controller.apply(username: "alice", userInfo: nil)
+        let heard = HeardDecisions()
+        defer { heard.stop() }
+        controller.handleTokenExpired()
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(heard.decisions.map(\.rule), [.signInLost])
+        XCTAssertTrue(heard.decisions.first?.sentence.contains("no password is stored") == true, "\(heard.decisions)")
+    }
+
+    /// What the shared decision log says while a test runs.
+    final class HeardDecisions: @unchecked Sendable {
+        private let lock = NSLock()
+        private var list: [Decision] = []
+        private var token: UUID?
+        init() {
+            token = DecisionLog.shared.observers.observe { [weak self] decision in self?.lock.withLock { self?.list.append(decision) } }
+        }
+        var decisions: [Decision] { lock.withLock { list } }
+        func stop() { token.map(DecisionLog.shared.observers.stopObserving) }
+    }
+}

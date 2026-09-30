@@ -48,6 +48,9 @@ public actor AIToolRouter {
     /// How long an auto-applied write may hold its call before answering
     /// "still applying" with a job id — under the ~60 s a client waits.
     private let autoApplyInlineWait: TimeInterval
+    /// Where the router's decisions are recorded: auto-applied or held, the
+    /// dispatch ceiling reached (plan 23 A).
+    private let decisions: DecisionLog
 
     public init(
         tools: [any AITool],
@@ -56,7 +59,8 @@ public actor AIToolRouter {
         dispatchCeilingOverride: TimeInterval? = nil,
         onDispatchStart: (@Sendable (_ toolName: String, _ originLabel: String) -> Void)? = nil,
         applyJobs: ApplyJobRegistry = ApplyJobRegistry(),
-        autoApplyInlineWait: TimeInterval = 40
+        autoApplyInlineWait: TimeInterval = 40,
+        decisions: DecisionLog = .shared
     ) {
         var table: [String: any AITool] = [:]
         var metadata: [String: ToolMetadata] = [:]
@@ -87,6 +91,7 @@ public actor AIToolRouter {
         self.onDispatchStart = onDispatchStart
         self.applyJobs = applyJobs
         self.autoApplyInlineWait = autoApplyInlineWait
+        self.decisions = decisions
     }
 
     /// Manifest as seen by an external (MCP) client. Filters out tools
@@ -128,6 +133,34 @@ public actor AIToolRouter {
         rawArguments: Data,
         context: AIToolContext
     ) async -> ToolResult {
+        await dispatchTraced(name: name, rawArguments: rawArguments, context: context).result
+    }
+
+    /// A call, and what it took: its seconds and the requests it made to
+    /// CADC and CANFAR, by way of its own trace (plan 23).
+    public struct Traced: Sendable {
+        public let result: ToolResult
+        public let seconds: TimeInterval
+        public let trace: RequestTrace
+    }
+
+    /// `dispatch`, with what the call took.
+    public func dispatchTraced(
+        name: String,
+        rawArguments: Data,
+        context: AIToolContext
+    ) async -> Traced {
+        let started = Date()
+        let trace = RequestTrace(parent: nil)
+        let result = await trace.run { await dispatchUntraced(name: name, rawArguments: rawArguments, context: context) }
+        return Traced(result: result, seconds: Date().timeIntervalSince(started), trace: trace)
+    }
+
+    private func dispatchUntraced(
+        name: String,
+        rawArguments: Data,
+        context: AIToolContext
+    ) async -> ToolResult {
         // Pulse the "agent is working" indicator at dispatch START —
         // matching Windows — so the user sees activity during a slow or
         // ultimately-failing call, not only after it completes.
@@ -148,8 +181,9 @@ public actor AIToolRouter {
             seconds: ceiling,
             onDeadline: {
                 deadlineHit.set()
+                let detail = self.decisions.deadlineReached(name, after: ceiling)
                 return ToolResult.failed(.backendError(
-                    "\(name) exceeded the \(Int(ceiling))s dispatch deadline — the app-side operation was asked to cancel and may still be finishing in the background. The server stays responsive; check state with a read tool before retrying."))
+                    "\(name) exceeded the \(Int(ceiling))s dispatch deadline — \(detail.isEmpty ? "" : detail + "; ")the app-side operation was asked to cancel and may still be finishing in the background. The server stays responsive; check state with a read tool before retrying."))
             },
             work: { await self.dispatchInner(name: name, rawArguments: arguments, context: context) }
         ) } }
@@ -234,6 +268,7 @@ public actor AIToolRouter {
                 // "cap pending strip items" rationale doesn't apply.
                 if let hook = autoApplyHook,
                    await hook.shouldAutoApply(meta.verbClass, proposal) {
+                    decide(proposal, meta.verbClass, appliedAtOnce: true)
                     // The apply records its own outcome, so one that
                     // outlives the call (a 1.6 GB download) is still
                     // reported — by get_job_status — when it ends.
@@ -285,6 +320,7 @@ public actor AIToolRouter {
 
                 let accepted = await context.budget.tryAccept(origin: context.origin)
                 if accepted {
+                    decide(proposal, meta.verbClass, appliedAtOnce: false)
                     emitAudit(name: name, args: rawArguments, context: context,
                               outcome: .proposed(proposal.id),
                               verbClass: meta.verbClass,
@@ -308,6 +344,15 @@ public actor AIToolRouter {
     }
 
     // MARK: - Internals
+
+    /// Records whether `proposal` applied at once or waits, with the rule.
+    private func decide(_ proposal: PendingProposal, _ verbClass: VerbClass, appliedAtOnce: Bool) {
+        var cause = Cause.current
+        cause.proposal = proposal.id
+        decisions.record(appliedAtOnce ? .appliedAtOnce : .heldForPerson,
+                         "\"\(proposal.summary)\" \(AutoApplyPolicy.rule(for: verbClass, appliedAtOnce: appliedAtOnce))",
+                         cause: cause)
+    }
 
     private func emitAudit(
         name: String,

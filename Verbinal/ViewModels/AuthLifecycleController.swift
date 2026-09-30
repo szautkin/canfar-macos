@@ -230,18 +230,26 @@ final class AuthLifecycleController {
     /// token NOR usable stored credentials. `.offline` means neither
     /// success nor failure could be established — callers must keep the
     /// stored credentials and defer to the connectivity retry path.
+    /// Where the renewal's decisions are recorded, each with its reason
+    /// (plan 23 A).
+    private let decisions: DecisionLog = .shared
+
     private func silentReauth() async -> ReauthOutcome {
         let (storedToken, storedUsername) = KeychainStorage.loadToken()
         guard let token = storedToken, let storedUser = storedUsername else {
             username = ""
             userInfo = nil
             isAuthenticated = false
+            decisions.record(.signInLost, "the sign-in ended: no stored sign-in to renew, so the person must sign in")
             return .sessionExpired
         }
 
         // Definitely offline — nothing to gain from a doomed request, and
         // the caller must not mistake the failure for real expiry.
-        guard connectivityProvider() != .unsatisfied else { return .offline }
+        guard connectivityProvider() != .unsatisfied else {
+            decisions.record(.signInKept, "the stored sign-in was kept unchecked: this Mac has no network")
+            return .offline
+        }
 
         statusMessage = String(localized: "Renewing session...")
         isLoading = true
@@ -252,10 +260,11 @@ final class AuthLifecycleController {
             apply(username: canonical, userInfo: nil)
             isLoading = false
             return .success
-        case .networkError:
+        case .networkError(let why):
             // Don't burn the password on a transient network blip —
             // bail out, the connectivity retry path resumes the session.
             isLoading = false
+            decisions.record(.signInKept, "the stored sign-in was kept unchecked: CADC could not be reached (\(why))")
             return .offline
         case .expired:
             break
@@ -277,20 +286,24 @@ final class AuthLifecycleController {
                     userInfo: result.userInfo
                 )
                 isLoading = false
+                decisions.record(.signedInAgain, "signed in again with the stored password: the sign-in had expired")
                 return .success
             }
             // Transient network / 5xx — keep credentials; connectivity
             // retry (or the next user action) will try again.
             if !result.isCredentialRejection {
                 isLoading = false
+                decisions.record(.signInKept, "the stored password was kept: CADC did not answer the sign-in (\(result.errorMessage ?? "no reason given"))")
                 return .offline
             }
             // Password rejected by CADC — likely user changed it.
             // Clear it so we don't keep retrying with a known-bad
             // password every launch.
             KeychainStorage.clearToken()
+            decisions.record(.signInLost, "the sign-in ended: CADC refused the stored password, so it was cleared and the person must sign in")
         } else {
             KeychainStorage.clearToken()
+            decisions.record(.signInLost, "the sign-in ended: it expired and no password is stored, so the person must sign in")
         }
 
         username = ""

@@ -21,8 +21,8 @@
 | P plan | done — every decision taken (below) | |
 | L1 request ledger | done — every request recorded; one classification; the source guardrail | `a1255a2` |
 | K cause: who and why travel with the work | done — `Cause`; `why` on every write, shown in Pending | `619e76f` |
-| C every change recorded by its owner | done — the apply path for every assistant change; the owners below for the person's and the app's | (this commit) |
-| A the app's decisions say their rule | not started | |
+| C every change recorded by its owner | done — the apply path for every assistant change; the owners below for the person's and the app's | `7e53441` |
+| A the app's decisions say their rule | done — auto-apply, retries, deadlines (with what was waiting), the sign-in; expiry from the event log | (this commit) |
 | L2 session journal, stored | not started | |
 | L3 reading the log: `get_session_log`, `explain_log_entry`, `list_session_logs` | not started | |
 | L4 managing the logs: view, export, delete, retention | not started | |
@@ -278,6 +278,22 @@ Each policy records a `decision` entry with its rule, in words:
 | sign-in | a request not sent because sign-in is needed |
 
 Tests: one per policy.
+
+**As built.** `DecisionLog` records a `Decision` (its rule and a sentence). The rules:
+
+- **Auto-apply** (`AIToolRouter`): applied at once, or held, worded by `AutoApplyPolicy.rule`.
+- **Retries** (`retrying`): asked again with the wait; or not, because of a timeout, the attempts, or
+  the time allowed.
+- **Deadlines** (`withToolTimeout`, `withApplierTimeout`, the dispatch ceiling): what was still
+  waiting, from the call's trace, or that nothing was. The error the assistant gets says the same.
+- **The sign-in** (`AuthLifecycleController`): renewed with the stored password, kept unchecked while
+  CADC cannot be reached, or ended, and why.
+- **Proposal expiry:** its one recording point stays the event log, and the journal words its rule.
+- **The session limit:** not a decision the app takes. The app does not refuse an assistant's launch
+  at 3 of 3; CANFAR does, and that failure is recorded with its reason. The form's disabled button
+  refuses nothing.
+
+One `Observers` type serves the ledger, the change log and the decision log (DRY).
 
 ### L2 — The session journal, stored
 

@@ -33,6 +33,7 @@ import Foundation
 public func withToolTimeout<T: Sendable>(
     seconds: TimeInterval,
     label: String,
+    decisions: DecisionLog = .shared,
     _ work: @escaping @Sendable () async throws -> T
 ) async throws -> T {
     try await withThrowingTaskGroup(of: T.self) { group in
@@ -41,8 +42,10 @@ public func withToolTimeout<T: Sendable>(
         }
         group.addTask {
             try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            // What was still in flight, said and recorded (plan 23 A).
+            let detail = decisions.deadlineReached(label, after: seconds)
             throw ToolFailureReason.backendError(
-                "\(label) exceeded \(Int(seconds))s deadline — the upstream service may still be processing. Retry after a short pause if you need the data; the cluster state is unaffected."
+                "\(label) exceeded \(Int(seconds))s deadline — \(detail.isEmpty ? "the upstream service may still be processing" : detail). Retry after a short pause if you need the data; the cluster state is unaffected."
             )
         }
         defer { group.cancelAll() }

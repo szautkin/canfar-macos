@@ -52,6 +52,11 @@ public final class RequestLedger: @unchecked Sendable {
             (finished ?? now).timeIntervalSince(started)
         }
 
+        /// "the CADC archive search had waited 58 s of its 120 s".
+        public func waitingSentence(now: Date = Date()) -> String {
+            "\(service.name) had waited \(Int(seconds(now: now))) s of its \(Int(timeout)) s"
+        }
+
         /// "HTTP 503", "URLError -1001", or nil.
         public var code: String? {
             if let status { return "HTTP \(status)" }
@@ -91,7 +96,7 @@ public final class RequestLedger: @unchecked Sendable {
     private var finished: [Record] = []
     private var troubleInARow: [String: Int] = [:]
     private var failing: Set<String> = []
-    private var observers: [UUID: @Sendable (Event) -> Void] = [:]
+    private let observers = Observers<Event>()
 
     private static let ids = IDCounter()
 
@@ -213,17 +218,15 @@ public final class RequestLedger: @unchecked Sendable {
     /// the sender's thread: hand heavy work off.
     @discardableResult
     public func observe(_ observer: @escaping @Sendable (Event) -> Void) -> UUID {
-        let id = UUID()
-        lock.withLock { observers[id] = observer }
-        return id
+        observers.observe(observer)
     }
 
     public func stopObserving(_ id: UUID) {
-        lock.withLock { observers[id] = nil }
+        observers.stopObserving(id)
     }
 
     private func notify(_ event: Event) {
-        for observer in lock.withLock({ Array(observers.values) }) { observer(event) }
+        observers.notify(event)
     }
 
     private final class IDCounter: @unchecked Sendable {
