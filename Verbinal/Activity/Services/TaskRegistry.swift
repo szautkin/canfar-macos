@@ -33,6 +33,8 @@ final class TaskRegistry {
     /// Oldest first.
     private(set) var tasks: [TrackedTask] = []
     private var nextID = 0
+    /// Each task as it begins and as it ends — for the session log (plan 23).
+    nonisolated let events = Observers<TrackedTask>()
 
     /// Starts tracking work; the handle owns its outcome. Who started it is
     /// the task's initiator unless the caller knows better; why is its
@@ -44,8 +46,10 @@ final class TaskRegistry {
         let again = tasks.contains { $0.label == label && $0.progress == .failed }
         var cause = cause
         if let why { cause.why = Cause.clip(why) }
-        tasks.append(TrackedTask(id: nextID, kind: kind, label: label, startedBy: initiator, cause: cause,
-                                 isAgain: again, started: Date()))
+        let task = TrackedTask(id: nextID, kind: kind, label: label, startedBy: initiator, cause: cause,
+                               isAgain: again, started: Date())
+        tasks.append(task)
+        events.notify(task)
         // The oldest FINISHED go first: running work is what a reader most
         // needs to see, and is never dropped to make room.
         while tasks.count > Self.maxTasks, let finished = tasks.firstIndex(where: \.isFinished) {
@@ -98,6 +102,7 @@ final class TaskRegistry {
         // Where it had got to is over; how it ended is the message (QA L10).
         tasks[index].stage = ""
         tasks[index].finished = Date()
+        events.notify(tasks[index])
     }
 }
 

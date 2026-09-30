@@ -32,6 +32,8 @@ public struct Decision: Codable, Sendable, Equatable {
     /// What was decided and why: "search_observations stopped waiting
     /// after 130 s; the CADC archive search had not answered in 120 s".
     public let sentence: String
+    /// What it was about, when that is a proposal: its summary.
+    public var subject: String? = nil
     public let at: Date
     public let startedBy: Initiator
     public let cause: Cause
@@ -49,8 +51,9 @@ public final class DecisionLog: Sendable {
     public init() {}
 
     /// Records `rule`'s decision, said as `sentence`, under the work's cause.
-    public func record(_ rule: Decision.Rule, _ sentence: String, cause: Cause = Cause.current) {
-        observers.notify(Decision(rule: rule, sentence: sentence, at: Date(), startedBy: Initiator.current, cause: cause))
+    public func record(_ rule: Decision.Rule, _ sentence: String, subject: String? = nil, cause: Cause = Cause.current) {
+        observers.notify(Decision(rule: rule, sentence: sentence, subject: subject, at: Date(),
+                                  startedBy: Initiator.current, cause: cause))
     }
 }
 

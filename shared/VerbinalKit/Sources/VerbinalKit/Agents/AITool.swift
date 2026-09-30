@@ -169,7 +169,7 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
     /// payload verbatim. The head — the actionable part — is kept; the rest is
     /// marked truncated. `auditTag` never interpolates input, so log/PII
     /// hygiene there is unaffected.
-    static func clip(_ value: String, max: Int = 200) -> String {
+    public static func clip(_ value: String, max: Int = 200) -> String {
         guard value.count > max else { return value }
         return String(value.prefix(max)) + "… (truncated)"
     }

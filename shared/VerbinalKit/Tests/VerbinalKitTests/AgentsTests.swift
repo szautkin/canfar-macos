@@ -771,6 +771,42 @@ final class MCPBridgeServiceTests: XCTestCase {
         _ = await serveTask.value
     }
 
+    /// Plan 23 L2: the recorder hears the session open at `initialize`,
+    /// each call begin and end with what it took, and the session close.
+    func testTheRecorderHearsTheWholeSession() async throws {
+        actor Heard: AgentSessionRecorder {
+            var events: [String] = []
+            var session: UUID?
+            func opened(_ session: UUID, client: String) { self.session = session; events.append("opened \(client)") }
+            func callBegan(_ session: UUID, call: UUID, tool: String) { events.append("began \(tool)") }
+            func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) {
+                events.append("ended \(tool) \(traced.result.isFailure ? "failed" : "ok")")
+            }
+            func closed(_ session: UUID) { events.append("closed") }
+        }
+        let heard = Heard()
+        let router = AIToolRouter(tools: [EchoReadTool()], auditSink: CapturingAuditSink())
+        let bridge = MCPBridgeService(
+            router: router, identity: MCPBridgeService.ServerIdentity(name: "X", version: "1"),
+            services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8), recorder: heard))
+        let (clientSide, serverSide) = InMemoryTransport.pair()
+        let serveTask = Task { await bridge.serve(on: serverSide) }
+        try await clientSide.send(makeRPC(method: "initialize", id: .int(1),
+                                          params: InitializeParams(protocolVersion: "2024-11-05",
+                                                                   clientInfo: ClientInfo(name: "test", version: "1.0"))))
+        _ = try await readResponse(from: clientSide)
+        try await clientSide.send(makeRPC(method: "tools/call", id: .int(2),
+                                          params: CallToolParams(name: "echo", arguments: .object(["k": .string("v")]))))
+        _ = try await readResponse(from: clientSide)
+        await serverSide.close()
+        await clientSide.close()
+        _ = await serveTask.value
+        let events = await heard.events
+        XCTAssertEqual(events, ["opened test/1.0", "began echo", "ended echo ok", "closed"])
+        let session = await heard.session
+        XCTAssertEqual(session, bridge.session)
+    }
+
     func testCallBeforeInitializeFails() async throws {
         let router = AIToolRouter(tools: [EchoReadTool()], auditSink: CapturingAuditSink())
         let identity = MCPBridgeService.ServerIdentity(name: "X", version: "1")

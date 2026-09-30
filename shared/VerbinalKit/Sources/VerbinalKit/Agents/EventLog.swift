@@ -57,6 +57,8 @@ public actor EventLog {
     public let capacity: Int
     private var buffer: [AgentEventEntry] = []
     private var nextToken: UInt64 = 1
+    /// Who hears each event as it happens — the session log (plan 23).
+    public nonisolated let observers = Observers<AgentEventEntry>()
 
     public init(capacity: Int = 500) {
         precondition(capacity > 0, "EventLog capacity must be positive")
@@ -74,6 +76,7 @@ public actor EventLog {
         if buffer.count > capacity {
             buffer.removeFirst(buffer.count - capacity)
         }
+        observers.notify(entry)
         return token
     }
 

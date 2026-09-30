@@ -142,6 +142,12 @@ public actor AIToolRouter {
         public let result: ToolResult
         public let seconds: TimeInterval
         public let trace: RequestTrace
+
+        public init(result: ToolResult, seconds: TimeInterval, trace: RequestTrace) {
+            self.result = result
+            self.seconds = seconds
+            self.trace = trace
+        }
     }
 
     /// `dispatch`, with what the call took.
@@ -351,7 +357,7 @@ public actor AIToolRouter {
         cause.proposal = proposal.id
         decisions.record(appliedAtOnce ? .appliedAtOnce : .heldForPerson,
                          "\"\(proposal.summary)\" \(AutoApplyPolicy.rule(for: verbClass, appliedAtOnce: appliedAtOnce))",
-                         cause: cause)
+                         subject: proposal.summary, cause: cause)
     }
 
     private func emitAudit(

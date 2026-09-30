@@ -128,6 +128,8 @@ targets:
           - "RemoteCompute/**"
           - "RecentFiles/**"
           - "MCP/**"
+          # The assistant's session log: macOS only, like the MCP server (plan 23).
+          - "AgentSession/**"
           # Bundled as a folder resource below so Bundle looks under Workflows/.
           - "Workflows/Resources/**"
           # Service-layer files that exist outside the macOS-only feature

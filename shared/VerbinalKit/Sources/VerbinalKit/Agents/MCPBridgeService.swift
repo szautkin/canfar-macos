@@ -108,6 +108,7 @@ public actor MCPBridgeService {
             logger.notice("transport ended: \(String(describing: error), privacy: .public)")
         }
         cancelInFlightCalls()
+        if initialized { await services.recorder?.closed(session) }
     }
 
     /// Route one frame: `tools/call` runs in its OWN task so a slow tool
@@ -250,9 +251,11 @@ public actor MCPBridgeService {
             )
         }
 
+        let reopened = initialized
         self.clientID = cid
         self.initialized = true
         logger.info("initialized client=\(cid, privacy: .public)")
+        if !reopened { await services.recorder?.opened(session, client: cid) }
 
         let result = InitializeResult(
             protocolVersion: params.protocolVersion,
@@ -319,6 +322,11 @@ public actor MCPBridgeService {
         // router so a guide name can't fall through to `unknownTool`.
         if let aiGuide, let body = await aiGuide.guideBody(params.name) {
             logger.info("tools/call \(params.name, privacy: .public) -> guide (\(body.count) chars)")
+            // A guide read is a call too: the session log keeps every one.
+            let call = UUID()
+            await services.recorder?.callBegan(session, call: call, tool: params.name)
+            await services.recorder?.callEnded(session, call: call, tool: params.name, traced: AIToolRouter.Traced(
+                result: .data(Data(body.utf8)), seconds: 0, trace: RequestTrace(parent: nil)))
             let payload = CallToolResult(content: [.text(body)], isError: false)
             return successResponse(id: request.id, body: payload)
         }
@@ -347,11 +355,14 @@ public actor MCPBridgeService {
         )
 
         logger.info("tools/call \(params.name, privacy: .public) (\(argBytes.count) bytes args)")
-        let result = await router.dispatch(
+        await services.recorder?.callBegan(session, call: context.requestID, tool: params.name)
+        let traced = await router.dispatchTraced(
             name: params.name,
             rawArguments: argBytes,
             context: context
         )
+        await services.recorder?.callEnded(session, call: context.requestID, tool: params.name, traced: traced)
+        let result = traced.result
         switch result {
         case .data(let bytes):
             logger.info("tools/call \(params.name, privacy: .public) -> data (\(bytes.count) bytes)")
@@ -416,13 +427,17 @@ public actor MCPBridgeService {
         public let proposals: any ProposalStore
         public let budget: ProposalBudget
         public let eventLog: EventLog?
+        /// Where this session's log is kept (plan 23); nil keeps none.
+        public let recorder: (any AgentSessionRecorder)?
 
         public init(proposals: any ProposalStore,
                     budget: ProposalBudget,
-                    eventLog: EventLog? = nil) {
+                    eventLog: EventLog? = nil,
+                    recorder: (any AgentSessionRecorder)? = nil) {
             self.proposals = proposals
             self.budget = budget
             self.eventLog = eventLog
+            self.recorder = recorder
         }
     }
 

@@ -22,8 +22,8 @@
 | L1 request ledger | done — every request recorded; one classification; the source guardrail | `a1255a2` |
 | K cause: who and why travel with the work | done — `Cause`; `why` on every write, shown in Pending | `619e76f` |
 | C every change recorded by its owner | done — the apply path for every assistant change; the owners below for the person's and the app's | `7e53441` |
-| A the app's decisions say their rule | done — auto-apply, retries, deadlines (with what was waiting), the sign-in; expiry from the event log | (this commit) |
-| L2 session journal, stored | not started | |
+| A the app's decisions say their rule | done — auto-apply, retries, deadlines (with what was waiting), the sign-in; expiry from the event log | `26fd739` |
+| L2 session journal, stored | done — `AppEventHub`, `SessionJournal`, `SessionLogStore`, `SessionLogLine`; a session per connection | (this commit) |
 | L3 reading the log: `get_session_log`, `explain_log_entry`, `list_session_logs` | not started | |
 | L4 managing the logs: view, export, delete, retention | not started | |
 | L5 timing on every reply | not started | |
@@ -161,7 +161,7 @@ Every entry has the same frame, and a kind adds its own fields (ETC):
 | `at` | when it happened |
 | `kind` | `opened`, `action`, `call`, `task`, `proposal`, `decision`, `request`, `app` or `closed` |
 | `line` | **One sentence**, the same the person's view shows and the text export writes. Example: "14:02 Deleted session qa-person (q9p87ajc) — by you, applying this assistant's proposal, because: throwaway from the QA pass. Done in 2 s." |
-| `who` | `you` (this session), `anotherAssistant` (with its client), `person` or `app` |
+| `who` | `assistant` (this session's), `anotherAssistant` (with its `client`), `person` or `app`. The lines say "by the assistant", "by the person", "by Verbinal": both the person and the assistant read them. |
 | `why` | the assistant's reason, "by you", or the app's rule |
 | `outcome` | done, failed, waiting, … |
 | `seconds` | how long it took |
@@ -325,6 +325,15 @@ Tests:
 - an action's who and why, for a proposal applied by the person, by auto-apply, and in the
   background; and for a change by the person and by the app
 - nothing of a login's form reaches the file
+
+**As built.** The MCP bridge reports to `AgentSessionRecorder` (opened, a call began and ended,
+closed). `AppEventHub` hears the ledger, the change and decision logs, the event log, the activity
+bar and the sign-in through each one's `Observers`, and takes their events in order off one stream.
+`SessionLogLine` puts every entry into words, the one place. `CallTiming` (a call's requests and
+verdict) moved up from L5, so the call's entry and its reply say the same. A request that fails
+inside a call under way is told by the call; one that fails outside a call is its own entry.
+Arrived, applied and failed proposal events are left to the decision and the action that tell them
+already.
 
 ### L3 — Reading the log: three MCP tools
 

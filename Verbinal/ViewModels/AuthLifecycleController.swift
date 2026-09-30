@@ -155,6 +155,13 @@ final class AuthLifecycleController {
     /// Mark the session authenticated. Fires `onAuthenticated` only on the
     /// signed-out → signed-in transition so silent reauth does not rebuild
     /// AppState session resources.
+    /// Signing in and out, as they happen — for the session log (plan 23).
+    enum Event: Sendable {
+        case signedIn(String)
+        case signedOut
+    }
+    nonisolated let events = Observers<Event>()
+
     func apply(username: String, userInfo: UserInfo?) {
         let wasAuthenticated = isAuthenticated
         self.username = username
@@ -166,6 +173,7 @@ final class AuthLifecycleController {
         self.statusMessage = String(localized: "Welcome, \(displayName.isEmpty ? username : displayName)")
         if !wasAuthenticated {
             onAuthenticated?()
+            events.notify(.signedIn(username))
         }
     }
 
@@ -323,5 +331,6 @@ final class AuthLifecycleController {
         userInfo = nil
         isAuthenticated = false
         statusMessage = String(localized: "Please log in")
+        events.notify(.signedOut)
     }
 }

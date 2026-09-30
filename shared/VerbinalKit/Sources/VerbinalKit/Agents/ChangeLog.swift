@@ -37,6 +37,21 @@ public struct Change: Codable, Sendable, Equatable, Identifiable {
 
     public var seconds: Double { finished.timeIntervalSince(started) }
 
+    public init(id: UUID = UUID(), kind: String, verb: String, what: String, startedBy: Initiator, cause: Cause,
+                started: Date, finished: Date, outcome: Outcome, failure: String?, task: Int?) {
+        self.id = id
+        self.kind = kind
+        self.verb = verb
+        self.what = what
+        self.startedBy = startedBy
+        self.cause = cause
+        self.started = started
+        self.finished = finished
+        self.outcome = outcome
+        self.failure = failure
+        self.task = task
+    }
+
     /// "Deleted session qa-person (q9p87ajc)".
     public var sentence: String {
         let head = verb.prefix(1).uppercased() + verb.dropFirst()

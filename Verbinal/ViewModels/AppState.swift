@@ -135,6 +135,9 @@ final class AppState {
     let agentsService = AgentsService()
     #if os(macOS)
     let mcpIntegrationSettings = MCPIntegrationSettingsService()
+    /// Each connected assistant's session log, and what the app does while
+    /// it is open (plan 23).
+    private(set) var sessionLog: AppEventHub?
     #endif
 
     // Headless job monitor (created on auth, destroyed on logout)
@@ -391,6 +394,20 @@ final class AppState {
             guard let self else { return }
             await MainActor.run { self.navigateTo(mode) }
         }
+
+        #if os(macOS)
+        // The session log hears the app before any assistant can connect.
+        let sessionLog = AppEventHub(
+            sources: .init(proposals: agentsService.eventLog.observers, tasks: TaskRegistry.shared.events, auth: auth.events),
+            header: { [weak self] session, client in
+                await MainActor.run { self?.sessionLogHeader(session, client) }
+                    ?? SessionLogHeader(session: session, client: client, opened: Date(), app: "?", buildCommit: nil,
+                                        macOS: "?", endpoints: [:], overridden: [], autoApply: false, signedIn: false)
+            })
+        self.sessionLog = sessionLog
+        agentsService.sessionRecorder = sessionLog
+        Task { await sessionLog.start() }
+        #endif
 
         // Bring up the MCP server only if the user has previously opted in.
         agentsService.bootstrap()
