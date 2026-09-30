@@ -21,8 +21,8 @@ the reported case first, one owner per rule, and one green commit per step.
 | D5 TAP timeout | done — no retry after a timeout; the wait shown | D5 |
 | D6 limit banner | done — interactive tabs only | D6 |
 | R registry | done — `cadc-west-01.canfar.net/reg` by default (the person's request) | R |
-| N small items | in progress — N1 a typed id names its likely record; any identifier finds it; N2 each card's Renew and Delete pointable; N3 a slash-form duplicate marked; N4 a repeat of a failed task says "again"; N5 pinned by a test (not a defect) | `0e9653d`, `3362a69`, `4424489`, `1612e5e`, N5 |
-| Q handout 22 | planned | — |
+| N small items | done — N1 a typed id names its likely record; any identifier finds it; N2 each card's Renew and Delete pointable; N3 a slash-form duplicate marked; N4 a repeat of a failed task says "again"; N5 pinned by a test (not a defect) | `0e9653d`, `3362a69`, `4424489`, `1612e5e`, N5 |
+| Q handout 22 | done — [handout 22](./22-qa-regression-plan21.md) | Q |
 
 ## What the report got wrong
 
