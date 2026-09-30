@@ -83,6 +83,23 @@ final class FITSSpectrumTests: XCTestCase {
         XCTAssertNil(FITSTableContent.read(file.hdus[0], in: data))
     }
 
+    /// Plan 21 D4: how large the error is — 5% of the flux in the echelle
+    /// fixture — so a plot can say so when its band is too thin to see.
+    func testTheErrorsSizeIsMeasured() throws {
+        let (file, data) = try fixture("x1d-echelle.fits")
+        guard case .spectrum(let spectrum) = FITSTableContent.read(file.hdus[1], in: data) else {
+            return XCTFail("expected a spectrum")
+        }
+        let size = try XCTUnwrap(spectrum.errorSize)
+        XCTAssertEqual(size.ofFlux, 0.05, accuracy: 1e-6)
+        XCTAssertGreaterThan(size.ofRange, 0)
+        let (catalogue, catalogueData) = try fixture("x1d-rows.fits")
+        guard case .spectrum(let noError) = FITSTableContent.read(catalogue.hdus[1], in: catalogueData) else {
+            return XCTFail("expected a spectrum")
+        }
+        XCTAssertEqual(try XCTUnwrap(noError.errorSize).ofFlux, 0.01, accuracy: 1e-9)
+    }
+
     func testBinningKeepsTheShapeInFewerPoints() throws {
         let (file, data) = try fixture("x1d-rows.fits")
         guard case .spectrum(let spectrum) = FITSTableContent.read(file.hdus[1], in: data) else {

@@ -32,6 +32,31 @@ public struct FITSSpectrum: Sendable, Equatable {
     public var wavelengthRange: ClosedRange<Double>? { Self.range(segments.flatMap(\.wavelength)) }
     public var fluxRange: ClosedRange<Double>? { Self.range(segments.flatMap(\.flux)) }
 
+    /// How large the error is, when the spectrum has one: the median of
+    /// |error ÷ flux|, and the median error as a fraction of the flux's
+    /// range — how tall a plot's error band is. A high-S/N spectrum's band
+    /// can be thinner than its line, and was taken for missing (plan 21 D4).
+    public var errorSize: (ofFlux: Double, ofRange: Double)? {
+        var relative: [Double] = [], absolute: [Double] = []
+        for segment in segments {
+            guard let error = segment.error else { continue }
+            for (flux, sigma) in zip(segment.flux, error) where sigma.isFinite && sigma >= 0 {
+                absolute.append(sigma)
+                if flux != 0 { relative.append(abs(sigma / flux)) }
+            }
+        }
+        guard let range = fluxRange, range.upperBound > range.lowerBound,
+              let ofFlux = Self.median(relative), let error = Self.median(absolute) else { return nil }
+        return (ofFlux, error / (range.upperBound - range.lowerBound))
+    }
+
+    private static func median(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        let sorted = values.sorted()
+        let middle = sorted.count / 2
+        return sorted.count % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+    }
+
     // MARK: - Finding it
 
     /// Names a spectrum's columns go by, most telling first.

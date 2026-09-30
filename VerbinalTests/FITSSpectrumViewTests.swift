@@ -91,6 +91,24 @@ final class FITSSpectrumViewTests: XCTestCase {
         XCTAssertEqual(FITSFigureCaption(headers: [], fileURL: URL(fileURLWithPath: "/tmp/a b.fits")).baseName, "a b")
     }
 
+    /// Plan 21 D4 (QA 3.1): an HST `_x1d` names its target TARGNAME and has
+    /// no OBJECT, so the figure was titled by the file; and its error, 0.76%
+    /// of the flux, drew a band thinner than the line, which read as none.
+    func testAnHSTSpectrumIsTitledByItsTargetAndSaysItsError() {
+        var primary = FITSHeader()
+        for (k, v) in [("TARGNAME", "SN2023IXF"), ("TELESCOP", "HST"), ("INSTRUME", "STIS")] {
+            primary.add(FITSCard(keyword: k, value: v, comment: ""))
+        }
+        let caption = FITSFigureCaption(headers: [FITSHeader(), primary], fileURL: URL(fileURLWithPath: "/tmp/oezt010e0_x1d.fits"))
+        XCTAssertEqual(caption.title, "SN2023IXF")
+        XCTAssertEqual(caption.baseName, "SN2023IXF")
+
+        XCTAssertEqual(SpectrumAxis.errorNote(column: "ERROR", size: (0.0076, 0.0023)),
+                       "±1σ band from ERROR — median 0.76% of the flux, narrower than the line")
+        XCTAssertEqual(SpectrumAxis.errorNote(column: "ERROR", size: (0.05, 0.02)),
+                       "±1σ band from ERROR — median 5.0% of the flux")
+    }
+
     func testAnAxisWritesTinyFluxesInAPowerOfTen() {
         XCTAssertEqual(SpectrumAxis.exponent(for: 3.3e-15...3.98e-14), -14)
         XCTAssertEqual(SpectrumAxis.exponent(for: 0.5...120), 0)

@@ -122,6 +122,8 @@ struct GetFITSSpectrumTool: JSONReadTool {
         let fluxColumn: String?
         let fluxUnit: String?
         let errorColumn: String?
+        /// The median of |error ÷ flux| — 0.0076 is 0.76%.
+        var errorMedianFraction: Double?
         /// Rows of arrays are segments, one per echelle order.
         let segmentCount: Int?
         let pointCount: Int?
@@ -166,6 +168,7 @@ struct GetFITSSpectrumTool: JSONReadTool {
             file: table.file, hduIndex: table.hduIndex, isSpectrum: true, columns: nil,
             wavelengthColumn: spectrum.wavelengthColumn, wavelengthUnit: spectrum.wavelengthUnit,
             fluxColumn: spectrum.fluxColumn, fluxUnit: spectrum.fluxUnit, errorColumn: spectrum.errorColumn,
+            errorMedianFraction: spectrum.errorSize?.ofFlux,
             segmentCount: spectrum.segments.count, pointCount: spectrum.pointCount,
             wavelengthRange: spectrum.wavelengthRange.map { [$0.lowerBound, $0.upperBound] },
             fluxRange: spectrum.fluxRange.map { [$0.lowerBound, $0.upperBound] },

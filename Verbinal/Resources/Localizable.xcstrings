@@ -18171,6 +18171,26 @@
           }
         }
       }
+    },
+    "±1σ band from %@ — median %@% of the flux, narrower than the line" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bande ±1σ d'après %1$@ — médiane %2$@ % du flux, plus fine que la courbe"
+          }
+        }
+      }
+    },
+    "±1σ band from %@ — median %@% of the flux" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bande ±1σ d'après %1$@ — médiane %2$@ % du flux"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

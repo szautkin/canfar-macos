@@ -77,10 +77,10 @@ struct FITSFigureProblem: LocalizedError, Equatable {
     var errorDescription: String? { message }
 }
 
-/// What a figure of a FITS file is called — its object, else its file's
-/// name — and where it comes from, from the HDU shown and the primary
-/// (an `_x1d`'s OBJECT is in the primary, its spectrum in a table). One
-/// caption for an image's plate and a spectrum's.
+/// What a figure of a FITS file is called — its object (OBJECT, or HST's
+/// TARGNAME), else its file's name — and where it comes from, from the HDU
+/// shown and the primary (an `_x1d`'s target is in the primary, its
+/// spectrum in a table). One caption for an image's plate and a spectrum's.
 struct FITSFigureCaption: Equatable {
     let title: String
     /// Telescope · instrument · date of observation, those there are.
@@ -93,7 +93,9 @@ struct FITSFigureCaption: Equatable {
         func first(_ key: String) -> String {
             headers.lazy.compactMap { $0.string(key) }.first { !$0.isEmpty } ?? ""
         }
-        let object = first("OBJECT")
+        // HST names the target TARGNAME and has no OBJECT: its figures were
+        // titled by the file's name (plan 21 D4).
+        let object = [first("OBJECT"), first("TARGNAME")].first { !$0.isEmpty } ?? ""
         let stem = fileURL?.deletingPathExtension().lastPathComponent
         title = object.isEmpty ? (stem ?? String(localized: "FITS image")) : object
         subtitle = [first("TELESCOP"), first("INSTRUME"), first("DATE-OBS")].filter { !$0.isEmpty }.joined(separator: " · ")

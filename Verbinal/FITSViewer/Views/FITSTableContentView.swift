@@ -86,6 +86,19 @@ enum SpectrumAxis {
         return (-2...4).contains(power) ? 0 : power
     }
 
+    /// Roughly how tall a figure's plot is, in points.
+    static let plotHeight = 400.0
+
+    /// "±1σ band from ERROR — median 0.76% of the flux, narrower than the
+    /// line": a high-S/N spectrum's band can be too thin to see, and was
+    /// taken for missing (plan 21 D4).
+    static func errorNote(column: String, size: (ofFlux: Double, ofRange: Double)) -> String {
+        let percent = (size.ofFlux * 100).formatted(.number.precision(.significantDigits(2)))
+        return 2 * size.ofRange * plotHeight < 2.5
+            ? String(localized: "±1σ band from \(column) — median \(percent)% of the flux, narrower than the line")
+            : String(localized: "±1σ band from \(column) — median \(percent)% of the flux")
+    }
+
     /// "Flux (10^-14 erg/s/cm**2/Angstrom)".
     static func title(_ name: String, unit: String?, exponent: Int) -> String {
         let scale = exponent == 0 ? nil : "10^\(exponent)"
@@ -116,6 +129,9 @@ struct FITSSpectrumPlot: View {
             HStack(spacing: 8) {
                 Text("\(spectrum.fluxColumn) against \(spectrum.wavelengthColumn) · \(spectrum.pointCount) points")
                 if spectrum.segments.count > 1 { Text("\(spectrum.segments.count) orders") }
+                if let column = spectrum.errorColumn, let size = spectrum.errorSize {
+                    Text(SpectrumAxis.errorNote(column: column, size: size))
+                }
             }
             .font(.caption).foregroundStyle(.secondary)
             Chart {
@@ -127,7 +143,7 @@ struct FITSSpectrumPlot: View {
                                      yStart: .value("Low", (p.flux - error) / scale),
                                      yEnd: .value("High", (p.flux + error) / scale),
                                      series: .value("Order", "e\(index)"))
-                                .foregroundStyle(.tint.opacity(0.18))
+                                .foregroundStyle(.tint.opacity(0.35))
                         }
                         LineMark(x: .value("Wavelength", p.wavelength), y: .value("Flux", p.flux / scale),
                                  series: .value("Order", "f\(index)"))
