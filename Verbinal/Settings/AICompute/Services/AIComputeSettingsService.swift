@@ -35,8 +35,13 @@ final class AIComputeSettingsService {
 
     // MARK: - Lifecycle
 
-    init(userDefaults: UserDefaults = .standard) {
+    /// Where each setting changed is recorded — a secret as saved or
+    /// removed, never its value (plan 23 C).
+    private let changes: ChangeLog
+
+    init(userDefaults: UserDefaults = .standard, changes: ChangeLog = .shared) {
         self.userDefaults = userDefaults
+        self.changes = changes
         var loaded = AIComputeSettings()
         if let host = userDefaults.string(forKey: Self.keyRegistryHost), !host.isEmpty {
             loaded.registryHost = host
@@ -68,6 +73,7 @@ final class AIComputeSettingsService {
         guard final != settings.registryHost else { return }
         userDefaults.set(final, forKey: Self.keyRegistryHost)
         settings.registryHost = final
+        changes.done("change_setting", "the AI Compute registry host to \(final)")
         settings.hasSecret = ((try? Self.readSecret(host: final, username: settings.username)) ?? nil) != nil
     }
 
@@ -76,6 +82,7 @@ final class AIComputeSettingsService {
         guard trimmed != settings.username else { return }
         userDefaults.set(trimmed, forKey: Self.keyUsername)
         settings.username = trimmed
+        changes.done("change_setting", "the AI Compute registry username to \(trimmed.isEmpty ? "none" : trimmed)")
         settings.hasSecret = ((try? Self.readSecret(host: settings.registryHost, username: trimmed)) ?? nil) != nil
     }
 
@@ -91,6 +98,9 @@ final class AIComputeSettingsService {
             userDefaults.set(trimmed, forKey: Self.keyImage)
         }
         settings.image = trimmed
+        // It decides whether run_code can run, and on what (plan 23 C).
+        changes.done("change_setting", trimmed.isEmpty ? "the AI Compute image to none — run_code is off"
+                                                       : "the AI Compute image to \(trimmed)")
     }
 
     /// Set the default core count for the compute instance. Clamped to
@@ -102,6 +112,7 @@ final class AIComputeSettingsService {
         guard clamped != settings.cores else { return }
         userDefaults.set(clamped, forKey: Self.keyCores)
         settings.cores = clamped
+        changes.done("change_setting", "the AI Compute cores to \(clamped)")
     }
 
     /// Set the default RAM (GB) for the compute instance. Same >= 1
@@ -111,6 +122,7 @@ final class AIComputeSettingsService {
         guard clamped != settings.ram else { return }
         userDefaults.set(clamped, forKey: Self.keyRam)
         settings.ram = clamped
+        changes.done("change_setting", "the AI Compute RAM to \(clamped) GB")
     }
 
     func setSecret(_ value: String) throws {
@@ -122,6 +134,7 @@ final class AIComputeSettingsService {
             service: Self.keychainServiceID,
             account: keychainAccount(host: settings.registryHost, username: settings.username))
         settings.hasSecret = true
+        changes.done("save_secret", "the AI Compute registry secret for \(settings.username) at \(settings.registryHost)")
     }
 
     func clearSecret() throws {
@@ -129,6 +142,7 @@ final class AIComputeSettingsService {
             service: Self.keychainServiceID,
             account: keychainAccount(host: settings.registryHost, username: settings.username))
         settings.hasSecret = false
+        changes.done("remove_secret", "the AI Compute registry secret for \(settings.username) at \(settings.registryHost)")
     }
 
     func resetToDefaults() throws {

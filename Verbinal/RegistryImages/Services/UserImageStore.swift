@@ -26,8 +26,13 @@ final class UserImageStore {
 
     private let persistence: DiskPersistence<[RegistryImage]>?
 
-    init(persistence: DiskPersistence<[RegistryImage]>? = UserImageStore.productionPersistence) {
+    /// Where each image added or removed is recorded (plan 23 C).
+    private let changes: ChangeLog
+
+    init(persistence: DiskPersistence<[RegistryImage]>? = UserImageStore.productionPersistence,
+         changes: ChangeLog = .shared) {
         self.persistence = persistence
+        self.changes = changes
         if case .value(let stored) = persistence?.readResult() { images = stored }
     }
 
@@ -46,6 +51,7 @@ final class UserImageStore {
         images.insert(added, at: 0)
         images = Array(images.prefix(Self.maxImages))
         save()
+        changes.done("add_registry_image", "the image \(image.id) to the launch list")
         return true
     }
 
@@ -55,6 +61,7 @@ final class UserImageStore {
         guard let index = index(of: id) else { return false }
         images.remove(at: index)
         save()
+        changes.done("remove_registry_image", "the image \(id) from the launch list")
         return true
     }
 

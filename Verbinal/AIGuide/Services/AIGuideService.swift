@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 import Observation
 import os.log
 import GRDB
@@ -46,8 +47,13 @@ final class AIGuideService {
     static let maxDescriptionChars = 600
     static let maxBodyChars = 4000
 
-    init(database: AppDatabase = .shared) {
+    /// Where each change to what assistants are told is recorded — the AI
+    /// Guide screen's and an assistant's alike (plan 23 C).
+    private let changes: ChangeLog
+
+    init(database: AppDatabase = .shared, changes: ChangeLog = .shared) {
         self.db = database
+        self.changes = changes
         self.deviceID = Self.installDeviceID()
         reload()
     }
@@ -129,8 +135,11 @@ final class AIGuideService {
                     """, arguments: [UUID().uuidString, toolName, trimmed, now, now, deviceID])
             }
             overrides[toolName] = trimmed
+            changes.done("set_tool_description", "the description of \(toolName) for assistants")
         } catch {
             Self.logger.error("setOverride failed: \(error.localizedDescription, privacy: .public)")
+            changes.failed("set_tool_description", "the description of \(toolName) for assistants",
+                           because: error.localizedDescription)
         }
     }
 
@@ -147,8 +156,11 @@ final class AIGuideService {
                     """, arguments: [now, now, deviceID, toolName])
             }
             overrides[toolName] = nil
+            changes.done("clear_tool_description", "\(toolName)'s description back to the built-in one")
         } catch {
             Self.logger.error("clearOverride failed: \(error.localizedDescription, privacy: .public)")
+            changes.failed("clear_tool_description", "\(toolName)'s description back to the built-in one",
+                           because: error.localizedDescription)
         }
     }
 
@@ -174,8 +186,10 @@ final class AIGuideService {
                     """, arguments: [entry.id.uuidString, slug, desc, bod, order, now, now, deviceID])
             }
             reload()
+            changes.done("add_guide_tool", "the guide \(slug) for assistants")
         } catch {
             Self.logger.error("addGuide failed: \(error.localizedDescription, privacy: .public)")
+            changes.failed("add_guide_tool", "the guide \(slug) for assistants", because: error.localizedDescription)
         }
         return entry
     }
@@ -195,13 +209,16 @@ final class AIGuideService {
                     """, arguments: [slug, desc, bod, now, deviceID, id.uuidString])
             }
             reload()
+            changes.done("update_guide_tool", "the guide \(slug) for assistants")
         } catch {
             Self.logger.error("updateGuide failed: \(error.localizedDescription, privacy: .public)")
+            changes.failed("update_guide_tool", "the guide \(slug) for assistants", because: error.localizedDescription)
         }
     }
 
     /// Soft-delete a guide tool.
     func deleteGuide(id: UUID) {
+        let what = "the guide \(guides.first { $0.id == id }?.name ?? id.uuidString) for assistants"
         let now = Self.iso(Date())
         do {
             try db.writer.write { [deviceID] d in
@@ -212,8 +229,10 @@ final class AIGuideService {
                     """, arguments: [now, now, deviceID, id.uuidString])
             }
             reload()
+            changes.done("delete_guide_tool", what)
         } catch {
             Self.logger.error("deleteGuide failed: \(error.localizedDescription, privacy: .public)")
+            changes.failed("delete_guide_tool", what, because: error.localizedDescription)
         }
     }
 

@@ -40,6 +40,7 @@ final class AgentsService {
         didSet {
             guard oldValue != isEnabled else { return }
             UserDefaults.standard.set(isEnabled, forKey: Self.userDefaultsKey)
+            changes.done("change_setting", "Allow external AI agents to \(isEnabled ? "on" : "off")")
             applyToggle()
         }
     }
@@ -54,6 +55,9 @@ final class AgentsService {
         didSet {
             guard oldValue != autoApplyWrites else { return }
             UserDefaults.standard.set(autoApplyWrites, forKey: Self.autoApplyKey)
+            // It decides whether an assistant's changes wait for the person
+            // (plan 23 C).
+            changes.done("change_setting", "Auto-apply to \(autoApplyWrites ? "on" : "off")")
         }
     }
 
@@ -68,6 +72,7 @@ final class AgentsService {
         didSet {
             guard oldValue != followAgentActivity else { return }
             UserDefaults.standard.set(followAgentActivity, forKey: Self.followActivityKey)
+            changes.done("change_setting", "Follow the assistant's activity to \(followAgentActivity ? "on" : "off")")
         }
     }
 
@@ -129,6 +134,8 @@ final class AgentsService {
     /// clicks Apply in the strip. Register before tools start producing
     /// proposals; safe to register at any time.
     let applierRegistry = ProposalApplierRegistry()
+    /// Where an applied change is recorded (plan 23 C).
+    let changes: ChangeLog = .shared
 
     private var server: SocketServer?
     private var serverLoopTask: Task<Void, Never>?
@@ -228,10 +235,11 @@ final class AgentsService {
         let extra: Data?
         do {
             // The change is the assistant's, whoever approved it (plan 17 A1),
-            // and its cause is the proposal's: its why, its call and session,
-            // and who applied it (plan 23 K).
+            // its cause is the proposal's — its why, its call and session, and
+            // who applied it (plan 23 K) — and it is recorded here, once, for
+            // every kind of change an assistant makes (plan 23 C).
             extra = try await Initiator.$current.withValue(.assistant) {
-                try await Cause.$current.withValue(.applying(proposal, by: actor)) {
+                try await changes.applying(proposal, by: actor) {
                     if let reporting = applier as? any ResultReportingApplier {
                         return try await reporting.applyReturningResult(proposal)
                     }

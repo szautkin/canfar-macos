@@ -25,7 +25,11 @@ final class SavedQueryStore {
     /// `&amp;` where the person typed `&`.
     private static let schemaVersion = 2
 
-    init(fileName: String = "saved_queries.json") {
+    /// Where each change to the saved queries is recorded (plan 23 C).
+    private let changes: ChangeLog
+
+    init(fileName: String = "saved_queries.json", changes: ChangeLog = .shared) {
+        self.changes = changes
         self.persistence = DiskPersistence(
             subdirectory: "Verbinal",
             fileName: fileName,
@@ -40,6 +44,8 @@ final class SavedQueryStore {
     func save(_ query: SavedQuery) {
         var updated = query
         updated.savedAt = Date()
+        let isNew = !queries.contains { $0.id == query.id }
+        changes.done(isNew ? "save_query" : "update_saved_query", "the query \"\(query.name)\"")
         queries.removeAll { $0.id == query.id }
         queries.insert(updated, at: 0)
         if queries.count > maxEntries {
@@ -51,18 +57,22 @@ final class SavedQueryStore {
     func remove(_ query: SavedQuery) {
         queries.removeAll { $0.id == query.id }
         persistence.write(queries)
+        changes.done("delete_saved_query", "the saved query \"\(query.name)\"")
     }
 
     func rename(_ query: SavedQuery, to newName: String) {
         if let idx = queries.firstIndex(where: { $0.id == query.id }) {
             queries[idx].name = newName
             persistence.write(queries)
+            changes.done("rename_saved_query", "the saved query \"\(query.name)\" to \"\(newName)\"")
         }
     }
 
     func clear() {
+        let count = queries.count
         queries.removeAll()
         persistence.write(queries)
+        changes.done("clear_saved_queries", "every saved query (\(count))")
     }
 
     /// Brings a v1 file to v2: the newest row of each query, its `&amp;`

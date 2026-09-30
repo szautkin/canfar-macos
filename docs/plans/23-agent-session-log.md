@@ -20,8 +20,8 @@
 |---|---|---|
 | P plan | done — every decision taken (below) | |
 | L1 request ledger | done — every request recorded; one classification; the source guardrail | `a1255a2` |
-| K cause: who and why travel with the work | done — `Cause`; `why` on every write, shown in Pending | (this commit) |
-| C every change recorded by its owner | not started | |
+| K cause: who and why travel with the work | done — `Cause`; `why` on every write, shown in Pending | `619e76f` |
+| C every change recorded by its owner | done — the apply path for every assistant change; the owners below for the person's and the app's | (this commit) |
 | A the app's decisions say their rule | not started | |
 | L2 session journal, stored | not started | |
 | L3 reading the log: `get_session_log`, `explain_log_entry`, `list_session_logs` | not started | |
@@ -240,6 +240,29 @@ Tests:
 - one test per owner family (sessions, batch jobs, storage, downloads, Research, saved queries,
   marks, workflows, settings), each checking that the change is recorded with who and why, for both
   the person and an applied proposal
+
+**The inventory, as built.** Every assistant change is recorded where it is applied
+(`AgentsService`, one path). The person's and the app's are recorded where they are made:
+
+| Owner | Changes |
+|---|---|
+| `SessionService` | launch, renew and delete a session: the launch form, a relaunch, the Portal, compute |
+| `HeadlessService` | launch and delete a batch job: the form, the image probes |
+| `VOSpaceBrowserService` | download, upload, make a folder, sharing, delete (folders with what they hold) |
+| `DownloadService` | an observation, one of its files, a cutout cut by CADC |
+| `LocalCutoutMaker` | a cutout cut on this Mac |
+| `ObservationStore` | save to Research, delete a record, remove its file, clear Research, correct a publisher ID |
+| `ObservationNoteStore` | a note saved or deleted |
+| `SavedQueryStore`, `RecentSearchStore` | saved queries (save, update, rename, delete, clear); recent searches (rename, remove, clear) |
+| `MarkStore`, `BookmarkStore`, `UserImageStore` | marks, sky bookmarks, the launch list's images |
+| `FigureFile`, `MarkExportPanel`, `ExportService`, the results' Save panel | figures, marks, the Research bundle, search results |
+| `RemoteComputeService` | code sent to run (its session, above) |
+| `ImageDiscoveryCoordinator` | an image inspected; its cache and failures cleared |
+| `WorkflowStore`, `AIGuideService` | workflows (save, use, step, update, delete); what assistants are told |
+| `AgentsService`, the AI Compute, Image Discovery and Endpoints settings | allow agents, auto-apply, follow activity; images, cores, RAM, hosts; a secret saved or removed, never its value |
+
+`WorkContext` carries who and why into the two detached tasks that make changes: the image probe
+and the bundle upload that outlives its apply.
 
 ### A — The app's decisions say their rule
 

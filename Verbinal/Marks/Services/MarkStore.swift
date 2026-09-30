@@ -60,8 +60,14 @@ final class MarkStore {
 
     private let persistence: DiskPersistence<[String: [Mark]]>?
 
-    init(persistence: DiskPersistence<[String: [Mark]]>? = MarkStore.productionPersistence) {
+    /// Where each change to the marks is recorded, whoever makes it — the
+    /// viewers' editor or an assistant's mark tools (plan 23 C).
+    private let changes: ChangeLog
+
+    init(persistence: DiskPersistence<[String: [Mark]]>? = MarkStore.productionPersistence,
+         changes: ChangeLog = .shared) {
         self.persistence = persistence
+        self.changes = changes
         if case .value(let stored) = persistence?.readResult() { marksByKey = stored }
     }
 
@@ -84,6 +90,7 @@ final class MarkStore {
         list.append(mark)
         marksByKey[target.key] = list
         save()
+        changes.done("add_mark", "mark \(mark.id) on \(Self.describe(target))")
     }
 
     /// Applies `change` to the mark, keeping it only if it stays drawable.
@@ -97,6 +104,7 @@ final class MarkStore {
         list[index] = mark
         marksByKey[target.key] = list
         save()
+        changes.done("update_mark", "mark \(id) on \(Self.describe(target))")
         return mark
     }
 
@@ -107,6 +115,7 @@ final class MarkStore {
         marksByKey[target.key] = list.isEmpty ? nil : list
         if selected?.target == target, selected?.id == id { selected = nil }
         save()
+        changes.done("remove_mark", "mark \(id) from \(Self.describe(target))")
     }
 
     /// Removes every mark of `targets`; returns how many went.
@@ -118,8 +127,17 @@ final class MarkStore {
             marksByKey[target.key] = nil
             if selected?.target == target { selected = nil }
         }
-        if removed > 0 { save() }
+        if removed > 0 {
+            save()
+            changes.done("clear_marks", "\(removed) marks from \(targets.map(Self.describe).joined(separator: ", "))")
+        }
         return removed
+    }
+
+    /// "m31.fits, extension 1" — how a change names a target.
+    static func describe(_ target: Target) -> String {
+        let name = (target.file as NSString).lastPathComponent
+        return target.hdu.map { "\(name), extension \($0)" } ?? name
     }
 
     /// A fresh id, unique on `target`.

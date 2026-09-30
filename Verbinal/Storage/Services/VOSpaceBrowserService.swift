@@ -20,8 +20,13 @@ actor VOSpaceBrowserService {
     private let filesBase: String
     private static let vosPrefix = "vos://cadc.nrc.ca~arc/home"
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
+    /// Where each change to storage is recorded — here, where the Storage
+    /// screen's and an assistant's are both made (plan 23 C).
+    private let changes: ChangeLog
+
+    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared) {
         self.network = network
+        self.changes = changes
         self.nodesBase = endpoints.storageBaseURL
         // Derive the files base from the nodes base — they're symmetric paths.
         self.filesBase = endpoints.storageBaseURL.replacingOccurrences(of: "/nodes/home", with: "/files/home")
@@ -78,6 +83,17 @@ actor VOSpaceBrowserService {
     /// seeds progress when the server omits `Content-Length` — typically the
     /// listing's `#length` property.
     func downloadFile(
+        username: String,
+        path: String,
+        expectedTotal: Int64,
+        onProgress: NetworkClient.TransferProgressHandler?
+    ) async throws -> (tempURL: URL, filename: String) {
+        try await changes.run("download_from_vospace", "\(path) from storage") {
+            try await download(username: username, path: path, expectedTotal: expectedTotal, onProgress: onProgress)
+        }
+    }
+
+    private func download(
         username: String,
         path: String,
         expectedTotal: Int64,
@@ -201,6 +217,17 @@ actor VOSpaceBrowserService {
         fileURL: URL,
         onProgress: NetworkClient.TransferProgressHandler?
     ) async throws {
+        try await changes.run("upload_to_vospace", "\(fileURL.lastPathComponent) to storage at \(remotePath)") {
+            try await upload(username: username, remotePath: remotePath, fileURL: fileURL, onProgress: onProgress)
+        }
+    }
+
+    private func upload(
+        username: String,
+        remotePath: String,
+        fileURL: URL,
+        onProgress: NetworkClient.TransferProgressHandler?
+    ) async throws {
         let relative = try relativePath(remotePath, username: username)
         let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
 
@@ -252,6 +279,13 @@ actor VOSpaceBrowserService {
     // MARK: - Create Folder
 
     func createFolder(username: String, parentPath: String, folderName: String) async throws {
+        let shown = parentPath.isEmpty ? folderName : "\(parentPath)/\(folderName)"
+        try await changes.run("vospace_mkdir", "folder \(shown) in storage") {
+            try await makeFolder(username: username, parentPath: parentPath, folderName: folderName)
+        }
+    }
+
+    private func makeFolder(username: String, parentPath: String, folderName: String) async throws {
         let parent = try relativePath(parentPath, username: username)
         let fullPath = parent.isEmpty ? "\(username)/\(folderName)" : "\(username)/\(parent)/\(folderName)"
         let nodeURI = "\(Self.vosPrefix)/\(fullPath)"
@@ -278,6 +312,18 @@ actor VOSpaceBrowserService {
     /// cannot change it; also confirms existence), then POST the setNode
     /// document to the same URL.
     func setNodeACL(
+        username: String,
+        path: String,
+        groupRead: [String]?,
+        groupWrite: [String]?,
+        isPublic: Bool?
+    ) async throws {
+        try await changes.run("set_vospace_acl", "sharing of \(path.isEmpty ? "home" : path) in storage") {
+            try await setACL(username: username, path: path, groupRead: groupRead, groupWrite: groupWrite, isPublic: isPublic)
+        }
+    }
+
+    private func setACL(
         username: String,
         path: String,
         groupRead: [String]?,
@@ -329,6 +375,18 @@ actor VOSpaceBrowserService {
         path: String,
         recursive: Bool = false,
         onProgress: DeleteProgressHandler? = nil
+    ) async throws -> Int {
+        try await changes.run("delete_vospace_node",
+                              recursive ? "folder \(path) and what it holds, in storage" : "\(path) in storage") {
+            try await delete(username: username, path: path, recursive: recursive, onProgress: onProgress)
+        }
+    }
+
+    private func delete(
+        username: String,
+        path: String,
+        recursive: Bool,
+        onProgress: DeleteProgressHandler?
     ) async throws -> Int {
         if recursive {
             return try await deleteRecursive(

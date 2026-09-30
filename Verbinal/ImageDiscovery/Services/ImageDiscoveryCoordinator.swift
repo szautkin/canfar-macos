@@ -171,6 +171,8 @@ actor ImageDiscoveryCoordinator {
 
     /// Where each probe shows on the activity bar, with the stage it has reached.
     private let tasks: TaskRegistry
+    /// Where each inspection, and each cache cleared, is recorded (plan 23 C).
+    private let changes: ChangeLog
     /// Remembers each probe job once it ends — the platform forgets it,
     /// and this coordinator deletes it.
     private let recordJob: (@Sendable (JobRecord) async -> Void)?
@@ -189,9 +191,11 @@ actor ImageDiscoveryCoordinator {
         registryAuthProvider: (@Sendable () async -> String?)? = nil,
         inspectorImageResolver: (@Sendable () async -> String)? = nil,
         tasks: TaskRegistry = .shared,
+        changes: ChangeLog = .shared,
         recordJob: (@Sendable (JobRecord) async -> Void)? = nil
     ) {
         self.tasks = tasks
+        self.changes = changes
         self.recordJob = recordJob
         self.store = store
         self.headless = headless
@@ -238,7 +242,10 @@ actor ImageDiscoveryCoordinator {
     /// in-flight probe jobs — they'll repopulate the cache when
     /// they complete.
     func clearCache() async throws {
-        try await store.clear()
+        let count = await store.count()
+        try await changes.run("clear_probe_cache", "the image package cache (\(count) images)") {
+            try await store.clear()
+        }
     }
 
     /// Drop a single image's cached outcome (success OR failure).
@@ -246,17 +253,21 @@ actor ImageDiscoveryCoordinator {
     /// error" button to take a failed row back to never-discovered
     /// state without launching a fresh probe.
     func invalidate(imageID: String) async throws {
-        try await store.invalidate(imageID: imageID)
+        try await changes.run("clear_probe_result", "the cached probe of image \(imageID)") {
+            try await store.invalidate(imageID: imageID)
+        }
     }
 
     /// Drop every cached *failure* — leave successful manifests
     /// intact. Surfaced as the "Clear all errors" button in the
     /// sheet header when failed rows exist.
     func clearFailures() async throws {
+        var failed: [String] = []
         for id in await store.knownImages() {
-            if case .failure = await store.outcome(for: id) {
-                try await store.invalidate(imageID: id)
-            }
+            if case .failure = await store.outcome(for: id) { failed.append(id) }
+        }
+        try await changes.run("clear_probe_failures", "the failed probes of \(failed.count) images") {
+            for id in failed { try await store.invalidate(imageID: id) }
         }
     }
 
@@ -304,14 +315,20 @@ actor ImageDiscoveryCoordinator {
 
         // Launch the probe in a detached task so caller cancellation
         // doesn't kill it. Other joiners wait on the same Task. A detached
-        // task drops the task-local initiator, so it is carried in: an
-        // assistant's probe read "You" on the bar (plan 19 T2, QA N19).
+        // task drops who and why, so they are carried in: an assistant's
+        // probe read "You" on the bar (plan 19 T2, QA N19), and the job it
+        // launched had no reason (plan 23 K).
         let tasks = self.tasks
-        let initiator = Initiator.current
+        let context = WorkContext.current
+        let changes = self.changes
         let task = Task.detached { [weak self] () async throws -> ImageManifest in
             guard let self else { throw ImageDiscoveryError.cancelled }
-            return try await tasks.track(.discovery, String(localized: "Inspect \(imageID)"), by: initiator) { handle in
-                try await self.runDiscovery(for: imageID, force: force, task: handle)
+            return try await context.run {
+                try await tasks.track(.discovery, String(localized: "Inspect \(imageID)")) { handle in
+                    try await changes.run("discover_image_packages", "the packages of image \(imageID)") {
+                        try await self.runDiscovery(for: imageID, force: force, task: handle)
+                    }
+                }
             }
         }
         inFlight[imageID] = task

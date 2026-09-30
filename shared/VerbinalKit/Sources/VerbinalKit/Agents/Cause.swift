@@ -25,14 +25,17 @@ public struct Cause: Codable, Sendable, Equatable {
     /// Who applied that proposal: the person from Pending, auto-apply, or
     /// an assistant's background start.
     public var appliedBy: ApplyActor?
+    /// The activity bar's task the work runs in, when one tracks it.
+    public var task: Int?
 
     public init(why: String? = nil, session: UUID? = nil, call: UUID? = nil,
-                proposal: UUID? = nil, appliedBy: ApplyActor? = nil) {
+                proposal: UUID? = nil, appliedBy: ApplyActor? = nil, task: Int? = nil) {
         self.why = Self.clip(why)
         self.session = session
         self.call = call
         self.proposal = proposal
         self.appliedBy = appliedBy
+        self.task = task
     }
 
     /// The work under way's cause. None — the person's own — unless a
@@ -85,5 +88,29 @@ public struct Cause: Codable, Sendable, Equatable {
         }
         let rest = (try? JSONSerialization.data(withJSONObject: object)) ?? arguments
         return (rest, clip(value as? String))
+    }
+}
+
+/// Who is working and why — `Initiator` and `Cause` together — for work a
+/// detached task runs, which starts with neither: an assistant's probe read
+/// "You" on the bar (plan 19 T2), and what it recorded had no reason
+/// (plan 23 K). Taken where the work is asked for, run where it is done.
+public struct WorkContext: Sendable {
+    public var initiator: Initiator
+    public var cause: Cause
+
+    public init(initiator: Initiator, cause: Cause) {
+        self.initiator = initiator
+        self.cause = cause
+    }
+
+    /// The current task's.
+    public static var current: WorkContext { WorkContext(initiator: .current, cause: .current) }
+
+    /// Runs `work` as this context's.
+    public func run<T>(_ work: () async throws -> T) async rethrows -> T {
+        try await Initiator.$current.withValue(initiator) {
+            try await Cause.$current.withValue(cause) { try await work() }
+        }
     }
 }

@@ -64,8 +64,10 @@ final class TaskRegistry {
         var cause = Cause.current
         if let why { cause.why = Cause.clip(why) }
         let handle = await begin(kind, label, by: initiator, cause: cause)
+        // The work runs under the task's cause, and knows its task, so what it
+        // records says why and where (plan 23).
+        cause.task = handle.id
         do {
-            // The work runs under the task's cause, so what it records says why.
             let result = try await Cause.$current.withValue(cause) { try await work(handle) }
             await handle.succeed()
             return result
@@ -104,7 +106,8 @@ final class TaskRegistry {
 /// "abandoned", never as running for the rest of the session.
 @MainActor
 final class TaskHandle {
-    private let id: Int
+    /// The task's id on the bar.
+    let id: Int
     private weak var registry: TaskRegistry?
     private var finished = false
 
@@ -121,6 +124,14 @@ final class TaskHandle {
 
     /// Where the work has got to.
     func stage(_ stage: String) { registry?.setStage(id, stage) }
+
+    /// Runs `work` as this task's: what it records knows its task (plan 23).
+    /// `track` does this itself; work begun with `begin` asks.
+    func within<T>(_ work: () async throws -> T) async rethrows -> T {
+        var cause = Cause.current
+        cause.task = id
+        return try await Cause.$current.withValue(cause) { try await work() }
+    }
 
     func succeed(_ note: String? = nil) { complete(.succeeded, note) }
 

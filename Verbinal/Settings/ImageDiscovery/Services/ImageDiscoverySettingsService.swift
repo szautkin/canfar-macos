@@ -44,8 +44,13 @@ final class ImageDiscoverySettingsService {
 
     // MARK: - Lifecycle
 
-    init(userDefaults: UserDefaults = .standard) {
+    /// Where each setting changed is recorded — a secret as saved or
+    /// removed, never its value (plan 23 C).
+    private let changes: ChangeLog
+
+    init(userDefaults: UserDefaults = .standard, changes: ChangeLog = .shared) {
         self.userDefaults = userDefaults
+        self.changes = changes
         var loaded = ImageDiscoverySettings()
         if let host = userDefaults.string(forKey: Self.keyRegistryHost), !host.isEmpty {
             loaded.registryHost = host
@@ -74,6 +79,7 @@ final class ImageDiscoverySettingsService {
         guard final != settings.registryHost else { return }
         userDefaults.set(final, forKey: Self.keyRegistryHost)
         settings.registryHost = final
+        changes.done("change_setting", "the Image Discovery registry host to \(final)")
         // The Keychain account is (host:username); when host
         // changes, refresh the hasSecret flag to reflect the new
         // pair's presence.
@@ -85,6 +91,7 @@ final class ImageDiscoverySettingsService {
         guard trimmed != settings.username else { return }
         userDefaults.set(trimmed, forKey: Self.keyUsername)
         settings.username = trimmed
+        changes.done("change_setting", "the Image Discovery registry username to \(trimmed.isEmpty ? "none" : trimmed)")
         settings.hasSecret = ((try? Self.readSecret(host: settings.registryHost, username: trimmed)) ?? nil) != nil
     }
 
@@ -94,6 +101,7 @@ final class ImageDiscoverySettingsService {
         guard final != settings.inspectorImage else { return }
         userDefaults.set(final, forKey: Self.keyInspectorImage)
         settings.inspectorImage = final
+        changes.done("change_setting", "the image inspector to \(final)")
     }
 
     /// Persist a secret for the current `(registryHost, username)`
@@ -117,6 +125,7 @@ final class ImageDiscoverySettingsService {
             account: keychainAccount(host: settings.registryHost, username: settings.username)
         )
         settings.hasSecret = true
+        changes.done("save_secret", "the Image Discovery registry secret for \(settings.username) at \(settings.registryHost)")
     }
 
     func clearSecret() throws {
@@ -125,6 +134,7 @@ final class ImageDiscoverySettingsService {
             account: keychainAccount(host: settings.registryHost, username: settings.username)
         )
         settings.hasSecret = false
+        changes.done("remove_secret", "the Image Discovery registry secret for \(settings.username) at \(settings.registryHost)")
     }
 
     /// Erase every knob. Useful for "I'm done with this Mac"

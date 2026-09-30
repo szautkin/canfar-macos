@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 import os.log
+import VerbinalKit
 #if os(macOS)
 import AppKit
 #endif
@@ -39,6 +40,9 @@ final class ExportService {
         defer { isExporting = false }
 
         let bundleURL = destination.appendingPathComponent(Self.bundleName(), isDirectory: true)
+        // Recorded as a change, whoever exports (plan 23 C).
+        let started = Date()
+        let what = "\(modules.map(\.displayName).joined(separator: ", ")) to \(bundleURL.lastPathComponent)"
 
         do {
             try FileManager.default.createDirectory(at: bundleURL, withIntermediateDirectories: true)
@@ -105,6 +109,7 @@ final class ExportService {
                 let suffix = copyFailures.count > 5 ? ", …" : ""
                 lastError = "Export incomplete: \(copyFailures.count) attached file\(copyFailures.count == 1 ? "" : "s") could not be copied (\(names)\(suffix)). Re-export, or disable file copies."
                 try? FileManager.default.removeItem(at: bundleURL)
+                ChangeLog.shared.failed("export_research_bundle", what, because: lastError ?? "", since: started)
                 return nil
             }
 
@@ -142,11 +147,13 @@ final class ExportService {
 
             lastExportURL = bundleURL
             Self.logger.log("Export completed: \(bundleURL.path, privacy: .public)")
+            ChangeLog.shared.done("export_research_bundle", what, since: started)
             return bundleURL
 
         } catch {
             lastError = error.localizedDescription
             Self.logger.error("Export failed: \(error.localizedDescription, privacy: .public)")
+            ChangeLog.shared.failed("export_research_bundle", what, because: error.localizedDescription, since: started)
             try? FileManager.default.removeItem(at: bundleURL)
             return nil
         }

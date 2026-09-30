@@ -19,7 +19,12 @@ final class RecentSearchStore {
     private let persistence: DiskPersistence<[RecentSearch]>
     private(set) var searches: [RecentSearch] = []
 
-    init(fileName: String = "recent_searches.json") {
+    /// Where the person's changes to the list are recorded (plan 23 C). A
+    /// search joining it is the app's bookkeeping, not a change.
+    private let changes: ChangeLog
+
+    init(fileName: String = "recent_searches.json", changes: ChangeLog = .shared) {
+        self.changes = changes
         self.persistence = DiskPersistence(
             subdirectory: "Verbinal",
             fileName: fileName,
@@ -44,17 +49,21 @@ final class RecentSearchStore {
     func remove(_ search: RecentSearch) {
         searches.removeAll { $0.id == search.id }
         persistence.write(searches)
+        changes.done("remove_recent_search", "the recent search \"\(search.name)\"")
     }
 
     func rename(_ search: RecentSearch, to newName: String) {
         if let idx = searches.firstIndex(where: { $0.id == search.id }) {
             searches[idx].name = newName
             persistence.write(searches)
+            changes.done("rename_recent_search", "the recent search \"\(search.name)\" to \"\(newName)\"")
         }
     }
 
     func clear() {
+        let count = searches.count
         searches.removeAll()
         persistence.write(searches)
+        changes.done("clear_recent_searches", "the recent searches (\(count))")
     }
 }

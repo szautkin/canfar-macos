@@ -64,7 +64,8 @@ final class SessionActions {
             return Dictionary(ids.map { ($0, error.localizedDescription) }, uniquingKeysWith: { first, _ in first })
         }
         let unknown = ids.filter { !listed.contains($0) }
-        let failed = await withTaskGroup(of: (String, String?).self) { group in
+        // Each delete is recorded where it is made, as this task's (plan 23 C).
+        let failed = await task.within { await withTaskGroup(of: (String, String?).self) { group in
             for id in ids where listed.contains(id) {
                 group.addTask {
                     do {
@@ -80,7 +81,7 @@ final class SessionActions {
                 if let reason { failed[id] = reason }
             }
             return failed
-        }
+        } }
         let deleted = ids.count - failed.count
         if failed.isEmpty {
             task.succeed(String(localized: "Deleted \(deleted) of \(ids.count)"))

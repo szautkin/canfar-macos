@@ -689,7 +689,7 @@ final class SessionLaunchModel {
 
         let task = tasks.begin(.launch, String(localized: "Launch \(selectedType) \(sessionName)"))
         do {
-            let sessionId = try await sessionService.launchSession(params)
+            let sessionId = try await task.within { try await sessionService.launchSession(params) }
             if let sessionId {
                 task.succeed()
                 launchSuccess = true

@@ -26,10 +26,14 @@ protocol SessionLaunching: Sendable {
 final class SessionService: SessionLaunching {
     private let network: NetworkClient
     private let endpoints: APIEndpoints
+    /// Where each change to the person's sessions is recorded — here, where
+    /// every launch, delete and renewal is made, whoever asks (plan 23 C).
+    private let changes: ChangeLog
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
+    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared) {
         self.network = network
         self.endpoints = endpoints
+        self.changes = changes
     }
 
     /// Excluded session types — these are handled by their own dedicated modules.
@@ -64,6 +68,12 @@ final class SessionService: SessionLaunching {
         if !firstComponent.contains(".") {
             image = "\(Self.defaultRegistry)/\(image)"
         }
+        return try await changes.run("launch_session", "\(params.type) session \(params.name) (\(image))") {
+            try await post(params, image: image)
+        }
+    }
+
+    private func post(_ params: SessionLaunchParams, image: String) async throws -> String? {
 
         var formData: [String: String] = [
             "name": params.name,
@@ -118,12 +128,16 @@ final class SessionService: SessionLaunching {
 
     /// Deletes a session by ID.
     func deleteSession(id: String) async throws {
-        _ = try await network.delete(endpoints.sessionURL(id))
+        try await changes.run("delete_session", "session \(id)") {
+            _ = try await network.delete(endpoints.sessionURL(id))
+        }
     }
 
     /// Renews/extends a session by ID.
     func renewSession(id: String) async throws {
-        _ = try await network.post(endpoints.sessionRenewURL(id), formData: [:])
+        try await changes.run("renew_session", "session \(id)") {
+            _ = try await network.post(endpoints.sessionRenewURL(id), formData: [:])
+        }
     }
 
     /// Fetches Kubernetes events for a session.

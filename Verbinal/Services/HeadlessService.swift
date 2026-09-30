@@ -10,10 +10,14 @@ import VerbinalKit
 final class HeadlessService: Sendable {
     private let network: NetworkClient
     private let endpoints: APIEndpoints
+    /// Where each batch job launched or deleted is recorded — here, whoever
+    /// asks: the person, an assistant, or an image probe (plan 23 C).
+    private let changes: ChangeLog
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
+    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared) {
         self.network = network
         self.endpoints = endpoints
+        self.changes = changes
     }
 
     /// Fetches only headless sessions, filtering client-side.
@@ -39,7 +43,9 @@ final class HeadlessService: Sendable {
 
     /// Deletes a headless job by ID.
     func deleteJob(id: String) async throws {
-        _ = try await network.delete(endpoints.sessionURL(id))
+        try await changes.run("delete_session", "batch job \(id)") {
+            _ = try await network.delete(endpoints.sessionURL(id))
+        }
     }
 
     /// Launch one or more replicas of a headless Skaha job. Returns
@@ -64,6 +70,12 @@ final class HeadlessService: Sendable {
     /// network error directly (no partial state).
     func launchHeadlessJob(_ params: HeadlessLaunchParams) async throws -> [String] {
         let count = max(1, params.replicas)
+        let what = count == 1 ? "batch job \(params.name) (\(params.image))"
+                              : "\(count) replicas of batch job \(params.name) (\(params.image))"
+        return try await changes.run("launch_headless_job", what) { try await launch(params, count: count) }
+    }
+
+    private func launch(_ params: HeadlessLaunchParams, count: Int) async throws -> [String] {
         var jobIDs: [String] = []
 
         for replica in 0..<count {

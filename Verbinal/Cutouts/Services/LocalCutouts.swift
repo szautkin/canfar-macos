@@ -138,9 +138,18 @@ struct LocalCutoutSource: CutoutSource {
 struct LocalCutoutMaker: CutoutMaker {
     /// The complete file of an observation, when it is here.
     let file: @MainActor @Sendable (String) -> URL?
+    /// Where each cutout made here is recorded (plan 23 C); one cut on
+    /// CADC's side is recorded as its download.
+    var changes: ChangeLog = .shared
     var method: CutoutMethod { .local }
 
     func make(publisherID: String, spec: CutoutSpec) async throws -> CutoutFiles {
+        try await changes.run("make_cutout", "the cutout \(spec.fileName) of observation \(publisherID), on this Mac") {
+            try await cut(publisherID: publisherID, spec: spec)
+        }
+    }
+
+    private func cut(publisherID: String, spec: CutoutSpec) async throws -> CutoutFiles {
         guard let url = await file(publisherID) else {
             throw CutoutFailure.noService("the observation's file is not on this computer — download it, or cut it on CADC's side")
         }

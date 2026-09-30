@@ -16,14 +16,18 @@ actor DownloadService {
     private let endpoints: APIEndpoints
     private let caom2: CAOM2Service
     private let tasks: TaskRegistry
+    /// Where each download is recorded — here, whoever asks (plan 23 C).
+    private let changes: ChangeLog
 
     init(
         session: URLSession = .shared,
         endpoints: APIEndpoints = TAPConfig.endpoints,
         caom2: CAOM2Service = CAOM2Service(),
-        tasks: TaskRegistry = .shared
+        tasks: TaskRegistry = .shared,
+        changes: ChangeLog = .shared
     ) {
         self.tasks = tasks
+        self.changes = changes
         self.session = session
         self.endpoints = endpoints
         self.caom2 = caom2
@@ -36,7 +40,9 @@ actor DownloadService {
     /// Fetches the observation's file — on the activity bar, whoever asked.
     func downloadToTemp(publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
         try await tasks.track(.download, Self.label(publisherID)) { _ in
-            try await self.fetchWhole(publisherID: publisherID)
+            try await self.changes.run("download_observation", "observation \(publisherID)") {
+                try await self.fetchWhole(publisherID: publisherID)
+            }
         }
     }
 
@@ -46,16 +52,22 @@ actor DownloadService {
     /// `get_data_links` (`files[].filename`, `caom2Artifacts[].filename`).
     func downloadToTemp(publisherID: String, file: String) async throws -> (tempURL: URL, suggestedFilename: String) {
         try await tasks.track(.download, Self.label(publisherID, file: file)) { _ in
-            if let link = await self.resolveDataLink(publisherID: publisherID).directFiles.first(where: { $0.filename == file }) {
-                return try await self.fetchToTemp(url: link.url, publisherID: publisherID, suggested: file)
+            try await self.changes.run("download_observation", "\(file) of observation \(publisherID)") {
+                try await self.fetch(file, of: publisherID)
             }
-            let artifact = await self.planeArtifacts(publisherID: publisherID)
-                .first { ($0.uri as NSString).lastPathComponent == file }
-            guard let artifact, let url = self.endpoints.dataPubURL(forArtifactURI: artifact.uri) else {
-                throw SearchError.networkError("\(publisherID) has no file named \(file) — get_data_links lists its files.")
-            }
-            return try await self.fetchToTemp(url: url, publisherID: publisherID, suggested: file)
         }
+    }
+
+    private func fetch(_ file: String, of publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
+        if let link = await resolveDataLink(publisherID: publisherID).directFiles.first(where: { $0.filename == file }) {
+            return try await fetchToTemp(url: link.url, publisherID: publisherID, suggested: file)
+        }
+        let artifact = await planeArtifacts(publisherID: publisherID)
+            .first { ($0.uri as NSString).lastPathComponent == file }
+        guard let artifact, let url = endpoints.dataPubURL(forArtifactURI: artifact.uri) else {
+            throw SearchError.networkError("\(publisherID) has no file named \(file) — get_data_links lists its files.")
+        }
+        return try await fetchToTemp(url: url, publisherID: publisherID, suggested: file)
     }
 
     private func fetchWhole(publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
@@ -99,7 +111,9 @@ actor DownloadService {
     /// file named `suggestedFilename`.
     func downloadToTemp(url: URL, suggestedFilename: String, publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
         try await tasks.track(.download, Self.label(publisherID, file: suggestedFilename)) { _ in
-            try await self.fetchToTemp(url: url, publisherID: publisherID, suggested: suggestedFilename)
+            try await self.changes.run("download_cutout", "\(suggestedFilename) of observation \(publisherID)") {
+                try await self.fetchToTemp(url: url, publisherID: publisherID, suggested: suggestedFilename)
+            }
         }
     }
 

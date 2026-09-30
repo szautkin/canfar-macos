@@ -32,7 +32,7 @@ final class HeadlessLaunches {
     func launch(_ params: HeadlessLaunchParams) async throws -> [String] {
         let task = tasks.begin(.launch, String(localized: "Launch batch job \(params.name)"))
         do {
-            let ids = try await service.launchHeadlessJob(params)
+            let ids = try await task.within { try await service.launchHeadlessJob(params) }
             task.succeed(ids.count == 1 ? String(localized: "Job \(ids[0])") : String(localized: "\(ids.count) jobs"))
             return ids
         } catch {

@@ -142,11 +142,18 @@ struct UploadFileToVOSpaceApplier: ProposalApplier, ResultReportingApplier {
         let activity = self.activity
         let remotePath = payload.remotePath
         let kind = self.kind
+        // The upload outlives the apply, so the storage owner records how it
+        // really ends: its who and why are carried in, but not the proposal,
+        // whose apply has already been recorded (plan 23 C).
+        var context = WorkContext.current
+        context.cause.proposal = nil
         Task.detached(priority: .userInitiated) {
             defer { try? FileManager.default.removeItem(at: staged) }
             do {
-                try await withApplierTimeout(seconds: 600, label: "upload_file_to_vospace") {
-                    try await upload(staged, remotePath)
+                try await context.run {
+                    try await withApplierTimeout(seconds: 600, label: "upload_file_to_vospace") {
+                        try await upload(staged, remotePath)
+                    }
                 }
                 await MainActor.run {
                     activity.append(.applied(proposal: proposal, kind: kind))

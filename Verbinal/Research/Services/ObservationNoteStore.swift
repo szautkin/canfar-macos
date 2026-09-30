@@ -38,9 +38,14 @@ final class ObservationNoteStore {
     /// - Parameter legacyNotesSource: the pre-DB JSON to one-shot import (once,
     ///   guarded by a `meta` flag). Defaults to the production file. Tests pass
     ///   `nil` to skip migration, or a seeded temp store to exercise the importer.
+    /// Where each note saved or deleted is recorded (plan 23 C).
+    private let changes: ChangeLog
+
     init(database: AppDatabase = .shared,
-         legacyNotesSource: DiskPersistence<[String: ObservationNote]>? = ObservationNoteStore.productionLegacyNotesStore) {
+         legacyNotesSource: DiskPersistence<[String: ObservationNote]>? = ObservationNoteStore.productionLegacyNotesStore,
+         changes: ChangeLog = .shared) {
         self.db = database
+        self.changes = changes
         self.deviceID = Self.installDeviceID()
         if let legacyNotesSource {
             migrateLegacyJSONIfNeeded(from: legacyNotesSource)
@@ -99,8 +104,10 @@ final class ObservationNoteStore {
         do {
             try db.writer.write { [deviceID] d in try Self.upsert(updated, deviceID: deviceID, in: d) }
             notes[updated.publisherID] = updated
+            changes.done("update_observation_note", "the note on \(updated.publisherID)")
         } catch {
             Self.logger.error("Save failed: \(error.localizedDescription, privacy: .public)")
+            changes.failed("update_observation_note", "the note on \(updated.publisherID)", because: error.localizedDescription)
         }
     }
 
@@ -128,8 +135,10 @@ final class ObservationNoteStore {
                     """, arguments: [now, now, deviceID, publisherID])
             }
             notes[publisherID] = nil
+            changes.done("delete_observation_note", "the note on \(publisherID)")
         } catch {
             Self.logger.error("Remove failed: \(error.localizedDescription, privacy: .public)")
+            changes.failed("delete_observation_note", "the note on \(publisherID)", because: error.localizedDescription)
         }
     }
 

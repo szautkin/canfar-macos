@@ -540,7 +540,15 @@ struct SearchResultsView: View {
 
         let response = panel.runModal()
         if response == .OK, let saveURL = panel.url {
-            try? FileHelper.moveReplacing(from: tempURL, to: saveURL)
+            // The person's export lands here; an assistant's is recorded
+            // where it is applied (plan 23 C).
+            do {
+                try FileHelper.moveReplacing(from: tempURL, to: saveURL)
+                ChangeLog.shared.done("export_search_results", "search results to \(saveURL.lastPathComponent)")
+            } catch {
+                ChangeLog.shared.failed("export_search_results", "search results to \(saveURL.lastPathComponent)",
+                                        because: error.localizedDescription)
+            }
         } else {
             try? FileManager.default.removeItem(at: tempURL)
         }

@@ -17,7 +17,11 @@ final class BookmarkStore {
     private let persistence: DiskPersistence<[CoordinateBookmark]>
     private(set) var bookmarks: [CoordinateBookmark] = []
 
-    init(fileName: String = "bookmarks.json") {
+    /// Where each bookmark saved, renamed or deleted is recorded (plan 23 C).
+    private let changes: ChangeLog
+
+    init(fileName: String = "bookmarks.json", changes: ChangeLog = .shared) {
+        self.changes = changes
         self.persistence = DiskPersistence(
             subdirectory: "Verbinal/Bookmarks",
             fileName: fileName,
@@ -34,17 +38,20 @@ final class BookmarkStore {
     func save(_ bookmark: CoordinateBookmark) {
         bookmarks.insert(bookmark, at: 0)
         persistence.write(bookmarks)
+        changes.done("save_fits_bookmark", "the sky bookmark \"\(bookmark.label)\"")
     }
 
     func delete(_ bookmark: CoordinateBookmark) {
         bookmarks.removeAll { $0.id == bookmark.id }
         persistence.write(bookmarks)
+        changes.done("delete_fits_bookmark", "the sky bookmark \"\(bookmark.label)\"")
     }
 
     func rename(_ bookmark: CoordinateBookmark, label: String) {
         if let idx = bookmarks.firstIndex(where: { $0.id == bookmark.id }) {
             bookmarks[idx].label = label
             persistence.write(bookmarks)
+            changes.done("rename_fits_bookmark", "the sky bookmark \"\(bookmark.label)\" to \"\(label)\"")
         }
     }
 }

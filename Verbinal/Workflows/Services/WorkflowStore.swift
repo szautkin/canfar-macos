@@ -22,9 +22,27 @@ final class WorkflowStore {
     private let builtins: () -> [(String, String)]
     var changeID = UUID()
 
-    init(directory: URL? = nil, builtins: @escaping () -> [(String, String)] = WorkflowStore.loadTemplates) {
+    /// Where each change to the workflows is recorded — the screen's and an
+    /// assistant's alike (plan 23 C).
+    private let changes: ChangeLog
+
+    init(directory: URL? = nil, builtins: @escaping () -> [(String, String)] = WorkflowStore.loadTemplates,
+         changes: ChangeLog = .shared) {
         self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!.appendingPathComponent("Verbinal/Workflows", isDirectory: true)
         self.builtins = builtins
+        self.changes = changes
+    }
+
+    /// Records `change` of `kind` to `what`, done or failed with its reason.
+    private func recorded<T>(_ kind: String, _ what: String, _ change: () throws -> T) throws -> T {
+        do {
+            let result = try change()
+            changes.done(kind, what)
+            return result
+        } catch {
+            changes.failed(kind, what, because: error.localizedDescription)
+            throw error
+        }
     }
     func listBuiltIn() -> [WorkflowInfo] {
         builtins().map { WorkflowInfo(id: Self.builtInPrefix + $0.0, source: .builtIn, document: WorkflowFormat.parse($0.1), rawText: $0.1) }.sorted { $0.document.title.localizedCaseInsensitiveCompare($1.document.title) == .orderedAscending }
@@ -43,6 +61,9 @@ final class WorkflowStore {
         return WorkflowInfo(id: id, source: .local, document: WorkflowFormat.parse(text), rawText: text, agentAttribution: loadAttributions()[String(id.dropFirst(Self.localPrefix.count))])
     }
     @discardableResult func saveNew(name: String, text: String, attribution: AgentAttribution? = nil) throws -> String {
+        try recorded("save_workflow", "the workflow \"\(name)\"") { try write(name: name, text: text, attribution: attribution) }
+    }
+    private func write(name: String, text: String, attribution: AgentAttribution?) throws -> String {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let base = Self.slugify(name); var candidate = base; var count = 2
         while FileManager.default.fileExists(atPath: directory.appendingPathComponent(candidate + WorkflowFormat.fileExtension).path) { candidate = "\(base)-\(count)"; count += 1 }
@@ -50,13 +71,27 @@ final class WorkflowStore {
         if let attribution { var map = loadAttributions(); map[candidate] = attribution; saveAttributions(map) }
         changeID = UUID(); return Self.localPrefix + candidate
     }
-    func updateText(_ id: String, text: String) throws { let path = try localPath(id); try text.data(using: .utf8)!.write(to: path, options: .atomic); changeID = UUID() }
-    func setStepDone(_ id: String, index: Int, done: Bool) throws { let path = try localPath(id); let text = try String(contentsOf: path, encoding: .utf8); try WorkflowFormat.withStepDone(text, stepIndex: index, done: done).data(using: .utf8)!.write(to: path, options: .atomic); changeID = UUID() }
+    func updateText(_ id: String, text: String) throws {
+        try recorded("update_workflow", "the workflow \(title(of: id))") {
+            let path = try localPath(id); try text.data(using: .utf8)!.write(to: path, options: .atomic); changeID = UUID()
+        }
+    }
+    func setStepDone(_ id: String, index: Int, done: Bool) throws {
+        try recorded("set_workflow_step", "step \(index + 1) of the workflow \(title(of: id)) \(done ? "done" : "not done")") {
+            let path = try localPath(id); let text = try String(contentsOf: path, encoding: .utf8); try WorkflowFormat.withStepDone(text, stepIndex: index, done: done).data(using: .utf8)!.write(to: path, options: .atomic); changeID = UUID()
+        }
+    }
     func delete(_ id: String) throws {
-        try FileManager.default.removeItem(at: try localPath(id))
-        var map = loadAttributions()
-        if map.removeValue(forKey: String(id.dropFirst(Self.localPrefix.count))) != nil { saveAttributions(map) }
-        changeID = UUID()
+        try recorded("delete_workflow", "the workflow \(title(of: id))") {
+            try FileManager.default.removeItem(at: try localPath(id))
+            var map = loadAttributions()
+            if map.removeValue(forKey: String(id.dropFirst(Self.localPrefix.count))) != nil { saveAttributions(map) }
+            changeID = UUID()
+        }
+    }
+    /// "\"CFHT MegaCam (2)\"", or the id when it has none.
+    private func title(of id: String) -> String {
+        get(id).map { "\"\($0.document.title)\"" } ?? id
     }
     /// A new working copy of `id`, every time, with a title no other copy
     /// has ("… (2)"): three copies of the CFHT template once shared one
@@ -67,7 +102,9 @@ final class WorkflowStore {
         let copies = listLocal()
         let title = Self.untakenTitle(name ?? item.document.title, taken: copies.map(\.document.title))
         let text = title == item.document.title ? item.rawText : WorkflowFormat.withTitle(item.rawText, title)
-        return try saveNew(name: title, text: text, attribution: attribution)
+        return try recorded("use_workflow", "a copy of the workflow \"\(item.document.title)\" as \"\(title)\"") {
+            try write(name: title, text: text, attribution: attribution)
+        }
     }
 
     /// `title`, or `title (2)`, `(3)`, … — whichever no copy has.

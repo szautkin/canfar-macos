@@ -21,10 +21,17 @@ final class ObservationStore {
     private let spotlight: ObservationSpotlightIndexer?
     private(set) var observations: [DownloadedObservation] = []
 
+    /// Where each change to Research is recorded — here, where the screen's
+    /// and an assistant's are both made (plan 23 C). A download's own record
+    /// is its download's, not a second change.
+    private let changes: ChangeLog
+
     init(
         fileName: String = "downloaded_observations.json",
-        spotlight: ObservationSpotlightIndexer? = ObservationSpotlightIndexer()
+        spotlight: ObservationSpotlightIndexer? = ObservationSpotlightIndexer(),
+        changes: ChangeLog = .shared
     ) {
+        self.changes = changes
         self.persistence = DiskPersistence(
             subdirectory: "Verbinal",
             fileName: fileName,
@@ -94,10 +101,12 @@ final class ObservationStore {
         var corrected = observations[idx]
         corrected.publisherID = publisherID
         guard !observations.contains(where: { $0.id != id && $0.recordKey == corrected.recordKey }) else { return nil }
+        let was = observations[idx].publisherID
         spotlight?.deindex(observations[idx])
         observations[idx] = corrected
         persistence.write(observations)
         spotlight?.index(corrected)
+        changes.done("correct_publisher_id", "the publisher ID of Research record \(corrected.observationID), \(was) → \(publisherID)")
         return corrected
     }
 
@@ -107,7 +116,9 @@ final class ObservationStore {
         if let existing = observations.first(where: { $0.recordKey == observation.recordKey }) {
             return (existing, false)
         }
-        return (save(observation.withoutFile()), true)
+        let kept = save(observation.withoutFile())
+        changes.done("save_observation_to_research", "\(Self.describe(kept)) to Research")
+        return (kept, true)
     }
 
     /// Forgets a record's file (the caller deletes it), keeping the
@@ -115,9 +126,11 @@ final class ObservationStore {
     @discardableResult
     func forgetFile(of id: UUID) -> DownloadedObservation? {
         guard let idx = observations.firstIndex(where: { $0.id == id }) else { return nil }
+        let file = (observations[idx].localPath as NSString).lastPathComponent
         observations[idx] = observations[idx].withoutFile()
         persistence.write(observations)
         spotlight?.index(observations[idx])
+        changes.done("remove_downloaded_file", "the file \(file) of \(Self.describe(observations[idx]))")
         return observations[idx]
     }
 
@@ -125,12 +138,21 @@ final class ObservationStore {
         observations.removeAll { $0.id == observation.id }
         persistence.write(observations)
         spotlight?.deindex(observation)
+        changes.done("delete_downloaded_observation", "Research record \(Self.describe(observation))")
     }
 
     func clear() {
+        let count = observations.count
         observations.removeAll()
         persistence.write(observations)
         spotlight?.deindexAll()
+        changes.done("clear_research_archive", "the Research archive (\(count) records)")
+    }
+
+    /// "M31 (1525350, CFHT)" — how a change names a record.
+    static func describe(_ record: DownloadedObservation) -> String {
+        let details = [record.observationID, record.collection].filter { !$0.isEmpty }.joined(separator: ", ")
+        return record.targetName.isEmpty ? details : "\(record.targetName) (\(details))"
     }
 
     /// Research keeps the complete observation (its cutouts aside).

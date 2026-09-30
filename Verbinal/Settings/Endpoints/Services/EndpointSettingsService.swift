@@ -6,6 +6,7 @@
 
 import Foundation
 import Observation
+import VerbinalKit
 
 /// MainActor-bound observable store for the user's endpoint overrides.
 ///
@@ -33,8 +34,12 @@ final class EndpointSettingsService {
     /// for the edit to take effect.
     private(set) var pendingRelaunch = false
 
-    init(userDefaults: UserDefaults = .standard) {
+    /// Where each endpoint changed is recorded (plan 23 C).
+    private let changes: ChangeLog
+
+    init(userDefaults: UserDefaults = .standard, changes: ChangeLog = .shared) {
         self.userDefaults = userDefaults
+        self.changes = changes
         if let data = userDefaults.data(forKey: Self.overridesKey),
            let decoded = try? JSONDecoder().decode(EndpointOverrides.self, from: data) {
             self.overrides = decoded
@@ -49,18 +54,21 @@ final class EndpointSettingsService {
         var updated = overrides
         guard updated.set(value, for: field) else { return }
         persist(updated)
+        changes.done("change_setting", "the endpoint \(field.rawValue) to \(value.isEmpty ? "its default" : value), from the next launch")
     }
 
     func clearOverride(for field: EndpointField) {
         var updated = overrides
         guard updated.set(nil, for: field) else { return }
         persist(updated)
+        changes.done("change_setting", "the endpoint \(field.rawValue) to its default, from the next launch")
     }
 
     /// Drop every override. Exposed behind the destructive Reset button.
     func resetToDefaults() {
         guard !overrides.isEmpty else { return }
         persist(EndpointOverrides())
+        changes.done("change_setting", "every endpoint to its default, from the next launch")
     }
 
     private func persist(_ updated: EndpointOverrides) {

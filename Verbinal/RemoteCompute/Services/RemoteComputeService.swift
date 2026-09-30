@@ -77,6 +77,9 @@ final class RemoteComputeService {
     /// cold session takes a minute or two, and only then picks the request up.
     private let startupAllowance: TimeInterval
     private let tasks: TaskRegistry
+    /// Where each run sent is recorded (plan 23 C); the session it needs is
+    /// recorded where sessions are launched.
+    private let changes: ChangeLog
     private var watchers: [String: Task<Void, Never>] = [:]
 
     init(runs: ComputeRunStore,
@@ -87,8 +90,10 @@ final class RemoteComputeService {
          registryAuth: @escaping @MainActor () -> (username: String, secret: String)?,
          pollInterval: Duration = .seconds(5),
          startupAllowance: TimeInterval = 5 * 60,
-         tasks: TaskRegistry = .shared) {
+         tasks: TaskRegistry = .shared,
+         changes: ChangeLog = .shared) {
         self.tasks = tasks
+        self.changes = changes
         self.runs = runs
         self.sessions = sessions
         self.files = files
@@ -176,15 +181,12 @@ final class RemoteComputeService {
                                by: author == .agent ? .assistant : .person)
         let drift: ComputeDrift?
         do {
-            let reused = try await reuseOrLaunch(launch)
-            drift = reused.flatMap { ComputeDrift(session: $0, configuration: launch ?? configuration()) }
-            // A just-launched session may not have made its inbox yet, and a missing parent 404s the PUT.
-            await ensureTree(user)
-            let file = FileManager.default.temporaryDirectory
-                .appendingPathComponent("runcode-\(RunCodeContract.sanitize(request.id)).json")
-            try JSONEncoder().encode(request).write(to: file)
-            defer { try? FileManager.default.removeItem(at: file) }
-            try await files.uploadFile(username: user, remotePath: RunCodeContract.inboxPath(id: request.id), fileURL: file)
+            // Sending the code is the change; its result comes later, to the task.
+            drift = try await task.within {
+                try await changes.run("run_code", "\(request.language) code \(request.id) on the compute session") {
+                    try await send(request, as: user, launch: launch)
+                }
+            }
         } catch {
             runs.close(request.id, as: ComputeRun.notSent)
             task.fail(error.localizedDescription)
@@ -192,6 +194,21 @@ final class RemoteComputeService {
         }
         task.stage(String(localized: "Waiting for the result"))
         watch(request, task)
+        return drift
+    }
+
+    /// Makes sure a session is there, and drops `request` in its inbox.
+    private func send(_ request: RunCodeContract.Request, as user: String,
+                      launch: Configuration?) async throws -> ComputeDrift? {
+        let reused = try await reuseOrLaunch(launch)
+        let drift = reused.flatMap { ComputeDrift(session: $0, configuration: launch ?? configuration()) }
+        // A just-launched session may not have made its inbox yet, and a missing parent 404s the PUT.
+        await ensureTree(user)
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("runcode-\(RunCodeContract.sanitize(request.id)).json")
+        try JSONEncoder().encode(request).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        try await files.uploadFile(username: user, remotePath: RunCodeContract.inboxPath(id: request.id), fileURL: file)
         return drift
     }
 

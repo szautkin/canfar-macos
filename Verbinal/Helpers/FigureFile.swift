@@ -7,6 +7,7 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
+import VerbinalKit
 
 /// Writing a figure plate (a SwiftUI view) to PNG or PDF — the one place
 /// the viewers' figure exporters do it. A write that fails says so.
@@ -25,9 +26,23 @@ enum FigureFile {
         return bitmap.representation(using: .png, properties: [:])
     }
 
-    /// Writes `view` to `url`: a PNG at `scale`×, or a one-page vector PDF.
+    /// Writes `view` to `url`: a PNG at `scale`×, or a one-page vector PDF —
+    /// recorded as a change, whoever exports it (plan 23 C).
     @MainActor
-    static func write<V: View>(_ view: V, as format: Format, scale: CGFloat, to url: URL) throws {
+    static func write<V: View>(_ view: V, as format: Format, scale: CGFloat, to url: URL,
+                               changes: ChangeLog = .shared) throws {
+        let what = "a figure to \(url.lastPathComponent)"
+        do {
+            try render(view, as: format, scale: scale, to: url)
+            changes.done("export_figure", what)
+        } catch {
+            changes.failed("export_figure", what, because: error.localizedDescription)
+            throw error
+        }
+    }
+
+    @MainActor
+    private static func render<V: View>(_ view: V, as format: Format, scale: CGFloat, to url: URL) throws {
         switch format {
         case .png:
             guard let data = png(view, scale: scale) else { throw CocoaError(.fileWriteUnknown) }

@@ -7,6 +7,7 @@
 #if os(macOS)
 import AppKit
 import UniformTypeIdentifiers
+import VerbinalKit
 
 /// Saving marks to a file the person picks.
 enum MarkExportPanel {
@@ -27,6 +28,7 @@ enum MarkExportPanel {
             case .json: data = try MarkExport.json([MarkExport.Extension(hdu: hdu, marks: marks)], file: file)
             }
             try data.write(to: url, options: .atomic)
+            ChangeLog.shared.done("export_marks", "\(marks.count) marks of \((file as NSString).lastPathComponent) to \(url.lastPathComponent)")
             return String(localized: "Saved \(marks.count) marks to \(url.lastPathComponent)")
         } catch {
             return String(localized: "Could not save the marks: \(error.localizedDescription)")
