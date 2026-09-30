@@ -21,6 +21,17 @@ struct ListSessionsTool: JSONReadTool {
 
     struct Output: Encodable, Sendable {
         let sessions: [Item]
+        /// The apps running in desktops, each under its desktop's session id.
+        var desktopApps: [App] = []
+        struct App: Encodable, Sendable, Equatable {
+            /// The desktop's session id.
+            let session: String
+            /// Its own id: `delete_session`'s `app`.
+            let app: String
+            let name: String?
+            let image: String?
+            let status: String?
+        }
         struct Item: Encodable, Sendable {
             let id: String
             let name: String
@@ -43,7 +54,7 @@ struct ListSessionsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_sessions",
-        description: "List the user's currently running interactive Skaha sessions (notebook/desktop/firefly/carta/contributed). Headless and desktop-app sessions are excluded.",
+        description: "List the user's currently running interactive Skaha sessions (notebook/desktop/firefly/carta/contributed), and in `desktopApps` the apps running in their desktops — each under its desktop's session id, with its own `app` id (`delete_session` with both stops one app). Headless jobs are listed by list_headless_jobs.",
         schema: #"""
         {
           "type": "object",
@@ -54,11 +65,17 @@ struct ListSessionsTool: JSONReadTool {
     )
 
     let fetchAll: @Sendable () async throws -> [SessionOut]
+    /// The desktops' apps.
+    var fetchApps: @Sendable () async throws -> [ListedSession] = { [] }
 
     func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
         do {
             let raw = try await fetchAll()
-            return Output(sessions: raw.map(Self.item))
+            let apps = try await fetchApps().compactMap { listed -> Output.App? in
+                guard let app = listed.appid else { return nil }
+                return .init(session: listed.id, app: app, name: listed.name, image: listed.image, status: listed.status)
+            }
+            return Output(sessions: raw.map(Self.item), desktopApps: apps)
         } catch {
             let msg = "\(error)"
             if msg.lowercased().contains("auth") { throw ToolFailureReason.authRequired }

@@ -30,10 +30,16 @@ final class SessionService: SessionLaunching {
     /// every launch, delete and renewal is made, whoever asks (plan 23 C).
     private let changes: ChangeLog
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared) {
+    /// How a delete is checked: the listing asked this many times, this far
+    /// apart, until the session is gone or going.
+    private let confirmation: (attempts: Int, interval: Duration)
+
+    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared,
+         confirmation: (attempts: Int, interval: Duration) = (5, .seconds(1))) {
         self.network = network
         self.endpoints = endpoints
         self.changes = changes
+        self.confirmation = confirmation
     }
 
     /// Excluded session types — these are handled by their own dedicated modules.
@@ -49,13 +55,17 @@ final class SessionService: SessionLaunching {
             .map { Session(from: $0) }
     }
 
-    /// The id of every session the platform lists, of any type — headless
-    /// and desktop-app included — to tell a session from a typo (QA N20).
-    func allSessionIDs() async throws -> Set<String> {
-        struct Listed: Decodable { let id: String }
+    /// Everything the platform lists, of any type — headless and desktop
+    /// apps included — to tell a session from a typo (QA N20), and a desktop
+    /// app by its `appid`.
+    func listing() async throws -> [ListedSession] {
         let (data, _) = try await network.get(endpoints.sessionsURL, accept: "application/json")
-        let listed = try JSONDecoder().decode([SafeDecodable<Listed>].self, from: data)
-        return Set(listed.compactMap(\.value?.id))
+        return try JSONDecoder().decode([SafeDecodable<ListedSession>].self, from: data).compactMap(\.value)
+    }
+
+    /// A desktop's apps, as the platform lists them.
+    func desktopApps() async throws -> [ListedSession] {
+        try await listing().filter(\.isDesktopApp)
     }
 
     private static let defaultRegistry = "images.canfar.net"
@@ -126,10 +136,49 @@ final class SessionService: SessionLaunching {
         return responseText.isEmpty ? nil : responseText
     }
 
-    /// Deletes a session by ID.
+    /// Ends a session, whatever its type. Skaha's session delete leaves a
+    /// desktop's apps running, so they go first, each by its own delete;
+    /// then the session — unless only apps are listed under the id. The
+    /// listing is asked after, since Skaha answers a delete it could not
+    /// make as it does one it made.
     func deleteSession(id: String) async throws {
         try await changes.run("delete_session", "session \(id)") {
-            _ = try await network.delete(endpoints.sessionURL(id))
+            let listed = try await listing().filter { $0.id == id }
+            for app in listed.filter(\.isDesktopApp) {
+                guard let appID = app.appid else { continue }
+                try await stopApp(session: id, app: appID, name: app.name)
+            }
+            if listed.isEmpty || listed.contains(where: { !$0.isDesktopApp }) {
+                _ = try await network.delete(endpoints.sessionURL(id))
+            }
+            try await confirmEnded("session \(id)") { $0.id == id }
+        }
+    }
+
+    /// Stops one desktop app — Skaha's session delete cannot.
+    func deleteDesktopApp(session: String, app: String) async throws {
+        let name = try? await listing().first { $0.id == session && $0.appid == app }?.name
+        try await stopApp(session: session, app: app, name: name ?? nil)
+    }
+
+    private func stopApp(session: String, app: String, name: String?) async throws {
+        let what = "desktop app \(name.map { "\($0) " } ?? "")(\(app)) of session \(session)"
+        try await changes.run("delete_desktop_app", what) {
+            _ = try await network.delete(endpoints.desktopAppURL(session, app))
+            try await confirmEnded(what) { $0.id == session && $0.appid == app }
+        }
+    }
+
+    /// Asks the listing until nothing `matching` still runs; throws when it
+    /// does after the last ask.
+    private func confirmEnded(_ what: String, matching: (ListedSession) -> Bool) async throws {
+        for attempt in 1...max(1, confirmation.attempts) {
+            let running = try await listing().filter { matching($0) && !$0.isEnding }
+            guard let still = running.first else { return }
+            if attempt == confirmation.attempts {
+                throw SessionStillRunning(what: what, status: still.status ?? "listed")
+            }
+            try await Task.sleep(for: confirmation.interval)
         }
     }
 

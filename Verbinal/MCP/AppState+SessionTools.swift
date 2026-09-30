@@ -13,11 +13,12 @@ extension AppState {
     // MARK: - Sessions
 
     func makeListSessionsTool() -> ListSessionsTool {
-        ListSessionsTool(fetchAll: { [weak self] in
+        let service = sessionService
+        return ListSessionsTool(fetchAll: { [weak self] in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
             let raw = try await self.sessionService.getSessions()
             return raw.map(Self.flatten)
-        })
+        }, fetchApps: { try await service.desktopApps() })
     }
 
     func makeGetSessionTool() -> GetSessionTool {

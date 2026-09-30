@@ -2764,6 +2764,16 @@
         }
       }
     },
+    "CANFAR accepted the delete of %@, but it is still %@. Try again, or end it on the Science Portal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CANFAR a accepté la suppression de %@, mais elle est toujours %@. Réessayez, ou terminez-la sur le Science Portal."
+          }
+        }
+      }
+    },
     "Canfar Images" : {
       "localizations" : {
         "fr" : {
@@ -9771,6 +9781,16 @@
         }
       }
     },
+    "no desktop app %@ in session %@ — list_sessions lists each desktop's apps" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucune application de bureau %@ dans la session %@ — list_sessions liste les applications de chaque bureau"
+          }
+        }
+      }
+    },
     "No downloads yet" : {
       "localizations" : {
         "fr" : {
@@ -15422,6 +15442,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arrêter et supprimer cette session"
+          }
+        }
+      }
+    },
+    "Stop desktop app %@ of session %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter l'application de bureau %@ de la session %@"
           }
         }
       }

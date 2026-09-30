@@ -60,7 +60,7 @@ extension AppState {
             LaunchSessionApplier(service: sessionService,
                                   recentLaunchStore: recentLaunchStore,
                                   activity: activity),
-            DeleteSessionApplier(delete: { [sessionActions] id in try await sessionActions.delete(id: id) },
+            DeleteSessionApplier(delete: { [sessionActions] id, app in try await sessionActions.delete(id: id, app: app) },
                                  activity: activity),
             DeleteSessionsBulkApplier(deleteAll: { [sessionActions] ids in await sessionActions.delete(ids: ids) },
                                       activity: activity),

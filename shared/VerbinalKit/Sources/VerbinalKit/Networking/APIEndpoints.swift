@@ -59,6 +59,8 @@ public struct APIEndpoints: Sendable, Equatable {
     public var sessionsURL: String { "\(skahaBaseURL)/v1/session" }
     public func sessionURL(_ id: String) -> String { "\(skahaBaseURL)/v1/session/\(id)" }
     public func sessionRenewURL(_ id: String) -> String { "\(skahaBaseURL)/v1/session/\(id)?action=renew" }
+    /// One desktop app, under its desktop's session id.
+    public func desktopAppURL(_ session: String, _ app: String) -> String { "\(skahaBaseURL)/v1/session/\(session)/app/\(app)" }
     public func sessionEventsURL(_ id: String) -> String { "\(skahaBaseURL)/v1/session/\(id)?view=events" }
     public func sessionLogsURL(_ id: String) -> String { "\(skahaBaseURL)/v1/session/\(id)?view=logs" }
     public var statsURL: String { "\(skahaBaseURL)/v1/session?view=stats" }

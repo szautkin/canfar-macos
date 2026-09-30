@@ -26,8 +26,30 @@ final class SessionActionsTests: XCTestCase {
             if refuse.contains(id) { throw URLError(.cannotConnectToHost) }
             deleted.append(id)
         }
+        func deleteDesktopApp(session: String, app: String) async throws {
+            deleted.append("\(session)/\(app)")
+        }
         func renewSession(id: String) async throws {}
-        func allSessionIDs() async throws -> Set<String> { listed }
+        func listing() async throws -> [ListedSession] {
+            listed.map { ListedSession(id: $0, type: "notebook") }
+                + [ListedSession(id: "d1", type: "desktop"), ListedSession(id: "d1", type: "desktop-app", appid: "a7")]
+        }
+    }
+
+    /// Plan 23 aside (the person, 2026-09-30): one desktop app is stopped by
+    /// its own delete; an app a desktop does not have is said so, never sent.
+    func testADesktopAppIsStoppedOnItsOwn() async throws {
+        let sessions = FakeSessions()
+        let actions = SessionActions(service: sessions, tasks: TaskRegistry())
+        try await actions.delete(id: "d1", app: "a7")
+        XCTAssertEqual(sessions.deleted, ["d1/a7"])
+        do {
+            try await actions.delete(id: "d1", app: "nope")
+            XCTFail("no such app")
+        } catch let error as NoSuchDesktopApp {
+            XCTAssertEqual(error, NoSuchDesktopApp(session: "d1", app: "nope"))
+        }
+        XCTAssertEqual(sessions.deleted, ["d1/a7"], "never sent")
     }
 
     func testTheBarSaysWhoDeletedASession() async throws {
@@ -84,7 +106,7 @@ final class SessionActionsTests: XCTestCase {
     func testTheAssistantsDeleteSessionIsOnTheBar() async throws {
         let registry = TaskRegistry()
         let actions = SessionActions(service: FakeSessions(), tasks: registry)
-        let applier = DeleteSessionApplier(delete: { id in try await actions.delete(id: id) }, activity: AgentActivityStore(fileName: "test-activity-\(UUID().uuidString).json"))
+        let applier = DeleteSessionApplier(delete: { id, app in try await actions.delete(id: id, app: app) }, activity: AgentActivityStore(fileName: "test-activity-\(UUID().uuidString).json"))
         let proposal = PendingProposal(toolName: "delete_session", kind: "delete_session", summary: "Terminate session s1",
                                        payload: try JSONEncoder().encode(DeleteSessionTool.Payload(id: "s1")),
                                        origin: .external(clientID: "t"))

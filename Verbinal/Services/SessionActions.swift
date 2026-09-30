@@ -8,9 +8,51 @@ import Foundation
 
 /// What ends or extends a session on the platform, and what it lists.
 protocol SessionEnding: Sendable {
+    /// Ends the session, whatever its type: a desktop's apps go with it.
     func deleteSession(id: String) async throws
+    /// Stops one desktop app, listed under its desktop's session id.
+    func deleteDesktopApp(session: String, app: String) async throws
     func renewSession(id: String) async throws
-    func allSessionIDs() async throws -> Set<String>
+    /// Everything the platform lists, of every type.
+    func listing() async throws -> [ListedSession]
+}
+
+extension SessionEnding {
+    func allSessionIDs() async throws -> Set<String> { Set(try await listing().map(\.id)) }
+}
+
+/// One entry of the platform's session listing: a session, or a desktop app
+/// listed under its desktop's id with its own `appid` (Skaha's
+/// `canfar.net/id` and `canfar.net/app-id` labels).
+struct ListedSession: Decodable, Sendable, Equatable {
+    let id: String
+    let type: String
+    var status: String?
+    var name: String?
+    var image: String?
+    var appid: String?
+
+    var isDesktopApp: Bool { type.lowercased() == "desktop-app" }
+    /// Going already: the delete took.
+    var isEnding: Bool { status?.lowercased() == "terminating" }
+}
+
+/// A delete CANFAR answered but did not make: Skaha answers a delete it
+/// could not make as it does one it made, so the listing is asked after.
+struct SessionStillRunning: LocalizedError, Equatable {
+    let what: String
+    let status: String
+    var errorDescription: String? {
+        String(localized: "CANFAR accepted the delete of \(what), but it is still \(status). Try again, or end it on the Science Portal.")
+    }
+}
+
+struct NoSuchDesktopApp: LocalizedError, Equatable {
+    let session: String
+    let app: String
+    var errorDescription: String? {
+        String(localized: "no desktop app \(app) in session \(session) — list_sessions lists each desktop's apps")
+    }
 }
 
 /// A session id the platform does not list. CANFAR answers a DELETE of one
@@ -37,10 +79,20 @@ final class SessionActions {
         self.tasks = tasks
     }
 
-    func delete(id: String) async throws {
-        try await tasks.track(.session, String(localized: "Delete session \(id)")) { [service] _ in
-            guard try await service.allSessionIDs().contains(id) else { throw NoSuchSession(id: id) }
-            try await service.deleteSession(id: id)
+    /// Ends session `id`, whatever its type — a desktop's apps with it — or,
+    /// given `app`, only that desktop app.
+    func delete(id: String, app: String? = nil) async throws {
+        let label = app.map { String(localized: "Stop desktop app \($0) of session \(id)") }
+            ?? String(localized: "Delete session \(id)")
+        try await tasks.track(.session, label) { [service] _ in
+            let listed = try await service.listing().filter { $0.id == id }
+            guard !listed.isEmpty else { throw NoSuchSession(id: id) }
+            if let app {
+                guard listed.contains(where: { $0.appid == app }) else { throw NoSuchDesktopApp(session: id, app: app) }
+                try await service.deleteDesktopApp(session: id, app: app)
+            } else {
+                try await service.deleteSession(id: id)
+            }
         }
     }
 

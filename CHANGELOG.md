@@ -12,6 +12,15 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Deleting a session works for every type.** Skaha's session delete
+  leaves a desktop's apps running and cannot stop one: ending a desktop
+  now stops its apps first, and `delete_session` with a desktop's `id`
+  and an app's `app` stops just that app — before, a desktop app's id
+  ended its whole desktop and left the app running. `list_sessions` lists
+  the desktops' apps. And because CANFAR answers a delete it could not
+  make as it does one it made, the platform is asked afterwards: a
+  session still running fails the delete, saying so, instead of a
+  success that was not.
 - **A download that takes over five minutes finishes.** A download with a
   progress bar failed at five minutes however steadily it arrived; only a
   five-minute stall ends one now, as with uploads.

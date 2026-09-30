@@ -133,20 +133,26 @@ struct DeleteSessionTool: JSONWriteTool {
 
     struct Args: Decodable, Sendable {
         let id: String
+        var app: String?
     }
 
     struct Payload: Codable, Sendable {
         let id: String
+        /// One desktop app to stop, instead of the whole session.
+        var app: String?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_session",
-        description: "Terminate a running Skaha session by id (interactive OR headless — same endpoint covers both).",
+        description: "End a Skaha session by id, whatever its type — notebook, desktop, carta, firefly, contributed or a headless job, running or finished. Ending a desktop stops its apps too. To stop one app in a desktop, pass the desktop's `id` and the app's `app` id (list_sessions lists them in `desktopApps`). The platform is asked afterwards whether it is gone: CANFAR answers a delete it could not make as it does one it made, so a session still running fails the apply with that said.",
         schema: #"""
         {
           "type": "object",
           "required": ["id"],
-          "properties": { "id": { "type": "string" } },
+          "properties": {
+            "id": { "type": "string", "description": "The session's id — for a desktop app, its desktop's." },
+            "app": { "type": "string", "description": "A desktop app's own id, to stop only that app." }
+          },
           "additionalProperties": false
         }
         """#
@@ -156,10 +162,11 @@ struct DeleteSessionTool: JSONWriteTool {
         guard !args.id.isEmpty else {
             throw ToolFailureReason.invalidArgument("id is empty")
         }
+        let app = args.app?.trimmingCharacters(in: .whitespaces)
         return try ProposalPlan.encoding(
             kind: "delete_session",
-            summary: "Terminate session \(args.id)",
-            payload: Payload(id: args.id)
+            summary: app.map { "Stop desktop app \($0) of session \(args.id)" } ?? "Terminate session \(args.id)",
+            payload: Payload(id: args.id, app: app?.isEmpty == true ? nil : app)
         )
     }
 }
@@ -168,13 +175,13 @@ struct DeleteSessionTool: JSONWriteTool {
 /// on the activity bar as the assistant's.
 struct DeleteSessionApplier: ProposalApplier {
     let kind = "delete_session"
-    let delete: @Sendable (_ id: String) async throws -> Void
+    let delete: @Sendable (_ id: String, _ app: String?) async throws -> Void
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(DeleteSessionTool.Payload.self, from: proposal.payload)
         do {
-            try await delete(payload.id)
+            try await delete(payload.id, payload.app)
         } catch {
             throw ProposalApplyError.backendError("delete failed: \(error.localizedDescription)")
         }

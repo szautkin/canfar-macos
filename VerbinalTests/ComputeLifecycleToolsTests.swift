@@ -118,7 +118,8 @@ final class ComputeLifecycleToolsTests: XCTestCase {
     }
 
     private func makeService() -> SessionService {
-        SessionService(network: NetworkClient(session: MockURLProtocol.mockSession()))
+        SessionService(network: NetworkClient(session: MockURLProtocol.mockSession()),
+                       confirmation: (attempts: 2, interval: .milliseconds(1)))
     }
 
     /// Stopping as the app does: through the remote-compute service over `service`.
@@ -168,7 +169,10 @@ final class ComputeLifecycleToolsTests: XCTestCase {
                 let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
                 return (resp, Data())
             }
-            let body = "[\(self.sessionJSON(id: "vc-1", type: RunCodeContract.sessionType, name: RunCodeContract.sessionName, status: "running"))]"
+            // Deleted, CANFAR lists it no more — the delete is checked (plan 23 aside).
+            let body = deletedID.value == nil
+                ? "[\(self.sessionJSON(id: "vc-1", type: RunCodeContract.sessionType, name: RunCodeContract.sessionName, status: "running"))]"
+                : "[]"
             let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (resp, Data(body.utf8))
         }
@@ -189,7 +193,10 @@ final class ComputeLifecycleToolsTests: XCTestCase {
                 let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
                 return (resp, Data())
             }
-            let body = "[\(self.sessionJSON(id: "vc-2", type: RunCodeContract.sessionType, name: RunCodeContract.sessionName, status: "pending"))]"
+            // Deleted, CANFAR lists it no more — the delete is checked (plan 23 aside).
+            let body = deletedID.value == nil
+                ? "[\(self.sessionJSON(id: "vc-2", type: RunCodeContract.sessionType, name: RunCodeContract.sessionName, status: "pending"))]"
+                : "[]"
             let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (resp, Data(body.utf8))
         }

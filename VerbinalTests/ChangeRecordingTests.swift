@@ -92,7 +92,7 @@ final class ChangeRecordingTests: XCTestCase {
     /// Inside an assistant's apply the owner is silent: the apply records it.
     func testAnOwnerDoesNotRecordAnAppliedProposalAgain() async throws {
         let heard = Heard()
-        answering(200)
+        answering(200, "[]")
         let proposal = PendingProposal(toolName: "delete_session", kind: "delete_session", summary: "Delete session abc",
                                        payload: Data(), origin: .external(clientID: "test/1"), why: "done with it")
         try await heard.log.applying(proposal, by: .autoApply) {
