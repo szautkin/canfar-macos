@@ -18,7 +18,7 @@
 
 | Step | State | Commit |
 |---|---|---|
-| P plan | done — every decision taken (below) | |
+| P plan | done — every decision taken (below) | `c9fbbea` |
 | L1 request ledger | done — every request recorded; one classification; the source guardrail | `a1255a2` |
 | K cause: who and why travel with the work | done — `Cause`; `why` on every write, shown in Pending | `619e76f` |
 | C every change recorded by its owner | done — the apply path for every assistant change; the owners below for the person's and the app's | `7e53441` |
@@ -28,8 +28,8 @@
 | L4 managing the logs: view, export, delete, retention | done — Settings ▸ AI Agent ▸ Session Logs; `export_session_log`, `delete_session_logs` | `a1d59b7` |
 | L5 timing on every reply | done — a second block when it asked a service, took 2 s or failed; its log token | `88dced3` |
 | L6 activity and health read the ledger | done — `waitingOn`, `requests`; `seenByApp` | `294fb77` |
-| L7 tool deadlines follow the timeouts | done — `RequestTimeout.toolDeadline`; overrides only with a reason | (this commit) |
-| L8 words for the assistant, handout | not started | |
+| L7 tool deadlines follow the timeouts | done — `RequestTimeout.toolDeadline`; overrides only with a reason | `7fa5df5` |
+| L8 words for the assistant, handout | done — `describe_app`, the server's instructions, `AGENTS.md`; [handout 24](./24-qa-regression-plan23.md) | (this commit) |
 
 ## Do we have it?
 
@@ -556,6 +556,23 @@ second mirror only after the first's own timeout, so a mirror that hangs uses mo
   - export one session and all of them, as text and as JSON Lines
   - delete through Pending
   - retention
+
+## Aside: deleting sessions of every type (the person, 2026-09-30)
+
+"delete_session does not work properly for all types of sessions". Skaha's source says why:
+
+- `DELETE /v1/session/{id}` deletes a session's jobs except its desktop apps.
+- A desktop app is listed under its desktop's id, with its own `appid`, and only
+  `DELETE /v1/session/{id}/app/{appID}` stops it.
+- The session delete answers 200 even when it did not delete anything.
+
+**Fixed:** `40b7986`, `aeac8e4`.
+
+- The one owner, `SessionService`, ends a desktop's apps first.
+- `delete_session` takes `app` to stop one app, and `list_sessions` lists the apps.
+- Every delete is checked against the listing afterwards: batch jobs, the Portal, the Background
+  Jobs sheet and compute alike.
+- The fixed 3-second waits are gone.
 
 ## Out of scope
 

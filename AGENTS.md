@@ -121,6 +121,15 @@ the server finds it by itself and says its tool list has changed. If the call fa
   - Destructive ones, such as deleting data or stopping a session, always wait for the person to
     approve them in the app.
   - `list_pending_proposals` shows what is waiting.
+- **When something is slow or fails, read the log.** Verbinal keeps a log of your session: your calls
+  with the CADC and CANFAR requests each made and what their outcomes mean, every change anyone made
+  with who and why, and the app's decisions with their rules.
+  - A reply that asked CADC, took a while or failed carries a `timing` block: a verdict, `retry`, and
+    `logToken`.
+  - `explain_log_entry` follows an entry's cause and effect; `get_session_log` gives the log and
+    what is happening `now`.
+  - After Verbinal restarts, `list_session_logs` finds your session from before.
+  - Give every write a `why`: the person reads it with the change in Pending.
 - **Signing in is theirs to do.** Portal, Remote Compute and Storage are the person's CADC/CANFAR
   account, and stay locked until they sign in.
   - Their tools answer that sign-in is required until then.

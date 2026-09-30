@@ -139,6 +139,9 @@ struct DescribeAppTool: JSONReadTool {
         `get_fits_spectrum` — the spectrum a table holds (an `_x1d`), as plotted.
       * `list_pending_proposals`, `get_proposal_state`, `list_events` —
         introspect the proposal lifecycle when in strip-confirm mode.
+      * `get_session_log`, `explain_log_entry`, `list_session_logs` —
+        what happened while you are connected, why, and how long; see
+        "When something is slow or fails" below.
 
     ## Write surface — TWO MODES, set by user toggle
 
@@ -407,6 +410,35 @@ struct DescribeAppTool: JSONReadTool {
     pick → `launch_session` / `launch_headless_job`. Don't probe
     every image speculatively; each costs a real (small) headless
     job.
+
+    ## When something is slow or fails — the session log
+
+    Verbinal keeps a log of your session: every call of yours with the
+    CADC and CANFAR requests it made (how long each took, what its
+    outcome means), every change anyone made (created, launched,
+    downloaded, deleted … — who, and why), the app's decisions with their
+    rules (applied at once or held, retried or not, a deadline reached),
+    tasks, failed requests, services failing and recovering, sign-in.
+
+      * A reply that asked CADC or CANFAR, took 2 s or more, or failed
+        carries a second block, `{"timing": …}`: its requests, a
+        `verdict` in one sentence, `retry` (now / later / afterSignIn /
+        no) and `logToken`.
+      * `explain_log_entry(token)` follows that entry's causes and
+        effects, as a story.
+      * `get_session_log` gives the log, and `now`: requests still
+        waiting and how long of their timeout, tasks running and what
+        each waits on, proposals waiting and why, services failing.
+      * `get_service_health` probes the services and adds `seenByApp`:
+        what Verbinal's own requests showed of each lately.
+      * `retry: no` means change the request — asked again, it fails the
+        same way. `later` means the service is slow or down.
+      * After Verbinal restarts you are in a new session:
+        `list_session_logs` finds the one before, and `get_session_log`
+        with its `session` reads it.
+      * Give every write a `why` — one sentence. The person reads it
+        with the change in Pending, above all before a delete, and the
+        log keeps it with the change.
 
     ## Anti-features
 

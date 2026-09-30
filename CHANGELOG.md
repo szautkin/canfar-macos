@@ -399,6 +399,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **A reply says what its call took, and what that means.** A reply that
+  asked CADC or CANFAR, took 2 s or more, or failed carries a `timing`
+  block: each request's service, seconds and outcome in words, a verdict
+  ("the CADC archive search did not answer in time — it is slow or down"),
+  whether to retry, and the call's token in the session log. A deadline's
+  error names what was still waiting. `list_activity` says what a running
+  task waits on; `get_service_health` adds what Verbinal's own requests
+  showed of each service (plan 23).
 - **Session Logs, in Settings ▸ AI Agent.** A log of each assistant's
   session: everything that happened while it was connected — each change
   (created, launched, downloaded, deleted …) with who made it and why,
