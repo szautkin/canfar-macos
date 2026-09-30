@@ -19,9 +19,9 @@
 | Step | State | Commit |
 |---|---|---|
 | P plan | done — decisions taken | |
-| V any MCP version (app and relay) | done — `MCPProtocol`; `server/discover`; cancellation reaches the call | (this commit) |
-| S `start_session`: the person approves; the session id and its instructions | not started | |
-| M no session, no tools | not started | |
+| V any MCP version (app and relay) | done — `MCPProtocol`; `server/discover`; cancellation reaches the call | 14c728c |
+| S `start_session`: the person approves; the session id and its instructions | done — `SessionApprovals`, the approval window, Settings ▸ AI Agent ▸ Session Instructions; a disconnect ends the waiting call before the session closes | (this commit) |
+| M no session, no tools | done — `AgentSessionGate`; `sessionRequired`; every `tools/call` reply carries the session id | (this commit) |
 | W words for the assistant, handout | not started | |
 
 ## Why
@@ -77,8 +77,8 @@ The assistant's first call. It says who it is:
   session;
 - how to read the log (`get_session_log`).
 
-The log's header keeps the assistant's self-description and the instructions, and the Session Logs
-view shows them. Calling `start_session` again answers the same session, without asking again.
+The log keeps a `started` entry with the assistant's self-description and the instructions — never
+trimmed when the log reaches its limit — and the Session Logs view shows it. Calling `start_session` again answers the same session, without asking again.
 
 **Denied:** the call fails, saying so ("The person declined the session"), and the log records it.
 The assistant may ask again later. **No answer:** the window waits as long as the assistant does;
@@ -95,7 +95,8 @@ instructions it was given.
 ## M — No session, no tools
 
 - Until the person allows a session, every call but `start_session` fails:
-  - `sessionRequired`: "No session: call start_session first — the person approves it in Verbinal."
+  - `sessionRequired`: "No session — call start_session first, saying who you are and your purpose.
+    The person allows it in Verbinal, and may give you instructions for the session."
   - `describe_app` answers too, so an assistant can learn what to do (decision 1).
 - Each connection needs its own session. An assistant that reconnects after Verbinal restarts
   starts again, and the person is asked again.

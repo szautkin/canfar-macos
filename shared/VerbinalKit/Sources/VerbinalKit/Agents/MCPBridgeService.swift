@@ -71,6 +71,9 @@ public actor MCPBridgeService {
     /// connection, so one session: a relay reconnecting after Verbinal
     /// restarts is a new one.
     public nonisolated let session = UUID()
+    /// The MCP version the client speaks: its `initialize`'s, or what its
+    /// latest request declared.
+    private var mcpVersion: String?
 
     /// Concurrently-running `tools/call` handlers (see `routeFrame`).
     /// Keyed so completed handlers can remove themselves; drained with
@@ -85,6 +88,9 @@ public actor MCPBridgeService {
     /// this, frames fall back to inline (serial) handling — natural
     /// backpressure instead of unbounded task growth.
     private static let maxConcurrentCalls = 8
+    /// How long a closing connection waits for its cancelled calls to say
+    /// how they ended — "stopped waiting" — before its session closes.
+    private static let closingGrace: TimeInterval = 2
 
     public init(
         router: AIToolRouter,
@@ -112,7 +118,10 @@ public actor MCPBridgeService {
         } catch {
             logger.notice("transport ended: \(String(describing: error), privacy: .public)")
         }
-        cancelInFlightCalls()
+        let stopping = cancelInFlightCalls()
+        _ = await withHardDeadline(seconds: Self.closingGrace, cancelsWork: false, onDeadline: {}) {
+            for call in stopping { await call.value }
+        }
         if initialized { await services.recorder?.closed(session) }
     }
 
@@ -165,9 +174,11 @@ public actor MCPBridgeService {
         inFlightCalls[key]?.cancel()
     }
 
-    private func cancelInFlightCalls() {
-        for task in inFlightCalls.values { task.cancel() }
+    private func cancelInFlightCalls() -> [Task<Void, Never>] {
+        let calls = Array(inFlightCalls.values)
+        for task in calls { task.cancel() }
         inFlightCalls.removeAll()
+        return calls
     }
 
     // MARK: - Dispatch
@@ -217,6 +228,7 @@ public actor MCPBridgeService {
             await send(MCPProtocol.unsupported(id: request.id, requested: declared), transport: transport, method: methodForLog)
             return
         }
+        if let declared { mcpVersion = declared }
         if declared != nil, request.method != "server/discover" { await openStatelessClient(request) }
 
         var response: JSONRPCResponse
@@ -316,6 +328,7 @@ public actor MCPBridgeService {
 
         let reopened = initialized
         self.clientID = cid
+        self.mcpVersion = MCPProtocol.negotiated(params.protocolVersion)
         self.initialized = true
         logger.info("initialized client=\(cid, privacy: .public)")
         if !reopened { await services.recorder?.opened(session, client: cid) }
@@ -380,6 +393,17 @@ public actor MCPBridgeService {
             return .failure(id: request.id, error: invalidParams("\(error)"))
         }
 
+        // No session, no tools: until the person allows one, only starting
+        // it works (plan 25 M). The refusal is a call like any other, logged.
+        if let gate = services.gate, !AgentSession.openBeforeSession.contains(params.name), !(await gate.isOpen(session)) {
+            logger.notice("tools/call \(params.name, privacy: .public) -> no session")
+            let call = UUID()
+            await services.recorder?.callBegan(session, call: call, tool: params.name)
+            _ = await services.recorder?.callEnded(session, call: call, tool: params.name, traced: AIToolRouter.Traced(
+                result: .failed(.sessionRequired), seconds: 0, trace: RequestTrace(parent: nil)))
+            return stamped(mapToolResult(id: request.id, result: .failed(.sessionRequired)))
+        }
+
         // AI Guide tools are read-only: a call returns the stored instruction
         // text directly (no execution, no router dispatch). Checked before the
         // router so a guide name can't fall through to `unknownTool`.
@@ -391,7 +415,7 @@ public actor MCPBridgeService {
             _ = await services.recorder?.callEnded(session, call: call, tool: params.name, traced: AIToolRouter.Traced(
                 result: .data(Data(body.utf8)), seconds: 0, trace: RequestTrace(parent: nil)))
             let payload = CallToolResult(content: [.text(body)], isError: false)
-            return successResponse(id: request.id, body: payload)
+            return stamped(successResponse(id: request.id, body: payload))
         }
 
         // The router takes raw JSON args (Data). Re-encode the typed
@@ -414,7 +438,9 @@ public actor MCPBridgeService {
             proposals: services.proposals,
             budget: services.budget,
             eventLog: services.eventLog,
-            session: session
+            session: session,
+            client: clientID,
+            mcpVersion: mcpVersion
         )
 
         logger.info("tools/call \(params.name, privacy: .public) (\(argBytes.count) bytes args)")
@@ -438,8 +464,16 @@ public actor MCPBridgeService {
         }
         // What the call took and what it means, when it asked CADC or
         // CANFAR, took a while, or failed (plan 23 L5).
-        let note = CallTiming.isWorthNoting(traced) ? CallTiming.Note(CallTiming(traced), logToken: token ?? nil) : nil
-        return mapToolResult(id: request.id, result: result, note: note)
+        let note = CallTiming.isWorthNoting(traced)
+            ? CallTiming.Note(CallTiming(traced), logToken: token ?? nil, session: session) : nil
+        return stamped(mapToolResult(id: request.id, result: result, note: note))
+    }
+
+    /// Every reply names its session in `_meta`, so it can be matched to the
+    /// session's log (plan 25 S).
+    private func stamped(_ response: JSONRPCResponse) -> JSONRPCResponse {
+        guard let result = response.result else { return response }
+        return .success(id: response.id, result: MCPProtocol.withMeta(result, AgentSession.metaKey, session.uuidString))
     }
 
     // MARK: - Result mapping
@@ -498,15 +532,20 @@ public actor MCPBridgeService {
         public let eventLog: EventLog?
         /// Where this session's log is kept (plan 23); nil keeps none.
         public let recorder: (any AgentSessionRecorder)?
+        /// Whether the person has allowed the session (plan 25); nil lets
+        /// every call through.
+        public let gate: (any AgentSessionGate)?
 
         public init(proposals: any ProposalStore,
                     budget: ProposalBudget,
                     eventLog: EventLog? = nil,
-                    recorder: (any AgentSessionRecorder)? = nil) {
+                    recorder: (any AgentSessionRecorder)? = nil,
+                    gate: (any AgentSessionGate)? = nil) {
             self.proposals = proposals
             self.budget = budget
             self.eventLog = eventLog
             self.recorder = recorder
+            self.gate = gate
         }
     }
 

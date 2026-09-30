@@ -15,6 +15,9 @@ import VerbinalKit
 struct SessionLogEntry: Codable, Sendable, Equatable, Identifiable {
     enum Kind: String, Codable, Sendable, CaseIterable {
         case opened, closed
+        /// The person allowed the session: who the assistant says it is, its
+        /// purpose, and the instructions it was given (plan 25).
+        case started
         /// A change: created, launched, downloaded, deleted, …
         case action
         /// One of this session's tool calls.

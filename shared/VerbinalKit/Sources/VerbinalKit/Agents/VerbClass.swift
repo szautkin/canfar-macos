@@ -49,12 +49,17 @@ public enum VerbClass: String, Codable, Sendable, Equatable {
     /// Undo / redo. Reaches into the application's command history.
     case undo
 
+    /// The assistant's session itself — `start_session` (plan 25): no
+    /// proposal, never held, no per-call deadline, since the person's
+    /// answer is awaited as long as the assistant waits.
+    case sessionControl
+
     /// It proposes a change — a write, a delete or a standing instruction —
     /// and so takes a `why` (plan 23 K).
     public var proposesChange: Bool {
         switch self {
         case .semanticWrite, .destructive, .standingInstruction: true
-        case .read, .viewState, .proposalLifecycle, .undo: false
+        case .read, .viewState, .proposalLifecycle, .undo, .sessionControl: false
         }
     }
 }

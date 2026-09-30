@@ -139,6 +139,9 @@ final class AgentsService {
     /// Where each connected assistant's session log is kept (plan 23 L2);
     /// the app sets it before the server starts.
     var sessionRecorder: (any AgentSessionRecorder)?
+    /// Whether the person has allowed a connection's session (plan 25); nil
+    /// lets every call through.
+    var sessionGate: (any AgentSessionGate)?
 
     private var server: SocketServer?
     private var serverLoopTask: Task<Void, Never>?
@@ -580,7 +583,8 @@ final class AgentsService {
                 proposals: proposals,
                 budget: ProposalBudget(),
                 eventLog: eventLog,
-                recorder: sessionRecorder
+                recorder: sessionRecorder,
+                gate: sessionGate
             ),
             approval: .allowAll,  // P3 minimum: gate is the toggle. P8 adds per-client approval.
             aiGuide: aiGuideResolver

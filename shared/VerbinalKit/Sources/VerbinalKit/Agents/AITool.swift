@@ -162,6 +162,10 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
     /// upload, etc.). `bytes` is the actual size; the message names the
     /// limit and the streaming/path-based workaround.
     case payloadTooLarge(bytes: Int, message: String)
+    /// No session yet: the person has not allowed one (plan 25 M).
+    case sessionRequired
+    /// The person declined the session the assistant asked for (plan 25 S).
+    case sessionDeclined
 
     /// Bound a user- or server-supplied string before it goes onto the wire
     /// description, so an overlong or noisy value (a giant URI, a verbose
@@ -200,6 +204,10 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
             return "observationNotFound: '\(Self.clip(id, max: 80))'"
         case .payloadTooLarge(let bytes, let message):
             return "payloadTooLarge: \(bytes) bytes — \(Self.clip(message))"
+        case .sessionRequired:
+            return "sessionRequired: No session — call start_session first, saying who you are and your purpose. The person allows it in Verbinal, and may give you instructions for the session."
+        case .sessionDeclined:
+            return "sessionDeclined: The person declined the session in Verbinal. Ask them in the conversation before calling start_session again."
         }
     }
 
@@ -222,6 +230,8 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         case .notReadable: return "notReadable"
         case .observationNotFound: return "observationNotFound"
         case .payloadTooLarge: return "payloadTooLarge"
+        case .sessionRequired: return "sessionRequired"
+        case .sessionDeclined: return "sessionDeclined"
         }
     }
 }

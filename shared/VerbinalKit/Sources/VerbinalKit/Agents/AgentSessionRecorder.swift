@@ -22,3 +22,18 @@ public protocol AgentSessionRecorder: Sendable {
     /// The assistant left, or the connection dropped.
     func closed(_ session: UUID) async
 }
+
+/// Whether an assistant may use Verbinal's tools yet: the person allows a
+/// session first (plan 25 M). The bridge asks before every call but the
+/// few that start a session.
+public protocol AgentSessionGate: Sendable {
+    /// Whether the person has allowed `session`.
+    func isOpen(_ session: UUID) async -> Bool
+}
+
+public enum AgentSession {
+    /// The tools that work before a session: starting one, and learning how.
+    public static let openBeforeSession: Set<String> = ["start_session", "describe_app"]
+    /// Every reply names its session in `_meta`, under Verbinal's own key.
+    public static let metaKey = "com.codebg.verbinal/session"
+}

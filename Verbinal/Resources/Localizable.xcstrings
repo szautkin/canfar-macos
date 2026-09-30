@@ -1338,6 +1338,16 @@
         }
       }
     },
+    "%lld of %lld words" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld mots sur %2$lld"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -1908,6 +1918,16 @@
         }
       }
     },
+    "Allow" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser"
+          }
+        }
+      }
+    },
     "Allow AI agents" : {
       "localizations" : {
         "fr" : {
@@ -1944,6 +1964,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ambre"
+          }
+        }
+      }
+    },
+    "An assistant starts each session with start_session, and you allow it in a window that shows who it is. These instructions fill that window; you can change them there for one session. The assistant is told to follow them." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un assistant ouvre chaque session avec start_session, et vous l’autorisez dans une fenêtre qui indique qui il est. Ces instructions remplissent cette fenêtre ; vous pouvez les y modifier pour une seule session. L’assistant doit les suivre."
+          }
+        }
+      }
+    },
+    "An assistant wants to start a session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un assistant veut ouvrir une session"
           }
         }
       }
@@ -2147,6 +2187,16 @@
         }
       }
     },
+    "As the assistant describes itself — Verbinal cannot check it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selon la description de l’assistant — Verbinal ne peut pas la vérifier."
+          }
+        }
+      }
+    },
     "Asinh" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2154,6 +2204,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Asinh"
+          }
+        }
+      }
+    },
+    "Asked" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demandé"
           }
         }
       }
@@ -2175,6 +2235,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Assistant"
+          }
+        }
+      }
+    },
+    "Assistant Session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session d’assistant"
           }
         }
       }
@@ -3282,6 +3352,16 @@
         }
       }
     },
+    "Client" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client"
+          }
+        }
+      }
+    },
     "client %@" : {
       "localizations" : {
         "fr" : {
@@ -3733,6 +3813,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connectez votre agent IA"
+          }
+        }
+      }
+    },
+    "Connection" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion"
           }
         }
       }
@@ -5191,6 +5281,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Densité"
+          }
+        }
+      }
+    },
+    "Deny" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refuser"
           }
         }
       }
@@ -7761,6 +7861,16 @@
         }
       }
     },
+    "How the assistant presents itself" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comment l’assistant se présente"
+          }
+        }
+      }
+    },
     "I have read and agree to the Terms of Use, including the disclaimer of warranties and the limitation of liability (including for data loss)." : {
       "localizations" : {
         "fr" : {
@@ -8102,6 +8212,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Instances : %1$lld au total (%2$lld sessions, %3$lld bureau, %4$lld sans tête)"
+          }
+        }
+      }
+    },
+    "Instructions for this session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instructions pour cette session"
           }
         }
       }
@@ -9196,6 +9316,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Longueur d'onde max"
+          }
+        }
+      }
+    },
+    "MCP" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP"
           }
         }
       }
@@ -14408,6 +14538,16 @@
         }
       }
     },
+    "Session Instructions" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instructions de session"
+          }
+        }
+      }
+    },
     "Session Launched" : {
       "localizations" : {
         "fr" : {
@@ -16046,6 +16186,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "L'archive ne répond pas — les fiches Research seront redemandées à la prochaine connexion"
+          }
+        }
+      }
+    },
+    "The assistant is told to follow them for the whole session, and the session's log keeps them. Verbinal cannot stop an assistant using its other tools or connections outside Verbinal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’assistant doit les suivre pendant toute la session, et le journal de la session les conserve. Verbinal ne peut pas empêcher un assistant d’utiliser ses autres outils ou des connexions hors de Verbinal."
           }
         }
       }

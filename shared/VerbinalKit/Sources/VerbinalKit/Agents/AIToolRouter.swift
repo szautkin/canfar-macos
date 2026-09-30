@@ -116,6 +116,10 @@ public actor AIToolRouter {
             return 150
         case .semanticWrite, .destructive, .standingInstruction:
             return 660
+        case .sessionControl:
+            // The person's answer is awaited as long as the assistant waits;
+            // the assistant's cancel ends it (plan 25).
+            return .infinity
         }
     }
 
@@ -174,7 +178,8 @@ public actor AIToolRouter {
             onDispatchStart?(name, context.origin.label)
         }
         let verbClass = metadata[name]?.verbClass ?? .read
-        let ceiling = dispatchCeilingOverride ?? Self.dispatchCeiling(for: verbClass)
+        let ceiling = verbClass == .sessionControl ? .infinity
+            : dispatchCeilingOverride ?? Self.dispatchCeiling(for: verbClass)
         let deadlineHit = DeadlineFlag()
         // What an assistant's call sets going is the assistant's (plan 17 A1).
         let initiator: Initiator = context.origin == .user ? .person : .assistant
@@ -258,7 +263,7 @@ public actor AIToolRouter {
             // viewState bypasses the budget by convention — view-state
             // tools should return `.data`, not `.proposed`.
             switch meta.verbClass {
-            case .read, .viewState, .proposalLifecycle, .undo:
+            case .read, .viewState, .proposalLifecycle, .undo, .sessionControl:
                 // Doesn't apply — return as-is (these aren't supposed to
                 // produce proposals, but if they do we don't gate them).
                 emitAudit(name: name, args: rawArguments, context: context,

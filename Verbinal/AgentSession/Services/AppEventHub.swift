@@ -34,6 +34,8 @@ actor AppEventHub: AgentSessionRecorder {
         case callBegan(UUID, call: UUID)
         case callEnded(UUID, call: UUID, tool: String, traced: AIToolRouter.Traced)
         case closed(UUID)
+        /// An entry for one session's log alone: the handshake's (plan 25).
+        case note(UUID, SessionLogEntry)
         /// Nothing: every event before it has been told (`settle`).
         case settled
     }
@@ -103,6 +105,9 @@ actor AppEventHub: AgentSessionRecorder {
     private var callTokens: [UUID: Int] = [:]
     func closed(_ session: UUID) async { await submit(.closed(session)) }
 
+    /// Writes `entry` to `session`'s log, in its place among the others.
+    func note(_ session: UUID, _ entry: SessionLogEntry) async { await submit(.note(session, entry)) }
+
     /// Waits until every event before now is told — for tests.
     func settle() async { await submit(.settled) }
 
@@ -146,6 +151,7 @@ actor AppEventHub: AgentSessionRecorder {
         case .callBegan(let session, let call): await journals[session]?.callBegan(call)
         case .callEnded(let session, let call, let tool, let traced): await end(session, call: call, tool: tool, traced: traced)
         case .closed(let session): await close(session)
+        case .note(let session, let entry): await journals[session]?.record(entry)
         case .settled: break
         default: await tell(event)
         }
@@ -187,7 +193,7 @@ actor AppEventHub: AgentSessionRecorder {
             return SessionLogLine.signedIn(username)
         case .auth(.signedOut):
             return SessionLogLine.signedOut()
-        case .opened, .callBegan, .callEnded, .closed, .settled:
+        case .opened, .callBegan, .callEnded, .closed, .note, .settled:
             return nil
         }
     }

@@ -138,6 +138,9 @@ final class AppState {
     /// Each connected assistant's session log, and what the app does while
     /// it is open (plan 23).
     private(set) var sessionLog: AppEventHub?
+    /// The person's say over assistant sessions, and its window (plan 25).
+    let sessionApprovals = SessionApprovals()
+    @ObservationIgnored private var sessionApprovalWindow: SessionApprovalWindow?
     #endif
 
     // Headless job monitor (created on auth, destroyed on logout)
@@ -383,6 +386,9 @@ final class AppState {
         self.sessionLog = sessionLog
         agentsService.sessionRecorder = sessionLog
         Task { await sessionLog.start() }
+        // No session, no tools: the person allows each one (plan 25).
+        agentsService.sessionGate = SessionApprovalGate(approvals: sessionApprovals)
+        sessionApprovalWindow = SessionApprovalWindow(approvals: sessionApprovals)
         #endif
 
         // Register the MCP tool surface. Order matters: tools must be

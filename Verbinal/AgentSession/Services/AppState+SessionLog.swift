@@ -56,6 +56,7 @@ extension AppState {
         guard let sessionLog else { return [] }
         let query = SessionLogQuery(store: sessionLog.store, hub: sessionLog)
         return [
+            StartSessionTool(approvals: sessionApprovals, note: { session, entry in await sessionLog.note(session, entry) }),
             GetSessionLogTool(query: query, now: { [weak self] in await self?.sessionNow() ?? .quiet }),
             ExplainLogEntryTool(query: query),
             ListSessionLogsTool(query: query),

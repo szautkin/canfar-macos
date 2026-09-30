@@ -17,7 +17,7 @@ public enum AutoApplyPolicy {
         switch verbClass {
         case .semanticWrite: return autoApplyOn
         case .destructive, .standingInstruction: return false
-        case .read, .viewState, .proposalLifecycle, .undo: return false
+        case .read, .viewState, .proposalLifecycle, .undo, .sessionControl: return false
         }
     }
 
@@ -31,7 +31,7 @@ public enum AutoApplyPolicy {
             return "Destructive: it always waits in Pending for the user to approve, whatever Auto-apply says."
         case .standingInstruction:
             return "A standing instruction: what it says is read by every agent from now on, so it always waits in Pending for the user to approve, whatever Auto-apply says."
-        case .read, .viewState, .proposalLifecycle, .undo:
+        case .read, .viewState, .proposalLifecycle, .undo, .sessionControl:
             return nil
         }
     }
@@ -47,7 +47,7 @@ public enum AutoApplyPolicy {
             return "waits in Pending: a delete always waits for the person, whatever Auto-apply says"
         case .standingInstruction:
             return "waits in Pending: what every later assistant is told always waits for the person"
-        case .read, .viewState, .proposalLifecycle, .undo:
+        case .read, .viewState, .proposalLifecycle, .undo, .sessionControl:
             return appliedAtOnce ? "applied at once" : "waits in Pending"
         }
     }

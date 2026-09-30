@@ -52,12 +52,15 @@ public struct CallTiming: Codable, Sendable, Equatable {
             public let retry: RequestOutcome.Retry?
             /// The call's entry in the session log.
             public let logToken: Int?
+            /// The session it belongs to (plan 25).
+            public let session: String?
         }
         public let timing: Body
 
-        public init(_ timing: CallTiming, logToken: Int?) {
+        public init(_ timing: CallTiming, logToken: Int?, session: UUID? = nil) {
             self.timing = Body(seconds: (timing.seconds * 10).rounded() / 10, requests: timing.requests,
-                               verdict: timing.verdict, retry: timing.retry, logToken: logToken)
+                               verdict: timing.verdict, retry: timing.retry, logToken: logToken,
+                               session: session?.uuidString)
         }
 
         public var json: String {

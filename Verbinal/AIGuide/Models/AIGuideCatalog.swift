@@ -289,7 +289,8 @@ enum AIGuideCatalog {
         "set_workflow_step": "workflows",
         "use_workflow": "workflows",
         "delete_workflow": "workflows",
-        // Session log (plan 23)
+        // Session log (plan 23), and the session itself (plan 25)
+        "start_session": "sessionLog",
         "get_session_log": "sessionLog",
         "explain_log_entry": "sessionLog",
         "list_session_logs": "sessionLog",

@@ -90,7 +90,9 @@ actor SessionJournal {
             var index = 0
             while total > target, index < entries.count {
                 let kind = entries[index].kind
-                let lesser = kind != .opened && (!keepChanges || (kind != .action && kind != .decision))
+                // The session's opening, and its terms (plan 25), always stay.
+                let lesser = kind != .opened && kind != .started
+                    && (!keepChanges || (kind != .action && kind != .decision))
                 if lesser {
                     total -= sizes.remove(at: index)
                     entries.remove(at: index)

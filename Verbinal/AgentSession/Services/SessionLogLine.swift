@@ -251,6 +251,40 @@ enum SessionLogLine {
         return entry
     }
 
+    // MARK: - The handshake (plan 25)
+
+    /// "The person allowed the session of Claude (claude-opus-5-5), here to
+    /// …, with these instructions: …".
+    static func started(_ approval: SessionApprovals.Approval) -> SessionLogEntry {
+        let request = approval.request
+        let model = request.model.map { " (\($0))" } ?? ""
+        let purpose = request.purpose.map { ", here to: \($0)" } ?? ""
+        let instructions = approval.instructions.isEmpty ? "no instructions" : "these instructions: \(approval.instructions)"
+        var entry = Self.entry(.started, at: approval.allowedAt,
+                               "The person allowed the session of \(request.agent)\(model), as the assistant presents itself\(purpose) — with \(instructions)")
+        entry.who = .person
+        entry.client = request.client
+        entry.why = request.purpose
+        entry.outcome = "allowed"
+        entry.ids.session = request.id
+        return entry
+    }
+
+    static func declined(_ request: SessionApprovals.Request) -> SessionLogEntry {
+        var entry = Self.entry(.app, "The person declined the session of \(request.agent) (\(request.client)).")
+        entry.who = .person
+        entry.client = request.client
+        entry.outcome = "declined"
+        return entry
+    }
+
+    static func abandoned(_ request: SessionApprovals.Request) -> SessionLogEntry {
+        var entry = Self.entry(.app, "\(request.agent) stopped waiting before the person answered its session.")
+        entry.who = .assistant
+        entry.outcome = "abandoned"
+        return entry
+    }
+
     // MARK: - The session
 
     static func opened(_ header: SessionLogHeader) -> SessionLogEntry {

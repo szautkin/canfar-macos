@@ -648,6 +648,7 @@ private struct AgentsSettingsTab: View {
             }
 
             #if os(macOS)
+            SessionInstructionsSection()
             SessionLogsSection()
             #endif
         }

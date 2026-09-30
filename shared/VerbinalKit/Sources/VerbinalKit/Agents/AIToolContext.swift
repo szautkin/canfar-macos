@@ -25,6 +25,10 @@ public struct AIToolContext: Sendable {
     /// The assistant session the call belongs to (plan 23): one per
     /// connection. `nil` for the in-app agent and tests.
     public let session: UUID?
+    /// The client as its connection names it (`claude-code/2.1`), and the MCP
+    /// version it speaks — for the person's approval window (plan 25 S).
+    public let client: String?
+    public let mcpVersion: String?
 
     public init(
         origin: OperationOrigin,
@@ -32,7 +36,9 @@ public struct AIToolContext: Sendable {
         proposals: any ProposalStore,
         budget: ProposalBudget,
         eventLog: EventLog? = nil,
-        session: UUID? = nil
+        session: UUID? = nil,
+        client: String? = nil,
+        mcpVersion: String? = nil
     ) {
         self.origin = origin
         self.requestID = requestID
@@ -40,5 +46,7 @@ public struct AIToolContext: Sendable {
         self.budget = budget
         self.eventLog = eventLog
         self.session = session
+        self.client = client
+        self.mcpVersion = mcpVersion
     }
 }

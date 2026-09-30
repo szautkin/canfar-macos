@@ -78,15 +78,19 @@ final class SessionLogTests: XCTestCase {
     }
 
     /// Past its limit a log drops the oldest of what matters least —
-    /// changes last — and says how many went.
+    /// changes last, the session's terms never — and says how many went.
     func testALogPastItsLimitDropsTheLeastFirstAndSaysSo() async throws {
         let store = SessionLogStore(directory: directory)
         let journal = SessionJournal(header: header(), store: store, maxBytes: 3_000)
         let change = Change(id: UUID(), kind: "delete_session", verb: "deleted", what: "session keepme", startedBy: .person,
                             cause: Cause(), started: Date(), finished: Date(), outcome: .done, failure: nil, task: nil)
+        let asked = SessionApprovals.Request(id: UUID(), client: "claude-code/2.1", mcpVersion: nil, agent: "Claude",
+                                             model: nil, purpose: nil, askedAt: Date())
+        await journal.record(SessionLogLine.started(.init(request: asked, instructions: "Stay in Verbinal.", allowedAt: Date())))
         await journal.record(SessionLogLine.action(change, seen: SessionViewpoint(session: UUID())))
         for _ in 0..<30 { await journal.record(SessionLogLine.signedIn("someone-with-a-long-name")) }
         let (entries, _) = await journal.entries(since: 0)
+        XCTAssertTrue(entries.contains { $0.kind == .started }, "the session's terms are kept")
         XCTAssertTrue(entries.contains { $0.kind == .action }, "the change is kept")
         XCTAssertTrue(entries.contains { $0.outcome == "trimmed" }, "it says what went")
         let (_, expired) = await journal.entries(since: 2)

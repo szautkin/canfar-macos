@@ -71,6 +71,15 @@ public enum MCPProtocol {
             data: .object(["supported": .array(supported.map(JSONValue.string)), "requested": .string(requested)])))
     }
 
+    /// `result` with `value` under `key` in its `_meta`.
+    public static func withMeta(_ result: Data, _ key: String, _ value: Any) -> Data {
+        guard var object = (try? JSONSerialization.jsonObject(with: result)) as? [String: Any] else { return result }
+        var meta = object["_meta"] as? [String: Any] ?? [:]
+        meta[key] = value
+        object["_meta"] = meta
+        return (try? JSONSerialization.data(withJSONObject: object)) ?? result
+    }
+
     /// `result` as a modern result: `resultType`, the server's identity in
     /// `_meta`, and, for a list, how long it may be kept.
     public static func modernized(_ result: Data, server: ServerInfo, isList: Bool = false) -> Data {
