@@ -158,12 +158,15 @@ final class AgentsService {
     private static let autoApplyKey = "com.codebg.Verbinal.agents.autoApplyWrites"
     private static let followActivityKey = "com.codebg.Verbinal.agents.followAgentActivity"
 
+    /// Who answers, and what every assistant is told first (plan 25 W).
+    static let serverIdentity = MCPBridgeService.ServerIdentity(
+        name: "Verbinal",
+        version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
+        instructions: AgentSession.instructions + " Then call `describe_app` for the tool surface and the autonomy model. Call `get_current_view` to see the user's current screen and `autoApplyEnabled` — it tells you whether your writes apply immediately or queue for the user to review in the strip. Give every write a `why`. When something is slow or failed, read the reply's `timing` block, then `explain_log_entry` with its `logToken`, then `get_session_log` (its `now` says what is happening)."
+    )
+
     init(
-        identity: MCPBridgeService.ServerIdentity = MCPBridgeService.ServerIdentity(
-            name: "Verbinal",
-            version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
-            instructions: "Call `describe_app` for the tool surface and the autonomy model. Call `get_current_view` to see the user's current screen and `autoApplyEnabled` — it tells you whether your writes apply immediately or queue for the user to review in the strip. Give every write a `why`. When something is slow or failed, read the reply's `timing` block, then `explain_log_entry` with its `logToken`, then `get_session_log` (its `now` says what is happening)."
-        ),
+        identity: MCPBridgeService.ServerIdentity = AgentsService.serverIdentity,
         proposals injected: (any ProposalStore)? = nil
     ) {
         self.identity = identity

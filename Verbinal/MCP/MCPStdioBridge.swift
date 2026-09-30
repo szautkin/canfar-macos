@@ -61,7 +61,8 @@ enum MCPStdioBridge {
                 configuration: .init(
                     serverName: "Verbinal",
                     serverVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
-                    notRunningMessage: notRunningMessage),
+                    notRunningMessage: notRunningMessage,
+                    instructions: AgentSession.instructions),
                 log: { BridgeLog.info($0) })
             await bridge.run()
             sem.signal()

@@ -222,6 +222,14 @@ every later agent is told; **read** = pure data.
 | Instantiate a template | `use_workflow` | write |
 | Delete a local copy | `delete_workflow` | write (destructive) |
 
+## Assistant session (the approval window; Settings ▸ AI Agent ▸ Session Instructions)
+
+| UI interaction | Tool | Kind |
+|---|---|---|
+| "An assistant wants to start a session": who asks, and how it presents itself | `start_session` (`agent`, `model`, `purpose`) opens it | session control |
+| Allow, with the session's instructions / Deny | — the person's alone; `start_session` answers the id and the instructions, or `sessionDeclined` | — |
+| Session Instructions (the default every window starts from) | — the person's own | — |
+
 ## Session log (Settings ▸ AI Agent ▸ Session Logs)
 
 | UI interaction | Tool | Kind |

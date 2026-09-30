@@ -399,6 +399,24 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **You allow each assistant session, and give it your instructions.** An
+  assistant starts with `start_session`, saying who it is and what it is
+  here for, and Verbinal comes forward with a window: the client and its
+  connection, how the assistant presents itself — its own words, which
+  Verbinal cannot check — and instructions for the session, up to 250
+  words, filled from Settings ▸ AI Agent ▸ Session Instructions ("Use only
+  Verbinal and its tools…" unless you set your own). Allow, and the
+  assistant is given your instructions word for word and the session's
+  id, which every entry of its log carries; Deny, and it is told to ask
+  you first. The window waits as long as the assistant does, and closes
+  if it stops waiting or disconnects. Until you allow a session, no tool
+  but `start_session` and `describe_app` works (plan 25).
+- **Verbinal speaks every MCP version, 2026-07-28 included.** An
+  assistant whose client has no handshake — MCP 2026-07-28 — is answered
+  in its own shape (`server/discover`, versions declared per request),
+  alongside every earlier version, by the app and by its relay while the
+  app is closed. An assistant that cancels a call stops what it was
+  waiting for.
 - **A reply says what its call took, and what that means.** A reply that
   asked CADC or CANFAR, took 2 s or more, or failed carries a `timing`
   block: each request's service, seconds and outcome in words, a verdict

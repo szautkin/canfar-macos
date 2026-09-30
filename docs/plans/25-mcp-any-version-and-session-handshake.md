@@ -20,9 +20,9 @@
 |---|---|---|
 | P plan | done — decisions taken | |
 | V any MCP version (app and relay) | done — `MCPProtocol`; `server/discover`; cancellation reaches the call | 14c728c |
-| S `start_session`: the person approves; the session id and its instructions | done — `SessionApprovals`, the approval window, Settings ▸ AI Agent ▸ Session Instructions; a disconnect ends the waiting call before the session closes | (this commit) |
-| M no session, no tools | done — `AgentSessionGate`; `sessionRequired`; every `tools/call` reply carries the session id | (this commit) |
-| W words for the assistant, handout | not started | |
+| S `start_session`: the person approves; the session id and its instructions | done — `SessionApprovals`, the approval window, Settings ▸ AI Agent ▸ Session Instructions; a disconnect ends the waiting call before the session closes | f32ded3 |
+| M no session, no tools | done — `AgentSessionGate`; `sessionRequired`; every `tools/call` reply carries the session id | f32ded3 |
+| W words for the assistant, handout | done — `AgentSession.instructions` (MCPCore), one text for the app's and the relay's handshakes in both versions, `describe_app`'s Start here and AGENTS.md, with a guardrail test; changelog; parity doc; [handout 26](./26-qa-regression-plan25.md) | (this commit) |
 
 ## Why
 

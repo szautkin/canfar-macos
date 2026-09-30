@@ -70,6 +70,8 @@ final class ResilientBridgeTests: XCTestCase {
     }
 
     private let notRunning = "Verbinal is not running. Open it and turn on Allow external AI agents."
+    /// The handshake says the app is closed, and how to start once it is running (plan 25 W).
+    private var handshake: String { notRunning + " " + AgentSession.instructions }
     private var cacheURL: URL!
 
     override func setUp() {
@@ -90,7 +92,8 @@ final class ResilientBridgeTests: XCTestCase {
             connect: { await app.connect() },
             manifest: cache,
             configuration: .init(serverName: "Verbinal", serverVersion: "1.4.0",
-                                 notRunningMessage: notRunning, reconnectInterval: .milliseconds(20),
+                                 notRunningMessage: notRunning, instructions: AgentSession.instructions,
+                                 reconnectInterval: .milliseconds(20),
                                  firstConnectGrace: .milliseconds(50)))
         let task = Task { await bridge.run() }
         return (clientEnd, Inbox(clientEnd), task)
@@ -222,7 +225,7 @@ final class ResilientBridgeTests: XCTestCase {
 
         try await send(client, initialize)
         let hello = try await inbox.take(id(1))
-        XCTAssertEqual(result(hello)["instructions"] as? String, notRunning, "answered by the bridge, in time")
+        XCTAssertEqual(result(hello)["instructions"] as? String, handshake, "answered by the bridge, in time")
 
         let late = await waitForLink(app)
         let link = try XCTUnwrap(late)
@@ -253,7 +256,7 @@ final class ResilientBridgeTests: XCTestCase {
         let discovered = result(try await inbox.take(id(1)))
         XCTAssertEqual(discovered["resultType"] as? String, "complete")
         XCTAssertEqual((discovered["supportedVersions"] as? [String])?.first, "2026-07-28")
-        XCTAssertEqual(discovered["instructions"] as? String, notRunning)
+        XCTAssertEqual(discovered["instructions"] as? String, handshake, "how to start, once it is running")
 
         try await send(client, #"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"# + modernMeta + "}}")
         let listed = result(try await inbox.take(id(2)))

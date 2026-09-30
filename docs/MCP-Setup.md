@@ -66,8 +66,12 @@ a moved app): point it at the one installed now and restart the client.
 From Claude (or any MCP client):
 
 1. Call `describe_app` — should return a prose brief and the server version.
-2. Call `get_auth_state` — returns whether the user is signed into CADC.
-3. Call `list_pending_proposals` — should return `{"proposals": []}` on a
+2. Call `start_session` with your `agent` name and `purpose` — Verbinal
+   shows a window asking the person; once they allow it, the call answers
+   the session's id and the person's instructions. Until then, every tool
+   but these two answers `sessionRequired`.
+3. Call `get_auth_state` — returns whether the user is signed into CADC.
+4. Call `list_pending_proposals` — should return `{"proposals": []}` on a
    fresh session.
 
 While Verbinal is closed the server still answers, and every tool says the

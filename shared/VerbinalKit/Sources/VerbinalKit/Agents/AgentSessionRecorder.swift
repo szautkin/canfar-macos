@@ -31,9 +31,3 @@ public protocol AgentSessionGate: Sendable {
     func isOpen(_ session: UUID) async -> Bool
 }
 
-public enum AgentSession {
-    /// The tools that work before a session: starting one, and learning how.
-    public static let openBeforeSession: Set<String> = ["start_session", "describe_app"]
-    /// Every reply names its session in `_meta`, under Verbinal's own key.
-    public static let metaKey = "com.codebg.verbinal/session"
-}

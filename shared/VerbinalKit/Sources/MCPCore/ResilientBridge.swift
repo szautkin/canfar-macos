@@ -25,6 +25,9 @@ public actor ResilientBridge {
         public var serverVersion: String
         /// The tool error and handshake instructions while the app is closed.
         public var notRunningMessage: String
+        /// What the handshake tells an assistant besides that the app is
+        /// closed — how to start once it is running.
+        public var instructions: String?
         public var reconnectInterval: Duration
         /// How long a replayed handshake may take (the app may ask the user
         /// to approve the assistant).
@@ -35,12 +38,13 @@ public actor ResilientBridge {
         /// stuck in the file system must not leave the handshake unanswered.
         public var firstConnectGrace: Duration
 
-        public init(serverName: String, serverVersion: String, notRunningMessage: String,
+        public init(serverName: String, serverVersion: String, notRunningMessage: String, instructions: String? = nil,
                     reconnectInterval: Duration = .seconds(2), handshakeTimeout: Duration = .seconds(120),
                     firstConnectGrace: Duration = .seconds(3)) {
             self.serverName = serverName
             self.serverVersion = serverVersion
             self.notRunningMessage = notRunningMessage
+            self.instructions = instructions
             self.reconnectInterval = reconnectInterval
             self.handshakeTimeout = handshakeTimeout
             self.firstConnectGrace = firstConnectGrace
@@ -119,6 +123,7 @@ public actor ResilientBridge {
 
     private func answerWhileClosed(_ request: JSONRPCRequest) async {
         let message = configuration.notRunningMessage
+        let handshake = [message, configuration.instructions].compactMap { $0 }.joined(separator: " ")
         // A modern request (2026-07-28) declares its version; it is answered
         // in its own shape, and a version Verbinal does not speak refused
         // (plan 25 V).
@@ -131,7 +136,7 @@ public actor ResilientBridge {
         switch request.method {
         case "server/discover":
             await reply(request.id, DiscoverResult(capabilities: ServerCapabilities(tools: .init(listChanged: nil)),
-                                                   instructions: message), modern: true, isList: true)
+                                                   instructions: handshake), modern: true, isList: true)
         case "initialize":
             let version = request.params
                 .flatMap { try? JSONDecoder().decode(InitializeParams.self, from: $0) }?
@@ -143,7 +148,7 @@ public actor ResilientBridge {
                     resources: .init(subscribe: false, listChanged: false),
                     logging: .object([:])),
                 serverInfo: ServerInfo(name: configuration.serverName, version: configuration.serverVersion),
-                instructions: message))
+                instructions: handshake))
         case "tools/list":
             await reply(request.id, ListToolsResult(tools: manifest.load()), modern: modern, isList: true)
         case "tools/call":

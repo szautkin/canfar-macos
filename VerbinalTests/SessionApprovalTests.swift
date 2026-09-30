@@ -6,6 +6,7 @@
 
 import XCTest
 import VerbinalKit
+import MCPCore
 @testable import Verbinal
 
 /// Plan 25 S: an assistant starts its session with `start_session`; the
@@ -130,5 +131,18 @@ final class SessionApprovalTests: XCTestCase {
         let tool = StartSessionTool(approvals: SessionApprovals(defaults: defaults), note: { _, _ in })
         let result = await tool.invoke(arguments: Data(#"{"agent":"Claude"}"#.utf8), context: context(nil))
         guard case .failed(.invalidArgument) = result else { return XCTFail("\(result)") }
+    }
+
+    // MARK: - The words (plan 25 W)
+
+    /// Every assistant is told the same way: the server's instructions,
+    /// describe_app's brief, and AGENTS.md.
+    func testEveryAssistantIsToldToStartASessionTheSameWay() throws {
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let agents = try String(contentsOf: repo.appendingPathComponent("AGENTS.md"), encoding: .utf8)
+        let flat = agents.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        XCTAssertTrue(flat.contains(AgentSession.instructions), "AGENTS.md")
+        XCTAssertTrue(DescribeAppTool.brief.contains(AgentSession.instructions), "describe_app")
+        XCTAssertTrue(AgentsService.serverIdentity.instructions?.hasPrefix(AgentSession.instructions) == true, "the server")
     }
 }

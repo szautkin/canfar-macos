@@ -76,6 +76,10 @@ struct DescribeAppTool: JSONReadTool {
     arrange downloads, and prepare science-platform sessions on the user's
     behalf.
 
+    ## Start here
+
+    \(AgentSession.instructions)
+
     ## Primitives
 
       * **Observation** — one CAOM-2 observation entity (collection +
@@ -85,13 +89,13 @@ struct DescribeAppTool: JSONReadTool {
       * **Plane / Artifact** — a delivery of an observation. Each artifact
         has a URI (`cadc:COLLECTION/path.fits`) and a productType
         (science / weight / preview / aux).
-      * **Session** — a Skaha science-platform container (notebook /
+      * **Session** — here, a Skaha science-platform container (notebook /
         desktop / firefly / carta). Has a type, container image, and
         compute resources (cores / RAM / GPU).
       * **VOSpace node** — a file or directory in the user's CADC
         VOSpace storage.
 
-    ## Read surface (call freely)
+    ## Read surface (call freely, once your session is allowed)
 
       * `describe_app` — this brief.
       * `get_auth_state` — is the user logged in? what's their displayName?

@@ -110,6 +110,10 @@ the server finds it by itself and says its tool list has changed. If the call fa
 
 ## Once you are connected
 
+- **Start your session.** Call `start_session` first, saying who you are and your purpose. The
+  person approves it in Verbinal and may give you instructions for the session: follow them. Its
+  `session` id identifies every log entry of your session; `get_session_log` reads them. Without a
+  session, no other tool works but `describe_app`.
 - **Get your bearings.**
   - `describe_app` gives an overview; `list_apps` maps the tools by screen.
   - `list_workflows` and `use_workflow` give step-by-step protocols.
