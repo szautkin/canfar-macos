@@ -53,7 +53,8 @@ extension AppState {
         // that only converges through the shared JSON file on relaunch.
         let tap = TAPClient()
         let resolver = TargetResolverService(tapClient: tap)
-        let caom2 = CAOM2Service()
+        // The one archive client, its answers kept on this Mac (plan 19 R1).
+        let caom2 = self.caom2
         let recentStore = searchModel.recentSearchStore
         let savedStore = searchModel.savedQueryStore
 

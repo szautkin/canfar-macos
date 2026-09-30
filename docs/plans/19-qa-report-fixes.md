@@ -36,7 +36,7 @@ The rules are those of plans 15 and 17:
 | C capture | done — C1 the window as composited on screen | C1 |
 | R Research | done — R3 a slash-form record corrected; R1 the archive's answers kept in SQLite, records completed when added, 2 at a time with progress; R2 the plane of the downloaded file; R4 by R1–R3 | `8ca2773`, `cdb9d58`, R2 |
 | K kept | — | — |
-| Q handout 20 | planned | — |
+| Q handout 20 | done — [handout 20](./20-qa-regression-plan19.md) | Q |
 
 ## S — Answers that say what happened
 
