@@ -368,6 +368,23 @@ final class AppState {
         // disconnects). UI binds to this for connectivity hints.
         networkPath.start()
 
+        #if os(macOS)
+        // The session log hears the app before any assistant can connect —
+        // and exists before the tools are made: its tools and appliers are
+        // made only when it does (plan 23; they were left out when it came
+        // after).
+        let sessionLog = AppEventHub(
+            sources: .init(proposals: agentsService.eventLog.observers, tasks: TaskRegistry.shared.events, auth: auth.events),
+            header: { [weak self] session, client in
+                await MainActor.run { self?.sessionLogHeader(session, client) }
+                    ?? SessionLogHeader(session: session, client: client, opened: Date(), app: "?", buildCommit: nil,
+                                        macOS: "?", endpoints: [:], overridden: [], autoApply: false, signedIn: false)
+            })
+        self.sessionLog = sessionLog
+        agentsService.sessionRecorder = sessionLog
+        Task { await sessionLog.start() }
+        #endif
+
         // Register the MCP tool surface. Order matters: tools must be
         // registered *before* bootstrap, since the listener captures the
         // router's tool table when it starts.
@@ -394,20 +411,6 @@ final class AppState {
             guard let self else { return }
             await MainActor.run { self.navigateTo(mode) }
         }
-
-        #if os(macOS)
-        // The session log hears the app before any assistant can connect.
-        let sessionLog = AppEventHub(
-            sources: .init(proposals: agentsService.eventLog.observers, tasks: TaskRegistry.shared.events, auth: auth.events),
-            header: { [weak self] session, client in
-                await MainActor.run { self?.sessionLogHeader(session, client) }
-                    ?? SessionLogHeader(session: session, client: client, opened: Date(), app: "?", buildCommit: nil,
-                                        macOS: "?", endpoints: [:], overridden: [], autoApply: false, signedIn: false)
-            })
-        self.sessionLog = sessionLog
-        agentsService.sessionRecorder = sessionLog
-        Task { await sessionLog.start() }
-        #endif
 
         // Bring up the MCP server only if the user has previously opted in.
         agentsService.bootstrap()

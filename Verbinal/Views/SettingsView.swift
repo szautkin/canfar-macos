@@ -646,6 +646,10 @@ private struct AgentsSettingsTab: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            #if os(macOS)
+            SessionLogsSection()
+            #endif
         }
         .formStyle(.grouped)
     }

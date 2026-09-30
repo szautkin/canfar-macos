@@ -29,7 +29,7 @@
 | L5 timing on every reply | done — a second block when it asked a service, took 2 s or failed; its log token | `88dced3` |
 | L6 activity and health read the ledger | done — `waitingOn`, `requests`; `seenByApp` | `294fb77` |
 | L7 tool deadlines follow the timeouts | done — `RequestTimeout.toolDeadline`; overrides only with a reason | `7fa5df5` |
-| L8 words for the assistant, handout | done — `describe_app`, the server's instructions, `AGENTS.md`; [handout 24](./24-qa-regression-plan23.md) | (this commit) |
+| L8 words for the assistant, handout | done — `describe_app`, the server's instructions, `AGENTS.md`; [handout 24](./24-qa-regression-plan23.md) | `55ff785` |
 
 ## Do we have it?
 
@@ -556,6 +556,22 @@ second mirror only after the first's own timeout, so a mirror that hangs uses mo
   - export one session and all of them, as text and as JSON Lines
   - delete through Pending
   - retention
+
+## Found in the person's first try (2026-09-30)
+
+An assistant connected to the new build found neither the five tools nor the Settings section:
+
+- **The tools and appliers were never registered.** `AppState` made the tool surface before
+  creating the session log, and `makeSessionLogTools()` makes nothing without one. Every test
+  called `makeAgentTools()` after startup, when the log existed, so none saw it.
+- **The section was in the MCP Clients tab,** not in AI Agent, where the plan puts it.
+
+**Fixed:**
+
+- The log is created before the tools, and the section moved to Settings ▸ AI Agent (shown
+  whether or not the server runs).
+- `StartupRegistrationTests` checks what startup itself registered, tools and appliers. It fails on
+  the old order.
 
 ## Aside: deleting sessions of every type (the person, 2026-09-30)
 

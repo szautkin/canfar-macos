@@ -17,8 +17,6 @@ struct MCPIntegrationSettingsTab: View {
     /// Show/hide the AI Guide launchpad tile (OFF by default). Shared key with
     /// `LandingView`, so flipping it here re-renders the tile immediately.
     @AppStorage(AIGuidePreferences.showLandingTileKey) private var showAIGuideTile = false
-    /// The Session Logs sheet's model, while it is open.
-    @State private var sessionLogs: SessionLogsModel?
 
     private var agents: AgentsService { appState.agentsService }
     private var settings: MCPIntegrationSettingsService { appState.mcpIntegrationSettings }
@@ -27,7 +25,6 @@ struct MCPIntegrationSettingsTab: View {
         Form {
             statusSection
             aiGuideSection
-            sessionLogSection
             diagnosticsSection
             selfTestSection
             configSection
@@ -80,24 +77,6 @@ struct MCPIntegrationSettingsTab: View {
             Text("Status")
         } footer: {
             Text("Claude Desktop and other MCP clients reach Verbinal by launching it in MCP mode (Verbinal mcp). These checks verify each link in that chain and can repair Claude Desktop's config.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    /// What each connected assistant did, why and how long (plan 23 L4).
-    private var sessionLogSection: some View {
-        Section {
-            Button("Show Session Logs…") {
-                guard let hub = appState.sessionLog else { return }
-                sessionLogs = SessionLogsModel(query: SessionLogQuery(store: hub.store, hub: hub))
-            }
-            .disabled(appState.sessionLog == nil)
-            .sheet(item: $sessionLogs) { SessionLogsView(model: $0) }
-        } header: {
-            Text("Session Logs")
-        } footer: {
-            Text("A log of each assistant's session: everything that happened while it was connected — each change, who made it and why, the app's decisions, failures and what they mean. Kept 10 days, and 10 MB in all; the assistant reads it with get_session_log.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
