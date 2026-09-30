@@ -15,7 +15,7 @@ import VerbinalKit
 /// retry-and-fail when the VizieR proxy is down."
 ///
 /// v1 is host-reachability: each entry reports whether a known
-/// availability URL responded within a 5-second budget. This
+/// availability URL responded within `RequestTimeout.probe`. This
 /// answers "is the service reachable from my Mac right now?" but
 /// doesn't speak to "is the service correct" — that distinction
 /// needs deeper probes per service (e.g. a known-good cone search)
@@ -155,15 +155,15 @@ struct GetServiceHealthTool: JSONReadTool {
     // MARK: - Real-network probe (used by the wireup)
 
     /// Run every canonical probe in parallel and collect results.
-    /// 5-second per-probe budget; the outer `toolTimeoutSeconds`
-    /// is the upper bound on the whole call.
+    /// `RequestTimeout.probe` per probe, all at once; the outer
+    /// `toolTimeoutSeconds` is the upper bound on the whole call.
     ///
     /// Lives on the tool type (not the wireup) so it stays close
     /// to the canonical endpoint list and tests can spot-check
     /// individual probes without setting up an AppState.
     static func runCanonicalProbes(
         endpoints: [Endpoint] = canonicalEndpoints,
-        perProbeBudget: TimeInterval = 5,
+        perProbeBudget: TimeInterval = RequestTimeout.probe,
         session: URLSession = .shared,
         now: Date = Date()
     ) async -> Output {

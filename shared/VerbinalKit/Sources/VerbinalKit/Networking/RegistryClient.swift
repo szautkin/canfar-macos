@@ -43,7 +43,7 @@ public struct RegistryClient: Sendable {
 
     // MARK: - Fetching
 
-    public func fetchResourceCaps(from urlString: String, timeout: TimeInterval = 10) async throws -> [String: String] {
+    public func fetchResourceCaps(from urlString: String, timeout: TimeInterval = RequestTimeout.lookup) async throws -> [String: String] {
         let data = try await fetch(urlString, timeout: timeout)
         guard let text = String(data: data, encoding: .utf8) else {
             throw URLError(.cannotDecodeContentData)
@@ -51,7 +51,7 @@ public struct RegistryClient: Sendable {
         return Self.parseResourceCaps(text)
     }
 
-    public func fetchCapabilities(at urlString: String, timeout: TimeInterval = 10) async throws -> [Capability] {
+    public func fetchCapabilities(at urlString: String, timeout: TimeInterval = RequestTimeout.lookup) async throws -> [Capability] {
         let data = try await fetch(urlString, timeout: timeout)
         return Self.parseCapabilities(data)
     }

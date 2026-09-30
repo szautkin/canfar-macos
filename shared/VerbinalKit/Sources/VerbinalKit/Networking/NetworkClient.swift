@@ -131,7 +131,7 @@ public actor NetworkClient {
         _ urlString: String,
         accept: String? = nil,
         additionalHeaders: [String: String]? = nil,
-        timeout: TimeInterval = 60,
+        timeout: TimeInterval = RequestTimeout.standard,
         allowAuthRetry: Bool = true
     ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "GET", timeout: timeout)
@@ -146,7 +146,7 @@ public actor NetworkClient {
         return try await execute(request, allowAuthRetry: allowAuthRetry)
     }
 
-    public func getText(_ urlString: String, timeout: TimeInterval = 60, allowAuthRetry: Bool = true) async throws -> String {
+    public func getText(_ urlString: String, timeout: TimeInterval = RequestTimeout.standard, allowAuthRetry: Bool = true) async throws -> String {
         let (data, _) = try await get(urlString, timeout: timeout, allowAuthRetry: allowAuthRetry)
         return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
@@ -160,7 +160,7 @@ public actor NetworkClient {
         _ urlString: String,
         formData: [String: String],
         headers: [String: String]? = nil,
-        timeout: TimeInterval = 60,
+        timeout: TimeInterval = RequestTimeout.standard,
         allowAuthRetry: Bool = true
     ) async throws -> (Data, HTTPURLResponse) {
         try await post(
@@ -182,11 +182,7 @@ public actor NetworkClient {
         _ urlString: String,
         formPairs: [(String, String)],
         headers: [String: String]? = nil,
-        // CADC services routinely take 30–50s under load (their tomcat
-        // pools serialise quota / catalogue lookups against K8s). 60s
-        // is a patience floor that lets honest slowness through while
-        // still bounding pathological hangs.
-        timeout: TimeInterval = 60,
+        timeout: TimeInterval = RequestTimeout.standard,
         allowAuthRetry: Bool = true
     ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "POST", timeout: timeout)
@@ -228,7 +224,7 @@ public actor NetworkClient {
         _ urlString: String,
         body: Data,
         contentType: String,
-        timeout: TimeInterval = 60
+        timeout: TimeInterval = RequestTimeout.standard
     ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "POST", timeout: timeout)
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
@@ -246,7 +242,7 @@ public actor NetworkClient {
         _ urlString: String,
         body: Data,
         contentType: String,
-        timeout: TimeInterval = 300
+        timeout: TimeInterval = RequestTimeout.transfer
     ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "PUT", timeout: timeout)
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
@@ -267,7 +263,7 @@ public actor NetworkClient {
         _ urlString: String,
         fileURL: URL,
         contentType: String,
-        timeout: TimeInterval = 300,
+        timeout: TimeInterval = RequestTimeout.transfer,
         onProgress: TransferProgressHandler? = nil
     ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "PUT", timeout: timeout)
@@ -334,7 +330,7 @@ public actor NetworkClient {
     /// (e.g. VOSpace `#length` from the listing).
     public func downloadFile(
         _ urlString: String,
-        timeout: TimeInterval = 300,
+        timeout: TimeInterval = RequestTimeout.transfer,
         expectedTotal: Int64 = 0,
         onProgress: TransferProgressHandler? = nil
     ) async throws -> (tempURL: URL, response: HTTPURLResponse) {
@@ -460,7 +456,7 @@ public actor NetworkClient {
 
     // MARK: - Private
 
-    private func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = 60) throws -> URLRequest {
+    private func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = RequestTimeout.standard) throws -> URLRequest {
         guard let url = URL(string: urlString) else {
             throw NetworkError.invalidURL(urlString)
         }
@@ -581,8 +577,10 @@ private final class ProgressDownloadController: NSObject, URLSessionDownloadDele
 
             let config = URLSessionConfiguration.ephemeral
             config.protocolClasses = protocolClasses
+            // A stall ends the download; its length does not. Capping the
+            // whole transfer at the stall timeout failed any download that
+            // took over five minutes, however steadily it arrived.
             config.timeoutIntervalForRequest = timeout
-            config.timeoutIntervalForResource = timeout
             // `delegateQueue: nil` → URLSession creates a serial queue; callbacks
             // are not on MainActor (UI hop happens in StorageBrowserModel).
             let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)

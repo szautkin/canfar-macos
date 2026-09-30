@@ -19,7 +19,7 @@ actor TAPClient {
     /// `timeoutInterval`s set at call sites still apply on top.
     private static let boundedSession: URLSession = {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForRequest = RequestTimeout.standard
         config.timeoutIntervalForResource = 300
         return URLSession(configuration: config)
     }()
@@ -56,13 +56,13 @@ actor TAPClient {
             throw SearchError.networkError("Invalid TAP URL")
         }
 
-        // A query may take two minutes; one that gave no answer in them is
-        // not asked again (plan 21 D5).
+        // A query that gave no answer in the standard timeout is not asked
+        // again (plan 21 D5).
         return try await retrying(.longRequests) {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-            request.timeoutInterval = 120
+            request.timeoutInterval = RequestTimeout.standard
 
             // TAP 1.1 requires REQUEST=doQuery on /sync. CADC accepts it;
             // VizieR TAPVizieR returns HTTP 400 without it (2026-08-28 QA).
@@ -352,9 +352,8 @@ actor TAPClient {
 
         var request = URLRequest(url: url)
         // The CADC target resolver consults SIMBAD / NED / VizieR
-        // upstream, all of which can stall. 60s tolerates a slow
-        // upstream lookup without falsely surfacing networkError.
-        request.timeoutInterval = 60
+        // upstream, all of which can stall.
+        request.timeoutInterval = RequestTimeout.standard
 
         let (data, response) = try await session.data(for: request)
 
@@ -408,10 +407,9 @@ actor TAPClient {
 
         var request = URLRequest(url: url)
         request.setValue("application/x-votable+xml", forHTTPHeaderField: "Accept")
-        // 15s was a holdover from when DataLink was reliably fast;
-        // it routinely takes 20–30s now and was timing out in the
-        // get_data_links MCP path. Match the rest of the CADC stack.
-        request.timeoutInterval = 60
+        // DataLink routinely takes 20–30s: the rest of the CADC stack's
+        // patience.
+        request.timeoutInterval = RequestTimeout.standard
 
         let (data, response) = try await session.data(for: request)
 

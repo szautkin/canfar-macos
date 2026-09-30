@@ -269,7 +269,7 @@ final class RetryPolicyTests: XCTestCase {
     /// Plan 21 D5: the search says who did not answer.
     func testASearchFailureSaysTheArchiveIsNotAnswering() {
         XCTAssertEqual(SearchError.describing(URLError(.timedOut)),
-                       "CADC's archive is not answering — no reply in two minutes. Try again later.")
+                       "CADC's archive is not answering — no reply in 2 minutes. Try again later.")
         XCTAssertEqual(SearchError.describing(URLError(.cannotConnectToHost)), "CADC's archive cannot be reached. Try again later.")
         XCTAssertEqual(SearchError.describing(SearchError.queryError("bad ADQL")), "bad ADQL")
     }

@@ -12,6 +12,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A download that takes over five minutes finishes.** A download with a
+  progress bar failed at five minutes however steadily it arrived; only a
+  five-minute stall ends one now, as with uploads.
 - **The login's password field shows and hides the password** — an eye
   beside the field shows what was typed and hides it again, keeping the
   cursor in the field. Return in the password field and the Log In
@@ -657,6 +660,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **Verbinal waits longer for CADC and CANFAR.** Signing in and every
+  ordinary call (sessions, storage, archive details, DataLink, target
+  lookup) wait two minutes for a reply, not one; the stored sign-in
+  checked at launch and the registry's list of services wait 30 s, not
+  15 s and 10 s; starting a session waits three minutes, as a batch job
+  already did; a service-health probe waits 15 s, not 5 s. The timeouts
+  are named once, in `RequestTimeout`, and every request takes its own
+  from there.
 - **The service registry is CADC's west registry by default** —
   `https://cadc-west-01.canfar.net/reg/resource-caps`, off the archive's
   own host, so the map of CADC's services is still there when that host

@@ -99,7 +99,7 @@ final class SessionService: SessionLaunching {
             endpoints.sessionsURL,
             formData: formData,
             headers: headers,
-            timeout: 120
+            timeout: RequestTimeout.launch
         )
 
         // Response can be JSON array ["sessionId"] or plain text

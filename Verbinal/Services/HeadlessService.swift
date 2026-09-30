@@ -115,12 +115,9 @@ final class HeadlessService: Sendable {
                     endpoints.sessionsURL,
                     formPairs: pairs,
                     headers: headers,
-                    // CADC's session-create endpoint regularly takes
-                    // 60–90s when the cluster's K8s API is busy.
-                    // 180s is a generous patience floor; the
-                    // ImageDiscoveryCoordinator's K8s-race retry
+                    // The ImageDiscoveryCoordinator's K8s-race retry
                     // wraps a separate, shorter budget on top.
-                    timeout: 180
+                    timeout: RequestTimeout.launch
                 )
                 let id = String(data: data, encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

@@ -107,14 +107,13 @@ public final class AuthService: Sendable {
         }
     }
 
-    /// Timeout for the /whoami validation probe. Deliberately shorter than
-    /// the 60 s request default: this call gates the launch spinner, and on
-    /// a half-dead network (associated Wi-Fi, no upstream) the user would
-    /// otherwise stare at "Checking authentication…" for a full minute.
-    public static let validationTimeout: TimeInterval = 15
-
     /// Validates a stored token by calling /whoami.
     /// Returns `.valid(username)`, `.expired`, or `.networkError`.
+    ///
+    /// Waits `RequestTimeout.lookup`, not the standard timeout: this call
+    /// gates the launch spinner, and on a half-dead network (associated
+    /// Wi-Fi, no upstream) the person would otherwise stare at "Checking
+    /// authentication…" for minutes.
     ///
     /// `allowAuthRetry: false` is load-bearing: this call is what the
     /// `onUnauthorized` interceptor runs to decide whether a 401'd request
@@ -126,7 +125,7 @@ public final class AuthService: Sendable {
         do {
             let username = try await network.getText(
                 endpoints.whoAmIURL,
-                timeout: Self.validationTimeout,
+                timeout: RequestTimeout.lookup,
                 allowAuthRetry: false
             )
             return username.isEmpty ? .expired : .valid(username)

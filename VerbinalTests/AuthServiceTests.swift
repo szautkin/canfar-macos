@@ -32,7 +32,7 @@ final class AuthServiceTests: XCTestCase {
         }
     }
 
-    func testValidateTokenUsesShortValidationTimeout() async {
+    func testValidateTokenUsesTheLookupTimeout() async {
         let service = makeService()
 
         var capturedTimeout: TimeInterval?
@@ -43,8 +43,22 @@ final class AuthServiceTests: XCTestCase {
         }
 
         _ = await service.validateToken("good-token")
-        XCTAssertEqual(capturedTimeout, AuthService.validationTimeout)
-        XCTAssertEqual(AuthService.validationTimeout, 15)
+        XCTAssertEqual(capturedTimeout, RequestTimeout.lookup)
+    }
+
+    /// Signing in waits the standard timeout, the one every CADC call has.
+    func testLoginUsesTheStandardTimeout() async {
+        let service = makeService()
+
+        var capturedTimeout: TimeInterval?
+        MockURLProtocol.requestHandler = { request in
+            if request.url?.path.hasSuffix("/login") == true { capturedTimeout = request.timeoutInterval }
+            let resp = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+            return (resp, Data())
+        }
+
+        _ = await service.login(username: "alice", password: "wrong", rememberMe: false)
+        XCTAssertEqual(capturedTimeout, RequestTimeout.standard)
     }
 
     func testValidateTokenReturnsExpiredOn401() async {

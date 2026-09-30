@@ -137,7 +137,7 @@ actor CutoutService {
         guard let url = components.url else { throw CutoutFailure.noService("the DataLink address is not valid") }
         var request = URLRequest(url: url)
         request.setValue("application/x-votable+xml", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = 60
+        request.timeoutInterval = RequestTimeout.standard
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw CutoutFailure.noService("DataLink answered HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)")

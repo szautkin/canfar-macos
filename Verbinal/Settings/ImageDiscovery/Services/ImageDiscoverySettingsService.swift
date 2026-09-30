@@ -307,7 +307,7 @@ final class ImageDiscoverySettingsService {
         }
         var pingRequest = URLRequest(url: pingURL)
         pingRequest.httpMethod = "GET"
-        pingRequest.timeoutInterval = 10
+        pingRequest.timeoutInterval = RequestTimeout.lookup
         let pingResponse: HTTPURLResponse
         do {
             let (_, raw) = try await session.data(for: pingRequest)
@@ -353,7 +353,7 @@ final class ImageDiscoverySettingsService {
 
         var tokenRequest = URLRequest(url: tokenURL)
         tokenRequest.httpMethod = "GET"
-        tokenRequest.timeoutInterval = 10
+        tokenRequest.timeoutInterval = RequestTimeout.lookup
         let basicAuth = "\(user):\(secret)"
         guard let basicData = basicAuth.data(using: .utf8) else {
             return .networkError(message: "Could not UTF-8 encode credentials.")

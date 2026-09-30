@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// Orchestrates the non-SwiftUI I/O for the "Export results" feature: the
 /// server-side VOTable/CSV/TSV download and the client-side CSV/TSV write.
@@ -25,7 +26,7 @@ enum ResultExportService {
     /// stalled transfer should eventually fail rather than hang the UI's
     /// "Export…" indicator forever.
     enum Timeout {
-        static let request: TimeInterval = 300
+        static let request = RequestTimeout.transfer
         static let resource: TimeInterval = 600
     }
 

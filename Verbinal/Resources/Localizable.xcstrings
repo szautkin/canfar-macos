@@ -2586,12 +2586,12 @@
         }
       }
     },
-    "CADC's archive is not answering — no reply in two minutes. Try again later." : {
+    "CADC's archive is not answering — no reply in %@. Try again later." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'archive du CADC ne répond pas — aucune réponse en deux minutes. Réessayez plus tard."
+            "value" : "L'archive du CADC ne répond pas — aucune réponse en %@. Réessayez plus tard."
           }
         }
       }

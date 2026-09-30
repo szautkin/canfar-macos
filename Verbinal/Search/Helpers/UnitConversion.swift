@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 // MARK: - Physical Constants (CGS-compatible, from CADC adql-manager)
 
@@ -174,7 +175,8 @@ enum SearchError: LocalizedError {
         guard let urlError = error as? URLError else { return error.localizedDescription }
         switch urlError.code {
         case .timedOut:
-            return String(localized: "CADC's archive is not answering — no reply in two minutes. Try again later.")
+            let wait = Duration.seconds(RequestTimeout.standard).formatted(.units(allowed: [.minutes, .seconds], width: .wide))
+            return String(localized: "CADC's archive is not answering — no reply in \(wait). Try again later.")
         case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed, .networkConnectionLost:
             return String(localized: "CADC's archive cannot be reached. Try again later.")
         case .notConnectedToInternet:

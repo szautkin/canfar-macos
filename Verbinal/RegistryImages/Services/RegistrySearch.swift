@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// Why a registry search found nothing to show, in words that say what to do.
 enum RegistrySearchError: LocalizedError, Equatable {
@@ -152,7 +153,7 @@ struct RegistrySearch: Sendable {
 
     private func json<T: Decodable>(_ url: URL?, basic: String?) async throws(RegistrySearchError) -> T {
         guard let url else { throw .noHost }
-        var request = URLRequest(url: url, timeoutInterval: 20)
+        var request = URLRequest(url: url, timeoutInterval: RequestTimeout.lookup)
         if let basic, !basic.isEmpty { request.setValue("Basic \(basic)", forHTTPHeaderField: "Authorization") }
         let data: Data
         let response: URLResponse

@@ -89,7 +89,7 @@ actor VOSpaceBrowserService {
         do {
             let (location, _) = try await network.downloadFile(
                 urlString,
-                timeout: 300,
+                timeout: RequestTimeout.transfer,
                 expectedTotal: expectedTotal,
                 onProgress: onProgress
             )
@@ -229,14 +229,14 @@ actor VOSpaceBrowserService {
                     urlString,
                     body: data,
                     contentType: "application/octet-stream",
-                    timeout: 300
+                    timeout: RequestTimeout.transfer
                 )
             } else {
                 _ = try await network.putFile(
                     urlString,
                     fileURL: fileURL,
                     contentType: "application/octet-stream",
-                    timeout: 300,
+                    timeout: RequestTimeout.transfer,
                     onProgress: onProgress
                 )
             }
