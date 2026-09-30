@@ -390,6 +390,17 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **Session Logs, in Settings ▸ AI Agent.** A log of each assistant's
+  session: everything that happened while it was connected — each change
+  (created, launched, downloaded, deleted …) with who made it and why,
+  the app's decisions and their rules, each call with the CADC and CANFAR
+  requests it made and what their outcomes mean, failures, services
+  failing and recovering. Read it session by session, filtered; export
+  one or several as text or JSON Lines; delete closed ones. Kept 10 days,
+  and 10 MB in all. Assistants read it with `get_session_log`,
+  `explain_log_entry` and `list_session_logs`, export it with
+  `export_session_log`, and ask to delete it with `delete_session_logs`,
+  which waits for you in Pending (plan 23).
 - **Every change an assistant proposes can say why.** Every write tool
   takes a one-sentence `why`; Pending shows it under the change, or "No
   reason given", so a delete's reason is read before it is applied.

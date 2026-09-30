@@ -222,6 +222,18 @@ every later agent is told; **read** = pure data.
 | Instantiate a template | `use_workflow` | write |
 | Delete a local copy | `delete_workflow` | write (destructive) |
 
+## Session log (Settings ▸ AI Agent ▸ Session Logs)
+
+| UI interaction | Tool | Kind |
+|---|---|---|
+| The list of sessions, which is open, the retention rule | `list_session_logs` | read |
+| A session's lines, filtered (all, changes, failures, decisions, calls) | `get_session_log` (`only`, `who`, `about`, `text`, `from`, `to`, `since`) | read |
+| Open an entry: its requests, ids and codes | `explain_log_entry` (its causes and effects too) | read |
+| What is happening now | `get_session_log` → `now` | read |
+| Export as Text… / as JSON Lines… | `export_session_log` | write |
+| Delete… / Delete All Closed… (never an open session) | `delete_session_logs` | write (destructive) |
+| Show in Finder | — (the file path: `export_session_log` answers with it) | — |
+
 ## Wire-name aliases (Windows = canonical)
 
 Mac keeps legacy names as aliases so older agents keep working:

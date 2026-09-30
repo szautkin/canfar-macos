@@ -293,6 +293,8 @@ enum AIGuideCatalog {
         "get_session_log": "sessionLog",
         "explain_log_entry": "sessionLog",
         "list_session_logs": "sessionLog",
+        "export_session_log": "sessionLog",
+        "delete_session_logs": "sessionLog",
     ]
 
     /// Category id for a tool name, defaulting to ``other``.

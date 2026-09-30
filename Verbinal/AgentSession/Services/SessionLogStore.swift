@@ -6,6 +6,7 @@
 
 import Foundation
 import os.log
+import VerbinalKit
 
 /// A session log kept on this Mac, as the list shows it.
 struct StoredSessionLog: Sendable, Equatable, Identifiable {
@@ -34,14 +35,18 @@ final class SessionLogStore: @unchecked Sendable {
     let directory: URL
     /// One writer at a time.
     private let lock = NSLock()
+    /// Where each deletion is recorded — the person's, an assistant's, the
+    /// retention rule's (plan 23 C).
+    private let changes: ChangeLog
 
     static var productionDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Verbinal/AgentSessions", isDirectory: true)
     }
 
-    init(directory: URL = SessionLogStore.productionDirectory) {
+    init(directory: URL = SessionLogStore.productionDirectory, changes: ChangeLog = .shared) {
         self.directory = directory
+        self.changes = changes
     }
 
     private static let encoder: JSONEncoder = {
@@ -143,18 +148,30 @@ final class SessionLogStore: @unchecked Sendable {
 
     // MARK: - Removing
 
-    /// Deletes these sessions' files; returns the ones deleted.
+    /// Deletes these sessions' files — never an open one's; returns the
+    /// ones deleted. Recorded as a change.
     @discardableResult
-    func delete(_ sessions: Set<UUID>) -> [UUID] {
-        list().filter { sessions.contains($0.header.session) }.compactMap { log in
+    func delete(_ sessions: Set<UUID>, open: Set<UUID> = []) -> [UUID] {
+        let doomed = list().filter { sessions.contains($0.header.session) && !open.contains($0.header.session) }
+        guard !doomed.isEmpty else { return [] }
+        var failures: [String] = []
+        let deleted = doomed.compactMap { log -> UUID? in
             do {
                 try lock.withLock { try FileManager.default.removeItem(at: log.url) }
                 return log.header.session
             } catch {
                 Self.logger.error("delete \(log.url.lastPathComponent, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                failures.append("\(log.header.session.uuidString.prefix(8)): \(error.localizedDescription)")
                 return nil
             }
         }
+        let what = "\(doomed.count) session \(doomed.count == 1 ? "log" : "logs") (\(doomed.map { "\($0.header.client), \($0.header.session.uuidString.prefix(8))" }.joined(separator: "; ")))"
+        if failures.isEmpty {
+            changes.done("delete_session_logs", what)
+        } else {
+            changes.failed("delete_session_logs", what, because: failures.joined(separator: "; "))
+        }
+        return deleted
     }
 
     /// Holds `url` for an open session: an exclusive advisory lock, so no
@@ -183,9 +200,14 @@ final class SessionLogStore: @unchecked Sendable {
         }
     }
 
-    /// Applies the retention rule; returns the sessions it removed.
+    /// Applies the retention rule; returns the sessions it removed — as
+    /// Verbinal's change, the rule its why.
     @discardableResult
     func applyRetention(open: Set<UUID>, now: Date = Date()) -> [UUID] {
-        delete(Set(SessionLogRetention.toRemove(list(), open: open, now: now).map(\.header.session)))
+        let expired = Set(SessionLogRetention.toRemove(list(), open: open, now: now).map(\.header.session))
+        guard !expired.isEmpty else { return [] }
+        return Initiator.$current.withValue(.app) {
+            Cause.$current.withValue(Cause(why: SessionLogRetention.rule)) { delete(expired, open: open) }
+        }
     }
 }

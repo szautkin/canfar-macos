@@ -246,6 +246,7 @@ extension AppState {
         appliers.append(contentsOf: makeAIGuideAppliers(activity: activity))
         appliers.append(contentsOf: makeResearchRecordAppliers(describe: describe, activity: activity))
         appliers.append(contentsOf: makeCutoutAppliers(activity: activity))
+        appliers.append(contentsOf: makeSessionLogAppliers(activity: activity))
 
         // Recent-searches writes — mutate the live store inside the
         // hoisted search model (same instance the side panel renders).

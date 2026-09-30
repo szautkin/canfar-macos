@@ -720,6 +720,16 @@
         }
       }
     },
+    "%@, again" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, de nouveau"
+          }
+        }
+      }
+    },
     "%@: %@" : {
       "localizations" : {
         "en" : {
@@ -1198,6 +1208,28 @@
         }
       }
     },
+    "±1σ band from %@ — median %@ of the flux" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bande ±1σ d'après %1$@ — médiane %2$@ du flux"
+          }
+        }
+      }
+    },
+    "±1σ band from %@ — median %@ of the flux, narrower than the line" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bande ±1σ d'après %1$@ — médiane %2$@ du flux, plus fine que la courbe"
+          }
+        }
+      }
+    },
     "=" : {
       "shouldTranslate" : false
     },
@@ -1286,12 +1318,22 @@
         }
       }
     },
-    "%@, again" : {
+    "%lld changes · %lld failures · %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@, de nouveau"
+            "value" : "%lld modifications · %lld échecs · %@"
+          }
+        }
+      }
+    },
+    "%lld sessions selected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sessions sélectionnées"
           }
         }
       }
@@ -1349,6 +1391,26 @@
         }
       }
     },
+    "A log is kept for each assistant that connects over MCP." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un journal est tenu pour chaque assistant connecté par MCP."
+          }
+        }
+      }
+    },
+    "A log of each assistant's session: everything that happened while it was connected — each change, who made it and why, the app's decisions, failures and what they mean. Kept 10 days, and 10 MB in all; the assistant reads it with get_session_log." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un journal de la session de chaque assistant : tout ce qui s'est passé pendant sa connexion — chaque modification, qui l'a faite et pourquoi, les décisions de l'app, les échecs et leur sens. Conservé 10 jours, et 10 Mo au total ; l'assistant le lit avec get_session_log."
+          }
+        }
+      }
+    },
     "A macOS companion for the CANFAR Science Platform." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1391,6 +1453,7 @@
       }
     },
     "A spectrum has no marks — leave marks out" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1401,6 +1464,7 @@
       }
     },
     "A spectrum is drawn whole — region is for images; leave it out" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2648,6 +2712,16 @@
         }
       }
     },
+    "Calls" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appels"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "fr" : {
@@ -2749,6 +2823,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Centrer sur la marque"
+          }
+        }
+      }
+    },
+    "Changes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifications"
           }
         }
       }
@@ -4099,6 +4183,16 @@
         }
       }
     },
+    "Could not export: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportation impossible : %@"
+          }
+        }
+      }
+    },
     "Could not reach the registry: %@" : {
       "localizations" : {
         "fr" : {
@@ -4674,6 +4768,16 @@
         }
       }
     },
+    "Decisions" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décisions"
+          }
+        }
+      }
+    },
     "Default" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4749,7 +4853,6 @@
       }
     },
     "Delete" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4790,12 +4893,42 @@
         }
       }
     },
+    "Delete %lld closed session logs?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer %lld journaux de session fermés ?"
+          }
+        }
+      }
+    },
+    "Delete %lld session logs?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer %lld journaux de session ?"
+          }
+        }
+      }
+    },
     "Delete %lld sessions" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer %lld sessions"
+          }
+        }
+      }
+    },
+    "Delete All Closed…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer tous les journaux fermés…"
           }
         }
       }
@@ -4973,6 +5106,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld sur %lld supprimées — %@"
+          }
+        }
+      }
+    },
+    "Deleted %lld session logs." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld journaux de session supprimés."
+          }
+        }
+      }
+    },
+    "Delete…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer…"
           }
         }
       }
@@ -6301,6 +6454,26 @@
         }
       }
     },
+    "Export as JSON Lines…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporter en JSON Lines…"
+          }
+        }
+      }
+    },
+    "Export as Text…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporter en texte…"
+          }
+        }
+      }
+    },
     "Export Bundle" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6490,6 +6663,16 @@
         }
       }
     },
+    "Exported %lld session logs to %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld journaux de session exportés vers %@."
+          }
+        }
+      }
+    },
     "Export…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6601,6 +6784,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "échec, sans raison donnée"
+          }
+        }
+      }
+    },
+    "Failures" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échecs"
           }
         }
       }
@@ -6848,6 +7041,7 @@
       }
     },
     "FITS image" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9837,6 +10031,7 @@
       }
     },
     "No reason given" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9948,6 +10143,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune requête enregistrée"
+          }
+        }
+      }
+    },
+    "No session logs yet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun journal de session pour le moment"
           }
         }
       }
@@ -10446,6 +10651,16 @@
         }
       }
     },
+    "off" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "désactivée"
+          }
+        }
+      }
+    },
     "ok" : {
       "localizations" : {
         "fr" : {
@@ -10477,6 +10692,16 @@
         }
       }
     },
+    "on" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "activée"
+          }
+        }
+      }
+    },
     "On the platform" : {
       "localizations" : {
         "fr" : {
@@ -10498,7 +10723,6 @@
       }
     },
     "Open" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -13981,6 +14205,16 @@
         }
       }
     },
+    "Select a session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionnez une session"
+          }
+        }
+      }
+    },
     "Select an image" : {
       "localizations" : {
         "fr" : {
@@ -14197,6 +14431,16 @@
         }
       }
     },
+    "Session Logs" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Journaux de session"
+          }
+        }
+      }
+    },
     "Session Name" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -14388,7 +14632,6 @@
       }
     },
     "Show" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14486,6 +14729,16 @@
         }
       }
     },
+    "Show in Finder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher dans le Finder"
+          }
+        }
+      }
+    },
     "Show job details" : {
       "localizations" : {
         "fr" : {
@@ -14534,6 +14787,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Afficher le mot de passe"
+          }
+        }
+      }
+    },
+    "Show Session Logs…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher les journaux de session…"
           }
         }
       }
@@ -15788,6 +16051,7 @@
       }
     },
     "The compute session is already running — it keeps its size until it is stopped." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -16097,12 +16361,21 @@
       }
     },
     "This cannot be undone." : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Action irréversible."
+          }
+        }
+      }
+    },
+    "This cannot be undone. Open sessions keep their logs." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette action est irréversible. Les sessions ouvertes gardent leur journal."
           }
         }
       }
@@ -16288,6 +16561,7 @@
       }
     },
     "This table holds no spectrum to draw" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -17032,6 +17306,16 @@
         }
       }
     },
+    "Verbinal %@ · macOS %@ · Auto-apply %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal %@ · macOS %@ · Application automatique %@"
+          }
+        }
+      }
+    },
     "Verbinal Help" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -17431,6 +17715,9 @@
           }
         }
       }
+    },
+    "Waiting for CADC — %@ s" : {
+
     },
     "Waiting for CADC — %lld s" : {
       "localizations" : {
@@ -18014,6 +18301,7 @@
       }
     },
     "Why: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -18277,26 +18565,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajuster à la fenêtre"
-          }
-        }
-      }
-    },
-    "±1σ band from %@ — median %@ of the flux, narrower than the line" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "bande ±1σ d'après %1$@ — médiane %2$@ du flux, plus fine que la courbe"
-          }
-        }
-      }
-    },
-    "±1σ band from %@ — median %@ of the flux" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "bande ±1σ d'après %1$@ — médiane %2$@ du flux"
           }
         }
       }

@@ -59,7 +59,17 @@ extension AppState {
             GetSessionLogTool(query: query, now: { [weak self] in await self?.sessionNow() ?? .quiet }),
             ExplainLogEntryTool(query: query),
             ListSessionLogsTool(query: query),
+            ExportSessionLogTool(query: query),
+            DeleteSessionLogsTool(query: query),
         ]
+    }
+
+    /// Their appliers: export at once under Auto-apply; delete after the person.
+    func makeSessionLogAppliers(activity: AgentActivityStore) -> [any ProposalApplier] {
+        guard let sessionLog else { return [] }
+        let query = SessionLogQuery(store: sessionLog.store, hub: sessionLog)
+        return [ExportSessionLogApplier(query: query, activity: activity),
+                DeleteSessionLogsApplier(query: query, activity: activity)]
     }
 }
 

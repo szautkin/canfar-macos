@@ -24,8 +24,8 @@
 | C every change recorded by its owner | done — the apply path for every assistant change; the owners below for the person's and the app's | `7e53441` |
 | A the app's decisions say their rule | done — auto-apply, retries, deadlines (with what was waiting), the sign-in; expiry from the event log | `26fd739` |
 | L2 session journal, stored | done — `AppEventHub`, `SessionJournal`, `SessionLogStore`, `SessionLogLine`; a session per connection | `88aa107` |
-| L3 reading the log: `get_session_log`, `explain_log_entry`, `list_session_logs` | done — one reader, `SessionLogQuery`; `now` from the app's live state | (this commit) |
-| L4 managing the logs: view, export, delete, retention | not started | |
+| L3 reading the log: `get_session_log`, `explain_log_entry`, `list_session_logs` | done — one reader, `SessionLogQuery`; `now` from the app's live state | `7c23d89` |
+| L4 managing the logs: view, export, delete, retention | done — Settings ▸ AI Agent ▸ Session Logs; `export_session_log`, `delete_session_logs` | (this commit) |
 | L5 timing on every reply | not started | |
 | L6 activity and health read the ledger | not started | |
 | L7 tool deadlines follow the timeouts | not started | |
