@@ -36,6 +36,14 @@ public protocol JSONReadTool: AITool {
 }
 
 extension JSONReadTool {
+    /// Every read tool's answer: dates as ISO 8601 ("2026-09-30T14:02:07Z"),
+    /// which an assistant can read — not seconds since 2001 (plan 23).
+    public static var encoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
     public static var verbClass: VerbClass { .read }
     public static var agentSafe: Bool { true }
 
@@ -66,7 +74,7 @@ extension JSONReadTool {
             ) {
                 try await handle(args, context: context)
             }
-            let bytes = try JSONEncoder().encode(output)
+            let bytes = try Self.encoder.encode(output)
             return .data(bytes)
         } catch let failure as ToolFailureReason {
             return .failed(failure)

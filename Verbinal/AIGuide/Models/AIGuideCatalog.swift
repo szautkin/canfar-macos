@@ -53,6 +53,8 @@ enum AIGuideCatalog {
                  summary: "Inspect and withdraw the agent's pending proposals."),
         Category(id: "workflows",    title: "Workflows",          systemImage: "checklist",
                  summary: "Follow and author reusable research protocols."),
+        Category(id: "sessionLog",   title: "Session Log",        systemImage: "list.bullet.rectangle",
+                 summary: "What happened in each assistant session, why, and how long: read, explain, export, delete."),
     ]
 
     /// Fallback bucket for any tool not explicitly categorized.
@@ -287,6 +289,10 @@ enum AIGuideCatalog {
         "set_workflow_step": "workflows",
         "use_workflow": "workflows",
         "delete_workflow": "workflows",
+        // Session log (plan 23)
+        "get_session_log": "sessionLog",
+        "explain_log_entry": "sessionLog",
+        "list_session_logs": "sessionLog",
     ]
 
     /// Category id for a tool name, defaulting to ``other``.

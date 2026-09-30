@@ -359,6 +359,7 @@ extension AppState {
         tools.append(StartBackgroundApplyTool(start: { id in await service.startBackgroundApply(id) }))
         tools.append(GetJobStatusTool(status: { id in await service.jobStatus(id) }))
         tools.append(ListEventsTool())
+        tools.append(contentsOf: makeSessionLogTools())
 
         registerWriteAppliers(savedQueryStore: savedStore,
                               noteStore: noteStore,

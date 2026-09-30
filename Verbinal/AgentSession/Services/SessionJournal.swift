@@ -24,6 +24,8 @@ actor SessionJournal {
     /// Calls under way: a request of theirs is told in the call's entry.
     private var callsInFlight: Set<UUID> = []
     private(set) var isClosed = false
+    /// The file's lock while the session is open (`SessionLogStore.hold`).
+    private var held: FileHandle?
 
     nonisolated var session: UUID { header.session }
 
@@ -32,11 +34,19 @@ actor SessionJournal {
         self.store = store
         self.maxBytes = maxBytes
         do {
-            url = try store.create(header)
+            let url = try store.create(header)
+            self.url = url
+            held = SessionLogStore.hold(url)
         } catch {
             Self.logger.error("session log not created: \(error.localizedDescription, privacy: .public)")
             url = nil
         }
+    }
+
+    /// A journal let go without a close — the app quitting — lets go of
+    /// its file, so the next launch closes it as abandoned.
+    deinit {
+        try? held?.close()
     }
 
     // MARK: - Recording
@@ -64,6 +74,8 @@ actor SessionJournal {
     func close(_ how: SessionLogLine.Ending) {
         record(SessionLogLine.closed(how))
         isClosed = true
+        try? held?.close()
+        held = nil
     }
 
     /// Drops the oldest entries of the kinds that matter least until the

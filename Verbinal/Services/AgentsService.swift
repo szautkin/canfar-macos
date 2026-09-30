@@ -271,6 +271,17 @@ final class AgentsService {
         return extra
     }
 
+    /// The proposals waiting in Pending, each with the rule that holds it:
+    /// "waits in Pending: a delete always waits for the person" (plan 23 L3).
+    func waitingProposals() async -> [(proposal: PendingProposal, waits: String)] {
+        var waiting: [(PendingProposal, String)] = []
+        for proposal in await proposals.list(origin: nil) {
+            let verbClass = await router?.verbClass(of: proposal.toolName) ?? .semanticWrite
+            waiting.append((proposal, AutoApplyPolicy.rule(for: verbClass, appliedAtOnce: false)))
+        }
+        return waiting
+    }
+
     // MARK: - Background applies
 
     /// What `start_background_apply` answered.

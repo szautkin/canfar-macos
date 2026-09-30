@@ -16,7 +16,8 @@ import VerbinalKit
 /// journals (orthogonality).
 ///
 /// Events arrive on the threads they happen on and are taken, in order,
-/// off one stream.
+/// off one stream — the bridge's too, so a decision taken during a call is
+/// told before the call's end.
 actor AppEventHub: AgentSessionRecorder {
     /// A session's header, from the app's state when it opens.
     typealias HeaderSource = @Sendable (_ session: UUID, _ client: String) async -> SessionLogHeader
@@ -28,8 +29,19 @@ actor AppEventHub: AgentSessionRecorder {
         case proposal(AgentEventEntry)
         case task(TrackedTask)
         case auth(AuthLifecycleController.Event)
-        /// Every event before it has been told (`settle`).
+        // The bridge's.
+        case opened(UUID, client: String)
+        case callBegan(UUID, call: UUID)
+        case callEnded(UUID, call: UUID, tool: String, traced: AIToolRouter.Traced)
+        case closed(UUID)
+        /// Nothing: every event before it has been told (`settle`).
         case settled
+    }
+
+    /// An event, and who waits for it to be told.
+    private struct Queued: Sendable {
+        let event: Event
+        var done: CheckedContinuation<Void, Never>?
     }
 
     /// The sources, by the observers each offers (interface segregation).
@@ -48,21 +60,24 @@ actor AppEventHub: AgentSessionRecorder {
     private var clients: [UUID: String] = [:]
     /// Each proposal's summary and session, as its call or decision said.
     private var proposals: [UUID: (summary: String, session: UUID?)] = [:]
-    private let events: AsyncStream<Event>.Continuation
+    private let events: AsyncStream<Queued>.Continuation
 
     init(store: SessionLogStore = SessionLogStore(), sources: Sources, header: @escaping HeaderSource) {
         self.store = store
         self.header = header
-        let (stream, continuation) = AsyncStream.makeStream(of: Event.self)
+        let (stream, continuation) = AsyncStream.makeStream(of: Queued.self)
         self.events = continuation
-        sources.requests.observe { continuation.yield(.request($0)) }
-        sources.changes.observe { continuation.yield(.change($0)) }
-        sources.decisions.observers.observe { continuation.yield(.decision($0)) }
-        sources.proposals?.observe { continuation.yield(.proposal($0)) }
-        sources.tasks?.observe { continuation.yield(.task($0)) }
-        sources.auth?.observe { continuation.yield(.auth($0)) }
+        sources.requests.observe { continuation.yield(Queued(event: .request($0))) }
+        sources.changes.observe { continuation.yield(Queued(event: .change($0))) }
+        sources.decisions.observers.observe { continuation.yield(Queued(event: .decision($0))) }
+        sources.proposals?.observe { continuation.yield(Queued(event: .proposal($0))) }
+        sources.tasks?.observe { continuation.yield(Queued(event: .task($0))) }
+        sources.auth?.observe { continuation.yield(Queued(event: .auth($0))) }
         Task { [weak self] in
-            for await event in stream { await self?.tell(event) }
+            for await queued in stream {
+                await self?.handle(queued.event)
+                queued.done?.resume()
+            }
         }
     }
 
@@ -78,7 +93,24 @@ actor AppEventHub: AgentSessionRecorder {
 
     // MARK: - The bridge
 
-    func opened(_ session: UUID, client: String) async {
+    func opened(_ session: UUID, client: String) async { await submit(.opened(session, client: client)) }
+    func callBegan(_ session: UUID, call: UUID, tool: String) async { await submit(.callBegan(session, call: call)) }
+    func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async {
+        await submit(.callEnded(session, call: call, tool: tool, traced: traced))
+    }
+    func closed(_ session: UUID) async { await submit(.closed(session)) }
+
+    /// Waits until every event before now is told — for tests.
+    func settle() async { await submit(.settled) }
+
+    /// Queues `event` and waits until it is told.
+    private func submit(_ event: Event) async {
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            events.yield(Queued(event: event, done: done))
+        }
+    }
+
+    private func open(_ session: UUID, client: String) async {
         let header = await header(session, client)
         let journal = SessionJournal(header: header, store: store)
         await journal.record(SessionLogLine.opened(header))
@@ -87,18 +119,14 @@ actor AppEventHub: AgentSessionRecorder {
         clients[session] = client
     }
 
-    func callBegan(_ session: UUID, call: UUID, tool: String) async {
-        await journals[session]?.callBegan(call)
-    }
-
-    func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async {
+    private func end(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async {
         guard let journal = journals[session] else { return }
         if let proposal = traced.result.proposal { proposals[proposal.id] = (proposal.summary, session) }
         await journal.record(SessionLogLine.call(tool: tool, call: call, session: session, traced: traced))
         await journal.callEnded(call)
     }
 
-    func closed(_ session: UUID) async {
+    private func close(_ session: UUID) async {
         guard let journal = journals.removeValue(forKey: session) else { return }
         await journal.close(.disconnected)
         let client = clients.removeValue(forKey: session) ?? "an assistant"
@@ -108,21 +136,18 @@ actor AppEventHub: AgentSessionRecorder {
 
     // MARK: - Telling the journals
 
-    /// Waits until every event yielded so far is told — for tests.
-    func settle() async {
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            settling.append(done)
-            events.yield(.settled)
+    private func handle(_ event: Event) async {
+        switch event {
+        case .opened(let session, let client): await open(session, client: client)
+        case .callBegan(let session, let call): await journals[session]?.callBegan(call)
+        case .callEnded(let session, let call, let tool, let traced): await end(session, call: call, tool: tool, traced: traced)
+        case .closed(let session): await close(session)
+        case .settled: break
+        default: await tell(event)
         }
     }
-    private var settling: [CheckedContinuation<Void, Never>] = []
 
     private func tell(_ event: Event) async {
-        if case .settled = event {
-            settling.forEach { $0.resume() }
-            settling.removeAll()
-            return
-        }
         for journal in journals.values {
             let seen = SessionViewpoint(session: journal.session, clients: clients)
             if let entry = await entry(for: event, in: journal, seen: seen) { await journal.record(entry) }
@@ -158,7 +183,7 @@ actor AppEventHub: AgentSessionRecorder {
             return SessionLogLine.signedIn(username)
         case .auth(.signedOut):
             return SessionLogLine.signedOut()
-        case .settled:
+        case .opened, .callBegan, .callEnded, .closed, .settled:
             return nil
         }
     }

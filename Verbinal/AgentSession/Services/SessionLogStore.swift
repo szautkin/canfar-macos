@@ -157,10 +157,25 @@ final class SessionLogStore: @unchecked Sendable {
         }
     }
 
+    /// Holds `url` for an open session: an exclusive advisory lock, so no
+    /// other Verbinal — a test host sharing the container — takes it for
+    /// abandoned. Nil when another holds it. The lock goes with the handle.
+    static func hold(_ url: URL) -> FileHandle? {
+        guard let handle = try? FileHandle(forUpdating: url) else { return nil }
+        guard flock(handle.fileDescriptor, LOCK_EX | LOCK_NB) == 0 else {
+            try? handle.close()
+            return nil
+        }
+        return handle
+    }
+
     /// A session left open by a quit or a crash is closed as "Verbinal quit",
-    /// at its last entry's time.
+    /// at its last entry's time — one no open journal holds, here or in
+    /// another process.
     func closeAbandoned(open: Set<UUID>) {
         for log in list() where log.ending == nil && !open.contains(log.header.session) {
+            guard let held = Self.hold(log.url) else { continue }
+            defer { try? held.close() }
             guard let (_, entries) = read(log.url) else { continue }
             var closing = SessionLogLine.closed(.verbinalQuit, at: log.lastAt)
             closing.token = (entries.last?.token ?? 0) + 1

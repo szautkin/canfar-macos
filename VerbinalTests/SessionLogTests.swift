@@ -98,9 +98,15 @@ final class SessionLogTests: XCTestCase {
 
     func testAQuitLeavesTheSessionClosedAsVerbinalQuit() async throws {
         let store = SessionLogStore(directory: directory)
-        let journal = SessionJournal(header: header(), store: store)
-        await journal.record(SessionLogLine.signedIn("alice"))
-        // No close: the app quit.
+        do {
+            let journal = SessionJournal(header: header(), store: store)
+            await journal.record(SessionLogLine.signedIn("alice"))
+            // Open, its file is held: not taken for abandoned.
+            store.closeAbandoned(open: [])
+            XCTAssertNil(store.list().first?.ending)
+        }
+        // No close, and its journal gone: the app quit.
+        try await Task.sleep(for: .milliseconds(50))
         store.closeAbandoned(open: [])
         let log = try XCTUnwrap(store.list().first)
         XCTAssertEqual(log.ending, "verbinalQuit")
