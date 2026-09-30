@@ -35,6 +35,9 @@ public final class RequestLedger: @unchecked Sendable {
         public let timeout: TimeInterval
         /// The person, an assistant, or the app.
         public let startedBy: Initiator
+        /// Why, and what it belongs to — the work's cause when it was sent
+        /// (plan 23 K).
+        public let cause: Cause
         public var finished: Date?
         public var outcome: RequestOutcome?
         /// The HTTP status, when there was an answer.
@@ -125,7 +128,7 @@ public final class RequestLedger: @unchecked Sendable {
 
     private func start(_ request: URLRequest) -> Record {
         let record = Record(id: Self.ids.next(), service: .of(request.url), started: Date(),
-                            timeout: request.timeoutInterval, startedBy: Initiator.current)
+                            timeout: request.timeoutInterval, startedBy: Initiator.current, cause: Cause.current)
         lock.withLock { inFlight[record.id] = record }
         notify(.started(record))
         return record

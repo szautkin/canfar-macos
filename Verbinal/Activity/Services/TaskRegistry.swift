@@ -35,11 +35,17 @@ final class TaskRegistry {
     private var nextID = 0
 
     /// Starts tracking work; the handle owns its outcome. Who started it is
-    /// the task's initiator unless the caller knows better.
-    func begin(_ kind: TaskKind, _ label: String, by initiator: Initiator = Initiator.current) -> TaskHandle {
+    /// the task's initiator unless the caller knows better; why is its
+    /// cause's, or `why` — the rule, when the app starts work of its own
+    /// (plan 23 K).
+    func begin(_ kind: TaskKind, _ label: String, by initiator: Initiator = Initiator.current,
+               why: String? = nil, cause: Cause = Cause.current) -> TaskHandle {
         nextID += 1
         let again = tasks.contains { $0.label == label && $0.progress == .failed }
-        tasks.append(TrackedTask(id: nextID, kind: kind, label: label, startedBy: initiator, isAgain: again, started: Date()))
+        var cause = cause
+        if let why { cause.why = Cause.clip(why) }
+        tasks.append(TrackedTask(id: nextID, kind: kind, label: label, startedBy: initiator, cause: cause,
+                                 isAgain: again, started: Date()))
         // The oldest FINISHED go first: running work is what a reader most
         // needs to see, and is never dropped to make room.
         while tasks.count > Self.maxTasks, let finished = tasks.firstIndex(where: \.isFinished) {
@@ -53,10 +59,14 @@ final class TaskRegistry {
     /// `by` defaults to the caller's initiator; work run in a detached task,
     /// which drops it, passes the one it captured (plan 19 T2).
     nonisolated func track<T: Sendable>(_ kind: TaskKind, _ label: String, by initiator: Initiator = Initiator.current,
+                                        why: String? = nil,
                                         _ work: @Sendable (TaskHandle) async throws -> T) async rethrows -> T {
-        let handle = await begin(kind, label, by: initiator)
+        var cause = Cause.current
+        if let why { cause.why = Cause.clip(why) }
+        let handle = await begin(kind, label, by: initiator, cause: cause)
         do {
-            let result = try await work(handle)
+            // The work runs under the task's cause, so what it records says why.
+            let result = try await Cause.$current.withValue(cause) { try await work(handle) }
             await handle.succeed()
             return result
         } catch {

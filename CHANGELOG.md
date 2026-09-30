@@ -390,6 +390,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **Every change an assistant proposes can say why.** Every write tool
+  takes a one-sentence `why`; Pending shows it under the change, or "No
+  reason given", so a delete's reason is read before it is applied.
+  `list_pending_proposals` returns it, and it is kept with the proposal
+  across a relaunch. The router takes it off before the tool sees its
+  arguments, so no tool changed (plan 23 K).
 - **A spectrum opens as a spectrum** — a FITS file whose data is a table,
   such as HST's `_x1d`, opened in the FITS Viewer as a blank image a row
   of bytes tall (38946×1). It now plots its flux against wavelength, with

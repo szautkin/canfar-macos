@@ -22,18 +22,23 @@ public struct AIToolContext: Sendable {
     /// every test stub wires it — tools that need it should fail
     /// gracefully when absent.
     public let eventLog: EventLog?
+    /// The assistant session the call belongs to (plan 23): one per
+    /// connection. `nil` for the in-app agent and tests.
+    public let session: UUID?
 
     public init(
         origin: OperationOrigin,
         requestID: UUID = UUID(),
         proposals: any ProposalStore,
         budget: ProposalBudget,
-        eventLog: EventLog? = nil
+        eventLog: EventLog? = nil,
+        session: UUID? = nil
     ) {
         self.origin = origin
         self.requestID = requestID
         self.proposals = proposals
         self.budget = budget
         self.eventLog = eventLog
+        self.session = session
     }
 }

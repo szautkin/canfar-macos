@@ -67,6 +67,10 @@ public actor MCPBridgeService {
     /// request — anything before that returns `serverNotInitialized`.
     private var clientID: String?
     private var initialized: Bool = false
+    /// This connection's assistant session (plan 23). One bridge serves one
+    /// connection, so one session: a relay reconnecting after Verbinal
+    /// restarts is a new one.
+    public nonisolated let session = UUID()
 
     /// Concurrently-running `tools/call` handlers (see `routeFrame`).
     /// Keyed so completed handlers can remove themselves; drained with
@@ -338,7 +342,8 @@ public actor MCPBridgeService {
             requestID: UUID(),
             proposals: services.proposals,
             budget: services.budget,
-            eventLog: services.eventLog
+            eventLog: services.eventLog,
+            session: session
         )
 
         logger.info("tools/call \(params.name, privacy: .public) (\(argBytes.count) bytes args)")

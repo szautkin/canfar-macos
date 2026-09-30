@@ -26,6 +26,8 @@ struct ListPendingProposalsTool: AITool {
             let toolName: String
             let kind: String
             let summary: String
+            /// The reason the proposing assistant gave (plan 23 K).
+            let why: String?
             let createdAtISO: String
             /// When it expires unapplied (`PendingProposal.lifetime` after it arrived).
             let expiresAtISO: String
@@ -60,6 +62,7 @@ struct ListPendingProposalsTool: AITool {
                 toolName: p.toolName,
                 kind: p.kind,
                 summary: p.summary,
+                why: p.why,
                 createdAtISO: iso.string(from: p.createdAt),
                 expiresAtISO: iso.string(from: p.expiresAt),
                 originTag: AuditOrigin.from(p.origin).tag,

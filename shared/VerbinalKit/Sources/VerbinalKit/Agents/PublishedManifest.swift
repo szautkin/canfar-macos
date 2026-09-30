@@ -24,8 +24,9 @@ public enum PublishedManifest {
             let description = adjustments.descriptionOverrides[definition.name] ?? definition.description
             let ruled = await router.verbClass(of: definition.name)
                 .map { AutoApplyPolicy.describe(description, verbClass: $0) } ?? description
-            tools.append(ToolDefinitionWire(
-                name: definition.name, description: ruled, inputSchema: definition.inputSchema))
+            let schema = await router.verbClass(of: definition.name)
+                .map { Cause.publishing(definition.inputSchema, for: $0) } ?? definition.inputSchema
+            tools.append(ToolDefinitionWire(name: definition.name, description: ruled, inputSchema: schema))
         }
         tools.append(contentsOf: adjustments.guideTools.map(\.wire))
         return tools

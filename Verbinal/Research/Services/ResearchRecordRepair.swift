@@ -37,6 +37,9 @@ final class ResearchRecordRepair {
     /// down. With it down, 36 records waited out 18 minutes and the check
     /// said it had succeeded (plan 21 D3).
     static let givesUpAfter = 4
+    /// Why the app runs the check at all: its rule, for the session log
+    /// (plan 23 K).
+    static let rule = "at sign-in, Research records that lack their archive details are asked for them"
     /// Why a check ended without the archive's answers.
     static let notAnswering = String(localized: "The archive is not answering — Research records are asked again at the next sign-in")
 
@@ -74,7 +77,8 @@ final class ResearchRecordRepair {
         }
         guard !toAsk.isEmpty else { return changed }
 
-        let task = tasks.begin(.research, String(localized: "Get archive details for Research records"), by: .app)
+        let task = tasks.begin(.research, String(localized: "Get archive details for Research records"), by: .app,
+                               why: Self.rule)
         progress = Progress(done: 0, total: toAsk.count)
         task.stage(String(localized: "\(0) of \(toAsk.count)"))
         var answered = 0, asked = 0

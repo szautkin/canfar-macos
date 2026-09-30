@@ -227,13 +227,17 @@ final class AgentsService {
         defer { applyingIDs.remove(id) }
         let extra: Data?
         do {
-            // The change is the assistant's, whoever approved it (plan 17 A1).
+            // The change is the assistant's, whoever approved it (plan 17 A1),
+            // and its cause is the proposal's: its why, its call and session,
+            // and who applied it (plan 23 K).
             extra = try await Initiator.$current.withValue(.assistant) {
-                if let reporting = applier as? any ResultReportingApplier {
-                    return try await reporting.applyReturningResult(proposal)
+                try await Cause.$current.withValue(.applying(proposal, by: actor)) {
+                    if let reporting = applier as? any ResultReportingApplier {
+                        return try await reporting.applyReturningResult(proposal)
+                    }
+                    try await applier.apply(proposal)
+                    return nil
                 }
-                try await applier.apply(proposal)
-                return nil
             }
         } catch {
             // The reason stays on the proposal, for the strip and

@@ -36,6 +36,11 @@ public struct PendingProposal: Sendable, Identifiable, Equatable, Codable {
     /// records the proposal id; this field records the request id, so
     /// joining audit ↔ proposal lifecycle is a one-step lookup.
     public let requestID: UUID?
+    /// The assistant's reason for it, in one sentence; `nil` when it gave
+    /// none (plan 23 K). Shown with it in Pending, kept in the session log.
+    public let why: String?
+    /// The assistant session it came from.
+    public let session: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -45,7 +50,9 @@ public struct PendingProposal: Sendable, Identifiable, Equatable, Codable {
         payload: Data,
         createdAt: Date = Date(),
         origin: OperationOrigin,
-        requestID: UUID? = nil
+        requestID: UUID? = nil,
+        why: String? = nil,
+        session: UUID? = nil
     ) {
         self.id = id
         self.toolName = toolName
@@ -55,6 +62,8 @@ public struct PendingProposal: Sendable, Identifiable, Equatable, Codable {
         self.createdAt = createdAt
         self.origin = origin
         self.requestID = requestID
+        self.why = Cause.clip(why)
+        self.session = session
     }
 
     /// How long a proposal waits for the person before it expires: long

@@ -9836,6 +9836,16 @@
         }
       }
     },
+    "No reason given" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune raison donnée"
+          }
+        }
+      }
+    },
     "No recent launches" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -17999,6 +18009,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Image entière"
+          }
+        }
+      }
+    },
+    "Why: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pourquoi : %@"
           }
         }
       }

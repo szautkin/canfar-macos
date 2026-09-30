@@ -48,4 +48,13 @@ public enum VerbClass: String, Codable, Sendable, Equatable {
 
     /// Undo / redo. Reaches into the application's command history.
     case undo
+
+    /// It proposes a change — a write, a delete or a standing instruction —
+    /// and so takes a `why` (plan 23 K).
+    public var proposesChange: Bool {
+        switch self {
+        case .semanticWrite, .destructive, .standingInstruction: true
+        case .read, .viewState, .proposalLifecycle, .undo: false
+        }
+    }
 }

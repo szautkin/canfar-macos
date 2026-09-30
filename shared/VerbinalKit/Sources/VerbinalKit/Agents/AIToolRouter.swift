@@ -139,15 +139,20 @@ public actor AIToolRouter {
         let deadlineHit = DeadlineFlag()
         // What an assistant's call sets going is the assistant's (plan 17 A1).
         let initiator: Initiator = context.origin == .user ? .person : .assistant
-        let result = await Initiator.$current.withValue(initiator) { await withHardDeadline(
+        // A change's `why` is the router's, not the tool's: taken off before
+        // the tool checks its arguments, and made the call's cause, with the
+        // session and the call, for whatever the call records (plan 23 K).
+        let (arguments, why) = verbClass.proposesChange ? Cause.take(from: rawArguments) : (rawArguments, nil)
+        let cause = Cause(why: why, session: context.session, call: context.requestID)
+        let result = await Initiator.$current.withValue(initiator) { await Cause.$current.withValue(cause) { await withHardDeadline(
             seconds: ceiling,
             onDeadline: {
                 deadlineHit.set()
                 return ToolResult.failed(.backendError(
                     "\(name) exceeded the \(Int(ceiling))s dispatch deadline — the app-side operation was asked to cancel and may still be finishing in the background. The server stays responsive; check state with a read tool before retrying."))
             },
-            work: { await self.dispatchInner(name: name, rawArguments: rawArguments, context: context) }
-        ) }
+            work: { await self.dispatchInner(name: name, rawArguments: arguments, context: context) }
+        ) } }
         if deadlineHit.value {
             emitAudit(name: name, args: rawArguments, context: context,
                       outcome: .failed(tag: "dispatchDeadline"),

@@ -315,6 +315,8 @@ final class ResearchRecordDetailsTests: XCTestCase {
         XCTAssertEqual(archive.mostAtOnce, ResearchRecordRepair.concurrentRequests)
         XCTAssertEqual(registry.tasks.map(\.label), ["Get archive details for Research records"])
         XCTAssertEqual(registry.tasks.first?.startedBy, .app)
+        // The app says why it runs the check (plan 23 K).
+        XCTAssertEqual(registry.tasks.first?.cause.why, ResearchRecordRepair.rule)
         XCTAssertEqual(registry.tasks.first?.progress, .failed, "no answer is not a success (plan 21 D3)")
     }
 

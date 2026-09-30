@@ -77,7 +77,11 @@ extension JSONWriteTool {
             summary: plan.summary,
             payload: plan.payload,
             origin: context.origin,
-            requestID: context.requestID
+            requestID: context.requestID,
+            // The router took `why` off the arguments and made it the call's
+            // cause (plan 23 K).
+            why: Cause.current.why,
+            session: context.session
         )
         let queued = await context.proposals.enqueue(proposal)
         return .proposed(queued)

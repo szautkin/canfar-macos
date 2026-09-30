@@ -42,6 +42,9 @@ struct TrackedTask: Identifiable, Equatable, Sendable {
     let label: String
     /// The person, their assistant, or the app itself (plan 17 A1).
     var startedBy = Initiator.person
+    /// Why, and what it belongs to: an assistant's reason, call and session,
+    /// the proposal being applied, or the app's rule (plan 23 K).
+    var cause = Cause()
     /// It repeats a task of the same name that failed — a failed change
     /// applied again read as the same delete twice (plan 21 N4).
     var isAgain = false

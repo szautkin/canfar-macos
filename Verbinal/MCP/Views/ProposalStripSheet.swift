@@ -218,6 +218,18 @@ struct ProposalStripSheet: View {
                     }
                 }
             }
+            // The assistant's reason, read before applying — above all a
+            // delete (plan 23 K).
+            Group {
+                if let why = proposal.why {
+                    Label(String(localized: "Why: \(why)"), systemImage: "text.bubble")
+                } else {
+                    Label(String(localized: "No reason given"), systemImage: "text.bubble")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.caption)
+            .textSelection(.enabled)
             HStack(spacing: 12) {
                 Label(proposal.toolName, systemImage: "function")
                     .font(.caption2)
