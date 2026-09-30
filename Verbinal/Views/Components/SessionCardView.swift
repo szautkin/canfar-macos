@@ -162,6 +162,10 @@ struct SessionCardView: View {
                 help: "Extend this session's lifetime",
                 action: onRenew
             )
+            // Each card's Renew and Delete, by session id, so an assistant can
+            // point at the one it means (plan 21 N2).
+            .pointable("portal.session.\(session.id).renew",
+                       label: String(localized: "Renew \(session.sessionName)"), screen: "portal")
             cardActionButton(
                 label: "Events",
                 systemImage: "doc.text.fill",
@@ -180,6 +184,8 @@ struct SessionCardView: View {
                 help: "Stop and delete this session",
                 action: onDelete
             )
+            .pointable("portal.session.\(session.id).delete",
+                       label: String(localized: "Delete \(session.sessionName)"), screen: "portal")
         }
     }
 

@@ -12663,6 +12663,16 @@
         }
       }
     },
+    "Renew %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renouveler %@"
+          }
+        }
+      }
+    },
     "Renew session %@" : {
       "localizations" : {
         "fr" : {

@@ -4,6 +4,8 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
+import AppKit
+import SwiftUI
 import XCTest
 import VerbinalKit
 @testable import Verbinal
@@ -82,5 +84,24 @@ final class UIPointerTests: XCTestCase {
 
         _ = await state.makeCloseSettingsTool().invoke(arguments: Data("{}".utf8), context: ctx)
         XCTAssertEqual(state.settingsRequest?.action, .close)
+    }
+
+    /// Plan 21 N2: each Portal session card's Renew and Delete can be
+    /// pointed at, by session id — a pass could not point at them.
+    func testASessionCardsActionsArePointable() async throws {
+        let registry = UIPointerRegistry()
+        let session = Session.compute(id: "q9p87ajc", status: "Running", name: "qa-person", type: "notebook")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 260), styleMask: [.titled],
+                              backing: .buffered, defer: false)
+        window.contentView = NSHostingView(rootView: SessionCardView(session: session, onOpen: {}, onDelete: {},
+                                                                     onRenew: {}, onEvents: {})
+            .environment(registry))
+        window.orderFrontRegardless()
+        defer { window.orderOut(nil) }
+        for _ in 0..<100 where registry.targets["portal.session.q9p87ajc.delete"] == nil {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertEqual(registry.targets["portal.session.q9p87ajc.delete"]?.label, "Delete qa-person")
+        XCTAssertEqual(registry.targets["portal.session.q9p87ajc.renew"]?.label, "Renew qa-person")
     }
 }
