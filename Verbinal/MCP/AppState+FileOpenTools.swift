@@ -21,10 +21,7 @@ extension AppState {
         let noun = viewer == .fits ? "FITS file" : "cube"
         let open: @Sendable (String) async throws -> OpenDownloadedObservationTool.Opened = { [weak self] rawID in
             guard let self else { throw ToolFailureReason.backendError("appState gone") }
-            let obs = await MainActor.run { store.observation(matching: rawID) }
-            guard let obs else {
-                throw ToolFailureReason.observationNotFound(id: rawID, localPath: nil)
-            }
+            let obs = try await MainActor.run { try store.recordForTool(rawID) }
             let url = try Self.resolveAccessibleFileURL(for: obs).url
             let outcome: AstronomyOpenOutcome
             do {

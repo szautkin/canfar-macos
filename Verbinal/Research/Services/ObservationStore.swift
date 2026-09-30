@@ -174,6 +174,34 @@ final class ObservationStore {
     /// A record by any name an agent or a person has for it: its id (or a
     /// unique 8+ hex prefix), its publisher ID, or — when only one record
     /// has it — its observation ID.
+    /// The record id `raw` most likely means when it names none: one hex
+    /// digit added, dropped or changed — a typed id, as a QA pass's
+    /// `475879F9E-122A-…` for `475879F9-122A-…`. Nil unless exactly one
+    /// record is that close (plan 21 N1). Never acted on, only named.
+    func likelyID(for raw: String) -> UUID? {
+        let wanted = Self.hexDigits(raw)
+        guard (31...33).contains(wanted.count) else { return nil }
+        let close = observations.filter { Self.oneEditApart(Self.hexDigits($0.id.uuidString), wanted) }
+        return close.count == 1 ? close[0].id : nil
+    }
+
+    private static func hexDigits(_ text: String) -> [Character] {
+        Array(text.uppercased().filter { $0 != "-" && !$0.isWhitespace })
+    }
+
+    /// Whether `a` and `b` differ by one added, dropped or changed character.
+    static func oneEditApart(_ a: [Character], _ b: [Character]) -> Bool {
+        guard a != b, abs(a.count - b.count) <= 1 else { return false }
+        var i = 0, j = 0, edits = 0
+        while i < a.count, j < b.count {
+            if a[i] == b[j] { i += 1; j += 1; continue }
+            edits += 1
+            if edits > 1 { return false }
+            if a.count > b.count { i += 1 } else if a.count < b.count { j += 1 } else { i += 1; j += 1 }
+        }
+        return edits + (a.count - i) + (b.count - j) <= 1
+    }
+
     func record(identifiedBy raw: String) -> DownloadedObservation? {
         let wanted = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !wanted.isEmpty else { return nil }

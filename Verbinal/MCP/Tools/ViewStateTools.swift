@@ -70,7 +70,7 @@ struct OpenDownloadedObservationTool: AITool {
               "type": "object",
               "required": ["downloaded_observation_id"],
               "properties": {
-                "downloaded_observation_id": { "type": "string" }
+                "downloaded_observation_id": { "type": "string", "description": "The Research record's id (or a unique prefix), publisher id, or observation id." }
               },
               "additionalProperties": false
             }

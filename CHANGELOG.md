@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A Research record is found however your assistant names it** —
+  `open_cube`, `open_fits_file`, `get_downloaded_observation` and the FITS
+  tools took only a record's id, and one typed a digit off read as a
+  record that could not be opened. They now take its id or a prefix of
+  it, its publisher id or its observation id, and a miss one digit off
+  an id names the id it most likely means.
 - **The session limit is said only where it applies** — the launch
   sheet's "Session limit reached (3/3)" showed on the Headless tab too,
   though the limit is for interactive sessions and CANFAR takes batch

@@ -103,7 +103,7 @@ struct GetDownloadedObservationTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_downloaded_observation",
-        description: "Fetch one downloaded observation by id (UUID).",
+        description: "Fetch one Research record by its id (UUID, or a unique prefix of it), its publisher id, or its observation id. A miss that is one digit off an id names the id it most likely means.",
         schema: #"""
         {
           "type": "object",
@@ -114,13 +114,11 @@ struct GetDownloadedObservationTool: JSONReadTool {
         """#
     )
 
-    let lookup: @Sendable (_ id: String) async -> DownloadedObservationOut?
+    /// The record, or why none: `ObservationStore.recordForTool`.
+    let lookup: @Sendable (_ id: String) async throws -> DownloadedObservationOut
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        guard let obs = await lookup(args.id) else {
-            throw ToolFailureReason.observationNotFound(id: args.id, localPath: nil)
-        }
-        return Output(obs)
+        Output(try await lookup(args.id))
     }
 }
 

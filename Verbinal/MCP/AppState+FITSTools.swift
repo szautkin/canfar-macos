@@ -36,8 +36,7 @@ extension AppState {
     func makeGetFITSSpectrumTool(store: ObservationStore) -> GetFITSSpectrumTool {
         GetFITSSpectrumTool(read: { [weak self] id, hduIndex in
             if let id {
-                let obs = await MainActor.run { store.observation(matching: id) }
-                guard let obs else { throw ToolFailureReason.observationNotFound(id: id, localPath: nil) }
+                let obs = try await MainActor.run { try store.recordForTool(id) }
                 guard let table = try obs.withReadableFile({ try Self.table(in: $0, hduIndex: hduIndex) }) else {
                     throw ToolFailureReason.observationNotFound(id: obs.id.uuidString, localPath: obs.localPath)
                 }
@@ -82,10 +81,7 @@ extension AppState {
     /// *before* `fileExists` on the stored path — a sandbox miss on the
     /// user-facing Downloads string is not "file gone" (2026-08-28 re-test).
     nonisolated private static func resolveFITS(id: String, store: ObservationStore) async throws -> ResolvedFITS? {
-        let obs = await MainActor.run { store.observation(matching: id) }
-        guard let obs else {
-            throw ToolFailureReason.observationNotFound(id: id, localPath: nil)
-        }
+        let obs = try await MainActor.run { try store.recordForTool(id) }
         let access = try resolveAccessibleFileURL(for: obs)
         defer {
             if access.didStart { access.url.stopAccessingSecurityScopedResource() }

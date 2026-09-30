@@ -25,9 +25,7 @@ extension AppState {
                     }
                     text = results.facts(for: row).detailsText
                 } else if let id = args.downloadedObservationId {
-                    guard let obs = self.researchModel.observationStore.observation(matching: id) else {
-                        throw ToolFailureReason.observationNotFound(id: id, localPath: nil)
-                    }
+                    let obs = try self.researchModel.observationStore.recordForTool(id)
                     text = obs.facts.detailsText
                 } else {
                     throw ToolFailureReason.invalidArgument("pass text, publisherId or downloadedObservationId")

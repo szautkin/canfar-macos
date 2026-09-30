@@ -193,6 +193,30 @@ final class ResearchRecordDetailsTests: XCTestCase {
         XCTAssertEqual(record.observationID, "tu636792")
     }
 
+    /// Plan 21 N1: a QA pass typed `475879F9E-122A-…` (a digit too many)
+    /// and read the record as unopenable; `open_cube` took no publisher id.
+    /// A miss names the id it most likely means; any of the record's own
+    /// identifiers finds it.
+    @MainActor
+    func testATypedIdNamesTheRecordItMostLikelyMeans() throws {
+        let (store, file) = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: file) }
+        var cube = described("ivo://cadc.nrc.ca/mirror/JWST?jw09230-o004_t001_nirspec_g395h-f290lp/jw09230-o004_t001_nirspec_g395h-f290lp-PRODUCT")
+        cube.id = try XCTUnwrap(UUID(uuidString: "475879F9-122A-4CD3-9E37-A336ABFEBD0A"))
+        cube.observationID = "jw09230-o004_t001_nirspec_g395h-f290lp"
+        store.save(cube)
+        store.save(described(uBand))
+
+        XCTAssertEqual(store.likelyID(for: "475879F9E-122A-4CD3-9E37-A336ABFEBD0A"), cube.id, "a digit added")
+        XCTAssertEqual(store.likelyID(for: "475879F-122A-4CD3-9E37-A336ABFEBD0A"), cube.id, "a digit dropped")
+        XCTAssertNil(store.likelyID(for: "00000000-122A-4CD3-9E37-A336ABFEBD0A"), "too far to name")
+        XCTAssertThrowsError(try store.recordForTool("475879F9E-122A-4CD3-9E37-A336ABFEBD0A")) { error in
+            XCTAssertTrue("\(error)".contains("did you mean 475879F9-122A-4CD3-9E37-A336ABFEBD0A"), "\(error)")
+        }
+        XCTAssertEqual(try store.recordForTool(cube.publisherID).id, cube.id, "its publisher id finds it")
+        XCTAssertEqual(try store.recordForTool("475879F9").id, cube.id, "an id prefix finds it")
+    }
+
     /// The archive, as the check sees it: what this Mac keeps, and what the
     /// network answers — slowly, and counted.
     private final class FakeArchive: ArchiveObservations, @unchecked Sendable {

@@ -18,7 +18,7 @@ extension AppState {
 
     func makeGetDownloadedObservationTool(store: ObservationStore) -> GetDownloadedObservationTool {
         GetDownloadedObservationTool(lookup: { @MainActor raw in
-            store.observation(matching: raw).map { Self.flatten($0) }
+            Self.flatten(try store.recordForTool(raw))
         })
     }
 
@@ -43,8 +43,10 @@ extension AppState {
         ResearchActions.show { [weak self] args in
             guard let self else { return "App state unavailable" }
             return await MainActor.run {
-                guard let record = self.researchModel.observationStore.record(identifiedBy: args.id) else {
-                    return "no observation \"\(args.id)\" in Research — list_downloaded_observations gives the ids"
+                let store = self.researchModel.observationStore
+                guard let record = store.record(identifiedBy: args.id) else {
+                    let hint = store.likelyID(for: args.id).map { " — did you mean \($0.uuidString)?" } ?? ""
+                    return "no observation \"\(args.id)\" in Research\(hint) — list_downloaded_observations gives the ids"
                 }
                 self.researchModel.selectedObservation = record
                 self.navigateTo(.research)
@@ -128,5 +130,25 @@ extension AppState {
             _ = try await service.uploadBundleToVOSpace(
                 bundleURL: bundleURL, vospace: vospace, username: username)
         }
+    }
+}
+
+extension ObservationStore {
+    /// The record `raw` identifies — its id, an id prefix, its publisher id
+    /// or its observation id — for an assistant's tool; else the failure it
+    /// is told, naming the id it most likely means when one is a digit off
+    /// (plan 21 N1: a QA pass typed `475879F9E-…` and read the record as
+    /// unopenable, and `open_cube` took no publisher id).
+    func recordForTool(_ raw: String) throws -> DownloadedObservation {
+        if let record = record(identifiedBy: raw) { return record }
+        throw ToolFailureReason.noResearchRecord(raw, likely: likelyID(for: raw))
+    }
+}
+
+extension ToolFailureReason {
+    /// No Research record by `raw`; with `likely`, the id it most likely means.
+    static func noResearchRecord(_ raw: String, likely: UUID?) -> ToolFailureReason {
+        guard let likely else { return .observationNotFound(id: raw, localPath: nil) }
+        return .invalidArgument("no Research record '\(raw)' — did you mean \(likely.uuidString)? list_downloaded_observations gives the ids")
     }
 }
