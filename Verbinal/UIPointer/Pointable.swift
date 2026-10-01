@@ -39,6 +39,7 @@ extension View {
     func pointableItem(_ name: String, whole: Bool = false, select: (() -> Void)? = nil) -> some View {
         let item = accessibilityElement(children: whole ? .ignore : .contain)
             .accessibilityLabel(Text(name))
+            .accessibilityIdentifier(PointableID.item)
         if let select {
             item.accessibilityAction { select() }
         } else {

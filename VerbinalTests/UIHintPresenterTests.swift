@@ -186,6 +186,7 @@ final class UIHintPresenterTests: XCTestCase {
                     List(0..<20, id: \.self, selection: $chosen.row) { Text("Entry \($0)") }.frame(height: 160)
                     HStack {
                         Text("Selectable").padding().pointableItem("selectable item") { chosen.item = "selectable item" }
+                        Text("Whole").padding().pointableItem("whole item", whole: true) { chosen.item = "whole item" }
                         Text("Card").padding().pointableItem("card only")
                         Button("Delete everything") { chosen.pressed = true }
                     }
@@ -223,6 +224,13 @@ final class UIHintPresenterTests: XCTestCase {
         let selectedItem = await presenter.select(selectable).selected
         XCTAssertTrue(selectedItem)
         XCTAssertEqual(chosen.item, "selectable item")
+
+        // One element with its action reads as a button: still an item, still selected.
+        let whole = try element("whole item")
+        XCTAssertEqual(whole.kind, .item)
+        let selectedWhole = await presenter.select(whole).selected
+        XCTAssertTrue(selectedWhole)
+        XCTAssertEqual(chosen.item, "whole item")
 
         let card = try element("card only")
         let selectedCard = await presenter.select(card).selected
@@ -265,7 +273,7 @@ final class UIHintPresenterTests: XCTestCase {
         XCTAssertTrue(section.closed)
         let opened = await presenter.setOpen(section, true)
         XCTAssertTrue(opened.done)
-        XCTAssertTrue(opened.appeared.contains { $0.name == "Hidden inside" }, "what was behind it, appeared")
+        XCTAssertEqual(opened.appeared.map(\.name), ["Hidden inside"], "what was behind it — and only that")
         let reopened = try XCTUnwrap(presenter.lastSnapshot.elements.first { $0.name == "Advanced" })
         XCTAssertFalse(reopened.closed)
         let shut = await presenter.setOpen(reopened, false)

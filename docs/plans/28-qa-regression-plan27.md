@@ -78,7 +78,7 @@ Record each case as **PASS / FAIL / BLOCKED**, with the tool's JSON and what the
 | 4.5 | `open_ui` `file browser`, then `close_ui` it. | The file browser opens, `inside` lists what appeared; it closes. |
 | 4.6 | Research: `open_ui` a collapsed collection (`closed: true`). | It opens; `inside` lists its observations. `close_ui` folds it again. |
 | 4.7 | Search: `open_ui` the `Preset` pop-up. | The menu opens and waits (`waiting: true`); `list_ui_targets` lists its items; `point_at_ui` on one draws above the menu. The person presses Esc, or `close_ui` closes it. Nothing is chosen. |
-| 4.8 | `open_ui` `ADQL` (a tab). | Refused, naming `set_search_tab`. |
+| 4.8 | `open_ui` `ADQL` (a tab). | Refused, naming `select_search_tab`. |
 
 ## 5. Hints are not marks; the window
 

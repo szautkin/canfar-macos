@@ -479,7 +479,7 @@ Taken by the person, 2026-09-30:
 2. **Tabs: the active one only.** A tab not showing — a Search, Results or ADQL tab, a Settings
    section, a page of results — is never switched to, by a listing, a hint or `open_ui`. Its controls
    are not targets; the tab itself is. The assistant goes there with the tools that navigate
-   (`navigate_to`, `set_search_tab`, `open_settings`, …), or asks the person.
+   (`navigate_to`, `select_search_tab`, `open_settings`, …), or asks the person.
 3. **Scrolled out of view** is not closed: the element is scrolled into view, unanimated, before its
    hint goes up (V).
 4. **Inside the window.** Bubbles, badges and the hint list stay within the window's visible content.

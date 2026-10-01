@@ -195,9 +195,12 @@ enum UIElementRules {
             }
         }
         let roleKind = kind(role: node.role, subrole: node.subrole)
-        // A group with a name of its own is one item of a list (`pointableItem`).
-        let itemKind: UIElementKind? = node.role == "AXGroup" && clean(node.label) != nil ? .item : nil
-        let kind: UIElementKind? = tagged.map { $0.canvas ? .canvas : (roleKind ?? .area) } ?? roleKind ?? itemKind
+        // An item of a list (`pointableItem`) is one, whatever its role — one
+        // with an action reads as a button; so is a group with a name of its own.
+        let marked = node.identifier == PointableID.item
+        let itemKind: UIElementKind? = marked || (node.role == "AXGroup" && clean(node.label) != nil) ? .item : nil
+        let kind: UIElementKind? = tagged.map { $0.canvas ? .canvas : (roleKind ?? .area) }
+            ?? (marked ? .item : roleKind ?? itemKind)
 
         // Scrolled away inside a scroll area: kept apart, to bring into view.
         let scrolledAway = !shows && !clips.isEmpty

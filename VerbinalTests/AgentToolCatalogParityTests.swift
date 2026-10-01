@@ -94,6 +94,28 @@ final class AgentToolCatalogParityTests: XCTestCase {
             "describe_app names tools that are not registered: \(unknown.sorted())")
     }
 
+    /// A tool's description that names another tool names one that exists:
+    /// QA found `set_search_tab` in three descriptions, for `select_search_tab`.
+    @MainActor
+    func testEveryToolADescriptionNamesIsRegistered() {
+        let tools = AppState().makeAgentTools()
+        let registered = Set(tools.map(\.name))
+        let verbs = ["get", "set", "list", "show", "open", "close", "select", "clear", "point", "run", "start",
+                     "delete", "navigate", "annotate", "export", "load", "save", "remove", "add", "use", "launch"]
+        let pattern = "\\b(" + verbs.joined(separator: "|") + ")_[a-z]+(?:_[a-z]+)*\\b"
+        let regex = try! NSRegularExpression(pattern: pattern)
+        var unknown: [String] = []
+        for tool in tools {
+            let text = tool.definition.description
+            let ns = text as NSString
+            for match in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+                let name = ns.substring(with: match.range)
+                if !registered.contains(name) { unknown.append("\(tool.name) names \(name)") }
+            }
+        }
+        XCTAssertTrue(unknown.isEmpty, "tool descriptions name tools that are not registered:\n" + unknown.joined(separator: "\n"))
+    }
+
     /// Snake_case identifiers that appear inside backticks in the brief.
     /// Stops at the first non-name character so `get_proposal_state(id)`
     /// and `get_current_view.mode` still yield the tool name.

@@ -184,6 +184,37 @@ final class UIElementRulesTests: XCTestCase {
         XCTAssertEqual(byID["search/button/Cancel — job-42"]?.item, "job-42")
     }
 
+    /// A name is matched first against what the call acts on: "CFHT" opens
+    /// the CFHT collection though rows and texts say CFHT too, and selects
+    /// a row though a button says it.
+    func testANameMeansWhatTheCallActsOn() {
+        let result = elements([
+            node("AXDisclosureTriangle", rect(10, 10, 14, 20), label: "CFHT, 15 items, expanded", expanded: true),
+            node("AXRow", rect(10, 40, 300, 24), children: [node("AXStaticText", rect(20, 44, 100, 16), text: "CFHT 1121260")]),
+            node("AXButton", rect(10, 80, 100, 24), label: "CFHT archive"),
+        ])
+        let snapshot = UISnapshot(windows: [window], elements: result.elements, duplicateIDs: [])
+        guard case .found(let section) = UITargetScope.match("CFHT", in: snapshot, preferring: [.disclosure, .popUp, .menuButton, .menu]) else {
+            return XCTFail("open: the section")
+        }
+        XCTAssertEqual(section.kind, .disclosure)
+        guard case .found(let row) = UITargetScope.match("CFHT", in: snapshot, preferring: [.row, .item]) else {
+            return XCTFail("select: the row")
+        }
+        XCTAssertEqual(row.kind, .row)
+        guard case .missing = UITargetScope.match("CFHT", in: snapshot) else {
+            return XCTFail("pointing: three equal answers, a question")
+        }
+    }
+
+    /// An item marked by `pointableItem` is an item whatever role it reads as.
+    func testAMarkedItemIsAnItemEvenAsAButton() {
+        let result = elements([node("AXButton", rect(0, 10, 600, 24), label: ".astropy", identifier: PointableID.item)])
+        XCTAssertEqual(result.elements.first?.kind, .item)
+        XCTAssertEqual(result.elements.first?.id, "search/item/.astropy")
+        XCTAssertEqual(result.elements.first?.stable, false)
+    }
+
     /// A folded section and a menu are shut until opened, and nothing behind
     /// them is listed.
     func testClosedThingsAreSaidToBeClosed() {

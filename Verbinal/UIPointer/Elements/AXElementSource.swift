@@ -142,6 +142,9 @@ final class AXElementSource: UIElementSource {
         handles.indices.contains(handle) ? handles[handle] : nil
     }
 
+    /// Every element of the last snapshot, by identity.
+    func everything() -> Set<AXUIElement> { Set(handles) }
+
     /// The handle the same element has in the last snapshot.
     func handle(of element: AXUIElement) -> Int? {
         handles.firstIndex { CFEqual($0, element) }

@@ -103,12 +103,13 @@ final class UIHintPresenter {
     /// C), and reads the screen again. Answers whether it worked, and the
     /// elements that appeared — what was behind it.
     func setOpen(_ element: UIElement, _ open: Bool) async -> (done: Bool, appeared: [UIElement]) {
-        let before = Set(lastSnapshot.elements.map(\.id))
+        // What appeared is found by identity: derived ids renumber when rows move.
+        let before = source.everything()
         let done = open ? await source.open(element) : await source.close(element)
         guard done else { return (false, []) }
         try? await Task.sleep(for: .milliseconds(element.kind == .disclosure ? 100 : 400))
         let now = snapshot()
-        return (true, now.elements.filter { !before.contains($0.id) })
+        return (true, now.elements.filter { source.element($0.handle).map { !before.contains($0) } ?? false })
     }
 
     /// Shows hints on elements of the last reading, as one set.

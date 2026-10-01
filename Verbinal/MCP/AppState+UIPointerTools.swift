@@ -44,7 +44,7 @@ extension AppState {
         let presenter = uiHintPresenter
         await presenter.ready()
         let snapshot = presenter.snapshot()
-        switch UITargetScope.match(args.target, in: snapshot) {
+        switch UITargetScope.match(args.target, in: snapshot, preferring: [.row, .item]) {
         case .missing(let candidates, _):
             return .init(selected: false, target: args.target,
                          message: snapshot.problem ?? "no single entry is called \"\(args.target)\"",
@@ -92,7 +92,8 @@ extension AppState {
                          inside: inside.map(UITargetView.init),
                          message: was == open ? "\(panel.name) was already \(open ? "shown" : "hidden")" : nil)
         }
-        switch UITargetScope.match(args.target, in: presenter.lastSnapshot) {
+        switch UITargetScope.match(args.target, in: presenter.lastSnapshot,
+                                   preferring: Set(UIElementKind.allCases.filter(\.opens))) {
         case .missing(let candidates, _):
             return .init(done: false, target: args.target,
                          message: presenter.lastSnapshot.problem ?? "no single closed section, panel or menu is called \"\(args.target)\"",
@@ -100,7 +101,7 @@ extension AppState {
         case .found(let element):
             guard element.kind.opens else {
                 let navigate = element.kind == .tab || element.kind == .segment
-                    ? "a tab is navigated to, never opened: navigate_to, set_search_tab or open_settings"
+                    ? "a tab is navigated to, never opened: navigate_to, select_search_tab or open_settings"
                     : "open_ui opens a folded section, a hidden panel or a menu"
                 return .init(done: false, target: args.target, id: element.id, kind: element.kind.rawValue,
                              message: "\(element.id) is a \(element.kind.rawValue): \(navigate)")

@@ -92,6 +92,9 @@ enum PointableID {
     static let canvasPrefix = "vbc:"
     /// Windows Verbinal names, to place or to leave out.
     static let windowPrefix = "vb-window:"
+    /// An item of a list (`pointableItem`): an item whatever role SwiftUI
+    /// gives it — one with an action reads as a button.
+    static let item = "vb-item"
 
     static func encode(_ id: String, canvas: Bool = false) -> String {
         (canvas ? canvasPrefix : prefix) + id

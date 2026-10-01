@@ -89,10 +89,18 @@ enum UITargetScope {
     /// out of sight counts as much as one in sight, and is brought into view.
     /// Two equal matches is a question, not an answer — whichever of them
     /// happens to be showing.
-    static func match(_ target: String, in snapshot: UISnapshot) -> Match {
+    ///
+    /// `preferring`: what the call acts on — sections and menus to open, a
+    /// list's entries to select. Those are tried first, so "CFHT" opens the
+    /// CFHT collection though rows and texts say CFHT too.
+    static func match(_ target: String, in snapshot: UISnapshot, preferring kinds: Set<UIElementKind> = []) -> Match {
         let front = elements(snapshot, window: nil)
         let frontAway = snapshot.front.map { snapshot.outOfSight(in: $0.index) } ?? []
-        if let found = best(target, in: front + frontAway) ?? best(target, in: snapshot.elements + snapshot.outOfSight) {
+        let everywhere = snapshot.elements + snapshot.outOfSight
+        let preferred = kinds.isEmpty ? nil
+            : best(target, in: (front + frontAway).filter { kinds.contains($0.kind) })
+                ?? best(target, in: everywhere.filter { kinds.contains($0.kind) })
+        if let found = preferred ?? best(target, in: front + frontAway) ?? best(target, in: everywhere) {
             return .found(found)
         }
         let targets = front.map(Self.target)
@@ -489,7 +497,7 @@ struct OpenCloseUITool: JSONReadTool {
     static func open(_ act: @escaping @Sendable (Args) async -> Output) -> Self {
         Self(definition: AIToolDefinition.withStaticSchema(
             name: "open_ui",
-            description: "Open one closed thing on purpose, to show the person what is inside: a folded section (closed: true), a panel they hid (hiddenPanels: the file browser), or a menu (a pop-up's or menu button's choices). Only that one opens; nothing else is touched, and nothing is pressed or chosen. It answers what appeared (`inside`), to list and hint like the rest. A menu stays open for the person — they choose from it or press Esc, and a hint never chooses for them; while it is open, list_ui_targets reads its items and show_ui_hints points at them. A tab is not opened: navigate there (navigate_to, set_search_tab, open_settings). close_ui closes it again. View state only; no proposal.",
+            description: "Open one closed thing on purpose, to show the person what is inside: a folded section (closed: true), a panel they hid (hiddenPanels: the file browser), or a menu (a pop-up's or menu button's choices). Only that one opens; nothing else is touched, and nothing is pressed or chosen. It answers what appeared (`inside`), to list and hint like the rest. A menu stays open for the person — they choose from it or press Esc, and a hint never chooses for them; while it is open, list_ui_targets reads its items and show_ui_hints points at them. A tab is not opened: navigate there (navigate_to, select_search_tab, open_settings). close_ui closes it again. View state only; no proposal.",
             schema: schema), act: act)
     }
 
