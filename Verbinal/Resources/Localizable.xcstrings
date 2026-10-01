@@ -4426,6 +4426,16 @@
         }
       }
     },
+    "CPU Cores" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cœurs de processeur"
+          }
+        }
+      }
+    },
     "CPU Cores:" : {
       "localizations" : {
         "fr" : {

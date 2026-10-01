@@ -50,6 +50,7 @@ struct ResourceSelectorView: View {
                         .monospacedDigit()
                         .frame(width: 40)
                 }
+                .named("CPU Cores", value: cores)
                 Slider(
                     value: Binding(
                         get: { Double(cores) },
@@ -58,6 +59,7 @@ struct ResourceSelectorView: View {
                     in: Double(minCores)...Double(maxCores),
                     step: 1
                 )
+                .named("CPU Cores", value: cores)
             }
 
             // RAM
@@ -75,6 +77,7 @@ struct ResourceSelectorView: View {
                         .monospacedDigit()
                         .frame(width: 40)
                 }
+                .named("RAM (GB)", value: ram)
                 Slider(
                     value: Binding(
                         get: { Double(ramPower2Index) },
@@ -87,6 +90,7 @@ struct ResourceSelectorView: View {
                     in: 0...Double(max(ramPower2Values.count - 1, 1)),
                     step: 1
                 )
+                .named("RAM (GB)", value: ram)
             }
 
             // GPUs
@@ -99,6 +103,7 @@ struct ResourceSelectorView: View {
                             .monospacedDigit()
                             .frame(width: 40)
                     }
+                    .named("GPUs", value: gpus)
                     Spacer()
                 }
             }
@@ -109,5 +114,14 @@ struct ResourceSelectorView: View {
         ramPower2Values.firstIndex(of: ram)
             ?? ramPower2Values.enumerated().min(by: { abs($0.element - ram) < abs($1.element - ram) })?.offset
             ?? 0
+    }
+}
+
+private extension View {
+    /// A resource control's name, as its caption beside it reads, and its
+    /// number as its value — SwiftUI does not tie the two, so VoiceOver and
+    /// an assistant read "1" for the cores stepper and nothing for its slider.
+    func named(_ label: LocalizedStringKey, value: Int) -> some View {
+        accessibilityLabel(Text(label)).accessibilityValue(Text("\(value)"))
     }
 }

@@ -96,6 +96,8 @@ struct HeadlessLaunchTabView: View {
                     Text("\(model.replicas)")
                         .monospacedDigit()
                 }
+                .accessibilityLabel(Text("Replicas"))
+                .accessibilityValue(Text("\(model.replicas)"))
                 .help("Number of parallel container replicas. REPLICA_ID and REPLICA_COUNT are auto-injected as env vars.")
             }
 

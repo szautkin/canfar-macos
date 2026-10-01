@@ -31,6 +31,7 @@ final class EveryScreenNamedTests: XCTestCase {
         "search.results": ["results.export", "results.columns", "results.rowsPerPage", "results.header", "results.filters"],
         "search.adql": ["adql.generate", "adql.execute"],
         "settings.agent": ["settings.agent", "settings.agent.allowExternal", "settings.agent.sessionLogs"],
+        "portal.launchForm": ["portal.launch"],
     ]
 
     private func read(_ state: AppState, place: String, _ root: some View,
@@ -96,6 +97,11 @@ final class EveryScreenNamedTests: XCTestCase {
             state.searchModel.selectedTab = tab
             problems += try await read(state, place: "search.\(tab.rawValue)", ContentView().uiWindowPlace(.main))
         }
+        // The launch form, a sheet of the Portal's own.
+        let launching = signedIn()
+        launching.currentMode = .portal
+        launching.launchFormPresented = true
+        problems += try await read(launching, place: "portal.launchForm", ContentView().uiWindowPlace(.main))
         XCTAssertTrue(problems.isEmpty, "\n" + problems.map(\.description).joined(separator: "\n"))
     }
 
