@@ -396,7 +396,7 @@ final class AppState {
         agentsService.sessionGate = SessionApprovalGate(approvals: sessionApprovals)
         sessionApprovalWindow = SessionApprovalWindow(approvals: sessionApprovals)
         // The app's other windows go with its last main window.
-        appWindows = AppWindows { [weak self] in self?.mainWindowClosed() }
+        appWindows = AppWindows { [weak self] closing in self?.mainWindowClosed(closing) }
         // A set of hints gone, however it went: in list_events, so a tour
         // can wait on the person's reading (plan 27).
         let events = agentsService.eventLog
@@ -576,12 +576,22 @@ final class AppState {
     #if os(macOS)
     @ObservationIgnored private var appWindows: AppWindows?
 
-    /// The last main window closed: Settings closes, hints go, and a session
-    /// request still waiting is declined — nobody is there to allow it.
-    func mainWindowClosed() {
-        UIWindowPlaces.shared.windows(.settings).forEach { $0.close() }
+    /// The last main window closed: every other window of the app goes with
+    /// it — Settings, a sheet left behind (the launch form), hints — the
+    /// sheets the app presents are dismissed, so they do not come back with
+    /// the next main window, and a session request still waiting is declined:
+    /// nobody is there to allow it.
+    func mainWindowClosed(_ closing: NSWindow? = nil) {
+        activeSheet = nil
+        launchFormPresented = false
+        showImageDiscoverySheet = false
+        cutoutEditor = nil
+        pendingViewerChoiceURL = nil
         uiHints.clearAll(.windowClosed)
         sessionApprovals.declineAll()
+        for window in NSApp.windows where window.isVisible && window !== closing {
+            if let parent = window.sheetParent { parent.endSheet(window) } else { window.close() }
+        }
     }
 
     /// Reads what is on screen and draws the hints over it.

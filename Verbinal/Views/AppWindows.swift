@@ -17,14 +17,14 @@ final class AppWindows {
     private let places: UIWindowPlaces
     private var observer: NSObjectProtocol?
 
-    init(places: UIWindowPlaces = .shared, lastMainWindowClosed: @escaping @MainActor () -> Void) {
+    init(places: UIWindowPlaces = .shared, lastMainWindowClosed: @escaping @MainActor (_ closing: NSWindow) -> Void) {
         self.places = places
         observer = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nil,
                                                           queue: .main) { [places] note in
             MainActor.assumeIsolated {
                 guard let closing = note.object as? NSWindow, places.place(of: closing) == .main,
                       !places.windows(.main).contains(where: { $0 !== closing }) else { return }
-                lastMainWindowClosed()
+                lastMainWindowClosed(closing)
             }
         }
     }

@@ -27,7 +27,7 @@ final class AppWindowsTests: XCTestCase {
     func testTheLastMainWindowsCloseIsHeard() {
         let places = UIWindowPlaces()
         var heard = 0
-        let watcher = AppWindows(places: places) { heard += 1 }
+        let watcher = AppWindows(places: places) { _ in heard += 1 }
         let first = window(.main, in: places, x: 100)
         let second = window(.main, in: places, x: 420)
         let settings = window(.settings, in: places, x: 740)
@@ -40,17 +40,24 @@ final class AppWindowsTests: XCTestCase {
         _ = watcher
     }
 
-    /// What goes: Settings, and every hint.
-    func testSettingsAndHintsGoWhenTheMainWindowCloses() {
+    /// What goes: every other window of the app — Settings, a sheet left
+    /// behind as its own window — every hint, and the sheets the app presents.
+    func testEveryOtherWindowGoesWhenTheMainWindowCloses() {
         let state = AppState()
         let settings = window(.settings, in: .shared, x: 740)
-        defer { settings.close() }
+        let leftBehind = window(.main, in: UIWindowPlaces(), x: 420)
+        defer { [settings, leftBehind].forEach { $0.close() } }
+        state.launchFormPresented = true
+        state.activeSheet = .about
         _ = state.uiHints.show([UIHint(id: "a", set: "", style: .ring, title: nil, text: nil, number: nil,
                                        frame: .init(x: 0, y: 0, width: 20, height: 20), kind: .button,
                                        screen: "landing", window: 1)],
                                numbered: false, dim: false, seconds: nil, replace: true)
         state.mainWindowClosed()
         XCTAssertFalse(settings.isVisible)
+        XCTAssertFalse(leftBehind.isVisible, "the launch form, left as its own window")
         XCTAssertTrue(state.uiHints.isEmpty)
+        XCTAssertFalse(state.launchFormPresented, "it does not come back with the next main window")
+        XCTAssertNil(state.activeSheet)
     }
 }

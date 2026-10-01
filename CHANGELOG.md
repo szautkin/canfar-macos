@@ -12,11 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
-- **Closing the main window closes Verbinal's other windows.** Settings
-  stayed open, with nothing behind it, after the main window closed. Now
-  Settings closes with the last main window, an assistant's hints go,
-  and a session request still waiting is declined — nobody is there to
-  allow it.
+- **Closing the main window closes Verbinal's other windows.** Settings,
+  or the Launch Session form, stayed open, with nothing behind it, after
+  the main window closed. Now every other window of the app closes with
+  the last main window, the forms it was showing do not come back with
+  the next one, an assistant's hints go, and a session request still
+  waiting is declined — nobody is there to allow it.
 - **VoiceOver names more of Verbinal.** Storage's files read as one row
   each — the file, its kind, size and date — instead of loose text and an
   icon read as "Move"; the Search form's fields say what they are; every
