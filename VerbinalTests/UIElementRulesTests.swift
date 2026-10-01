@@ -202,8 +202,16 @@ final class UIElementRulesTests: XCTestCase {
             return XCTFail("select: the row")
         }
         XCTAssertEqual(row.kind, .row)
-        guard case .missing = UITargetScope.match("CFHT", in: snapshot) else {
-            return XCTFail("pointing: three equal answers, a question")
+        guard case .found(let named) = UITargetScope.match("CFHT", in: snapshot) else {
+            return XCTFail("pointing: the one whose name is CFHT")
+        }
+        XCTAssertEqual(named.kind, .disclosure)
+        let twice = UISnapshot(windows: [window], elements: elements([
+            node("AXDisclosureTriangle", rect(10, 10, 14, 20), label: "CFHT, 15 items", expanded: true),
+            node("AXDisclosureTriangle", rect(10, 40, 14, 20), label: "CFHT, 2 items", expanded: true),
+        ]).elements, duplicateIDs: [])
+        guard case .missing = UITargetScope.match("CFHT", in: twice) else {
+            return XCTFail("two named CFHT: a question")
         }
     }
 

@@ -28,6 +28,18 @@ final class UIPointerTests: XCTestCase {
     }
 
     /// "agent" is in two labels: a question, not an answer.
+    /// "CFHT" means the collection named CFHT, not CFHTMEGAPIPE: a name's
+    /// leading part is a stronger answer than words it contains.
+    func testANamesLeadingPartIsWhatAPersonSays() {
+        let collections: [UIPointerMatcher.Target] = [
+            .init(id: "research/disclosure/CFHT, 15 items, expanded", label: "CFHT, 15 items, expanded", screen: "research"),
+            .init(id: "research/disclosure/CFHTMEGAPIPE, 1 items, expanded", label: "CFHTMEGAPIPE, 1 items, expanded", screen: "research"),
+        ]
+        XCTAssertEqual(UIPointerMatcher.best(collections, for: "CFHT")?.label, "CFHT, 15 items, expanded")
+        XCTAssertEqual(UIPointerMatcher.lead("Relaunch notebook1, astroml:latest"), "Relaunch notebook1")
+        XCTAssertEqual(UIPointerMatcher.lead("M101 · CFHT — Sep 30"), "M101")
+    }
+
     func testTwoEqualMatchesPointAtNothing() {
         XCTAssertNil(UIPointerMatcher.best(targets, for: "agent"))
         XCTAssertNil(UIPointerMatcher.best(targets, for: "nothing like this"))

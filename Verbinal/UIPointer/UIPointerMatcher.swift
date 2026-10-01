@@ -33,7 +33,8 @@ enum UIPointerMatcher {
 
     /// The one target meant, or nil when none matched or several did equally
     /// well. Tiers, strongest first, each resolved before the next: the id,
-    /// the label, a label containing the words, an id containing them. In a
+    /// the label, the label's leading part ("CFHT" in "CFHT, 15 items"), a
+    /// label containing the words, an id containing them. In a
     /// tier, a caption and the one control it names are one answer: the
     /// control.
     static func best(_ targets: [Target], for query: String) -> Target? {
@@ -42,6 +43,7 @@ enum UIPointerMatcher {
         let tiers: [(Target) -> Bool] = [
             { normalise($0.id) == wanted },
             { normalise($0.label) == wanted },
+            { normalise(lead($0.label)) == wanted },
             { normalise($0.label).contains(wanted) },
             { normalise($0.id).contains(wanted) },
         ]
@@ -53,6 +55,15 @@ enum UIPointerMatcher {
             if hits.count > 1 { return nil }   // two is a question, not an answer
         }
         return nil
+    }
+
+    /// A label's leading part: up to its first comma, dash or dot — the
+    /// name a person says of "CFHT, 15 items, expanded" or "notebook1,
+    /// astroml:latest".
+    static func lead(_ label: String) -> String {
+        let stops = [",", " — ", " · ", " - ", " ("]
+        let cut = stops.compactMap { label.range(of: $0)?.lowerBound }.min()
+        return cut.map { String(label[..<$0]) } ?? label
     }
 
     /// What to offer after a miss: names sharing a word first, then the rest.
