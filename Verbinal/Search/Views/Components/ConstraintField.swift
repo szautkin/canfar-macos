@@ -22,6 +22,8 @@ struct ConstraintField: View {
                 .foregroundStyle(.secondary)
             TextField(hint, text: $value)
                 .textFieldStyle(.roundedBorder)
+                // Named by its caption, for VoiceOver and for an assistant.
+                .accessibilityLabel(Text(label))
         }
     }
 }

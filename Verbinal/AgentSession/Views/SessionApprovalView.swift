@@ -77,6 +77,7 @@ struct SessionApprovalView: View {
                         .disabled(instructions == defaultInstructions)
                 }
                 TextEditor(text: $instructions)
+                    .textEditorName(String(localized: "Instructions for this session"))
                     .font(.callout)
                     .frame(minHeight: 110)
                     .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator))

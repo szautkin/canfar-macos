@@ -98,12 +98,13 @@ enum UIElementRules {
         var texts: [(frame: CGRect, words: String)] = []
         var seen: Set<String> = []
         var duplicates: [String] = []
-        walk(root, clip: window.frame, area: nil, window: window,
+        walk(root, clip: window.frame, area: nil, holderName: nil, window: window,
              drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
 
         // A control with no words of its own is called by its caption.
         for index in drafts.indices where drafts[index].name == nil && drafts[index].kind.isControl {
-            drafts[index].name = caption(for: drafts[index].visible, among: texts)
+            drafts[index].name = caption(for: drafts[index].visible, among: texts,
+                                         after: drafts[index].kind == .disclosure)
         }
 
         let ordered = drafts.sorted(by: readingOrder)
@@ -143,13 +144,16 @@ enum UIElementRules {
         var handle: Int
     }
 
-    private static func walk(_ node: UIRawNode, clip: CGRect, area: String?, window: UIWindowRef,
+    private static func walk(_ node: UIRawNode, clip: CGRect, area: String?, holderName: String?, window: UIWindowRef,
                              drafts: inout [Draft], texts: inout [(frame: CGRect, words: String)],
                              seen: inout Set<String>, duplicates: inout [String]) {
         if machineryRoles.contains(node.role) || node.subrole.map(machinerySubroles.contains) == true { return }
 
         // A scroll area shows only what is inside it.
         let clip = node.role == "AXScrollArea" ? clip.intersection(node.frame) : clip
+        // A text editor takes the name of what holds it: SwiftUI keeps a
+        // `TextEditor`'s label off its text view.
+        let holderName = (node.role == "AXGroup" || node.role == "AXScrollArea") ? clean(node.label) ?? holderName : holderName
         let visible = node.frame.intersection(clip)
         let shows = !visible.isNull && visible.width >= minimumSide && visible.height >= minimumSide
 
@@ -170,14 +174,15 @@ enum UIElementRules {
             if kind == .text, let words = name { texts.append((visible, words)) }
             let open = node.children.contains { $0.role == "AXMenu" }
             let closed = kind == .disclosure ? node.expanded == false : (kind.opens && !open)
-            drafts.append(Draft(kind: kind, stableID: tagged?.id, name: name ?? rowWords(node, kind: kind),
+            let lent = node.role == "AXTextArea" ? holderName : nil
+            drafts.append(Draft(kind: kind, stableID: tagged?.id, name: name ?? rowWords(node, kind: kind) ?? lent,
                                 help: clean(node.help), enabled: node.enabled, closed: closed,
                                 area: area, frame: node.frame, visible: visible, handle: node.handle))
         }
         guard walksInside(kind) else { return }
         let inner = kind == .area ? tagged?.id ?? area : area
         for child in node.children where !ownWindowRoles.contains(child.role) {
-            walk(child, clip: clip, area: inner, window: window,
+            walk(child, clip: clip, area: inner, holderName: holderName, window: window,
                  drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
         }
     }
@@ -204,8 +209,16 @@ enum UIElementRules {
     }
 
     /// The text a person reads as a control's caption: just before it on its
-    /// row, or just above it.
-    static func caption(for control: CGRect, among texts: [(frame: CGRect, words: String)]) -> String? {
+    /// row, or just above it — for a disclosure arrow, just after it ("▶ HST").
+    static func caption(for control: CGRect, among texts: [(frame: CGRect, words: String)],
+                        after: Bool = false) -> String? {
+        if after {
+            let following = texts.filter { text in
+                text.frame.minX >= control.maxX - 4 && text.frame.minX - control.maxX <= 40
+                    && text.frame.midY >= control.minY && text.frame.midY <= control.maxY
+            }
+            if let nearest = following.min(by: { $0.frame.minX < $1.frame.minX }) { return nearest.words }
+        }
         let sameRow = texts.filter { text in
             text.frame.maxX <= control.minX + 4 && control.minX - text.frame.maxX <= 200
                 && text.frame.midY >= control.minY && text.frame.midY <= control.maxY

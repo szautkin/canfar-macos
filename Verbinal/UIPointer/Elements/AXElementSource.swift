@@ -47,7 +47,7 @@ final class AXElementSource: UIElementSource {
 
         for axWindow in axWindows {
             let frame = Self.frame(of: axWindow)
-            guard let window = Self.window(at: frame), window.isVisible else { continue }
+            guard let window = Self.window(at: frame) else { continue }
             let place = places.place(of: window)
             if place?.isExcluded == true { continue }
             let kind: UIWindowRef.Kind = switch place {
@@ -164,8 +164,9 @@ final class AXElementSource: UIElementSource {
     private static func window(at frame: CGRect) -> NSWindow? {
         let top = NSScreen.screens.first?.frame.maxY ?? 0
         let cocoa = CGRect(x: frame.minX, y: top - frame.maxY, width: frame.width, height: frame.height)
+        // A closed window can linger in the list, at the same frame: only one showing counts.
         return NSApp.windows.first { window in
-            abs(window.frame.minX - cocoa.minX) < 1 && abs(window.frame.minY - cocoa.minY) < 1
+            window.isVisible && abs(window.frame.minX - cocoa.minX) < 1 && abs(window.frame.minY - cocoa.minY) < 1
                 && abs(window.frame.width - cocoa.width) < 1 && abs(window.frame.height - cocoa.height) < 1
         }
     }

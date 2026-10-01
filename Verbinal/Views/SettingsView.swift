@@ -21,13 +21,13 @@ struct SettingsView: View {
                 .environment(appState)
                 .tabItem { Label("General", systemImage: "gear") }
                 .tag(SettingsSection.general)
-                .pointable("settings.general", label: String(localized: "General"), screen: "settings.general")
+                .pointableArea("settings.general", label: String(localized: "General"), screen: "settings.general")
 
             PortalSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Portal", systemImage: "play.circle") }
                 .tag(SettingsSection.portal)
-                .pointable("settings.portal", label: String(localized: "Portal"), screen: "settings.portal")
+                .pointableArea("settings.portal", label: String(localized: "Portal"), screen: "settings.portal")
 
             // Master switch first, then the features that depend on it
             // (Image Discovery probe jobs, AI Compute), then the
@@ -36,36 +36,36 @@ struct SettingsView: View {
                 .environment(appState)
                 .tabItem { Label("AI Agent", image: "robot") }
                 .tag(SettingsSection.agent)
-                .pointable("settings.agent", label: String(localized: "AI Agent"), screen: "settings.agent")
+                .pointableArea("settings.agent", label: String(localized: "AI Agent"), screen: "settings.agent")
 
             ImageDiscoverySettingsTab()
                 .environment(appState)
                 .tabItem { Label("Image Discovery", systemImage: "shippingbox.and.arrow.backward") }
                 .tag(SettingsSection.imageDiscovery)
-                .pointable("settings.imageDiscovery", label: String(localized: "Image Discovery"), screen: "settings.imageDiscovery")
+                .pointableArea("settings.imageDiscovery", label: String(localized: "Image Discovery"), screen: "settings.imageDiscovery")
 
             AIComputeSettingsTab()
                 .environment(appState)
                 .tabItem { Label("AI Compute", systemImage: "cpu") }
                 .tag(SettingsSection.aiCompute)
-                .pointable("settings.aiCompute", label: String(localized: "AI Compute"), screen: "settings.aiCompute")
+                .pointableArea("settings.aiCompute", label: String(localized: "AI Compute"), screen: "settings.aiCompute")
 
             MCPIntegrationSettingsTab()
                 .environment(appState)
                 .tabItem { Label("MCP Clients", systemImage: "network") }
                 .tag(SettingsSection.mcpClients)
-                .pointable("settings.mcpClients", label: String(localized: "MCP Clients"), screen: "settings.mcpClients")
+                .pointableArea("settings.mcpClients", label: String(localized: "MCP Clients"), screen: "settings.mcpClients")
 
             EndpointsSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Endpoints", systemImage: "server.rack") }
                 .tag(SettingsSection.endpoints)
-                .pointable("settings.endpoints", label: String(localized: "Endpoints"), screen: "settings.endpoints")
+                .pointableArea("settings.endpoints", label: String(localized: "Endpoints"), screen: "settings.endpoints")
 
             AboutSettingsTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(SettingsSection.about)
-                .pointable("settings.about", label: String(localized: "About"), screen: "settings.about")
+                .pointableArea("settings.about", label: String(localized: "About"), screen: "settings.about")
         }
         // Resizable instead of a fixed 420 height: the AI Agent tab can
         // stack the autonomy controls + a ~160pt nested activity

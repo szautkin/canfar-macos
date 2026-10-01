@@ -70,6 +70,28 @@ final class UIElementRulesTests: XCTestCase {
         XCTAssertEqual(fields[2].id, "search/textField", "no name: its kind")
     }
 
+    /// A text editor is called by what holds it: SwiftUI keeps a
+    /// `TextEditor`'s label off its text view. A one-line field is not.
+    func testATextEditorIsCalledByWhatHoldsIt() {
+        let result = elements([
+            node("AXGroup", rect(10, 10, 400, 200), label: "ADQL query",
+                 children: [node("AXScrollArea", rect(10, 10, 400, 200),
+                                 children: [node("AXTextArea", rect(10, 10, 400, 200))])]),
+            node("AXGroup", rect(10, 300, 400, 60), label: "Spatial constraints",
+                 children: [node("AXTextField", rect(10, 300, 100, 24))]),
+        ])
+        XCTAssertEqual(result.elements.map(\.name), ["ADQL query", nil])
+    }
+
+    /// A disclosure arrow is called by the words after it, as a person reads "▶ HST".
+    func testADisclosureIsCalledByTheWordsAfterIt() {
+        let result = elements([
+            node("AXDisclosureTriangle", rect(10, 10, 14, 20), expanded: false),
+            node("AXStaticText", rect(30, 12, 60, 16), text: "HST, 3 items"),
+        ])
+        XCTAssertEqual(result.elements.first?.name, "HST, 3 items")
+    }
+
     /// What a field holds is never read: a text field's value is not in the
     /// tree the source gives, and a static text is the only words used.
     func testAFieldIsNamedNeverByItsValue() {

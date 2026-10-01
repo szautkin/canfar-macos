@@ -17,6 +17,7 @@ struct SessionInstructionsSection: View {
     var body: some View {
         Section {
             TextEditor(text: $text)
+                .textEditorName(String(localized: "Session Instructions"))
                 .font(.callout)
                 .frame(minHeight: 80)
                 .onChange(of: text) { _, new in

@@ -24,6 +24,8 @@ struct ADQLTextEditor: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
         guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        // Named for VoiceOver and for an assistant (plan 27).
+        textView.setAccessibilityLabel(String(localized: "ADQL query"))
 
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
@@ -106,6 +108,7 @@ struct ADQLTextEditor: View {
             .font(.system(.caption, design: .monospaced))
             .scrollContentBackground(.hidden)
             .disableAutocorrection(true)
+            .accessibilityLabel(Text("ADQL query"))
     }
 }
 #endif

@@ -75,6 +75,16 @@ extension View {
         modifier(PointableModifier(target: .init(id: id, label: label, screen: screen)))
     }
 
+    /// Lets an agent point at a region — a form's section, a row of column
+    /// headers — by `id`. The region becomes one accessibility container
+    /// named `label`, so its id is on it and not on each control inside
+    /// (plan 27).
+    func pointableArea(_ id: String, label: String, screen: String) -> some View {
+        accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(label))
+            .pointable(id, label: label, screen: screen)
+    }
+
     /// Draws an agent's pointer hint for the pointable controls inside.
     /// Put it at the root of each window and sheet.
     func uiPointerOverlay() -> some View {

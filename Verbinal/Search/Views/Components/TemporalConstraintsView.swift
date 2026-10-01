@@ -20,6 +20,7 @@ struct TemporalConstraintsView: View {
                     .foregroundStyle(.secondary)
                 TextField("e.g. 2020..2021, > 2019", text: $formState.observationDate)
                     .textFieldStyle(.roundedBorder)
+                    .accessibilityLabel(Text("Observation Date"))
                 Picker("Preset", selection: $formState.datePreset) {
                     ForEach(DatePresetValue.allCases) { preset in
                         Text(preset.displayName).tag(preset)

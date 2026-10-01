@@ -58,6 +58,7 @@ struct ObservationNotesView: View {
                     .strokeBorder(.quaternary, lineWidth: 1)
 
                 TextEditor(text: $editor.text)
+                    .textEditorName(String(localized: "Notes"))
                     .font(.system(.caption, design: .default))
                     .scrollContentBackground(.hidden)
                     .padding(6)

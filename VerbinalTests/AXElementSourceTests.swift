@@ -18,6 +18,7 @@ final class AXElementSourceTests: XCTestCase {
         @State private var on = true
         @State private var typed = "typed-secret-words"
         @State private var open = false
+        @State private var code = "print(1)"
         var body: some View {
             VStack(alignment: .leading) {
                 Button("Run Search") {}
@@ -28,6 +29,9 @@ final class AXElementSourceTests: XCTestCase {
                 DisclosureGroup("Advanced", isExpanded: $open) { Button("Inside") {} }
                 Button("Tagged") {}.pointable("sample.tagged", label: "Tagged", screen: "sample")
                 List { ForEach(0..<40) { Text("Row \($0)") } }.frame(height: 100)
+                TextEditor(text: $code)
+                    .textEditorName("Code to run", pointable: "sample.code")
+                    .frame(height: 60)
             }
             .padding()
             .uiWindowPlace(.main)
@@ -74,6 +78,7 @@ final class AXElementSourceTests: XCTestCase {
         XCTAssertNil(named("Inside"), "nothing behind a closed section")
         XCTAssertEqual(named("Tagged")?.id, "sample.tagged")
         XCTAssertEqual(named("Tagged")?.stable, true)
+        XCTAssertEqual(named("Code to run")?.id, "sample.code", "a TextEditor named past SwiftUI, on its text view")
         XCTAssertFalse(elements.contains { $0.name?.contains("typed-secret-words") == true }, "what is typed is never read")
         XCTAssertFalse(elements.contains { $0.kind == .button && $0.name == nil && $0.frame.width <= 16 },
                        "no window widgets")

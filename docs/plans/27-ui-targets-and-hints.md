@@ -20,8 +20,8 @@
 | Step | State | Commit |
 |---|---|---|
 | R review and spike | done — this document | |
-| A every element, from the accessibility tree | done — `UIElement`, `UIElementRules`, `UIElementSource`, `AXElementSource`, `UIWindowPlaces`, `AppState.screenName`; `.pointable` sets its `vb:` identifier; the tools move onto it in T | (this commit) |
-| L every element has a name (guardrail) | not started | |
+| A every element, from the accessibility tree | done — `UIElement`, `UIElementRules`, `UIElementSource`, `AXElementSource`, `UIWindowPlaces`, `AppState.screenName`; `.pointable` sets its `vb:` identifier; the tools move onto it in T | d7b53a1 |
+| L every element has a name (guardrail) | done — `EveryScreenNamedTests` over every mode, Search tab, Settings section and app-wide sheet; `.pointableArea` for the 14 tags on regions; names for the Search fields, the ADQL query and every `TextEditor` (`textEditorName`, past SwiftUI to the text view); a disclosure called by the words after it | (this commit) |
 | Y the layout: no overlaps, by rules | not started | |
 | O the overlay: rings, bubbles, badges, the hint list | not started | |
 | T the tools: `show_ui_hints`, `clear_ui_hints`, `point_at_ui`, `list_ui_targets` | not started | |

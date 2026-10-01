@@ -140,6 +140,7 @@ struct AIGuideToolRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextEditor(text: $draft)
+                .textEditorName(String(localized: "Your description"))
                 .font(.callout)
                 .frame(minHeight: 96, maxHeight: 160)
                 .padding(4)

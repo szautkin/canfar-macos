@@ -23,13 +23,14 @@ struct SpatialConstraintsView: View {
                 HStack {
                     TextField("e.g. M31, 10.68 41.27", text: $formState.target)
                         .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel(Text("Target / Coordinates"))
                         .onChange(of: formState.target) { _, _ in
                             onTargetChanged()
                         }
                     resolverStatusIndicator
                 }
             }
-            .pointable("search.target", label: String(localized: "Target / Coordinates"), screen: "search")
+            .pointableArea("search.target", label: String(localized: "Target / Coordinates"), screen: "search")
 
             Picker("Resolver", selection: $formState.resolver) {
                 ForEach(ResolverValue.allCases) { resolver in

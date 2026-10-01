@@ -185,6 +185,7 @@ struct WorkflowsView: View {
             }
 
             TextEditor(text: $editorText)
+                .textEditorName(String(localized: "Workflow text"))
                 .fontDesign(.monospaced)
             HStack {
                 Button(String(localized: "Wf_Save")) {

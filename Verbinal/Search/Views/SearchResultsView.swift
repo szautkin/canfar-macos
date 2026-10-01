@@ -192,7 +192,7 @@ struct SearchResultsView: View {
                     .help(Text("Next page"))
                     .accessibilityLabel("Next page")
                 }
-                .pointable("results.pages", label: String(localized: "Previous and next page"), screen: "search.results")
+                .pointableArea("results.pages", label: String(localized: "Previous and next page"), screen: "search.results")
             }
 
             if !resultsModel.results.isEmpty {
@@ -269,10 +269,10 @@ struct SearchResultsView: View {
                         } header: {
                             VStack(spacing: 0) {
                                 sortableHeaderRow(columns: visibleCols)
-                                    .pointable("results.header", label: String(localized: "Column headers — sort and units"),
+                                    .pointableArea("results.header", label: String(localized: "Column headers — sort and units"),
                                                screen: "search.results")
                                 filterRow(columns: visibleCols)
-                                    .pointable("results.filters", label: String(localized: "Column filters"), screen: "search.results")
+                                    .pointableArea("results.filters", label: String(localized: "Column filters"), screen: "search.results")
                                 Divider()
                             }
                         }

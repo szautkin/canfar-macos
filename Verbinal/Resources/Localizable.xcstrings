@@ -1716,6 +1716,16 @@
         }
       }
     },
+    "ADQL query" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requête ADQL"
+          }
+        }
+      }
+    },
     "Advanced" : {
       "localizations" : {
         "fr" : {
@@ -18549,6 +18559,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Avec l'application automatique, le code de votre assistant s'exécute sans vous demander. Désactivez-la dans Réglages ▸ Agent IA pour approuver chaque exécution."
+          }
+        }
+      }
+    },
+    "Workflow text" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texte du workflow"
           }
         }
       }
