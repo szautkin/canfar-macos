@@ -331,6 +331,12 @@ final class AppState {
         // first-party addon can read the CADC token without re-authing. Default
         // is unset when the entitlement isn't granted — the call is a no-op.
         KeychainStorage.configure(accessGroup: "A4ABW5VD88.codebg.verbinal.family")
+        // Under unit tests the app keeps its own keychain items: a test never
+        // reads the person's CADC token — macOS would stop the test run to
+        // ask them — and never saves or clears it, signing them out.
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            KeychainStorage.configure(service: "com.codebg.Verbinal.unit-tests")
+        }
 
         // Subscribe to MetricKit so crash/hang/CPU-exception payloads
         // accumulate in App Store Connect's Diagnostics dashboard.
