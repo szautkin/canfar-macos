@@ -17,6 +17,8 @@ struct UITargetView: Encodable, Sendable, Equatable {
     var help: String?
     let screen: String
     var area: String?
+    /// The list item it belongs to, by name.
+    var item: String?
     let enabled: Bool
     /// A folded section or a menu, shut: `open_ui` opens it.
     var closed: Bool?
@@ -34,6 +36,7 @@ struct UITargetView: Encodable, Sendable, Equatable {
         help = element.help
         screen = element.screen
         area = element.area
+        item = element.item
         enabled = element.enabled
         closed = element.closed ? true : nil
         inSight = element.inSight ? nil : false
@@ -101,8 +104,11 @@ enum UITargetScope {
         UIPointerMatcher.best(elements.map(Self.target), for: target).flatMap { t in elements.first { $0.id == t.id } }
     }
 
+    /// A control in a list item answers to its words with the item's:
+    /// "Relaunch notebook1".
     private static func target(_ element: UIElement) -> UIPointerMatcher.Target {
-        .init(id: element.id, label: element.name ?? "", screen: element.screen, control: element.kind.isControl)
+        let words = [element.name, element.item].compactMap { $0 }.joined(separator: " ")
+        return .init(id: element.id, label: words, screen: element.screen, control: element.kind.isControl)
     }
 }
 
@@ -223,6 +229,8 @@ struct ShowUIHintsTool: JSONReadTool {
         let candidates: [UITargetView]
         /// Closed things on screen it may be behind: open_ui opens one.
         let closed: [UITargetView]
+        /// Why it was not shown, when it was found.
+        var reason: String? = nil
     }
 
     struct Output: Encodable, Sendable {

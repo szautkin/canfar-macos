@@ -43,19 +43,22 @@ extension AppState {
         await presenter.ready()
         var snapshot = presenter.snapshot()
         // Targets scrolled out of sight come into view first; then the screen
-        // is read again. Each is found again by identity, not by its name: a
-        // derived id ("Relaunch#5") counts what is in sight, and that changed.
-        let away = (args.hints ?? []).prefix(ShowUIHintsTool.maxHints).compactMap { hint -> (String, UIElement)? in
-            if case .found(let element) = UITargetScope.match(hint.target, in: snapshot), !element.inSight {
-                return (hint.target, element)
-            }
+        // is read again. Each target is found again by identity, not by its
+        // name: a derived id ("Relaunch#5") counts what is in sight, and that
+        // changed — and one in sight before may have scrolled away for another.
+        let matched = (args.hints ?? []).prefix(ShowUIHintsTool.maxHints).compactMap { hint -> (String, UIElement)? in
+            if case .found(let element) = UITargetScope.match(hint.target, in: snapshot) { return (hint.target, element) }
             return nil
         }
-        var broughtIn: [String: UIElement] = [:]
-        if !away.isEmpty {
-            let found = await presenter.bringIntoView(away.map(\.1))
+        var now: [String: UIElement] = [:]
+        var wasInSight: [String: Bool] = [:]
+        if matched.contains(where: { !$0.1.inSight }) {
+            let found = await presenter.bringIntoView(matched.map(\.1))
             snapshot = presenter.lastSnapshot
-            for (target, element) in away { broughtIn[target] = found[element.id] }
+            for (target, element) in matched {
+                now[target] = found[element.id]
+                wasInSight[target] = element.inSight
+            }
         }
         var output = ShowUIHintsTool.Output()
         var requests: [UIHintPresenter.Request] = []
@@ -68,11 +71,14 @@ extension AppState {
             output.dropped = max(0, scoped.count - ShowUIHintsTool.maxRings)
         }
         for hint in (args.hints ?? []).prefix(ShowUIHintsTool.maxHints) {
-            let match = broughtIn[hint.target].map(UITargetScope.Match.found) ?? UITargetScope.match(hint.target, in: snapshot)
+            let match = now[hint.target].map(UITargetScope.Match.found) ?? UITargetScope.match(hint.target, in: snapshot)
             switch match {
             case .found(let element) where !element.inSight:
-                output.missing.append(.init(target: hint.target, candidates: [], closed: []))
-                output.message = "\(hint.target) is scrolled out of sight and could not be brought into view"
+                let reason = wasInSight[hint.target] == true
+                    ? "went out of sight to bring the others into view: they do not fit in sight together — show it on its own"
+                    : "is scrolled out of sight and could not be brought into view"
+                output.missing.append(.init(target: hint.target, candidates: [], closed: [], reason: reason))
+                output.message = "\(hint.target) \(reason)"
             case .found(let element):
                 let words = hint.text != nil || hint.title != nil
                 requests.removeAll { $0.element.id == element.id }

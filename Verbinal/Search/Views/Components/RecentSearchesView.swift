@@ -117,5 +117,6 @@ struct RecentSearchesView: View {
         }
         .padding(8)
         .background(RoundedRectangle(cornerRadius: 6).fill(.background.secondary))
+        .pointableItem(search.name)
     }
 }

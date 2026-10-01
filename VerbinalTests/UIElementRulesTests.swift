@@ -80,7 +80,7 @@ final class UIElementRulesTests: XCTestCase {
             node("AXGroup", rect(10, 300, 400, 60), label: "Spatial constraints",
                  children: [node("AXTextField", rect(10, 300, 100, 24))]),
         ])
-        XCTAssertEqual(result.elements.map(\.name), ["ADQL query", nil])
+        XCTAssertEqual(result.elements.filter { $0.kind == .textField }.map(\.name), ["ADQL query", nil])
     }
 
     /// A disclosure arrow is called by the words after it, as a person reads "▶ HST".
@@ -159,6 +159,29 @@ final class UIElementRulesTests: XCTestCase {
         XCTAssertEqual(deletes.map(\.visible.minY), [100, 200], "top first")
         XCTAssertEqual(result.duplicateIDs, ["results.export"])
         XCTAssertEqual(result.elements.filter { $0.id == "results.export" }.count, 1)
+    }
+
+    /// An item of a list — a group with a name — and a row lend their names
+    /// to the controls in them, so each "Relaunch" says whose it is.
+    func testAListsItemsAndRowsNameTheirControls() {
+        let result = elements([
+            node("AXGroup", rect(10, 10, 300, 60), label: "notebook1, astroml:latest",
+                 children: [node("AXButton", rect(20, 40, 60, 20), label: "Relaunch")]),
+            node("AXGroup", rect(10, 80, 300, 60), label: "desktop2, desktop:1.0",
+                 children: [node("AXButton", rect(20, 110, 60, 20), label: "Relaunch")]),
+            node("AXRow", rect(10, 150, 300, 30), children: [
+                node("AXCell", rect(10, 150, 300, 30), children: [
+                    node("AXStaticText", rect(20, 155, 100, 16), text: "job-42"),
+                    node("AXButton", rect(200, 155, 60, 20), label: "Cancel"),
+                ]),
+            ]),
+        ])
+        let byID = Dictionary(uniqueKeysWithValues: result.elements.map { ($0.id, $0) })
+        XCTAssertEqual(byID["search/item/notebook1, astroml:latest"]?.kind, .item)
+        XCTAssertEqual(byID["search/button/Relaunch — notebook1, astroml:latest"]?.item, "notebook1, astroml:latest")
+        XCTAssertNotNil(byID["search/button/Relaunch — desktop2, desktop:1.0"], "each Relaunch says whose")
+        XCTAssertEqual(byID["search/row/job-42"]?.kind, .row)
+        XCTAssertEqual(byID["search/button/Cancel — job-42"]?.item, "job-42")
     }
 
     /// A folded section and a menu are shut until opened, and nothing behind

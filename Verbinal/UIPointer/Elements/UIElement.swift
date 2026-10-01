@@ -10,7 +10,7 @@ import Foundation
 /// What sort of thing an element is, in the words an assistant uses (plan 27).
 enum UIElementKind: String, Codable, Sendable, CaseIterable {
     case button, toggle, radio, segment, tab, textField, secureField, popUp, menuButton
-    case slider, stepper, disclosure, link, row, menu, menuItem
+    case slider, stepper, disclosure, link, row, item, menu, menuItem
     case image, canvas, indicator, text, area
 
     /// A control a person acts on — what `list_ui_targets` lists by default.
@@ -20,6 +20,9 @@ enum UIElementKind: String, Codable, Sendable, CaseIterable {
         default: true
         }
     }
+
+    /// One entry of a list, holding its own controls: they are named with it.
+    var holds: Bool { self == .item || self == .row }
 
     /// Closed until opened: a menu's choices, a folded section's contents.
     var opens: Bool {
@@ -62,6 +65,8 @@ struct UIElement: Equatable, Sendable, Identifiable {
     let screen: String
     /// The hand-tagged area it is in, if any.
     let area: String?
+    /// The list item it belongs to — a recent launch, an image — by name.
+    var item: String? = nil
     /// The whole element, and the part not clipped by a scroll area — both
     /// in its window's points, top-left origin. `visible` is null for an
     /// element scrolled out of sight.

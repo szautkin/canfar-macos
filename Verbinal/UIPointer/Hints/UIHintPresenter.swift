@@ -66,23 +66,27 @@ final class UIHintPresenter {
         return lastSnapshot
     }
 
-    /// Scrolls elements of the last reading that are out of sight into view,
-    /// waits for the scroll to settle, and reads the screen again (plan 27
-    /// V). Answers each element as it is now, by its old id — in sight, or
-    /// absent when it would not come.
+    /// Scrolls those of `elements` (of the last reading) that are out of
+    /// sight into view, waits for the scroll to settle, and reads the screen
+    /// again (plan 27 V). Answers every one of them as it is now, by its old
+    /// id, found again by identity: in sight — or out of it, when bringing
+    /// another in scrolled it away — or absent when it is gone.
     func bringIntoView(_ elements: [UIElement]) async -> [String: UIElement] {
-        var away: [(id: String, element: AXUIElement)] = []
-        for element in elements where !element.inSight {
-            if let moved = await source.scrollIntoView(element) { away.append((element.id, moved)) }
+        let held = elements.compactMap { element in
+            source.element(element.handle).map { (original: element, element: $0) }
         }
-        guard !away.isEmpty else { return [:] }
+        guard held.contains(where: { !$0.original.inSight }) else { return [:] }
+        for entry in held where !entry.original.inSight {
+            _ = await source.scrollIntoView(entry.original)
+        }
         try? await Task.sleep(for: .milliseconds(200))
         let now = snapshot()
+        let everything = now.elements + now.outOfSight
         var found: [String: UIElement] = [:]
-        for (id, element) in away {
-            guard let handle = source.handle(of: element),
-                  let current = now.elements.first(where: { $0.handle == handle }) else { continue }
-            found[id] = current
+        for entry in held {
+            guard let handle = source.handle(of: entry.element),
+                  let current = everything.first(where: { $0.handle == handle }) else { continue }
+            found[entry.original.id] = current
         }
         return found
     }

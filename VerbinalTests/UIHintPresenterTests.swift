@@ -134,6 +134,7 @@ final class UIHintPresenterTests: XCTestCase {
         let found = await presenter.bringIntoView([away])
         let now = try XCTUnwrap(found[away.id], "found again")
         XCTAssertTrue(now.inSight)
+        XCTAssertTrue(now.inSight)
         XCTAssertEqual(now.name, "Item 25")
         presenter.show([.init(element: now, title: nil, text: "Here it is.", style: .bubble)],
                        numbered: false, dim: false, seconds: nil, replace: true)

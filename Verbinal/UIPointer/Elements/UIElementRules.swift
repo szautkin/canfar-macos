@@ -93,7 +93,7 @@ enum UIElementRules {
     /// apart. Rows, areas and menus hold controls of their own.
     private static func walksInside(_ kind: UIElementKind?) -> Bool {
         switch kind {
-        case nil, .row, .area, .popUp, .menuButton, .menu: true
+        case nil, .row, .item, .area, .popUp, .menuButton, .menu: true
         default: false
         }
     }
@@ -105,7 +105,7 @@ enum UIElementRules {
         var texts: [Text] = []
         var seen: Set<String> = []
         var duplicates: [String] = []
-        walk(root, clip: window.frame, clips: [], area: nil, holderName: nil, window: window,
+        walk(root, clip: window.frame, clips: [], area: nil, item: nil, holderName: nil, window: window,
              drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
 
         // A control with no words of its own is called by its caption — one
@@ -128,7 +128,9 @@ enum UIElementRules {
             if let stable = draft.stableID {
                 id = stable
             } else {
-                let base = derivedID(screen: window.screen, kind: draft.kind, name: draft.name)
+                // A control in a list's item or row is named with it: "Relaunch — notebook1".
+                let named = draft.item.flatMap { item in draft.kind.holds ? nil : draft.name.map { "\($0) — \(item)" } } ?? draft.name
+                let base = derivedID(screen: window.screen, kind: draft.kind, name: named)
                 let count = counts[base, default: 0] + 1
                 counts[base] = count
                 id = count == 1 ? base : "\(base)#\(count)"
@@ -137,7 +139,7 @@ enum UIElementRules {
             return UIElement(
                 id: id, stable: draft.stableID != nil, kind: draft.kind, name: draft.name,
                 help: draft.help == draft.name ? nil : draft.help, enabled: draft.enabled, closed: draft.closed,
-                screen: window.screen, area: draft.area,
+                screen: window.screen, area: draft.area, item: draft.kind.holds ? nil : draft.item,
                 frame: draft.frame.offsetBy(dx: -origin.x, dy: -origin.y),
                 visible: draft.inSight ? draft.visible.offsetBy(dx: -origin.x, dy: -origin.y) : .null,
                 window: window.index, handle: draft.handle, clips: draft.clips)
@@ -159,6 +161,7 @@ enum UIElementRules {
         var enabled: Bool
         var closed: Bool
         var area: String?
+        var item: String?
         var frame: CGRect
         var visible: CGRect
         var handle: Int
@@ -166,7 +169,8 @@ enum UIElementRules {
         var inSight: Bool
     }
 
-    private static func walk(_ node: UIRawNode, clip: CGRect, clips: [Int], area: String?, holderName: String?, window: UIWindowRef,
+    private static func walk(_ node: UIRawNode, clip: CGRect, clips: [Int], area: String?, item: String?,
+                             holderName: String?, window: UIWindowRef,
                              drafts: inout [Draft], texts: inout [Text],
                              seen: inout Set<String>, duplicates: inout [String]) {
         if machineryRoles.contains(node.role) || node.subrole.map(machinerySubroles.contains) == true { return }
@@ -191,7 +195,9 @@ enum UIElementRules {
             }
         }
         let roleKind = kind(role: node.role, subrole: node.subrole)
-        let kind: UIElementKind? = tagged.map { $0.canvas ? .canvas : (roleKind ?? .area) } ?? roleKind
+        // A group with a name of its own is one item of a list (`pointableItem`).
+        let itemKind: UIElementKind? = node.role == "AXGroup" && clean(node.label) != nil ? .item : nil
+        let kind: UIElementKind? = tagged.map { $0.canvas ? .canvas : (roleKind ?? .area) } ?? roleKind ?? itemKind
 
         // Scrolled away inside a scroll area: kept apart, to bring into view.
         let scrolledAway = !shows && !clips.isEmpty
@@ -204,13 +210,15 @@ enum UIElementRules {
             let lent = node.role == "AXTextArea" ? holderName : nil
             drafts.append(Draft(kind: kind, stableID: tagged?.id, name: name ?? rowWords(node, kind: kind) ?? lent,
                                 help: clean(node.help), enabled: node.enabled, closed: closed,
-                                area: area, frame: node.frame, visible: shows ? visible : .null, handle: node.handle,
+                                area: area, item: item, frame: node.frame, visible: shows ? visible : .null, handle: node.handle,
                                 clips: clips, inSight: shows))
         }
         guard walksInside(kind) else { return }
         let inner = kind == .area ? tagged?.id ?? area : area
+        // An item or a row lends its name to the controls in it.
+        let innerItem = kind?.holds == true ? clean(node.label) ?? rowWords(node, kind: .row) ?? item : item
         for child in node.children where !ownWindowRoles.contains(child.role) {
-            walk(child, clip: clip, clips: clips, area: inner, holderName: holderName, window: window,
+            walk(child, clip: clip, clips: clips, area: inner, item: innerItem, holderName: holderName, window: window,
                  drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
         }
     }

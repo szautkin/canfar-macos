@@ -76,6 +76,7 @@ struct CanfarImageRowCard: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.platformSeparator, lineWidth: 0.5)
         )
+        .pointableItem(row.image.label)
     }
 
     @ViewBuilder

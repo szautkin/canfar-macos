@@ -28,6 +28,14 @@ extension View {
             .accessibilityIdentifier(PointableID.encode(id))
     }
 
+    /// One item of a list — a recent launch, an image, a saved query — named
+    /// by what the person reads on it, so an assistant can point at the item
+    /// and its buttons say whose they are ("Relaunch — notebook1").
+    func pointableItem(_ name: String) -> some View {
+        accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(name))
+    }
+
     /// An image's stable id: a FITS or cube canvas, which hints keep off so
     /// its marks stay in sight.
     func pointableCanvas(_ id: String, label: String) -> some View {

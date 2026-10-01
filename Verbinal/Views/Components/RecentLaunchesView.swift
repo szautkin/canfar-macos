@@ -194,6 +194,7 @@ struct RecentLaunchesView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.platformSeparator, lineWidth: 0.5)
         )
+        .pointableItem("\(launch.name), \(launch.imageLabel)")
     }
 
     // MARK: - Display Helpers (delegated to shared SessionDisplay)
