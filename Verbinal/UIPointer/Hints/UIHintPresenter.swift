@@ -91,6 +91,14 @@ final class UIHintPresenter {
         return found
     }
 
+    /// Selects a row or item of the last reading — brought into view first —
+    /// as a click selects it. Answers it as it is now, and whether it is.
+    func select(_ element: UIElement) async -> (element: UIElement, selected: Bool) {
+        var current = element
+        if !element.inSight, let moved = await bringIntoView([element])[element.id] { current = moved }
+        return (current, await source.select(current))
+    }
+
     /// Shows hints on elements of the last reading, as one set.
     @discardableResult
     func show(_ requests: [Request], numbered: Bool, dim: Bool, seconds: Double?, replace: Bool) -> String {

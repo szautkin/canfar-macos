@@ -85,14 +85,14 @@ enum UITargetScope {
     }
 
     /// The one element `target` names — by its id, its name, or words of
-    /// them — in the window in front, else anywhere on screen; failing
-    /// those, one scrolled out of sight, to bring into view. Two equal
-    /// matches is a question, not an answer.
+    /// them — in the window in front, else anywhere on screen; one scrolled
+    /// out of sight counts as much as one in sight, and is brought into view.
+    /// Two equal matches is a question, not an answer — whichever of them
+    /// happens to be showing.
     static func match(_ target: String, in snapshot: UISnapshot) -> Match {
         let front = elements(snapshot, window: nil)
         let frontAway = snapshot.front.map { snapshot.outOfSight(in: $0.index) } ?? []
-        if let found = best(target, in: front) ?? best(target, in: snapshot.elements)
-            ?? best(target, in: frontAway) ?? best(target, in: snapshot.outOfSight) {
+        if let found = best(target, in: front + frontAway) ?? best(target, in: snapshot.elements + snapshot.outOfSight) {
             return .found(found)
         }
         let targets = front.map(Self.target)
@@ -394,6 +394,45 @@ struct PointAtUITool: JSONReadTool {
                           ? "no single element is called \"\(args.target)\"; these are on screen"
                           : "nothing on screen is called \"\(args.target)\" — navigate_to or open_settings first"))
     }
+}
+
+// MARK: - select_ui
+
+struct SelectUITool: JSONReadTool {
+    static var verbClass: VerbClass { .viewState }
+
+    struct Args: Decodable, Sendable {
+        let target: String
+    }
+
+    struct Output: Encodable, Sendable {
+        let selected: Bool
+        var target: String?
+        /// Its id now.
+        var id: String?
+        var message: String?
+        /// When the name did not land on exactly one element: what there is.
+        var candidates: [UITargetView] = []
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "select_ui",
+        description: "Select an entry of a list — a file in Storage, a row of a list that selects (downloaded observations, images, runs) — as the person's click would, so the screen shows it chosen. Name it as point_at_ui does; one scrolled out of sight is brought into view first. It selects and nothing else: it never presses a button, deletes, loads or launches — those are their own tools, or the person's. A list whose entries do not select (recent launches, recent searches, saved queries: they act through their buttons) answers `selected: false`, saying so: point at the button instead. View state only; no proposal.",
+        schema: #"""
+        {
+          "type": "object",
+          "required": ["target"],
+          "properties": {
+            "target": { "type": "string", "minLength": 1, "description": "An entry's id or name, from list_ui_targets." }
+          },
+          "additionalProperties": false
+        }
+        """#
+    )
+
+    let select: @Sendable (Args) async -> Output
+
+    func handle(_ args: Args, context: AIToolContext) async throws -> Output { await select(args) }
 }
 
 // MARK: - open_settings / close_settings

@@ -78,6 +78,7 @@ enum AIGuideCatalog {
         "point_at_ui": "navigation",
         "show_ui_hints": "navigation",
         "clear_ui_hints": "navigation",
+        "select_ui": "navigation",
         "capture_view": "navigation",
         "open_settings": "navigation",
         "close_settings": "navigation",

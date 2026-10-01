@@ -176,6 +176,32 @@ final class AXElementSource: UIElementSource {
         return target
     }
 
+    /// Selects a list's row or item of the last snapshot, as a click selects
+    /// it: a row by its selected state — confirmed, since a list without a
+    /// selection keeps none — an item by its own action, which for an item
+    /// is its selection (`pointableItem(select:)`). Nothing else: a button is
+    /// never pressed by this. Answers whether it is selected.
+    func select(_ element: UIElement) async -> Bool {
+        guard let target = self.element(element.handle) else { return false }
+        switch element.kind {
+        case .row:
+            var settable: DarwinBoolean = false
+            guard AXUIElementIsAttributeSettable(target, kAXSelectedAttribute as CFString, &settable) == .success,
+                  settable.boolValue,
+                  AXUIElementSetAttributeValue(target, kAXSelectedAttribute as CFString, kCFBooleanTrue) == .success
+            else { return false }
+            try? await Task.sleep(for: .milliseconds(120))
+            return (Self.value(target, kAXSelectedAttribute) as? Bool) == true
+        case .item:
+            var names: CFArray?
+            guard AXUIElementCopyActionNames(target, &names) == .success,
+                  (names as? [String])?.contains(kAXPressAction) == true else { return false }
+            return AXUIElementPerformAction(target, kAXPressAction as CFString) == .success
+        default:
+            return false
+        }
+    }
+
     /// Pages tried, at most, in one scroll area.
     static let maxPages = 30
 

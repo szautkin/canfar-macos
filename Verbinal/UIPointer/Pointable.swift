@@ -28,12 +28,22 @@ extension View {
             .accessibilityIdentifier(PointableID.encode(id))
     }
 
-    /// One item of a list — a recent launch, an image, a saved query — named
-    /// by what the person reads on it, so an assistant can point at the item
-    /// and its buttons say whose they are ("Relaunch — notebook1").
-    func pointableItem(_ name: String) -> some View {
-        accessibilityElement(children: .contain)
+    /// One item of a list — a recent launch, an image, a saved query, a
+    /// file — named by what the person reads on it, so an assistant can
+    /// point at the item and its buttons say whose they are ("Relaunch —
+    /// notebook1"). `whole`: the item is one element, its parts not apart.
+    /// `select`: what clicking the item does when the list selects — its
+    /// default action, and what `select_ui` does; an item without it does not
+    /// select.
+    @ViewBuilder
+    func pointableItem(_ name: String, whole: Bool = false, select: (() -> Void)? = nil) -> some View {
+        let item = accessibilityElement(children: whole ? .ignore : .contain)
             .accessibilityLabel(Text(name))
+        if let select {
+            item.accessibilityAction { select() }
+        } else {
+            item
+        }
     }
 
     /// An image's stable id: a FITS or cube canvas, which hints keep off so

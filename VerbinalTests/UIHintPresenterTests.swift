@@ -166,6 +166,74 @@ final class UIHintPresenterTests: XCTestCase {
         XCTAssertEqual(found[away.id]?.inSight, true, "scrolled into view")
     }
 
+    @Observable
+    @MainActor
+    final class Chosen {
+        var row: Int?
+        var item: String?
+        var pressed = false
+    }
+
+    /// select_ui selects as a click does: a list's row by its selected state,
+    /// an item by its own action — and never presses a button.
+    func testSelectingARowAnItemAndNeverAButton() async throws {
+        try await AXReadable.require()
+        let chosen = Chosen()
+        struct Lists: View {
+            @Bindable var chosen: Chosen
+            var body: some View {
+                VStack {
+                    List(0..<20, id: \.self, selection: $chosen.row) { Text("Entry \($0)") }.frame(height: 160)
+                    HStack {
+                        Text("Selectable").padding().pointableItem("selectable item") { chosen.item = "selectable item" }
+                        Text("Card").padding().pointableItem("card only")
+                        Button("Delete everything") { chosen.pressed = true }
+                    }
+                }
+                .padding().frame(width: 600, height: 400).uiWindowPlace(.main)
+            }
+        }
+        let window = NSWindow(contentRect: NSRect(x: 240, y: 240, width: 600, height: 400),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: Lists(chosen: chosen))
+        window.orderFrontRegardless()
+        defer { window.close() }
+        let presenter = UIHintPresenter(store: UIHintStore(),
+                                        source: AXElementSource(screenName: { _, _, _ in "lists" }),
+                                        screenSignature: { "lists" })
+        await presenter.ready()
+        try await Task.sleep(for: .milliseconds(300))
+        func element(_ name: String) throws -> UIElement {
+            let snapshot = presenter.snapshot()
+            return try XCTUnwrap((snapshot.elements + snapshot.outOfSight).first { $0.name == name }, name)
+        }
+        let row = try element("Entry 3")
+        XCTAssertEqual(row.kind, .row)
+        let selectedRow = await presenter.select(row).selected
+        XCTAssertTrue(selectedRow)
+        XCTAssertEqual(chosen.row, 3)
+
+        let far = try element("Entry 17")
+        let selectedFar = await presenter.select(far)
+        XCTAssertTrue(selectedFar.selected, "brought into view, then selected")
+        XCTAssertEqual(chosen.row, 17)
+
+        let selectable = try element("selectable item")
+        let selectedItem = await presenter.select(selectable).selected
+        XCTAssertTrue(selectedItem)
+        XCTAssertEqual(chosen.item, "selectable item")
+
+        let card = try element("card only")
+        let selectedCard = await presenter.select(card).selected
+        XCTAssertFalse(selectedCard, "a card that does not select")
+
+        let button = try element("Delete everything")
+        let pressed = await presenter.select(button).selected
+        XCTAssertFalse(pressed)
+        XCTAssertFalse(chosen.pressed, "select never presses a button")
+    }
+
     func testHintsGoWhenTheirScreenChanges() async throws {
         let presenter = try await start()
         presenter.show([.init(element: try element(presenter, "Reset"), title: nil, text: "Clears the form.", style: .bubble)],

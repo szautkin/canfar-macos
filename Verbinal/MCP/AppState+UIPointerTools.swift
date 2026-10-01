@@ -28,6 +28,39 @@ extension AppState {
         })
     }
 
+    func makeSelectUITool() -> SelectUITool {
+        SelectUITool(select: { [weak self] args in
+            await self?.selectUI(args) ?? .init(selected: false, message: "App state unavailable")
+        })
+    }
+
+    /// Finds the entry, brings it into view, and selects it as a click does.
+    @MainActor
+    func selectUI(_ args: SelectUITool.Args) async -> SelectUITool.Output {
+        let presenter = uiHintPresenter
+        await presenter.ready()
+        let snapshot = presenter.snapshot()
+        switch UITargetScope.match(args.target, in: snapshot) {
+        case .missing(let candidates, _):
+            return .init(selected: false, target: args.target,
+                         message: snapshot.problem ?? "no single entry is called \"\(args.target)\"",
+                         candidates: candidates.map(UITargetView.init))
+        case .found(let element):
+            guard element.kind == .row || element.kind == .item else {
+                return .init(selected: false, target: args.target, id: element.id,
+                             message: "\(element.id) is a \(element.kind.rawValue), not an entry of a list: select_ui selects entries, never presses")
+            }
+            let (now, selected) = await presenter.select(element)
+            if selected {
+                agentsService.activityStore.append(.live(
+                    kind: "select_ui", summary: "Selected \(now.name ?? now.id)", origin: .external(clientID: "select_ui")))
+            }
+            return .init(selected: selected, target: args.target, id: now.id,
+                         message: selected ? nil
+                             : "this list's entries do not select — they act through their buttons; point at the button you mean")
+        }
+    }
+
     func makeClearUIHintsTool() -> ClearUIHintsTool {
         ClearUIHintsTool(clear: { [weak self] args in
             await MainActor.run { self?.clearUIHints(args) ?? .init(cleared: 0, left: 0) }

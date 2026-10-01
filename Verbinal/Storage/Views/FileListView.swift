@@ -87,15 +87,13 @@ struct FileListView: View {
                                 }
                             }
                             #endif
-                            // One element per row — a button named by the file, its kind,
-                            // size and date as its value — so VoiceOver reads it as a row
-                            // and an assistant can name it (plan 27).
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(Text(node.name))
+                            // One element per row — an item named by the file, its kind,
+                            // size and date as its value; its action selects it, as a
+                            // click does — so VoiceOver reads it as a row, and an
+                            // assistant can name and select it (plan 27).
+                            .pointableItem(node.name, whole: true) { model.selectedNode = node }
                             .accessibilityValue(Text(rowDetails(node)))
-                            .accessibilityAddTraits(.isButton)
                             .accessibilityAddTraits(model.selectedNode?.id == node.id ? .isSelected : [])
-                            .accessibilityAction { model.selectedNode = node }
                             .accessibilityAction(named: "Delete") {
                                 model.selectedNode = node
                                 nodeToDelete = node
