@@ -95,7 +95,7 @@ final class HeadlessMonitorModel: CadencedPoller {
 
             // A job already finished when first seen — it ended while the
             // app was closed, or between polls on the first — is kept too.
-            history?.recordMissing(fetched.filter(\.isTerminal).map { Self.record(of: $0) })
+            history?.recordMissing(Self.firstSeenFinished(fetched, previous: previousStateMap))
 
             previousStateMap = transitions.current
             jobs = fetched
@@ -189,17 +189,46 @@ final class HeadlessMonitorModel: CadencedPoller {
         failedCount = jobs.filter { $0.isFailed }.count
     }
 
+    /// More ending at once than this are told in one notification: a sweep
+    /// of a thousand jobs is one piece of news, not a thousand.
+    nonisolated static let notifyEachUpTo = 3
+
     /// Says so, and writes it down: the notification is a moment, the
     /// record is what survives the platform reaping the job.
     private func announce(_ settled: [HeadlessJob]) {
-        for job in settled {
-            if job.isCompleted {
-                NotificationService.sendJobCompleted(sessionName: job.name, image: job.image)
-            } else {
-                NotificationService.sendJobFailed(sessionName: job.name, image: job.image)
+        guard !settled.isEmpty else { return }
+        if let summary = Self.endedTogether(settled) {
+            NotificationService.sendJobsEnded(summary: summary, anyFailed: settled.contains(where: \.isFailed))
+        } else {
+            for job in settled {
+                if job.isCompleted {
+                    NotificationService.sendJobCompleted(sessionName: job.name, image: job.image)
+                } else {
+                    NotificationService.sendJobFailed(sessionName: job.name, image: job.image)
+                }
             }
-            history?.record(Self.record(of: job))
         }
+        history?.record(settled.map { Self.record(of: $0) })
+    }
+
+    /// "12 done · 3 failed", for more than `notifyEachUpTo` ending at once;
+    /// nil for fewer, each told by name.
+    static func endedTogether(_ settled: [HeadlessJob]) -> String? {
+        guard settled.count > notifyEachUpTo else { return nil }
+        let done = settled.filter(\.isCompleted).count
+        return [StatusCount(status: .done, count: done), StatusCount(status: .failed, count: settled.count - done)]
+            .filter { $0.count > 0 }.map(\.text).joined(separator: " · ")
+    }
+
+    /// The jobs first seen already finished — ended while the app was
+    /// closed, or between two polls — as the history keeps them: each once,
+    /// the latest started first, no more than it holds. A job seen finished
+    /// at the last poll was offered then.
+    nonisolated static func firstSeenFinished(_ jobs: [HeadlessJob], previous: [String: String]?) -> [JobRecord] {
+        jobs.filter { $0.isTerminal && previous?[$0.id] == nil }
+            .sorted { $0.startedTime > $1.startedTime }
+            .prefix(JobHistoryStore.maxJobs)
+            .map { record(of: $0) }
     }
 
     /// A settled job as the history keeps it. The platform's status is all

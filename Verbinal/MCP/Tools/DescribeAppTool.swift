@@ -375,8 +375,9 @@ struct DescribeAppTool: JSONReadTool {
         CANFAR cluster and almost always fits spare capacity.
         Scale up only for production runs you're willing to leave
         queued for hours.
-      * `list_headless_jobs` — read. Snapshot of all current jobs
-        with status / phase / image / resources.
+      * `list_headless_jobs` — read. The current jobs, newest first,
+        200 a page, with status / phase / image / resources; `counts`
+        by phase cover all of them; `phase` / `contains` narrow it.
       * `get_headless_job` — read. Single by id.
       * `get_headless_job_logs` — read. Container stdout/stderr at
         request time plus a typed `state` field (`"ready"` once the

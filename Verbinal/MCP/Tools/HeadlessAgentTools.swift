@@ -440,10 +440,21 @@ struct LaunchHeadlessJobApplier: ProposalApplier, ResultReportingApplier {
 // MARK: - list_headless_jobs (read)
 
 struct ListHeadlessJobsTool: JSONReadTool {
-    typealias Args = EmptyArgs
+    struct Args: Decodable, Sendable {
+        var phase: String?
+        var contains: String?
+        var limit: Int?
+        var cursor: String?
+    }
 
     struct Output: Encodable, Sendable {
+        /// Every job, and how many in each phase — whatever the page shows.
+        let total: Int
+        let counts: [String: Int]
+        /// The jobs that match `phase` and `contains`.
+        let matching: Int
         let jobs: [Entry]
+        let next: String?
         struct Entry: Encodable, Sendable {
             let id: String
             let name: String
@@ -463,11 +474,16 @@ struct ListHeadlessJobsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_headless_jobs",
-        description: "List the user's headless Skaha batch jobs (any status: pending/running/completed/failed). Use to check status across replicas after `launch_headless_job`. For a single job by id, use `get_headless_job`.",
+        description: "List the user's headless Skaha batch jobs (any status: pending/running/completed/failed), newest first, 200 at a time: pass `next` back as `cursor`. `total` and `counts` (by phase) cover every job whatever the page; `phase` and `contains` (words of the name, image or id) narrow the list. Use to check status across replicas after `launch_headless_job`. For a single job by id, use `get_headless_job`.",
         schema: #"""
         {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "phase": { "type": "string", "enum": ["pending", "running", "completed", "failed", "unknown"], "description": "Only the jobs in this phase." },
+            "contains": { "type": "string", "description": "Only the jobs whose name, image or id holds these words." },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 500 },
+            "cursor": { "type": "string", "description": "`next` from the last answer." }
+          },
           "additionalProperties": false
         }
         """#
@@ -475,14 +491,33 @@ struct ListHeadlessJobsTool: JSONReadTool {
 
     let fetch: @Sendable () async throws -> [HeadlessJob]
 
-    func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
+    func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let jobs: [HeadlessJob]
         do {
             jobs = try await fetch()
         } catch {
             throw ToolFailureReason.backendError(error.localizedDescription)
         }
-        return Output(jobs: jobs.map(Self.entry(from:)))
+        return Self.output(jobs, args)
+    }
+
+    static func output(_ jobs: [HeadlessJob], _ args: Args) -> Output {
+        let words = args.contains?.lowercased().split(separator: " ").map(String.init) ?? []
+        let matching = jobs
+            .filter { job in
+                (args.phase.map { phase(of: job) == $0 } ?? true)
+                    && words.allSatisfy { word in
+                        [job.name, job.image, job.id].contains { $0.lowercased().contains(word) }
+                    }
+            }
+            .sorted { ($0.startedTime, $0.id) > ($1.startedTime, $1.id) }
+        let page = ToolPage(total: matching.count, cursor: args.cursor, limit: args.limit)
+        return Output(
+            total: jobs.count,
+            counts: Dictionary(grouping: jobs, by: phase(of:)).mapValues(\.count),
+            matching: matching.count,
+            jobs: matching[page.range].map(entry(from:)),
+            next: page.next)
     }
 
     static func entry(from job: HeadlessJob) -> Output.Entry {

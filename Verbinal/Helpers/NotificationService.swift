@@ -47,6 +47,19 @@ enum NotificationService {
         send(id: "failed-\(sessionName)-\(Date().timeIntervalSince1970)", content: content)
     }
 
+    /// Many jobs ended at once — one notification for them all: "12 done ·
+    /// 3 failed".
+    static func sendJobsEnded(summary: String, anyFailed: Bool) {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "Batch Jobs Ended")
+        content.body = summary
+        content.sound = .default
+        content.threadIdentifier = groupID
+        if anyFailed { content.interruptionLevel = .timeSensitive }
+
+        send(id: "jobs-ended-\(Date().timeIntervalSince1970)", content: content)
+    }
+
     /// A pending session came up — the notification the person launching
     /// it is usually waiting for.
     static func sendSessionReady(sessionName: String, image: String) {

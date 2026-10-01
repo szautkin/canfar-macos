@@ -189,16 +189,14 @@ struct ListUITargetsTool: JSONReadTool {
                 : snapshot.front.map { snapshot.outOfSight(in: $0.index) } ?? []
         }
         let listed = UITargetScope.filter(scoped, kind: args.kind ?? .interactive, screen: args.screen, contains: args.contains)
-        let start = min(Int(args.cursor ?? "") ?? 0, listed.count)
-        let limit = min(max(args.limit ?? 200, 1), 500)
-        let page = listed[start..<min(start + limit, listed.count)]
+        let page = ToolPage(total: listed.count, cursor: args.cursor, limit: args.limit)
         let front = args.window == "all" ? nil : snapshot.front
         return Output(
             window: front.map { WindowView(kind: $0.kind.rawValue, title: $0.title, screen: $0.screen) },
             count: listed.count,
-            targets: page.map(UITargetView.init),
+            targets: listed[page.range].map(UITargetView.init),
             unnamed: scoped.filter { $0.kind.isControl && $0.name == nil }.count,
-            next: start + limit < listed.count ? String(start + limit) : nil,
+            next: page.next,
             problem: snapshot.problem,
             hiddenPanels: panels)
     }

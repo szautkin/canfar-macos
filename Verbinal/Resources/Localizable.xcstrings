@@ -2532,6 +2532,16 @@
         }
       }
     },
+    "Batch Jobs Ended" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâches en lot terminées"
+          }
+        }
+      }
+    },
     "Black" : {
       "localizations" : {
         "fr" : {

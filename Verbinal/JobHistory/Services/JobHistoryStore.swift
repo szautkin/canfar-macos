@@ -71,11 +71,19 @@ final class JobHistoryStore {
     /// Remembers a finished job at the top, merged with any earlier record
     /// of it — the one that carries the reason must not be lost.
     func record(_ job: JobRecord) {
-        guard !job.id.isEmpty else { return }
-        let job = attributed(job)
-        let earlier = jobs.first { $0.id == job.id }
-        jobs.removeAll { $0.id == job.id }
-        jobs.insert(earlier.map(job.keeping) ?? job, at: 0)
+        record([job])
+    }
+
+    /// Remembers jobs that finished together, the last on top, written down
+    /// once — a sweep of a thousand jobs is one write, of the last it holds.
+    func record(_ found: [JobRecord]) {
+        let found = found.filter { !$0.id.isEmpty }.suffix(Self.maxJobs)
+        guard !found.isEmpty else { return }
+        for job in found.map(attributed) {
+            let earlier = jobs.first { $0.id == job.id }
+            jobs.removeAll { $0.id == job.id }
+            jobs.insert(earlier.map(job.keeping) ?? job, at: 0)
+        }
         jobs = Array(jobs.prefix(Self.maxJobs))
         save()
     }

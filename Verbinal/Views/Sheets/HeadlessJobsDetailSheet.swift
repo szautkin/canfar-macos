@@ -115,16 +115,17 @@ struct HeadlessJobsDetailSheet: View {
 
             Divider()
 
-            // Job list
+            // Job list — filtered once a pass, not once to ask and again to show.
+            let jobs = filteredJobs
             if selectedTab == "history", let history = model.history {
                 JobHistoryList(history: history)
-            } else if filteredJobs.isEmpty {
+            } else if jobs.isEmpty {
                 Spacer()
                 Text(emptyStateText)
                     .foregroundStyle(.secondary)
                 Spacer()
             } else {
-                List(filteredJobs) { job in
+                List(jobs) { job in
                     jobRow(job)
                 }
                 .listStyle(.inset)
@@ -360,17 +361,10 @@ struct HeadlessJobsDetailSheet: View {
         }
     }
 
+    /// Parsed by the shared formatters: a list of ten thousand scrolls
+    /// without making two formatters for every row it shows.
     private func formatTime(_ isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: isoString) {
-            return date.formatted(date: .abbreviated, time: .shortened)
-        }
-        formatter.formatOptions = [.withInternetDateTime]
-        if let date = formatter.date(from: isoString) {
-            return date.formatted(date: .abbreviated, time: .shortened)
-        }
-        return isoString
+        SharedFormatters.isoDate(isoString)?.formatted(date: .abbreviated, time: .shortened) ?? isoString
     }
 
     private func showEvents(for job: HeadlessJob) async {

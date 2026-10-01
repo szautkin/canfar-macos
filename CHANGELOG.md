@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Batch Jobs keeps up with thousands of jobs.** When many jobs end
+  between two checks, one notification says how many finished and how
+  many failed, instead of one each. History takes each finished job once
+  and is written once per check, so a long list of finished jobs no
+  longer pushes out the failures History keeps the reasons for. An
+  assistant gets the job list a page at a time, newest first, with
+  counts for every state, and can ask for one state or a name.
 - **Closing the main window closes Verbinal's other windows.** Settings,
   or the Launch Session form, stayed open, with nothing behind it, after
   the main window closed. Now every other window of the app closes with
