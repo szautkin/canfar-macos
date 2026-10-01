@@ -120,6 +120,39 @@ final class AXElementSourceTests: XCTestCase {
         XCTAssertFalse(snapshot.outOfSight.isEmpty, "rows out of sight with what was left")
     }
 
+    /// A sheet's own sheet — Image Content Discovery over the launch form —
+    /// is read too, in front of the sheet it hangs from.
+    func testASheetOnASheetIsReadInFront() async throws {
+        _ = try await show()
+        let main = try XCTUnwrap(window)
+        func sheet(_ title: String) -> NSWindow {
+            let sheet = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
+                                 styleMask: [.titled], backing: .buffered, defer: false)
+            sheet.isReleasedWhenClosed = false
+            sheet.contentView = NSHostingView(rootView: Button(title) {}.padding())
+            return sheet
+        }
+        let first = sheet("First Sheet"), second = sheet("Second Sheet")
+        main.beginSheet(first, completionHandler: nil)
+        try await Task.sleep(for: .milliseconds(500))
+        first.beginSheet(second, completionHandler: nil)
+        try await Task.sleep(for: .milliseconds(500))
+        defer {
+            // Gone at once, not sliding away under the next test.
+            first.endSheet(second)
+            main.endSheet(first)
+            [second, first].forEach { $0.orderOut(nil) }
+        }
+        let source = AXElementSource(screenName: { kind, parent, _ in kind == .sheet ? "\(parent ?? "window").sheet" : "sample" })
+        await source.ready()
+        let snapshot = source.snapshot()
+        let front = try XCTUnwrap(snapshot.windows.first)
+        XCTAssertEqual(front.number, second.windowNumber, "the sheet in front first")
+        XCTAssertEqual(front.screen, "sample.sheet.sheet")
+        XCTAssertTrue(snapshot.elements(in: front.index).contains { $0.name == "Second Sheet" })
+        XCTAssertEqual(snapshot.windows.dropFirst().first?.number, first.windowNumber)
+    }
+
     /// The person's own window — where they allow a session — is never read.
     func testTheApprovalWindowIsNeverATarget() async throws {
         let approval = NSWindow(contentRect: NSRect(x: 700, y: 120, width: 300, height: 200),

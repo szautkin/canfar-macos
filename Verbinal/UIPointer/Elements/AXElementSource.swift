@@ -109,15 +109,20 @@ final class AXElementSource: UIElementSource {
             let title = window.title
             let screen = screenName(kind, nil, title)
 
-            // Its sheet is in front of it: listed first, as its own window.
-            let sheets = ((Self.value(axWindow, kAXChildrenAttribute) as? [AXUIElement]) ?? [])
-                .filter { (Self.value($0, kAXRoleAttribute) as? String) == "AXSheet" }
-            for axSheet in sheets {
-                guard let sheetWindow = window.attachedSheet else { continue }
-                let ref = UIWindowRef(index: reads.count, kind: .sheet, title: sheetWindow.title,
-                                      screen: screenName(.sheet, screen, sheetWindow.title),
-                                      frame: Self.frame(of: axSheet), number: sheetWindow.windowNumber)
-                reads.append((ref, read(axSheet, depth: 0, clip: ref.frame, at: [], in: ref.index, &reading)))
+            // Its sheet is in front of it — and a sheet's own sheet in front of
+            // that, as the launch form's Image Content Discovery: each listed
+            // first, as its own window.
+            var sheets: [(ax: AXUIElement, window: NSWindow, screen: String)] = []
+            var host = (ax: axWindow, window: window, screen: screen)
+            while let sheetWindow = host.window.attachedSheet,
+                  let axSheet = Self.element(of: sheetWindow, among: [host.ax, axWindow]) {
+                host = (axSheet, sheetWindow, screenName(.sheet, host.screen, sheetWindow.title))
+                sheets.append(host)
+            }
+            for sheet in sheets.reversed() where seenWindows.insert(sheet.window.windowNumber).inserted {
+                let ref = UIWindowRef(index: reads.count, kind: .sheet, title: sheet.window.title, screen: sheet.screen,
+                                      frame: Self.frame(of: sheet.ax), number: sheet.window.windowNumber)
+                reads.append((ref, read(sheet.ax, depth: 0, clip: ref.frame, at: [], in: ref.index, &reading)))
             }
 
             let ref = UIWindowRef(index: reads.count, kind: kind, title: title, screen: screen,
@@ -457,6 +462,18 @@ final class AXElementSource: UIElementSource {
     }
 
     // MARK: - Windows
+
+    /// A sheet's accessibility element: among the children of what it hangs
+    /// from, or of the window under them all.
+    private static func element(of sheet: NSWindow, among hosts: [AXUIElement]) -> AXUIElement? {
+        for host in hosts {
+            let children = (value(host, kAXChildrenAttribute) as? [AXUIElement]) ?? []
+            if let found = children.first(where: { child in
+                (value(child, kAXRoleAttribute) as? String) == "AXSheet" && window(at: frame(of: child)) === sheet
+            }) { return found }
+        }
+        return nil
+    }
 
     /// The app's window at an accessibility frame (top-left origin), by its
     /// AppKit frame (bottom-left origin).
