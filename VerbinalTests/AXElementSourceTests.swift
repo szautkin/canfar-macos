@@ -45,16 +45,33 @@ final class AXElementSourceTests: XCTestCase {
         window = nil
     }
 
-    private func show() async throws -> (UISnapshot, [UIElement]) {
+    /// A long list beside what else shows — the Image Content Discovery
+    /// sheet's two thousand filters beside its images.
+    private struct LongListBeside: View {
+        var body: some View {
+            HStack {
+                List { ForEach(0..<3_000) { Toggle("Package \($0)", isOn: .constant(false)) } }
+                    .frame(width: 200)
+                VStack {
+                    Text("Images")
+                    Button("Use This Image") {}
+                }
+            }
+            .uiWindowPlace(.main)
+        }
+    }
+
+    private func show(_ root: some View = Sample(), maxNodes: Int = AXElementSource.maxNodes)
+        async throws -> (UISnapshot, [UIElement]) {
         try await AXReadable.require()
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 480, height: 520),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: Sample())
+        window.contentView = NSHostingView(rootView: root)
         window.makeKeyAndOrderFront(nil)
         self.window = window
         try await Task.sleep(for: .milliseconds(400))
-        let source = AXElementSource(screenName: { kind, _, _ in kind == .main ? "sample" : "other" })
+        let source = AXElementSource(maxNodes: maxNodes, screenName: { kind, _, _ in kind == .main ? "sample" : "other" })
         // SwiftUI builds its tree on the first ask, a run-loop turn or more later.
         await source.ready()
         let snapshot = source.snapshot()
@@ -92,6 +109,15 @@ final class AXElementSourceTests: XCTestCase {
         for element in elements {
             XCTAssertTrue(bounds.contains(element.visible.insetBy(dx: 1, dy: 1)), "\(element.id) at \(element.visible)")
         }
+    }
+
+    /// What is in sight is read first: a list's rows out of sight never use
+    /// up the read before what shows beside it.
+    func testALongListOutOfSightNeverHidesWhatIsInSight() async throws {
+        let (snapshot, elements) = try await show(LongListBeside(), maxNodes: 400)
+        XCTAssertNotNil(elements.first { $0.name == "Use This Image" }, "beside the list")
+        XCTAssertNotNil(elements.first { $0.name == "Package 0" }, "the list's rows in sight")
+        XCTAssertFalse(snapshot.outOfSight.isEmpty, "rows out of sight with what was left")
     }
 
     /// The person's own window — where they allow a session — is never read.

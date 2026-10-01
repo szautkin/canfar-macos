@@ -27,11 +27,17 @@ final class AXElementSource: UIElementSource {
     private(set) var handles: [AXUIElement] = []
 
     /// Bounds on one read: a tree deeper or wider is cut short, not hung on.
+    /// What is in sight is read first; what is scrolled away gets what is
+    /// left, for at most `awayTime`.
     static let maxDepth = 60
     static let maxNodes = 6_000
+    static let awayTime: Duration = .milliseconds(800)
+    private let maxNodes: Int
 
-    init(places: UIWindowPlaces = .shared, screenName: @escaping ScreenNamer) {
+    init(places: UIWindowPlaces = .shared, maxNodes: Int = AXElementSource.maxNodes,
+         screenName: @escaping ScreenNamer) {
         self.places = places
+        self.maxNodes = maxNodes
         self.screenName = screenName
     }
 
@@ -81,14 +87,11 @@ final class AXElementSource: UIElementSource {
 
     func snapshot() -> UISnapshot {
         handles = []
-        var budget = Self.maxNodes
+        var reading = Reading(budget: maxNodes)
         let app = AXUIElementCreateApplication(getpid())
         // Front to back, as the accessibility API lists them.
         let axWindows = (Self.value(app, kAXWindowsAttribute) as? [AXUIElement]) ?? []
-        var refs: [UIWindowRef] = []
-        var elements: [UIElement] = []
-        var outOfSight: [UIElement] = []
-        var duplicates: [String] = []
+        var reads: [(ref: UIWindowRef, root: UIRawNode)] = []
 
         var seenWindows: Set<Int> = []
         for axWindow in axWindows {
@@ -111,24 +114,28 @@ final class AXElementSource: UIElementSource {
                 .filter { (Self.value($0, kAXRoleAttribute) as? String) == "AXSheet" }
             for axSheet in sheets {
                 guard let sheetWindow = window.attachedSheet else { continue }
-                let ref = UIWindowRef(index: refs.count, kind: .sheet, title: sheetWindow.title,
+                let ref = UIWindowRef(index: reads.count, kind: .sheet, title: sheetWindow.title,
                                       screen: screenName(.sheet, screen, sheetWindow.title),
                                       frame: Self.frame(of: axSheet), number: sheetWindow.windowNumber)
-                let result = UIElementRules.elements(in: read(axSheet, depth: 0, budget: &budget), window: ref)
-                refs.append(ref)
-                elements += result.elements
-                outOfSight += result.outOfSight
-                duplicates += result.duplicateIDs
+                reads.append((ref, read(axSheet, depth: 0, clip: ref.frame, at: [], in: ref.index, &reading)))
             }
 
-            let ref = UIWindowRef(index: refs.count, kind: kind, title: title, screen: screen,
+            let ref = UIWindowRef(index: reads.count, kind: kind, title: title, screen: screen,
                                   frame: frame, number: window.windowNumber)
-            let result = UIElementRules.elements(in: read(axWindow, depth: 0, budget: &budget), window: ref)
-            refs.append(ref)
+            reads.append((ref, read(axWindow, depth: 0, clip: frame, at: [], in: ref.index, &reading)))
+        }
+        readAway(&reading, into: &reads)
+
+        var elements: [UIElement] = []
+        var outOfSight: [UIElement] = []
+        var duplicates: [String] = []
+        for (ref, root) in reads {
+            let result = UIElementRules.elements(in: root, window: ref)
             elements += result.elements
             outOfSight += result.outOfSight
             duplicates += result.duplicateIDs
         }
+        let refs = reads.map(\.ref)
         var snapshot = UISnapshot(windows: refs, elements: elements, duplicateIDs: duplicates)
         snapshot.outOfSight = outOfSight
         if refs.isEmpty, Self.unanswered(axWindows), NSApp.windows.contains(where: \.isVisible) {
@@ -307,8 +314,29 @@ final class AXElementSource: UIElementSource {
         kAXPositionAttribute, kAXSizeAttribute, kAXEnabledAttribute, kAXExpandedAttribute, kAXChildrenAttribute,
     ] as CFArray
 
-    private func read(_ element: AXUIElement, depth: Int, budget: inout Int) -> UIRawNode {
-        budget -= 1
+    /// One read of the windows: what is left of its budget, and what was
+    /// put off because it is scrolled away.
+    private struct Reading {
+        var budget: Int
+        var away: [Away] = []
+    }
+
+    /// The insides of something scrolled away — or the rows of a list out of
+    /// sight, nearest first — read once everything in sight is, so a long
+    /// list never hides what shows beside it.
+    private struct Away {
+        let window: Int
+        let path: [Int]
+        let depth: Int
+        let children: [AXUIElement]
+    }
+
+    /// Reads an element and what is inside it. With a `clip` — the part of
+    /// the window its scroll areas show — what lies outside it is put off;
+    /// without one, everything is read.
+    private func read(_ element: AXUIElement, depth: Int, clip: CGRect?, at path: [Int], in window: Int,
+                      _ reading: inout Reading) -> UIRawNode {
+        reading.budget -= 1
         handles.append(element)
         var node = UIRawNode(role: "AXUnknown", handle: handles.count - 1)
         var values: CFArray?
@@ -340,11 +368,70 @@ final class AXElementSource: UIElementSource {
             // The one value read: the words a static text shows.
             node.text = Self.value(element, kAXValueAttribute) as? String
         }
-        guard depth < Self.maxDepth, let children = list[12] as? [AXUIElement] else { return node }
-        for child in children where budget > 0 {
-            node.children.append(read(child, depth: depth + 1, budget: &budget))
+        guard depth < Self.maxDepth, let children = list[12] as? [AXUIElement], !children.isEmpty else { return node }
+        guard let shown = clip else {
+            for child in children where reading.budget > 0 {
+                node.children.append(read(child, depth: depth + 1, clip: nil, at: [], in: window, &reading))
+            }
+            return node
+        }
+        if node.frame.width > 0, node.frame.height > 0, !node.frame.intersects(shown) {
+            reading.away.append(Away(window: window, path: path, depth: depth, children: children))
+            return node
+        }
+        let inner = node.role == "AXScrollArea" ? shown.intersection(node.frame) : shown
+        // A list says which of its rows show: the others are not even looked
+        // at until everything in sight has been read.
+        let showing = Self.rowsInSight(of: element, role: node.role)
+        var later: [Int] = []
+        for (index, child) in children.enumerated() where reading.budget > 0 {
+            if let showing, !showing.contains(child) {
+                later.append(index)
+                continue
+            }
+            node.children.append(read(child, depth: depth + 1, clip: inner, at: path + [node.children.count],
+                                      in: window, &reading))
+        }
+        if !later.isEmpty {
+            let first = children.indices.first { showing?.contains(children[$0]) == true } ?? 0
+            let nearest = later.sorted { abs($0 - first) < abs($1 - first) }
+            reading.away.append(Away(window: window, path: path, depth: depth, children: nearest.map { children[$0] }))
         }
         return node
+    }
+
+    /// The rows of a list that show, as the list says; nil when it does not.
+    private static func rowsInSight(of element: AXUIElement, role: String) -> Set<AXUIElement>? {
+        let attribute: String
+        switch role {
+        case "AXTable", "AXOutline": attribute = "AXVisibleRows"
+        case "AXList": attribute = "AXVisibleChildren"
+        default: return nil
+        }
+        guard let rows = value(element, attribute) as? [AXUIElement], !rows.isEmpty else { return nil }
+        return Set(rows)
+    }
+
+    /// What was put off, a row from each in turn, while budget and time last.
+    private func readAway(_ reading: inout Reading, into reads: inout [(ref: UIWindowRef, root: UIRawNode)]) {
+        let deadline = ContinuousClock.now + Self.awayTime
+        var taken = Array(repeating: 0, count: reading.away.count)
+        var found = Array(repeating: [UIRawNode](), count: reading.away.count)
+        var more = true
+        while more, reading.budget > 0, ContinuousClock.now < deadline {
+            more = false
+            for index in reading.away.indices where taken[index] < reading.away[index].children.count {
+                guard reading.budget > 0 else { break }
+                let away = reading.away[index]
+                found[index].append(read(away.children[taken[index]], depth: away.depth + 1, clip: nil, at: [],
+                                         in: away.window, &reading))
+                taken[index] += 1
+                more = true
+            }
+        }
+        for (away, children) in zip(reading.away, found) where !children.isEmpty {
+            reads[away.window].root.append(children, at: away.path[...])
+        }
     }
 
     private static func value(_ element: AXUIElement, _ attribute: String) -> AnyObject? {
@@ -383,6 +470,17 @@ final class AXElementSource: UIElementSource {
                 && abs(window.frame.minX - cocoa.minX) < 1 && abs(window.frame.minY - cocoa.minY) < 1
                 && abs(window.frame.width - cocoa.width) < 1 && abs(window.frame.height - cocoa.height) < 1
         }
+    }
+}
+
+private extension UIRawNode {
+    /// Adds what was read later to the node at `path`.
+    mutating func append(_ more: [UIRawNode], at path: ArraySlice<Int>) {
+        guard let first = path.first else {
+            children += more
+            return
+        }
+        children[first].append(more, at: path.dropFirst())
     }
 }
 #endif
