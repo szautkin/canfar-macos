@@ -128,8 +128,11 @@ enum UIElementRules {
             if let stable = draft.stableID {
                 id = stable
             } else {
-                // A control in a list's item or row is named with it: "Relaunch — notebook1".
-                let named = draft.item.flatMap { item in draft.kind.holds ? nil : draft.name.map { "\($0) — \(item)" } } ?? draft.name
+                // A control in a list's item or row is named with it: "Relaunch — notebook1" —
+                // unless it is what names the row ("☐ centos").
+                let named = draft.item.flatMap { item in
+                    draft.kind.holds || draft.name == item ? nil : draft.name.map { "\($0) — \(item)" }
+                } ?? draft.name
                 let base = derivedID(screen: window.screen, kind: draft.kind, name: named)
                 let count = counts[base, default: 0] + 1
                 counts[base] = count
@@ -237,14 +240,20 @@ enum UIElementRules {
         return chain.lazy.compactMap(clean).first
     }
 
-    /// A row with no words of its own reads as its first text.
+    /// A row with no words of its own reads as its first text — or, holding
+    /// only controls, as the first one's name: a filter's "☐ centos".
     private static func rowWords(_ node: UIRawNode, kind: UIElementKind) -> String? {
         guard kind == .row else { return nil }
         func first(_ node: UIRawNode) -> String? {
             if node.role == "AXStaticText", let words = clean(node.text) ?? clean(node.label) { return words }
             return node.children.lazy.compactMap(first).first
         }
-        return first(node)
+        func control(_ node: UIRawNode) -> String? {
+            if let kind = Self.kind(role: node.role, subrole: node.subrole), kind.isControl,
+               let name = ownName(node, kind: kind) { return name }
+            return node.children.lazy.compactMap(control).first
+        }
+        return first(node) ?? control(node)
     }
 
     /// The text a person reads as a control's caption: just before it on its

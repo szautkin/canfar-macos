@@ -184,6 +184,20 @@ final class UIElementRulesTests: XCTestCase {
         XCTAssertEqual(byID["search/button/Cancel — job-42"]?.item, "job-42")
     }
 
+    /// A row with no text — a filter's checkbox alone — reads as its control,
+    /// and the control is not named twice.
+    func testARowOfOneControlReadsAsIt() {
+        let result = elements([
+            node("AXRow", rect(10, 10, 280, 32), children: [
+                node("AXCell", rect(10, 10, 280, 32), children: [node("AXCheckBox", rect(26, 18, 60, 16), label: "centos")]),
+            ]),
+        ])
+        let byID = Dictionary(uniqueKeysWithValues: result.elements.map { ($0.id, $0) })
+        XCTAssertEqual(byID["search/row/centos"]?.name, "centos", "no row without a name")
+        XCTAssertEqual(byID["search/toggle/centos"]?.item, "centos", "not \"centos — centos\"")
+        XCTAssertTrue(result.elements.allSatisfy { $0.name != nil })
+    }
+
     /// A name is matched first against what the call acts on: "CFHT" opens
     /// the CFHT collection though rows and texts say CFHT too, and selects
     /// a row though a button says it.
