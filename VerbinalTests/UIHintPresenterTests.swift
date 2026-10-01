@@ -140,6 +140,31 @@ final class UIHintPresenterTests: XCTestCase {
         XCTAssertEqual(presenter.store.hints.first?.id, now.id)
     }
 
+    /// A form under a toolbar — as Settings is — scrolls beneath it: its
+    /// scroll view is taller than its scroll area, and still found.
+    func testAFormUnderAToolbarIsScrolledToo() async throws {
+        try await AXReadable.require()
+        let window = NSWindow(contentRect: NSRect(x: 220, y: 220, width: 600, height: 360),
+                              styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.toolbar = NSToolbar(identifier: "qa")
+        window.toolbarStyle = .preference
+        window.contentView = NSHostingView(rootView: Form {
+            ForEach(0..<30) { i in Toggle("Setting \(i)", isOn: .constant(i.isMultiple(of: 2))) }
+        }.formStyle(.grouped).uiWindowPlace(.main))
+        window.orderFrontRegardless()
+        defer { window.close() }
+        let presenter = UIHintPresenter(store: UIHintStore(),
+                                        source: AXElementSource(screenName: { _, _, _ in "form" }),
+                                        screenSignature: { "form" })
+        await presenter.ready()
+        try await Task.sleep(for: .milliseconds(300))
+        let snapshot = presenter.snapshot()
+        let away = try XCTUnwrap(snapshot.outOfSight.first { $0.name == "Setting 27" }, "kept, out of sight")
+        let found = await presenter.bringIntoView([away])
+        XCTAssertEqual(found[away.id]?.inSight, true, "scrolled into view")
+    }
+
     func testHintsGoWhenTheirScreenChanges() async throws {
         let presenter = try await start()
         presenter.show([.init(element: try element(presenter, "Reset"), title: nil, text: "Clears the form.", style: .bubble)],

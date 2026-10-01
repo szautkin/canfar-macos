@@ -169,8 +169,10 @@ final class AXElementSource: UIElementSource {
         return frame.width > 0 || frame.height > 0 ? frame : nil
     }
 
-    /// The scroll view whose frame on screen is `frame` (accessibility
-    /// coordinates, top-left origin).
+    /// The scroll view behind a scroll area whose frame on screen is `frame`
+    /// (accessibility coordinates, top-left origin): the one that overlaps
+    /// it most. Not the same frame: a form under a toolbar scrolls beneath
+    /// it, and its area starts below.
     private static func scrollView(at frame: CGRect) -> NSScrollView? {
         let top = NSScreen.screens.first?.frame.maxY ?? 0
         func onScreen(_ view: NSView) -> CGRect? {
@@ -178,15 +180,18 @@ final class AXElementSource: UIElementSource {
             let cocoa = window.convertToScreen(view.convert(view.bounds, to: nil))
             return CGRect(x: cocoa.minX, y: top - cocoa.maxY, width: cocoa.width, height: cocoa.height)
         }
-        func find(_ view: NSView) -> NSScrollView? {
-            if let scrollView = view as? NSScrollView, let at = onScreen(scrollView),
-               abs(at.minX - frame.minX) < 2, abs(at.minY - frame.minY) < 2,
-               abs(at.width - frame.width) < 2, abs(at.height - frame.height) < 2 {
-                return scrollView
-            }
-            return view.subviews.lazy.compactMap(find).first
+        func scrollViews(in view: NSView) -> [NSScrollView] {
+            ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap(scrollViews)
         }
-        return NSApp.windows.lazy.filter(\.isVisible).compactMap { $0.contentView.flatMap(find) }.first
+        func overlap(_ a: CGRect) -> CGFloat {
+            let common = a.intersection(frame)
+            guard !common.isNull else { return 0 }
+            let shared = common.width * common.height
+            return shared / (a.width * a.height + frame.width * frame.height - shared)
+        }
+        let all = NSApp.windows.filter(\.isVisible).compactMap(\.contentView).flatMap(scrollViews)
+        let scored = all.compactMap { view in onScreen(view).map { (view: view, score: overlap($0)) } }
+        return scored.filter { $0.score > 0.5 }.max { $0.score < $1.score }?.view
     }
 
     /// Scrolls `scrollView` so `rect` (accessibility coordinates) shows,

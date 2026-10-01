@@ -80,7 +80,7 @@ extension AppState {
         }
         output.dropped += max(0, (args.hints?.count ?? 0) - ShowUIHintsTool.maxHints)
         guard !requests.isEmpty else {
-            output.message = snapshot.problem ?? (snapshot.elements.isEmpty
+            output.message = output.message ?? snapshot.problem ?? (snapshot.elements.isEmpty
                 ? "nothing on screen to hint — navigate_to or open_settings first"
                 : "no hint could be shown: see `missing`")
             return output
