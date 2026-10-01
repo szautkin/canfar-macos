@@ -132,7 +132,7 @@ struct FileListView: View {
                 }
                 .controlSize(.small)
                 .disabled(model.isBusy)
-                .pointable("storage.makePrivate", label: "Make exposed files private", screen: "storage")
+                .pointable("storage.makePrivate")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)

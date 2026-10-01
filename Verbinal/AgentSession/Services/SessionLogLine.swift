@@ -156,6 +156,9 @@ enum SessionLogLine {
             // Its decision says it arrived and why it waits; its action says
             // how it was applied.
             return nil
+        case .hintsDismissed:
+            // Hints change nothing: their call is in the log, and that is all.
+            return nil
         }
     }
 

@@ -30,19 +30,23 @@ struct ListEventsTool: AITool {
         struct Item: Encodable, Sendable {
             let token: String
             let occurredAtISO: String
-            let kind: String          // "proposalArrived" | "proposalApplied" | "proposalRejected" | "proposalWithdrawn" | "proposalFailed" | "proposalExpired"
-            let proposalID: String
-            let proposalKind: String
-            let originKind: String?   // only set for proposalArrived
+            let kind: String          // "proposalArrived" | "proposalApplied" | "proposalRejected" | "proposalWithdrawn" | "proposalFailed" | "proposalExpired" | "hintsDismissed"
+            var proposalID: String? = nil
+            var proposalKind: String? = nil
+            var originKind: String? = nil   // only set for proposalArrived
             /// Who applied it — "person", "autoApply" or "background";
             /// only set for proposalApplied.
             var appliedBy: String? = nil
+            /// For hintsDismissed: the set show_ui_hints answered, and how
+            /// its last hint went.
+            var hintSet: String? = nil
+            var how: String? = nil
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_events",
-        description: "Poll the agent event log. Pass `since_token` to read only events newer than that token. Response includes nextToken to use on the following poll. If `expired` is true, your token is older than the buffer; re-baseline with an empty since_token. A `proposalApplied` event says who applied it in `appliedBy`: `person` (from Pending), `autoApply` (as your call arrived) or `background` (`start_background_apply`).",
+        description: "Poll the agent event log. Pass `since_token` to read only events newer than that token. Response includes nextToken to use on the following poll. If `expired` is true, your token is older than the buffer; re-baseline with an empty since_token. A `proposalApplied` event says who applied it in `appliedBy`: `person` (from Pending), `autoApply` (as your call arrived) or `background` (`start_background_apply`). A `hintsDismissed` event says the last hint of a set you showed (show_ui_hints, point_at_ui) has gone — its `hintSet`, and `how`: closed, timedOut, escape, screenChanged, elementGone, windowClosed, cleared or replaced — so a tour can wait on the person's reading.",
         schema: #"""
         {
           "type": "object",
@@ -148,6 +152,14 @@ struct ListEventsTool: AITool {
                 proposalID: id.uuidString,
                 proposalKind: kind,
                 originKind: nil
+            )
+        case .hintsDismissed(let set, let how):
+            return Output.Item(
+                token: String(entry.token),
+                occurredAtISO: iso.string(from: entry.occurredAt),
+                kind: "hintsDismissed",
+                hintSet: set,
+                how: how
             )
         }
     }

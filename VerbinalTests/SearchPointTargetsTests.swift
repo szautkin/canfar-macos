@@ -26,8 +26,9 @@ final class SearchPointTargetsTests: XCTestCase {
     func testTheResultsControlsCanBePointedAt() async throws {
         let state = AppState()
         state.currentMode = .search
-        state.searchModel.resultsModel.loadResults(headers: ["obs_publisher_did", "target_name"],
-                                                   rows: [["ivo://cadc.nrc.ca/HST?a/b", "M31"]],
+        // Columns shown by default, so the table has headers and filters to read.
+        state.searchModel.resultsModel.loadResults(headers: ["Collection", "Target Name", "Instrument"],
+                                                   rows: [["HST", "M31", "ACS/WFC"]],
                                                    query: "SELECT 1", maxRec: 10)
         state.searchModel.selectedTab = .results
         let targets = try await HostedContentView.pointTargets(state, waitingFor: "results.filters")

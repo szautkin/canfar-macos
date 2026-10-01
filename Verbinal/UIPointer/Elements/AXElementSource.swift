@@ -35,6 +35,50 @@ final class AXElementSource: UIElementSource {
         self.screenName = screenName
     }
 
+    private var awake = false
+    /// The windows read before: SwiftUI has built their trees.
+    private var warmed: Set<Int> = []
+
+    /// Waits until what is on screen can be read whole. The app builds its
+    /// accessibility tree when first asked, a run-loop turn or more later:
+    /// until then a window has no frame. And a window read for the first
+    /// time — Settings just opened, a sheet — comes back half-built, so it is
+    /// asked once and given a moment. At most two seconds; none when the
+    /// service is not answering at all.
+    func ready() async {
+        let app = AXUIElementCreateApplication(getpid())
+        for _ in 0..<20 where !awake {
+            let windows = (Self.value(app, kAXWindowsAttribute) as? [AXUIElement]) ?? []
+            if windows.contains(where: { Self.frame(of: $0).width > 0 }) {
+                awake = true
+            } else if Self.unanswered(windows) {
+                return
+            } else {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+        let fresh = Set(NSApp.windows.filter { window in
+            window.isVisible && PointableID.Window(identifier: window.identifier?.rawValue) != .hints
+        }.map(\.windowNumber)).subtracting(warmed)
+        guard awake, !fresh.isEmpty else { return }
+        _ = snapshot()
+        warmed.formUnion(fresh)
+        try? await Task.sleep(for: .milliseconds(250))
+    }
+
+    /// The service hands back the application where each window should be:
+    /// nothing can be read until it recovers.
+    private static func unanswered(_ windows: [AXUIElement]) -> Bool {
+        !windows.isEmpty && windows.allSatisfy { (value($0, kAXRoleAttribute) as? String) == "AXApplication" }
+    }
+
+    /// Whether the app's own windows can be read now.
+    static var readable: Bool {
+        let app = AXUIElementCreateApplication(getpid())
+        let windows = (value(app, kAXWindowsAttribute) as? [AXUIElement]) ?? []
+        return !unanswered(windows)
+    }
+
     func snapshot() -> UISnapshot {
         handles = []
         var budget = Self.maxNodes
@@ -45,9 +89,12 @@ final class AXElementSource: UIElementSource {
         var elements: [UIElement] = []
         var duplicates: [String] = []
 
+        var seenWindows: Set<Int> = []
         for axWindow in axWindows {
             let frame = Self.frame(of: axWindow)
-            guard let window = Self.window(at: frame) else { continue }
+            // A window is read once: another at the same frame (an overlay)
+            // must not read as it.
+            guard let window = Self.window(at: frame), seenWindows.insert(window.windowNumber).inserted else { continue }
             let place = places.place(of: window)
             if place?.isExcluded == true { continue }
             let kind: UIWindowRef.Kind = switch place {
@@ -79,7 +126,11 @@ final class AXElementSource: UIElementSource {
             elements += result.elements
             duplicates += result.duplicateIDs
         }
-        return UISnapshot(windows: refs, elements: elements, duplicateIDs: duplicates)
+        var snapshot = UISnapshot(windows: refs, elements: elements, duplicateIDs: duplicates)
+        if refs.isEmpty, Self.unanswered(axWindows), NSApp.windows.contains(where: \.isVisible) {
+            snapshot.problem = UISnapshot.unreadable
+        }
+        return snapshot
     }
 
     /// The element behind a handle from the last snapshot.
@@ -164,9 +215,11 @@ final class AXElementSource: UIElementSource {
     private static func window(at frame: CGRect) -> NSWindow? {
         let top = NSScreen.screens.first?.frame.maxY ?? 0
         let cocoa = CGRect(x: frame.minX, y: top - frame.maxY, width: frame.width, height: frame.height)
-        // A closed window can linger in the list, at the same frame: only one showing counts.
+        // A closed window can linger in the list, at the same frame: only one
+        // showing counts. Verbinal's own overlays are never it.
         return NSApp.windows.first { window in
-            window.isVisible && abs(window.frame.minX - cocoa.minX) < 1 && abs(window.frame.minY - cocoa.minY) < 1
+            window.isVisible && PointableID.Window(identifier: window.identifier?.rawValue) != .hints
+                && abs(window.frame.minX - cocoa.minX) < 1 && abs(window.frame.minY - cocoa.minY) < 1
                 && abs(window.frame.width - cocoa.width) < 1 && abs(window.frame.height - cocoa.height) < 1
         }
     }

@@ -11,19 +11,27 @@ import SwiftUI
 /// The app's window content, shown for real, to see what it offers.
 @MainActor
 enum HostedContentView {
-    /// The pointable targets `ContentView` registers for `state`, once
-    /// `id` is among them — or after five seconds without it.
+    /// The hand-tagged ids `ContentView` shows for `state`, read as an
+    /// assistant reads them — once `id` is among them, or after five seconds
+    /// without it.
     static func pointTargets(_ state: AppState, waitingFor id: String) async throws -> Set<String> {
+        try await AXReadable.require()
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
                               styleMask: [.titled], backing: .buffered, defer: false)
-        window.contentView = NSHostingView(rootView: ContentView()
-            .environment(state)
-            .environment(state.uiPointer))
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: ContentView().uiWindowPlace(.main).environment(state))
         window.orderFrontRegardless()
-        defer { window.orderOut(nil) }
-        for _ in 0..<250 where state.uiPointer.targets[id] == nil {
-            try await Task.sleep(for: .milliseconds(20))
+        defer { window.close() }
+        let source = AXElementSource(screenName: { state.screenName(of: $0, parentScreen: $1, title: $2) })
+        await source.ready()
+        var ids: Set<String> = []
+        for _ in 0..<25 {
+            let snapshot = source.snapshot()
+            let mine = snapshot.windows.first { $0.number == window.windowNumber }
+            ids = Set((mine.map { snapshot.elements(in: $0.index) } ?? []).filter(\.stable).map(\.id))
+            if ids.contains(id) { break }
+            try await Task.sleep(for: .milliseconds(200))
         }
-        return Set(state.uiPointer.targets.keys)
+        return ids
     }
 }

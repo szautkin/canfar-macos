@@ -389,6 +389,12 @@ final class AppState {
         // No session, no tools: the person allows each one (plan 25).
         agentsService.sessionGate = SessionApprovalGate(approvals: sessionApprovals)
         sessionApprovalWindow = SessionApprovalWindow(approvals: sessionApprovals)
+        // A set of hints gone, however it went: in list_events, so a tour
+        // can wait on the person's reading (plan 27).
+        let events = agentsService.eventLog
+        _ = uiHints.dismissed.observe { dismissed in
+            Task { _ = await events.append(.hintsDismissed(set: dismissed.set, how: dismissed.how.rawValue)) }
+        }
         #endif
 
         // Register the MCP tool surface. Order matters: tools must be
@@ -553,8 +559,6 @@ final class AppState {
     let tasks = TaskRegistry.shared
     /// Finished batch jobs, kept after the platform forgets them.
     let jobHistory = JobHistoryStore(launchPersistence: JobHistoryStore.productionLaunchPersistence)
-    /// What an agent can point at (`point_at_ui`), and its hint.
-    let uiPointer = UIPointerRegistry()
     /// The hints an assistant shows on the interface (plan 27) — not the
     /// marks on an image, which are `marks`.
     let uiHints = UIHintStore()

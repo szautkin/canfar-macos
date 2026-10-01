@@ -7,26 +7,108 @@
 import Foundation
 import VerbinalKit
 
-/// Pointing at the interface: what can be pointed at, and the hint.
+/// Pointing at the interface: what is on screen, and hints on it (plan 27).
 extension AppState {
     func makeListUITargetsTool() -> ListUITargetsTool {
-        let registry = uiPointer
-        return ListUITargetsTool(targets: { await MainActor.run { Array(registry.targets.values) } })
+        ListUITargetsTool(snapshot: { [weak self] in
+            await self?.uiHintPresenter.ready()
+            return await MainActor.run { self?.uiHintPresenter.snapshot() ?? .empty }
+        })
+    }
+
+    func makeShowUIHintsTool() -> ShowUIHintsTool {
+        ShowUIHintsTool(show: { [weak self] args in
+            await self?.uiHintPresenter.ready()
+            return await MainActor.run { self?.showUIHints(args) ?? .init(message: "App state unavailable") }
+        })
     }
 
     func makePointAtUITool() -> PointAtUITool {
-        let registry = uiPointer
-        let activity = agentsService.activityStore
-        return PointAtUITool(point: { args in
-            await MainActor.run {
-                let outcome = registry.point(at: args.target, message: args.message, seconds: args.seconds)
-                if case .pointed(let target) = outcome {
-                    activity.append(.live(kind: "point_at_ui", summary: "Pointed at \(target.label)",
-                                          origin: .external(clientID: "point_at_ui")))
-                }
-                return outcome
-            }
+        PointAtUITool(show: { [weak self] args in
+            await self?.uiHintPresenter.ready()
+            return await MainActor.run { self?.showUIHints(args) ?? .init(message: "App state unavailable") }
         })
+    }
+
+    func makeClearUIHintsTool() -> ClearUIHintsTool {
+        ClearUIHintsTool(clear: { [weak self] args in
+            await MainActor.run { self?.clearUIHints(args) ?? .init(cleared: 0, left: 0) }
+        })
+    }
+
+    /// Reads the screen, finds each hint's element, shows them as one set,
+    /// and says how each was drawn.
+    @MainActor
+    func showUIHints(_ args: ShowUIHintsTool.Args) -> ShowUIHintsTool.Output {
+        let presenter = uiHintPresenter
+        let snapshot = presenter.snapshot()
+        var output = ShowUIHintsTool.Output()
+        var requests: [UIHintPresenter.Request] = []
+        var asked: [String: String] = [:]
+
+        if let all = args.all {
+            let scoped = UITargetScope.filter(UITargetScope.elements(snapshot, window: nil),
+                                              kind: all.kind ?? .interactive, screen: all.screen, contains: all.contains)
+            requests += scoped.prefix(ShowUIHintsTool.maxRings).map { .init(element: $0, title: nil, text: nil, style: .ring) }
+            output.dropped = max(0, scoped.count - ShowUIHintsTool.maxRings)
+        }
+        for hint in (args.hints ?? []).prefix(ShowUIHintsTool.maxHints) {
+            switch UITargetScope.match(hint.target, in: snapshot) {
+            case .found(let element):
+                let words = hint.text != nil || hint.title != nil
+                requests.removeAll { $0.element.id == element.id }
+                requests.append(.init(element: element, title: hint.title, text: hint.text,
+                                      style: hint.style ?? (words ? .bubble : .ring)))
+                asked[element.id] = hint.target
+            case .missing(let candidates, let closed):
+                output.missing.append(.init(target: hint.target, candidates: candidates.map(UITargetView.init),
+                                            closed: closed.map(UITargetView.init)))
+            }
+        }
+        output.dropped += max(0, (args.hints?.count ?? 0) - ShowUIHintsTool.maxHints)
+        guard !requests.isEmpty else {
+            output.message = snapshot.problem ?? (snapshot.elements.isEmpty
+                ? "nothing on screen to hint — navigate_to or open_settings first"
+                : "no hint could be shown: see `missing`")
+            return output
+        }
+
+        let set = presenter.show(
+            requests, numbered: args.numbered ?? false, dim: args.dim ?? false,
+            seconds: UIHintStore.seconds(asked: args.seconds, untilClosed: args.untilClosed ?? false,
+                                         bubbles: requests.contains { $0.style == .bubble }),
+            replace: args.mode == "replace")
+        presenter.render()
+        output.set = set
+        for hint in uiHints.hints(in: set) {
+            let scene = presenter.scene(on: hint.window)
+            let entry = scene?.entries.first { $0.id == hint.id }
+            let drawn = scene?.bubbles.contains { $0.id == hint.id } == true ? "bubble" : entry != nil ? "list" : "ring"
+            output.shown.append(.init(target: asked[hint.id] ?? hint.id, id: hint.id, as: drawn,
+                                      number: entry?.number ?? hint.number))
+        }
+        output.listed = output.shown.filter { $0.as == "list" }.count
+        let named = requests.compactMap { $0.element.name }.prefix(3).joined(separator: ", ")
+        agentsService.activityStore.append(.live(
+            kind: "show_ui_hints",
+            summary: requests.count == 1 ? "Pointed at \(named)" : "Showed \(requests.count) hints",
+            origin: .external(clientID: "show_ui_hints")))
+        return output
+    }
+
+    @MainActor
+    func clearUIHints(_ args: ClearUIHintsTool.Args) -> ClearUIHintsTool.Output {
+        let before = uiHints.hints.count
+        if let set = args.set {
+            uiHints.clear(set: set)
+        } else if let targets = args.targets {
+            let up = uiHints.hints.map { UIPointerMatcher.Target(id: $0.id, label: $0.id, screen: $0.screen) }
+            let ids = Set(targets.compactMap { UIPointerMatcher.best(up, for: $0)?.id })
+            uiHints.clear(ids: ids)
+        } else {
+            uiHints.clearAll()
+        }
+        return .init(cleared: before - uiHints.hints.count, left: uiHints.hints.count)
     }
 
     func makeOpenSettingsTool() -> LiveActionTool<SettingsActions.OpenArgs> {

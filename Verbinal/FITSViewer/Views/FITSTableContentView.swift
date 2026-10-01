@@ -32,7 +32,7 @@ struct FITSTableContentView: View {
                         Button("PDF…") { save(spectrum, .pdf, scale: 1) }
                     }
                     .fixedSize()
-                    .pointable("fits.spectrumExport", label: String(localized: "Export Figure"), screen: "fits")
+                    .pointable("fits.spectrumExport")
                 }
                 .padding([.horizontal, .bottom], 16)
             }

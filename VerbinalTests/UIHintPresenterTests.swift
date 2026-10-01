@@ -38,7 +38,6 @@ final class UIHintPresenterTests: XCTestCase {
             .padding(20)
             .frame(width: 700, height: 500, alignment: .topLeading)
             .uiWindowPlace(.main)
-            .environment(UIPointerRegistry())
         }
     }
 
@@ -54,6 +53,7 @@ final class UIHintPresenterTests: XCTestCase {
     }
 
     private func start() async throws -> UIHintPresenter {
+        try await AXReadable.require()
         let window = NSWindow(contentRect: NSRect(x: 200, y: 200, width: 700, height: 500),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -66,8 +66,8 @@ final class UIHintPresenterTests: XCTestCase {
             source: AXElementSource(screenName: { kind, _, _ in kind == .main ? place.screen : "other" }),
             screenSignature: { place.screen })
         self.presenter = presenter
-        _ = presenter.snapshot()
-        try await Task.sleep(for: .milliseconds(400))
+        await presenter.ready()
+        try await Task.sleep(for: .milliseconds(300))
         _ = presenter.snapshot()
         return presenter
     }

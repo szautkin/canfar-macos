@@ -40,6 +40,8 @@ extension AppState {
         tools.append(makeCopyToClipboardTool())
         tools.append(makeListUITargetsTool())
         tools.append(makePointAtUITool())
+        tools.append(makeShowUIHintsTool())
+        tools.append(makeClearUIHintsTool())
         tools.append(makeOpenSettingsTool())
         tools.append(makeCloseSettingsTool())
         tools.append(makeGetAuthStateTool())
@@ -412,6 +414,10 @@ extension AppState {
             followAgentActivityEnabled: agentsService.followAgentActivity
         )
         view.standingRules = aiGuideService.snapshot().standingRules
+        view.screen = screenName
+        view.hints = Dictionary(grouping: uiHints.hints, by: \.set)
+            .map { GetCurrentViewTool.Output.HintSet(set: $0.key, hints: $0.value.map(\.id)) }
+            .sorted { $0.set < $1.set }
         let results = searchModel.resultsModel
         if let rowID = results.openDetailRowID, let row = results.result(forID: rowID) {
             view.openSearchDetail = .init(id: rowID,

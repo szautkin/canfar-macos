@@ -119,7 +119,7 @@ struct LandingView: View {
                 ) {
                     navigateOrPromptLogin(.portal)
                 }
-                .pointable("home.portal", label: String(localized: "Portal"), screen: "landing")
+                .pointable("home.portal")
 
                 #if os(macOS)
                 // Remote Compute — the compute session an assistant's run_code
@@ -134,7 +134,7 @@ struct LandingView: View {
                 ) {
                     navigateOrPromptLogin(.remoteCompute)
                 }
-                .pointable("home.remoteCompute", label: String(localized: "Remote Compute"), screen: "landing")
+                .pointable("home.remoteCompute")
                 #endif
 
                 LandingTile(
@@ -146,7 +146,7 @@ struct LandingView: View {
                 ) {
                     navigateOrPromptLogin(.storage)
                 }
-                .pointable("home.storage", label: String(localized: "Storage"), screen: "landing")
+                .pointable("home.storage")
 
                 LandingTile(
                     icon: "scope",
@@ -156,7 +156,7 @@ struct LandingView: View {
                 ) {
                     appState.navigateTo(.search)
                 }
-                .pointable("home.search", label: String(localized: "Search"), screen: "landing")
+                .pointable("home.search")
 
                 LandingTile(
                     icon: "tray.full.fill",
@@ -166,7 +166,7 @@ struct LandingView: View {
                 ) {
                     appState.navigateTo(.research)
                 }
-                .pointable("home.research", label: String(localized: "Research"), screen: "landing")
+                .pointable("home.research")
 
                 LandingTile(
                     icon: "star.circle.fill",
@@ -176,7 +176,7 @@ struct LandingView: View {
                 ) {
                     appState.navigateTo(.fitsViewer)
                 }
-                .pointable("home.fitsViewer", label: String(localized: "FITS Viewer"), screen: "landing")
+                .pointable("home.fitsViewer")
 
                 LandingTile(
                     icon: "cube.transparent.fill",
@@ -186,7 +186,7 @@ struct LandingView: View {
                 ) {
                     appState.navigateTo(.cubeViewer)
                 }
-                .pointable("home.cubeViewer", label: String(localized: "Cube Viewer"), screen: "landing")
+                .pointable("home.cubeViewer")
 
                 // The addon slot, where Windows has its Notebook tile.
                 //  - Installed first-party addons get their own tile (e.g.
@@ -205,7 +205,7 @@ struct LandingView: View {
                 ) {
                     appState.navigateTo(.workflows)
                 }
-                .pointable("home.workflows", label: String(localized: "Workflows"), screen: "landing")
+                .pointable("home.workflows")
 
                 #if os(macOS)
                 // AI Guide — inspect/re-tune the MCP tool surface the agent
@@ -221,7 +221,7 @@ struct LandingView: View {
                     ) {
                         appState.navigateTo(.aiGuide)
                     }
-                    .pointable("home.aiGuide", label: String(localized: "AI Guide"), screen: "landing")
+                    .pointable("home.aiGuide")
                 }
 
                 // AI Assistant — the newcomer-framed entry point to the MCP
@@ -236,7 +236,7 @@ struct LandingView: View {
                 ) {
                     appState.activeSheet = .mcpSetupWizard
                 }
-                .pointable("home.aiAssistant", label: String(localized: "AI Assistant"), screen: "landing")
+                .pointable("home.aiAssistant")
                 #endif
             }
 

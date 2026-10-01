@@ -178,7 +178,6 @@ struct DashboardView: View {
         }
         .frame(minWidth: 620, idealWidth: 680, minHeight: 560, idealHeight: 680)
         .environment(appState)
-        .uiPointerOverlay()
     }
 
     /// An agent's request: the tab, an image — from the catalogue on the

@@ -35,16 +35,16 @@ final class EveryScreenNamedTests: XCTestCase {
 
     private func read(_ state: AppState, place: String, _ root: some View,
                       settle: Duration = .milliseconds(700)) async throws -> [Problem] {
+        try await AXReadable.require()
         let window = NSWindow(contentRect: NSRect(x: 40, y: 40, width: 1200, height: 800),
                               styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: root
-            .environment(state)
-            .environment(state.uiPointer))
+            .environment(state))
         window.orderFrontRegardless()
         defer { window.close() }
         let source = AXElementSource(screenName: { state.screenName(of: $0, parentScreen: $1, title: $2) })
-        _ = source.snapshot()   // wakes SwiftUI's tree
+        await source.ready()
         try await Task.sleep(for: settle)
         let snapshot = source.snapshot()
         let mine = snapshot.windows.filter { $0.number == window.windowNumber || $0.kind == .sheet }
@@ -122,17 +122,18 @@ final class EveryScreenNamedTests: XCTestCase {
     /// Reading Search — the screen with the most on it — stays quick: a
     /// listing runs on the main thread while the assistant waits.
     func testReadingTheBusiestScreenIsQuick() async throws {
+        try await AXReadable.require()
         let state = AppState()
         state.currentMode = .search
         let window = NSWindow(contentRect: NSRect(x: 40, y: 40, width: 1200, height: 800),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: ContentView().uiWindowPlace(.main)
-            .environment(state).environment(state.uiPointer))
+            .environment(state))
         window.orderFrontRegardless()
         defer { window.close() }
         let source = AXElementSource(screenName: { state.screenName(of: $0, parentScreen: $1, title: $2) })
-        _ = source.snapshot()
+        await source.ready()
         try await Task.sleep(for: .milliseconds(700))
         let clock = ContinuousClock()
         let took = clock.measure { for _ in 0..<3 { _ = source.snapshot() } } / 3

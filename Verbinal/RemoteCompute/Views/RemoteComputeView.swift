@@ -48,7 +48,6 @@ struct RemoteComputeView: View {
         } message: {
             Text("The session is stopped — deleting it and anything running in it — and one is started with the settings.")
         }
-        .uiPointerOverlay()
     }
 
     // MARK: - Where it stands
@@ -70,7 +69,7 @@ struct RemoteComputeView: View {
                 .padding(.vertical, 4)
                 .background(.quaternary, in: Capsule())
                 .accessibilityLabel(Text(statusLine))
-                .pointable("compute.status", label: statusLine, screen: "remoteCompute")
+                .pointable("compute.status")
         }
     }
 
@@ -84,7 +83,7 @@ struct RemoteComputeView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Button("Restart with New Settings") { confirmRestart = true }
                 .disabled(model.isBusy)
-                .pointable("compute.restart", label: "Restart with New Settings", screen: "remoteCompute")
+                .pointable("compute.restart")
         }
         .padding(10)
         .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
@@ -112,23 +111,23 @@ struct RemoteComputeView: View {
                 Button("Start Session") { Task { await model.start() } }
                     .buttonStyle(.borderedProminent)
                     .disabled(!model.canStart)
-                    .pointable("compute.start", label: "Start Session", screen: "remoteCompute")
+                    .pointable("compute.start")
             }
             if model.isConfigured || model.hasSession {
                 Button("Stop Session") { confirmStop = true }
                     .disabled(!model.canStop)
-                    .pointable("compute.stop", label: "Stop Session", screen: "remoteCompute")
+                    .pointable("compute.stop")
             }
             Button { Task { await model.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                 .help("Refresh")
                 .accessibilityLabel(Text("Refresh"))
                 .disabled(model.isBusy)
             Button("Settings") { appState.requestSettings(.open, section: .aiCompute) }
-                .pointable("compute.settings", label: "Settings", screen: "remoteCompute")
+                .pointable("compute.settings")
             if model.isConfigured || model.hasSession {
                 Button("Open Folder in Storage") { appState.showStorageFolder(RunCodeContract.execDir) }
                     .help("The folder the session reads requests from and writes results to")
-                    .pointable("compute.openFolder", label: "Open Folder in Storage", screen: "remoteCompute")
+                    .pointable("compute.openFolder")
             }
             Link("verbinal-execution on GitHub", destination: Self.repository)
             if model.isBusy { ProgressView().controlSize(.small) }
@@ -281,7 +280,7 @@ struct RemoteComputeView: View {
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(!model.canRun || model.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .pointable("compute.run", label: "Run", screen: "remoteCompute")
+                    .pointable("compute.run")
             }
             TextEditor(text: $model.code)
                 .font(.body.monospaced())
@@ -289,7 +288,7 @@ struct RemoteComputeView: View {
                 .frame(minHeight: 200)
                 .textEditorName(String(localized: "Code to run"), pointable: "compute.snippet")
                 .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
-                .pointable("compute.snippet", label: String(localized: "Code to run"), screen: "remoteCompute")
+                .pointable("compute.snippet")
             Text("It runs as you, on your session — the same way run_code runs your assistant's code.")
                 .font(.caption)
                 .foregroundStyle(.secondary)

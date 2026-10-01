@@ -237,7 +237,7 @@ extension ContentView {
         .buttonStyle(.borderless)
         .accessibilityLabel("Pending changes")
         .help("Pending changes — what your assistant proposed; destructive changes always wait here")
-        .pointable("agent.pending", label: String(localized: "Pending changes"), screen: "window")
+        .pointable("agent.pending")
     }
 
     func makePortalToolbar(showAbout: Binding<Bool>) -> some View {

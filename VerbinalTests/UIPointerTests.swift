@@ -28,20 +28,6 @@ final class UIPointerTests: XCTestCase {
     }
 
     /// "agent" is in two labels: a question, not an answer.
-    /// A control shown in two places stays registered while either shows
-    /// it — the new toolbar appears before the old one goes (plan 17 U1).
-    @MainActor
-    func testAControlInTwoPlacesStaysWhileOneShowsIt() {
-        let registry = UIPointerRegistry()
-        let robot = UIPointerMatcher.Target(id: "agent.pending", label: "Pending changes", screen: "window")
-        registry.register(robot)      // the Portal's toolbar appears
-        registry.register(robot)      // …the landing toolbar, before the Portal's goes
-        registry.unregister(robot.id) // the Portal's goes
-        XCTAssertNotNil(registry.targets[robot.id])
-        registry.unregister(robot.id)
-        XCTAssertNil(registry.targets[robot.id])
-    }
-
     func testTwoEqualMatchesPointAtNothing() {
         XCTAssertNil(UIPointerMatcher.best(targets, for: "agent"))
         XCTAssertNil(UIPointerMatcher.best(targets, for: "nothing like this"))
@@ -51,22 +37,6 @@ final class UIPointerTests: XCTestCase {
     func testAMissOffersTheNearestControlsFirst() {
         let offered = UIPointerMatcher.candidates(targets, for: "agent toggle")
         XCTAssertEqual(Set(offered.prefix(2).map(\.id)), ["settings.agent.allowExternal", "settings.agent.autoApply"])
-    }
-
-    func testPointingSetsAHintAndLeavingTheScreenClearsIt() {
-        let registry = UIPointerRegistry()
-        targets.forEach(registry.register)
-        guard case .pointed(let target) = registry.point(at: "Execute", message: "Run it here", seconds: 30) else {
-            return XCTFail("expected a match")
-        }
-        XCTAssertEqual(target.id, "adql.execute")
-        XCTAssertEqual(registry.hint?.targetID, "adql.execute")
-        XCTAssertEqual(registry.hint?.message, "Run it here")
-        registry.unregister("adql.execute")
-        XCTAssertNil(registry.hint, "a hint does not outlive its control")
-        guard case .notFound = registry.point(at: "Execute", message: nil, seconds: nil) else {
-            return XCTFail("a control that left cannot be pointed at")
-        }
     }
 
     func testOpenSettingsGoesToTheSectionAndCloseClosesIt() async {
@@ -87,21 +57,26 @@ final class UIPointerTests: XCTestCase {
     }
 
     /// Plan 21 N2: each Portal session card's Renew and Delete can be
-    /// pointed at, by session id — a pass could not point at them.
+    /// pointed at, by session id, and say whose they are.
     func testASessionCardsActionsArePointable() async throws {
-        let registry = UIPointerRegistry()
+        try await AXReadable.require()
         let session = Session.compute(id: "q9p87ajc", status: "Running", name: "qa-person", type: "notebook")
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 260), styleMask: [.titled],
                               backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: SessionCardView(session: session, onOpen: {}, onDelete: {},
-                                                                     onRenew: {}, onEvents: {})
-            .environment(registry))
+                                                                     onRenew: {}, onEvents: {}))
         window.orderFrontRegardless()
-        defer { window.orderOut(nil) }
-        for _ in 0..<100 where registry.targets["portal.session.q9p87ajc.delete"] == nil {
-            try await Task.sleep(for: .milliseconds(20))
+        defer { window.close() }
+        let source = AXElementSource(screenName: { _, _, _ in "portal" })
+        await source.ready()
+        var named: [String: String?] = [:]
+        for _ in 0..<25 where named["portal.session.q9p87ajc.delete"] == nil {
+            let snapshot = source.snapshot()
+            named = Dictionary(snapshot.elements.filter(\.stable).map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
+            try await Task.sleep(for: .milliseconds(100))
         }
-        XCTAssertEqual(registry.targets["portal.session.q9p87ajc.delete"]?.label, "Delete qa-person")
-        XCTAssertEqual(registry.targets["portal.session.q9p87ajc.renew"]?.label, "Renew qa-person")
+        XCTAssertEqual(named["portal.session.q9p87ajc.delete"], "Delete qa-person")
+        XCTAssertEqual(named["portal.session.q9p87ajc.renew"], "Renew qa-person")
     }
 }

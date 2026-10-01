@@ -23,8 +23,8 @@
 | A every element, from the accessibility tree | done — `UIElement`, `UIElementRules`, `UIElementSource`, `AXElementSource`, `UIWindowPlaces`, `AppState.screenName`; `.pointable` sets its `vb:` identifier; the tools move onto it in T | d7b53a1 |
 | L every element has a name (guardrail) | done — `EveryScreenNamedTests` over every mode, Search tab, Settings section and app-wide sheet; `.pointableArea` for the 14 tags on regions; names for the Search fields, the ADQL query and every `TextEditor` (`textEditorName`, past SwiftUI to the text view); a disclosure called by the words after it | e7b7538 |
 | Y the layout: no overlaps, by rules | done — `UIHintLayout` (VerbinalKit): the hard rules, the costs, fewest spots first, the first 12 by the order given, spots kept relative to their element, badges, the hint list; property tests over 200 seeded screens | 4bae863 |
-| O the overlay: rings, bubbles, badges, the hint list | done — `UIHintStore`, `UIHintScene`, `UIHintMeasure`, `UIHintTracker`, `UIHintOverlay`, `UIHintPresenter` on `AppState`; the tools move onto it in T | (this commit) |
-| T the tools: `show_ui_hints`, `clear_ui_hints`, `point_at_ui`, `list_ui_targets` | not started | |
+| O the overlay: rings, bubbles, badges, the hint list | done — `UIHintStore`, `UIHintScene`, `UIHintMeasure`, `UIHintTracker`, `UIHintOverlay`, `UIHintPresenter` on `AppState`; the tools move onto it in T | 8db7fc2 |
+| T the tools: `show_ui_hints`, `clear_ui_hints`, `point_at_ui`, `list_ui_targets` | done — the registry, anchors and `uiPointerOverlay()` retired; `hintsDismissed` in `list_events`; `screen` and `hints` in `get_current_view`; a window read for the first time is warmed; the overlay never reads as its window; an unreadable screen is said, not listed empty. Checked on the running app too | (this commit) |
 | C closed things: `open_ui`, `close_ui` (sections, panels, menus) | not started | |
 | V bring into view: scroll | not started | |
 | W words, docs, handout 28 | not started | |
@@ -489,5 +489,9 @@ Taken by the person, 2026-09-30:
   targets if not.
 - **Frame tracking cost:** a full snapshot is about 55 ms. Tracking snapshots again only on a change
   signal (move, resize, scroll, screen change), debounced, never on a timer.
+- **The accessibility service stops answering while the screen is locked** (seen 2026-09-30: every
+  window came back as the application). Nothing can be listed or hinted then — nobody would see a
+  hint — and the tools say so (`problem`). The tests that read windows skip, saying why, instead of
+  failing.
 - **Derived ids change with the language and the layout.** They are marked `stable: false`. Tours and
   handouts use hand-tagged ids.

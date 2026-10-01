@@ -47,7 +47,6 @@ struct RegistrySearchSheet: View {
             .padding(12)
         }
         .frame(minWidth: 560, idealWidth: 640, minHeight: 420, idealHeight: 520)
-        .uiPointerOverlay()
     }
 
     private var header: some View {
@@ -62,11 +61,11 @@ struct RegistrySearchSheet: View {
                 TextField("Repository name or part of it", text: $model.query)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { Task { await model.run() } }
-                    .pointable("registry.query", label: "Registry search", screen: "portal")
+                    .pointable("registry.query")
                 Button("Search") { Task { await model.run() } }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!model.canSearch)
-                    .pointable("registry.search", label: "Search the registry", screen: "portal")
+                    .pointable("registry.search")
             }
         }
         .padding(16)

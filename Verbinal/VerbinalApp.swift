@@ -16,10 +16,8 @@ struct VerbinalApp: App {
         #if os(macOS)
         WindowGroup {
             ContentView()
-                .uiPointerOverlay()
                 .uiWindowPlace(.main)
                 .environment(appState)
-                .environment(appState.uiPointer)
                 .environment(\.locale, appState.locale)
                 .frame(minWidth: 900, minHeight: 600)
                 .task { NotificationService.requestPermissionIfNeeded() }
@@ -165,10 +163,8 @@ struct VerbinalApp: App {
 
         Settings {
             SettingsView()
-                .uiPointerOverlay()
                 .uiWindowPlace(.settings)
                 .environment(appState)
-                .environment(appState.uiPointer)
                 .environment(\.locale, appState.locale)
         }
         #else

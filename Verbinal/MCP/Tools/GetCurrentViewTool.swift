@@ -30,6 +30,15 @@ struct GetCurrentViewTool: JSONReadTool {
         var openSearchDetail: Record? = nil
         /// (Research) The record selected in the list, its detail shown.
         var selectedResearchRecord: Record? = nil
+        /// The screen as list_ui_targets names it: `search.results`, `portal`.
+        var screen: String? = nil
+        /// The hints up now, by set (show_ui_hints, point_at_ui).
+        var hints: [HintSet] = []
+
+        struct HintSet: Encodable, Sendable, Equatable {
+            let set: String
+            let hints: [String]
+        }
 
         /// An observation the screen is showing: its row or record id and its plane.
         struct Record: Encodable, Sendable, Equatable {

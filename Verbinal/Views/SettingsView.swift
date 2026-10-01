@@ -18,54 +18,54 @@ struct SettingsView: View {
         @Bindable var appState = appState
         TabView(selection: $appState.settingsSection) {
             GeneralSettingsTab()
+                .pointableArea("settings.general", label: String(localized: "General"))
                 .environment(appState)
                 .tabItem { Label("General", systemImage: "gear") }
                 .tag(SettingsSection.general)
-                .pointableArea("settings.general", label: String(localized: "General"), screen: "settings.general")
 
             PortalSettingsTab()
+                .pointableArea("settings.portal", label: String(localized: "Portal"))
                 .environment(appState)
                 .tabItem { Label("Portal", systemImage: "play.circle") }
                 .tag(SettingsSection.portal)
-                .pointableArea("settings.portal", label: String(localized: "Portal"), screen: "settings.portal")
 
             // Master switch first, then the features that depend on it
             // (Image Discovery probe jobs, AI Compute), then the
             // external-client setup that talks to the server.
             AgentsSettingsTab()
+                .pointableArea("settings.agent", label: String(localized: "AI Agent"))
                 .environment(appState)
                 .tabItem { Label("AI Agent", image: "robot") }
                 .tag(SettingsSection.agent)
-                .pointableArea("settings.agent", label: String(localized: "AI Agent"), screen: "settings.agent")
 
             ImageDiscoverySettingsTab()
+                .pointableArea("settings.imageDiscovery", label: String(localized: "Image Discovery"))
                 .environment(appState)
                 .tabItem { Label("Image Discovery", systemImage: "shippingbox.and.arrow.backward") }
                 .tag(SettingsSection.imageDiscovery)
-                .pointableArea("settings.imageDiscovery", label: String(localized: "Image Discovery"), screen: "settings.imageDiscovery")
 
             AIComputeSettingsTab()
+                .pointableArea("settings.aiCompute", label: String(localized: "AI Compute"))
                 .environment(appState)
                 .tabItem { Label("AI Compute", systemImage: "cpu") }
                 .tag(SettingsSection.aiCompute)
-                .pointableArea("settings.aiCompute", label: String(localized: "AI Compute"), screen: "settings.aiCompute")
 
             MCPIntegrationSettingsTab()
+                .pointableArea("settings.mcpClients", label: String(localized: "MCP Clients"))
                 .environment(appState)
                 .tabItem { Label("MCP Clients", systemImage: "network") }
                 .tag(SettingsSection.mcpClients)
-                .pointableArea("settings.mcpClients", label: String(localized: "MCP Clients"), screen: "settings.mcpClients")
 
             EndpointsSettingsTab()
+                .pointableArea("settings.endpoints", label: String(localized: "Endpoints"))
                 .environment(appState)
                 .tabItem { Label("Endpoints", systemImage: "server.rack") }
                 .tag(SettingsSection.endpoints)
-                .pointableArea("settings.endpoints", label: String(localized: "Endpoints"), screen: "settings.endpoints")
 
             AboutSettingsTab()
+                .pointableArea("settings.about", label: String(localized: "About"))
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(SettingsSection.about)
-                .pointableArea("settings.about", label: String(localized: "About"), screen: "settings.about")
         }
         // Resizable instead of a fixed 420 height: the AI Agent tab can
         // stack the autonomy controls + a ~160pt nested activity
@@ -559,8 +559,7 @@ private struct AgentsSettingsTab: View {
             Section {
                 Toggle("Allow external AI agents", isOn: allowExternalAgents)
                     .toggleStyle(.switch)
-                    .pointable("settings.agent.allowExternal", label: String(localized: "Allow external AI agents"),
-                               screen: "settings.agent")
+                    .pointable("settings.agent.allowExternal")
                 statusRow
             } header: {
                 Text("MCP Server")
@@ -577,18 +576,15 @@ private struct AgentsSettingsTab: View {
                 Section {
                     Toggle("Auto-apply agent writes", isOn: autoApplyWrites)
                         .toggleStyle(.switch)
-                        .pointable("settings.agent.autoApply", label: String(localized: "Auto-apply agent writes"),
-                                   screen: "settings.agent")
+                        .pointable("settings.agent.autoApply")
                     Toggle("Follow agent activity", isOn: followAgentActivity)
                         .toggleStyle(.switch)
-                        .pointable("settings.agent.follow", label: String(localized: "Follow agent activity"),
-                                   screen: "settings.agent")
+                        .pointable("settings.agent.follow")
                     Toggle("Show activity snackbar", isOn: showActivitySnackbar)
                         .toggleStyle(.switch)
                     Toggle("Play a sound when an agent starts and stops", isOn: Bindable(appState.agentsService.sounds).isEnabled)
                         .toggleStyle(.switch)
-                        .pointable("settings.agent.sounds", label: String(localized: "Play a sound when an agent starts and stops"),
-                                   screen: "settings.agent")
+                        .pointable("settings.agent.sounds")
                 } header: {
                     Text("Autonomy")
                 } footer: {

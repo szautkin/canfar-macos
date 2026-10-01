@@ -17,20 +17,20 @@ struct SearchFormView: View {
                     // 4-column constraint row — top aligned
                     HStack(alignment: .top, spacing: 12) {
                         ObservationConstraintsView(formState: searchModel.formState)
-                            .pointableArea("search.observation", label: String(localized: "Observation constraints"), screen: "search")
+                            .pointableArea("search.observation", label: String(localized: "Observation constraints"))
                             .frame(maxWidth: .infinity)
                         SpatialConstraintsView(
                             formState: searchModel.formState,
                             resolverStatus: searchModel.resolverStatus,
                             onTargetChanged: { searchModel.targetChanged() }
                         )
-                        .pointableArea("search.spatial", label: String(localized: "Spatial constraints"), screen: "search")
+                        .pointableArea("search.spatial", label: String(localized: "Spatial constraints"))
                         .frame(maxWidth: .infinity)
                         TemporalConstraintsView(formState: searchModel.formState)
-                            .pointableArea("search.temporal", label: String(localized: "Temporal constraints"), screen: "search")
+                            .pointableArea("search.temporal", label: String(localized: "Temporal constraints"))
                             .frame(maxWidth: .infinity)
                         SpectralConstraintsView(formState: searchModel.formState)
-                            .pointableArea("search.spectral", label: String(localized: "Spectral constraints"), screen: "search")
+                            .pointableArea("search.spectral", label: String(localized: "Spectral constraints"))
                             .frame(maxWidth: .infinity)
                     }
 
@@ -39,7 +39,7 @@ struct SearchFormView: View {
                         dataTrainModel: searchModel.dataTrainModel,
                         formState: searchModel.formState
                     )
-                    .pointableArea("search.dataTrain", label: String(localized: "Collection, instrument and filter lists"), screen: "search")
+                    .pointableArea("search.dataTrain", label: String(localized: "Collection, instrument and filter lists"))
                 }
                 .padding(16)
             }
@@ -75,7 +75,7 @@ struct SearchFormView: View {
             .disabled(searchModel.isSearching)
             .keyboardShortcut(.return, modifiers: .command)
             .help("Execute search (⌘↩)")
-            .pointable("search.run", label: String(localized: "Search"), screen: "search")
+            .pointable("search.run")
 
             SearchCancelButton(searchModel: searchModel)
 
@@ -91,7 +91,7 @@ struct SearchFormView: View {
             .controlSize(.large)
             .disabled(searchModel.isSearching)
             .help("Clear all filters")
-            .pointable("search.reset", label: String(localized: "Reset"), screen: "search")
+            .pointable("search.reset")
 
             Spacer()
 

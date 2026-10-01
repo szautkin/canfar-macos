@@ -28,7 +28,7 @@ struct ADQLEditorView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
-                .pointable("adql.generate", label: String(localized: "Generate from Form"), screen: "search.adql")
+                .pointable("adql.generate")
 
                 Button {
                     Task { await executeQuery() }
@@ -47,7 +47,7 @@ struct ADQLEditorView: View {
                           || searchModel.isSearching || !problems.isEmpty)
                 .keyboardShortcut(.return, modifiers: [.command, .shift])
                 .help(problems.isEmpty ? "" : String(localized: "Fix the problems listed under the query first"))
-                .pointable("adql.execute", label: String(localized: "Execute"), screen: "search.adql")
+                .pointable("adql.execute")
 
                 SearchCancelButton(searchModel: searchModel)
 

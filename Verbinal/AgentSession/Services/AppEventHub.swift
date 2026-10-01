@@ -206,6 +206,8 @@ extension AgentEvent {
         case .proposalArrived(let id, _, _), .proposalApplied(let id, _, _), .proposalRejected(let id, _),
              .proposalWithdrawn(let id, _), .proposalFailed(let id, _), .proposalExpired(let id, _):
             id
+        case .hintsDismissed:
+            nil
         }
     }
 }

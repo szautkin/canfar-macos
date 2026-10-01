@@ -25,6 +25,10 @@ final class UIHintOverlay {
     private final class Panel: NSPanel {
         override var canBecomeKey: Bool { false }
         override var canBecomeMain: Bool { false }
+        /// Not a window to list: it shares its window's frame, and would read
+        /// as that window. VoiceOver hears hints as announcements.
+        override func isAccessibilityElement() -> Bool { false }
+        override func accessibilityChildren() -> [Any]? { nil }
     }
 
     @Observable

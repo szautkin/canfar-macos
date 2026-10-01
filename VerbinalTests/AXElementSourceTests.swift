@@ -27,7 +27,7 @@ final class AXElementSourceTests: XCTestCase {
                 HStack { Text("Target"); TextField("", text: $typed) }
                 SecureField("Password", text: $typed)
                 DisclosureGroup("Advanced", isExpanded: $open) { Button("Inside") {} }
-                Button("Tagged") {}.pointable("sample.tagged", label: "Tagged", screen: "sample")
+                Button("Tagged") {}.pointable("sample.tagged")
                 List { ForEach(0..<40) { Text("Row \($0)") } }.frame(height: 100)
                 TextEditor(text: $code)
                     .textEditorName("Code to run", pointable: "sample.code")
@@ -35,7 +35,6 @@ final class AXElementSourceTests: XCTestCase {
             }
             .padding()
             .uiWindowPlace(.main)
-            .environment(UIPointerRegistry())
         }
     }
 
@@ -47,6 +46,7 @@ final class AXElementSourceTests: XCTestCase {
     }
 
     private func show() async throws -> (UISnapshot, [UIElement]) {
+        try await AXReadable.require()
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 480, height: 520),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -55,10 +55,9 @@ final class AXElementSourceTests: XCTestCase {
         self.window = window
         try await Task.sleep(for: .milliseconds(400))
         let source = AXElementSource(screenName: { kind, _, _ in kind == .main ? "sample" : "other" })
-        var snapshot = source.snapshot()
-        // SwiftUI builds its tree on the first ask; the second read has it all.
-        try await Task.sleep(for: .milliseconds(200))
-        snapshot = source.snapshot()
+        // SwiftUI builds its tree on the first ask, a run-loop turn or more later.
+        await source.ready()
+        let snapshot = source.snapshot()
         let ref = try XCTUnwrap(snapshot.windows.first { $0.number == window.windowNumber }, "the window is listed")
         return (snapshot, snapshot.elements(in: ref.index))
     }

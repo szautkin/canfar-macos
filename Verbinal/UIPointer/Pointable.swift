@@ -6,88 +6,33 @@
 
 import SwiftUI
 
-/// Frames of the pointable controls in one window or sheet.
-private struct PointableAnchorsKey: PreferenceKey {
-    static let defaultValue: [String: Anchor<CGRect>] = [:]
-    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) {
-        value.merge(nextValue()) { _, new in new }
-    }
-}
-
-private struct PointableModifier: ViewModifier {
-    @Environment(UIPointerRegistry.self) private var registry: UIPointerRegistry?
-    let target: UIPointerMatcher.Target
-
-    func body(content: Content) -> some View {
-        content
-            .accessibilityIdentifier(PointableID.encode(target.id))
-            .anchorPreference(key: PointableAnchorsKey.self, value: .bounds) { [target.id: $0] }
-            .onAppear { registry?.register(target) }
-            .onDisappear { registry?.unregister(target.id) }
-    }
-}
-
-/// Draws the current hint — a ring round the control and the agent's
-/// words beside it — over everything in this window or sheet.
-private struct PointerOverlayModifier: ViewModifier {
-    @Environment(UIPointerRegistry.self) private var registry: UIPointerRegistry?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content.overlayPreferenceValue(PointableAnchorsKey.self) { anchors in
-            GeometryReader { proxy in
-                if let hint = registry?.hint, let anchor = anchors[hint.targetID] {
-                    let frame = proxy[anchor].insetBy(dx: -6, dy: -6)
-                    ZStack(alignment: .topLeading) {
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.accentColor, lineWidth: 3)
-                            .shadow(color: .accentColor.opacity(0.6), radius: 6)
-                            .frame(width: frame.width, height: frame.height)
-                            .offset(x: frame.minX, y: frame.minY)
-                        if let message = hint.message {
-                            Text(message)
-                                .font(.callout)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor))
-                                .frame(maxWidth: 320, alignment: .leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .offset(x: max(8, min(frame.minX, proxy.size.width - 330)),
-                                        y: frame.maxY + 8 > proxy.size.height - 60 ? frame.minY - 52 : frame.maxY + 8)
-                        }
-                    }
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
-                    .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: hint.serial)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(Text(hint.message ?? ""))
-                }
-            }
-        }
-    }
-}
-
+/// Hand tags: the ids that stay the same across runs, languages and
+/// redesigns, for the elements tours and handouts name (plan 27). Every
+/// other element on screen is a target already, by what it is and what it
+/// says (`list_ui_targets`); a tag only fixes its id. The tag is the
+/// element's accessibility identifier, so there is nothing else to keep in
+/// step with it.
 extension View {
-    /// Lets an agent point at this control (`point_at_ui`). `id` is stable
-    /// and unlocalized; `label` is what the person reads on it.
-    func pointable(_ id: String, label: String, screen: String) -> some View {
-        modifier(PointableModifier(target: .init(id: id, label: label, screen: screen)))
+    /// This control's stable id. On a `TextEditor`, use `textEditorName`
+    /// instead: SwiftUI keeps the identifier off its text view on macOS.
+    func pointable(_ id: String) -> some View {
+        accessibilityIdentifier(PointableID.encode(id))
     }
 
-    /// Lets an agent point at a region — a form's section, a row of column
-    /// headers — by `id`. The region becomes one accessibility container
-    /// named `label`, so its id is on it and not on each control inside
-    /// (plan 27).
-    func pointableArea(_ id: String, label: String, screen: String) -> some View {
+    /// A region's stable id — a form's section, a row of column headers. The
+    /// region becomes one accessibility container named `label`, so the id
+    /// is on it and not on each control inside.
+    func pointableArea(_ id: String, label: String) -> some View {
         accessibilityElement(children: .contain)
             .accessibilityLabel(Text(label))
-            .pointable(id, label: label, screen: screen)
+            .accessibilityIdentifier(PointableID.encode(id))
     }
 
-    /// Draws an agent's pointer hint for the pointable controls inside.
-    /// Put it at the root of each window and sheet.
-    func uiPointerOverlay() -> some View {
-        modifier(PointerOverlayModifier())
+    /// An image's stable id: a FITS or cube canvas, which hints keep off so
+    /// its marks stay in sight.
+    func pointableCanvas(_ id: String, label: String) -> some View {
+        accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(label))
+            .accessibilityIdentifier(PointableID.encode(id, canvas: true))
     }
 }

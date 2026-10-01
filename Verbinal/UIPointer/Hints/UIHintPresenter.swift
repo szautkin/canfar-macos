@@ -57,6 +57,9 @@ final class UIHintPresenter {
 
     // MARK: - For the tools
 
+    /// Waits, the first time, for what is on screen to be readable.
+    func ready() async { await source.ready() }
+
     /// What is on screen now.
     func snapshot() -> UISnapshot {
         lastSnapshot = source.snapshot()

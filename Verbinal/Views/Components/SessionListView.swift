@@ -76,7 +76,7 @@ struct SessionListView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
-                        .pointable("portal.openLaunchForm", label: String(localized: "Launch Session"), screen: "portal")
+                        .pointable("portal.openLaunchForm")
                     }
                 }
 

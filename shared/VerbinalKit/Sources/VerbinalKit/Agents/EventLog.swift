@@ -25,6 +25,10 @@ public enum AgentEvent: Sendable, Equatable {
     case proposalFailed(id: UUID, kind: String)
     /// A proposal waited out `PendingProposal.lifetime` unapplied.
     case proposalExpired(id: UUID, kind: String)
+    /// The last hint of a set an assistant showed on the interface went —
+    /// `how`: closed, timedOut, escape, screenChanged, … (plan 27), so a tour
+    /// can wait on the person's reading.
+    case hintsDismissed(set: String, how: String)
 }
 
 /// One record in the event log.
