@@ -25,6 +25,11 @@ final class UIWindowPlaces {
         places[ObjectIdentifier(window)] = (WeakWindow(window: window), place)
     }
 
+    /// The windows showing at a place.
+    func windows(_ place: PointableID.Window) -> [NSWindow] {
+        NSApp.windows.filter { $0.isVisible && self.place(of: $0) == place }
+    }
+
     /// The window's place: as its root said, or as Verbinal named the
     /// windows it makes itself.
     func place(of window: NSWindow) -> PointableID.Window? {

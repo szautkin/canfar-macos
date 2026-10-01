@@ -389,6 +389,8 @@ final class AppState {
         // No session, no tools: the person allows each one (plan 25).
         agentsService.sessionGate = SessionApprovalGate(approvals: sessionApprovals)
         sessionApprovalWindow = SessionApprovalWindow(approvals: sessionApprovals)
+        // The app's other windows go with its last main window.
+        appWindows = AppWindows { [weak self] in self?.mainWindowClosed() }
         // A set of hints gone, however it went: in list_events, so a tour
         // can wait on the person's reading (plan 27).
         let events = agentsService.eventLog
@@ -563,6 +565,16 @@ final class AppState {
     /// marks on an image, which are `marks`.
     let uiHints = UIHintStore()
     #if os(macOS)
+    @ObservationIgnored private var appWindows: AppWindows?
+
+    /// The last main window closed: Settings closes, hints go, and a session
+    /// request still waiting is declined — nobody is there to allow it.
+    func mainWindowClosed() {
+        UIWindowPlaces.shared.windows(.settings).forEach { $0.close() }
+        uiHints.clearAll(.windowClosed)
+        sessionApprovals.declineAll()
+    }
+
     /// Reads what is on screen and draws the hints over it.
     @ObservationIgnored private(set) lazy var uiHintPresenter = UIHintPresenter(
         store: uiHints,

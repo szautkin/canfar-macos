@@ -116,6 +116,12 @@ final class SessionApprovals {
         resolve(session, .declined)
     }
 
+    /// Every request waiting: nobody is there to allow them — the app's
+    /// window closed.
+    func declineAll() {
+        pending.map(\.id).forEach(decline)
+    }
+
     private func resolve(_ session: UUID, _ decision: Decision) {
         pending.removeAll { $0.id == session }
         waiting.removeValue(forKey: session)?.resume(returning: decision)

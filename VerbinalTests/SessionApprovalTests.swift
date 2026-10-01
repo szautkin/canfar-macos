@@ -71,6 +71,19 @@ final class SessionApprovalTests: XCTestCase {
         XCTAssertTrue(approvals.pending.isEmpty)
     }
 
+    /// The app's window closed: every request waiting is declined —
+    /// nobody is there to allow it.
+    func testEveryRequestWaitingIsDeclinedAtOnce() async throws {
+        let approvals = SessionApprovals(defaults: defaults)
+        let first = Task { await approvals.ask(self.request()) }
+        let second = Task { await approvals.ask(self.request()) }
+        for _ in 0..<200 where approvals.pending.count < 2 { try await Task.sleep(for: .milliseconds(5)) }
+        approvals.declineAll()
+        let answers = [await first.value, await second.value]
+        XCTAssertEqual(answers, [.declined, .declined])
+        XCTAssertTrue(approvals.pending.isEmpty)
+    }
+
     func testTheDefaultInstructionsAreThePersonsOnceSet() {
         let approvals = SessionApprovals(defaults: defaults)
         XCTAssertEqual(approvals.defaultInstructions, SessionApprovals.builtInInstructions)
