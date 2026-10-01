@@ -46,6 +46,8 @@ struct UIHintScene: Equatable, Sendable {
 
     var size: CGSize = .zero
     var dim = false
+    /// A hint is on an item of an open menu: the overlay draws above menus.
+    var aboveMenus = false
     var rings: [Ring] = []
     var bubbles: [Bubble] = []
     var badges: [Badge] = []
@@ -74,6 +76,7 @@ struct UIHintScene: Equatable, Sendable {
         guard !hints.isEmpty else { return scene }
         let bounds = CGRect(origin: .zero, size: size).insetBy(dx: 4, dy: 4)
         scene.dim = hints.contains { sets[$0.set]?.dim == true }
+        scene.aboveMenus = hints.contains { $0.kind == .menuItem }
         scene.rings = hints.map { hint in
             let others = hints.filter { $0.id != hint.id }
             return Ring(id: hint.id, frame: hint.frame,

@@ -570,6 +570,9 @@ final class AppState {
     /// The hints an assistant shows on the interface (plan 27) — not the
     /// marks on an image, which are `marks`.
     let uiHints = UIHintStore()
+    /// The file browser beside the main content (⌘B): a panel the person
+    /// shows or hides — and an assistant opens on purpose (`open_ui`).
+    var fileBrowserShown = false
     #if os(macOS)
     @ObservationIgnored private var appWindows: AppWindows?
 

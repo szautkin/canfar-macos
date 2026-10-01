@@ -25,8 +25,8 @@
 | Y the layout: no overlaps, by rules | done — `UIHintLayout` (VerbinalKit): the hard rules, the costs, fewest spots first, the first 12 by the order given, spots kept relative to their element, badges, the hint list; property tests over 200 seeded screens | 4bae863 |
 | O the overlay: rings, bubbles, badges, the hint list | done — `UIHintStore`, `UIHintScene`, `UIHintMeasure`, `UIHintTracker`, `UIHintOverlay`, `UIHintPresenter` on `AppState`; the tools move onto it in T | 8db7fc2 |
 | T the tools: `show_ui_hints`, `clear_ui_hints`, `point_at_ui`, `list_ui_targets` | done — the registry, anchors and `uiPointerOverlay()` retired; `hintsDismissed` in `list_events`; `screen` and `hints` in `get_current_view`; a window read for the first time is warmed; the overlay never reads as its window; an unreadable screen is said, not listed empty. Checked on the running app too | (this commit) |
-| C closed things: `open_ui`, `close_ui` (sections, panels, menus) | not started | |
-| V bring into view: scroll | done — elements scrolled out of sight kept apart (`includeScrolled` lists them); a hint on one scrolls it into view first; a caption and its control are one answer. Found by the QA pass on the running app (Settings ▸ AI Agent scrolled) | (this commit) |
+| C closed things: `open_ui`, `close_ui` (sections, panels, menus) | done — sections by their disclosure, confirmed; the file browser by app state (`UIPanel`); a menu opened without waiting on the person, hints above it; tabs refused, with the tool that navigates; `hiddenPanels` in the listing. Also `select_ui` (197661a): a list's row or item selected as a click selects it | (this commit) |
+| V bring into view: scroll | done — elements scrolled out of sight kept apart (`includeScrolled` lists them); a hint on one scrolls it into view first; a caption and its control are one answer. Found by the QA pass on the running app (Settings ▸ AI Agent scrolled) | e5b687a, 00758e7, 83bc2ee |
 | W words, docs, handout 28 | not started | |
 
 ---

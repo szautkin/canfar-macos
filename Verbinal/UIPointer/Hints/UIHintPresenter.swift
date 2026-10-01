@@ -99,6 +99,18 @@ final class UIHintPresenter {
         return (current, await source.select(current))
     }
 
+    /// Opens or closes a closed section or menu of the last reading (plan 27
+    /// C), and reads the screen again. Answers whether it worked, and the
+    /// elements that appeared — what was behind it.
+    func setOpen(_ element: UIElement, _ open: Bool) async -> (done: Bool, appeared: [UIElement]) {
+        let before = Set(lastSnapshot.elements.map(\.id))
+        let done = open ? await source.open(element) : await source.close(element)
+        guard done else { return (false, []) }
+        try? await Task.sleep(for: .milliseconds(element.kind == .disclosure ? 100 : 400))
+        let now = snapshot()
+        return (true, now.elements.filter { !before.contains($0.id) })
+    }
+
     /// Shows hints on elements of the last reading, as one set.
     @discardableResult
     func show(_ requests: [Request], numbered: Bool, dim: Bool, seconds: Double?, replace: Bool) -> String {

@@ -202,6 +202,49 @@ final class AXElementSource: UIElementSource {
         }
     }
 
+    /// Opens a closed section or menu of the last snapshot, as a click opens
+    /// it (plan 27 C). A section is confirmed open. A menu opens after this
+    /// returns: an open menu holds the app until the person chooses from it
+    /// or presses Esc, and the answer must not wait on them. Answers whether
+    /// it is open, or opening.
+    func open(_ element: UIElement) async -> Bool {
+        guard let target = self.element(element.handle), element.closed else { return false }
+        switch element.kind {
+        case .disclosure:
+            guard AXUIElementPerformAction(target, kAXPressAction as CFString) == .success else { return false }
+            try? await Task.sleep(for: .milliseconds(150))
+            return Self.expanded(target) == true
+        case .popUp, .menuButton, .menu:
+            DispatchQueue.main.async { AXUIElementPerformAction(target, kAXPressAction as CFString) }
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Closes an open section, or an open menu, as the person would.
+    func close(_ element: UIElement) async -> Bool {
+        guard let target = self.element(element.handle), !element.closed else { return false }
+        switch element.kind {
+        case .disclosure:
+            guard AXUIElementPerformAction(target, kAXPressAction as CFString) == .success else { return false }
+            try? await Task.sleep(for: .milliseconds(150))
+            return Self.expanded(target) == false
+        case .popUp, .menuButton, .menu:
+            let menus = ((Self.value(target, kAXChildrenAttribute) as? [AXUIElement]) ?? [])
+                .filter { (Self.value($0, kAXRoleAttribute) as? String) == "AXMenu" }
+            return menus.contains { AXUIElementPerformAction($0, kAXCancelAction as CFString) == .success }
+        default:
+            return false
+        }
+    }
+
+    /// Whether a disclosure is open: by `AXExpanded`, or by its 0-or-1 state.
+    private static func expanded(_ element: AXUIElement) -> Bool? {
+        if let expanded = value(element, kAXExpandedAttribute) as? Bool { return expanded }
+        return (value(element, kAXValueAttribute) as? NSNumber).map { $0.intValue != 0 }
+    }
+
     /// Pages tried, at most, in one scroll area.
     static let maxPages = 30
 

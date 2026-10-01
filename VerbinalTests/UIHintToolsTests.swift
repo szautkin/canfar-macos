@@ -123,6 +123,29 @@ final class UIHintToolsTests: XCTestCase {
         XCTAssertTrue(state.uiHints.isEmpty)
     }
 
+    /// A panel the person hid opens by its name — by app state, never by
+    /// pressing its toggle — and closes again.
+    func testAPanelOpensByItsName() async throws {
+        let state = AppState()
+        XCTAssertFalse(state.fileBrowserShown)
+        let opened = try await call(state.makeOpenUITool(), #"{"target":"file browser"}"#)
+        XCTAssertEqual(opened["done"] as? Bool, true)
+        XCTAssertEqual(opened["id"] as? String, "panel.fileBrowser")
+        XCTAssertTrue(state.fileBrowserShown)
+        let again = try await call(state.makeOpenUITool(), #"{"target":"Show file browser"}"#)
+        XCTAssertEqual(again["message"] as? String, "File browser was already shown")
+        _ = try await call(state.makeCloseUITool(), #"{"target":"panel.fileBrowser"}"#)
+        XCTAssertFalse(state.fileBrowserShown)
+    }
+
+    /// A tab is navigated to, never opened.
+    func testATabIsNotOpened() async throws {
+        let state = try await search()
+        let refused = try await call(state.makeOpenUITool(), #"{"target":"ADQL"}"#)
+        XCTAssertEqual(refused["done"] as? Bool, false)
+        XCTAssertTrue((refused["message"] as? String)?.contains("navigated to") == true, "\(refused)")
+    }
+
     /// The last hint of a set gone: list_events says so, and how.
     func testADismissedSetIsInTheEvents() async throws {
         let state = try await search()

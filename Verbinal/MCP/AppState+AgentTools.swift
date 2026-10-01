@@ -43,6 +43,8 @@ extension AppState {
         tools.append(makeShowUIHintsTool())
         tools.append(makeClearUIHintsTool())
         tools.append(makeSelectUITool())
+        tools.append(makeOpenUITool())
+        tools.append(makeCloseUITool())
         tools.append(makeOpenSettingsTool())
         tools.append(makeCloseSettingsTool())
         tools.append(makeGetAuthStateTool())

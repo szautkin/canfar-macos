@@ -93,14 +93,14 @@ extension ContentView {
     /// impossible to close without navigating away.
     private var fileBrowserToolbarItem: some View {
         Button {
-            showFileBrowser.toggle()
+            appState.fileBrowserShown.toggle()
         } label: {
             Image(systemName: "sidebar.left")
         }
         .buttonStyle(.borderless)
         .keyboardShortcut("b", modifiers: [.command])
         .help("Toggle file browser (⌘B)")
-        .accessibilityLabel(Text(showFileBrowser ? "Hide file browser" : "Show file browser"))
+        .accessibilityLabel(Text(appState.fileBrowserShown ? "Hide file browser" : "Show file browser"))
     }
 
     /// Profile / login control, shared by the landing and Portal toolbars

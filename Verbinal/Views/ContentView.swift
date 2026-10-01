@@ -35,7 +35,6 @@ struct ContentView: View {
     // browser column is macOS-only — iOS routes Storage to a placeholder.
     @State private var storageBrowserModel: StorageBrowserModel?
     @State private var fileBrowserModel = FileBrowserModel()
-    @State var showFileBrowser = false
 
     private struct ViewerChoiceItem: Identifiable {
         let url: URL
@@ -75,7 +74,7 @@ struct ContentView: View {
             #endif
             HStack(spacing: 0) {
                 #if os(macOS)
-                if showFileBrowser {
+                if appState.fileBrowserShown {
                     FileBrowserPanel(model: fileBrowserModel) { url in
                         handleFileOpen(url)
                     }

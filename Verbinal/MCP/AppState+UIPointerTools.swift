@@ -13,6 +13,10 @@ extension AppState {
         ListUITargetsTool(snapshot: { [weak self] in
             await self?.uiHintPresenter.ready()
             return await MainActor.run { self?.uiHintPresenter.snapshot() ?? .empty }
+        }, hiddenPanels: { [weak self] in
+            await MainActor.run {
+                UIPanel.allCases.filter { self?.isShown($0) == false }.map { .init(id: $0.id, name: $0.name) }
+            }
         })
     }
 
@@ -58,6 +62,68 @@ extension AppState {
             return .init(selected: selected, target: args.target, id: now.id,
                          message: selected ? nil
                              : "this list's entries do not select — they act through their buttons; point at the button you mean")
+        }
+    }
+
+    func makeOpenUITool() -> OpenCloseUITool {
+        .open { [weak self] args in await self?.setUIOpen(args, open: true) ?? .init(done: false) }
+    }
+
+    func makeCloseUITool() -> OpenCloseUITool {
+        .close { [weak self] args in await self?.setUIOpen(args, open: false) ?? .init(done: false) }
+    }
+
+    /// Opens or closes one closed thing on purpose: a panel by app state, a
+    /// section or a menu as a click does it (plan 27 C).
+    @MainActor
+    func setUIOpen(_ args: OpenCloseUITool.Args, open: Bool) async -> OpenCloseUITool.Output {
+        let presenter = uiHintPresenter
+        await presenter.ready()
+        let before = Set(presenter.snapshot().elements.map(\.id))
+        if let panel = UIPanel.named(args.target) {
+            let was = isShown(panel)
+            setShown(panel, open)
+            var inside: [UIElement] = []
+            if open, !was {
+                try? await Task.sleep(for: .milliseconds(400))
+                inside = presenter.snapshot().elements.filter { !before.contains($0.id) }
+            }
+            return .init(done: true, target: args.target, id: panel.id, kind: "panel",
+                         inside: inside.map(UITargetView.init),
+                         message: was == open ? "\(panel.name) was already \(open ? "shown" : "hidden")" : nil)
+        }
+        switch UITargetScope.match(args.target, in: presenter.lastSnapshot) {
+        case .missing(let candidates, _):
+            return .init(done: false, target: args.target,
+                         message: presenter.lastSnapshot.problem ?? "no single closed section, panel or menu is called \"\(args.target)\"",
+                         candidates: candidates.map(UITargetView.init))
+        case .found(let element):
+            guard element.kind.opens else {
+                let navigate = element.kind == .tab || element.kind == .segment
+                    ? "a tab is navigated to, never opened: navigate_to, set_search_tab or open_settings"
+                    : "open_ui opens a folded section, a hidden panel or a menu"
+                return .init(done: false, target: args.target, id: element.id, kind: element.kind.rawValue,
+                             message: "\(element.id) is a \(element.kind.rawValue): \(navigate)")
+            }
+            guard element.closed == open else {
+                return .init(done: true, target: args.target, id: element.id, kind: element.kind.rawValue,
+                             message: "\(element.id) was already \(open ? "open" : "closed")")
+            }
+            var current = element
+            if !element.inSight, let moved = await presenter.bringIntoView([element])[element.id] { current = moved }
+            let (done, appeared) = await presenter.setOpen(current, open)
+            let menu = current.kind != .disclosure
+            if done {
+                agentsService.activityStore.append(.live(
+                    kind: open ? "open_ui" : "close_ui",
+                    summary: "\(open ? "Opened" : "Closed") \(current.name ?? current.id)",
+                    origin: .external(clientID: open ? "open_ui" : "close_ui")))
+            }
+            return .init(done: done, target: args.target, id: current.id, kind: current.kind.rawValue,
+                         waiting: open && menu && done ? true : nil,
+                         inside: appeared.map(UITargetView.init),
+                         message: !done ? "\(current.id) did not \(open ? "open" : "close")"
+                             : open && menu ? "the menu waits for the person: they choose from it or press Esc" : nil)
         }
     }
 

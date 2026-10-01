@@ -234,6 +234,53 @@ final class UIHintPresenterTests: XCTestCase {
         XCTAssertFalse(chosen.pressed, "select never presses a button")
     }
 
+    /// open_ui's work: a folded section opens — and what was behind it
+    /// appears — and closes again; a menu opens without the call waiting on
+    /// the person, and closes (plan 27 C).
+    func testASectionAndAMenuOpenAndClose() async throws {
+        try await AXReadable.require()
+        struct Closed: View {
+            @State private var open = false
+            @State private var mode = 1
+            var body: some View {
+                VStack(alignment: .leading) {
+                    DisclosureGroup("Advanced", isExpanded: $open) { Button("Hidden inside") {} }
+                    Picker("Mode", selection: $mode) { Text("One").tag(1); Text("Two").tag(2) }.pickerStyle(.menu)
+                }
+                .padding().frame(width: 500, height: 300).uiWindowPlace(.main)
+            }
+        }
+        let window = NSWindow(contentRect: NSRect(x: 260, y: 260, width: 500, height: 300),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: Closed())
+        window.orderFrontRegardless()
+        defer { window.close() }
+        let presenter = UIHintPresenter(store: UIHintStore(),
+                                        source: AXElementSource(screenName: { _, _, _ in "closed" }),
+                                        screenSignature: { "closed" })
+        await presenter.ready()
+        try await Task.sleep(for: .milliseconds(300))
+        let section = try XCTUnwrap(presenter.snapshot().elements.first { $0.name == "Advanced" })
+        XCTAssertTrue(section.closed)
+        let opened = await presenter.setOpen(section, true)
+        XCTAssertTrue(opened.done)
+        XCTAssertTrue(opened.appeared.contains { $0.name == "Hidden inside" }, "what was behind it, appeared")
+        let reopened = try XCTUnwrap(presenter.lastSnapshot.elements.first { $0.name == "Advanced" })
+        XCTAssertFalse(reopened.closed)
+        let shut = await presenter.setOpen(reopened, false)
+        XCTAssertTrue(shut.done)
+        XCTAssertFalse(presenter.lastSnapshot.elements.contains { $0.name == "Hidden inside" })
+
+        let menu = try XCTUnwrap(presenter.snapshot().elements.first { $0.kind == .popUp })
+        let shown = await presenter.setOpen(menu, true)
+        XCTAssertTrue(shown.done, "opened without waiting on the person")
+        let open = try XCTUnwrap(presenter.lastSnapshot.elements.first { $0.handle == presenter.lastSnapshot.elements.first { $0.kind == .popUp }?.handle })
+        XCTAssertTrue(presenter.lastSnapshot.elements.contains { $0.kind == .menuItem } || !open.closed, "its choices are on screen")
+        let dismissed = await presenter.setOpen(open, false)
+        XCTAssertTrue(dismissed.done)
+    }
+
     func testHintsGoWhenTheirScreenChanges() async throws {
         let presenter = try await start()
         presenter.show([.init(element: try element(presenter, "Reset"), title: nil, text: "Clears the form.", style: .bubble)],

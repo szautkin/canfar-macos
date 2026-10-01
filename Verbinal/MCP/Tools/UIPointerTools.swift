@@ -140,11 +140,18 @@ struct ListUITargetsTool: JSONReadTool {
         let next: String?
         /// Why nothing could be read, when the screen cannot be.
         var problem: String? = nil
+        /// Panels the person has hidden: open_ui shows one.
+        var hiddenPanels: [PanelView] = []
+    }
+
+    struct PanelView: Encodable, Sendable {
+        let id: String
+        let name: String
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_ui_targets",
-        description: "Everything on screen you can point at or hint — every control the person can see, by what it is (`kind`) and what it says (`name`), with its `id`, `screen` and position (`at`: x, y, width, height in its window's points). `stable: true` ids are hand tags that hold across runs and languages; the others hold while the screen stays as listed. By default it lists the controls (`kind: interactive`) in the window in front — a sheet or Settings when one is open; `kind: all` adds text, images and areas, `window: all` every window. A folded section or a menu is listed with `closed: true` and nothing behind it: open_ui opens it on purpose. A tab not showing is not listed: navigate there first. What is in sight is listed; `includeScrolled` adds what is scrolled out of sight inside a list or a form (`inSight: false`) — a hint on it scrolls it into view. 200 at a time: pass `next` back as `cursor`. These are the app's interface — not the marks on a FITS or cube image (list_fits_annotations, list_cube_annotations).",
+        description: "Everything on screen you can point at or hint — every control the person can see, by what it is (`kind`) and what it says (`name`), with its `id`, `screen` and position (`at`: x, y, width, height in its window's points). `stable: true` ids are hand tags that hold across runs and languages; the others hold while the screen stays as listed. By default it lists the controls (`kind: interactive`) in the window in front — a sheet or Settings when one is open; `kind: all` adds text, images and areas, `window: all` every window. A folded section or a menu is listed with `closed: true` and nothing behind it, and a hidden panel in `hiddenPanels`: open_ui opens one on purpose. A tab not showing is not listed: navigate there first. What is in sight is listed; `includeScrolled` adds what is scrolled out of sight inside a list or a form (`inSight: false`) — a hint on it scrolls it into view. 200 at a time: pass `next` back as `cursor`. These are the app's interface — not the marks on a FITS or cube image (list_fits_annotations, list_cube_annotations).",
         schema: #"""
         {
           "type": "object",
@@ -163,9 +170,11 @@ struct ListUITargetsTool: JSONReadTool {
     )
 
     let snapshot: @Sendable () async -> UISnapshot
+    let hiddenPanels: @Sendable () async -> [PanelView]
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let snapshot = await snapshot()
+        let panels = await hiddenPanels()
         var scoped = UITargetScope.elements(snapshot, window: args.window)
         if args.includeScrolled == true {
             scoped += args.window == "all" ? snapshot.outOfSight
@@ -182,7 +191,8 @@ struct ListUITargetsTool: JSONReadTool {
             targets: page.map(UITargetView.init),
             unnamed: scoped.filter { $0.kind.isControl && $0.name == nil }.count,
             next: start + limit < listed.count ? String(start + limit) : nil,
-            problem: snapshot.problem)
+            problem: snapshot.problem,
+            hiddenPanels: panels)
     }
 }
 
@@ -433,6 +443,62 @@ struct SelectUITool: JSONReadTool {
     let select: @Sendable (Args) async -> Output
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output { await select(args) }
+}
+
+// MARK: - open_ui / close_ui
+
+/// Opens or closes one closed thing on purpose — a folded section, a hidden
+/// panel, a menu (plan 27 C): never by a listing or a hint, and never a tab,
+/// which is navigated to.
+struct OpenCloseUITool: JSONReadTool {
+    static var verbClass: VerbClass { .viewState }
+
+    struct Args: Decodable, Sendable {
+        let target: String
+    }
+
+    struct Output: Encodable, Sendable {
+        let done: Bool
+        var target: String?
+        var id: String?
+        var kind: String?
+        /// A menu opened: it waits for the person, who chooses or presses Esc.
+        var waiting: Bool?
+        /// What appeared behind it, opened.
+        var inside: [UITargetView] = []
+        var message: String?
+        var candidates: [UITargetView] = []
+    }
+
+    let definition: AIToolDefinition
+    let act: @Sendable (Args) async -> Output
+
+    func handle(_ args: Args, context: AIToolContext) async throws -> Output { await act(args) }
+
+    private static let schema = #"""
+        {
+          "type": "object",
+          "required": ["target"],
+          "properties": {
+            "target": { "type": "string", "minLength": 1, "description": "A closed section or menu (closed: true in list_ui_targets), or a panel in hiddenPanels — by id or name." }
+          },
+          "additionalProperties": false
+        }
+        """#
+
+    static func open(_ act: @escaping @Sendable (Args) async -> Output) -> Self {
+        Self(definition: AIToolDefinition.withStaticSchema(
+            name: "open_ui",
+            description: "Open one closed thing on purpose, to show the person what is inside: a folded section (closed: true), a panel they hid (hiddenPanels: the file browser), or a menu (a pop-up's or menu button's choices). Only that one opens; nothing else is touched, and nothing is pressed or chosen. It answers what appeared (`inside`), to list and hint like the rest. A menu stays open for the person — they choose from it or press Esc, and a hint never chooses for them; while it is open, list_ui_targets reads its items and show_ui_hints points at them. A tab is not opened: navigate there (navigate_to, set_search_tab, open_settings). close_ui closes it again. View state only; no proposal.",
+            schema: schema), act: act)
+    }
+
+    static func close(_ act: @escaping @Sendable (Args) async -> Output) -> Self {
+        Self(definition: AIToolDefinition.withStaticSchema(
+            name: "close_ui",
+            description: "Close a section, panel or menu you opened with open_ui — or one the person opened, if they asked. The person can always close it too. View state only; no proposal.",
+            schema: schema), act: act)
+    }
 }
 
 // MARK: - open_settings / close_settings

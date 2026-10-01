@@ -7011,6 +7011,16 @@
         }
       }
     },
+    "File browser" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navigateur de fichiers"
+          }
+        }
+      }
+    },
     "File Info" : {
       "localizations" : {
         "fr" : {

@@ -63,6 +63,9 @@ final class UIHintOverlay {
             let entry = panels[number] ?? makePanel(over: parent, number: number)
             panels[number] = entry
             if entry.panel.frame != parent.frame { entry.panel.setFrame(parent.frame, display: false) }
+            // Over an open menu, the hints draw above it.
+            let level: NSWindow.Level = scene.aboveMenus ? NSWindow.Level(NSWindow.Level.popUpMenu.rawValue + 1) : parent.level
+            if entry.panel.level != level { entry.panel.level = level }
             if entry.model.scene != scene { entry.model.scene = scene }
             if entry.panel.parent !== parent { parent.addChildWindow(entry.panel, ordered: .above) }
         }
