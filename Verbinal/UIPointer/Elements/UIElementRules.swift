@@ -98,7 +98,7 @@ enum UIElementRules {
         var texts: [(frame: CGRect, words: String)] = []
         var seen: Set<String> = []
         var duplicates: [String] = []
-        walk(root, clip: window.frame, area: nil, holderName: nil, window: window,
+        walk(root, clip: window.frame, clips: [], area: nil, holderName: nil, window: window,
              drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
 
         // A control with no words of its own is called by its caption.
@@ -126,7 +126,7 @@ enum UIElementRules {
                 screen: window.screen, area: draft.area,
                 frame: draft.frame.offsetBy(dx: -origin.x, dy: -origin.y),
                 visible: draft.visible.offsetBy(dx: -origin.x, dy: -origin.y),
-                window: window.index, handle: draft.handle)
+                window: window.index, handle: draft.handle, clips: draft.clips)
         }
         return Result(elements: elements, duplicateIDs: duplicates)
     }
@@ -142,15 +142,18 @@ enum UIElementRules {
         var frame: CGRect
         var visible: CGRect
         var handle: Int
+        var clips: [Int]
     }
 
-    private static func walk(_ node: UIRawNode, clip: CGRect, area: String?, holderName: String?, window: UIWindowRef,
+    private static func walk(_ node: UIRawNode, clip: CGRect, clips: [Int], area: String?, holderName: String?, window: UIWindowRef,
                              drafts: inout [Draft], texts: inout [(frame: CGRect, words: String)],
                              seen: inout Set<String>, duplicates: inout [String]) {
         if machineryRoles.contains(node.role) || node.subrole.map(machinerySubroles.contains) == true { return }
 
         // A scroll area shows only what is inside it.
-        let clip = node.role == "AXScrollArea" ? clip.intersection(node.frame) : clip
+        let scrolls = node.role == "AXScrollArea"
+        let clip = scrolls ? clip.intersection(node.frame) : clip
+        let clips = scrolls ? clips + [node.handle] : clips
         // A text editor takes the name of what holds it: SwiftUI keeps a
         // `TextEditor`'s label off its text view.
         let holderName = (node.role == "AXGroup" || node.role == "AXScrollArea") ? clean(node.label) ?? holderName : holderName
@@ -177,12 +180,12 @@ enum UIElementRules {
             let lent = node.role == "AXTextArea" ? holderName : nil
             drafts.append(Draft(kind: kind, stableID: tagged?.id, name: name ?? rowWords(node, kind: kind) ?? lent,
                                 help: clean(node.help), enabled: node.enabled, closed: closed,
-                                area: area, frame: node.frame, visible: visible, handle: node.handle))
+                                area: area, frame: node.frame, visible: visible, handle: node.handle, clips: clips))
         }
         guard walksInside(kind) else { return }
         let inner = kind == .area ? tagged?.id ?? area : area
         for child in node.children where !ownWindowRoles.contains(child.role) {
-            walk(child, clip: clip, area: inner, holderName: holderName, window: window,
+            walk(child, clip: clip, clips: clips, area: inner, holderName: holderName, window: window,
                  drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
         }
     }

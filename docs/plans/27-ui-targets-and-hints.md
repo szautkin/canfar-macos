@@ -22,8 +22,8 @@
 | R review and spike | done — this document | |
 | A every element, from the accessibility tree | done — `UIElement`, `UIElementRules`, `UIElementSource`, `AXElementSource`, `UIWindowPlaces`, `AppState.screenName`; `.pointable` sets its `vb:` identifier; the tools move onto it in T | d7b53a1 |
 | L every element has a name (guardrail) | done — `EveryScreenNamedTests` over every mode, Search tab, Settings section and app-wide sheet; `.pointableArea` for the 14 tags on regions; names for the Search fields, the ADQL query and every `TextEditor` (`textEditorName`, past SwiftUI to the text view); a disclosure called by the words after it | e7b7538 |
-| Y the layout: no overlaps, by rules | done — `UIHintLayout` (VerbinalKit): the hard rules, the costs, fewest spots first, the first 12 by the order given, spots kept relative to their element, badges, the hint list; property tests over 200 seeded screens | (this commit) |
-| O the overlay: rings, bubbles, badges, the hint list | not started | |
+| Y the layout: no overlaps, by rules | done — `UIHintLayout` (VerbinalKit): the hard rules, the costs, fewest spots first, the first 12 by the order given, spots kept relative to their element, badges, the hint list; property tests over 200 seeded screens | 4bae863 |
+| O the overlay: rings, bubbles, badges, the hint list | done — `UIHintStore`, `UIHintScene`, `UIHintMeasure`, `UIHintTracker`, `UIHintOverlay`, `UIHintPresenter` on `AppState`; the tools move onto it in T | (this commit) |
 | T the tools: `show_ui_hints`, `clear_ui_hints`, `point_at_ui`, `list_ui_targets` | not started | |
 | C closed things: `open_ui`, `close_ui` (sections, panels, menus) | not started | |
 | V bring into view: scroll | not started | |
@@ -293,10 +293,9 @@ guardrail drives that count to zero for interactive elements.
 
 - **One transparent child window per window with hints.** It moves and resizes with its parent, and
   sits above the parent's sheets.
-- **Clicks:**
-  - Clicks pass through to the app everywhere except on a bubble: the window is transparent there,
-    and macOS passes clicks through fully transparent pixels. This is verified first in O.
-  - Fallback if it does not pass: one small panel per bubble.
+- **Clicks:** the panel ignores the mouse, so clicks reach the app, except while the mouse is over a
+  bubble, the hint list or its pill. That is checked 20 times a second while hints are up: a rule the
+  code keeps, not a hope about transparent pixels.
 - **On each bubble:** a close button (×). Hovering pauses the countdown, and moving off resumes it.
 - **Esc clears every hint,** through the app's own key handling, when Verbinal is active.
 - **Accessibility and appearance:**
@@ -488,8 +487,6 @@ Taken by the person, 2026-09-30:
 - **Menus hold the main run loop in tracking mode.** The main actor is expected to keep running (its
   queue is served in the common modes); this is checked first in C, and menus fall back to closed
   targets if not.
-- **Click-through on transparent pixels** is assumed; it is checked first in O, and the fallback is a
-  panel per bubble.
 - **Frame tracking cost:** a full snapshot is about 55 ms. Tracking snapshots again only on a change
   signal (move, resize, scroll, screen change), debounced, never on a timer.
 - **Derived ids change with the language and the layout.** They are marked `stable: false`. Tours and

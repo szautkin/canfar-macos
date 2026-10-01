@@ -70,6 +70,9 @@ struct UIElement: Equatable, Sendable, Identifiable {
     let window: Int
     /// The source's handle, for acting on it (a scroll, opening it).
     let handle: Int
+    /// The handles of the scroll areas it is in, outermost first: what
+    /// clips it, for following it as it moves.
+    let clips: [Int]
 }
 
 /// Hand-tagged ids, as the accessibility tree carries them: `vb:` before a

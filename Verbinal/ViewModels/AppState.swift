@@ -555,6 +555,21 @@ final class AppState {
     let jobHistory = JobHistoryStore(launchPersistence: JobHistoryStore.productionLaunchPersistence)
     /// What an agent can point at (`point_at_ui`), and its hint.
     let uiPointer = UIPointerRegistry()
+    /// The hints an assistant shows on the interface (plan 27) — not the
+    /// marks on an image, which are `marks`.
+    let uiHints = UIHintStore()
+    #if os(macOS)
+    /// Reads what is on screen and draws the hints over it.
+    @ObservationIgnored private(set) lazy var uiHintPresenter = UIHintPresenter(
+        store: uiHints,
+        source: AXElementSource(screenName: { [weak self] kind, parent, title in
+            self?.screenName(of: kind, parentScreen: parent, title: title) ?? "window"
+        }),
+        screenSignature: { [weak self] in
+            guard let self else { return "" }
+            return "\(self.screenName)|\(self.activeSheet?.rawValue ?? "")|\(self.settingsSection.rawValue)"
+        })
+    #endif
     /// Marks kept with each file, for both viewers.
     let marks: MarkStore
     /// The images the person added from the registry — joined to the

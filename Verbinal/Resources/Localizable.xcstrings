@@ -1348,6 +1348,16 @@
         }
       }
     },
+    "%lld hints" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld indications"
+          }
+        }
+      }
+    },
     "A CANFAR Science Portal Companion" : {
       "localizations" : {
         "fr" : {
@@ -3399,6 +3409,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fermer %@"
+          }
+        }
+      }
+    },
+    "Close all hints" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer toutes les indications"
+          }
+        }
+      }
+    },
+    "Close hint" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer l’indication"
           }
         }
       }
@@ -7813,6 +7843,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Élevé"
+          }
+        }
+      }
+    },
+    "Hints" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indications"
           }
         }
       }
