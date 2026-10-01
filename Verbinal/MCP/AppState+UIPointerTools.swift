@@ -43,14 +43,19 @@ extension AppState {
         await presenter.ready()
         var snapshot = presenter.snapshot()
         // Targets scrolled out of sight come into view first; then the screen
-        // is read again, and every target found anew where it is now.
-        let away = (args.hints ?? []).prefix(ShowUIHintsTool.maxHints).compactMap { hint -> UIElement? in
-            if case .found(let element) = UITargetScope.match(hint.target, in: snapshot), !element.inSight { return element }
+        // is read again. Each is found again by identity, not by its name: a
+        // derived id ("Relaunch#5") counts what is in sight, and that changed.
+        let away = (args.hints ?? []).prefix(ShowUIHintsTool.maxHints).compactMap { hint -> (String, UIElement)? in
+            if case .found(let element) = UITargetScope.match(hint.target, in: snapshot), !element.inSight {
+                return (hint.target, element)
+            }
             return nil
         }
+        var broughtIn: [String: UIElement] = [:]
         if !away.isEmpty {
-            _ = await presenter.bringIntoView(away)
+            let found = await presenter.bringIntoView(away.map(\.1))
             snapshot = presenter.lastSnapshot
+            for (target, element) in away { broughtIn[target] = found[element.id] }
         }
         var output = ShowUIHintsTool.Output()
         var requests: [UIHintPresenter.Request] = []
@@ -63,7 +68,8 @@ extension AppState {
             output.dropped = max(0, scoped.count - ShowUIHintsTool.maxRings)
         }
         for hint in (args.hints ?? []).prefix(ShowUIHintsTool.maxHints) {
-            switch UITargetScope.match(hint.target, in: snapshot) {
+            let match = broughtIn[hint.target].map(UITargetScope.Match.found) ?? UITargetScope.match(hint.target, in: snapshot)
+            switch match {
             case .found(let element) where !element.inSight:
                 output.missing.append(.init(target: hint.target, candidates: [], closed: []))
                 output.message = "\(hint.target) is scrolled out of sight and could not be brought into view"

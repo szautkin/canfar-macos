@@ -148,20 +148,43 @@ final class AXElementSource: UIElementSource {
     }
 
     /// Scrolls each scroll area round an element of the last snapshot —
-    /// innermost first — so the element is in sight, and answers its
-    /// accessibility object, to find again in the next snapshot. SwiftUI's
-    /// controls do not take the accessibility action for this, so the scroll
-    /// view behind each area is found by its frame and asked directly, as
-    /// AppKit asks it.
-    func scrollIntoView(_ element: UIElement) -> AXUIElement? {
+    /// innermost first — until the element is in sight in it, and answers
+    /// its accessibility object, to find again in the next snapshot.
+    /// SwiftUI's controls do not take the accessibility action for this, so
+    /// the scroll view behind each area is asked directly, as AppKit asks it;
+    /// when that does not bring it in, the area is paged towards it, as
+    /// VoiceOver pages, a page at a time.
+    func scrollIntoView(_ element: UIElement) async -> AXUIElement? {
         guard let target = self.element(element.handle) else { return nil }
         for clip in element.clips.reversed() {
-            guard let area = self.element(clip), let areaFrame = Self.readFrame(area),
-                  let targetFrame = Self.readFrame(target),
-                  let scrollView = Self.scrollView(at: areaFrame) else { continue }
-            Self.reveal(targetFrame, in: scrollView)
+            guard let area = self.element(clip) else { continue }
+            if let areaFrame = Self.readFrame(area), let targetFrame = Self.readFrame(target),
+               !Self.shows(targetFrame, in: areaFrame), let scrollView = Self.scrollView(at: areaFrame) {
+                Self.reveal(targetFrame, in: scrollView)
+                try? await Task.sleep(for: .milliseconds(80))
+            }
+            var last: CGRect?
+            for _ in 0..<Self.maxPages {
+                guard let areaFrame = Self.readFrame(area), let targetFrame = Self.readFrame(target),
+                      !Self.shows(targetFrame, in: areaFrame), targetFrame != last else { break }
+                last = targetFrame
+                let page = targetFrame.minY < areaFrame.minY ? "AXScrollUpByPage" : "AXScrollDownByPage"
+                guard AXUIElementPerformAction(area, page as CFString) == .success else { break }
+                try? await Task.sleep(for: .milliseconds(80))
+            }
         }
         return target
+    }
+
+    /// Pages tried, at most, in one scroll area.
+    static let maxPages = 30
+
+    /// Whether `frame` shows in `area`: wholly, or — for one taller than the
+    /// area — in part.
+    private static func shows(_ frame: CGRect, in area: CGRect) -> Bool {
+        frame.height < area.height
+            ? frame.minY >= area.minY - 1 && frame.maxY <= area.maxY + 1
+            : frame.intersects(area)
     }
 
     private static func readFrame(_ element: AXUIElement) -> CGRect? {

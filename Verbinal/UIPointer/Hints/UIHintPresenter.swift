@@ -71,11 +71,12 @@ final class UIHintPresenter {
     /// V). Answers each element as it is now, by its old id — in sight, or
     /// absent when it would not come.
     func bringIntoView(_ elements: [UIElement]) async -> [String: UIElement] {
-        let away = elements.filter { !$0.inSight }.compactMap { element in
-            source.scrollIntoView(element).map { (id: element.id, element: $0) }
+        var away: [(id: String, element: AXUIElement)] = []
+        for element in elements where !element.inSight {
+            if let moved = await source.scrollIntoView(element) { away.append((element.id, moved)) }
         }
         guard !away.isEmpty else { return [:] }
-        try? await Task.sleep(for: .milliseconds(300))
+        try? await Task.sleep(for: .milliseconds(200))
         let now = snapshot()
         var found: [String: UIElement] = [:]
         for (id, element) in away {
