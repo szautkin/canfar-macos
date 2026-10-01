@@ -7302,7 +7302,6 @@
       }
     },
     "Folder" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {

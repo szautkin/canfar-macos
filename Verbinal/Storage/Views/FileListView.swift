@@ -87,7 +87,15 @@ struct FileListView: View {
                                 }
                             }
                             #endif
+                            // One element per row — a button named by the file, its kind,
+                            // size and date as its value — so VoiceOver reads it as a row
+                            // and an assistant can name it (plan 27).
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(Text(node.name))
+                            .accessibilityValue(Text(rowDetails(node)))
+                            .accessibilityAddTraits(.isButton)
                             .accessibilityAddTraits(model.selectedNode?.id == node.id ? .isSelected : [])
+                            .accessibilityAction { model.selectedNode = node }
                             .accessibilityAction(named: "Delete") {
                                 model.selectedNode = node
                                 nodeToDelete = node
@@ -161,6 +169,14 @@ struct FileListView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    /// What VoiceOver says of a row after its name: folder or file, size,
+    /// when it changed, and the warning a public secret carries.
+    private func rowDetails(_ node: VOSpaceNode) -> String {
+        let kind = node.isContainer ? String(localized: "Folder") : String(localized: "File")
+        let warning = node.isExposedSecret ? ", " + String(localized: "Public, and usually holds secrets") : ""
+        return "\(kind), \(node.formattedSize), \(node.formattedDate)\(warning)"
     }
 
     private func fileRow(_ node: VOSpaceNode) -> some View {
