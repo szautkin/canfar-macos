@@ -24,8 +24,12 @@ every later agent is told; **read** = pure data.
 | A tool by what it does | `search_tools` | read |
 | One tool's description and full schema | `man` | read |
 | Copy text, or an observation's details | `copy_to_clipboard` | live |
-| What can be pointed at on screen | `list_ui_targets` | read |
-| Point at a control, with a message | `point_at_ui` | live |
+| Everything on screen — every control, list entry, text; what is scrolled away | `list_ui_targets` (`kind`, `includeScrolled`, `contains`, `window`) | read |
+| Point at a control, with a message (scrolled into view first) | `point_at_ui` | live |
+| Several hints at once: rings, bubbles, a numbered tour, the window dimmed | `show_ui_hints` | live |
+| Close a hint, or press Esc to close them all | `clear_ui_hints`; `hintsDismissed` in `list_events` | live |
+| Click a list's entry to select it (a file, a downloaded observation, an image) | `select_ui` | live |
+| Open or close a folded section, a hidden panel (⌘B file browser), a menu | `open_ui` / `close_ui` | live |
 | See the window as the person does (any screen, sheet or Settings) | `capture_view` | read |
 | Open Settings at a section / close it | `open_settings` / `close_settings` | live |
 

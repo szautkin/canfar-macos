@@ -117,9 +117,16 @@ the server finds it by itself and says its tool list has changed. If the call fa
 - **Get your bearings.**
   - `describe_app` gives an overview; `list_apps` maps the tools by screen.
   - `list_workflows` and `use_workflow` give step-by-step protocols.
-- **Work where the person can see it.** `navigate_to` shows them the screen you are working on, and
-  `point_at_ui` points at the control you mean. `list_activity` says what the app is doing, the same
-  line as the activity bar at the bottom of the window.
+- **Work where the person can see it.**
+  - `navigate_to` shows them the screen you are working on.
+  - `list_ui_targets` names everything on screen, and the entries of every list.
+  - `point_at_ui` points at the control you mean, and `show_ui_hints` puts several hints up at
+    once — a numbered tour, if they want one.
+  - `select_ui` selects a list's entry; `open_ui` opens a folded section, a hidden panel or a menu
+    on purpose.
+  - Hints never press anything. They are not the marks on an image (`annotate_fits`).
+  - `list_activity` says what the app is doing, the same line as the activity bar at the bottom
+    of the window.
 - **The person reviews your changes.** Consequential changes are proposals.
   - With auto-apply on, reversible ones apply at once.
   - Destructive ones, such as deleting data or stopping a session, always wait for the person to

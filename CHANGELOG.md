@@ -12,6 +12,17 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Closing the main window closes Verbinal's other windows.** Settings
+  stayed open, with nothing behind it, after the main window closed. Now
+  Settings closes with the last main window, an assistant's hints go,
+  and a session request still waiting is declined — nobody is there to
+  allow it.
+- **VoiceOver names more of Verbinal.** Storage's files read as one row
+  each — the file, its kind, size and date — instead of loose text and an
+  icon read as "Move"; the Search form's fields say what they are; every
+  text editor (the ADQL query, Remote Compute's code, notes, instructions)
+  has its name. A test now fails on any control without one, on every
+  screen.
 - **Deleting a session works for every type.** Skaha's session delete
   leaves a desktop's apps running and cannot stop one: ending a desktop
   now stops its apps first, and `delete_session` with a desktop's `id`
@@ -399,6 +410,21 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **Your assistant can show you anything on screen, many things at once.**
+  It reads Verbinal's windows the way VoiceOver does, so every control
+  on every screen, sheet and Settings section can be pointed at — and
+  each entry of a list (a recent launch, an image, a search, a query, a
+  file, a batch job), its buttons saying whose they are. `show_ui_hints`
+  puts up rings and bubbles with its words — a numbered tour, or the rest
+  of the window dimmed — placed by rules: bubbles never overlap each
+  other, never cover what they point at, stay in the window and keep off
+  images. Something scrolled away is brought into view first. Hints go
+  when their time is up, when you close one or press Esc, or when the
+  screen changes; while you read one, it waits. Your assistant can also
+  select a list's entry for you, as your click would, and open a folded
+  section, the file browser or a menu on purpose. None of it presses a
+  button or changes your data. These are hints on the app — not the marks
+  on an image, which stay with its file (plan 27).
 - **You allow each assistant session, and give it your instructions.** An
   assistant starts with `start_session`, saying who it is and what it is
   here for, and Verbinal comes forward with a window: the client and its
