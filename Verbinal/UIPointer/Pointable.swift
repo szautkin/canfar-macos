@@ -20,6 +20,7 @@ private struct PointableModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .accessibilityIdentifier(PointableID.encode(target.id))
             .anchorPreference(key: PointableAnchorsKey.self, value: .bounds) { [target.id: $0] }
             .onAppear { registry?.register(target) }
             .onDisappear { registry?.unregister(target.id) }

@@ -17,6 +17,7 @@ struct VerbinalApp: App {
         WindowGroup {
             ContentView()
                 .uiPointerOverlay()
+                .uiWindowPlace(.main)
                 .environment(appState)
                 .environment(appState.uiPointer)
                 .environment(\.locale, appState.locale)
@@ -165,6 +166,7 @@ struct VerbinalApp: App {
         Settings {
             SettingsView()
                 .uiPointerOverlay()
+                .uiWindowPlace(.settings)
                 .environment(appState)
                 .environment(appState.uiPointer)
                 .environment(\.locale, appState.locale)

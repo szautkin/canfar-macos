@@ -144,6 +144,8 @@ final class SessionApprovalWindow {
         let window = self.window ?? NSWindow(
             contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: false)
         window.title = String(localized: "Assistant Session")
+        // The person's decision: never a target an assistant can point at (plan 27).
+        window.identifier = NSUserInterfaceItemIdentifier(PointableID.Window.sessionApproval.identifier)
         window.contentViewController = NSHostingController(rootView: view)
         window.level = .floating
         window.isReleasedWhenClosed = false
