@@ -125,6 +125,21 @@ final class UIHintPresenterTests: XCTestCase {
         XCTAssertTrue(presenter.store.isEmpty, "scrolled out of sight")
     }
 
+    /// A control scrolled out of sight is kept apart, and brought into view
+    /// when a hint names it (plan 27 V).
+    func testAnElementOutOfSightIsBroughtIntoView() async throws {
+        let presenter = try await start()
+        let away = try XCTUnwrap(presenter.lastSnapshot.outOfSight.first { $0.name == "Item 25" }, "kept, out of sight")
+        XCTAssertFalse(presenter.lastSnapshot.elements.contains { $0.name == "Item 25" }, "not listed in sight")
+        let found = await presenter.bringIntoView([away])
+        let now = try XCTUnwrap(found[away.id], "found again")
+        XCTAssertTrue(now.inSight)
+        XCTAssertEqual(now.name, "Item 25")
+        presenter.show([.init(element: now, title: nil, text: "Here it is.", style: .bubble)],
+                       numbered: false, dim: false, seconds: nil, replace: true)
+        XCTAssertEqual(presenter.store.hints.first?.id, now.id)
+    }
+
     func testHintsGoWhenTheirScreenChanges() async throws {
         let presenter = try await start()
         presenter.show([.init(element: try element(presenter, "Reset"), title: nil, text: "Clears the form.", style: .bubble)],

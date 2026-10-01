@@ -16,6 +16,9 @@ struct UISnapshot: Equatable, Sendable {
     /// Why nothing could be read, when the app's windows are up but macOS's
     /// accessibility service is not answering for them.
     var problem: String? = nil
+    /// What is scrolled out of sight inside a scroll area: not listed unless
+    /// asked, and brought into view when a hint names it.
+    var outOfSight: [UIElement] = []
 
     static let empty = UISnapshot(windows: [], elements: [], duplicateIDs: [])
 
@@ -26,6 +29,7 @@ struct UISnapshot: Equatable, Sendable {
     var front: UIWindowRef? { windows.first }
 
     func elements(in window: Int) -> [UIElement] { elements.filter { $0.window == window } }
+    func outOfSight(in window: Int) -> [UIElement] { outOfSight.filter { $0.window == window } }
 }
 
 /// Where the elements come from — the accessibility tree in the app, a fake

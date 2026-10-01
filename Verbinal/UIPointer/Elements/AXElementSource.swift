@@ -87,6 +87,7 @@ final class AXElementSource: UIElementSource {
         let axWindows = (Self.value(app, kAXWindowsAttribute) as? [AXUIElement]) ?? []
         var refs: [UIWindowRef] = []
         var elements: [UIElement] = []
+        var outOfSight: [UIElement] = []
         var duplicates: [String] = []
 
         var seenWindows: Set<Int> = []
@@ -116,6 +117,7 @@ final class AXElementSource: UIElementSource {
                 let result = UIElementRules.elements(in: read(axSheet, depth: 0, budget: &budget), window: ref)
                 refs.append(ref)
                 elements += result.elements
+                outOfSight += result.outOfSight
                 duplicates += result.duplicateIDs
             }
 
@@ -124,9 +126,11 @@ final class AXElementSource: UIElementSource {
             let result = UIElementRules.elements(in: read(axWindow, depth: 0, budget: &budget), window: ref)
             refs.append(ref)
             elements += result.elements
+            outOfSight += result.outOfSight
             duplicates += result.duplicateIDs
         }
         var snapshot = UISnapshot(windows: refs, elements: elements, duplicateIDs: duplicates)
+        snapshot.outOfSight = outOfSight
         if refs.isEmpty, Self.unanswered(axWindows), NSApp.windows.contains(where: \.isVisible) {
             snapshot.problem = UISnapshot.unreadable
         }
@@ -136,6 +140,63 @@ final class AXElementSource: UIElementSource {
     /// The element behind a handle from the last snapshot.
     func element(_ handle: Int) -> AXUIElement? {
         handles.indices.contains(handle) ? handles[handle] : nil
+    }
+
+    /// The handle the same element has in the last snapshot.
+    func handle(of element: AXUIElement) -> Int? {
+        handles.firstIndex { CFEqual($0, element) }
+    }
+
+    /// Scrolls each scroll area round an element of the last snapshot —
+    /// innermost first — so the element is in sight, and answers its
+    /// accessibility object, to find again in the next snapshot. SwiftUI's
+    /// controls do not take the accessibility action for this, so the scroll
+    /// view behind each area is found by its frame and asked directly, as
+    /// AppKit asks it.
+    func scrollIntoView(_ element: UIElement) -> AXUIElement? {
+        guard let target = self.element(element.handle) else { return nil }
+        for clip in element.clips.reversed() {
+            guard let area = self.element(clip), let areaFrame = Self.readFrame(area),
+                  let targetFrame = Self.readFrame(target),
+                  let scrollView = Self.scrollView(at: areaFrame) else { continue }
+            Self.reveal(targetFrame, in: scrollView)
+        }
+        return target
+    }
+
+    private static func readFrame(_ element: AXUIElement) -> CGRect? {
+        let frame = frame(of: element)
+        return frame.width > 0 || frame.height > 0 ? frame : nil
+    }
+
+    /// The scroll view whose frame on screen is `frame` (accessibility
+    /// coordinates, top-left origin).
+    private static func scrollView(at frame: CGRect) -> NSScrollView? {
+        let top = NSScreen.screens.first?.frame.maxY ?? 0
+        func onScreen(_ view: NSView) -> CGRect? {
+            guard let window = view.window else { return nil }
+            let cocoa = window.convertToScreen(view.convert(view.bounds, to: nil))
+            return CGRect(x: cocoa.minX, y: top - cocoa.maxY, width: cocoa.width, height: cocoa.height)
+        }
+        func find(_ view: NSView) -> NSScrollView? {
+            if let scrollView = view as? NSScrollView, let at = onScreen(scrollView),
+               abs(at.minX - frame.minX) < 2, abs(at.minY - frame.minY) < 2,
+               abs(at.width - frame.width) < 2, abs(at.height - frame.height) < 2 {
+                return scrollView
+            }
+            return view.subviews.lazy.compactMap(find).first
+        }
+        return NSApp.windows.lazy.filter(\.isVisible).compactMap { $0.contentView.flatMap(find) }.first
+    }
+
+    /// Scrolls `scrollView` so `rect` (accessibility coordinates) shows,
+    /// with a little room round it.
+    private static func reveal(_ rect: CGRect, in scrollView: NSScrollView) {
+        guard let window = scrollView.window, let document = scrollView.documentView else { return }
+        let top = NSScreen.screens.first?.frame.maxY ?? 0
+        let cocoa = CGRect(x: rect.minX, y: top - rect.maxY, width: rect.width, height: rect.height)
+        let inDocument = document.convert(window.convertFromScreen(cocoa), from: nil)
+        document.scrollToVisible(inDocument.insetBy(dx: -8, dy: -8))
     }
 
     // MARK: - Reading

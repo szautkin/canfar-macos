@@ -18,15 +18,13 @@ extension AppState {
 
     func makeShowUIHintsTool() -> ShowUIHintsTool {
         ShowUIHintsTool(show: { [weak self] args in
-            await self?.uiHintPresenter.ready()
-            return await MainActor.run { self?.showUIHints(args) ?? .init(message: "App state unavailable") }
+            await self?.showUIHints(args) ?? .init(message: "App state unavailable")
         })
     }
 
     func makePointAtUITool() -> PointAtUITool {
         PointAtUITool(show: { [weak self] args in
-            await self?.uiHintPresenter.ready()
-            return await MainActor.run { self?.showUIHints(args) ?? .init(message: "App state unavailable") }
+            await self?.showUIHints(args) ?? .init(message: "App state unavailable")
         })
     }
 
@@ -36,12 +34,24 @@ extension AppState {
         })
     }
 
-    /// Reads the screen, finds each hint's element, shows them as one set,
-    /// and says how each was drawn.
+    /// Reads the screen, finds each hint's element — scrolling one out of
+    /// sight into view first — shows them as one set, and says how each was
+    /// drawn.
     @MainActor
-    func showUIHints(_ args: ShowUIHintsTool.Args) -> ShowUIHintsTool.Output {
+    func showUIHints(_ args: ShowUIHintsTool.Args) async -> ShowUIHintsTool.Output {
         let presenter = uiHintPresenter
-        let snapshot = presenter.snapshot()
+        await presenter.ready()
+        var snapshot = presenter.snapshot()
+        // Targets scrolled out of sight come into view first; then the screen
+        // is read again, and every target found anew where it is now.
+        let away = (args.hints ?? []).prefix(ShowUIHintsTool.maxHints).compactMap { hint -> UIElement? in
+            if case .found(let element) = UITargetScope.match(hint.target, in: snapshot), !element.inSight { return element }
+            return nil
+        }
+        if !away.isEmpty {
+            _ = await presenter.bringIntoView(away)
+            snapshot = presenter.lastSnapshot
+        }
         var output = ShowUIHintsTool.Output()
         var requests: [UIHintPresenter.Request] = []
         var asked: [String: String] = [:]
@@ -54,6 +64,9 @@ extension AppState {
         }
         for hint in (args.hints ?? []).prefix(ShowUIHintsTool.maxHints) {
             switch UITargetScope.match(hint.target, in: snapshot) {
+            case .found(let element) where !element.inSight:
+                output.missing.append(.init(target: hint.target, candidates: [], closed: []))
+                output.message = "\(hint.target) is scrolled out of sight and could not be brought into view"
             case .found(let element):
                 let words = hint.text != nil || hint.title != nil
                 requests.removeAll { $0.element.id == element.id }

@@ -110,6 +110,23 @@ final class UIElementRulesTests: XCTestCase {
         let listed = result.elements.filter { $0.kind == .row }
         XCTAssertEqual(listed.map(\.name), ["Row 0", "Row 1", "Row 2"], "three fit in 72 pt")
         XCTAssertEqual(listed[2].visible.height, 24)
+        // The rest are kept apart, out of sight, to bring into view.
+        let away = result.outOfSight.filter { $0.kind == .row }
+        XCTAssertEqual(away.map(\.name), (3..<10).map { "Row \($0)" })
+        XCTAssertTrue(away.allSatisfy { !$0.inSight })
+        XCTAssertEqual(away.first?.frame.minY, 100 + 3 * 24, "where it lies, in window points")
+    }
+
+    /// A caption and the control it names share the name: the name means the control.
+    func testACaptionAndItsControlAreOneAnswer() {
+        let targets: [UIPointerMatcher.Target] = [
+            .init(id: "settings.agent/text/Session Instructions", label: "Session Instructions", screen: "settings.agent", control: false),
+            .init(id: "settings.agent/textField/Session Instructions", label: "Session Instructions", screen: "settings.agent"),
+        ]
+        XCTAssertEqual(UIPointerMatcher.best(targets, for: "Session Instructions")?.id,
+                       "settings.agent/textField/Session Instructions")
+        let two = targets + [.init(id: "x/button/Session Instructions", label: "Session Instructions", screen: "x")]
+        XCTAssertNil(UIPointerMatcher.best(two, for: "Session Instructions"), "two controls: a question")
     }
 
     func testHandTaggedIdsWinAndSymbolNamesAreNotIds() {

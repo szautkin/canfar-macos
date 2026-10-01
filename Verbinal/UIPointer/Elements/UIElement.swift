@@ -63,7 +63,8 @@ struct UIElement: Equatable, Sendable, Identifiable {
     /// The hand-tagged area it is in, if any.
     let area: String?
     /// The whole element, and the part not clipped by a scroll area — both
-    /// in its window's points, top-left origin.
+    /// in its window's points, top-left origin. `visible` is null for an
+    /// element scrolled out of sight.
     let frame: CGRect
     let visible: CGRect
     /// `UIWindowRef.index`.
@@ -73,6 +74,9 @@ struct UIElement: Equatable, Sendable, Identifiable {
     /// The handles of the scroll areas it is in, outermost first: what
     /// clips it, for following it as it moves.
     let clips: [Int]
+
+    /// In sight — not scrolled away inside a scroll area.
+    var inSight: Bool { !visible.isNull }
 }
 
 /// Hand-tagged ids, as the accessibility tree carries them: `vb:` before a

@@ -20,6 +20,9 @@ enum UIPointerMatcher {
         let label: String
         /// Where it lives ("search", "settings.agent", …).
         let screen: String
+        /// A control a person acts on — what a name means when a caption and
+        /// its control share it.
+        var control = true
     }
 
     /// Case, spaces and punctuation (an ellipsis, a colon) are not part of
@@ -30,7 +33,9 @@ enum UIPointerMatcher {
 
     /// The one target meant, or nil when none matched or several did equally
     /// well. Tiers, strongest first, each resolved before the next: the id,
-    /// the label, a label containing the words, an id containing them.
+    /// the label, a label containing the words, an id containing them. In a
+    /// tier, a caption and the one control it names are one answer: the
+    /// control.
     static func best(_ targets: [Target], for query: String) -> Target? {
         let wanted = normalise(query)
         guard !wanted.isEmpty else { return nil }
@@ -43,6 +48,8 @@ enum UIPointerMatcher {
         for tier in tiers {
             let hits = targets.filter(tier)
             if hits.count == 1 { return hits[0] }
+            let controls = hits.filter(\.control)
+            if hits.count > 1, controls.count == 1, hits.count - controls.count >= 1 { return controls[0] }
             if hits.count > 1 { return nil }   // two is a question, not an answer
         }
         return nil

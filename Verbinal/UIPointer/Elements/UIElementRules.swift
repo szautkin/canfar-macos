@@ -35,10 +35,17 @@ struct UIRawNode: Sendable, Equatable {
 enum UIElementRules {
 
     struct Result: Equatable, Sendable {
+        /// What is in sight.
         let elements: [UIElement]
+        /// What is scrolled out of sight inside a scroll area: not listed,
+        /// but brought into view when a hint names it.
+        var outOfSight: [UIElement] = []
         /// Hand-tagged ids found more than once in the window: the first kept it.
         let duplicateIDs: [String]
     }
+
+    /// At most this many elements out of sight are kept, per window.
+    static let maxOutOfSight = 2_000
 
     /// Smaller than this, on either side, is not somewhere to send a person.
     static let minimumSide: CGFloat = 4
@@ -95,21 +102,28 @@ enum UIElementRules {
 
     static func elements(in root: UIRawNode, window: UIWindowRef) -> Result {
         var drafts: [Draft] = []
-        var texts: [(frame: CGRect, words: String)] = []
+        var texts: [Text] = []
         var seen: Set<String> = []
         var duplicates: [String] = []
         walk(root, clip: window.frame, clips: [], area: nil, holderName: nil, window: window,
              drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
 
-        // A control with no words of its own is called by its caption.
+        // A control with no words of its own is called by its caption — one
+        // in sight by what is in sight, one scrolled away by where it lies.
+        let inSightTexts = texts.filter(\.inSight).map { (frame: $0.frame, words: $0.words) }
+        let allTexts = texts.map { (frame: $0.frame, words: $0.words) }
         for index in drafts.indices where drafts[index].name == nil && drafts[index].kind.isControl {
-            drafts[index].name = caption(for: drafts[index].visible, among: texts,
-                                         after: drafts[index].kind == .disclosure)
+            let draft = drafts[index]
+            drafts[index].name = caption(for: draft.inSight ? draft.visible : draft.frame,
+                                         among: draft.inSight ? inSightTexts : allTexts,
+                                         after: draft.kind == .disclosure)
         }
 
-        let ordered = drafts.sorted(by: readingOrder)
+        // In sight first, so their ids are the same whatever is scrolled away.
+        let ordered = drafts.filter(\.inSight).sorted(by: readingOrder)
+            + drafts.filter { !$0.inSight }.sorted(by: readingOrder).prefix(maxOutOfSight)
         var counts: [String: Int] = [:]
-        let elements = ordered.map { draft -> UIElement in
+        let all = ordered.map { draft -> UIElement in
             let id: String
             if let stable = draft.stableID {
                 id = stable
@@ -125,10 +139,16 @@ enum UIElementRules {
                 help: draft.help == draft.name ? nil : draft.help, enabled: draft.enabled, closed: draft.closed,
                 screen: window.screen, area: draft.area,
                 frame: draft.frame.offsetBy(dx: -origin.x, dy: -origin.y),
-                visible: draft.visible.offsetBy(dx: -origin.x, dy: -origin.y),
+                visible: draft.inSight ? draft.visible.offsetBy(dx: -origin.x, dy: -origin.y) : .null,
                 window: window.index, handle: draft.handle, clips: draft.clips)
         }
-        return Result(elements: elements, duplicateIDs: duplicates)
+        return Result(elements: all.filter(\.inSight), outOfSight: all.filter { !$0.inSight }, duplicateIDs: duplicates)
+    }
+
+    private struct Text {
+        let frame: CGRect
+        let words: String
+        let inSight: Bool
     }
 
     private struct Draft {
@@ -143,10 +163,11 @@ enum UIElementRules {
         var visible: CGRect
         var handle: Int
         var clips: [Int]
+        var inSight: Bool
     }
 
     private static func walk(_ node: UIRawNode, clip: CGRect, clips: [Int], area: String?, holderName: String?, window: UIWindowRef,
-                             drafts: inout [Draft], texts: inout [(frame: CGRect, words: String)],
+                             drafts: inout [Draft], texts: inout [Text],
                              seen: inout Set<String>, duplicates: inout [String]) {
         if machineryRoles.contains(node.role) || node.subrole.map(machinerySubroles.contains) == true { return }
 
@@ -172,15 +193,19 @@ enum UIElementRules {
         let roleKind = kind(role: node.role, subrole: node.subrole)
         let kind: UIElementKind? = tagged.map { $0.canvas ? .canvas : (roleKind ?? .area) } ?? roleKind
 
-        if let kind, shows {
+        // Scrolled away inside a scroll area: kept apart, to bring into view.
+        let scrolledAway = !shows && !clips.isEmpty
+            && node.frame.width >= minimumSide && node.frame.height >= minimumSide
+        if let kind, shows || scrolledAway {
             let name = ownName(node, kind: kind)
-            if kind == .text, let words = name { texts.append((visible, words)) }
+            if kind == .text, let words = name { texts.append(Text(frame: shows ? visible : node.frame, words: words, inSight: shows)) }
             let open = node.children.contains { $0.role == "AXMenu" }
             let closed = kind == .disclosure ? node.expanded == false : (kind.opens && !open)
             let lent = node.role == "AXTextArea" ? holderName : nil
             drafts.append(Draft(kind: kind, stableID: tagged?.id, name: name ?? rowWords(node, kind: kind) ?? lent,
                                 help: clean(node.help), enabled: node.enabled, closed: closed,
-                                area: area, frame: node.frame, visible: visible, handle: node.handle, clips: clips))
+                                area: area, frame: node.frame, visible: shows ? visible : .null, handle: node.handle,
+                                clips: clips, inSight: shows))
         }
         guard walksInside(kind) else { return }
         let inner = kind == .area ? tagged?.id ?? area : area
@@ -249,9 +274,10 @@ enum UIElementRules {
 
     /// Top to bottom, then left to right; a row is anything within 6 pt.
     private static func readingOrder(_ a: Draft, _ b: Draft) -> Bool {
-        let rowA = (a.visible.minY / 6).rounded(.down), rowB = (b.visible.minY / 6).rounded(.down)
+        let fa = a.inSight ? a.visible : a.frame, fb = b.inSight ? b.visible : b.frame
+        let rowA = (fa.minY / 6).rounded(.down), rowB = (fb.minY / 6).rounded(.down)
         if rowA != rowB { return rowA < rowB }
-        if a.visible.minX != b.visible.minX { return a.visible.minX < b.visible.minX }
+        if fa.minX != fb.minX { return fa.minX < fb.minX }
         return a.handle < b.handle
     }
 

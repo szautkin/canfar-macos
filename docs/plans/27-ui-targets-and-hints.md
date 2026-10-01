@@ -26,7 +26,7 @@
 | O the overlay: rings, bubbles, badges, the hint list | done — `UIHintStore`, `UIHintScene`, `UIHintMeasure`, `UIHintTracker`, `UIHintOverlay`, `UIHintPresenter` on `AppState`; the tools move onto it in T | 8db7fc2 |
 | T the tools: `show_ui_hints`, `clear_ui_hints`, `point_at_ui`, `list_ui_targets` | done — the registry, anchors and `uiPointerOverlay()` retired; `hintsDismissed` in `list_events`; `screen` and `hints` in `get_current_view`; a window read for the first time is warmed; the overlay never reads as its window; an unreadable screen is said, not listed empty. Checked on the running app too | (this commit) |
 | C closed things: `open_ui`, `close_ui` (sections, panels, menus) | not started | |
-| V bring into view: scroll | not started | |
+| V bring into view: scroll | done — elements scrolled out of sight kept apart (`includeScrolled` lists them); a hint on one scrolls it into view first; a caption and its control are one answer. Found by the QA pass on the running app (Settings ▸ AI Agent scrolled) | (this commit) |
 | W words, docs, handout 28 | not started | |
 
 ---
@@ -375,9 +375,16 @@ It answers:
 
 ## V — Bring into view
 
-- **Scrolled out of sight:** before a hint goes up on an element that is clipped by a scroll area,
-  the element is scrolled into view with the accessibility action `AXScrollToVisible`. The scroll is
-  not animated, as on Windows, so the bubble is placed against a settled frame.
+- **Scrolled out of sight is kept apart.** An element inside a scroll area that is scrolled away is
+  not listed with what is in sight, but the reading keeps it (`outOfSight`), with where it lies.
+  `list_ui_targets` lists these too with `includeScrolled` (`inSight: false`).
+- **A hint on one brings it into view first.** SwiftUI's controls do not take the accessibility
+  action for this (`AXScrollToVisible` answers success and does nothing), so the scroll view behind
+  each scroll area round the element — innermost first — is found by its frame and asked to show the
+  element, as AppKit asks it. The screen is read again; the element, found again by identity, is now
+  in sight; the hint goes up on it.
+- **A caption and its control are one answer.** "Session Instructions" names the section's caption
+  and its editor: a name that a caption and exactly one control share means the control.
 - **Closed and tabbed things are not brought into view** (decisions 1 and 2): `open_ui` and the
   navigation tools do that, on purpose.
 

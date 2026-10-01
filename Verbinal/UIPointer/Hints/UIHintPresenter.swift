@@ -66,6 +66,26 @@ final class UIHintPresenter {
         return lastSnapshot
     }
 
+    /// Scrolls elements of the last reading that are out of sight into view,
+    /// waits for the scroll to settle, and reads the screen again (plan 27
+    /// V). Answers each element as it is now, by its old id — in sight, or
+    /// absent when it would not come.
+    func bringIntoView(_ elements: [UIElement]) async -> [String: UIElement] {
+        let away = elements.filter { !$0.inSight }.compactMap { element in
+            source.scrollIntoView(element).map { (id: element.id, element: $0) }
+        }
+        guard !away.isEmpty else { return [:] }
+        try? await Task.sleep(for: .milliseconds(300))
+        let now = snapshot()
+        var found: [String: UIElement] = [:]
+        for (id, element) in away {
+            guard let handle = source.handle(of: element),
+                  let current = now.elements.first(where: { $0.handle == handle }) else { continue }
+            found[id] = current
+        }
+        return found
+    }
+
     /// Shows hints on elements of the last reading, as one set.
     @discardableResult
     func show(_ requests: [Request], numbered: Bool, dim: Bool, seconds: Double?, replace: Bool) -> String {

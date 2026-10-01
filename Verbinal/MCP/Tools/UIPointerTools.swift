@@ -20,7 +20,10 @@ struct UITargetView: Encodable, Sendable, Equatable {
     let enabled: Bool
     /// A folded section or a menu, shut: `open_ui` opens it.
     var closed: Bool?
-    /// x, y, width, height in its window's points.
+    /// False when it is scrolled out of sight: a hint brings it into view.
+    var inSight: Bool?
+    /// x, y, width, height in its window's points — where it lies, for one
+    /// out of sight.
     let at: [Int]
 
     init(_ element: UIElement) {
@@ -33,7 +36,8 @@ struct UITargetView: Encodable, Sendable, Equatable {
         area = element.area
         enabled = element.enabled
         closed = element.closed ? true : nil
-        let v = element.visible
+        inSight = element.inSight ? nil : false
+        let v = element.inSight ? element.visible : element.frame
         at = [v.minX, v.minY, v.width, v.height].map { Int($0.rounded()) }
     }
 }
@@ -78,11 +82,16 @@ enum UITargetScope {
     }
 
     /// The one element `target` names — by its id, its name, or words of
-    /// them — in the window in front, else anywhere on screen. Two equal
+    /// them — in the window in front, else anywhere on screen; failing
+    /// those, one scrolled out of sight, to bring into view. Two equal
     /// matches is a question, not an answer.
     static func match(_ target: String, in snapshot: UISnapshot) -> Match {
         let front = elements(snapshot, window: nil)
-        if let found = best(target, in: front) ?? best(target, in: snapshot.elements) { return .found(found) }
+        let frontAway = snapshot.front.map { snapshot.outOfSight(in: $0.index) } ?? []
+        if let found = best(target, in: front) ?? best(target, in: snapshot.elements)
+            ?? best(target, in: frontAway) ?? best(target, in: snapshot.outOfSight) {
+            return .found(found)
+        }
         let targets = front.map(Self.target)
         let candidates = UIPointerMatcher.candidates(targets, for: target).compactMap { t in front.first { $0.id == t.id } }
         return .missing(candidates: candidates, closed: Array(front.filter(\.closed).prefix(8)))
@@ -93,7 +102,7 @@ enum UITargetScope {
     }
 
     private static func target(_ element: UIElement) -> UIPointerMatcher.Target {
-        .init(id: element.id, label: element.name ?? "", screen: element.screen)
+        .init(id: element.id, label: element.name ?? "", screen: element.screen, control: element.kind.isControl)
     }
 }
 
@@ -105,6 +114,7 @@ struct ListUITargetsTool: JSONReadTool {
         var screen: String?
         var contains: String?
         var window: String?
+        var includeScrolled: Bool?
         var limit: Int?
         var cursor: String?
     }
@@ -128,7 +138,7 @@ struct ListUITargetsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_ui_targets",
-        description: "Everything on screen you can point at or hint — every control the person can see, by what it is (`kind`) and what it says (`name`), with its `id`, `screen` and position (`at`: x, y, width, height in its window's points). `stable: true` ids are hand tags that hold across runs and languages; the others hold while the screen stays as listed. By default it lists the controls (`kind: interactive`) in the window in front — a sheet or Settings when one is open; `kind: all` adds text, images and areas, `window: all` every window. A folded section or a menu is listed with `closed: true` and nothing behind it: open_ui opens it on purpose. A tab not showing is not listed: navigate there first. Only what is in sight is listed. 200 at a time: pass `next` back as `cursor`. These are the app's interface — not the marks on a FITS or cube image (list_fits_annotations, list_cube_annotations).",
+        description: "Everything on screen you can point at or hint — every control the person can see, by what it is (`kind`) and what it says (`name`), with its `id`, `screen` and position (`at`: x, y, width, height in its window's points). `stable: true` ids are hand tags that hold across runs and languages; the others hold while the screen stays as listed. By default it lists the controls (`kind: interactive`) in the window in front — a sheet or Settings when one is open; `kind: all` adds text, images and areas, `window: all` every window. A folded section or a menu is listed with `closed: true` and nothing behind it: open_ui opens it on purpose. A tab not showing is not listed: navigate there first. What is in sight is listed; `includeScrolled` adds what is scrolled out of sight inside a list or a form (`inSight: false`) — a hint on it scrolls it into view. 200 at a time: pass `next` back as `cursor`. These are the app's interface — not the marks on a FITS or cube image (list_fits_annotations, list_cube_annotations).",
         schema: #"""
         {
           "type": "object",
@@ -137,6 +147,7 @@ struct ListUITargetsTool: JSONReadTool {
             "screen": { "type": "string", "description": "Only this screen's elements, by prefix (\"search\", \"settings.agent\")." },
             "contains": { "type": "string", "description": "Only elements whose id or name holds these words." },
             "window": { "type": "string", "enum": ["front", "all"], "description": "front (default): the window in front; all: every window." },
+            "includeScrolled": { "type": "boolean", "description": "Also list what is scrolled out of sight (`inSight: false`); a hint on one brings it into view." },
             "limit": { "type": "integer", "minimum": 1, "maximum": 500 },
             "cursor": { "type": "string", "description": "`next` from the last answer." }
           },
@@ -149,7 +160,11 @@ struct ListUITargetsTool: JSONReadTool {
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let snapshot = await snapshot()
-        let scoped = UITargetScope.elements(snapshot, window: args.window)
+        var scoped = UITargetScope.elements(snapshot, window: args.window)
+        if args.includeScrolled == true {
+            scoped += args.window == "all" ? snapshot.outOfSight
+                : snapshot.front.map { snapshot.outOfSight(in: $0.index) } ?? []
+        }
         let listed = UITargetScope.filter(scoped, kind: args.kind ?? .interactive, screen: args.screen, contains: args.contains)
         let start = min(Int(args.cursor ?? "") ?? 0, listed.count)
         let limit = min(max(args.limit ?? 200, 1), 500)
@@ -227,7 +242,7 @@ struct ShowUIHintsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "show_ui_hints",
-        description: "Show the person several things on the interface at once — a ring round each, and for a hint with `text` (and an optional `title`) a bubble with your words beside it. Name each `target` as point_at_ui does: an id or a name from list_ui_targets; one matching none, or two equally, is shown nothing and comes back in `missing` with what there is, and the closed sections or menus it may be behind. `all` rings every control on screen (or every one of a `kind`, `screen`, or with words it `contains`) — a map of the screen; with `hints`, their bubbles go on top. Bubbles never overlap each other or a hinted element, and keep off images; past twelve, or with no room, the words go to a numbered hint list and the element gets a badge (`as: list`). `numbered` numbers them, for a tour; `dim` shades the rest of the window. `mode: add` (default) keeps the hints already up — the same element twice replaces its hint — and `replace` clears them first. Hints go after `seconds` (2–120; default 8 with words, 15 for rings), when the person closes one or presses Esc, when their element scrolls out of sight, or when the screen changes; `untilClosed` waits for the person, for a slow guide they asked for. When the last of a set goes, list_events has a hintsDismissed event. It shows; it never clicks or changes anything. These are hints on the interface — to mark something on a FITS or cube image, kept with its file, use annotate_fits or annotate_cube.",
+        description: "Show the person several things on the interface at once — a ring round each, and for a hint with `text` (and an optional `title`) a bubble with your words beside it. Name each `target` as point_at_ui does: an id or a name from list_ui_targets — one scrolled out of sight is scrolled into view first; one matching none, or two equally, is shown nothing and comes back in `missing` with what there is, and the closed sections or menus it may be behind. `all` rings every control on screen (or every one of a `kind`, `screen`, or with words it `contains`) — a map of the screen; with `hints`, their bubbles go on top. Bubbles never overlap each other or a hinted element, and keep off images; past twelve, or with no room, the words go to a numbered hint list and the element gets a badge (`as: list`). `numbered` numbers them, for a tour; `dim` shades the rest of the window. `mode: add` (default) keeps the hints already up — the same element twice replaces its hint — and `replace` clears them first. Hints go after `seconds` (2–120; default 8 with words, 15 for rings), when the person closes one or presses Esc, when their element scrolls out of sight, or when the screen changes; `untilClosed` waits for the person, for a slow guide they asked for. When the last of a set goes, list_events has a hintsDismissed event. It shows; it never clicks or changes anything. These are hints on the interface — to mark something on a FITS or cube image, kept with its file, use annotate_fits or annotate_cube.",
         schema: #"""
         {
           "type": "object",
@@ -338,7 +353,7 @@ struct PointAtUITool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "point_at_ui",
-        description: "Show the person where something is: a ring round it and your short `message` beside it — the answer to \"where is that setting?\" being the app pointing at it. Name it by its id or the words on it (list_ui_targets lists what is on screen). A name matching none — or two equally — points at nothing and returns the candidates, and the closed sections or menus it may be behind, instead of guessing. Each call adds a hint, so a tour is several calls (the same element twice replaces its hint); show_ui_hints puts several up at once. It stays `seconds` (default 8), or with `untilClosed` until the person closes it. It shows; it never clicks or changes anything — pointing at Delete is safe, and the person decides.",
+        description: "Show the person where something is: a ring round it and your short `message` beside it — the answer to \"where is that setting?\" being the app pointing at it. Name it by its id or the words on it (list_ui_targets lists what is on screen); if it is scrolled out of sight, it is scrolled into view first. A name matching none — or two equally — points at nothing and returns the candidates, and the closed sections or menus it may be behind, instead of guessing. Each call adds a hint, so a tour is several calls (the same element twice replaces its hint); show_ui_hints puts several up at once. It stays `seconds` (default 8), or with `untilClosed` until the person closes it. It shows; it never clicks or changes anything — pointing at Delete is safe, and the person decides.",
         schema: #"""
         {
           "type": "object",
