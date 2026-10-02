@@ -25,6 +25,10 @@ struct GetCurrentViewTool: JSONReadTool {
         /// The person's standing rules — their guide tools — so an agent
         /// that only looks here still meets them; the tool's description
         /// names them first.
+        /// What the person allows without asking, kind by kind (plan 30 A):
+        /// `allowed` applies at once, the rest waits in Pending. Re-read it; the
+        /// person can change it between turns.
+        var permissions: [ChangeCatalog.Permission] = []
         var standingRules: [AIGuideSnapshot.StandingRule] = []
         /// (Search) The observation whose detail sheet is open.
         var openSearchDetail: Record? = nil
@@ -135,7 +139,7 @@ struct GetCurrentViewTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_current_view",
-        description: "Return the person's standing rules (`standingRules`: their guide tools — call each for its whole text and follow it), then what the user is currently looking at — including the observation whose Search detail is open (`openSearchDetail`) and the Research record selected (`selectedResearchRecord`): which mode (landing/search/research/portal/storage/fitsViewer/cubeViewer/aiGuide), auth state, the Search sub-tab and loaded-results counts, search-form focus when set, open FITS files when in FITS Viewer, `pendingViewerChoice` when the Open as… (2D FITS vs 3D Cube) sheet is showing — call `choose_viewer` to dismiss it — pending-proposal count, plus the two autonomy toggles: `autoApplyEnabled` (do writes return applied results, or queue for strip review?) and `followAgentActivityEnabled` (does the app auto-navigate to the relevant view after a write, so you don't need a redundant `navigate_to`?).",
+        description: "Return the person's standing rules (`standingRules`: their guide tools — call each for its whole text and follow it), then what the user is currently looking at — including the observation whose Search detail is open (`openSearchDetail`) and the Research record selected (`selectedResearchRecord`): which mode (landing/search/research/portal/storage/fitsViewer/cubeViewer/aiGuide), auth state, the Search sub-tab and loaded-results counts, search-form focus when set, open FITS files when in FITS Viewer, `pendingViewerChoice` when the Open as… (2D FITS vs 3D Cube) sheet is showing — call `choose_viewer` to dismiss it — pending-proposal count, `permissions` (what the person allows without asking, kind by kind: an `allowed` kind applies at once, the rest waits in Pending; `autoApplyEnabled` is true while any kind is allowed) and `followAgentActivityEnabled` (does the app auto-navigate to the relevant view after a write, so you don't need a redundant `navigate_to`?).",
         schema: #"""
         {
           "type": "object",

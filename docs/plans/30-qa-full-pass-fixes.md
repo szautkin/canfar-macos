@@ -87,18 +87,18 @@ them).
 |---|---|---|
 | **Notes and saved things on this Mac** | update_observation_note, bulk_update_observation_notes, save_query, update_saved_query, rename_recent_search, save_workflow, update_workflow, use_workflow, set_workflow_step, save_fits_bookmark, save_observation_to_research, add_registry_image | Allowed |
 | **Files saved on this Mac** — new files, never over an existing one | download_observation, download_observations_bulk, download_cutout, download_vospace_file, open_vospace_file, export_search_results, export_fits_figure, export_cube_figure, export_research_bundle, export_session_log | Allowed |
-| **Add to your CANFAR storage** — new files and folders | create_vospace_folder, upload_text_to_vospace, upload_file_to_vospace, upload_to_vospace | Allowed |
+| **Add to your CANFAR storage** — new files and folders | create_vospace_folder (and its alias vospace_mkdir), upload_text_to_vospace, upload_file_to_vospace, upload_to_vospace | Allowed |
 | **Use your CANFAR allocation: sessions and compute** | launch_session, renew_session, start_compute, run_code | Allowed |
 | **Use your CANFAR allocation: batch jobs and image probes** | launch_headless_job, discover_image_packages (a probe is a batch job) | Allowed (the person, decision 6). Their standing rule `headless_jobs_rules` still guides assistants. |
 | **Sharing** — who may read or write your files | set_vospace_acl | **Ask me** |
-| **What every assistant is told** | add_guide_tool, update_guide_tool, set_tool_description, clear_tool_description | **Ask me, always**: not a setting (decision 8) |
+| **What every assistant is told** | add_guide_tool, update_guide_tool, delete_guide_tool, set_tool_description, clear_tool_description | **Ask me, always**: not a setting (decision 8) |
 
 **Changes that remove, replace or stop** (destructive):
 
 | Kind | Tools | Proposed default |
 |---|---|---|
 | **Remove what an assistant made** — anything the session log shows an assistant created | the delete tools below, when their target was made by an assistant | **Allowed** — this is how a QA pass cleans up after itself. See decision 9. |
-| **Remove notes and saved things on this Mac** | delete_saved_query, remove_recent_search, delete_workflow, delete_fits_bookmark, remove_registry_image, clear_probe_failures, delete_guide_tool | Ask me |
+| **Remove notes and saved things on this Mac** | delete_saved_query, remove_recent_search, delete_workflow, delete_fits_bookmark, remove_registry_image, clear_probe_failures | Ask me. Removing a guide tool is "what every assistant is told": it could remove the person's own rule. |
 | **Remove files on this Mac** | remove_downloaded_file, delete_downloaded_observation | Ask me |
 | **Remove from your CANFAR storage** — also an upload over an existing file | delete_vospace_node; an upload that would replace a file | Ask me |
 | **Stop running work on CANFAR** — unsaved work in it is lost | delete_session, stop_compute | Ask me |

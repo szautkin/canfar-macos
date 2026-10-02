@@ -277,9 +277,11 @@ public actor AIToolRouter {
                 // budget gate is bypassed by design — auto-applied
                 // writes don't pile up in the strip, so the original
                 // "cap pending strip items" rationale doesn't apply.
-                if let hook = autoApplyHook,
-                   await hook.shouldAutoApply(meta.verbClass, proposal) {
-                    decide(proposal, meta.verbClass, appliedAtOnce: true)
+                let decision = await autoApplyHook?.decide(meta.verbClass, proposal)
+                    ?? AutoApplyDecision(appliesAtOnce: false,
+                                         rule: AutoApplyPolicy.rule(for: meta.verbClass, appliedAtOnce: false))
+                if let hook = autoApplyHook, decision.appliesAtOnce {
+                    record(proposal, decision)
                     // The apply records its own outcome, so one that
                     // outlives the call (a 1.6 GB download) is still
                     // reported — by get_job_status — when it ends.
@@ -331,7 +333,7 @@ public actor AIToolRouter {
 
                 let accepted = await context.budget.tryAccept(origin: context.origin)
                 if accepted {
-                    decide(proposal, meta.verbClass, appliedAtOnce: false)
+                    record(proposal, decision)
                     emitAudit(name: name, args: rawArguments, context: context,
                               outcome: .proposed(proposal.id),
                               verbClass: meta.verbClass,
@@ -357,11 +359,11 @@ public actor AIToolRouter {
     // MARK: - Internals
 
     /// Records whether `proposal` applied at once or waits, with the rule.
-    private func decide(_ proposal: PendingProposal, _ verbClass: VerbClass, appliedAtOnce: Bool) {
+    private func record(_ proposal: PendingProposal, _ decision: AutoApplyDecision) {
         var cause = Cause.current
         cause.proposal = proposal.id
-        decisions.record(appliedAtOnce ? .appliedAtOnce : .heldForPerson,
-                         "\"\(proposal.summary)\" \(AutoApplyPolicy.rule(for: verbClass, appliedAtOnce: appliedAtOnce))",
+        decisions.record(decision.appliesAtOnce ? .appliedAtOnce : .heldForPerson,
+                         "\"\(proposal.summary)\" \(decision.rule)",
                          subject: proposal.summary, cause: cause)
     }
 

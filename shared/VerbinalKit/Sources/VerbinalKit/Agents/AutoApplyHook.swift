@@ -22,10 +22,10 @@ import Foundation
 /// app layer (per-client preferences, persisted toggles, UI revoke
 /// flow). Keeping the router policy-free keeps tests trivial.
 public struct AutoApplyHook: Sendable {
-    /// Decide whether a just-enqueued proposal should auto-apply. The
-    /// router passes the verb class (so the hook can gate destructive
-    /// separately) and the proposal (so it can inspect kind / origin).
-    public let shouldAutoApply: @Sendable (_ verbClass: VerbClass, _ proposal: PendingProposal) async -> Bool
+    /// Decides whether a just-enqueued proposal applies at once, and says
+    /// why, in the person's terms. The router passes the verb class and the
+    /// proposal, so the host can judge by what it acts on (plan 30 A).
+    public let decide: @Sendable (_ verbClass: VerbClass, _ proposal: PendingProposal) async -> AutoApplyDecision
 
     /// Run the apply. Throws on backend failure — the router withdraws
     /// the optimistic auto-apply and surfaces the error to the agent.
@@ -35,11 +35,34 @@ public struct AutoApplyHook: Sendable {
     public let apply: @Sendable (_ proposalID: UUID) async throws -> Data?
 
     public init(
+        decide: @escaping @Sendable (_ verbClass: VerbClass, _ proposal: PendingProposal) async -> AutoApplyDecision,
+        apply: @escaping @Sendable (_ proposalID: UUID) async throws -> Data?
+    ) {
+        self.decide = decide
+        self.apply = apply
+    }
+
+    /// A yes or no, said by the verb class's rule.
+    public init(
         shouldAutoApply: @escaping @Sendable (_ verbClass: VerbClass, _ proposal: PendingProposal) async -> Bool,
         apply: @escaping @Sendable (_ proposalID: UUID) async throws -> Data?
     ) {
-        self.shouldAutoApply = shouldAutoApply
-        self.apply = apply
+        self.init(decide: { verbClass, proposal in
+            let atOnce = await shouldAutoApply(verbClass, proposal)
+            return AutoApplyDecision(appliesAtOnce: atOnce, rule: AutoApplyPolicy.rule(for: verbClass, appliedAtOnce: atOnce))
+        }, apply: apply)
+    }
+}
+
+/// Whether a proposal applies at once, and the rule that says so — "applied
+/// at once: the person allows …", "waits in Pending: …".
+public struct AutoApplyDecision: Sendable, Equatable {
+    public let appliesAtOnce: Bool
+    public let rule: String
+
+    public init(appliesAtOnce: Bool, rule: String) {
+        self.appliesAtOnce = appliesAtOnce
+        self.rule = rule
     }
 }
 

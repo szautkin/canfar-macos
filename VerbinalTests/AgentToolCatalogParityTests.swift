@@ -131,16 +131,62 @@ final class AgentToolCatalogParityTests: XCTestCase {
     }
 }
 
-/// start_background_apply may start only what auto-apply would apply
-/// without the person (Windows 1.4.1 fixed an approval bypass here).
+/// start_background_apply may start only what the person allows without
+/// asking (Windows 1.4.1 fixed an approval bypass here; plan 30 A).
 final class BackgroundApplyPolicyTests: XCTestCase {
-    func testOnlyWhatAutoApplyWouldApplyMayStart() {
-        XCTAssertNil(AgentsService.backgroundRefusal(kind: "download_observation", verbClass: .semanticWrite, autoApplyOn: true))
-        XCTAssertNotNil(AgentsService.backgroundRefusal(kind: "download_observation", verbClass: .semanticWrite, autoApplyOn: false))
-        let destructive = AgentsService.backgroundRefusal(kind: "delete_vospace_node", verbClass: .destructive, autoApplyOn: true)
-        XCTAssertTrue(destructive?.contains("destructive") ?? false)
-        let standing = AgentsService.backgroundRefusal(kind: "add_guide_tool", verbClass: .standingInstruction, autoApplyOn: true)
-        XCTAssertTrue(standing?.contains("standing instruction") ?? false)
+    private func proposal(_ tool: String) -> PendingProposal {
+        PendingProposal(toolName: tool, kind: tool, summary: tool, payload: Data(), origin: .external(clientID: "test"))
+    }
+
+    func testOnlyWhatThePersonAllowsMayStart() {
+        XCTAssertNil(AgentsService.backgroundRefusal(proposal("download_observation"), permissions: .defaults))
+        XCTAssertNotNil(AgentsService.backgroundRefusal(proposal("download_observation"), permissions: .askForEverything))
+        let destructive = AgentsService.backgroundRefusal(proposal("delete_vospace_node"), permissions: .defaults)
+        XCTAssertTrue(destructive?.contains("Remove or replace in your CANFAR storage") ?? false)
+        let standing = AgentsService.backgroundRefusal(proposal("add_guide_tool"), permissions: .defaults)
+        XCTAssertTrue(standing?.contains("always waits") ?? false)
+        var allowing = ChangePermissions.defaults
+        allowing.set(.removeFromStorage, allowed: true)
+        XCTAssertNil(AgentsService.backgroundRefusal(proposal("delete_vospace_node"), permissions: allowing),
+                     "a destructive kind the person allows may start")
+    }
+
+    /// Plan 30 A: every tool that changes something has a kind; a destructive
+    /// tool is in a destructive kind — but removing a guide tool, which
+    /// changes what every assistant is told, always waits as one.
+    @MainActor
+    func testEveryChangingToolHasAKind() {
+        let changing = AppState().makeAgentTools().filter {
+            [.semanticWrite, .destructive, .standingInstruction].contains(type(of: $0).verbClass)
+        }
+        XCTAssertFalse(changing.isEmpty)
+        for tool in changing {
+            let name = tool.definition.name
+            guard let kind = ChangeCatalog.kind(ofTool: name) else { XCTFail("\(name) has no kind"); continue }
+            switch type(of: tool).verbClass {
+            case .destructive where kind != .standingInstruction:
+                XCTAssertTrue(kind.isDestructive, "\(name) is destructive, \(kind) is not")
+            case .standingInstruction:
+                XCTAssertEqual(kind, .standingInstruction, name)
+            case .semanticWrite:
+                XCTAssertFalse(kind.isDestructive, "\(name) adds or changes, \(kind) removes")
+            default:
+                break
+            }
+        }
+        XCTAssertEqual(ChangeCatalog.kind(ofTool: "delete_guide_tool"), .standingInstruction)
+        XCTAssertNil(ChangeCatalog.kind(ofTool: "navigate_to"), "a view change is no kind of change")
+    }
+
+    /// What waits says why, by the person's setting — not "auto-apply is off".
+    func testWhatWaitsSaysWhy() {
+        XCTAssertEqual(AgentsService.waitingRule(proposal("delete_session"), permissions: .defaults),
+                       "waits in Pending: the person asks to approve \"Stop running work on CANFAR\"")
+        XCTAssertTrue(AgentsService.waitingRule(proposal("launch_session"), permissions: .defaults)
+            .contains("proposed before the person allowed"))
+        let decision = ChangeCatalog.decision(for: proposal("launch_headless_job"), permissions: .defaults)
+        XCTAssertTrue(decision.appliesAtOnce, "batch jobs allowed by default (decision 6)")
+        XCTAssertEqual(decision.rule, "applied at once: the person allows \"Use your CANFAR allocation: batch jobs and image probes\"")
     }
 
     /// Plan 15 S1 (QA H6): the tools that write what every later agent is

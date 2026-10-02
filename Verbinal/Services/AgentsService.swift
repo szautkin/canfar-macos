@@ -52,13 +52,31 @@ final class AgentsService {
     /// to MCP at all is the trust signal; the user can dial it back
     /// here if they want strip-confirmed writes again. Persisted.
     var autoApplyWrites: Bool {
+        get { permissions != .askForEverything }
+        set { permissions = .migrating(autoApplyOn: newValue) }
+    }
+
+    /// What an assistant may do without asking, kind by kind (plan 30 A):
+    /// what the person allows applies at once, the rest waits in Pending.
+    /// Persisted; the old Auto-apply switch reads and sets it above.
+    var permissions: ChangePermissions {
         didSet {
-            guard oldValue != autoApplyWrites else { return }
-            UserDefaults.standard.set(autoApplyWrites, forKey: Self.autoApplyKey)
+            guard oldValue != permissions else { return }
+            if let data = try? JSONEncoder().encode(permissions) {
+                UserDefaults.standard.set(data, forKey: Self.permissionsKey)
+            }
             // It decides whether an assistant's changes wait for the person
-            // (plan 23 C).
-            changes.done("change_setting", "Auto-apply to \(autoApplyWrites ? "on" : "off")")
+            // (plan 23 C): each kind that changed, by its name.
+            for kind in ChangeKind.allCases where oldValue.allows(kind) != permissions.allows(kind) {
+                changes.done("change_setting", "\(kind.title): \(permissions.allows(kind) ? "allowed" : "ask me")")
+            }
         }
+    }
+
+    /// The closing sentence of a proposing tool's description: its kind, and
+    /// what the person's setting does with it now.
+    func toolRule(_ tool: String) -> String? {
+        ChangeCatalog.kind(ofTool: tool).map { AutoApplyPolicy.toolSentence(forChange: $0, permissions: permissions) }
     }
 
     /// When `true`, after an auto-applied write the app navigates the
@@ -156,6 +174,7 @@ final class AgentsService {
 
     private static let userDefaultsKey = "com.codebg.Verbinal.agents.allowExternalAgents"
     private static let autoApplyKey = "com.codebg.Verbinal.agents.autoApplyWrites"
+    private static let permissionsKey = "com.codebg.Verbinal.agents.changePermissions"
     private static let followActivityKey = "com.codebg.Verbinal.agents.followAgentActivity"
 
     /// Who answers, and what every assistant is told first (plan 25 W).
@@ -190,7 +209,13 @@ final class AgentsService {
             Self.autoApplyKey: true,
             Self.followActivityKey: true
         ])
-        self.autoApplyWrites = UserDefaults.standard.bool(forKey: Self.autoApplyKey)
+        // The person's choices; before there were any, the old switch's.
+        if let data = UserDefaults.standard.data(forKey: Self.permissionsKey),
+           let stored = try? JSONDecoder().decode(ChangePermissions.self, from: data) {
+            self.permissions = stored
+        } else {
+            self.permissions = .migrating(autoApplyOn: UserDefaults.standard.bool(forKey: Self.autoApplyKey))
+        }
         self.followAgentActivity = UserDefaults.standard.bool(forKey: Self.followActivityKey)
     }
 
@@ -277,15 +302,31 @@ final class AgentsService {
         return extra
     }
 
-    /// The proposals waiting in Pending, each with the rule that holds it:
-    /// "waits in Pending: a delete always waits for the person" (plan 23 L3).
+    /// The proposals waiting for the person, each with what holds it (plan
+    /// 23 L3, plan 30 W3): their setting for its kind, or a failed apply to
+    /// try again. One being applied is not waiting: it is a running task.
     func waitingProposals() async -> [(proposal: PendingProposal, waits: String)] {
         var waiting: [(PendingProposal, String)] = []
         for proposal in await proposals.list(origin: nil) {
-            let verbClass = await router?.verbClass(of: proposal.toolName) ?? .semanticWrite
-            waiting.append((proposal, AutoApplyPolicy.rule(for: verbClass, appliedAtOnce: false)))
+            switch await proposals.state(proposal.id) {
+            case .applying:
+                continue
+            case .failed:
+                waiting.append((proposal, "failed when it was applied; it waits for the person to try again or discard it"))
+            default:
+                waiting.append((proposal, Self.waitingRule(proposal, permissions: permissions)))
+            }
         }
         return waiting
+    }
+
+    /// Why a proposal still in Pending waits: the person asks to approve its
+    /// kind — or allowed it only after it was proposed.
+    nonisolated static func waitingRule(_ proposal: PendingProposal, permissions: ChangePermissions) -> String {
+        let kind = ChangeCatalog.kind(of: proposal)
+        return permissions.allows(kind)
+            ? "waits in Pending: it was proposed before the person allowed \"\(kind.title)\"; they apply it, or start_background_apply can"
+            : AutoApplyPolicy.rule(forChange: kind, appliedAtOnce: false)
     }
 
     // MARK: - Background applies
@@ -301,17 +342,12 @@ final class AgentsService {
     }
 
     /// Why a pending proposal may not be started in the background, or nil.
-    /// The person's approval is not the agent's to give: only what
-    /// auto-apply would apply without them may start (never a destructive
-    /// change or a standing instruction, and nothing while auto-apply is off).
-    nonisolated static func backgroundRefusal(kind: String, verbClass: VerbClass, autoApplyOn: Bool) -> String? {
-        guard !AutoApplyPolicy.appliesAtOnce(verbClass, autoApplyOn: autoApplyOn) else { return nil }
-        let waits = "'\(kind)' waits for their approval in Verbinal's pending changes"
-        switch verbClass {
-        case .destructive: return "'\(kind)' is a destructive change, so only the person can apply it: it waits for their approval in Verbinal's pending changes"
-        case .standingInstruction: return "'\(kind)' is a standing instruction every later agent will read, so only the person can apply it: \(waits)"
-        default: return "auto-apply is off, so the person applies each change: \(waits)"
-        }
+    /// The person's approval is not the agent's to give: only a kind they
+    /// allow may start (plan 30 A).
+    nonisolated static func backgroundRefusal(_ proposal: PendingProposal, permissions: ChangePermissions) -> String? {
+        let decision = ChangeCatalog.decision(for: proposal, permissions: permissions)
+        guard !decision.appliesAtOnce else { return nil }
+        return "'\(proposal.kind)' \(decision.rule): only the person can apply it"
     }
 
     /// Starts applying a pending proposal without holding the call open.
@@ -325,9 +361,7 @@ final class AgentsService {
         guard let proposal = await proposals.list(origin: nil).first(where: { $0.id == id }) else {
             return refused("no pending proposal '\(raw)' — list_pending_proposals shows the ones there are")
         }
-        // A tool the router does not know is treated as destructive.
-        let verbClass = await router?.verbClass(of: proposal.toolName) ?? .destructive
-        if let why = Self.backgroundRefusal(kind: proposal.kind, verbClass: verbClass, autoApplyOn: autoApplyWrites) {
+        if let why = Self.backgroundRefusal(proposal, permissions: permissions) {
             return refused(why)
         }
         if await proposals.state(id) == .applying {
@@ -445,7 +479,9 @@ final class AgentsService {
     /// server has started. The tool-map tools read this.
     func publishedTools() async -> [ToolDefinitionWire] {
         guard let router else { return [] }
-        return await PublishedManifest.tools(router: router, aiGuide: aiGuideResolver)
+        return await PublishedManifest.tools(router: router, aiGuide: aiGuideResolver, rule: { [weak self] tool, _ in
+            await self?.toolRule(tool)
+        })
     }
 
     private func startServer() {
@@ -470,14 +506,14 @@ final class AgentsService {
             }
         }
         let hook = AutoApplyHook(
-            // Windows AutoApplyPolicy: destructive writes never auto-apply
-            // even when the user has autonomy on — deletes/teardowns always
-            // queue for explicit approval.
-            shouldAutoApply: { [weak self] verbClass, _ in
-                guard let self else { return false }
-                return await MainActor.run {
-                    AutoApplyPolicy.appliesAtOnce(verbClass, autoApplyOn: self.autoApplyWrites)
+            // What the person allows, kind by kind (plan 30 A): an allowed
+            // change applies at once, the rest waits in Pending for them.
+            decide: { [weak self] _, proposal in
+                guard let self else {
+                    return AutoApplyDecision(appliesAtOnce: false, rule: "waits in Pending: Verbinal is closing")
                 }
+                let permissions = await MainActor.run { self.permissions }
+                return ChangeCatalog.decision(for: proposal, permissions: permissions)
             },
             apply: { [weak self] id in
                 guard let self else {
@@ -590,7 +626,8 @@ final class AgentsService {
                 gate: sessionGate
             ),
             approval: .allowAll,  // P3 minimum: gate is the toggle. P8 adds per-client approval.
-            aiGuide: aiGuideResolver
+            aiGuide: aiGuideResolver,
+            toolRule: { [weak self] tool, _ in await self?.toolRule(tool) }
         )
 
         // Background poller: refresh the strip's @Observable snapshot

@@ -61,6 +61,9 @@ public actor MCPBridgeService {
     /// answers guide-tool calls with stored text. `nil` serves the plain
     /// router manifest.
     private let aiGuide: AIGuideResolver?
+    /// A proposing tool's closing sentence, by its kind of change and the
+    /// person's setting (plan 30 A); nil keeps the verb class's.
+    private let toolRule: (@Sendable (_ tool: String, _ verbClass: VerbClass) async -> String?)?
     private let logger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "bridge")
 
     /// Per-connection state. Initialized lazily on the first `initialize`
@@ -97,13 +100,15 @@ public actor MCPBridgeService {
         identity: ServerIdentity,
         services: PerConnectionServices,
         approval: ApprovalGate = .allowAll,
-        aiGuide: AIGuideResolver? = nil
+        aiGuide: AIGuideResolver? = nil,
+        toolRule: (@Sendable (_ tool: String, _ verbClass: VerbClass) async -> String?)? = nil
     ) {
         self.router = router
         self.identity = identity
         self.services = services
         self.approval = approval
         self.aiGuide = aiGuide
+        self.toolRule = toolRule
     }
 
     /// Drive the connection. Returns when the transport closes.
@@ -372,7 +377,7 @@ public actor MCPBridgeService {
 
     private func handleToolsList(_ request: JSONRPCRequest) async -> JSONRPCResponse {
         guard initialized else { return notInitialized(id: request.id) }
-        let tools = await PublishedManifest.tools(router: router, aiGuide: aiGuide)
+        let tools = await PublishedManifest.tools(router: router, aiGuide: aiGuide, rule: toolRule)
         logger.info("tools/list -> \(tools.count) tool\(tools.count == 1 ? "" : "s")")
         return successResponse(id: request.id, body: ListToolsResult(tools: tools))
     }

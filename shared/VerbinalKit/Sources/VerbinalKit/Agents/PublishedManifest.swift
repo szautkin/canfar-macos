@@ -17,13 +17,24 @@ public enum PublishedManifest {
     /// appended, and each proposing tool's description ending with the
     /// app's apply rule — after any override, so a user's wording cannot
     /// drop it.
-    public static func tools(router: AIToolRouter, aiGuide: AIGuideResolver?) async -> [ToolDefinitionWire] {
+    /// `rule` gives a proposing tool's closing sentence — the host's, by its
+    /// kind of change and the person's setting (plan 30 A); nil keeps the
+    /// verb class's.
+    public static func tools(router: AIToolRouter, aiGuide: AIGuideResolver?,
+                             rule: (@Sendable (_ tool: String, _ verbClass: VerbClass) async -> String?)? = nil)
+        async -> [ToolDefinitionWire] {
         let adjustments = await aiGuide?.adjustments() ?? .none
         var tools: [ToolDefinitionWire] = []
         for definition in await router.externalManifestList() {
             let description = adjustments.descriptionOverrides[definition.name] ?? definition.description
-            let ruled = await router.verbClass(of: definition.name)
-                .map { AutoApplyPolicy.describe(description, verbClass: $0) } ?? description
+            var ruled = description
+            if let verbClass = await router.verbClass(of: definition.name) {
+                if let rule, let sentence = await rule(definition.name, verbClass) {
+                    ruled = description + " " + sentence
+                } else {
+                    ruled = AutoApplyPolicy.describe(description, verbClass: verbClass)
+                }
+            }
             let schema = await router.verbClass(of: definition.name)
                 .map { Cause.publishing(definition.inputSchema, for: $0) } ?? definition.inputSchema
             tools.append(ToolDefinitionWire(name: definition.name, description: ruled, inputSchema: schema))
