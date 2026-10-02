@@ -12,6 +12,12 @@ struct HeadlessJobsDetailSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var selectedTab = "running"
+    /// Words to narrow the list by: a job's name, image or id.
+    @State private var filter = ""
+    /// How many of the matching jobs the list holds — a page at a time, so it
+    /// never holds ten thousand; the filter finds any of them.
+    @State private var shownUpTo = Self.pageSize
+    static let pageSize = 500
     @State private var eventsSheetJob: HeadlessJob?
     @State private var eventsText = ""
     @State private var logsText = ""
@@ -115,22 +121,36 @@ struct HeadlessJobsDetailSheet: View {
 
             Divider()
 
-            // Job list — filtered once a pass, not once to ask and again to show.
-            let jobs = filteredJobs
+            // Job list: the tab's jobs the filter leaves, newest first, a page at a time.
+            let inTab = filteredJobs
             if selectedTab == "history", let history = model.history {
                 JobHistoryList(history: history)
-            } else if jobs.isEmpty {
+            } else if inTab.isEmpty {
                 Spacer()
                 Text(emptyStateText)
                     .foregroundStyle(.secondary)
                 Spacer()
             } else {
-                List(jobs) { job in
-                    jobRow(job)
+                let matching = Self.matching(inTab, filter: filter)
+                filterField
+                if matching.isEmpty {
+                    Spacer()
+                    Text("No jobs match")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                } else {
+                    List(matching.prefix(shownUpTo)) { job in
+                        jobRow(job)
+                    }
+                    .listStyle(.inset)
+                    if matching.count > shownUpTo {
+                        moreBar(shown: shownUpTo, of: matching.count)
+                    }
                 }
-                .listStyle(.inset)
             }
         }
+        .onChange(of: filter) { _, _ in shownUpTo = Self.pageSize }
+        .onChange(of: selectedTab) { _, _ in shownUpTo = Self.pageSize }
         .sheetFrame(minWidth: 600, minHeight: 400)
         .onAppear { selectedTab = Self.firstTab(tabs.map { ($0.id, $0.count) }) }
         .sheet(item: $eventsSheetJob) { job in
@@ -337,6 +357,39 @@ struct HeadlessJobsDetailSheet: View {
         }
     }
 
+
+    // MARK: - Filter and pages
+
+    /// The jobs the filter leaves — every word in a job's name, image or id —
+    /// newest first.
+    static func matching(_ jobs: [HeadlessJob], filter: String) -> [HeadlessJob] {
+        SearchableChoice.matches(jobs, query: filter) { "\($0.name) \($0.image) \($0.id)" }
+            .sorted { ($0.startedTime, $0.id) > ($1.startedTime, $1.id) }
+    }
+
+    private var filterField: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Filter jobs by name, image or id", text: $filter)
+                .textFieldStyle(.roundedBorder)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
+
+    private func moreBar(shown: Int, of total: Int) -> some View {
+        HStack {
+            Text("Showing \(shown) of \(total)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button("Show \(min(Self.pageSize, total - shown)) More") { shownUpTo += Self.pageSize }
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
 
     // MARK: - Helpers
 

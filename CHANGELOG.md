@@ -18,7 +18,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
   nothing said the card opened anything. A **Jobs & History…** button on
   the card opens it either way, on the first tab with anything in it:
   History when nothing runs.
-- **Batch Jobs keeps up with thousands of jobs.** When many jobs end
+- **Batch Jobs keeps up with thousands of jobs.** With ten thousand
+  jobs, opening the list took two seconds and every check froze it again.
+  It now shows the newest 500 at a time, with **Show More** for the next
+  and a filter by name, image or id that finds any job; a check that
+  finds nothing new changes nothing on screen. When many jobs end
   between two checks, one notification says how many finished and how
   many failed, instead of one each. History takes each finished job once
   and is written once per check, so a long list of finished jobs no

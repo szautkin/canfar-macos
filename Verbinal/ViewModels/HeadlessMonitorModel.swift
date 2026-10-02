@@ -98,7 +98,9 @@ final class HeadlessMonitorModel: CadencedPoller {
             history?.recordMissing(Self.firstSeenFinished(fetched, previous: previousStateMap))
 
             previousStateMap = transitions.current
-            jobs = fetched
+            // Only what changed is set: whatever shows ten thousand jobs is not
+            // redrawn for a poll that found them as they were.
+            if fetched != jobs { jobs = fetched }
             updateCounts()
             updateDockBadge()
             cadence.observe(inFlight: totalActive > 0, changed: transitions.changed)
@@ -183,10 +185,16 @@ final class HeadlessMonitorModel: CadencedPoller {
     // MARK: - Private
 
     private func updateCounts() {
-        runningCount = jobs.filter { $0.isRunning }.count
-        pendingCount = jobs.filter { $0.isPending }.count
-        completedCount = jobs.filter { $0.isCompleted }.count
-        failedCount = jobs.filter { $0.isFailed }.count
+        var running = 0, pending = 0, completed = 0, failed = 0
+        for job in jobs {
+            if job.isRunning { running += 1 } else if job.isPending { pending += 1 }
+            else if job.isCompleted { completed += 1 } else if job.isFailed { failed += 1 }
+        }
+        // Set when changed, as the jobs are.
+        if runningCount != running { runningCount = running }
+        if pendingCount != pending { pendingCount = pending }
+        if completedCount != completed { completedCount = completed }
+        if failedCount != failed { failedCount = failed }
     }
 
     /// More ending at once than this are told in one notification: a sweep

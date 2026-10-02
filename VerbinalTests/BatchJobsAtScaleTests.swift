@@ -103,6 +103,64 @@ final class BatchJobsAtScaleTests: XCTestCase {
         XCTAssertEqual(open.name, "Jobs & History…", "in sight, saying what it opens")
     }
 
+    /// The list is filtered by every word of a job's name, image or id, and
+    /// shows the newest first.
+    func testTheSheetFiltersByNameImageOrIdNewestFirst() {
+        let all = jobs(1_000, status: { _ in "Running" })
+        XCTAssertEqual(HeadlessJobsDetailSheet.matching(all, filter: "").first?.id, "job999", "newest first")
+        XCTAssertEqual(HeadlessJobsDetailSheet.matching(all, filter: "SWEEP-42 astroml").map(\.id).sorted(),
+                       ["job42", "job420", "job421", "job422", "job423", "job424", "job425", "job426", "job427", "job428", "job429"])
+        XCTAssertEqual(HeadlessJobsDetailSheet.matching(all, filter: "sweep-42 24.0").map(\.id),
+                       ["job429", "job426", "job423", "job420", "job42"], "name and image words together, newest first")
+    }
+
+    /// Ten thousand jobs in a tab: the list holds a page of them, not all —
+    /// opening and every poll drew all ten thousand rows (2 s, measured).
+    func testTheSheetHoldsAPageNotTenThousand() async throws {
+        let model = HeadlessMonitorModel(
+            headlessService: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())),
+            history: JobHistoryStore(persistence: nil))
+        model.jobs = jobs(10_000, status: { _ in "Running" })
+        model.runningCount = 10_000
+        let window = NSWindow(contentRect: NSRect(x: 200, y: 150, width: 700, height: 600),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: HeadlessJobsDetailSheet(model: model).frame(width: 700, height: 600))
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        try await Task.sleep(for: .milliseconds(400))
+        func table(_ view: NSView) -> NSTableView? {
+            (view as? NSTableView) ?? view.subviews.lazy.compactMap(table).first
+        }
+        let rows = try XCTUnwrap(window.contentView.flatMap(table)).numberOfRows
+        XCTAssertEqual(rows, HeadlessJobsDetailSheet.pageSize)
+    }
+
+    /// A poll that finds the jobs as they were sets nothing: nothing showing
+    /// them is drawn again.
+    func testAPollThatFindsNothingNewSetsNothing() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let body = #"""
+            [{"id": "a", "userid": "u", "image": "images.canfar.net/p/x:1", "type": "headless", "status": "Running", "name": "a"},
+             {"id": "b", "userid": "u", "image": "images.canfar.net/p/x:1", "type": "headless", "status": "Completed", "name": "b"}]
+            """#
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        defer { MockURLProtocol.requestHandler = nil }
+        let model = HeadlessMonitorModel(
+            headlessService: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())))
+        await model.loadJobs()
+        XCTAssertEqual(model.jobs.count, 2)
+        var touched = false
+        withObservationTracking {
+            _ = model.jobs
+            _ = model.runningCount
+            _ = model.completedCount
+        } onChange: { touched = true }
+        await model.loadJobs()
+        XCTAssertFalse(touched, "the same jobs, the same counts: nothing set")
+    }
+
     /// The sheet opens on the first tab with anything in it: History when
     /// CANFAR lists no job now.
     func testTheSheetOpensWhereThereIsSomething() {

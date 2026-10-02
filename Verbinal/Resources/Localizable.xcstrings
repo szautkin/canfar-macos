@@ -7178,6 +7178,16 @@
         }
       }
     },
+    "Filter jobs by name, image or id" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtrer les tâches par nom, image ou identifiant"
+          }
+        }
+      }
+    },
     "Filter keywords…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -10228,6 +10238,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune image ne correspond aux filtres actuels"
+          }
+        }
+      }
+    },
+    "No jobs match" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune tâche ne correspond"
           }
         }
       }
@@ -14970,6 +14990,16 @@
         }
       }
     },
+    "Show %lld More" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher %lld de plus"
+          }
+        }
+      }
+    },
     "Show activity snackbar" : {
       "localizations" : {
         "en" : {
@@ -15168,6 +15198,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Afficher ce que contient cette image"
+          }
+        }
+      }
+    },
+    "Showing %lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld affichées sur %2$lld"
           }
         }
       }
