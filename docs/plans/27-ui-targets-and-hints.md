@@ -502,3 +502,27 @@ Taken by the person, 2026-09-30:
   failing.
 - **Derived ids change with the language and the layout.** They are marked `stable: false`. Tours and
   handouts use hand-tagged ids.
+
+## Live pass — handout 28 (2026-10-01)
+
+On the person's running app, builds 1638f2e → 4c7c9ae. Every case passed but one; 1.7's Batch Jobs
+modal is blocked (it cannot open without jobs, and no job is started for a test).
+
+What the pass found, and fixed:
+
+| Finding | Fix |
+|---|---|
+| Launch Session stayed up, alone, after the main window closed (5.4) | e22224c — every other window goes with the last main window; the app's presented sheets are reset |
+| Image Content Discovery listed only its left pane: 2,000 filters out of sight used up the read | 9cedac7 — what is in sight is read first; a list's rows out of sight (`AXVisibleRows`) wait, then get what is left (800 ms at most) |
+| 1,010 filter rows had no name (a checkbox alone) | 73e8d83 — a row of one control reads as it |
+| The modal over the launch form was never read: a sheet's own sheet | 15187a1 — the chain of sheets is read, front first (`portal.sheet.sheet`) |
+| A bubble ran past the window's edge; one sat on Close | 1d0b5a6 — the close mark drawn at its measured size, words given slack; bubbles keep clear of controls, not of rows |
+| Section headings ("astroai") left their rows unnamed | b636f5b — a row is called by the words drawn over it |
+| Hidden or closed windows answered an empty list | 272641d, 9230f59 — `problem` says no window is showing, and why it may be |
+
+Also from the pass: Batch Jobs at 10,000 jobs (3a1dd38 — history offered each finished job once, a
+sweep one notification, `list_headless_jobs` paged), and the launch form's long lists searchable
+(4c7c9ae — `SearchablePicker`, a pop-up to the tools, its rows items).
+
+Not reproducible live: the stray launch form of 5.4 — macOS does not close a window with a sheet on
+it. The unit test covers it.
