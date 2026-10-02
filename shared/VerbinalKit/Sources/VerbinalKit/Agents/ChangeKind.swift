@@ -84,7 +84,7 @@ public enum ChangeKind: String, Codable, Sendable, CaseIterable {
         case .sharing: "Who may read or write your VOSpace files and folders."
         case .standingInstruction: "Guide tools and tool descriptions every later assistant reads. Always waits."
         case .removeAssistantMade: "Anything an assistant made, as the session log records it — never yours."
-        case .removeNotesAndSaved: "Saved queries, recent searches, workflows, bookmarks, guide tools, image list entries."
+        case .removeNotesAndSaved: "Saved queries, recent searches, workflows, bookmarks, image list entries, probe errors."
         case .removeFilesOnMac: "Downloaded files and their Research records."
         case .removeFromStorage: "Deleting from your VOSpace, or uploading over a file there."
         case .stopWork: "Deleting a running session, or stopping Remote Compute: unsaved work in it is lost."

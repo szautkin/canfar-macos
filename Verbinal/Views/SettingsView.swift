@@ -533,13 +533,6 @@ private struct AgentsSettingsTab: View {
         )
     }
 
-    private var autoApplyWrites: Binding<Bool> {
-        Binding(
-            get: { appState.agentsService.autoApplyWrites },
-            set: { appState.agentsService.autoApplyWrites = $0 }
-        )
-    }
-
     private var followAgentActivity: Binding<Bool> {
         Binding(
             get: { appState.agentsService.followAgentActivity },
@@ -566,17 +559,15 @@ private struct AgentsSettingsTab: View {
             } footer: {
                 Text("When enabled, MCP-compatible AI clients (Claude Desktop, etc.) " +
                      "can call into Verbinal, which runs as a local MCP server. " +
-                     "Read tools run directly; writes are subject to the autonomy " +
-                     "setting below.")
+                     "Read tools run directly; what an assistant changes follows " +
+                     "the settings below.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
 
             if appState.agentsService.isEnabled {
+                ChangePermissionsSection(agents: appState.agentsService)
                 Section {
-                    Toggle("Auto-apply agent writes", isOn: autoApplyWrites)
-                        .toggleStyle(.switch)
-                        .pointable("settings.agent.autoApply")
                     Toggle("Follow agent activity", isOn: followAgentActivity)
                         .toggleStyle(.switch)
                         .pointable("settings.agent.follow")
@@ -588,8 +579,7 @@ private struct AgentsSettingsTab: View {
                 } header: {
                     Text("Autonomy")
                 } footer: {
-                    Text("Auto-apply on: agent writes apply immediately; off: each one queues to the proposal strip for your Apply click. " +
-                         "Follow agent activity jumps the window to where an auto-applied change is visible (the explicit `navigate_to` tool ignores this toggle). " +
+                    Text("Follow agent activity jumps the window to where an assistant's change is visible (the explicit `navigate_to` tool ignores this toggle). " +
                          "Activity snackbar flashes a banner at the top of the window whenever an agent uses a tool; " +
                          "the sounds mark when one starts and when it has gone quiet, for when you are looking elsewhere.")
                         .font(.caption2)

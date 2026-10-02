@@ -100,7 +100,7 @@ struct DescribeAppTool: JSONReadTool {
       * `describe_app` — this brief.
       * `get_auth_state` — is the user logged in? what's their displayName?
       * `get_current_view` — what mode the user is in, what's open, AND
-        the current autonomy mode (`autoApplyEnabled`). Call this once
+        what the person allows without asking (`permissions`). Call this once
         at the start of a session to ground yourself, and re-call if
         you suspect the user has changed settings. When
         `pendingViewerChoice` is set, the Open as… sheet is up — call
@@ -142,39 +142,46 @@ struct DescribeAppTool: JSONReadTool {
       * `get_fits_header`, `get_fits_wcs` — local-file FITS introspection;
         `get_fits_spectrum` — the spectrum a table holds (an `_x1d`), as plotted.
       * `list_pending_proposals`, `get_proposal_state`, `list_events` —
-        introspect the proposal lifecycle when in strip-confirm mode.
+        introspect the proposal lifecycle for changes that wait in Pending.
       * `get_session_log`, `explain_log_entry`, `list_session_logs` —
         what happened while you are connected, why, and how long; see
         "When something is slow or fails" below.
 
-    ## Write surface — TWO MODES, set by user toggle
+    ## Write surface — what the person allows, kind by kind
 
-    The user owns a single Settings switch ("Auto-apply agent writes"),
-    default ON once MCP itself is enabled. Read the current value via
-    `get_current_view.autoApplyEnabled`.
+    Every change you can make is one kind: notes and saved things on this
+    Mac, files saved on this Mac, adding to their CANFAR storage, using
+    their allocation (sessions and compute; batch jobs and probes),
+    sharing, what every assistant is told — and, destructive, removing
+    what an assistant made, removing their notes or files, removing or
+    replacing in their storage, stopping running work, clearing
+    everything at once. The person sets each kind in Settings ▸ AI Agent:
+    **Allowed** or **Ask me**. `get_current_view.permissions` gives the
+    table; re-read it, as they can change it between turns. Each
+    proposing tool's description ends with its kind and what the setting
+    does with it.
 
-    ### Auto-apply mode (default) — autonomous
+    ### A kind the person allows — it applies at once
 
-    Every write except a destructive one runs the apply synchronously and returns
-    `{ applied: true, proposalID, kind, summary }`. The mutation has
+    The call runs the apply and returns
+    `{ applied: true, proposalID, kind, summary }`. The change has
     already happened. Confirm the outcome to the user in past tense
     ("Saved your query.", "Notes updated on 5 epochs.", "Launched
-    notebook session, id=…"). Do NOT say "I queued a proposal", "waiting
-    for your approval", or "review and Apply" — the strip is empty
-    because there is nothing to review. Per-turn budget does NOT apply
-    (auto-applied writes don't pile up in the strip), so you can pace at
-    the speed the user can read.
+    notebook session, id=…"). Do NOT say "I queued a proposal" or "waiting
+    for your approval" — there is nothing to review. Per-turn budget does
+    NOT apply, so you can pace at the speed the user can read.
 
-    ### Strip-confirm mode — user explicitly opted into review
+    ### A kind the person asks to approve — it waits in Pending
 
-    Your write tool call returns `{ proposalID, kind, summary }` and the
-    proposal lands in the strip. Tell the user it's awaiting their Apply
-    click. Optionally poll `get_proposal_state(id)` if you need the
+    Your call returns `{ proposalID, kind, summary }` and the proposal
+    lands in Pending with your `why`. Tell the user it is awaiting their
+    Apply. Optionally poll `get_proposal_state(id)` if you need the
     outcome before continuing. Per-turn cap is 8 outstanding proposals;
     exceed it and you get `perTurnProposalCapExceeded` with the offending
-    proposal already withdrawn (no partial pile-up).
+    proposal already withdrawn (no partial pile-up). What every later
+    assistant is told — guide tools, tool descriptions — always waits.
 
-    ### Tools (same set, both modes)
+    ### Tools (the same, whatever the setting)
 
       * `save_query`, `update_saved_query`, `delete_saved_query`.
       * `save_workflow` (requires at least one `- [ ]` checklist step),
@@ -201,15 +208,13 @@ struct DescribeAppTool: JSONReadTool {
         below) — schedules a probe job inside the named image to
         enumerate its packages.
 
-    Destructive tools (`delete_*`, `clear_*`, `stop_compute`, …) are the
-    exception to auto-apply. \(AutoApplyPolicy.toolSentence(for: .destructive) ?? "")
-    So are standing instructions — `add_guide_tool`, `update_guide_tool`,
-    `set_tool_description`, `clear_tool_description` change what every later
-    agent is told. \(AutoApplyPolicy.toolSentence(for: .standingInstruction) ?? "")
-    Each such call returns a `proposalID`; tell the user it is waiting for
-    their approval. Every proposing tool's description ends with the rule
-    that applies to it. Be deliberate; the user is trusting you with their
-    data.
+    Destructive tools (`delete_*`, `clear_*`, `stop_compute`, …) wait for the
+    person unless they allow that kind — by default only removing what an
+    assistant made is allowed. Standing instructions — `add_guide_tool`,
+    `update_guide_tool`, `delete_guide_tool`, `set_tool_description`,
+    `clear_tool_description` — always wait. A call that waits returns a
+    `proposalID`; tell the user it is waiting for their approval. Be
+    deliberate; the user is trusting you with their data.
 
     ### Live ops (always run, no proposal either way)
 

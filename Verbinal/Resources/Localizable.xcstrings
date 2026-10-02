@@ -39,6 +39,346 @@
         }
       }
     },
+    "Add to your CANFAR storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter à votre stockage CANFAR"
+          }
+        }
+      }
+    },
+    "Allowed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorisé"
+          }
+        }
+      }
+    },
+    "Allowed: an assistant's change of this kind applies at once, with its reason in the session log. Ask me: it waits in Pending until you apply it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorisé : une modification de ce type par un assistant s’applique aussitôt, avec sa raison dans le journal de session. Me demander : elle attend dans En attente jusqu’à ce que vous l’appliquiez."
+          }
+        }
+      }
+    },
+    "Always asks" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demande toujours"
+          }
+        }
+      }
+    },
+    "Anything an assistant made, as the session log records it — never yours." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout ce qu’un assistant a créé, tel que le journal de session l’enregistre — jamais ce qui est à vous."
+          }
+        }
+      }
+    },
+    "Ask me" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Me demander"
+          }
+        }
+      }
+    },
+    "Batch jobs, and the probe jobs that find what an image has installed." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâches en lot, et les tâches de sonde qui trouvent ce qu’une image a installé."
+          }
+        }
+      }
+    },
+    "Clear or delete everything at once" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout effacer ou supprimer d’un coup"
+          }
+        }
+      }
+    },
+    "Clearing a whole list, archive or storage area, or many sessions in one go." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer toute une liste, une archive ou un espace de stockage, ou plusieurs sessions d’un coup."
+          }
+        }
+      }
+    },
+    "Deleting a running session, or stopping Remote Compute: unsaved work in it is lost." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer une session en cours, ou arrêter le calcul à distance : le travail non enregistré est perdu."
+          }
+        }
+      }
+    },
+    "Deleting from your VOSpace, or uploading over a file there." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer de votre VOSpace, ou téléverser par-dessus un fichier."
+          }
+        }
+      }
+    },
+    "Downloaded files and their Research records." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichiers téléchargés et leurs fiches de Recherche."
+          }
+        }
+      }
+    },
+    "Downloads, cutouts, figures and exports, as new files — never over one." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargements, découpes, figures et exportations, en nouveaux fichiers — jamais par-dessus un fichier."
+          }
+        }
+      }
+    },
+    "Files saved on this Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichiers enregistrés sur ce Mac"
+          }
+        }
+      }
+    },
+    "Guide tools and tool descriptions every later assistant reads. Always waits." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outils guides et descriptions d’outils que lit chaque assistant suivant. Attend toujours."
+          }
+        }
+      }
+    },
+    "Launching and renewing sessions; Remote Compute and the code it runs." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer et renouveler des sessions ; le calcul à distance et le code qu’il exécute."
+          }
+        }
+      }
+    },
+    "New files and folders in your VOSpace." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveaux fichiers et dossiers dans votre VOSpace."
+          }
+        }
+      }
+    },
+    "Notes and saved things on this Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes et éléments enregistrés sur ce Mac"
+          }
+        }
+      }
+    },
+    "Notes, ratings, saved queries, workflows, bookmarks, Research records." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes, évaluations, requêtes enregistrées, protocoles, signets, fiches de Recherche."
+          }
+        }
+      }
+    },
+    "Remove files on this Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer des fichiers sur ce Mac"
+          }
+        }
+      }
+    },
+    "Remove notes and saved things on this Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer des notes et éléments enregistrés sur ce Mac"
+          }
+        }
+      }
+    },
+    "Remove or replace in your CANFAR storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer ou remplacer dans votre stockage CANFAR"
+          }
+        }
+      }
+    },
+    "Remove what an assistant made" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer ce qu’un assistant a créé"
+          }
+        }
+      }
+    },
+    "Restore Defaults" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rétablir les valeurs par défaut"
+          }
+        }
+      }
+    },
+    "Saved queries, recent searches, workflows, bookmarks, image list entries, probe errors." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requêtes enregistrées, recherches récentes, protocoles, signets, entrées de la liste d’images, erreurs de sonde."
+          }
+        }
+      }
+    },
+    "Sharing: who may read or write your files" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partage : qui peut lire ou écrire vos fichiers"
+          }
+        }
+      }
+    },
+    "Stop running work on CANFAR" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter un travail en cours sur CANFAR"
+          }
+        }
+      }
+    },
+    "Use your CANFAR allocation: batch jobs and image probes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser votre allocation CANFAR : tâches en lot et sondes d’images"
+          }
+        }
+      }
+    },
+    "Use your CANFAR allocation: sessions and compute" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser votre allocation CANFAR : sessions et calcul"
+          }
+        }
+      }
+    },
+    "What an assistant made is told apart by the session log; what you made never is." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce qu’un assistant a créé se reconnaît au journal de session ; ce que vous avez créé, jamais."
+          }
+        }
+      }
+    },
+    "What an assistant may do without asking" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce qu’un assistant peut faire sans demander"
+          }
+        }
+      }
+    },
+    "What every assistant is told" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les consignes données à chaque assistant"
+          }
+        }
+      }
+    },
+    "What removes, replaces or stops" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce qui supprime, remplace ou arrête"
+          }
+        }
+      }
+    },
+    "Who may read or write your VOSpace files and folders." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qui peut lire ou écrire vos fichiers et dossiers VOSpace."
+          }
+        }
+      }
+    },
     "—" : {
       "shouldTranslate" : false
     },

@@ -762,6 +762,16 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **You decide what an assistant may do without asking, kind by kind.**
+  Settings ▸ AI Agent lists every kind of change an assistant can make,
+  each **Allowed** (it applies at once, with its reason in the session
+  log) or **Ask me** (it waits in Pending for you). What adds or changes
+  is apart from what removes, replaces or stops, so allowing an
+  assistant to tidy up what it made does not let it delete your files.
+  By default, notes, saved things, files, uploads, sessions, batch jobs
+  and removing what an assistant made go ahead; sharing and every other
+  removal ask. What every assistant is told always asks. This replaces
+  the single Auto-apply switch; your choice there carries over.
 - **An assistant's tools wait as long as their requests do.** A read
   tool gave up after 60 s — 30 s for sessions, storage listings and batch
   jobs — while its request to CADC could wait 120 s, so a slow answer read
