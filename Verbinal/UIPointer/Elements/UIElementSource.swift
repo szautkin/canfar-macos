@@ -26,7 +26,7 @@ struct UISnapshot: Equatable, Sendable {
     static let unreadable = "macOS's accessibility service is not answering for Verbinal's windows right now — as while the screen is locked, or just after a display change. Try again when the person is at the screen; if it lasts, quit and reopen Verbinal."
 
     /// What an assistant is told when none of Verbinal's windows shows.
-    static let notShowing = "No Verbinal window is showing: the app is hidden, its windows are minimized, or they are on another desktop. Ask the person to bring Verbinal to the front, then try again."
+    static let notShowing = "No Verbinal window is showing: its windows are closed or minimized, the app is hidden, or they are on another desktop. Ask the person to open Verbinal's window or bring it to the front, then try again."
 
     /// Why a read found no window: the service not answering for windows
     /// that are up, or no window showing at all. Nil when it found some.
