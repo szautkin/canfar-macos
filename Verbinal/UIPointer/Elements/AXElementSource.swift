@@ -249,6 +249,8 @@ final class AXElementSource: UIElementSource {
         case .popUp, .menuButton, .menu:
             let menus = ((Self.value(target, kAXChildrenAttribute) as? [AXUIElement]) ?? [])
                 .filter { (Self.value($0, kAXRoleAttribute) as? String) == "AXMenu" }
+            // A pop-up's panel (`SearchablePicker`) closes as it opened.
+            if menus.isEmpty { return AXUIElementPerformAction(target, kAXPressAction as CFString) == .success }
             return menus.contains { AXUIElementPerformAction($0, kAXCancelAction as CFString) == .success }
         default:
             return false
@@ -385,7 +387,7 @@ final class AXElementSource: UIElementSource {
             reading.away.append(Away(window: window, path: path, depth: depth, children: children))
             return node
         }
-        let inner = node.role == "AXScrollArea" ? shown.intersection(node.frame) : shown
+        let inner = UIElementRules.clip(inside: node.role, frame: node.frame, shown)
         // A list says which of its rows show: the others are not even looked
         // at until everything in sight has been read.
         let showing = Self.rowsInSight(of: element, role: node.role)

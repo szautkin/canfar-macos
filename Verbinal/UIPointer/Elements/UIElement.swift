@@ -99,6 +99,10 @@ enum PointableID {
     /// An item of a list (`pointableItem`): an item whatever role SwiftUI
     /// gives it — one with an action reads as a button.
     static let item = "vb-item"
+    /// A button that opens a list as a pop-up does (`SearchablePicker`): a
+    /// pop-up, closed or open.
+    static let popUp = "vb-popup"
+    static let popUpOpen = "vb-popup-open"
 
     static func encode(_ id: String, canvas: Bool = false) -> String {
         (canvas ? canvasPrefix : prefix) + id

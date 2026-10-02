@@ -180,10 +180,8 @@ enum UIElementRules {
                              seen: inout Set<String>, duplicates: inout [String]) {
         if machineryRoles.contains(node.role) || node.subrole.map(machinerySubroles.contains) == true { return }
 
-        // A scroll area shows only what is inside it.
-        let scrolls = node.role == "AXScrollArea"
-        let clip = scrolls ? clip.intersection(node.frame) : clip
-        let clips = scrolls ? clips + [node.handle] : clips
+        let clip = Self.clip(inside: node.role, frame: node.frame, clip)
+        let clips = node.role == "AXScrollArea" ? clips + [node.handle] : clips
         // A text editor takes the name of what holds it: SwiftUI keeps a
         // `TextEditor`'s label off its text view.
         let holderName = (node.role == "AXGroup" || node.role == "AXScrollArea") ? clean(node.label) ?? holderName : holderName
@@ -204,8 +202,10 @@ enum UIElementRules {
         // with an action reads as a button; so is a group with a name of its own.
         let marked = node.identifier == PointableID.item
         let itemKind: UIElementKind? = marked || (node.role == "AXGroup" && clean(node.label) != nil) ? .item : nil
+        // A button that opens a list as a pop-up does is one.
+        let popUp = node.identifier == PointableID.popUp || node.identifier == PointableID.popUpOpen
         let kind: UIElementKind? = tagged.map { $0.canvas ? .canvas : (roleKind ?? .area) }
-            ?? (marked ? .item : roleKind ?? itemKind)
+            ?? (marked ? .item : popUp ? .popUp : roleKind ?? itemKind)
 
         // Scrolled away inside a scroll area: kept apart, to bring into view.
         let scrolledAway = !shows && !clips.isEmpty
@@ -213,7 +213,7 @@ enum UIElementRules {
         if let kind, shows || scrolledAway {
             let name = ownName(node, kind: kind)
             if kind == .text, let words = name { texts.append(Text(frame: shows ? visible : node.frame, words: words, inSight: shows)) }
-            let open = node.children.contains { $0.role == "AXMenu" }
+            let open = node.children.contains { $0.role == "AXMenu" } || node.identifier == PointableID.popUpOpen
             let closed = kind == .disclosure ? node.expanded == false : (kind.opens && !open)
             let lent = node.role == "AXTextArea" ? holderName : nil
             drafts.append(Draft(kind: kind, stableID: tagged?.id, name: name ?? rowWords(node, kind: kind) ?? lent,
@@ -228,6 +228,17 @@ enum UIElementRules {
         for child in node.children where !ownWindowRoles.contains(child.role) {
             walk(child, clip: clip, clips: clips, area: inner, item: innerItem, holderName: holderName, window: window,
                  drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
+        }
+    }
+
+    /// What an element's insides show within: a scroll area, only what is in
+    /// it; a popover, all of itself, wherever it hangs; anything else, what
+    /// shows of what holds it.
+    static func clip(inside role: String, frame: CGRect, _ clip: CGRect) -> CGRect {
+        switch role {
+        case "AXScrollArea": clip.intersection(frame)
+        case "AXPopover": frame
+        default: clip
         }
     }
 

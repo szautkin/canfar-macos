@@ -48,12 +48,8 @@ struct HeadlessLaunchTabView: View {
                 .foregroundStyle(.secondary)
             } else {
                 LabeledContent("Project") {
-                    Picker("", selection: $model.selectedProject) {
-                        ForEach(availableProjects, id: \.self) { project in
-                            Text(project).tag(project)
-                        }
-                    }
-                    .labelsHidden()
+                    SearchablePicker(title: "Project", selection: $model.selectedProject,
+                                     options: availableProjects, label: { $0 })
                     .onChange(of: model.selectedProject) { _, _ in
                         // Auto-select first image when project changes.
                         if let first = imagesForCurrentProject.first {
@@ -65,17 +61,14 @@ struct HeadlessLaunchTabView: View {
                 }
 
                 LabeledContent("Image") {
-                    Picker("", selection: Binding(
+                    let images = imagesForCurrentProject
+                    let labels = Dictionary(images.map { ($0.id, $0.label) }, uniquingKeysWith: { first, _ in first })
+                    SearchablePicker(title: "Image", selection: Binding(
                         get: { model.selectedImage?.id ?? "" },
                         set: { newID in
-                            model.selectedImage = imagesForCurrentProject.first { $0.id == newID }
+                            model.selectedImage = images.first { $0.id == newID }
                         }
-                    )) {
-                        ForEach(imagesForCurrentProject, id: \.id) { image in
-                            Text(image.label).tag(image.id)
-                        }
-                    }
-                    .labelsHidden()
+                    ), options: images.map(\.id), label: { labels[$0] ?? $0 }, placeholder: "Select an image")
                 }
             }
 

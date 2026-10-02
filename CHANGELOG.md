@@ -418,6 +418,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **Long lists in the launch form can be searched.** The Project and
+  image pop-ups held hundreds of choices in a menu as tall as the screen.
+  Past twelve choices, they now open a panel with a search field and a
+  list twelve rows tall, scrolled to the current choice: type to narrow
+  it, ↑ and ↓ to move, Return to choose, Esc to close. Short lists stay
+  menus.
 - **Your assistant can show you anything on screen, many things at once.**
   It reads Verbinal's windows the way VoiceOver does, so every control
   on every screen, sheet and Settings section can be pointed at — and

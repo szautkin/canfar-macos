@@ -198,6 +198,24 @@ final class UIElementRulesTests: XCTestCase {
         XCTAssertTrue(result.elements.allSatisfy { $0.name != nil })
     }
 
+    /// A button marked as a pop-up (`SearchablePicker`) is one, closed or
+    /// open; and a popover shows all of itself, past its window's edge too.
+    func testAPickerIsAPopUpAndItsPanelShowsWhole() {
+        let result = elements([
+            node("AXButton", rect(10, 10, 160, 24), label: "Container Image", identifier: PointableID.popUp),
+            node("AXButton", rect(200, 10, 160, 24), label: "Project", identifier: PointableID.popUpOpen),
+            node("AXPopover", rect(200, 400, 340, 300), children: [
+                node("AXTextField", rect(210, 410, 300, 22), label: "Search"),
+                node("AXButton", rect(210, 660, 300, 24), label: "far-down", identifier: PointableID.item),
+            ]),
+        ])
+        let byName = Dictionary(result.elements.map { ($0.name ?? "", $0) }, uniquingKeysWith: { first, _ in first })
+        XCTAssertEqual(byName["Container Image"]?.kind, .popUp)
+        XCTAssertEqual(byName["Container Image"]?.closed, true)
+        XCTAssertEqual(byName["Project"]?.closed, false)
+        XCTAssertNotNil(byName["far-down"], "below the window's edge, in its popover: in sight")
+    }
+
     /// A list draws a section heading apart from the empty row holding its
     /// place: the row is called by the words over it.
     func testASectionHeadingNamesItsRow() {

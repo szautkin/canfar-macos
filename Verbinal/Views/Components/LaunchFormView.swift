@@ -214,12 +214,8 @@ struct LaunchFormView: View {
 
             LabeledContent("Project") {
                 HStack(spacing: 4) {
-                    Picker("", selection: $model.selectedProject) {
-                        ForEach(model.projects, id: \.self) { project in
-                            Text(project).tag(project)
-                        }
-                    }
-                    .labelsHidden()
+                    SearchablePicker(title: "Project", selection: $model.selectedProject,
+                                     options: model.projects, label: { $0 })
                     defaultStar(isOn: model.isSelectedProjectDefault,
                                 tipOn: "Current default — tap to clear",
                                 tipOff: "Set as default project") {
@@ -231,15 +227,9 @@ struct LaunchFormView: View {
 
             LabeledContent("Container Image") {
                 HStack(spacing: 4) {
-                    Picker("", selection: $model.selectedImage) {
-                        if model.selectedImage == nil {
-                            Text("Select an image").tag(nil as ParsedImage?)
-                        }
-                        ForEach(model.images) { img in
-                            Text(img.label).tag(Optional(img))
-                        }
-                    }
-                    .labelsHidden()
+                    SearchablePicker(title: "Container Image", selection: $model.selectedImage,
+                                     options: model.images.map(Optional.some), label: { $0?.label ?? "" },
+                                     placeholder: "Select an image")
                     defaultStar(isOn: model.isSelectedImageDefault,
                                 tipOn: "Current default — tap to clear",
                                 tipOff: "Set as default container image") {

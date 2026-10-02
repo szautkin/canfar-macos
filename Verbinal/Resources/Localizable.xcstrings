@@ -3085,6 +3085,16 @@
         }
       }
     },
+    "Choose…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir…"
+          }
+        }
+      }
+    },
     "circle" : {
       "localizations" : {
         "fr" : {
