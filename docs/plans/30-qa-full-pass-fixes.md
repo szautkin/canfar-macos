@@ -22,6 +22,7 @@
 
 | Step | What | State |
 |---|---|---|
+| **A** | What an assistant may do without asking: kinds of change, and a setting for each | planned — decisions 6–10, for review |
 | **W** | Writes on CANFAR: say where they are; why they hung | planned — W0 diagnosis first |
 | **S** | Silent no-ops and loose schemas | planned |
 | **J** | Jobs CANFAR has dropped read as "gone", not "pending" | planned |
@@ -49,6 +50,74 @@
 | **Finding 18** "with auto-apply on, `start_background_apply` has nothing to act on" | True by design: with auto-apply on, only destructive or standing changes wait, and the tool refuses those. | **Handout error.** 14.4 needs auto-apply off. The tool's description will say so (N). |
 | **Finding 3** "`capture_view` cannot photograph the hints" | `CaptureViewTool.composited` captures one window (`.optionIncludingWindow`). The hints draw in their own panel above it. | **A real limitation.** Step C. |
 | **§3** "the Portal RAM label" | QA withdrew it, rightly. | No change. |
+
+## A — What an assistant may do without asking (the person, 2026-10-02)
+
+The person: "make a clear distinction about what's destructive or not, and what kind of destructive is
+allowed; a setting for what is allowed — then proceed without issues; if not allowed, wait for
+confirmation from the user."
+
+**Today** there is one switch, Auto-apply, over three classes (`VerbClass`, `AutoApplyPolicy`):
+
+| Class | Tools | With Auto-apply on |
+|---|---|---|
+| `semanticWrite` | 33 | at once |
+| `destructive` | 17 | always waits |
+| `standingInstruction` | 4 | always waits |
+
+`semanticWrite` mixes changes with very different consequences:
+
+- a note on this Mac;
+- a session launched on the person's allocation;
+- a batch job, which the person's standing rule says needs their word, yet it applies at once;
+- who may read their files (`set_vospace_acl`).
+
+`destructive` mixes deleting a bookmark with deleting a VOSpace folder or stopping a session that
+holds unsaved work.
+
+**Proposed:** each change declares its *kind*, by what it does to what. The person sets each kind to
+**Allowed** (it applies at once, with its `why` in the log) or **Ask me** (it waits in Pending for
+them).
+
+### The kinds
+
+**Changes that add or change** (not destructive):
+
+| Kind | Tools | Proposed default |
+|---|---|---|
+| **Notes and saved things on this Mac** | update_observation_note, bulk_update_observation_notes, save_query, update_saved_query, rename_recent_search, save_workflow, update_workflow, use_workflow, set_workflow_step, save_fits_bookmark, save_observation_to_research, add_registry_image | Allowed |
+| **Files saved on this Mac** — new files, never over an existing one | download_observation, download_observations_bulk, download_cutout, download_vospace_file, open_vospace_file, export_search_results, export_fits_figure, export_cube_figure, export_research_bundle, export_session_log | Allowed |
+| **Add to your CANFAR storage** — new files and folders | create_vospace_folder, upload_text_to_vospace, upload_file_to_vospace, upload_to_vospace | Allowed |
+| **Use your CANFAR allocation: sessions and compute** | launch_session, renew_session, start_compute, run_code | Allowed |
+| **Use your CANFAR allocation: batch jobs and image probes** | launch_headless_job, discover_image_packages (a probe is a batch job) | **Ask me**, as the standing rule says |
+| **Sharing** — who may read or write your files | set_vospace_acl | **Ask me** |
+| **What every assistant is told** | add_guide_tool, update_guide_tool, set_tool_description, clear_tool_description | **Ask me**, see decision 8 |
+
+**Changes that remove, replace or stop** (destructive):
+
+| Kind | Tools | Proposed default |
+|---|---|---|
+| **Remove what an assistant made** — anything the session log shows an assistant created | the delete tools below, when their target was made by an assistant | **Allowed** — this is how a QA pass cleans up after itself. See decision 9. |
+| **Remove notes and saved things on this Mac** | delete_saved_query, remove_recent_search, delete_workflow, delete_fits_bookmark, remove_registry_image, clear_probe_failures, delete_guide_tool | Ask me |
+| **Remove files on this Mac** | remove_downloaded_file, delete_downloaded_observation | Ask me |
+| **Remove from your CANFAR storage** — also an upload over an existing file | delete_vospace_node; an upload that would replace a file | Ask me |
+| **Stop running work on CANFAR** — unsaved work in it is lost | delete_session, stop_compute | Ask me |
+| **Everything at once** | clear_recent_searches, clear_research_archive, clear_user_site, delete_sessions_bulk, delete_session_logs | Ask me — see decision 10 |
+
+View changes — `navigate_to`, sorting, selecting, opening and closing (step T) — are not changes to
+anything and always happen at once, as now.
+
+### How it works
+
+| Part | What |
+|---|---|
+| **A1 — one owner** | `ChangeKind` in VerbinalKit: each kind's name, whether it is destructive, and its default. Every changing tool declares its kind (`static let change`) in place of `verbClass`'s three write classes. `AutoApplyPolicy.appliesAtOnce(kind, settings)` is the only place that decides. A tool whose kind depends on its target asks one function. That covers a delete of what an assistant made (A3) and an upload over an existing file. |
+| **A2 — the setting** | Settings ▸ AI Agent ▸ **What an assistant may do without asking**: a row per kind, **Allowed** or **Ask me**, the destructive kinds marked, each with one line on what it covers, and **Restore defaults**. The master Auto-apply switch goes: on maps to the defaults above; off maps to Ask me for every kind. Kept per Mac, like the rest of Settings. |
+| **A3 — made by an assistant** | The session log already records every change with who made it. One lookup answers "was this made by an assistant, and in which session" for a record, a file, a folder, a saved query, a workflow or a bookmark. It is created when the change applies and read by A1. Nothing the person made is ever in it. |
+| **A4 — what an assistant is told** | Each tool's description ends with the person's current setting for its kind ("You allow this: it applies at once", or "The person asks to approve this: it waits in Pending"). `get_current_view` gives the table. When the setting changes, the tool list is re-announced, as it is when Verbinal starts. |
+| **A5 — what the person is told** | Pending names each change's kind, and why it waits ("You asked to approve: Stop running work on CANFAR"). The session log's decisions cite the setting, not "Auto-apply is on". This also fixes W3's wrong reason. |
+| **A6 — the person's own clicks** | Unchanged. The confirmation dialogs in the app ("Stop and delete this running job?") guard the person's clicks; an assistant's changes go through this setting and Pending. |
+| **A7 — tests** | Every changing tool has a kind; a test fails on one without. Each kind, Allowed and Ask me, applies or waits. A delete of something an assistant made is allowed while the same delete of the person's own waits. An upload over an existing file is classed as a replacement. The settings round-trip, and the old Auto-apply switch maps as above. |
 
 ## Defects confirmed
 
@@ -264,7 +333,8 @@ Four templates name the Notebook add-on's tools, which the app does not have:
 
 ## Order
 
-1. **W0**, the diagnosis, before anything else touches the launch request.
+1. **W0**, the diagnosis, before anything else touches the launch request. **A**, once its decisions
+   are made: the rest of the plan's writes are classed by it.
 2. **W1–W4, S, J, D**: what misleads or fails silently.
 3. **T, B, R, F, L**: the gaps that blocked cases. T is the largest step. It goes T1 (the registry)
    then T7 (the guardrail, red until every presentation is moved), then T2–T6.
@@ -281,3 +351,15 @@ Four templates name the Notebook add-on's tools, which the app does not have:
 3. **Long answers.** 45 s is the cap; show a progress bar and carry on. → **L**, with W1.
 4. **Workflow templates.** `run_code` is the default when the add-on is not there. → **G**.
 5. **Batch Jobs filter.** On every tab, by default, never hidden. → **B**.
+**Still open — section A:**
+
+6. **The kinds and their defaults** (section A). Are these the right rows, and the right defaults?
+7. **Two choices or three?** Allowed / Ask me, as asked. Or also **Never**, refused outright with "the
+   person does not allow this" (e.g. "Everything at once")?
+8. **What every assistant is told.** Configurable like the rest, or always Ask me? Text an assistant
+   reads, in a file or a web page, could make it set an instruction that steers every later assistant.
+   That is why it waits today.
+9. **"Made by an assistant"** — by any assistant, any session? Or only the session asking to remove it?
+10. **Everything at once** — its own row, Ask me by default, even when single removals of the same kind
+    are allowed?
+
