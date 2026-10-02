@@ -16,7 +16,7 @@
   Same rules: a failing test on the reported case first, one owner per rule, and one green commit per
   step.
 
-**Nothing here is built until the person has reviewed it.** The decisions it needs are at the end.
+**Reviewed by the person on 2026-10-02.** Their decisions are at the end and are built in below.
 
 ## Status
 
@@ -25,15 +25,16 @@
 | **W** | Writes on CANFAR: say where they are; why they hung | planned — W0 diagnosis first |
 | **S** | Silent no-ops and loose schemas | planned |
 | **J** | Jobs CANFAR has dropped read as "gone", not "pending" | planned |
-| **T** | Sheets an assistant can open and close; the launch form's resources | planned — decision 1 |
+| **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | planned — decision 1 |
+| **B** | The Batch Jobs filter on every tab, always shown | planned — decision 5 |
 | **R** | Search radius, as a field | planned — decision 2 |
 | **D** | `download_observation` `file` from another plane of the observation | planned |
 | **F** | The file browser opens Downloads | planned — cause to confirm |
-| **L** | Long answers inside the client's patience | planned — decision 3 |
+| **L** | No answer longer than 45 s; long work goes on, with progress | planned — decision 3 |
 | **C** | `capture_view` shows the hints | planned |
 | **P** | The channel profile in a range, binned | planned |
 | **K** | A compute run that never reports | planned — cause to confirm |
-| **G** | Workflow templates name only tools that exist | planned — decision 4 |
+| **G** | Workflow templates: `run_code` by default | planned — decision 4 |
 | **N** | Small items | planned |
 | **Q** | Handout 29 corrections; handout 31 | planned |
 
@@ -42,7 +43,7 @@
 | Report item | Checked | Finding |
 |---|---|---|
 | **Finding 1** "17 areas / 215 tools; the handout says 16 / 213" | `AIGuideCatalog.categoryByTool` maps all 213 built-in tools. The "Other" area held the person's two guide tools (`headless_jobs_rules`, `storage_rules`), which no built-in area can name. | **Handout error.** Handout 29 counted the built-in tools only. Kept as N1: the person's guide tools get an area of their own, "Your guide tools", instead of "Other — not yet sorted". |
-| **Finding 13** "the Batch Jobs sheet has no filter field" | `HeadlessJobsDetailSheet` shows the filter above a tab that has jobs. The pass had 0 jobs on every tab; only History had entries (19). | **Not a defect: no jobs.** Handout 29's 9.3 said "with jobs in a tab", but a reader could miss that. Decision 5 asks whether History, kept to 50, should have the filter too. |
+| **Finding 13** "the Batch Jobs sheet has no filter field" | `HeadlessJobsDetailSheet` shows the filter above a tab that has jobs. The pass had 0 jobs on every tab; only History had entries (19). | **Behaved as built, but built wrong.** The person's decision is that the filter is always there, on every tab. Step B. |
 | **Finding 4** "the Search form has no cone radius" | `SpatialBuilder.circle` reads a radius written after the target, as CADC's own search does: `M101 0.2deg`, `M31 30'`. Without one, the radius is 1′. The Windows app has a separate **Radius (deg)** field and `set_search_form`'s `searchRadius`. | **Half right.** The radius can be set, but nothing says how: not the field, and not `set_search_form`. The Windows app has the field, so this is a parity gap. Step R. |
 | **Finding 5** "an agent cannot cancel a search" | Every search tool waits for TAP's answer before returning, so an assistant has nothing in flight to cancel. | **A testability gap, not a defect.** The Cancel button works (the "nothing running" reply is right). Step R adds `wait: false`. |
 | **Finding 18** "with auto-apply on, `start_background_apply` has nothing to act on" | True by design: with auto-apply on, only destructive or standing changes wait, and the tool refuses those. | **Handout error.** 14.4 needs auto-apply off. The tool's description will say so (N). |
@@ -124,28 +125,74 @@
 ### L — Long answers (§7.2 of the report; MEDIUM)
 
 The agent's MCP client gave up at 60 s, while Verbinal's own deadline for that VOSpace read was 120 s.
-Clients differ, and Claude Code waits longer, but 60 s is a common limit. **Fix:** no synchronous
-answer takes longer than 45 s (decision 3), as one shared constant.
-- A read past it answers with a typed timeout and its `timing` block ("still waiting for VOSpace after 45 s").
-- A write past it answers with its job id, as proposals already do ("still applying; follow with `get_job_status`").
+Clients differ, and Claude Code waits longer, but 60 s is a common limit.
 
-The service's own deadline stays as it is, and the work goes on behind the answer.
+**Fix (decision 3):** no synchronous answer takes longer than 45 s. That is one shared constant. Past
+it, the tool answers and the work goes on, with a progress bar.
+
+- **A read past 45 s** answers that it is still waiting, with its `timing` block: "VOSpace has not
+  answered in 45 s; it carries on". The request keeps going and fills the screen and the cache when it
+  answers. A second call answers from that.
+- **A write past 45 s** answers with its job id, as proposals already do: "still applying; follow with
+  `get_job_status`".
+- **What goes on shows as a task**, with a progress bar on the activity bar and its stage in
+  `list_activity`. That uses W1's single path, so the person and the assistant see the same thing.
+- The service's own deadline stays as it is.
 
 ## Gaps
 
-### T — Sheets an assistant can open and close (Findings 8, 11)
+### T — Everything that opens, an assistant can open and close (Findings 8, 11; decision 1)
 
-The person opens these sheets and an assistant cannot: Batch Jobs (its presentation is the card's
-private state) and Image Content Discovery. `show_cutout_editor` opens Cut Out but nothing closes it.
-And `select_ui` rightly never presses the launch form's **Flexible / Fixed**.
+The person's decision: "MCP should be able to open and close any modal, screen, dropdown — anything in the
+app". Today it can open folded sections, pop-up menus, menu buttons and the file browser. It can also
+open a few sheets, through their own tools (`show_launch_form`, `show_cutout_editor`,
+`open_observation_detail`). It cannot close most of them.
+
+**What there is to open** (today's source):
+
+| Kind | Count |
+|---|---|
+| Sheets | 34, in 24 files |
+| Popovers | 7 |
+| Confirmation dialogs | 13 |
+| Alerts | 5 |
+| System Open/Save file panels | 22 places |
+| Menus and menu buttons | 18 |
+| Right-click menus | 9 |
+| Folded sections | 10 |
+| Hidden panels | 1 (the file browser) |
+| Windows | Settings, and the main window |
+
+A tool per sheet would not stay true as sheets are added. So this is one mechanism, guarded by a test.
+
+| Kind | Open | Close |
+|---|---|---|
+| Folded section, pop-up, menu button, hidden panel | `open_ui`, as now | `close_ui`, as now |
+| Sheet, popover, About, Settings | `open_ui` on the control that opens it. Or `open_ui` by its name, when it needs nothing chosen first: Batch Jobs, Image Content Discovery, About. | `close_ui` by its name, or the front one: its own dismissal |
+| Right-click menu | `open_ui` on the element it belongs to (`AXShowMenu`) | `close_ui` (Esc) |
+| System Open/Save panel | `open_ui` on the control that opens it | `close_ui`: Cancel |
+| Confirmation, alert | Only by the action it confirms, never on its own: a destructive confirmation is the person's. | `close_ui`: Cancel |
+| The main window, when none is showing | `open_ui` `main window` (the `problem` answer names it) | the person |
+| Tabs and segments: Batch Jobs' tabs, Flexible / Fixed, a sheet's tabs | `select_ui` selects one: view state, never an action | — |
+
+Choosing in a menu or pressing a button inside a sheet stays what it is today: a dedicated tool's job,
+or the person's. Opening never chooses.
 
 | Part | Fix |
 |---|---|
-| **T1** | Each sheet's presentation lives in `AppState`, as `launchFormPresented` does. That means Batch Jobs (`batchJobsTab`), Image Content Discovery (one flag, whether it opens from Portal or from the launch form) and Cut Out. One owner per sheet. Closing the main window resets them all, already (`mainWindowClosed`). |
-| **T2** | `show_batch_jobs` (`tab`, `filter`, `close`) and `show_image_discovery` (`close`), in the shape of `show_launch_form`. `show_cutout_editor` takes `close`. |
-| **T3** | `close_ui` closes any open sheet as Esc would: the sheet's cancel action, so it works for every sheet, those without a tool of their own included. Decision 1. |
-| **T4** | `show_launch_form` takes `resources` (`flexible`, `fixed`) and `cores`, `ram`, `gpus`. It fills the form as `image` chooses one, and launches nothing. |
-| **T5** | `use_workflow` takes `name`, so a copy is named when made. |
+| **T1 — one registry of what is shown** | `.uiSheet(name, isPresented:)`, `.uiSheet(name, item:)`, `.uiPopover(…)`, `.uiConfirmation(…)` and `.uiAlert(…)` wrap SwiftUI's modifiers. While something is shown, it registers its name, kind, window and how to dismiss it. Every `.sheet`, `.popover`, `.confirmationDialog` and `.alert` in the app moves to them, and the system file panels go through one helper that does the same. `list_ui_targets` lists what is open (`presented`). `get_current_view` names the front one. |
+| **T2 — what opens them** | `.opens(name)` marks the control that presents something: Jobs & History…, Cut Out…, an info button, Upload…. `list_ui_targets` lists it with `opens: name` and `closed`. `open_ui` presses it once, as the person's click would, and nothing inside is chosen. A hand tag and the marker share the identifier (`vb:portal.batchJobs` plus the marker), so they are encoded together. |
+| **T3 — by name** | A presentation that needs nothing chosen first has its flag in `AppState`: Batch Jobs (with its tab), Image Content Discovery (one flag, from Portal or from the launch form), About, and the others the inventory finds. `open_ui` by its name sets the flag, after `navigate_to` its screen. One owner per flag. Closing the main window resets them all (`mainWindowClosed`, already). The `show_…` tools that take arguments stay: `show_launch_form`, `show_cutout_editor`, `open_observation_detail`. |
+| **T4 — closing** | `close_ui` closes any open presentation, by its name or the front one, through T1's registry. It never presses a button inside. |
+| **T5 — tabs and segments** | `select_ui` selects a tab or a segment: Flexible / Fixed (Finding 11), Batch Jobs' tabs, Standard / Advanced / Headless. Selecting one is view state, and buttons that act are still never pressed. `show_launch_form` also takes `resources`, `cores`, `ram` and `gpus` to fill the form. It launches nothing. |
+| **T6 — named copies** | `use_workflow` takes `name` (Finding 11). |
+| **T7 — guardrails** | A test scans the source and fails on any `.sheet(`, `.popover(`, `.confirmationDialog(`, `.alert(` or `NSOpenPanel`/`NSSavePanel` outside T1's wrappers. A test opens and closes each named presentation through the tools. `EveryScreenNamedTests` lists each screen's openers. |
+
+### B — The Batch Jobs filter on every tab (decision 5)
+
+The filter field is always there, on every tab, History and empty tabs included. On History it matches
+a job's name, image, id and failure reason. With nothing to match it says "No jobs match". On an empty
+tab it says that tab's empty sentence. `show_batch_jobs`, or `open_ui` by name, takes `filter`.
 
 ### R — Search radius (Finding 4) and cancel (Finding 5)
 
@@ -174,14 +221,17 @@ landed and was never read. **K0:** look at that run's folder in VOSpace when Sto
 **Fix either way:** a run with no result 10 minutes past its deadline is marked `lost`, with "no result
 came back: the code may have stopped the session's runner". It never stays "running".
 
-### G — Workflow templates (Finding 17)
+### G — Workflow templates (Finding 17; decision 4)
 
 Four templates name the Notebook add-on's tools, which the app does not have:
 `variable-star-photometry`, `dao-espadons-spectroscopy`, `jcmt-cube-kinematics` and
 `proposal-due-diligence` (`create_analysis_notebook`, `run_all_cells`).
 
-- **Fix:** those steps use `run_code` (Remote Compute), or say "with the Notebook add-on" (decision 4).
-- **Guardrail:** a test reads every template and fails on any tool-like name that is not a registered tool.
+- **The default is `run_code`.** Each of those steps says what to run with `run_code` on Remote Compute.
+  With the Notebook add-on installed, its tools are the alternative. `get_workflow` says which applies on
+  this Mac: the add-on's tools when they are registered, otherwise `run_code`.
+- **Guardrail:** a test reads every template and fails on any tool-like name that is neither a
+  registered tool nor in the declared list of add-on tools.
 
 ## Small items (N)
 
@@ -202,7 +252,9 @@ Four templates name the Notebook add-on's tools, which the app does not have:
 1. **Counts:** 213 built-in tools in 16 areas, plus the person's guide tools in their own area (N1).
 2. **3.2:** the radius is the Radius field, or typed after the target (R1).
 3. **3.6:** `set_search_form` `execute` with `wait: false`, then `cancel_search` (R2).
-4. **9.1–9.3:** `show_batch_jobs` opens it (T2). The filter shows above a tab with jobs (decision 5).
+4. **9.1–9.3:** `open_ui` opens it by name or from Jobs & History… (T2, T3). The filter is on every tab
+   (B). Add cases that open and close a sheet, a popover, a right-click menu and a file panel, and select
+   a tab and a segment (T).
 5. **10.3:** reads as `portal.sheet` from the images card and `portal.sheet.sheet` from the launch form.
 6. **14.4:** the person turns auto-apply off for this case only.
 7. **Re-run with CANFAR healthy:**
@@ -214,18 +266,18 @@ Four templates name the Notebook add-on's tools, which the app does not have:
 
 1. **W0**, the diagnosis, before anything else touches the launch request.
 2. **W1–W4, S, J, D**: what misleads or fails silently.
-3. **T, R, F, L**: the gaps that blocked cases.
+3. **T, B, R, F, L**: the gaps that blocked cases. T is the largest step. It goes T1 (the registry)
+   then T7 (the guardrail, red until every presentation is moved), then T2–T6.
 4. **C, P, K, G, N.**
 5. **Q**: handout 31.
 
-## Decisions for the person
+## Decisions (the person, 2026-10-02)
 
-1. **Closing sheets.** Should `close_ui` close any open sheet the way Esc would, alongside each sheet's
-   `show_… close: true`? Or only the per-sheet tools?
-2. **The search radius.** A **Radius** field like the Windows app, with `M101 0.2deg` still accepted?
-   And the default stays 1′?
-3. **Long answers.** Is 45 s the right cap for any synchronous answer, with the work carrying on behind
-   it?
-4. **Workflow templates.** Rewrite the notebook steps for `run_code`, or keep them and mark them "with
-   the Notebook add-on"?
-5. **Batch Jobs History.** Should it get the filter too? It holds 50 entries.
+1. **Open and close.** "MCP should be able to open and close any modal, screen, dropdown — anything in
+   the app." → **T**, everything that opens. *The plan's boundary:* a confirmation or an alert opens
+   only through the action it confirms, never on its own, and opening never chooses.
+2. **Search radius.** A **Radius** field like the Windows app; `M101 0.2deg` still accepted; the
+   default stays 1′. → **R1**.
+3. **Long answers.** 45 s is the cap; show a progress bar and carry on. → **L**, with W1.
+4. **Workflow templates.** `run_code` is the default when the add-on is not there. → **G**.
+5. **Batch Jobs filter.** On every tab, by default, never hidden. → **B**.
