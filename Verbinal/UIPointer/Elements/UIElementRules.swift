@@ -110,15 +110,17 @@ enum UIElementRules {
 
         // A control with no words of its own is called by its caption — one
         // in sight by what is in sight, one scrolled away by where it lies. A
-        // row is called by the words drawn over it: a list's section heading.
+        // row is called by the words drawn over it — a list's section heading
+        // — never by a caption: the words above a list name no row of it.
         let inSightTexts = texts.filter(\.inSight).map { (frame: $0.frame, words: $0.words) }
         let allTexts = texts.map { (frame: $0.frame, words: $0.words) }
         for index in drafts.indices where drafts[index].name == nil && drafts[index].kind.isControl {
             let draft = drafts[index]
             let frame = draft.inSight ? draft.visible : draft.frame
             let among = draft.inSight ? inSightTexts : allTexts
-            drafts[index].name = (draft.kind == .row ? heading(over: frame, among: among) : nil)
-                ?? caption(for: frame, among: among, after: draft.kind == .disclosure)
+            drafts[index].name = draft.kind == .row
+                ? heading(over: frame, among: among)
+                : caption(for: frame, among: among, after: draft.kind == .disclosure)
         }
 
         // In sight first, so their ids are the same whatever is scrolled away.
@@ -253,20 +255,19 @@ enum UIElementRules {
         return chain.lazy.compactMap(clean).first
     }
 
-    /// A row with no words of its own reads as its first text — or, holding
-    /// only controls, as the first one's name: a filter's "☐ centos".
+    /// A row with no words of its own reads as its first text — or, with
+    /// none, as the first thing in it that says what it is: a filter's
+    /// checkbox ("☐ centos"), or an entry read as one ("qa-run, Failed").
     private static func rowWords(_ node: UIRawNode, kind: UIElementKind) -> String? {
         guard kind == .row else { return nil }
         func first(_ node: UIRawNode) -> String? {
             if node.role == "AXStaticText", let words = clean(node.text) ?? clean(node.label) { return words }
             return node.children.lazy.compactMap(first).first
         }
-        func control(_ node: UIRawNode) -> String? {
-            if let kind = Self.kind(role: node.role, subrole: node.subrole), kind.isControl,
-               let name = ownName(node, kind: kind) { return name }
-            return node.children.lazy.compactMap(control).first
+        func said(_ node: UIRawNode) -> String? {
+            clean(node.label) ?? clean(node.title) ?? node.children.lazy.compactMap(said).first
         }
-        return first(node) ?? control(node)
+        return first(node) ?? node.children.lazy.compactMap(said).first
     }
 
     /// The words drawn over a row of its own: a section heading, which a list

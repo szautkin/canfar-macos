@@ -216,6 +216,21 @@ final class UIElementRulesTests: XCTestCase {
         XCTAssertNotNil(byName["far-down"], "below the window's edge, in its popover: in sight")
     }
 
+    /// A row read as one ("qa-run, Failed") is called by what it says; and a
+    /// row never takes the words above its list as its name.
+    func testAnEntryReadAsOneNamesItsRowAndTheListsCaptionNamesNone() {
+        let result = elements([
+            node("AXStaticText", rect(20, 112, 233, 13), text: "Kept on this Mac after CANFAR removes the job."),
+            node("AXRow", rect(0, 139, 583, 39), children: [
+                node("AXCell", rect(0, 139, 583, 39), children: [node("AXGroup", rect(10, 142, 560, 32), label: "qa-run, Failed")]),
+            ]),
+            node("AXRow", rect(0, 178, 583, 39)),
+        ])
+        let rows = result.elements.filter { $0.kind == .row }
+        XCTAssertEqual(rows.first?.name, "qa-run, Failed")
+        XCTAssertNil(rows.last?.name, "nothing in it, nothing over it: not the caption above the list")
+    }
+
     /// A list draws a section heading apart from the empty row holding its
     /// place: the row is called by the words over it.
     func testASectionHeadingNamesItsRow() {
