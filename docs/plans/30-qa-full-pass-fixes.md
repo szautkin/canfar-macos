@@ -22,7 +22,7 @@
 
 | Step | What | State |
 |---|---|---|
-| **A** | What an assistant may do without asking: kinds of change, and a setting for each | planned — decisions 6–10, for review |
+| **A** | What an assistant may do without asking: kinds of change, and a setting for each | planned — decided |
 | **W** | Writes on CANFAR: say where they are; why they hung | planned — W0 diagnosis first |
 | **S** | Silent no-ops and loose schemas | planned |
 | **J** | Jobs CANFAR has dropped read as "gone", not "pending" | planned |
@@ -89,9 +89,9 @@ them).
 | **Files saved on this Mac** — new files, never over an existing one | download_observation, download_observations_bulk, download_cutout, download_vospace_file, open_vospace_file, export_search_results, export_fits_figure, export_cube_figure, export_research_bundle, export_session_log | Allowed |
 | **Add to your CANFAR storage** — new files and folders | create_vospace_folder, upload_text_to_vospace, upload_file_to_vospace, upload_to_vospace | Allowed |
 | **Use your CANFAR allocation: sessions and compute** | launch_session, renew_session, start_compute, run_code | Allowed |
-| **Use your CANFAR allocation: batch jobs and image probes** | launch_headless_job, discover_image_packages (a probe is a batch job) | **Ask me**, as the standing rule says |
+| **Use your CANFAR allocation: batch jobs and image probes** | launch_headless_job, discover_image_packages (a probe is a batch job) | Allowed (the person, decision 6). Their standing rule `headless_jobs_rules` still guides assistants. |
 | **Sharing** — who may read or write your files | set_vospace_acl | **Ask me** |
-| **What every assistant is told** | add_guide_tool, update_guide_tool, set_tool_description, clear_tool_description | **Ask me**, see decision 8 |
+| **What every assistant is told** | add_guide_tool, update_guide_tool, set_tool_description, clear_tool_description | **Ask me, always**: not a setting (decision 8) |
 
 **Changes that remove, replace or stop** (destructive):
 
@@ -111,6 +111,7 @@ anything and always happen at once, as now.
 
 | Part | What |
 |---|---|
+| **A0 — decisions** | 6: the kinds and defaults as above, batch jobs Allowed. 7: two choices, Allowed and Ask me. 8: what every assistant is told always waits; it is listed but not settable. 9: "made by an assistant" means any assistant, any session, as the session log records it. 10: everything at once is its own row, Ask me by default. |
 | **A1 — one owner** | `ChangeKind` in VerbinalKit: each kind's name, whether it is destructive, and its default. Every changing tool declares its kind (`static let change`) in place of `verbClass`'s three write classes. `AutoApplyPolicy.appliesAtOnce(kind, settings)` is the only place that decides. A tool whose kind depends on its target asks one function. That covers a delete of what an assistant made (A3) and an upload over an existing file. |
 | **A2 — the setting** | Settings ▸ AI Agent ▸ **What an assistant may do without asking**: a row per kind, **Allowed** or **Ask me**, the destructive kinds marked, each with one line on what it covers, and **Restore defaults**. The master Auto-apply switch goes: on maps to the defaults above; off maps to Ask me for every kind. Kept per Mac, like the rest of Settings. |
 | **A3 — made by an assistant** | The session log already records every change with who made it. One lookup answers "was this made by an assistant, and in which session" for a record, a file, a folder, a saved query, a workflow or a bookmark. It is created when the change applies and read by A1. Nothing the person made is ever in it. |
@@ -351,15 +352,10 @@ Four templates name the Notebook add-on's tools, which the app does not have:
 3. **Long answers.** 45 s is the cap; show a progress bar and carry on. → **L**, with W1.
 4. **Workflow templates.** `run_code` is the default when the add-on is not there. → **G**.
 5. **Batch Jobs filter.** On every tab, by default, never hidden. → **B**.
-**Still open — section A:**
-
-6. **The kinds and their defaults** (section A). Are these the right rows, and the right defaults?
-7. **Two choices or three?** Allowed / Ask me, as asked. Or also **Never**, refused outright with "the
-   person does not allow this" (e.g. "Everything at once")?
-8. **What every assistant is told.** Configurable like the rest, or always Ask me? Text an assistant
-   reads, in a file or a web page, could make it set an instruction that steers every later assistant.
-   That is why it waits today.
-9. **"Made by an assistant"** — by any assistant, any session? Or only the session asking to remove it?
-10. **Everything at once** — its own row, Ask me by default, even when single removals of the same kind
-    are allowed?
+6. **The kinds and defaults** as section A proposes, with batch jobs and image probes **Allowed**. → A.
+7–10. "Proceed" on the plan's proposals:
+   - two choices;
+   - what every assistant is told always waits;
+   - "made by an assistant" is any assistant;
+   - everything at once is its own row, Ask me. → A0.
 
