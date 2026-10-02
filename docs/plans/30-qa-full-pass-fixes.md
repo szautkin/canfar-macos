@@ -23,7 +23,7 @@
 | Step | What | State |
 |---|---|---|
 | **A** | What an assistant may do without asking: kinds of change, and a setting for each | planned — decided |
-| **W** | Writes on CANFAR: say where they are; why they hung | planned — W0 diagnosis first |
+| **W** | Writes on CANFAR: tasks, honest advice, no second launch by accident | W0 done (CANFAR did not answer); W0b with the person |
 | **S** | Silent no-ops and loose schemas | planned |
 | **J** | Jobs CANFAR has dropped read as "gone", not "pending" | planned |
 | **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | planned — decision 1 |
@@ -124,30 +124,34 @@ anything and always happen at once, as now.
 
 ### W — Writes on CANFAR (Finding 12, HIGH)
 
-**What we know** (from the code):
+**W0, done: what the person's session log shows** (`20261001-192812-7C0354FE.jsonl`)
 
-1. `LaunchSessionApplier.apply` and the headless launch run outside the task runner. Downloads use the
-   runner (`changes.run`), and the runner is what the activity bar shows. So a launch never appears in
-   `list_activity`, nor in the session log's `now.tasksRunning`.
-2. `withApplierTimeout` (in VerbinalKit) ends every timeout with "check the in-app activity feed before
-   retrying". For these applies, that feed has no record of them, so a person who follows the advice may
-   launch again.
-3. `now.proposalsWaiting` lists every proposal not yet done. It explains each with `backgroundRefusal`,
-   whose `default` case reads "auto-apply is off". A proposal that is *applying* (auto-applied, past the
-   call's deadline), or has *failed*, reaches that case with the wrong reason.
-4. `list_events` showed `proposalFailed` twice per launch, minutes apart. The cause is not found yet.
+| Time (UTC) | What |
+|---|---|
+| 03:13:27 | `launch_session` `qa-full-nb` applied at once (token 445). No task was started for it. |
+| 03:16:27 | Its `POST` timed out: URLError −1001 after its 180 s (474). It failed (475). |
+| 03:23:41 | `launch_headless_job` `qa-full-echo` applied at once, as **task 9** on the activity bar (493, 494). |
+| 03:26:41 | Its `POST` timed out the same way; task 9 failed (517–519). |
+| 03:26:38, 03:26:45 | **The person pressed Apply on both failed proposals in Pending.** That started a second notebook launch and task 10 (521). |
+| 03:29:38, 03:29:46 | Both timed out again (535–541). |
 
-**What we don't know:** why `POST /session` and `POST /batch` hung while every GET answered.
-- VOSpace was answering 503 the same night, which points at CANFAR.
-- A request of ours that CANFAR's newer API no longer takes would point at the app.
+Every `GET` to the same service in those minutes answered in 0.4–1.4 s. The cluster's memory was 100%
+reserved (the Portal's load card; the report's §3).
+
+**Conclusions:**
+- CANFAR took both kinds of launch request and did not answer them in three minutes, four times.
+  Nothing in the log points at our request. **W0b**, with the person when CANFAR is healthy: one launch
+  from the launch form and one by an assistant, both timed, to rule the request out.
+- The report's "duplicate `proposalFailed`" is the person's second Apply, not a second emitter.
+- The real risk is a retry. A launch that timed out may have been made by CANFAR all the same, and
+  Apply again would start a second session.
 
 | Part | Fix |
 |---|---|
-| **W0 — diagnose first** | Read the launch's request lines in the person's session log (tokens 446, 475): method, URL, the service's id, timeout, outcome. Compare with the canfar Python client's launch, `POST` to the same registry-resolved URL with the same form fields, while CANFAR is healthy. The person launches once from the UI, and an assistant once, to see whether both hang. **No fix to the request until W0 says it is ours.** |
-| **W1** | Every apply that calls CANFAR runs as a task: launch, headless launch, renew, delete, bulk delete. It shows on the activity bar and in `list_activity`, by the assistant, with its stage, like downloads. One path, `changes.run`, for every apply. |
-| **W2** | The timeout's advice names what exists. "Follow it with `get_job_status`; `list_sessions` or `list_headless_jobs` shows whether it was made." The activity bar is named too, now that W1 puts the task there. |
-| **W3** | `now.proposalsWaiting` lists only proposals waiting for the person, with the right reason. One that is applying goes under `tasksRunning`, through W1. One that failed is in the log as failed, not waiting. |
-| **W4** | One `proposalFailed` per failure. Find the second emitter and add a test on the event stream. |
+| **W1** | Every apply that calls CANFAR runs as a task, through the one path downloads use (`changes.run`): launch, renew, delete, bulk delete, start and stop compute. The batch-job launch already does. |
+| **W2** | The timeout's advice names what exists: "it may have been made all the same: `list_sessions` (or `list_headless_jobs`) shows whether it was; `get_job_status` follows it". The activity bar is named only where W1 puts the task. |
+| **W3** | `now.proposalsWaiting` lists only proposals waiting for the person, with the reason step A gives. A proposal that is applying is under `tasksRunning`. One that failed is in the log as failed. |
+| **W4 — no second launch by accident** | Before a launch is applied again after a timeout, Verbinal asks CANFAR whether a session or job of that name was made since the first attempt. If it was, the apply ends as done, naming it, and nothing new is launched. Pending's Apply on such a proposal says "The last attempt timed out — CANFAR may have made it; checked first". The same applies to a retry of a delete: it skips one that is already gone. |
 
 ### S — Silent no-ops and loose schemas (Findings 7, 9, units; MEDIUM)
 
