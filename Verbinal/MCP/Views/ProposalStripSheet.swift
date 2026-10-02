@@ -197,7 +197,7 @@ struct ProposalStripSheet: View {
     /// What kind of change it is, and why it waits: the person's own setting
     /// (plan 30 A5). A destructive kind is marked.
     private func kindLine(_ proposal: PendingProposal) -> some View {
-        let kind = ChangeCatalog.kind(of: proposal)
+        let kind = appState.agentsService.kind(of: proposal)
         let reason: LocalizedStringKey = !kind.isSettable ? "it always asks"
             : appState.agentsService.permissions.allows(kind) ? "proposed before you allowed it"
             : "you ask to approve this kind"

@@ -74,26 +74,33 @@ struct LaunchSessionTool: JSONWriteTool {
     }
 }
 
-struct LaunchSessionApplier: ProposalApplier {
+struct LaunchSessionApplier: ResultReportingApplier {
     let kind = "launch_session"
     let service: SessionService
     let recentLaunchStore: RecentLaunchStore
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    /// Launches it, and answers the session's id: what the assistant made
+    /// (plan 30 A6).
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(LaunchSessionTool.Payload.self, from: proposal.payload)
         let params = SessionLaunchParams(
             type: payload.type, name: payload.name, image: payload.image,
             cores: payload.cores, ram: payload.ram, gpus: payload.gpus,
             cmd: payload.cmd, registryUsername: nil, registrySecret: nil
         )
+        let sessionID: String?
         do {
             // 3-minute deadline. Skaha session-create is normally
             // < 30s but can stall under cluster pressure; bounded
             // wait ensures the applier emits a terminal event
             // either way.
             let svc = service
-            _ = try await withApplierTimeout(seconds: 180, label: "launch_session") {
+            sessionID = try await withApplierTimeout(seconds: 180, label: "launch_session") {
                 try await svc.launchSession(params)
             }
         } catch let pa as ProposalApplyError {
@@ -123,6 +130,7 @@ struct LaunchSessionApplier: ProposalApplier {
             recentLaunchStore.save(launch)
             activity.append(.applied(proposal: proposal, kind: kind))
         }
+        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(id: sessionID))) ?? Data()
     }
 }
 

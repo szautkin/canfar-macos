@@ -73,6 +73,32 @@ final class AgentsService {
         }
     }
 
+    /// Which kind a proposal is by what it acts on — what an assistant made,
+    /// an upload over a file (plan 30 A6). Set where that can be looked up
+    /// (macOS); without it, its tool's kind.
+    var kindResolver: (@MainActor (PendingProposal) async -> ChangeKind)?
+    /// Told when an assistant's change has applied, with what it answered.
+    var onApplied: (@MainActor (PendingProposal, Data?) -> Void)?
+    /// Each proposal's kind as resolved when it was decided.
+    private var resolvedKinds: [UUID: ChangeKind] = [:]
+
+    /// A proposal's kind: as resolved when decided, else its tool's.
+    func kind(of proposal: PendingProposal) -> ChangeKind {
+        resolvedKinds[proposal.id] ?? ChangeCatalog.kind(of: proposal)
+    }
+
+    /// Whether an assistant's change applies at once: its kind, by what it
+    /// acts on, and the person's setting for that kind.
+    private func decide(_ proposal: PendingProposal) async -> AutoApplyDecision {
+        ChangeCatalog.decision(kind: await resolveKind(proposal), permissions: permissions)
+    }
+
+    private func resolveKind(_ proposal: PendingProposal) async -> ChangeKind {
+        let kind = await kindResolver?(proposal) ?? ChangeCatalog.kind(of: proposal)
+        resolvedKinds[proposal.id] = kind
+        return kind
+    }
+
     /// The closing sentence of a proposing tool's description: its kind, and
     /// what the person's setting does with it now.
     func toolRule(_ tool: String) -> String? {
@@ -291,6 +317,9 @@ final class AgentsService {
         }
         _ = await proposals.markApplied(id, by: actor)
         activityStore.markApplied(forProposal: id, by: actor)
+        // What it made is an assistant's; what it removed is gone (plan 30 A6).
+        onApplied?(proposal, extra)
+        resolvedKinds[id] = nil
         if actor != .person {
             if followAgentActivity,
                let target = Self.navigationTarget(forKind: proposal.kind),
@@ -314,7 +343,7 @@ final class AgentsService {
             case .failed:
                 waiting.append((proposal, "failed when it was applied; it waits for the person to try again or discard it"))
             default:
-                waiting.append((proposal, Self.waitingRule(proposal, permissions: permissions)))
+                waiting.append((proposal, Self.waitingRule(proposal, kind: kind(of: proposal), permissions: permissions)))
             }
         }
         return waiting
@@ -322,8 +351,9 @@ final class AgentsService {
 
     /// Why a proposal still in Pending waits: the person asks to approve its
     /// kind — or allowed it only after it was proposed.
-    nonisolated static func waitingRule(_ proposal: PendingProposal, permissions: ChangePermissions) -> String {
-        let kind = ChangeCatalog.kind(of: proposal)
+    nonisolated static func waitingRule(_ proposal: PendingProposal, kind: ChangeKind? = nil,
+                                        permissions: ChangePermissions) -> String {
+        let kind = kind ?? ChangeCatalog.kind(of: proposal)
         return permissions.allows(kind)
             ? "waits in Pending: it was proposed before the person allowed \"\(kind.title)\"; they apply it, or start_background_apply can"
             : AutoApplyPolicy.rule(forChange: kind, appliedAtOnce: false)
@@ -344,8 +374,9 @@ final class AgentsService {
     /// Why a pending proposal may not be started in the background, or nil.
     /// The person's approval is not the agent's to give: only a kind they
     /// allow may start (plan 30 A).
-    nonisolated static func backgroundRefusal(_ proposal: PendingProposal, permissions: ChangePermissions) -> String? {
-        let decision = ChangeCatalog.decision(for: proposal, permissions: permissions)
+    nonisolated static func backgroundRefusal(_ proposal: PendingProposal, kind: ChangeKind? = nil,
+                                              permissions: ChangePermissions) -> String? {
+        let decision = ChangeCatalog.decision(kind: kind ?? ChangeCatalog.kind(of: proposal), permissions: permissions)
         guard !decision.appliesAtOnce else { return nil }
         return "'\(proposal.kind)' \(decision.rule): only the person can apply it"
     }
@@ -361,7 +392,7 @@ final class AgentsService {
         guard let proposal = await proposals.list(origin: nil).first(where: { $0.id == id }) else {
             return refused("no pending proposal '\(raw)' — list_pending_proposals shows the ones there are")
         }
-        if let why = Self.backgroundRefusal(proposal, permissions: permissions) {
+        if let why = Self.backgroundRefusal(proposal, kind: await resolveKind(proposal), permissions: permissions) {
             return refused(why)
         }
         if await proposals.state(id) == .applying {
@@ -512,8 +543,7 @@ final class AgentsService {
                 guard let self else {
                     return AutoApplyDecision(appliesAtOnce: false, rule: "waits in Pending: Verbinal is closing")
                 }
-                let permissions = await MainActor.run { self.permissions }
-                return ChangeCatalog.decision(for: proposal, permissions: permissions)
+                return await self.decide(proposal)
             },
             apply: { [weak self] id in
                 guard let self else {

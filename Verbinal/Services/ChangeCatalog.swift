@@ -52,7 +52,10 @@ enum ChangeCatalog {
 
     /// Whether it applies at once under `permissions`, and the rule that says so.
     static func decision(for proposal: PendingProposal, permissions: ChangePermissions) -> AutoApplyDecision {
-        let kind = kind(of: proposal)
+        decision(kind: kind(of: proposal), permissions: permissions)
+    }
+
+    static func decision(kind: ChangeKind, permissions: ChangePermissions) -> AutoApplyDecision {
         let atOnce = AutoApplyPolicy.appliesAtOnce(kind, permissions: permissions)
         return AutoApplyDecision(appliesAtOnce: atOnce, rule: AutoApplyPolicy.rule(forChange: kind, appliedAtOnce: atOnce))
     }

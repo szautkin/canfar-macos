@@ -420,6 +420,8 @@ final class AppState {
         aiGuideService.knownToolNames = Set(agentTools.map(\.name))
         // Re-tune `tools/list`/`tools/call` from the user's AI Guide edits.
         agentsService.aiGuideResolver = makeAIGuideResolver()
+        // What an assistant made, so removing it can be what the person allows.
+        wireAssistantMade()
         #endif
 
         // Wire the navigator closure the auto-apply path uses to drive
