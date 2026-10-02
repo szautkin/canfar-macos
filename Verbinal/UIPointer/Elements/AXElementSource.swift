@@ -143,9 +143,10 @@ final class AXElementSource: UIElementSource {
         let refs = reads.map(\.ref)
         var snapshot = UISnapshot(windows: refs, elements: elements, duplicateIDs: duplicates)
         snapshot.outOfSight = outOfSight
-        if refs.isEmpty, Self.unanswered(axWindows), NSApp.windows.contains(where: \.isVisible) {
-            snapshot.problem = UISnapshot.unreadable
-        }
+        let own = NSApp.windows.filter { PointableID.Window(identifier: $0.identifier?.rawValue) != .hints }
+        snapshot.problem = UISnapshot.problem(
+            windowsRead: refs.count, unanswered: Self.unanswered(axWindows), anyUp: own.contains(where: \.isVisible),
+            anyShowing: !NSApp.isHidden && own.contains { $0.isVisible && !$0.isMiniaturized && $0.isOnActiveSpace })
         return snapshot
     }
 

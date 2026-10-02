@@ -153,6 +153,16 @@ final class AXElementSourceTests: XCTestCase {
         XCTAssertEqual(snapshot.windows.dropFirst().first?.number, first.windowNumber)
     }
 
+    /// No window read says why: the service not answering (a locked
+    /// screen), or no Verbinal window showing (hidden, minimized, another
+    /// desktop). Some read, nothing to say.
+    func testAReadOfNothingSaysWhy() {
+        XCTAssertEqual(UISnapshot.problem(windowsRead: 0, unanswered: true, anyUp: true, anyShowing: true), UISnapshot.unreadable)
+        XCTAssertEqual(UISnapshot.problem(windowsRead: 0, unanswered: false, anyUp: true, anyShowing: false), UISnapshot.notShowing)
+        XCTAssertEqual(UISnapshot.problem(windowsRead: 0, unanswered: false, anyUp: false, anyShowing: false), UISnapshot.notShowing)
+        XCTAssertNil(UISnapshot.problem(windowsRead: 2, unanswered: false, anyUp: true, anyShowing: false))
+    }
+
     /// The person's own window — where they allow a session — is never read.
     func testTheApprovalWindowIsNeverATarget() async throws {
         let approval = NSWindow(contentRect: NSRect(x: 700, y: 120, width: 300, height: 200),
