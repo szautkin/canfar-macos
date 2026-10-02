@@ -244,7 +244,8 @@ private struct UIHintNumber: View {
     }
 }
 
-private struct UIHintBubbleView: View {
+/// A bubble, drawn at the size it was measured and placed at.
+struct UIHintBubbleView: View {
     let bubble: UIHintScene.Bubble
     let close: () -> Void
 
@@ -265,8 +266,11 @@ private struct UIHintBubbleView: View {
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: close) {
+                // Exactly as wide as measured: a symbol draws wider than its size.
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: UIHintMeasure.closeSize))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: UIHintMeasure.closeSize, height: UIHintMeasure.closeSize)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)

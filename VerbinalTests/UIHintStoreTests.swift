@@ -4,6 +4,8 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
+import AppKit
+import SwiftUI
 import XCTest
 import VerbinalKit
 @testable import Verbinal
@@ -119,6 +121,37 @@ final class UIHintSceneTests: XCTestCase {
             for b in scene.bubbles[(i + 1)...] { XCTAssertFalse(a.frame.intersects(b.frame)) }
             for ring in scene.rings { XCTAssertFalse(ring.frame.intersects(a.frame)) }
         }
+    }
+
+    /// A bubble is drawn no taller than it was measured and placed: its words
+    /// never wrap onto a line it was not given (handout 28: the bubble on Use
+    /// This Image ran past the bottom of Image Content Discovery).
+    func testABubbleIsDrawnAtTheSizeItWasMeasured() {
+        let measure = UIHintMeasure()
+        let cases: [(title: String?, text: String?, numbered: Bool)] = [
+            (nil, "Can you see this bubble?", false),
+            (nil, "Selected, as a click selects it", false),
+            (nil, "Now enabled — I will not press it", true),
+            ("Container Image", "Choose the image the session runs; the magnifier finds one by what it has installed.", true),
+            (nil, String(repeating: "A long hint that has to wrap over several lines. ", count: 5), false),
+        ]
+        for (title, text, numbered) in cases {
+            let size = measure.bubble(title: title, text: text, numbered: numbered)
+            let bubble = UIHintScene.Bubble(id: "b", frame: CGRect(origin: .zero, size: size), side: .above,
+                                            anchor: .zero, line: false, title: title, text: text, number: numbered ? 1 : nil)
+            let host = NSHostingView(rootView: UIHintBubbleView(bubble: bubble, close: {}).frame(width: size.width))
+            XCTAssertLessThanOrEqual(host.fittingSize.height, size.height + 0.5, "\(text ?? "") at \(size)")
+        }
+    }
+
+    /// A bubble had better not cover a control; a list's rows and items are
+    /// mostly words, and the controls in them count on their own.
+    func testABubbleKeepsClearOfControlsNotOfRows() {
+        XCTAssertTrue(UIElementKind.button.keptClear)
+        XCTAssertTrue(UIElementKind.textField.keptClear)
+        XCTAssertFalse(UIElementKind.row.keptClear)
+        XCTAssertFalse(UIElementKind.item.keptClear)
+        XCTAssertFalse(UIElementKind.text.keptClear)
     }
 
     func testRingsAloneHaveNoBubblesAndAnAreaHoldingOthersIsDashed() {

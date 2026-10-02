@@ -24,6 +24,10 @@ enum UIElementKind: String, Codable, Sendable, CaseIterable {
     /// One entry of a list, holding its own controls: they are named with it.
     var holds: Bool { self == .item || self == .row }
 
+    /// What a hint's bubble had better not cover: a control — not a list's
+    /// row or item, mostly words, whose own controls count on their own.
+    var keptClear: Bool { isControl && !holds }
+
     /// Closed until opened: a menu's choices, a folded section's contents.
     var opens: Bool {
         switch self {

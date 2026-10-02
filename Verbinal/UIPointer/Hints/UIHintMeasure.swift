@@ -25,6 +25,9 @@ struct UIHintMeasure {
     static let pillSize = CGSize(width: 96, height: 26)
     /// At most this much of a hint's words in the hint list: it is a list.
     static let listLines = 3
+    /// Words draw a point or two wider than they measure: room for that, so
+    /// they never wrap onto a line the bubble was not given.
+    static let slack: CGFloat = 2
 
     /// The width beside a bubble's words: its close button, and its number.
     static func extras(numbered: Bool) -> CGFloat {
@@ -44,7 +47,7 @@ extension UIHintMeasure: UIHintMeasuring {
         let widest = Self.maxWidth - 2 * Self.padding - extras
         let narrowest = Self.minWidth - 2 * Self.padding - extras
         let natural = max(Self.width(title, Self.titleFont), Self.width(text, Self.textFont))
-        let content = min(widest, max(narrowest, natural.rounded(.up)))
+        let content = min(widest, max(narrowest, natural.rounded(.up) + Self.slack))
         let words = Self.height(title, Self.titleFont, content)
             + (title != nil && text != nil ? Self.spacing : 0)
             + Self.height(text, Self.textFont, content)

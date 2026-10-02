@@ -160,7 +160,7 @@ final class UIHintPresenter {
                 .map { lastSnapshot.elements(in: $0.index).filter { !hinted.contains($0.id) } } ?? []
             let scene = UIHintScene.build(
                 hints: onWindow, sets: store.sets, size: window.frame.size,
-                controls: others.filter(\.kind.isControl).map(\.visible),
+                controls: others.filter(\.kind.keptClear).map(\.visible),
                 images: others.filter { $0.kind == .canvas || ($0.kind == .image && $0.visible.width * $0.visible.height > 40_000) }
                     .map(\.visible),
                 previous: previous, measure: measure)
