@@ -505,8 +505,7 @@ Taken by the person, 2026-09-30:
 
 ## Live pass — handout 28 (2026-10-01)
 
-On the person's running app, builds 1638f2e → 4c7c9ae. Every case passed but one; 1.7's Batch Jobs
-modal is blocked (it cannot open without jobs, and no job is started for a test).
+On the person's running app, builds 1638f2e → 239644c. Every case passed.
 
 What the pass found, and fixed:
 
@@ -519,6 +518,8 @@ What the pass found, and fixed:
 | A bubble ran past the window's edge; one sat on Close | 1d0b5a6 — the close mark drawn at its measured size, words given slack; bubbles keep clear of controls, not of rows |
 | Section headings ("astroai") left their rows unnamed | b636f5b — a row is called by the words drawn over it |
 | Hidden or closed windows answered an empty list | 272641d, 9230f59 — `problem` says no window is showing, and why it may be |
+| Batch Jobs could not open without jobs — nor its History — and nothing said the card opened it | d795956, e4211f3 — a **Jobs & History…** button (`portal.batchJobs`); the sheet opens on the first tab with anything in it |
+| History's 18 entries unnamed; the first named by the sentence above the list | 2a74518, 239644c — a row reads as the first thing in it that says what it is, never as a caption; an entry says its job first |
 
 Also from the pass: Batch Jobs at 10,000 jobs (3a1dd38 — history offered each finished job once, a
 sweep one notification, `list_headless_jobs` paged), and the launch form's long lists searchable
