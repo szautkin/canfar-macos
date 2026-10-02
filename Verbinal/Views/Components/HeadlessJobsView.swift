@@ -55,6 +55,12 @@ struct HeadlessJobsView: View {
                     .disabled(model.isLoading)
                     .help("Refresh batch jobs now (or wait \(model.pollCountdown)s for the next auto-refresh)")
                     .accessibilityLabel("Refresh batch jobs")
+                    // What opens the sheet, in sight: the summary opens it too,
+                    // but nothing says so.
+                    Button("Jobs & History…") { showDetail = true }
+                        .controlSize(.small)
+                        .help("Show the batch jobs, and the history of those that ended")
+                        .pointable("portal.batchJobs")
                 }
 
                 // Cross-fade only on the loading/empty/content BOUNDARY —
@@ -95,8 +101,8 @@ struct HeadlessJobsView: View {
 
     // MARK: - Summary
 
-    /// The summary opens the Batch Jobs sheet — with no jobs too: its History
-    /// keeps the jobs CANFAR no longer lists, and why they failed.
+    /// The summary opens the Batch Jobs sheet too — with no jobs as well: its
+    /// History keeps the jobs CANFAR no longer lists, and why they failed.
     private func summaryButton(@ViewBuilder footer: () -> some View) -> some View {
         Button { showDetail = true } label: {
             VStack(alignment: .leading, spacing: 6) {
@@ -108,7 +114,6 @@ struct HeadlessJobsView: View {
         }
         .buttonStyle(.plain)
         .help("Show the batch jobs, and the history of those that ended")
-        .pointable("portal.batchJobs")
     }
 
     /// Every count, zeros too (plan 17 U2): "0 running · 0 pending · 1 done · 1 failed".

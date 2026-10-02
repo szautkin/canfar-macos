@@ -98,8 +98,9 @@ final class BatchJobsAtScaleTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(400))
         let source = AXElementSource(screenName: { _, _, _ in "portal" })
         await source.ready()
-        let card = try XCTUnwrap(source.snapshot().elements.first { $0.id == "portal.batchJobs" }, "a button with no jobs too")
-        XCTAssertEqual(card.kind, .button)
+        let open = try XCTUnwrap(source.snapshot().elements.first { $0.id == "portal.batchJobs" }, "a button with no jobs too")
+        XCTAssertEqual(open.kind, .button)
+        XCTAssertEqual(open.name, "Jobs & History…", "in sight, saying what it opens")
     }
 
     /// The sheet opens on the first tab with anything in it: History when

@@ -56,6 +56,16 @@
       },
       "shouldTranslate" : false
     },
+    "· %@: %@, %@ of %@ s%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "· %1$@: %2$@, %3$@ of %4$@ s%5$@"
+          }
+        }
+      }
+    },
     "'%@' already exists in recent launches. Replace it?" : {
       "localizations" : {
         "fr" : {
@@ -384,6 +394,16 @@
         }
       }
     },
+    "%@ changes · %@ failures · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ changes · %2$@ failures · %3$@"
+          }
+        }
+      }
+    },
     "%@ cores · %@ GB" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -465,6 +485,9 @@
         }
       }
     },
+    "%@ hints" : {
+
+    },
     "%@ images cached for %@" : {
       "localizations" : {
         "en" : {
@@ -523,6 +546,16 @@
     },
     "%@ ms" : {
       "shouldTranslate" : false
+    },
+    "%@ of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@"
+          }
+        }
+      }
     },
     "%@ of %@ discovered" : {
       "localizations" : {
@@ -584,6 +617,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ outils sur %@ correspondent à « %@ »"
+          }
+        }
+      }
+    },
+    "%@ of %@ words" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@ words"
           }
         }
       }
@@ -849,6 +892,17 @@
         }
       }
     },
+    "%lld changes · %lld failures · %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld modifications · %lld échecs · %@"
+          }
+        }
+      }
+    },
     "%lld cores · %lld GB" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -906,6 +960,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld répliques sans interface lancées"
+          }
+        }
+      }
+    },
+    "%lld hints" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld indications"
           }
         }
       }
@@ -993,6 +1057,17 @@
         }
       }
     },
+    "%lld of %lld words" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld mots sur %2$lld"
+          }
+        }
+      }
+    },
     "%lld orders" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1050,6 +1125,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld en cours"
+          }
+        }
+      }
+    },
+    "%lld sessions selected" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sessions sélectionnées"
           }
         }
       }
@@ -1314,46 +1400,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "500"
-          }
-        }
-      }
-    },
-    "%lld changes · %lld failures · %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld modifications · %lld échecs · %@"
-          }
-        }
-      }
-    },
-    "%lld sessions selected" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld sessions sélectionnées"
-          }
-        }
-      }
-    },
-    "%lld of %lld words" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld mots sur %2$lld"
-          }
-        }
-      }
-    },
-    "%lld hints" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld indications"
           }
         }
       }
@@ -1939,6 +1985,7 @@
       }
     },
     "Allow" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1999,6 +2046,7 @@
       }
     },
     "An assistant wants to start a session" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2260,6 +2308,7 @@
       }
     },
     "Assistant Session" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2813,6 +2862,7 @@
       }
     },
     "Calls" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2938,6 +2988,7 @@
       }
     },
     "Changes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3527,6 +3578,7 @@
       }
     },
     "Code to run" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4344,6 +4396,7 @@
       }
     },
     "Could not export: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4939,6 +4992,7 @@
       }
     },
     "Decisions" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5064,6 +5118,7 @@
       }
     },
     "Delete %lld closed session logs?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5074,6 +5129,7 @@
       }
     },
     "Delete %lld session logs?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5094,6 +5150,7 @@
       }
     },
     "Delete All Closed…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5227,6 +5284,17 @@
         }
       }
     },
+    "Delete…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer…"
+          }
+        }
+      }
+    },
     "Deleted" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5281,21 +5349,12 @@
       }
     },
     "Deleted %lld session logs." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld journaux de session supprimés."
-          }
-        }
-      }
-    },
-    "Delete…" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer…"
           }
         }
       }
@@ -5356,6 +5415,7 @@
       }
     },
     "Deny" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6635,6 +6695,7 @@
       }
     },
     "Export as JSON Lines…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6645,6 +6706,7 @@
       }
     },
     "Export as Text…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6843,16 +6905,6 @@
         }
       }
     },
-    "Exported %lld session logs to %@." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld journaux de session exportés vers %@."
-          }
-        }
-      }
-    },
     "Export…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6871,6 +6923,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Exporté %@"
+          }
+        }
+      }
+    },
+    "Exported %lld session logs to %@." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld journaux de session exportés vers %@."
           }
         }
       }
@@ -6969,6 +7032,7 @@
       }
     },
     "Failures" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7342,6 +7406,7 @@
       }
     },
     "Folder" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8305,22 +8370,22 @@
         }
       }
     },
-    "Instructions for this session" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Instructions pour cette session"
-          }
-        }
-      }
-    },
     "Instructions — returned when the agent calls this tool" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Instructions — renvoyées lorsque l'agent appelle cet outil"
+          }
+        }
+      }
+    },
+    "Instructions for this session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instructions pour cette session"
           }
         }
       }
@@ -8556,6 +8621,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tâches"
+          }
+        }
+      }
+    },
+    "Jobs & History…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâches et historique…"
           }
         }
       }
@@ -9410,6 +9485,7 @@
       }
     },
     "MCP" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10387,6 +10463,7 @@
       }
     },
     "No session logs yet" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10880,22 +10957,22 @@
         }
       }
     },
-    "Off" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Désactivé"
-          }
-        }
-      }
-    },
     "off" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "désactivée"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé"
           }
         }
       }
@@ -10921,22 +10998,22 @@
         }
       }
     },
-    "On" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activé"
-          }
-        }
-      }
-    },
     "on" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "activée"
+          }
+        }
+      }
+    },
+    "On" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activé"
           }
         }
       }
@@ -14309,6 +14386,7 @@
       }
     },
     "Search, Results and ADQL tabs" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14445,6 +14523,7 @@
       }
     },
     "Select a session" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14881,6 +14960,7 @@
       }
     },
     "Show" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -14979,6 +15059,7 @@
       }
     },
     "Show in Finder" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -15041,6 +15122,7 @@
       }
     },
     "Show Session Logs…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
