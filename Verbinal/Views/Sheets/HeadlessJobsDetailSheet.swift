@@ -407,25 +407,31 @@ private struct JobHistoryList: View {
             .padding(.top, 8)
             List(history.jobs) { job in
                 let failed = job.outcome == .failed
+                // The reason when there is one; otherwise what it was.
+                let detail = failed && job.failureReason?.isEmpty == false
+                    ? "\(job.summary) — \(job.failureReason ?? "")" : job.summary
+                let finished = SharedFormatters.userMediumDateShortTime.string(from: job.finishedAt)
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: failed ? "xmark.octagon.fill" : "checkmark.circle.fill")
                         .foregroundStyle(failed ? .red : .green)
-                        .accessibilityLabel(Text(failed ? "Failed" : "Succeeded"))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(job.name).fontWeight(.medium)
-                        // The reason when there is one; otherwise what it was.
-                        Text(failed && job.failureReason?.isEmpty == false ? "\(job.summary) — \(job.failureReason ?? "")" : job.summary)
+                        Text(verbatim: job.name).fontWeight(.medium)
+                        Text(verbatim: detail)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
-                    Text(SharedFormatters.userMediumDateShortTime.string(from: job.finishedAt))
+                    Text(verbatim: finished)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .accessibilityElement(children: .combine)
+                // Read as one entry, its name first — "qa-run, Failed" — then
+                // what it was and when it ended.
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(verbatim: job.name + ", ") + Text(failed ? "Failed" : "Succeeded"))
+                .accessibilityValue(Text(verbatim: "\(detail), \(finished)"))
             }
             .listStyle(.inset)
         }
