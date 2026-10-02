@@ -4,7 +4,10 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
+import AppKit
+import SwiftUI
 import XCTest
+import VerbinalKit
 @testable import Verbinal
 
 /// Ten thousand batch jobs: an assistant gets them a page at a time, the
@@ -76,6 +79,36 @@ final class BatchJobsAtScaleTests: XCTestCase {
         XCTAssertEqual(HeadlessMonitorModel.endedTogether(sweep), "12 done · 3 failed")
         XCTAssertEqual(HeadlessMonitorModel.endedTogether(jobs(1_000, status: { _ in "Completed" })),
                        HeadlessMonitorModel.StatusCount(status: .done, count: 1_000).text, "none failed: not said")
+    }
+
+    /// With no job listed, the card still opens the sheet: its History keeps
+    /// what CANFAR no longer lists. (Handout 28 1.7 could not open it.)
+    func testTheCardOpensTheSheetWithNoJobs() async throws {
+        try await AXReadable.require()
+        let model = HeadlessMonitorModel(
+            headlessService: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())),
+            history: JobHistoryStore(persistence: nil))
+        XCTAssertTrue(model.jobs.isEmpty)
+        let window = NSWindow(contentRect: NSRect(x: 220, y: 220, width: 480, height: 260),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: HeadlessJobsView(model: model).padding().uiWindowPlace(.main))
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        try await Task.sleep(for: .milliseconds(400))
+        let source = AXElementSource(screenName: { _, _, _ in "portal" })
+        await source.ready()
+        let card = try XCTUnwrap(source.snapshot().elements.first { $0.id == "portal.batchJobs" }, "a button with no jobs too")
+        XCTAssertEqual(card.kind, .button)
+    }
+
+    /// The sheet opens on the first tab with anything in it: History when
+    /// CANFAR lists no job now.
+    func testTheSheetOpensWhereThereIsSomething() {
+        XCTAssertEqual(HeadlessJobsDetailSheet.firstTab([("running", 2), ("pending", 1), ("history", 5)]), "running")
+        XCTAssertEqual(HeadlessJobsDetailSheet.firstTab([("running", 0), ("pending", 0), ("completed", 3)]), "completed")
+        XCTAssertEqual(HeadlessJobsDetailSheet.firstTab([("running", 0), ("failed", 0), ("history", 4)]), "history")
+        XCTAssertEqual(HeadlessJobsDetailSheet.firstTab([("running", 0), ("history", 0)]), "running")
     }
 
     func testASweepIsKeptAsItsLastFewInOneGo() {

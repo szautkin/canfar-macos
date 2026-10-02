@@ -132,6 +132,7 @@ struct HeadlessJobsDetailSheet: View {
             }
         }
         .sheetFrame(minWidth: 600, minHeight: 400)
+        .onAppear { selectedTab = Self.firstTab(tabs.map { ($0.id, $0.count) }) }
         .sheet(item: $eventsSheetJob) { job in
             SessionEventsSheet(
                 title: job.name,
@@ -338,6 +339,12 @@ struct HeadlessJobsDetailSheet: View {
 
 
     // MARK: - Helpers
+
+    /// The tab it opens on: the first with anything in it — History when
+    /// nothing is listed now — else Running.
+    static func firstTab(_ counts: [(id: String, count: Int)]) -> String {
+        counts.first { $0.count > 0 }?.id ?? "running"
+    }
 
     /// Whole sentences per tab (not "No \(tab) jobs") so French gets
     /// correct grammar: « Aucune tâche en cours », not a raw English

@@ -15050,6 +15050,16 @@
         }
       }
     },
+    "Show the batch jobs, and the history of those that ended" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher les tâches en lot, et l’historique de celles qui sont terminées"
+          }
+        }
+      }
+    },
     "Show the complete observation this was cut from" : {
       "localizations" : {
         "fr" : {

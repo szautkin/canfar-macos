@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Batch Jobs opens with no jobs too.** With nothing listed on CANFAR,
+  the Batch Jobs card could not be opened, so its History — the jobs
+  CANFAR no longer lists, and why they failed — was out of reach. The
+  card opens it either way, and it opens on the first tab with anything
+  in it: History when nothing runs.
 - **Batch Jobs keeps up with thousands of jobs.** When many jobs end
   between two checks, one notification says how many finished and how
   many failed, instead of one each. History takes each finished job once

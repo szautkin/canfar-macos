@@ -68,28 +68,19 @@ struct HeadlessJobsView: View {
                     }
                     .padding(.vertical, 8)
                 } empty: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        summaryRow
+                    summaryButton {
                         Label("No batch jobs", systemImage: "tray")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 } error: {
                     EmptyView()
                 } content: {
-                    // Summary counts only — clickable to open detail modal
-                    Button { showDetail = true } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            summaryRow
-                            Text("\(model.jobs.count) total")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
+                    summaryButton {
+                        Text("\(model.jobs.count) total")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                     }
-                    .buttonStyle(.plain)
                 }
 
                 if model.hasError {
@@ -103,6 +94,22 @@ struct HeadlessJobsView: View {
     }
 
     // MARK: - Summary
+
+    /// The summary opens the Batch Jobs sheet — with no jobs too: its History
+    /// keeps the jobs CANFAR no longer lists, and why they failed.
+    private func summaryButton(@ViewBuilder footer: () -> some View) -> some View {
+        Button { showDetail = true } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                summaryRow
+                footer()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Show the batch jobs, and the history of those that ended")
+        .pointable("portal.batchJobs")
+    }
 
     /// Every count, zeros too (plan 17 U2): "0 running · 0 pending · 1 done · 1 failed".
     private var summaryRow: some View {
