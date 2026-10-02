@@ -194,6 +194,22 @@ struct ProposalStripSheet: View {
         }
     }
 
+    /// What kind of change it is, and why it waits: the person's own setting
+    /// (plan 30 A5). A destructive kind is marked.
+    private func kindLine(_ proposal: PendingProposal) -> some View {
+        let kind = ChangeCatalog.kind(of: proposal)
+        let reason: LocalizedStringKey = !kind.isSettable ? "it always asks"
+            : appState.agentsService.permissions.allows(kind) ? "proposed before you allowed it"
+            : "you ask to approve this kind"
+        return HStack(spacing: 6) {
+            Image(systemName: kind.isDestructive ? "exclamationmark.triangle.fill" : "checkmark.shield")
+                .foregroundStyle(kind.isDestructive ? Color.orange : Color.secondary)
+            Text(LocalizedStringKey(kind.title)).bold() + Text(verbatim: " — ") + Text(reason)
+        }
+        .font(.caption)
+        .accessibilityElement(children: .combine)
+    }
+
     private func row(for proposal: PendingProposal) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
@@ -218,6 +234,7 @@ struct ProposalStripSheet: View {
                     }
                 }
             }
+            kindLine(proposal)
             // The assistant's reason, read before applying — above all a
             // delete (plan 23 K).
             Group {

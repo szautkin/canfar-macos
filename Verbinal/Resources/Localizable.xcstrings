@@ -189,6 +189,16 @@
         }
       }
     },
+    "it always asks" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "demande toujours"
+          }
+        }
+      }
+    },
     "Launching and renewing sessions; Remote Compute and the code it runs." : {
       "localizations" : {
         "fr" : {
@@ -225,6 +235,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Notes, évaluations, requêtes enregistrées, protocoles, signets, fiches de Recherche."
+          }
+        }
+      }
+    },
+    "proposed before you allowed it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "proposée avant que vous l’autorisiez"
           }
         }
       }
@@ -375,6 +395,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Qui peut lire ou écrire vos fichiers et dossiers VOSpace."
+          }
+        }
+      }
+    },
+    "you ask to approve this kind" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vous demandez à approuver ce type"
           }
         }
       }
