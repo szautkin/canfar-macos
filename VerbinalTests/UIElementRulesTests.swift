@@ -198,6 +198,17 @@ final class UIElementRulesTests: XCTestCase {
         XCTAssertTrue(result.elements.allSatisfy { $0.name != nil })
     }
 
+    /// A list draws a section heading apart from the empty row holding its
+    /// place: the row is called by the words over it.
+    func testASectionHeadingNamesItsRow() {
+        let result = elements([
+            node("AXRow", rect(0, 99, 422, 28)),
+            node("AXStaticText", rect(16, 96, 38, 14), text: "astroai"),
+            node("AXRow", rect(0, 127, 422, 43), children: [node("AXStaticText", rect(40, 133, 143, 16), text: "notebook:latest")]),
+        ])
+        XCTAssertEqual(result.elements.filter { $0.kind == .row }.map(\.name), ["astroai", "notebook:latest"])
+    }
+
     /// A name is matched first against what the call acts on: "CFHT" opens
     /// the CFHT collection though rows and texts say CFHT too, and selects
     /// a row though a button says it.

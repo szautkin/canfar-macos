@@ -109,14 +109,16 @@ enum UIElementRules {
              drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
 
         // A control with no words of its own is called by its caption — one
-        // in sight by what is in sight, one scrolled away by where it lies.
+        // in sight by what is in sight, one scrolled away by where it lies. A
+        // row is called by the words drawn over it: a list's section heading.
         let inSightTexts = texts.filter(\.inSight).map { (frame: $0.frame, words: $0.words) }
         let allTexts = texts.map { (frame: $0.frame, words: $0.words) }
         for index in drafts.indices where drafts[index].name == nil && drafts[index].kind.isControl {
             let draft = drafts[index]
-            drafts[index].name = caption(for: draft.inSight ? draft.visible : draft.frame,
-                                         among: draft.inSight ? inSightTexts : allTexts,
-                                         after: draft.kind == .disclosure)
+            let frame = draft.inSight ? draft.visible : draft.frame
+            let among = draft.inSight ? inSightTexts : allTexts
+            drafts[index].name = (draft.kind == .row ? heading(over: frame, among: among) : nil)
+                ?? caption(for: frame, among: among, after: draft.kind == .disclosure)
         }
 
         // In sight first, so their ids are the same whatever is scrolled away.
@@ -254,6 +256,12 @@ enum UIElementRules {
             return node.children.lazy.compactMap(control).first
         }
         return first(node) ?? control(node)
+    }
+
+    /// The words drawn over a row of its own: a section heading, which a list
+    /// draws apart from the row that holds its place.
+    static func heading(over row: CGRect, among texts: [(frame: CGRect, words: String)]) -> String? {
+        texts.first { row.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }?.words
     }
 
     /// The text a person reads as a control's caption: just before it on its
