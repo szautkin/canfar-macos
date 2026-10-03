@@ -268,4 +268,29 @@ final class RemoteComputeServiceTests: XCTestCase {
         XCTAssertEqual(listed.runs[0].codePreview.count, ListComputeRunsTool.previewLength)
         XCTAssertEqual(listed.runs[0].codeLength, 1000)
     }
+
+    /// Plan 30 K: a run whose watching stopped — a sign-out, a quit — never
+    /// stays running. After sign-in, one with time left is watched again; one
+    /// past it is read once, and closed as noResult when nothing came back.
+    func testARunNoOneWatchedIsLookedAtAgain() async throws {
+        let store = ComputeRunStore(persistence: nil)
+        let long = Date().addingTimeInterval(-3 * 24 * 3600)
+        store.add(ComputeRun(request("lost", timeout: 480), author: .agent, submittedAt: long))
+        store.add(ComputeRun(request("landed", timeout: 480), author: .agent, submittedAt: long))
+        store.add(ComputeRun(request("fresh", timeout: 60), author: .user))
+        files.put(RunCodeContract.outPath(id: "landed"), #"{"status":"ok","exit_code":0}"#)
+        let compute = RemoteComputeService(
+            runs: store, sessions: sessions, files: files,
+            username: { [user] in user }, configuration: { [image] in .init(image: image, cores: 2, ram: 8) },
+            registryAuth: { nil }, pollInterval: .milliseconds(10), tasks: TaskRegistry())
+
+        await compute.resumeWatching()
+        XCTAssertEqual(store.find("lost")?.state, ComputeRun.noResult, "nothing came back: closed, not running")
+        XCTAssertEqual(store.find("landed")?.state, "ok", "its result came while no one watched: read")
+        XCTAssertEqual(store.find("fresh")?.state, ComputeRun.running, "time left: watched again")
+
+        files.put(RunCodeContract.outPath(id: "fresh"), #"{"status":"ok"}"#)
+        for _ in 0..<100 where store.find("fresh")?.isFinished == false { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(store.find("fresh")?.state, "ok")
+    }
 }

@@ -980,6 +980,10 @@ final class AppState {
         // Records kept before their details came from the archive are
         // brought up to it once, in the background (plan 17 G3).
         Task { await researchRecordRepair.run() }
+        #if os(macOS)
+        // Code runs still out when watching stopped — a sign-out, a quit — are looked at again (plan 30 K).
+        Task { await remoteCompute.resumeWatching() }
+        #endif
 
         // Idempotent: silent reauth no longer fires this hook, but guard
         // against any future double-apply so we don't stack monitors.

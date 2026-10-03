@@ -81,6 +81,7 @@ final class RemoteComputeService {
     /// recorded where sessions are launched.
     private let changes: ChangeLog
     private var watchers: [String: Task<Void, Never>] = [:]
+    private var resuming = false
 
     init(runs: ComputeRunStore,
          sessions: any ComputeSessions,
@@ -176,9 +177,9 @@ final class RemoteComputeService {
         let request = RunCodeContract.Request(id: request.id, language: request.language,
                                               code: RunCodeContract.normalizeNewlines(request.code),
                                               timeout_seconds: request.timeout_seconds)
-        runs.add(ComputeRun(request, author: author))
-        let task = tasks.begin(.compute, "\(request.language) on \(RunCodeContract.sessionName)",
-                               by: author == .agent ? .assistant : .person)
+        let run = ComputeRun(request, author: author)
+        runs.add(run)
+        let task = task(for: run)
         let drift: ComputeDrift?
         do {
             // Sending the code is the change; its result comes later, to the task.
@@ -193,8 +194,28 @@ final class RemoteComputeService {
             throw error
         }
         task.stage(String(localized: "Waiting for the result"))
-        watch(request, task)
+        watch(run, task)
         return drift
+    }
+
+    /// Runs still out from before: a sign-out or a quit stopped their
+    /// watching, and one stayed "running" for days (plan 30 K). Each is
+    /// watched again while it has time left; one past it is read once —
+    /// its result may have come while no one watched — and closed as
+    /// `noResult` when nothing is there. None stays running.
+    func resumeWatching(now: Date = Date()) async {
+        guard isSignedIn, !resuming else { return }
+        resuming = true
+        defer { resuming = false }
+        for run in runs.runs where !run.isFinished && watchers[run.id] == nil {
+            if giveUpAt(run) > now {
+                let task = task(for: run)
+                task.stage(String(localized: "Waiting for the result"))
+                watch(run, task)
+            } else if await !settled(run.id) {
+                runs.close(run.id, as: ComputeRun.noResult)
+            }
+        }
     }
 
     /// Makes sure a session is there, and drops `request` in its inbox.
@@ -227,9 +248,20 @@ final class RemoteComputeService {
         watchers = [:]
     }
 
-    private func watch(_ request: RunCodeContract.Request, _ task: TaskHandle) {
-        let id = request.id
-        let giveUpAt = Date().addingTimeInterval(TimeInterval(request.timeout_seconds) + startupAllowance)
+    /// A run's task on the activity bar, by who sent it.
+    private func task(for run: ComputeRun) -> TaskHandle {
+        tasks.begin(.compute, "\(run.language) on \(RunCodeContract.sessionName)", by: run.author == .agent ? .assistant : .person)
+    }
+
+    /// When a run with no result is given up on: its own timeout, and time
+    /// for a cold session to pick it up.
+    private func giveUpAt(_ run: ComputeRun) -> Date {
+        run.submittedAt.addingTimeInterval(TimeInterval(run.timeoutSeconds) + startupAllowance)
+    }
+
+    private func watch(_ run: ComputeRun, _ task: TaskHandle) {
+        let id = run.id
+        let giveUpAt = giveUpAt(run)
         let interval = pollInterval
         watchers[id]?.cancel()
         watchers[id] = Task { [weak self] in

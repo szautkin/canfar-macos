@@ -34,7 +34,7 @@
 | **L** | No answer longer than 45 s; long work goes on, with progress | done (this commit) |
 | **C** | `capture_view` shows the hints | done (this commit): each hint panel's picture drawn over the window's. Its pixel test needs the screen unlocked: in handout 31 |
 | **P** | The channel profile in a range, binned | done (this commit): `CubeSpectrumSlice` for both tools, one schema fragment, at most 500 values by default |
-| **K** | A compute run that never reports | planned — cause to confirm |
+| **K** | A compute run that never reports | done (this commit): watching stopped at sign-out or quit, so the run was never closed. After sign-in, runs still out are read once, watched again or closed as `noResult` (the existing "no result", not a new `lost`), by the watcher's own give-up time: timeout + 5 min. K0 (634F932B's folder) still to look at, with the person |
 | **G** | Workflow templates: `run_code` by default | planned — decision 4 |
 | **N** | Small items | planned |
 | **Q** | Handout 29 corrections; handout 31 | planned |

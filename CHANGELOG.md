@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A code run never stays "running" for days.** A run on the compute
+  session was watched only until you signed out or quit; one sent before
+  then stayed "running" for good. After you sign in, every run still out
+  is looked at again: its result is read if it came meanwhile, a run with
+  time left is watched again, and one past its time with nothing back is
+  closed as "no result", saying why that may be.
 - **An assistant's picture of the window shows its hints.** `capture_view`
   left out the rings and bubbles an assistant had put up, so it could not
   check what you were shown. The picture now has them drawn over the

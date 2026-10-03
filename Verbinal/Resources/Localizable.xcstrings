@@ -279,6 +279,16 @@
         }
       }
     },
+    "Nothing came back in the time it could take. The session may have stopped before it ran — the code is still in the inbox and runs when it starts again — or the code stopped the session's runner." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n'est revenu dans le temps prévu. La session s'est peut-être arrêtée avant l'exécution — le code est toujours dans la boîte de réception et s'exécutera au prochain démarrage — ou le code a arrêté l'exécuteur de la session."
+          }
+        }
+      }
+    },
     "proposed before you allowed it" : {
       "localizations" : {
         "fr" : {
@@ -11177,17 +11187,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Notes"
-          }
-        }
-      }
-    },
-    "Nothing came back in the time it could take. The session may have stopped before it ran; the code is still in the inbox and runs when it starts again." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rien n'est revenu dans le temps prévu. La session s'est peut-être arrêtée avant l'exécution ; le code est toujours dans la boîte de réception et s'exécutera au prochain démarrage."
           }
         }
       }

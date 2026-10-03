@@ -154,7 +154,7 @@ final class RemoteComputeModel {
             output = .waiting
             return
         case ComputeRun.noResult:
-            output = .unavailable(String(localized: "Nothing came back in the time it could take. The session may have stopped before it ran; the code is still in the inbox and runs when it starts again."))
+            output = .unavailable(String(localized: "Nothing came back in the time it could take. The session may have stopped before it ran — the code is still in the inbox and runs when it starts again — or the code stopped the session's runner."))
             return
         case ComputeRun.notSent:
             output = .unavailable(String(localized: "It never reached the session — see the message above."))
