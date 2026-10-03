@@ -23,6 +23,8 @@ enum TaskKind: String, Codable, Sendable {
     case download
     /// Keeping Research's records in order.
     case research
+    /// An assistant's call still working past its answer (plan 30 L).
+    case answer
 }
 
 /// Where a task got to.

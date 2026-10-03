@@ -90,6 +90,20 @@ final class AgentsService {
         resolvedKinds[proposal.id] ?? ChangeCatalog.kind(of: proposal)
     }
 
+    /// A call still working past its answer, on the activity bar until it
+    /// ends: the assistant was told it carries on, and the person sees it
+    /// (plan 30 L).
+    nonisolated static let carryOn: @Sendable (String, String) async -> (@Sendable (Bool) async -> Void) = { tool, _ in
+        let task = await MainActor.run {
+            TaskRegistry.shared.begin(.answer, String(localized: "Answering \(tool) for an assistant"))
+        }
+        return { succeeded in
+            await MainActor.run {
+                if succeeded { task.succeed() } else { task.fail(String(localized: "It ended without an answer")) }
+            }
+        }
+    }
+
     /// Whether an assistant's change applies at once: its kind, by what it
     /// acts on, and the person's setting for that kind.
     private func decide(_ proposal: PendingProposal) async -> AutoApplyDecision {
@@ -562,7 +576,8 @@ final class AgentsService {
         )
         let router = AIToolRouter(tools: tools, auditSink: multiSink,
                                   autoApplyHook: hook, onDispatchStart: onDispatchStart,
-                                  applyJobs: applyJobs)
+                                  applyJobs: applyJobs,
+                                  onCarryOn: Self.carryOn)
         self.router = router
 
         // Compute a fresh socket path for this app instance. Including

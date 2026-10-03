@@ -31,7 +31,7 @@
 | **R** | Search radius, as a field | done (this commit): R1 Radius field, R2 wait: false |
 | **D** | `download_observation` `file` from another plane of the observation | done (this commit) |
 | **F** | The file browser opens Downloads | done (this commit): cause confirmed — a symlink listed as itself |
-| **L** | No answer longer than 45 s; long work goes on, with progress | planned — decision 3 |
+| **L** | No answer longer than 45 s; long work goes on, with progress | done (this commit) |
 | **C** | `capture_view` shows the hints | planned |
 | **P** | The channel profile in a range, binned | planned |
 | **K** | A compute run that never reports | planned — cause to confirm |

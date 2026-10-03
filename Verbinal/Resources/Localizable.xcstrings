@@ -89,6 +89,16 @@
         }
       }
     },
+    "Answering %@ for an assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réponse en cours à %@ pour un assistant"
+          }
+        }
+      }
+    },
     "Anything an assistant made, as the session log records it — never yours." : {
       "localizations" : {
         "fr" : {
@@ -215,6 +225,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "demande toujours"
+          }
+        }
+      }
+    },
+    "It ended without an answer" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé sans réponse"
           }
         }
       }

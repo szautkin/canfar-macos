@@ -48,6 +48,11 @@ public actor AIToolRouter {
     /// How long an auto-applied write may hold its call before answering
     /// "still applying" with a job id — under the ~60 s a client waits.
     private let autoApplyInlineWait: TimeInterval
+    /// Shows a call that is carrying on past its answer — on the activity
+    /// bar, in the app — and is told when it ends (plan 30 L).
+    private let onCarryOn: (@Sendable (_ tool: String, _ origin: String) async -> (@Sendable (_ succeeded: Bool) async -> Void))?
+    /// The longest an assistant waits for an answer: `RequestTimeout.answer`.
+    private let answerWait: TimeInterval
     /// Where the router's decisions are recorded: auto-applied or held, the
     /// dispatch ceiling reached (plan 23 A).
     private let decisions: DecisionLog
@@ -60,6 +65,8 @@ public actor AIToolRouter {
         onDispatchStart: (@Sendable (_ toolName: String, _ originLabel: String) -> Void)? = nil,
         applyJobs: ApplyJobRegistry = ApplyJobRegistry(),
         autoApplyInlineWait: TimeInterval = 40,
+        onCarryOn: (@Sendable (_ tool: String, _ origin: String) async -> (@Sendable (_ succeeded: Bool) async -> Void))? = nil,
+        answerWait: TimeInterval = RequestTimeout.answer,
         decisions: DecisionLog = .shared
     ) {
         var table: [String: any AITool] = [:]
@@ -91,6 +98,8 @@ public actor AIToolRouter {
         self.onDispatchStart = onDispatchStart
         self.applyJobs = applyJobs
         self.autoApplyInlineWait = autoApplyInlineWait
+        self.onCarryOn = onCarryOn
+        self.answerWait = answerWait
         self.decisions = decisions
     }
 
@@ -188,15 +197,37 @@ public actor AIToolRouter {
         // session and the call, for whatever the call records (plan 23 K).
         let (arguments, why) = verbClass.proposesChange ? Cause.take(from: rawArguments) : (rawArguments, nil)
         let cause = Cause(why: why, session: context.session, call: context.requestID)
+        // The assistant has its answer within `answerWait` (45 s); the work
+        // carries on past it — not cut off — and shows on the activity bar
+        // until it ends (plan 30 L). Waiting for the person is not work.
+        let wait = verbClass == .sessionControl ? .infinity : answerWait
+        let carried = CarriedOn()
+        let origin = context.origin.label
         let result = await Initiator.$current.withValue(initiator) { await Cause.$current.withValue(cause) { await withHardDeadline(
-            seconds: ceiling,
+            seconds: wait,
+            cancelsWork: false,
+            callerCancels: true,
             onDeadline: {
-                deadlineHit.set()
-                let detail = self.decisions.deadlineReached(name, after: ceiling)
+                let detail = self.decisions.deadlineReached(name, after: wait)
+                if let onCarryOn = self.onCarryOn {
+                    Task { await carried.begin(await onCarryOn(name, origin)) }
+                }
                 return ToolResult.failed(.backendError(
-                    "\(name) exceeded the \(Int(ceiling))s dispatch deadline — \(detail.isEmpty ? "" : detail + "; ")the app-side operation was asked to cancel and may still be finishing in the background. The server stays responsive; check state with a read tool before retrying."))
+                    "\(name) has not answered in \(Int(wait)) s — \(detail.isEmpty ? "it is still working" : detail); it carries on in Verbinal, on the activity bar (list_activity): ask again shortly for its answer"))
             },
-            work: { await self.dispatchInner(name: name, rawArguments: arguments, context: context) }
+            work: {
+                let result = await withHardDeadline(
+                    seconds: ceiling,
+                    onDeadline: {
+                        deadlineHit.set()
+                        let detail = self.decisions.deadlineReached(name, after: ceiling)
+                        return ToolResult.failed(.backendError(
+                            "\(name) exceeded the \(Int(ceiling))s dispatch deadline — \(detail.isEmpty ? "" : detail + "; ")the app-side operation was asked to cancel and may still be finishing in the background. The server stays responsive; check state with a read tool before retrying."))
+                    },
+                    work: { await self.dispatchInner(name: name, rawArguments: arguments, context: context) })
+                if case .failed = result { await carried.end(succeeded: false) } else { await carried.end(succeeded: true) }
+                return result
+            }
         ) } }
         if deadlineHit.value {
             emitAudit(name: name, args: rawArguments, context: context,
@@ -415,4 +446,28 @@ private enum AutoApplyRace: Sendable {
     case applied(Data?)
     case failed(String)
     case stillApplying
+}
+
+/// A call carrying on past its answer: what shows it, told when it ends —
+/// whichever of the two comes first (plan 30 L).
+final class CarriedOn: @unchecked Sendable {
+    private let lock = NSLock()
+    private var finish: (@Sendable (Bool) async -> Void)?
+    private var ended: Bool?
+
+    func begin(_ finish: @escaping @Sendable (Bool) async -> Void) async {
+        let already: Bool? = lock.withLock {
+            self.finish = finish
+            return ended
+        }
+        if let already { await finish(already) }
+    }
+
+    func end(succeeded: Bool) async {
+        let finish: (@Sendable (Bool) async -> Void)? = lock.withLock {
+            ended = succeeded
+            return self.finish
+        }
+        await finish?(succeeded)
+    }
 }

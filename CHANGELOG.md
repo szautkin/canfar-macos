@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **An assistant gets an answer within 45 seconds, and slow work carries
+  on.** An assistant's client can give up on a call after a minute, while
+  some of Verbinal's waited two. Now every call answers within 45 seconds;
+  one still working says it carries on and shows on the activity bar
+  until it ends, instead of being cut off.
 - **The file browser opens your Downloads folder.** It showed "Couldn't
   load this folder: The file "Downloads" couldn't be opened": in the
   sandbox, the folder it started from is a link to your Downloads, and it

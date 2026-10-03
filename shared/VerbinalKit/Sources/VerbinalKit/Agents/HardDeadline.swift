@@ -46,10 +46,13 @@ private final class DeadlineOnce: @unchecked Sendable {
 ///
 /// The caller's own cancellation reaches the work too (unless
 /// `cancelsWork` is false): a client that stops waiting for a call stops
-/// the call (plan 25). An infinite `seconds` sets no deadline at all.
+/// the call (plan 25). `callerCancels` says so apart from the deadline: an
+/// answer given in time while the work carries on, which the caller can
+/// still stop (plan 30 L). An infinite `seconds` sets no deadline at all.
 public func withHardDeadline<T: Sendable>(
     seconds: TimeInterval,
     cancelsWork: Bool = true,
+    callerCancels: Bool? = nil,
     onDeadline: @escaping @Sendable () -> T,
     work: @escaping @Sendable () async -> T
 ) async -> T {
@@ -74,7 +77,7 @@ public func withHardDeadline<T: Sendable>(
             }
         }
     } onCancel: {
-        if cancelsWork { held.cancel() }
+        if callerCancels ?? cancelsWork { held.cancel() }
     }
 }
 

@@ -447,6 +447,11 @@ struct DescribeAppTool: JSONReadTool {
     rules (applied at once or held, retried or not, a deadline reached),
     tasks, failed requests, services failing and recovering, sign-in.
 
+      * No answer takes longer than 45 s. A call still working then
+        answers that it carries on — on the activity bar, in
+        `list_activity` — and is not cut off: ask again shortly for its
+        answer. A change still applying answers with its job, to follow
+        with `get_job_status`.
       * A reply that asked CADC or CANFAR, took 2 s or more, or failed
         carries a second block, `{"timing": …}`: its requests, a
         `verdict` in one sentence, `retry` (now / later / afterSignIn /

@@ -40,6 +40,12 @@ public enum RequestTimeout {
     /// An upload or a download may stall this long.
     public static let transfer: TimeInterval = 300
 
+    /// The longest an assistant waits for any answer (plan 30 L, the
+    /// person's decision): its MCP client may give up at 60 s. Past it the
+    /// call answers that it is still working, and the work carries on —
+    /// on the activity bar — instead of being cut off.
+    public static let answer: TimeInterval = 45
+
     /// A read tool's deadline: the standard timeout and 10 s more, so the
     /// request's own timeout — which names who did not answer — fires
     /// first (plan 23 L7). Below the router's read ceiling (150 s).
