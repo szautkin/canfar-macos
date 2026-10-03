@@ -29,6 +29,9 @@ struct GetCurrentViewTool: JSONReadTool {
         /// `allowed` applies at once, the rest waits in Pending. Re-read it; the
         /// person can change it between turns.
         var permissions: [ChangeCatalog.Permission] = []
+        /// What is shown over the screen, the front one last: close_ui
+        /// closes one by its name (plan 30 T).
+        var presented: [String] = []
         var standingRules: [AIGuideSnapshot.StandingRule] = []
         /// (Search) The observation whose detail sheet is open.
         var openSearchDetail: Record? = nil

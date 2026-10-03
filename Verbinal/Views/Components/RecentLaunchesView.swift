@@ -82,6 +82,7 @@ struct RecentLaunchesView: View {
                 }
             }
         }
+        .uiPresented("Relaunch Progress", .sheet, isPresented: $showRelaunchProgress)
         .sheet(isPresented: $showRelaunchProgress) {
             if let model = launchModel {
                 LaunchProgressSheet(model: model) {

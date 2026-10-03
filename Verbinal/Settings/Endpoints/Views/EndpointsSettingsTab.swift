@@ -204,6 +204,7 @@ struct EndpointsSettingsTab: View {
             Button("Reset All to Defaults", role: .destructive) {
                 resetConfirmShown = true
             }
+            .uiPresented("Reset Endpoints?", .confirmation, isPresented: $resetConfirmShown)
             .confirmationDialog(
                 "Remove all endpoint overrides?",
                 isPresented: $resetConfirmShown

@@ -149,9 +149,11 @@ struct AIGuideView: View {
         .onChange(of: searchText) { _, new in
             if !new.isEmpty, focusedCategoryID != nil { close() }
         }
+        .uiPresented("Edit Guide Tool", .sheet, item: $editingGuide)
         .sheet(item: $editingGuide) { guide in
             AIGuideEntryEditSheet(mode: .edit(guide))
         }
+        .uiPresented("New Guide Tool", .sheet, isPresented: $creatingGuide)
         .sheet(isPresented: $creatingGuide) {
             AIGuideEntryEditSheet(mode: .create)
         }

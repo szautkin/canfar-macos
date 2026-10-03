@@ -94,6 +94,7 @@ struct WorkflowsView: View {
                 emptyOverview
             }
         }
+        .uiPresented("Delete the Workflow?", .confirmation, item: $workflowPendingDelete)
         .confirmationDialog(
             String(localized: "Wf_DeleteConfirmTitle"),
             isPresented: Binding(

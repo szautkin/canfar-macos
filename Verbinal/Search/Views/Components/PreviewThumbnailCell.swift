@@ -29,6 +29,7 @@ struct PreviewThumbnailCell: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("Preview"))
+        .uiPresented("Preview", .popover, isPresented: $isHovering)
         .popover(isPresented: $isHovering) {
             if let url = thumbnailURL {
                 AsyncImage(url: url) { phase in

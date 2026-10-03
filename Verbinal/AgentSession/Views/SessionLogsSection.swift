@@ -21,6 +21,7 @@ struct SessionLogsSection: View {
             }
             .disabled(appState.sessionLog == nil)
             .pointable("settings.agent.sessionLogs")
+            .uiPresented("Session Logs", .sheet, item: $sessionLogs)
             .sheet(item: $sessionLogs) { SessionLogsView(model: $0) }
         } header: {
             Text("Session Logs")

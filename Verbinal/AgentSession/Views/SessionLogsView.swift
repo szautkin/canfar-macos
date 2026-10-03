@@ -30,11 +30,13 @@ struct SessionLogsView: View {
         }
         .frame(minWidth: 860, minHeight: 540)
         .task { await model.reload() }
+        .uiPresented("Delete Session Logs?", .confirmation, isPresented: $confirmingDelete)
         .confirmationDialog(String(localized: "Delete \(model.selection.count) session logs?"), isPresented: $confirmingDelete) {
             Button("Delete", role: .destructive) { Task { await model.deleteSelection() } }
         } message: {
             Text("This cannot be undone.")
         }
+        .uiPresented("Delete All Closed Session Logs?", .confirmation, isPresented: $confirmingDeleteAll)
         .confirmationDialog(String(localized: "Delete \(model.closedCount) closed session logs?"), isPresented: $confirmingDeleteAll) {
             Button("Delete", role: .destructive) { Task { await model.deleteAllClosed() } }
         } message: {

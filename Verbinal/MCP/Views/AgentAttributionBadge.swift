@@ -38,6 +38,7 @@ struct AgentAttributionBadge: View {
         .help("Created by \(attribution.originLabel)")
         .accessibilityLabel("Created by \(attribution.originLabel)")
         .onHover { isHovering = $0 }
+        .uiPresented("Assistant Attribution", .popover, isPresented: $isPresented)
         .popover(isPresented: $isPresented, arrowEdge: .top) {
             AgentAttributionPopover(attribution: attribution)
         }

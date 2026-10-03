@@ -72,6 +72,7 @@ struct ObservationDetailViewer: View {
             await model.loadCAOM2()
             await loadDataLink()
         }
+        .uiPresented("Cut Out", .sheet, item: $cutoutEditor)
         .sheet(item: $cutoutEditor) { editor in
             CutoutEditorView(model: editor) { spec in
                 Task { await researchModel?.downloadCutout(of: editor.details, spec) }

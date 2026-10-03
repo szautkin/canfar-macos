@@ -75,6 +75,7 @@ struct ImageDiscoverySettingsTab: View {
         }
         .formStyle(.grouped)
         .onAppear { hydrateFromService() }
+        .uiPresented("Reset Image Discovery Settings?", .alert, isPresented: $resetConfirmShown)
         .alert("Reset Image Discovery settings?", isPresented: $resetConfirmShown) {
             Button("Reset", role: .destructive) { resetAll() }
             Button("Cancel", role: .cancel) {}

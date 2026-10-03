@@ -9,7 +9,6 @@ import SwiftUI
 struct HeadlessJobsView: View {
     @Bindable var model: HeadlessMonitorModel
 
-    @State private var showDetail = false
 
     /// Boundary discriminator for the cross-fade. Maps the model's load/empty
     /// flags onto `DataState`; `.error` is unused here because the error
@@ -57,7 +56,7 @@ struct HeadlessJobsView: View {
                     .accessibilityLabel("Refresh batch jobs")
                     // What opens the sheet, in sight: the summary opens it too,
                     // but nothing says so.
-                    Button("Jobs & History…") { showDetail = true }
+                    Button("Jobs & History…") { model.detailPresented = true }
                         .controlSize(.small)
                         .help("Show the batch jobs, and the history of those that ended")
                         .pointable("portal.batchJobs")
@@ -94,7 +93,8 @@ struct HeadlessJobsView: View {
                 }
             }
         }
-        .sheet(isPresented: $showDetail) {
+        .uiPresented("Batch Jobs", .sheet, isPresented: $model.detailPresented)
+        .sheet(isPresented: $model.detailPresented) {
             HeadlessJobsDetailSheet(model: model)
         }
     }
@@ -104,7 +104,7 @@ struct HeadlessJobsView: View {
     /// The summary opens the Batch Jobs sheet too — with no jobs as well: its
     /// History keeps the jobs CANFAR no longer lists, and why they failed.
     private func summaryButton(@ViewBuilder footer: () -> some View) -> some View {
-        Button { showDetail = true } label: {
+        Button { model.detailPresented = true } label: {
             VStack(alignment: .leading, spacing: 6) {
                 summaryRow
                 footer()

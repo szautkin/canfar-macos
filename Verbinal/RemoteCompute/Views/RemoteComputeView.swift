@@ -38,11 +38,13 @@ struct RemoteComputeView: View {
             }
         }
         .task(id: model.selectedRun?.state) { await model.loadOutput() }
+        .uiPresented("Stop the Compute Session?", .confirmation, isPresented: $confirmStop)
         .confirmationDialog("Stop the compute session?", isPresented: $confirmStop) {
             Button("Stop", role: .destructive) { Task { await model.stop() } }
         } message: {
             Text("Stopping deletes the session and anything running in it. Code sent but not yet run stays in the inbox and runs when the session starts again.")
         }
+        .uiPresented("Restart the Compute Session?", .confirmation, isPresented: $confirmRestart)
         .confirmationDialog("Restart the compute session with the new settings?", isPresented: $confirmRestart) {
             Button("Restart", role: .destructive) { Task { await model.restartWithSettings() } }
         } message: {

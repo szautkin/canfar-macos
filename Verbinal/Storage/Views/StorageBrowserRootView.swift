@@ -96,6 +96,7 @@ struct StorageBrowserRootView: View {
         .task {
             await model.loadCurrentFolder()
         }
+        .uiPresented("New Folder", .sheet, isPresented: $showNewFolder)
         .sheet(isPresented: $showNewFolder) {
             StorageNewFolderSheet(model: model, isPresented: $showNewFolder)
         }
@@ -181,6 +182,7 @@ struct StorageBrowserRootView: View {
                       : "Delete the selected item")
                 .accessibilityLabel("Delete selected item")
                 .pointable("storage.delete")
+                .uiPresented("Delete the Selected?", .confirmation, isPresented: $showDeleteConfirm)
                 .confirmationDialog(
                     "Delete \(model.selectedNode?.name ?? "")?",
                     isPresented: $showDeleteConfirm

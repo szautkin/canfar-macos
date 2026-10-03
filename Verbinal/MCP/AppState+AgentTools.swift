@@ -418,6 +418,7 @@ extension AppState {
         )
         view.standingRules = aiGuideService.snapshot().standingRules
         view.permissions = ChangeCatalog.table(agentsService.permissions)
+        view.presented = UIPresentations.shared.shown.map(\.name)
         view.screen = screenName
         view.hints = Dictionary(grouping: uiHints.hints, by: \.set)
             .map { GetCurrentViewTool.Output.HintSet(set: $0.key, hints: $0.value.map(\.id)) }

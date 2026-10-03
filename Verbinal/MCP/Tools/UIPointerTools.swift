@@ -150,6 +150,16 @@ struct ListUITargetsTool: JSONReadTool {
         var problem: String? = nil
         /// Panels the person has hidden: open_ui shows one.
         var hiddenPanels: [PanelView] = []
+        /// What is shown over the screen — sheets, popovers, confirmations,
+        /// alerts — the front one last: close_ui closes one by its name.
+        var presented: [PresentedView] = []
+        /// What open_ui opens by its name (plan 30 T).
+        var opensByName: [String] = []
+    }
+
+    struct PresentedView: Encodable, Sendable {
+        let name: String
+        let kind: String
     }
 
     struct PanelView: Encodable, Sendable {
@@ -191,6 +201,10 @@ struct ListUITargetsTool: JSONReadTool {
         let listed = UITargetScope.filter(scoped, kind: args.kind ?? .interactive, screen: args.screen, contains: args.contains)
         let page = ToolPage(total: listed.count, cursor: args.cursor, limit: args.limit)
         let front = args.window == "all" ? nil : snapshot.front
+        let (presented, opensByName) = await MainActor.run {
+            (UIPresentations.shared.shown.map { PresentedView(name: $0.name, kind: $0.kind.rawValue) },
+             UIPresentations.shared.openable.map(\.name))
+        }
         return Output(
             window: front.map { WindowView(kind: $0.kind.rawValue, title: $0.title, screen: $0.screen) },
             count: listed.count,
@@ -198,7 +212,9 @@ struct ListUITargetsTool: JSONReadTool {
             unnamed: scoped.filter { $0.kind.isControl && $0.name == nil }.count,
             next: page.next,
             problem: snapshot.problem,
-            hiddenPanels: panels)
+            hiddenPanels: panels,
+            presented: presented,
+            opensByName: opensByName)
     }
 }
 
@@ -495,7 +511,7 @@ struct OpenCloseUITool: JSONReadTool {
     static func open(_ act: @escaping @Sendable (Args) async -> Output) -> Self {
         Self(definition: AIToolDefinition.withStaticSchema(
             name: "open_ui",
-            description: "Open one closed thing on purpose, to show the person what is inside: a folded section (closed: true), a panel they hid (hiddenPanels: the file browser), or a menu (a pop-up's or menu button's choices). Only that one opens; nothing else is touched, and nothing is pressed or chosen. It answers what appeared (`inside`), to list and hint like the rest. A menu stays open for the person — they choose from it or press Esc, and a hint never chooses for them; while it is open, list_ui_targets reads its items and show_ui_hints points at them. A long list's pop-up (the launch form's projects and images) opens a panel instead — a search field and the matching rows, at most twelve in sight; select_ui chooses a row in it. A tab is not opened: navigate there (navigate_to, select_search_tab, open_settings). close_ui closes it again. View state only; no proposal.",
+            description: "Open one closed thing on purpose, to show the person what is inside: a folded section (closed: true), a panel they hid (hiddenPanels: the file browser), a menu (a pop-up's or menu button's choices), or — by its name — a sheet that needs nothing chosen first (list_ui_targets' `opensByName`: Batch Jobs, Image Content Discovery, Launch Session, About Verbinal, Export All, Pending Changes…), going to its screen first. close_ui closes any sheet, popover, confirmation or alert that is open (`presented`), by its name or `front`, as Esc would: nothing in it is chosen. Only that one opens; nothing else is touched, and nothing is pressed or chosen. It answers what appeared (`inside`), to list and hint like the rest. A menu stays open for the person — they choose from it or press Esc, and a hint never chooses for them; while it is open, list_ui_targets reads its items and show_ui_hints points at them. A long list's pop-up (the launch form's projects and images) opens a panel instead — a search field and the matching rows, at most twelve in sight; select_ui chooses a row in it. A tab is not opened: navigate there (navigate_to, select_search_tab, open_settings). close_ui closes it again. View state only; no proposal.",
             schema: schema), act: act)
     }
 

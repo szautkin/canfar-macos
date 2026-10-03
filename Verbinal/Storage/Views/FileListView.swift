@@ -101,6 +101,7 @@ struct FileListView: View {
                     }
                 }
             }
+            .uiPresented("Delete the File?", .confirmation, item: $nodeToDelete)
             .confirmationDialog("Delete \(nodeToDelete?.name ?? "")?", isPresented: Binding(
                 get: { nodeToDelete != nil },
                 set: { if !$0 { nodeToDelete = nil } }

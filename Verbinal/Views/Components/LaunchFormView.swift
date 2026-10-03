@@ -82,6 +82,7 @@ struct LaunchFormView: View {
                 }
             }
         }
+        .uiPresented("Launch Progress", .sheet, isPresented: $showLaunchProgress)
         .sheet(isPresented: $showLaunchProgress, onDismiss: {
             if model.launchSuccess {
                 model.savePendingRecentLaunch()
@@ -92,6 +93,7 @@ struct LaunchFormView: View {
                 onLaunched?()
             }
         }
+        .uiPresented("Recent Launch Conflict", .alert, isPresented: $model.showRecentLaunchConflict)
         .alert(
             "Replace Recent Launch?",
             isPresented: $model.showRecentLaunchConflict
@@ -101,6 +103,7 @@ struct LaunchFormView: View {
         } message: {
             Text("'\(model.pendingRecentLaunch?.name ?? "")' already exists in recent launches. Replace it?")
         }
+        .uiPresented("Image Content Discovery", .sheet, isPresented: $showImageDiscovery)
         .sheet(isPresented: $showImageDiscovery) {
             if let idm = imageDiscoveryModel {
                 ImageDiscoverySheet(

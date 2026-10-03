@@ -154,6 +154,7 @@ struct HeadlessJobsDetailSheet: View {
         .onChange(of: selectedTab) { _, _ in shownUpTo = Self.pageSize }
         .sheetFrame(minWidth: 600, minHeight: 400)
         .onAppear { selectedTab = Self.firstTab(tabs.map { ($0.id, $0.count) }) }
+        .uiPresented("Job Events and Logs", .sheet, item: $eventsSheetJob)
         .sheet(item: $eventsSheetJob) { job in
             SessionEventsSheet(
                 title: job.name,
@@ -168,6 +169,7 @@ struct HeadlessJobsDetailSheet: View {
         // destructive-with-explanation per the 2026-05-19 UX
         // consult; Alert would also work but
         // confirmationDialog reads as more action-focused.
+        .uiPresented("Stop and Delete the Job?", .confirmation, item: $deleteConfirmJob)
         .confirmationDialog(
             "Stop and delete this running job?",
             isPresented: Binding(
@@ -268,11 +270,9 @@ struct HeadlessJobsDetailSheet: View {
         // misbehave in SwiftUI (popover anchor shifts to the
         // first row on scroll). This pattern keeps the anchor
         // stable.
+        .uiPresented("Job Details", .popover, isPresented: infoPopover(job))
         .popover(
-            isPresented: Binding(
-                get: { infoPopoverJobID == job.id },
-                set: { if !$0 { infoPopoverJobID = nil } }
-            ),
+            isPresented: infoPopover(job),
             arrowEdge: .trailing
         ) {
             HeadlessJobInfoPopover(job: job)
@@ -299,6 +299,12 @@ struct HeadlessJobsDetailSheet: View {
                 }
             }
         }
+    }
+
+    /// Whether `job`'s details popover is the one showing.
+    private func infoPopover(_ job: HeadlessJob) -> Binding<Bool> {
+        Binding(get: { infoPopoverJobID == job.id },
+                set: { if !$0 { infoPopoverJobID = nil } })
     }
 
     // MARK: - Icon buttons

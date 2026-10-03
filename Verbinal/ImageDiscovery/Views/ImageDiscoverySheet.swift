@@ -59,6 +59,7 @@ struct ImageDiscoverySheet: View {
             await model.onAppear(catalogue: catalogue)
         }
         .onDisappear { model.onDisappear() }
+        .uiPresented("Probe Logs", .sheet, item: Bindable(model).jobIDForLogsSheet)
         .sheet(isPresented: Binding(
             get: { model.jobIDForLogsSheet != nil },
             set: { if !$0 { model.jobIDForLogsSheet = nil } }
@@ -67,6 +68,7 @@ struct ImageDiscoverySheet: View {
                 ProbeLogsSheet(model: model, jobID: jobID)
             }
         }
+        .uiPresented("Probe Failure", .sheet, item: $model.failureDetailForSheet)
         .sheet(item: $model.failureDetailForSheet) { detail in
             FailureDetailSheet(detail: detail)
         }
@@ -74,6 +76,7 @@ struct ImageDiscoverySheet: View {
         // of the 2026-05-20 UX audit. `Optional<ImageManifest>`
         // isn't `Identifiable` natively; wrap via the model's
         // optional binding so SwiftUI presents iff non-nil.
+        .uiPresented("Image Manifest", .sheet, item: Bindable(model).manifestDetailForSheet)
         .sheet(
             isPresented: Binding(
                 get: { model.manifestDetailForSheet != nil },

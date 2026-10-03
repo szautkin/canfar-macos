@@ -422,6 +422,8 @@ final class AppState {
         agentsService.aiGuideResolver = makeAIGuideResolver()
         // What an assistant made, so removing it can be what the person allows.
         wireAssistantMade()
+        // What an assistant may open by its name (plan 30 T).
+        registerOpenablePresentations()
         #endif
 
         // Wire the navigator closure the auto-apply path uses to drive
@@ -587,6 +589,7 @@ final class AppState {
         activeSheet = nil
         launchFormPresented = false
         showImageDiscoverySheet = false
+        headlessMonitor?.detailPresented = false
         cutoutEditor = nil
         pendingViewerChoiceURL = nil
         uiHints.clearAll(.windowClosed)
@@ -895,6 +898,18 @@ final class AppState {
         // `agentProposals`.
         case login, about, export, agentProposals, features, welcome, mcpSetupWizard
         var id: String { rawValue }
+        /// Its name, as an assistant opens and closes it (plan 30 T).
+        var title: String {
+            switch self {
+            case .login: "Sign In"
+            case .about: "About Verbinal"
+            case .export: "Export All"
+            case .agentProposals: "Pending Changes"
+            case .features: "Features"
+            case .welcome: "Welcome"
+            case .mcpSetupWizard: "AI Assistant Setup"
+            }
+        }
     }
     var activeSheet: ActiveSheet?
     /// The cutout editor an agent opened (show_cutout_editor); the Search

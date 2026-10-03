@@ -297,6 +297,7 @@ struct FITSRenderControlsView: View {
         }
         .padding(8)
         #if os(macOS)
+        .uiPresented("Export Figure", .sheet, item: Bindable(model).figureRegion)
         .sheet(isPresented: Binding(get: { model.figureRegion != nil }, set: { if !$0 { model.figureRegion = nil } })) {
             FITSExportView(model: model,
                            marks: model.markTarget.map { marks?.marks(on: $0) ?? [] } ?? [],

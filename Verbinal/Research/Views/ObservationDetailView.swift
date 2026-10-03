@@ -178,6 +178,7 @@ struct ObservationDetailView: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .help("Delete the file from this computer and keep the observation and its notes")
+                        .uiPresented("Remove the File?", .confirmation, isPresented: $showRemoveFileConfirm)
                         .confirmationDialog("Remove the file of \"\(title)\"?", isPresented: $showRemoveFileConfirm) {
                             Button("Remove File", role: .destructive) {
                                 Task {
@@ -199,6 +200,7 @@ struct ObservationDetailView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .keyboardShortcut(.delete)
+                    .uiPresented("Delete the Observation?", .confirmation, isPresented: $showDeleteConfirm)
                     .confirmationDialog(
                         "Delete \"\(title)\"?",
                         isPresented: $showDeleteConfirm
@@ -273,6 +275,7 @@ struct ObservationDetailView: View {
         .task(id: "\(observation.id)|\(observation.localPath)|\(observation.downloadedAt.timeIntervalSince1970)") {
             keptFileProblem = observation.fileProblem
         }
+        .uiPresented("Cut Out", .sheet, item: $cutoutEditor)
         .sheet(item: $cutoutEditor) { editor in
             CutoutEditorView(model: editor) { spec in
                 Task { await model.downloadCutout(of: editor.details, spec) }

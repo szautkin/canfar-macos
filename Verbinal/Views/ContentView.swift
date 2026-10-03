@@ -117,6 +117,7 @@ struct ContentView: View {
         // so we drive all (login, about, export, agentProposals) through one
         // enum-based modifier. This prevents silent sheet drops when two triggers
         // fire in the same tick.
+        .uiPresented(appState.activeSheet?.title ?? "Sheet", .sheet, item: Bindable(appState).activeSheet)
         .sheet(item: Bindable(appState).activeSheet) { sheet in
             switch sheet {
             case .login:
@@ -160,10 +161,12 @@ struct ContentView: View {
             }
         }
         #if os(macOS)
+        .uiPresented("Open As", .sheet, item: viewerChoiceItem)
         .sheet(item: viewerChoiceItem) { item in
             ViewerChoiceSheet(url: item.url)
                 .environment(appState)
         }
+        .uiPresented("Cut Out", .sheet, item: Bindable(appState).cutoutEditor)
         .sheet(item: Bindable(appState).cutoutEditor) { editor in
             CutoutEditorView(model: editor) { spec in
                 Task { await appState.researchModel.downloadCutout(of: editor.details, spec) }

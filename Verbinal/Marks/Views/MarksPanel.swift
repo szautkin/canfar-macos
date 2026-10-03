@@ -94,6 +94,7 @@ struct MarksPanel: View {
             .controlSize(.small)
         }
         .padding(8)
+        .uiPresented("Remove All Marks?", .confirmation, isPresented: $confirmingClear)
         .confirmationDialog("Remove all \(marks.count) marks from this image?",
                             isPresented: $confirmingClear) {
             Button("Remove All", role: .destructive) { if let target { editor.clear(target) } }

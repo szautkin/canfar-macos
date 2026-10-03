@@ -41,6 +41,7 @@ struct CubeViewerRootView: View {
             Task { await model.open(url: url) }
             return true
         }
+        .uiPresented("Cube Viewer Guide", .sheet, isPresented: Bindable(model).showGuide)
         .sheet(isPresented: Binding(get: { model.showGuide }, set: { model.showGuide = $0 })) {
             CubeGuideView()
         }

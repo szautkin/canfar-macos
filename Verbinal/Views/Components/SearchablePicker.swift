@@ -45,7 +45,8 @@ enum SearchableChoice {
 /// It reads as a pop-up to the pointing tools (`list_ui_targets`, `open_ui`)
 /// and its rows as items `select_ui` chooses.
 struct SearchablePicker<Value: Hashable>: View {
-    let title: LocalizedStringKey
+    /// What it chooses — its label, and its panel's name to the tools.
+    let title: String
     @Binding var selection: Value
     let options: [Value]
     let label: (Value) -> String
@@ -56,7 +57,7 @@ struct SearchablePicker<Value: Hashable>: View {
 
     var body: some View {
         if SearchableChoice.usesMenu(count: options.count) {
-            Picker(title, selection: $selection) {
+            Picker(LocalizedStringKey(title), selection: $selection) {
                 if !options.contains(selection) {
                     Text(placeholder).tag(selection)
                 }
@@ -76,12 +77,13 @@ struct SearchablePicker<Value: Hashable>: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .help(Text(title))
-            .accessibilityLabel(Text(title))
+            .help(Text(LocalizedStringKey(title)))
+            .accessibilityLabel(Text(LocalizedStringKey(title)))
             .accessibilityValue(current)
             .accessibilityIdentifier(isOpen ? PointableID.popUpOpen : PointableID.popUp)
+            .uiPresented(title, .popover, isPresented: $isOpen)
             .popover(isPresented: $isOpen, arrowEdge: .bottom) {
-                SearchablePickerPanel(title: title, selection: $selection, options: options, label: label) {
+                SearchablePickerPanel(title: LocalizedStringKey(title), selection: $selection, options: options, label: label) {
                     isOpen = false
                 }
             }

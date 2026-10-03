@@ -61,6 +61,7 @@ struct CanfarImagesView: View {
         }
         .task { if model.totalCatalogueCount == 0 { await model.reload() } }
         .onChange(of: model.addedImageIDs) { Task { await model.addedImagesChanged() } }
+        .uiPresented("Find in Registry", .sheet, isPresented: $showRegistrySearch)
         .sheet(isPresented: $showRegistrySearch) {
             if let registrySearch { RegistrySearchSheet(model: registrySearch) }
         }

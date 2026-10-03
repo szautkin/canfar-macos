@@ -118,6 +118,7 @@ struct SessionListView: View {
                 }
             }
         }
+        .uiPresented("Delete the Session?", .confirmation, isPresented: $showDeleteConfirmation)
         .confirmationDialog(
             "Delete Session",
             isPresented: $showDeleteConfirmation,
@@ -135,9 +136,11 @@ struct SessionListView: View {
         } message: { session in
             Text("Are you sure you want to delete '\(session.sessionName)'? This action cannot be undone.")
         }
+        .uiPresented("Session Action", .sheet, isPresented: $showActionSheet)
         .sheet(isPresented: $showActionSheet) {
             actionFeedbackSheet
         }
+        .uiPresented("Session Events", .sheet, isPresented: $showEventsSheet)
         .sheet(isPresented: $showEventsSheet) {
             SessionEventsSheet(
                 title: eventsTitle,

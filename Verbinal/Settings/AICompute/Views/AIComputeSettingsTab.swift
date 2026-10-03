@@ -59,6 +59,7 @@ struct AIComputeSettingsTab: View {
         }
         .formStyle(.grouped)
         .onAppear { hydrateFromService() }
+        .uiPresented("Reset AI Remote Compute Settings?", .alert, isPresented: $resetConfirmShown)
         .alert("Reset AI Remote Compute settings?", isPresented: $resetConfirmShown) {
             Button("Reset", role: .destructive) { resetAll() }
             Button("Cancel", role: .cancel) {}

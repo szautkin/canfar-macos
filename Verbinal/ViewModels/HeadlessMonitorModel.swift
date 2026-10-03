@@ -44,6 +44,10 @@ final class HeadlessMonitorModel: CadencedPoller {
     /// "0 running · 0 pending · 1 done · 1 failed".
     var statusSummary: String { statusCounts.map(\.text).joined(separator: " · ") }
 
+    /// The Batch Jobs sheet is showing: one owner, so an assistant opens it
+    /// by its name as the card's button does (plan 30 T).
+    var detailPresented = false
+
     var isLoading = false
     var isPolling = false
     var pollCountdown = 0

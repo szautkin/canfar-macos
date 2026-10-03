@@ -47,6 +47,7 @@ struct CubeRenderControlsView: View {
         // No fixed width — the host HSplitView bounds the panel
         // (min 240 / ideal 270 / max 340), matching the FITS sidebar.
         #if os(macOS)
+        .uiPresented("Export Cube Figure", .sheet, isPresented: $showExport)
         .sheet(isPresented: $showExport) {
             CubeExportView(model: model, marks: model.markTarget.map { marks?.marks(on: $0) ?? [] } ?? [])
         }

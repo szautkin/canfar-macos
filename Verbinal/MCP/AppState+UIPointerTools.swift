@@ -80,6 +80,33 @@ extension AppState {
         let presenter = uiHintPresenter
         await presenter.ready()
         let before = Set(presenter.snapshot().elements.map(\.id))
+        // A sheet, popover, confirmation or alert: closed by its name, or the
+        // front one, as Esc would; opened by its name when it needs nothing
+        // chosen first (plan 30 T).
+        let presentations = UIPresentations.shared
+        if !open, let shown = presentations.shown(named: args.target) {
+            presentations.close(shown)
+            agentsService.activityStore.append(.live(kind: "close_ui", summary: "Closed \(shown.name)",
+                                                     origin: .external(clientID: "close_ui")))
+            return .init(done: true, target: args.target, id: "presented:\(shown.name)", kind: shown.kind.rawValue)
+        }
+        if open, let openable = presentations.openable(named: args.target) {
+            if presentations.shown(named: openable.name) != nil {
+                return .init(done: true, target: args.target, id: "presented:\(openable.name)", kind: "presentation",
+                             message: "\(openable.name) was already open")
+            }
+            if let screen = openable.screen, let mode = AppMode(rawValue: screen), currentMode != mode {
+                navigateTo(mode)
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+            openable.open()
+            try? await Task.sleep(for: .milliseconds(600))
+            let inside = presenter.snapshot().elements.filter { !before.contains($0.id) }
+            agentsService.activityStore.append(.live(kind: "open_ui", summary: "Opened \(openable.name)",
+                                                     origin: .external(clientID: "open_ui")))
+            return .init(done: true, target: args.target, id: "presented:\(openable.name)", kind: "presentation",
+                         inside: inside.map(UITargetView.init))
+        }
         if let panel = UIPanel.named(args.target) {
             let was = isShown(panel)
             setShown(panel, open)

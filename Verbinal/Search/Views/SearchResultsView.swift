@@ -92,6 +92,7 @@ struct SearchResultsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onChange(of: selectedResult?.id, initial: true) { _, open in resultsModel.openDetailRowID = open }
+        .uiPresented("Observation Detail", .sheet, item: $selectedResult)
         .sheet(item: $selectedResult) { result in
             ObservationDetailViewer(
                 model: ObservationDetailModel(
@@ -104,6 +105,7 @@ struct SearchResultsView: View {
             )
             .iosSheetChrome([.medium, .large])
         }
+        .uiPresented("Export Failed", .alert, isPresented: $showExportError)
         .alert("Export failed", isPresented: $showExportError, presenting: exportErrorMessage) { _ in
             Button("OK", role: .cancel) { exportErrorMessage = nil }
         } message: { msg in
@@ -247,6 +249,7 @@ struct SearchResultsView: View {
         }
         .buttonStyle(.borderless)
         .help(Text("Choose visible columns"))
+        .uiPresented("Columns", .popover, isPresented: $showColumnsPicker)
         .popover(isPresented: $showColumnsPicker, arrowEdge: .top) {
             ColumnsPickerPopover(model: resultsModel)
         }

@@ -40,7 +40,9 @@ struct DashboardView: View {
                 .padding(20)
             }
         }
+        .uiPresented("Launch Session", .sheet, isPresented: Bindable(appState).launchFormPresented)
         .sheet(isPresented: Bindable(appState).launchFormPresented) { launchFormSheet }
+        .uiPresented("Image Content Discovery", .sheet, isPresented: Bindable(appState).showImageDiscoverySheet)
         .sheet(isPresented: Bindable(appState).showImageDiscoverySheet, onDismiss: {
             if openLaunchFormAfterDiscovery {
                 openLaunchFormAfterDiscovery = false

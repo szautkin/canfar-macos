@@ -172,6 +172,7 @@ struct DownloadedFilesView: View {
         }
         .searchable(text: Bindable(model).filterText, prompt: "Filter downloads")
         #if os(macOS)
+        .uiPresented("Export Research", .sheet, isPresented: $showExportDialog)
         .sheet(isPresented: $showExportDialog) {
             ExportDialogView(
                 availableModules: buildAvailableModules(),

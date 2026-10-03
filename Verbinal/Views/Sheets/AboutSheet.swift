@@ -105,6 +105,7 @@ struct AboutSheet: View {
         }
         .padding(32)
         .sheetFrame(width: 400)
+        .uiPresented("Terms of Use", .sheet, isPresented: $showTerms)
         .sheet(isPresented: $showTerms) {
             LegalDocumentSheet()
         }
