@@ -478,14 +478,22 @@ struct ProbeCubeSpectrumTool: JSONReadTool {
               "minimum": 0,
               "description": "0-based spatial pixel row (0…ny-1)."
             },
-            "firstChannel": { "type": "integer", "minimum": 0, "description": "First channel returned (0-based, inclusive). Default 0." },
-            "lastChannel": { "type": "integer", "minimum": 0, "description": "Last channel returned (0-based, inclusive). Default nz-1." },
-            "bin": { "type": "integer", "minimum": 1, "description": "Channels averaged into each value. Default 1." }
+            \#(ProbeCubeSpectrumTool.rangeProperties(binDefault: "1"))
           },
           "additionalProperties": false
         }
         """#
     )
+
+    /// The channel range and bin, as the spectrum and the channel profile
+    /// take them (plan 30 P).
+    static func rangeProperties(binDefault: String) -> String {
+        #"""
+        "firstChannel": { "type": "integer", "minimum": 0, "description": "First channel returned (0-based, inclusive). Default 0." },
+        "lastChannel": { "type": "integer", "minimum": 0, "description": "Last channel returned (0-based, inclusive). Default nz-1." },
+        "bin": { "type": "integer", "minimum": 1, "description": "Channels averaged into each value. Default \#(binDefault)." }
+        """#
+    }
 
     /// Reads the spectrum at (x, y). The closure caps the spectrum at
     /// 8192 values and sets `truncated` accordingly. Throws
@@ -543,18 +551,35 @@ struct ShowCubeSpectrumTool: AITool {
 }
 
 struct GetCubeChannelProfileTool: JSONReadTool {
-    typealias Args = EmptyArgs
+    struct Args: Decodable, Sendable {
+        var firstChannel: Int?
+        var lastChannel: Int?
+        var bin: Int?
+    }
     struct Output: Encodable, Sendable {
+        /// Total channels in the cube (nz), whatever was returned.
         let channelCount: Int
+        let firstChannel: Int
+        let lastChannel: Int
+        let bin: Int
+        /// The values' unit: the cube's BUNIT; nil when it has none.
+        let unit: String?
+        let spectralAxis: ProbeCubeSpectrumTool.Output.SpectralAxis?
+        /// Each value's place on the spectral axis — `means[i]` is at `axis[i]`.
+        let axis: [Double]?
+        /// The mean flux of each bin's channels; null where every channel was blanked.
         let means: [Double?]
-        let spectralAxis: [String?]
+        let blankedChannels: [Int]
+        let truncated: Bool
     }
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_cube_channel_profile",
-        description: "Return mean flux per Cube Viewer channel and formatted spectral-axis values. Null means a blanked channel.",
-        schema: #"{"type":"object","properties":{},"additionalProperties":false}"#)
-    let profile: @Sendable () async throws -> Output
-    func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output { try await profile() }
+        description: "Return the Cube Viewer cube's mean flux per channel — each channel's mean over the whole image — with its unit and each value's place on the spectral axis (`axis`, in `spectralAxis.unit`). `firstChannel`/`lastChannel` (0-based, inclusive) and `bin` work as probe_cube_spectrum's; by default it is binned to at most \(CubeSpectrumSlice.profilePoints) values (`bin` says how many channels each holds) — pass bin: 1 for every channel. Null means a blanked bin.",
+        schema: #"""
+        {"type":"object","properties":{\#(ProbeCubeSpectrumTool.rangeProperties(binDefault: "enough for at most \(CubeSpectrumSlice.profilePoints) values"))},"additionalProperties":false}
+        """#)
+    let profile: @Sendable (Args) async throws -> Output
+    func handle(_ args: Args, context: AIToolContext) async throws -> Output { try await profile(args) }
 }
 
 struct SetCubeTransferTool: AITool {

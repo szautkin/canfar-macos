@@ -239,16 +239,30 @@ extension AppState {
     }
 
     func makeGetCubeChannelProfileTool() -> GetCubeChannelProfileTool {
-        GetCubeChannelProfileTool(profile: { [weak self] in
+        GetCubeChannelProfileTool(profile: { [weak self] args in
             guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
             return try await MainActor.run {
                 let cube = self.cubeViewer
                 guard cube.hasData else { throw ToolFailureReason.targetNotResolved("No cube is open in the Cube Viewer") }
-                let means = cube.channelProfile ?? []
+                guard let means = cube.channelProfile, !means.isEmpty else {
+                    throw ToolFailureReason.targetNotResolved("This cube has no channel profile")
+                }
+                let spectral = cube.wcs?.spectral
+                // The spectrum's binning, by default to at most `profilePoints` values (plan 30 P).
+                let bin = args.bin ?? CubeSpectrumSlice.bin(toAtMost: CubeSpectrumSlice.profilePoints, count: means.count,
+                                                            first: args.firstChannel, last: args.lastChannel)
+                let slice: CubeSpectrumSlice
+                switch CubeSpectrumSlice.make(means, first: args.firstChannel, last: args.lastChannel, bin: bin,
+                                              axisValue: spectral.map { axis in { axis.value(atChannel: $0) } }) {
+                case .success(let made): slice = made
+                case .failure(let problem): throw ToolFailureReason.invalidArgument(problem.message)
+                }
+                let unit = cube.bunit.trimmingCharacters(in: .whitespaces)
                 return GetCubeChannelProfileTool.Output(
-                    channelCount: cube.nz,
-                    means: means.map { $0.isFinite ? Double($0) : nil },
-                    spectralAxis: (0..<cube.nz).map { cube.wcs?.spectral.format(channel: $0).primary })
+                    channelCount: cube.nz, firstChannel: slice.first, lastChannel: slice.last, bin: slice.bin,
+                    unit: unit.isEmpty ? nil : unit,
+                    spectralAxis: spectral.map { .init(type: $0.ctype, unit: $0.cunit) },
+                    axis: slice.axis, means: slice.values, blankedChannels: slice.blanked, truncated: slice.truncated)
             }
         })
     }

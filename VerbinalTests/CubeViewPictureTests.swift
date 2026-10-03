@@ -113,4 +113,38 @@ final class CubeViewPictureTests: XCTestCase {
         XCTAssertEqual(model.bunit, "Jy")
         XCTAssertEqual(axis.ctype, "FREQ")
     }
+
+    /// Plan 30 P: the channel profile takes a range and a bin as the
+    /// spectrum does, and by default comes binned to at most 500 values.
+    func testTheChannelProfileIsBinnedLikeTheSpectrum() async throws {
+        XCTAssertEqual(CubeSpectrumSlice.bin(toAtMost: 500, count: 3610, first: nil, last: nil), 8, "3,610 channels as 452 values")
+        XCTAssertEqual(CubeSpectrumSlice.bin(toAtMost: 500, count: 3610, first: 100, last: 199), 1)
+
+        let state = AppState()
+        cubeURL = try FITSTestFixtures.writeCube()
+        await state.cubeViewer.open(url: cubeURL)
+        XCTAssertTrue(state.cubeViewer.hasData)
+        let nz = state.cubeViewer.nz
+        let context = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget())
+        func profile(_ json: String) async throws -> [String: Any] {
+            guard case .data(let data) = await state.makeGetCubeChannelProfileTool().invoke(arguments: Data(json.utf8), context: context) else {
+                XCTFail(json)
+                return [:]
+            }
+            return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        }
+        let whole = try await profile("{}")
+        XCTAssertEqual(whole["bin"] as? Int, 1, "a short cube is not binned")
+        XCTAssertEqual((whole["means"] as? [Any])?.count, nz)
+        XCTAssertEqual((whole["axis"] as? [Any])?.count, nz)
+        XCTAssertEqual(whole["unit"] as? String, "Jy")
+
+        let part = try await profile(#"{"firstChannel":1,"lastChannel":4,"bin":2}"#)
+        XCTAssertEqual((part["means"] as? [Any])?.count, 2)
+        XCTAssertEqual(part["firstChannel"] as? Int, 1)
+
+        let backwards = await state.makeGetCubeChannelProfileTool().invoke(arguments: Data(#"{"firstChannel":4,"lastChannel":1}"#.utf8),
+                                                                          context: context)
+        guard case .failed(.invalidArgument) = backwards else { return XCTFail("\(backwards)") }
+    }
 }

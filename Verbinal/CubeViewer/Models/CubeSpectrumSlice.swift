@@ -15,6 +15,16 @@ import Foundation
 struct CubeSpectrumSlice: Equatable {
     /// Values returned at most; a longer slice is cut short and says so.
     static let maxValues = 8192
+    /// A channel profile's values by default, at most: 3,610 channels came
+    /// back as 111 KB (plan 30 P).
+    static let profilePoints = 500
+
+    /// The bin that brings `first…last` (the whole spectrum by default) to
+    /// at most `points` values.
+    static func bin(toAtMost points: Int, count: Int, first: Int?, last: Int?) -> Int {
+        let channels = (last ?? count - 1) - (first ?? 0) + 1
+        return max(1, (channels + points - 1) / points)
+    }
 
     let first: Int
     let last: Int

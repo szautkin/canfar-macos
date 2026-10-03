@@ -831,6 +831,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **A cube's channel profile comes binned, in the range asked for.** An
+  assistant's `get_cube_channel_profile` returned every channel — 3,610
+  of them as 111 KB — with no unit. It now takes a channel range and a
+  bin, as the spectrum does, comes binned to at most 500 values unless
+  asked otherwise, and says its unit and where each value lies on the
+  spectral axis.
 - **You decide what an assistant may do without asking, kind by kind.**
   Settings ▸ AI Agent lists every kind of change an assistant can make,
   each **Allowed** (it applies at once, with its reason in the session
