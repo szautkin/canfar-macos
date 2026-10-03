@@ -63,11 +63,30 @@ final class LocalFileNodeTests: XCTestCase {
 @MainActor
 final class FileBrowserModelTests: XCTestCase {
 
+    /// The person's own Downloads — in the sandbox, FileManager's is the
+    /// container's link to it, which would not list (plan 30 F).
     func testInitDefaultsToDownloads() {
         let model = FileBrowserModel()
-        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
-        XCTAssertEqual(model.rootURL, downloads)
-        XCTAssertEqual(model.currentURL, downloads)
+        XCTAssertEqual(model.rootURL, LocalFolderAccessStore.userFacingDownloadsRoot)
+        XCTAssertEqual(model.currentURL, LocalFolderAccessStore.userFacingDownloadsRoot)
+    }
+
+    /// The QA pass: "Couldn't load this folder: The file "Downloads" couldn't
+    /// be opened" — a link to a folder, listed as itself.
+    func testALinkToAFolderLists() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fb-link-\(UUID().uuidString)", isDirectory: true)
+        let real = dir.appendingPathComponent("real", isDirectory: true)
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data("x".utf8).write(to: real.appendingPathComponent("sample.fits"))
+        let link = dir.appendingPathComponent("Downloads")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+
+        let model = FileBrowserModel()
+        model.currentURL = link
+        model.loadDirectory()
+        XCTAssertNil(model.loadError)
+        XCTAssertEqual(model.nodes.map(\.name), ["sample.fits"])
     }
 
     func testCanGoUpAtRoot() {

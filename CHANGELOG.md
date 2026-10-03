@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **The file browser opens your Downloads folder.** It showed "Couldn't
+  load this folder: The file "Downloads" couldn't be opened": in the
+  sandbox, the folder it started from is a link to your Downloads, and it
+  listed the link instead of the folder. It now starts at your own
+  Downloads and lists whatever folder a link points to.
 - **A file from another part of an observation says where it is.** An
   observation's file list covers all its planes, but a download by name
   looked only in the plane asked for, and refused a file the list had

@@ -48,8 +48,10 @@ final class FileBrowserModel {
     init() {
         // Start in Downloads — the one user folder the sandbox grants by
         // default, so the browser opens to something readable instead of
-        // ~/Documents (which is denied until the user grants it).
-        let start = LocalFolderAccessStore.downloadsRoot
+        // ~/Documents (which is denied until the user grants it). The
+        // person's own, as `list_local_folder` lists it: in the sandbox,
+        // FileManager's is the container's link to it (plan 30 F).
+        let start = LocalFolderAccessStore.userFacingDownloadsRoot
         self.rootURL = start
         self.currentURL = start
     }
@@ -78,8 +80,10 @@ final class FileBrowserModel {
             return
         }
         do {
+            // The folder a link points to: listing the link itself fails, as
+            // "The file "Downloads" couldn't be opened" (plan 30 F).
             let contents = try FileManager.default.contentsOfDirectory(
-                at: currentURL,
+                at: currentURL.resolvingSymlinksInPath(),
                 includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey],
                 options: [.skipsHiddenFiles]
             )

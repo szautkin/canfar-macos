@@ -30,7 +30,7 @@
 | **B** | The Batch Jobs filter on every tab, always shown | done (this commit) |
 | **R** | Search radius, as a field | planned — decision 2 |
 | **D** | `download_observation` `file` from another plane of the observation | done (this commit) |
-| **F** | The file browser opens Downloads | planned — cause to confirm |
+| **F** | The file browser opens Downloads | done (this commit): cause confirmed — a symlink listed as itself |
 | **L** | No answer longer than 45 s; long work goes on, with progress | planned — decision 3 |
 | **C** | `capture_view` shows the hints | planned |
 | **P** | The channel profile in a range, binned | planned |
