@@ -29,7 +29,7 @@
 | **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | planned — decision 1 |
 | **B** | The Batch Jobs filter on every tab, always shown | planned — decision 5 |
 | **R** | Search radius, as a field | planned — decision 2 |
-| **D** | `download_observation` `file` from another plane of the observation | planned |
+| **D** | `download_observation` `file` from another plane of the observation | done (this commit) |
 | **F** | The file browser opens Downloads | planned — cause to confirm |
 | **L** | No answer longer than 45 s; long work goes on, with progress | planned — decision 3 |
 | **C** | `capture_view` shows the hints | planned |

@@ -37,6 +37,17 @@ struct PublisherID: Equatable, Sendable {
         productID = rest.count > 1 ? rest[1] : ""
     }
 
+    /// The publisher ID of another plane of the same observation: `text` with
+    /// its product in place of this one's (plan 30 D) — `…HST?of4302010/of4302010-CALIBRATED`
+    /// and `of4302010-PRODUCT` give `…HST?of4302010/of4302010-PRODUCT`.
+    static func sibling(of text: String, product: String) -> String? {
+        guard let id = PublisherID(text), !product.isEmpty else { return nil }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if id.productID.isEmpty { return trimmed + "/" + product }
+        guard trimmed.hasSuffix("/" + id.productID) else { return nil }
+        return String(trimmed.dropLast(id.productID.count)) + product
+    }
+
     /// Why `text` is not a publisher ID, the form one takes, and — for the
     /// slash form some tables print, `ivo://cadc.nrc.ca/CFHT/1525350` — the
     /// ID it most likely means.

@@ -65,6 +65,12 @@ actor DownloadService {
         let artifact = await planeArtifacts(publisherID: publisherID)
             .first { ($0.uri as NSString).lastPathComponent == file }
         guard let artifact, let url = endpoints.dataPubURL(forArtifactURI: artifact.uri) else {
+            // Another plane of the observation may hold it: get_data_links lists
+            // every plane's files. Said, with that plane's ID — never fetched
+            // into this one's record (plan 30 D).
+            if let sibling = await siblingHolding(file, of: publisherID) {
+                throw SearchError.networkError("\(file) is in \(sibling), not \(publisherID): download it from that publisher ID.")
+            }
             throw SearchError.networkError("\(publisherID) has no file named \(file) — get_data_links lists its files.")
         }
         return try await fetchToTemp(url: url, publisherID: publisherID, suggested: file)
@@ -161,6 +167,15 @@ actor DownloadService {
     /// The artifacts of the plane `publisherID` names — only that plane's:
     /// a MegaPipe tile's u-band ID must not fetch its g-band sibling. Every
     /// plane's when the ID names no product.
+    /// The publisher ID of the observation's other plane that holds `file`.
+    private func siblingHolding(_ file: String, of publisherID: String) async -> String? {
+        guard let observation = try? await caom2.fetch(publisherID: publisherID),
+              let plane = observation.planes.first(where: { plane in
+                  plane.artifacts.contains { ($0.uri as NSString).lastPathComponent == file }
+              }) else { return nil }
+        return PublisherID.sibling(of: publisherID, product: plane.productID).flatMap { $0 == publisherID ? nil : $0 }
+    }
+
     private func planeArtifacts(publisherID: String) async -> [CAOM2Observation.Artifact] {
         guard let observation = try? await caom2.fetch(publisherID: publisherID) else { return [] }
         guard let id = PublisherID(publisherID), !id.productID.isEmpty else {

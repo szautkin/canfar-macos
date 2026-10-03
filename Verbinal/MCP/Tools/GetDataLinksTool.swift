@@ -80,6 +80,10 @@ struct GetDataLinksTool: JSONReadTool {
         struct ArtifactOut: Encodable, Sendable {
             /// Canonical artefact URI (`cadc:CFHT/729989p.fits.fz`).
             let uri: String
+            /// The plane it belongs to, and that plane's publisher ID: what
+            /// `download_observation` takes to fetch it (plan 30 D).
+            let productID: String
+            let publisherID: String?
             /// `science`, `preview`, `auxiliary`, …
             let productType: String?
             let contentType: String?
@@ -98,7 +102,7 @@ struct GetDataLinksTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_data_links",
-        description: "Fetch thumbnail / preview / direct-download URLs for a CADC observation by publisher_id, plus the full CAOM-2 artefact inventory. **For a single file you can fetch directly from inside a Skaha container**, use `caom2Artifacts[i].downloadURL` — it's a ready-to-curl HTTPS URL on `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data/pub/<collection>/<file>`, no construction needed and no DataLink round-trip required for public collections. `files[]` is DataLink #this when available (sometimes empty for public-archive-only observations); `caom2Artifacts[]` is the full inventory (science + weight + preview + aux + provenance), always populated when CAOM-2 is reachable. Use `files[]` for whatever DataLink advertises, `caom2Artifacts[]` for direct-by-name fetches and to discover sibling products DataLink suppresses. `packageDownloadURL` always works as a tarball fallback. To keep one of these files in Research, pass its `filename` as `download_observation`'s `file`. Bounded by two independent 30-second watchdogs: a tool-level deadline around the whole call and a tighter deadline around the DataLink fetch specifically, so the rare DataLink-service hang the 2026-05 QA review documented surfaces as a typed timeout error rather than a multi-minute stall.",
+        description: "Fetch thumbnail / preview / direct-download URLs for a CADC observation by publisher_id, plus the full CAOM-2 artefact inventory. **For a single file you can fetch directly from inside a Skaha container**, use `caom2Artifacts[i].downloadURL` — it's a ready-to-curl HTTPS URL on `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data/pub/<collection>/<file>`, no construction needed and no DataLink round-trip required for public collections. `files[]` is DataLink #this when available (sometimes empty for public-archive-only observations); `caom2Artifacts[]` is the full inventory (science + weight + preview + aux + provenance), always populated when CAOM-2 is reachable. Use `files[]` for whatever DataLink advertises, `caom2Artifacts[]` for direct-by-name fetches and to discover sibling products DataLink suppresses. `packageDownloadURL` always works as a tarball fallback. `caom2Artifacts[]` covers every plane of the observation: each file says its plane (`productID`) and that plane's `publisherID`. To keep one in Research, pass its `filename` as `download_observation`'s `file`, with the `publisherID` it gives. Bounded by two independent 30-second watchdogs: a tool-level deadline around the whole call and a tighter deadline around the DataLink fetch specifically, so the rare DataLink-service hang the 2026-05 QA review documented surfaces as a typed timeout error rather than a multi-minute stall.",
         schema: #"""
         {
           "type": "object",
@@ -119,7 +123,7 @@ struct GetDataLinksTool: JSONReadTool {
         thumbnails: [URL],
         previews: [URL],
         files: [(url: URL, contentType: String, filename: String, isUncompressedFITS: Bool)],
-        artifacts: [(uri: String, productType: String?, contentType: String?, contentLength: Int64?, filename: String, downloadURL: URL?)],
+        artifacts: [(uri: String, productID: String, publisherID: String?, productType: String?, contentType: String?, contentLength: Int64?, filename: String, downloadURL: URL?)],
         packageDownloadURL: URL?,
         faults: [String]
     )
@@ -150,6 +154,8 @@ struct GetDataLinksTool: JSONReadTool {
         let artifacts = r.artifacts.map {
             Output.ArtifactOut(
                 uri: $0.uri,
+                productID: $0.productID,
+                publisherID: $0.publisherID,
                 productType: $0.productType,
                 contentType: $0.contentType,
                 contentLength: $0.contentLength,

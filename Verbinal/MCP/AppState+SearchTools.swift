@@ -230,7 +230,7 @@ extension AppState {
             // `CAOM2Service` (5-min LRU) makes the extra fetch
             // free on the second call. Failure-to-fetch is
             // tolerated: agents still get the DataLink URLs.
-            var artifacts: [(uri: String, productType: String?, contentType: String?,
+            var artifacts: [(uri: String, productID: String, publisherID: String?, productType: String?, contentType: String?,
                              contentLength: Int64?, filename: String, downloadURL: URL?)] = []
             let endpoints = self.endpoints
             if let obs = try? await caom2.fetch(publisherID: id) {
@@ -239,6 +239,8 @@ extension AppState {
                         let filename = (a.uri as NSString).lastPathComponent
                         artifacts.append((
                             uri: a.uri,
+                            productID: plane.productID,
+                            publisherID: PublisherID.sibling(of: id, product: plane.productID),
                             productType: a.productType,
                             contentType: a.contentType,
                             contentLength: a.contentLength,

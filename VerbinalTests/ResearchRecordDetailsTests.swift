@@ -98,6 +98,17 @@ final class ResearchRecordDetailsTests: XCTestCase {
         }
     }
 
+    /// Plan 30 D: another plane of the same observation, by its product.
+    func testASiblingPlanesPublisherID() {
+        XCTAssertEqual(PublisherID.sibling(of: uBand, product: "MegaPipe.016.263.G.MP9401"), gBand)
+        XCTAssertEqual(PublisherID.sibling(of: "ivo://cadc.nrc.ca/HST?of4302010", product: "of4302010-PRODUCT"),
+                       "ivo://cadc.nrc.ca/HST?of4302010/of4302010-PRODUCT")
+        XCTAssertEqual(PublisherID.sibling(of: "caom:HST/of4302010/of4302010-CALIBRATED", product: "of4302010-PRODUCT"),
+                       "caom:HST/of4302010/of4302010-PRODUCT")
+        XCTAssertNil(PublisherID.sibling(of: "not an id", product: "x"))
+        XCTAssertNil(PublisherID.sibling(of: uBand, product: ""))
+    }
+
     // MARK: - M11: one of the plane's files, by name; only the plane's
 
     private func service(serving files: @escaping @Sendable (URL) -> Data?) throws -> DownloadService {
@@ -129,7 +140,8 @@ final class ResearchRecordDetailsTests: XCTestCase {
             _ = try await downloads.downloadToTemp(publisherID: uBand, file: "MegaPipe.016.263.G.MP9401.fits")
             XCTFail("a sibling plane's file is not this plane's")
         } catch {
-            XCTAssertTrue(error.localizedDescription.contains("get_data_links"), error.localizedDescription)
+            // Plan 30 D: it says which plane has it, by that plane's ID.
+            XCTAssertTrue(error.localizedDescription.contains("is in \(gBand)"), error.localizedDescription)
         }
 
         let plan = try await DownloadObservationTool().plan(.init(publisher_id: uBand, file: " \(weight) "), context: ctx)

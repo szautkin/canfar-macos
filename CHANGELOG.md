@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A file from another part of an observation says where it is.** An
+  observation's file list covers all its planes, but a download by name
+  looked only in the plane asked for, and refused a file the list had
+  just offered. Each file now says its plane and that plane's publisher
+  ID, and a download from the wrong plane is refused with the right one.
 - **A batch job CANFAR has dropped reads "gone", not "pending".** An
   assistant reading the logs or events of a job CANFAR no longer lists
   was told it was still pending, and would have polled it for ever. It
