@@ -27,7 +27,7 @@
 | **S** | Silent no-ops and loose schemas | done — S1–S5 (this commit) |
 | **J** | Jobs CANFAR has dropped read as "gone", not "pending" | done — J1, J2 (this commit) |
 | **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | planned — decision 1 |
-| **B** | The Batch Jobs filter on every tab, always shown | planned — decision 5 |
+| **B** | The Batch Jobs filter on every tab, always shown | done (this commit) |
 | **R** | Search radius, as a field | planned — decision 2 |
 | **D** | `download_observation` `file` from another plane of the observation | done (this commit) |
 | **F** | The file browser opens Downloads | planned — cause to confirm |

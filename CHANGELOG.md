@@ -47,7 +47,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
 - **Batch Jobs keeps up with thousands of jobs.** With ten thousand
   jobs, opening the list took two seconds and every check froze it again.
   It now shows the newest 500 at a time, with **Show More** for the next
-  and a filter by name, image or id that finds any job; a check that
+  and a filter by name, image or id — on every tab, History included,
+  where it finds why a job failed too — that finds any job; a check that
   finds nothing new changes nothing on screen. When many jobs end
   between two checks, one notification says how many finished and how
   many failed, instead of one each. History takes each finished job once

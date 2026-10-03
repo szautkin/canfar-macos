@@ -161,6 +161,41 @@ final class BatchJobsAtScaleTests: XCTestCase {
         XCTAssertFalse(touched, "the same jobs, the same counts: nothing set")
     }
 
+    /// Plan 30 B: the filter is there with no jobs at all — the QA pass, on
+    /// empty tabs, found none.
+    func testTheFilterIsThereWithNoJobs() async throws {
+        try await AXReadable.require()
+        let model = HeadlessMonitorModel(
+            headlessService: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())),
+            history: JobHistoryStore(persistence: nil))
+        let window = NSWindow(contentRect: NSRect(x: 220, y: 220, width: 700, height: 500),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: HeadlessJobsDetailSheet(model: model).frame(width: 700, height: 500)
+            .uiWindowPlace(.main))
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        try await Task.sleep(for: .milliseconds(400))
+        let source = AXElementSource(screenName: { _, _, _ in "portal" })
+        await source.ready()
+        XCTAssertNotNil(source.snapshot().elements.first { $0.kind == .textField && $0.name == "Filter jobs by name, image or id" })
+    }
+
+    /// Plan 30 B: History is filtered too — by a job's name, image, id, or
+    /// why it failed.
+    func testHistoryIsFilteredToo() {
+        func record(_ id: String, _ name: String, reason: String? = nil) -> JobRecord {
+            JobRecord(id: id, name: name, image: "images.canfar.net/skaha/astroml:24.07", origin: .user,
+                      outcome: reason == nil ? .succeeded : .failed, status: reason == nil ? "Succeeded" : "Failed",
+                      startedAt: "", finishedAt: Date(), failureReason: reason, targetImage: nil)
+        }
+        let kept = [record("a1", "qa-echo"), record("b2", "fit-sky", reason: "ErrImagePull"), record("c3", "qa-run")]
+        XCTAssertEqual(JobHistoryList.matching(kept, filter: "").map(\.id), ["a1", "b2", "c3"])
+        XCTAssertEqual(JobHistoryList.matching(kept, filter: "qa").map(\.id), ["a1", "c3"])
+        XCTAssertEqual(JobHistoryList.matching(kept, filter: "imagepull").map(\.id), ["b2"], "why it failed")
+        XCTAssertTrue(JobHistoryList.matching(kept, filter: "nothing").isEmpty)
+    }
+
     /// The sheet opens on the first tab with anything in it: History when
     /// CANFAR lists no job now.
     func testTheSheetOpensWhereThereIsSomething() {

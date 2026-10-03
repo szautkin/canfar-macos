@@ -121,10 +121,12 @@ struct HeadlessJobsDetailSheet: View {
 
             Divider()
 
+            // The filter, on every tab, always (the person, plan 30 B).
+            filterField
             // Job list: the tab's jobs the filter leaves, newest first, a page at a time.
             let inTab = filteredJobs
             if selectedTab == "history", let history = model.history {
-                JobHistoryList(history: history)
+                JobHistoryList(history: history, filter: filter)
             } else if inTab.isEmpty {
                 Spacer()
                 Text(emptyStateText)
@@ -132,7 +134,6 @@ struct HeadlessJobsDetailSheet: View {
                 Spacer()
             } else {
                 let matching = Self.matching(inTab, filter: filter)
-                filterField
                 if matching.isEmpty {
                     Spacer()
                     Text("No jobs match")
@@ -438,10 +439,18 @@ struct HeadlessJobsDetailSheet: View {
 
 /// The jobs CANFAR no longer lists — the only place a failure from an hour
 /// ago still has its reason.
-private struct JobHistoryList: View {
+struct JobHistoryList: View {
     var history: JobHistoryStore
+    /// The sheet's filter: words of a job's name, image, id or why it failed.
+    var filter = ""
+
+    /// The kept jobs the filter leaves, in the history's order.
+    static func matching(_ jobs: [JobRecord], filter: String) -> [JobRecord] {
+        SearchableChoice.matches(jobs, query: filter) { "\($0.name) \($0.image) \($0.id) \($0.failureReason ?? "")" }
+    }
 
     var body: some View {
+        let shown = Self.matching(history.jobs, filter: filter)
         if history.jobs.isEmpty {
             Spacer()
             Text("Nothing has finished yet. Jobs appear here as they end, and stay after CANFAR removes them.")
@@ -458,35 +467,42 @@ private struct JobHistoryList: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
-            List(history.jobs) { job in
-                let failed = job.outcome == .failed
-                // The reason when there is one; otherwise what it was.
-                let detail = failed && job.failureReason?.isEmpty == false
-                    ? "\(job.summary) — \(job.failureReason ?? "")" : job.summary
-                let finished = SharedFormatters.userMediumDateShortTime.string(from: job.finishedAt)
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: failed ? "xmark.octagon.fill" : "checkmark.circle.fill")
-                        .foregroundStyle(failed ? .red : .green)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(verbatim: job.name).fontWeight(.medium)
-                        Text(verbatim: detail)
+            if shown.isEmpty {
+                Spacer()
+                Text("No jobs match")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            } else {
+                List(shown) { job in
+                    let failed = job.outcome == .failed
+                    // The reason when there is one; otherwise what it was.
+                    let detail = failed && job.failureReason?.isEmpty == false
+                        ? "\(job.summary) — \(job.failureReason ?? "")" : job.summary
+                    let finished = SharedFormatters.userMediumDateShortTime.string(from: job.finishedAt)
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: failed ? "xmark.octagon.fill" : "checkmark.circle.fill")
+                            .foregroundStyle(failed ? .red : .green)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(verbatim: job.name).fontWeight(.medium)
+                            Text(verbatim: detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer()
+                        Text(verbatim: finished)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Spacer()
-                    Text(verbatim: finished)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    // Read as one entry, its name first — "qa-run, Failed" — then
+                    // what it was and when it ended.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text(verbatim: job.name + ", ") + Text(failed ? "Failed" : "Succeeded"))
+                    .accessibilityValue(Text(verbatim: "\(detail), \(finished)"))
                 }
-                // Read as one entry, its name first — "qa-run, Failed" — then
-                // what it was and when it ended.
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text(verbatim: job.name + ", ") + Text(failed ? "Failed" : "Succeeded"))
-                .accessibilityValue(Text(verbatim: "\(detail), \(finished)"))
+                .listStyle(.inset)
             }
-            .listStyle(.inset)
         }
     }
 }
