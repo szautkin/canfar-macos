@@ -25,6 +25,10 @@ struct ShowLaunchFormTool: JSONReadTool {
     struct Args: Decodable, Sendable {
         var tab: String?
         var image: String?
+        var resources: String?
+        var cores: Int?
+        var ram: Int?
+        var gpus: Int?
         var close: Bool?
     }
 
@@ -32,13 +36,17 @@ struct ShowLaunchFormTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "show_launch_form",
-        description: "Open the Portal's launch form — the sheet Launch Session on Active Sessions opens — so the person sees it and point_at_ui can point at its controls (portal.launch …). `tab` shows standard, advanced or headless; `image` chooses an image by its id, as the images card's \"Use this image\" does: one from the catalogue on the Standard (or Headless) tab, any other as the Advanced tab's own image. `close` closes it. It launches nothing — launch_session does, or the person. The person must be signed in.",
+        description: "Open the Portal's launch form — the sheet Launch Session on Active Sessions opens — so the person sees it and point_at_ui can point at its controls (portal.launch …). `tab` shows standard, advanced or headless; `image` chooses an image by its id, as the images card's \"Use this image\" does: one from the catalogue on the Standard (or Headless) tab, any other as the Advanced tab's own image. `resources` sets Flexible or Fixed, and `cores`, `ram` (GB) and `gpus` the fixed size — one given makes it Fixed — from the sizes the form offers. `close` closes it. It launches nothing — launch_session does, or the person. The person must be signed in.",
         schema: #"""
         {
           "type": "object",
           "properties": {
             "tab": { "type": "string", "enum": ["standard", "advanced", "headless"], "description": "Which tab to show." },
             "image": { "type": "string", "description": "An image id to choose, e.g. images.canfar.net/skaha/astroml:24.07." },
+            "resources": { "type": "string", "enum": ["flexible", "fixed"], "description": "Flexible, or a fixed size." },
+            "cores": { "type": "integer", "minimum": 1, "description": "Fixed CPU cores, one the form offers." },
+            "ram": { "type": "integer", "minimum": 1, "description": "Fixed RAM in GB, one the form offers." },
+            "gpus": { "type": "integer", "minimum": 0, "description": "Fixed GPUs, one the form offers." },
             "close": { "type": "boolean", "description": "Close the form instead (default false)." }
           },
           "additionalProperties": false

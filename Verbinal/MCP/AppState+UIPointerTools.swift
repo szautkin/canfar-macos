@@ -44,15 +44,15 @@ extension AppState {
         let presenter = uiHintPresenter
         await presenter.ready()
         let snapshot = presenter.snapshot()
-        switch UITargetScope.match(args.target, in: snapshot, preferring: [.row, .item]) {
+        switch UITargetScope.match(args.target, in: snapshot, preferring: Set(UIElementKind.allCases.filter(\.selects))) {
         case .missing(let candidates, _):
             return .init(selected: false, target: args.target,
                          message: snapshot.problem ?? "no single entry is called \"\(args.target)\"",
                          candidates: candidates.map(UITargetView.init))
         case .found(let element):
-            guard element.kind == .row || element.kind == .item else {
+            guard element.kind.selects else {
                 return .init(selected: false, target: args.target, id: element.id,
-                             message: "\(element.id) is a \(element.kind.rawValue), not an entry of a list: select_ui selects entries, never presses")
+                             message: "\(element.id) is a \(element.kind.rawValue): select_ui selects a list's entry, a tab or a segment, never presses a button")
             }
             let (now, selected) = await presenter.select(element)
             if selected {

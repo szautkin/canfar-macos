@@ -59,6 +59,8 @@ struct AuthenticatedRootView: View {
         )
         let plm = PlatformLoadModel(platformService: appState.platformService)
         let sm = StorageModel(storageService: appState.storageService)
+        // The sizes it offers, for show_launch_form to check (plan 30 T5).
+        appState.sessionLaunchModelForTools = launch
 
         // Wire session counter callbacks
         launch.sessionCounter = { [weak slm] type in

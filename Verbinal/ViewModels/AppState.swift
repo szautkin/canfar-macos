@@ -216,8 +216,13 @@ final class AppState {
         /// An image ID: from the catalogue on the Standard tab, else the
         /// Advanced tab's own image.
         var image: String?
+        /// Flexible or fixed, and the fixed size (plan 30 T5).
+        var resources = LaunchResources()
     }
     var launchFormRequest: LaunchFormRequest?
+    /// The launch form's model, which the Portal's view owns: what an
+    /// assistant's show_launch_form checks the sizes against.
+    @ObservationIgnored weak var sessionLaunchModelForTools: SessionLaunchModel?
 
     // Addon system
     let addonRegistry = AddonRegistry()

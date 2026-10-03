@@ -242,6 +242,73 @@ final class UIHintPresenterTests: XCTestCase {
         XCTAssertFalse(chosen.pressed, "select never presses a button")
     }
 
+    @Observable
+    @MainActor
+    final class Shown {
+        var tab = "Running"
+        var resources = "Flexible"
+        var pressed = false
+    }
+
+    /// select_ui selects a tab drawn as buttons and a segment, as a click
+    /// does — view state — and still never presses a button (plan 30 T5).
+    func testSelectingATabAndASegmentAndNeverAButton() async throws {
+        try await AXReadable.require()
+        let shown = Shown()
+        struct Tabs: View {
+            @Bindable var shown: Shown
+            var body: some View {
+                VStack(alignment: .leading) {
+                    HStack {
+                        ForEach(["Running", "History"], id: \.self) { tab in
+                            Button(tab) { shown.tab = tab }.buttonStyle(.plain).pointableTab(selected: shown.tab == tab)
+                        }
+                    }
+                    Picker("Resources", selection: $shown.resources) {
+                        Text("Flexible").tag("Flexible")
+                        Text("Fixed").tag("Fixed")
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                    Button("Launch") { shown.pressed = true }
+                }
+                .padding().frame(width: 500, height: 300, alignment: .topLeading).uiWindowPlace(.main)
+            }
+        }
+        let window = NSWindow(contentRect: NSRect(x: 240, y: 240, width: 500, height: 300),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: Tabs(shown: shown))
+        window.orderFrontRegardless()
+        defer { window.close() }
+        let presenter = UIHintPresenter(store: UIHintStore(),
+                                        source: AXElementSource(screenName: { _, _, _ in "tabs" }),
+                                        screenSignature: { "tabs" })
+        await presenter.ready()
+        try await Task.sleep(for: .milliseconds(300))
+        func element(_ name: String) throws -> UIElement {
+            try XCTUnwrap(presenter.snapshot().elements.first { $0.name == name }, name)
+        }
+
+        let history = try element("History")
+        XCTAssertEqual(history.kind, .tab)
+        let selectedTab = await presenter.select(history).selected
+        XCTAssertTrue(selectedTab)
+        XCTAssertEqual(shown.tab, "History")
+
+        let fixed = try element("Fixed")
+        XCTAssertTrue(fixed.kind.selects, "\(fixed.kind)")
+        let selectedSegment = await presenter.select(fixed).selected
+        XCTAssertTrue(selectedSegment)
+        XCTAssertEqual(shown.resources, "Fixed")
+
+        let launch = try element("Launch")
+        XCTAssertFalse(launch.kind.selects)
+        let pressed = await presenter.select(launch).selected
+        XCTAssertFalse(pressed)
+        XCTAssertFalse(shown.pressed, "select never presses a button")
+    }
+
     /// open_ui's work: a folded section opens — and what was behind it
     /// appears — and closes again; a menu opens without the call waiting on
     /// the person, and closes (plan 27 C).

@@ -208,8 +208,12 @@ extension AppState {
                 let image = trimmed?.isEmpty == false ? trimmed : nil
                 let tab = args.tab.flatMap { ShowLaunchFormTool.tabs[$0.lowercased()] }
                 let inCatalogue = image.map { id in self.canfarImagesModel?.allImages.contains { $0.id == id } ?? false }
+                let resources = LaunchResources(type: args.resources?.lowercased(), cores: args.cores, ram: args.ram, gpus: args.gpus)
+                if let refusal = self.sessionLaunchModelForTools?.refusal(resources) {
+                    throw ToolFailureReason.invalidArgument(refusal)
+                }
                 self.navigateTo(.portal)
-                self.launchFormRequest = LaunchFormRequest(tab: tab, image: image)
+                self.launchFormRequest = LaunchFormRequest(tab: tab, image: image, resources: resources)
                 self.agentsService.activityStore.append(.live(
                     kind: "show_launch_form", summary: "Opened the launch form", origin: .external(clientID: "show_launch_form")))
                 let shownTab = tab ?? (inCatalogue == false ? .advanced : self.launchFormTab)

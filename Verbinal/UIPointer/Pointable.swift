@@ -47,6 +47,13 @@ extension View {
         }
     }
 
+    /// A tab drawn as a button: a tab to the pointing tools, which select_ui
+    /// selects, and selected to VoiceOver when it is (plan 30 T5).
+    func pointableTab(selected: Bool) -> some View {
+        accessibilityIdentifier(PointableID.tab)
+            .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
     /// An image's stable id: a FITS or cube canvas, which hints keep off so
     /// its marks stay in sight.
     func pointableCanvas(_ id: String, label: String) -> some View {

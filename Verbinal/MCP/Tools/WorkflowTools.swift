@@ -48,7 +48,7 @@ struct SetWorkflowStepTool: JSONWriteTool {
 struct UseWorkflowTool: JSONWriteTool {
     static let verbClass: VerbClass = .semanticWrite
     struct Args: Decodable, Sendable { let id: String; let name: String? }; struct Payload: Codable, Sendable { let id: String; let name: String? }
-    let definition = AIToolDefinition.withStaticSchema(name: "use_workflow", description: "Copy a template or workflow into a new LOCAL working copy that can track progress — a new copy every time, numbered when its title is taken (\"… (2)\"); the answer's `id` is the copy's.", schema: #"{"type":"object","required":["id"],"properties":{"id":{"type":"string"},"name":{"type":"string"}},"additionalProperties":false}"#)
+    let definition = AIToolDefinition.withStaticSchema(name: "use_workflow", description: "Copy a template or workflow into a new LOCAL working copy that can track progress — a new copy every time, titled `name` or the original's title, numbered when that title is taken (\"… (2)\"); the answer's `id` is the copy's.", schema: #"{"type":"object","required":["id"],"properties":{"id":{"type":"string"},"name":{"type":"string","minLength":1,"description":"The copy's title (default: the original's)."}},"additionalProperties":false}"#)
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan { try ProposalPlan.encoding(kind: "use_workflow", summary: "Use workflow \(args.id)", payload: Payload(id: args.id, name: args.name)) }
 }
 struct DeleteWorkflowTool: JSONWriteTool {

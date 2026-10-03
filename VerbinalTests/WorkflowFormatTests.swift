@@ -62,6 +62,19 @@ final class WorkflowFormatTests: XCTestCase {
         let extra = try JSONDecoder().decode(AutoAppliedAck.Extra.self, from: try await applier.applyReturningResult(proposal))
         let third = try XCTUnwrap(extra.id)
         XCTAssertEqual(store.get(third)?.document.title, "CFHT imaging recon (3)")
+
+        // Plan 30 T6: a copy titled as asked, numbered when that title is taken too.
+        func named(_ name: String) async throws -> String? {
+            let proposal = PendingProposal(toolName: "use_workflow", kind: "use_workflow", summary: "Use",
+                                           payload: try JSONEncoder().encode(UseWorkflowTool.Payload(id: "builtin:cfht", name: name)),
+                                           origin: .external(clientID: "t"))
+            let id = try JSONDecoder().decode(AutoAppliedAck.Extra.self, from: try await applier.applyReturningResult(proposal)).id
+            return id.flatMap { store.get($0)?.document.title }
+        }
+        let firstNamed = try await named("M31 night")
+        let secondNamed = try await named("M31 night")
+        XCTAssertEqual(firstNamed, "M31 night")
+        XCTAssertEqual(secondNamed, "M31 night (2)")
     }
 
     @MainActor func testStoreUpdateTextAndDeleteLocal() throws {

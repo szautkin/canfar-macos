@@ -204,10 +204,12 @@ enum UIElementRules {
         // with an action reads as a button; so is a group with a name of its own.
         let marked = node.identifier == PointableID.item
         let itemKind: UIElementKind? = marked || (node.role == "AXGroup" && clean(node.label) != nil) ? .item : nil
-        // A button that opens a list as a pop-up does is one.
+        // A button that opens a list as a pop-up does is one; one drawn as a
+        // tab is a tab.
         let popUp = node.identifier == PointableID.popUp || node.identifier == PointableID.popUpOpen
+        let tab = node.identifier == PointableID.tab
         let kind: UIElementKind? = tagged.map { $0.canvas ? .canvas : (roleKind ?? .area) }
-            ?? (marked ? .item : popUp ? .popUp : roleKind ?? itemKind)
+            ?? (marked ? .item : popUp ? .popUp : tab ? .tab : roleKind ?? itemKind)
 
         // Scrolled away inside a scroll area: kept apart, to bring into view.
         let scrolledAway = !shows && !clips.isEmpty

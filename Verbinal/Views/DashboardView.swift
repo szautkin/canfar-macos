@@ -194,6 +194,7 @@ struct DashboardView: View {
             }
         }
         if let tab = request.tab { appState.launchFormTab = tab }
+        sessionLaunchModel.apply(request.resources)
         appState.launchFormPresented = true
     }
 

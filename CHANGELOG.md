@@ -465,6 +465,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **An assistant selects a tab or a segment, and fills the launch form's
+  resources.** `select_ui` chose only a list's entries, so Flexible /
+  Fixed and the Batch Jobs tabs were out of an assistant's reach. It now
+  selects a tab, a segment or a radio button, as your click would, and
+  still never presses a button that acts. `show_launch_form` also takes
+  Flexible or Fixed and a fixed size of cores, RAM and GPUs, from the
+  sizes the form offers, and launches nothing. `use_workflow`'s `name`
+  titles the copy.
 - **Search has a Radius field.** A cone search looked within 1′ of the
   target unless you knew to type a radius after it ("M101 0.2deg"). The
   Spatial section now has a **Radius** field — degrees, or 5' or

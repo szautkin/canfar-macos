@@ -213,6 +213,13 @@ final class AXElementSource: UIElementSource {
             guard AXUIElementCopyActionNames(target, &names) == .success,
                   (names as? [String])?.contains(kAXPressAction) == true else { return false }
             return AXUIElementPerformAction(target, kAXPressAction as CFString) == .success
+        case .tab, .segment, .radio:
+            // Selecting one is what the person's click does: view state, the
+            // others of its group let go (plan 30 T5).
+            guard AXUIElementPerformAction(target, kAXPressAction as CFString) == .success else { return false }
+            try? await Task.sleep(for: .milliseconds(150))
+            if let value = Self.value(target, kAXValueAttribute) as? NSNumber { return value.intValue == 1 }
+            return (Self.value(target, kAXSelectedAttribute) as? Bool) ?? true
         default:
             return false
         }

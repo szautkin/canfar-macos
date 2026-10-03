@@ -63,6 +63,10 @@ final class PortalLayoutTests: XCTestCase {
 
     // MARK: - show_launch_form
 
+    private struct NoLaunch: SessionLaunching {
+        func launchSession(_ params: SessionLaunchParams) async throws -> String? { nil }
+    }
+
     private func ctx() -> AIToolContext {
         AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 9))
     }
@@ -81,5 +85,38 @@ final class PortalLayoutTests: XCTestCase {
         }
         let badTab = await state.makeShowLaunchFormTool().invoke(arguments: Data(#"{"tab":"gpu"}"#.utf8), context: ctx())
         guard case .failed(.invalidArgument) = badTab else { return XCTFail("\(badTab)") }
+    }
+
+    /// Plan 30 T5: the form's resources come with it — a size given is a
+    /// fixed one, and only a size the form offers.
+    func testTheLaunchFormTakesTheSizesItOffers() async throws {
+        let state = AppState(marks: MarkStore(persistence: nil))
+        state.auth.apply(username: "qa-person", userInfo: nil)
+        let model = SessionLaunchModel(sessionService: NoLaunch(),
+                                       imageService: ImageService(network: NetworkClient(session: .shared)),
+                                       recentLaunchStore: RecentLaunchStore())
+        model.coreOptions = [1, 2, 4]
+        model.ramOptions = [4, 8, 16]
+        model.gpuOptions = [0, 1]
+        state.sessionLaunchModelForTools = model
+
+        for refused in [#"{"cores":3}"#, #"{"ram":32}"#, #"{"gpus":2}"#, #"{"resources":"flexible","cores":2}"#] {
+            let answer = await state.makeShowLaunchFormTool().invoke(arguments: Data(refused.utf8), context: ctx())
+            guard case .failed(.invalidArgument) = answer else { return XCTFail("\(refused): \(answer)") }
+            XCTAssertNil(state.launchFormRequest, refused)
+        }
+
+        let shown = await state.makeShowLaunchFormTool().invoke(arguments: Data(#"{"cores":4,"ram":16}"#.utf8), context: ctx())
+        guard case .data = shown else { return XCTFail("\(shown)") }
+        let request = try XCTUnwrap(state.launchFormRequest)
+        XCTAssertEqual(request.resources, LaunchResources(cores: 4, ram: 16))
+        model.apply(request.resources)
+        XCTAssertEqual(model.resourceType, "fixed")
+        XCTAssertEqual(model.cores, 4)
+        XCTAssertEqual(model.ram, 16)
+
+        model.apply(LaunchResources(type: "flexible"))
+        XCTAssertEqual(model.resourceType, "flexible")
+        XCTAssertEqual(model.cores, 4, "Flexible keeps the steppers as they were")
     }
 }

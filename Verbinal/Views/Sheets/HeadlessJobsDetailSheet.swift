@@ -113,6 +113,7 @@ struct HeadlessJobsDetailSheet: View {
                         .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .pointableTab(selected: selectedTab == tab.id)
                 }
                 Spacer()
             }

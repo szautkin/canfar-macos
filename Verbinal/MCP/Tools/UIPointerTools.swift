@@ -449,7 +449,7 @@ struct SelectUITool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "select_ui",
-        description: "Select an entry of a list — a file in Storage, a row of a list that selects (downloaded observations, images, runs) — as the person's click would, so the screen shows it chosen. Name it as point_at_ui does; one scrolled out of sight is brought into view first. It selects and nothing else: it never presses a button, deletes, loads or launches — those are their own tools, or the person's. A list whose entries do not select (recent launches, recent searches, saved queries: they act through their buttons) answers `selected: false`, saying so: point at the button instead. View state only; no proposal.",
+        description: "Select an entry of a list — a file in Storage, a row of a list that selects (downloaded observations, images, runs) — or a tab or a segment (the launch form's Flexible / Fixed, Batch Jobs' Running … History), as the person's click would, so the screen shows it chosen. Name it as point_at_ui does; one scrolled out of sight is brought into view first. It selects and nothing else: it never presses a button, deletes, loads or launches — those are their own tools, or the person's. A list whose entries do not select (recent launches, recent searches, saved queries: they act through their buttons) answers `selected: false`, saying so: point at the button instead. View state only; no proposal.",
         schema: #"""
         {
           "type": "object",

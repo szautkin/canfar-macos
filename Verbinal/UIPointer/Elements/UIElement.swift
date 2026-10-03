@@ -35,6 +35,15 @@ enum UIElementKind: String, Codable, Sendable, CaseIterable {
         default: false
         }
     }
+
+    /// What `select_ui` selects, as a click does: a list's entry, a tab, a
+    /// segment or a radio button — view state, never an action (plan 30 T5).
+    var selects: Bool {
+        switch self {
+        case .row, .item, .tab, .segment, .radio: true
+        default: false
+        }
+    }
 }
 
 /// A window, as its elements know it.
@@ -102,6 +111,8 @@ enum PointableID {
     /// A button that opens a list as a pop-up does (`SearchablePicker`): a
     /// pop-up, closed or open.
     static let popUp = "vb-popup"
+    /// A tab drawn as a button (`pointableTab`): a tab, which select_ui selects.
+    static let tab = "vb-tab"
     static let popUpOpen = "vb-popup-open"
 
     static func encode(_ id: String, canvas: Bool = false) -> String {
