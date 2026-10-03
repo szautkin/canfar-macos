@@ -220,6 +220,7 @@ extension AppState {
                     "points": .object(["width": .double(view.bounds.width), "height": .double(view.bounds.height)]),
                     "mode": .string(self.currentMode.key),
                     "drawnBy": .string(screen == nil ? "layers" : "screen"),
+                    "hints": .bool(screen != nil && !WindowCapture.hintPanels(over: window).isEmpty),
                 ])
             }
         }

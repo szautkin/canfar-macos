@@ -29,22 +29,45 @@ enum WindowCapture {
         window.attachedSheet.map(shown) ?? window
     }
 
-    /// `window` as the window server composites it, its longer side at most
-    /// `maxSide` pixels; nil when it has no picture of it (off screen).
+    /// The hint panels over `window`: what the person sees on it — rings,
+    /// bubbles, the dimming (plan 30 C).
+    static func hintPanels(over window: NSWindow) -> [NSWindow] {
+        (window.childWindows ?? []).filter {
+            $0.isVisible && PointableID.Window(identifier: $0.identifier?.rawValue) == .hints
+        }
+    }
+
+    /// `window` as the window server composites it, with the hints drawn
+    /// over it, its longer side at most `maxSide` pixels; nil when it has no
+    /// picture of it (off screen).
     static func composited(_ window: NSWindow, maxSide: Int) -> CGImage? {
-        guard window.isVisible, window.windowNumber > 0,
-              let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber),
-                                                  [.boundsIgnoreFraming, .bestResolution]),
-              image.width > 1, image.height > 1 else { return nil }
+        guard let image = picture(of: window) else { return nil }
+        let panels = hintPanels(over: window).compactMap { panel in picture(of: panel).map { (frame: panel.frame, image: $0) } }
         let scale = min(1, CGFloat(maxSide) / CGFloat(max(image.width, image.height)))
-        guard scale < 1 else { return image }
+        guard scale < 1 || !panels.isEmpty else { return image }
         let width = max(1, Int((CGFloat(image.width) * scale).rounded())), height = max(1, Int((CGFloat(image.height) * scale).rounded()))
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                       space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         context.interpolationQuality = .high
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        // Each hint panel where it lies over the window: screen points, bottom-up as the context is.
+        let perPoint = CGFloat(width) / window.frame.width
+        for panel in panels {
+            context.draw(panel.image, in: CGRect(x: (panel.frame.minX - window.frame.minX) * perPoint,
+                                                 y: (panel.frame.minY - window.frame.minY) * perPoint,
+                                                 width: panel.frame.width * perPoint, height: panel.frame.height * perPoint))
+        }
         return context.makeImage()
+    }
+
+    /// The window server's picture of one window; nil when it has none (off screen).
+    private static func picture(of window: NSWindow) -> CGImage? {
+        guard window.isVisible, window.windowNumber > 0,
+              let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber),
+                                                  [.boundsIgnoreFraming, .bestResolution]),
+              image.width > 1, image.height > 1 else { return nil }
+        return image
     }
 
     /// `view` drawn upright from its layers, its longer side at most `maxSide` pixels.
@@ -70,7 +93,7 @@ extension ViewerImageTool {
     static func window(picture: @escaping @Sendable (Int) async throws -> ViewerPicture) -> Self {
         Self(definition: AIToolDefinition.withStaticSchema(
             name: "capture_view",
-            description: "See Verbinal's window as the person sees it — whatever screen, sheet or Settings section is in front — as a picture, with a caption naming the window, its size and the mode. For checking what the app shows (a layout, a message, a state) rather than asking. The picture is the window as composited on screen (`drawnBy: \"screen\"`); for a window not on screen it is drawn from its layers (`drawnBy: \"layers\"`), where a material's text can be missing and a Metal-drawn view blank — get_fits_image and get_cube_image draw the viewers' images. Capped to stay under the client's response limit.",
+            description: "See Verbinal's window as the person sees it — whatever screen, sheet or Settings section is in front — as a picture, with a caption naming the window, its size and the mode. For checking what the app shows (a layout, a message, a state) rather than asking. The picture is the window as composited on screen (`drawnBy: \"screen\"`), with the hints shown over it (`hints: true`) — rings, bubbles and the dimming, as the person sees them; for a window not on screen it is drawn from its layers (`drawnBy: \"layers\"`), where a material's text can be missing and a Metal-drawn view blank — get_fits_image and get_cube_image draw the viewers' images. Capped to stay under the client's response limit.",
             schema: ViewerImageArgs.schema), picture: picture)
     }
 }

@@ -32,7 +32,7 @@
 | **D** | `download_observation` `file` from another plane of the observation | done (this commit) |
 | **F** | The file browser opens Downloads | done (this commit): cause confirmed — a symlink listed as itself |
 | **L** | No answer longer than 45 s; long work goes on, with progress | done (this commit) |
-| **C** | `capture_view` shows the hints | planned |
+| **C** | `capture_view` shows the hints | done (this commit): each hint panel's picture drawn over the window's. Its pixel test needs the screen unlocked: in handout 31 |
 | **P** | The channel profile in a range, binned | planned |
 | **K** | A compute run that never reports | planned — cause to confirm |
 | **G** | Workflow templates: `run_code` by default | planned — decision 4 |

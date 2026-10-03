@@ -12,6 +12,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **An assistant's picture of the window shows its hints.** `capture_view`
+  left out the rings and bubbles an assistant had put up, so it could not
+  check what you were shown. The picture now has them drawn over the
+  window, as you see them.
 - **An assistant gets an answer within 45 seconds, and slow work carries
   on.** An assistant's client can give up on a call after a minute, while
   some of Verbinal's waited two. Now every call answers within 45 seconds;
