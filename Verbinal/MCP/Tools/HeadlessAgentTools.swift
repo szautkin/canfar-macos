@@ -272,9 +272,11 @@ struct LaunchHeadlessJobTool: JSONWriteTool {
 
 struct LaunchHeadlessJobApplier: ProposalApplier, ResultReportingApplier {
     let kind = "launch_headless_job"
+    /// What a failed launch leaves to check: it may have been made all the same.
+    static let checkAdvice = "it may have been made all the same: list_headless_jobs shows whether it was, and applying it again looks first and launches nothing if it was"
     /// Launches through `HeadlessLaunches`, as the Batch Jobs form does, so
     /// the launch is on the activity bar as the assistant's (plan 19 T1).
-    let launch: @Sendable (HeadlessLaunchParams) async throws -> [String]
+    let launch: @Sendable (_ params: HeadlessLaunchParams, _ checkFirst: Bool) async throws -> HeadlessLaunches.Launched
     let recentLaunchStore: RecentLaunchStore
     let activity: AgentActivityStore
     /// Notes the jobs as the assistant's, so the history says so when they
@@ -375,9 +377,10 @@ struct LaunchHeadlessJobApplier: ProposalApplier, ResultReportingApplier {
             replicas: payload.replicas
         )
 
-        let launchedIDs: [String]
+        let launched: HeadlessLaunches.Launched
         do {
-            launchedIDs = try await launch(params)
+            // Tried again after it failed, it looks first (plan 30 W4).
+            launched = try await launch(params, ApplyAttempt.isRetry)
         } catch let failure as HeadlessLaunchError {
             // Persist what DID land so the user / agent can reason about
             // the partial state.
@@ -388,11 +391,15 @@ struct LaunchHeadlessJobApplier: ProposalApplier, ResultReportingApplier {
             }
             throw ProposalApplyError.backendError(failure.localizedDescription)
         } catch {
-            throw ProposalApplyError.backendError("headless launch failed: \(error.localizedDescription)")
+            throw ProposalApplyError.backendError("headless launch failed: \(error.localizedDescription) — \(Self.checkAdvice)")
         }
 
+        let launchedIDs = launched.ids
         await persist(ids: launchedIDs, payload: payload, proposal: proposal)
-        let extra = AutoAppliedAck.Extra(id: launchedIDs.first, succeeded: launchedIDs)
+        var extra = AutoAppliedAck.Extra(id: launchedIDs.first, succeeded: launchedIDs)
+        if launched.alreadyMade {
+            extra.note = "the last attempt failed, but CANFAR had made it all the same: \(launchedIDs.joined(separator: ", ")); nothing new was launched"
+        }
         return (try? JSONEncoder().encode(extra)) ?? Data()
     }
 

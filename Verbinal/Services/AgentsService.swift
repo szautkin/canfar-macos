@@ -81,6 +81,9 @@ final class AgentsService {
     var onApplied: (@MainActor (PendingProposal, Data?) -> Void)?
     /// Each proposal's kind as resolved when it was decided.
     private var resolvedKinds: [UUID: ChangeKind] = [:]
+    /// Proposals whose apply failed: applied again, each is a retry, and a
+    /// launch looks first for what the failed one may have made (plan 30 W4).
+    private var failedBefore: Set<UUID> = []
 
     /// A proposal's kind: as resolved when decided, else its tool's.
     func kind(of proposal: PendingProposal) -> ChangeKind {
@@ -293,6 +296,7 @@ final class AgentsService {
         applyingIDs.insert(id)
         defer { applyingIDs.remove(id) }
         let extra: Data?
+        let retry = failedBefore.contains(id)
         do {
             // The change is the assistant's, whoever approved it (plan 17 A1),
             // its cause is the proposal's — its why, its call and session, and
@@ -300,17 +304,20 @@ final class AgentsService {
             // every kind of change an assistant makes (plan 23 C).
             extra = try await Initiator.$current.withValue(.assistant) {
                 try await changes.applying(proposal, by: actor) {
-                    if let reporting = applier as? any ResultReportingApplier {
-                        return try await reporting.applyReturningResult(proposal)
+                    try await ApplyAttempt.$isRetry.withValue(retry) {
+                        if let reporting = applier as? any ResultReportingApplier {
+                            return try await reporting.applyReturningResult(proposal)
+                        }
+                        try await applier.apply(proposal)
+                        return nil
                     }
-                    try await applier.apply(proposal)
-                    return nil
                 }
             }
         } catch {
             // The reason stays on the proposal, for the strip and
             // get_proposal_state, however the apply was started (QA N7).
             let failure = error as? ProposalApplyError ?? .backendError("\(error)")
+            failedBefore.insert(id)
             _ = await proposals.markApplyFailed(id, reason: failure.message)
             await refreshPending()
             throw failure
@@ -320,6 +327,7 @@ final class AgentsService {
         // What it made is an assistant's; what it removed is gone (plan 30 A6).
         onApplied?(proposal, extra)
         resolvedKinds[id] = nil
+        failedBefore.remove(id)
         if actor != .person {
             if followAgentActivity,
                let target = Self.navigationTarget(forKind: proposal.kind),

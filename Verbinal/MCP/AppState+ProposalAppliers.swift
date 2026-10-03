@@ -57,9 +57,11 @@ extension AppState {
             activity: activity
         ))
         let sessionAppliers: [any ProposalApplier] = [
-            LaunchSessionApplier(service: sessionService,
-                                  recentLaunchStore: recentLaunchStore,
-                                  activity: activity),
+            LaunchSessionApplier(launch: { [sessionLaunches] params, checkFirst in
+                                     try await sessionLaunches.launch(params, checkFirst: checkFirst)
+                                 },
+                                 recentLaunchStore: recentLaunchStore,
+                                 activity: activity),
             DeleteSessionApplier(delete: { [sessionActions] id, app in try await sessionActions.delete(id: id, app: app) },
                                  activity: activity),
             DeleteSessionsBulkApplier(deleteAll: { [sessionActions] ids in await sessionActions.delete(ids: ids) },
@@ -86,7 +88,7 @@ extension AppState {
                 },
                 activity: activity),
             LaunchHeadlessJobApplier(
-                launch: { [headlessLaunches] params in try await headlessLaunches.launch(params) },
+                launch: { [headlessLaunches] params, checkFirst in try await headlessLaunches.launch(params, checkFirst: checkFirst) },
                 recentLaunchStore: recentLaunchStore,
                 activity: activity,
                 history: jobHistory,

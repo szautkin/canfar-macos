@@ -69,6 +69,16 @@
         }
       }
     },
+    "Already made: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Existe déjà : %@"
+          }
+        }
+      }
+    },
     "Always asks" : {
       "localizations" : {
         "fr" : {
@@ -305,6 +315,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Requêtes enregistrées, recherches récentes, protocoles, signets, entrées de la liste d’images, erreurs de sonde."
+          }
+        }
+      }
+    },
+    "Session %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session %@"
           }
         }
       }

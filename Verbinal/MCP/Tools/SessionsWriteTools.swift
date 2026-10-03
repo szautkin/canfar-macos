@@ -76,16 +76,21 @@ struct LaunchSessionTool: JSONWriteTool {
 
 struct LaunchSessionApplier: ResultReportingApplier {
     let kind = "launch_session"
-    let service: SessionService
+    /// Launches it on the activity bar; given `checkFirst`, finds the session
+    /// of its name the platform already lists instead (`SessionLaunches`).
+    let launch: @Sendable (_ params: SessionLaunchParams, _ checkFirst: Bool) async throws -> SessionLaunches.Launched
     let recentLaunchStore: RecentLaunchStore
     let activity: AgentActivityStore
+
+    /// What a failed launch leaves to check: it may have been made all the same.
+    static let checkAdvice = "it may have been made all the same: list_sessions shows whether it was, and applying it again looks first and launches nothing if it was"
 
     func apply(_ proposal: PendingProposal) async throws {
         _ = try await applyReturningResult(proposal)
     }
 
     /// Launches it, and answers the session's id: what the assistant made
-    /// (plan 30 A6).
+    /// (plan 30 A6). Tried again after it failed, it looks first (W4).
     func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(LaunchSessionTool.Payload.self, from: proposal.payload)
         let params = SessionLaunchParams(
@@ -93,20 +98,21 @@ struct LaunchSessionApplier: ResultReportingApplier {
             cores: payload.cores, ram: payload.ram, gpus: payload.gpus,
             cmd: payload.cmd, registryUsername: nil, registrySecret: nil
         )
-        let sessionID: String?
+        let checkFirst = ApplyAttempt.isRetry
+        let launched: SessionLaunches.Launched
         do {
             // 3-minute deadline. Skaha session-create is normally
             // < 30s but can stall under cluster pressure; bounded
             // wait ensures the applier emits a terminal event
             // either way.
-            let svc = service
-            sessionID = try await withApplierTimeout(seconds: 180, label: "launch_session") {
-                try await svc.launchSession(params)
+            let launch = launch
+            launched = try await withApplierTimeout(seconds: 180, label: "launch_session") {
+                try await launch(params, checkFirst)
             }
-        } catch let pa as ProposalApplyError {
-            throw pa
+        } catch let error as ProposalApplyError {
+            throw ProposalApplyError.backendError("\(error.message) — \(Self.checkAdvice)")
         } catch {
-            throw ProposalApplyError.backendError("launch failed: \(error.localizedDescription)")
+            throw ProposalApplyError.backendError("launch failed: \(error.localizedDescription) — \(Self.checkAdvice)")
         }
         // Stash a RecentLaunch entry so the user sees this agent
         // launch alongside their own recents (with the wand badge in
@@ -130,7 +136,10 @@ struct LaunchSessionApplier: ResultReportingApplier {
             recentLaunchStore.save(launch)
             activity.append(.applied(proposal: proposal, kind: kind))
         }
-        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(id: sessionID))) ?? Data()
+        let note = launched.alreadyMade
+            ? "the last attempt failed, but CANFAR had made it all the same: \(launched.id); nothing new was launched"
+            : nil
+        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(id: launched.id, note: note))) ?? Data()
     }
 }
 
@@ -190,6 +199,10 @@ struct DeleteSessionApplier: ProposalApplier {
         let payload = try JSONDecoder().decode(DeleteSessionTool.Payload.self, from: proposal.payload)
         do {
             try await delete(payload.id, payload.app)
+        } catch is NoSuchSession where ApplyAttempt.isRetry {
+            // Tried again after it failed, and gone: the first one took (plan
+            // 30 W4). A first delete of an id the platform does not list is
+            // still refused — a typo or a stale id (QA N20).
         } catch {
             throw ProposalApplyError.backendError("delete failed: \(error.localizedDescription)")
         }

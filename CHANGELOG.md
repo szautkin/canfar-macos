@@ -12,6 +12,15 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A launch is on the activity bar, and trying it again cannot start a
+  second one.** An assistant's session launch, and a relaunch from Recent
+  Launches, now show on the activity bar like a launch from the form.
+  CANFAR can take a launch and not answer; applying it again now first
+  looks for the session or batch job the failed attempt may have made,
+  and launches nothing if it is there. Deleting again a session that is
+  already gone counts as done. A change that ran out of time says it may
+  have gone through, instead of pointing at an activity feed with no
+  record of it.
 - **Batch Jobs opens with no jobs too.** With nothing listed on CANFAR,
   the Batch Jobs card could not be opened, so its History — the jobs
   CANFAR no longer lists, and why they failed — was out of reach, and

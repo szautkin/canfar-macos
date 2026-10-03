@@ -54,7 +54,7 @@ final class JobHistoryTests: XCTestCase {
         let launches = HeadlessLaunches(service: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())),
                                         tasks: registry)
         let applier = LaunchHeadlessJobApplier(
-            launch: { params in try await launches.launch(params) },
+            launch: { params, checkFirst in try await launches.launch(params, checkFirst: checkFirst) },
             recentLaunchStore: RecentLaunchStore(fileName: "test-launches-\(UUID().uuidString).json"),
             activity: AgentActivityStore(fileName: "test-activity-\(UUID().uuidString).json"),
             history: history, vospace: nil, username: nil)

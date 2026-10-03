@@ -20,6 +20,7 @@ final class SessionLaunchModel {
     private var imagesByTypeAndProject: [String: [String: [ParsedImage]]] = [:]
     private let userImages: UserImageStore?
     private let tasks: TaskRegistry
+    private let launches: SessionLaunches
     private var cachedImages: [RawImage] = []
 
     /// Shared accessor for the parsed image catalogue, keyed by session
@@ -118,6 +119,7 @@ final class SessionLaunchModel {
         self.userImages = userImages
         self.username = username
         self.tasks = tasks
+        self.launches = SessionLaunches(service: sessionService, tasks: tasks)
         recomputeDefaultFlags()
     }
 
@@ -687,44 +689,34 @@ final class SessionLaunchModel {
             params.registrySecret = repositorySecret
         }
 
-        let task = tasks.begin(.launch, String(localized: "Launch \(selectedType) \(sessionName)"))
         do {
-            let sessionId = try await task.within { try await sessionService.launchSession(params) }
-            if let sessionId {
-                task.succeed()
-                launchSuccess = true
-                launchStatus = String(localized: "Session launched! ID: \(sessionId)")
+            // On the activity bar, as every launch is (SessionLaunches).
+            let sessionId = try await launches.launch(params).id
+            launchSuccess = true
+            launchStatus = String(localized: "Session launched! ID: \(sessionId)")
 
-                // Hold pending entry — saved when user closes the progress sheet
-                pendingRecentLaunch = RecentLaunch(
-                    name: sessionName,
-                    type: selectedType,
-                    image: imageId,
-                    imageLabel: selectedImage?.label ?? customImageUrl,
-                    project: selectedProject,
-                    resourceType: resourceType,
-                    cores: params.cores,
-                    ram: params.ram,
-                    gpus: params.gpus,
-                    launchedAt: Date()
-                )
+            // Hold pending entry — saved when user closes the progress sheet
+            pendingRecentLaunch = RecentLaunch(
+                name: sessionName,
+                type: selectedType,
+                image: imageId,
+                imageLabel: selectedImage?.label ?? customImageUrl,
+                project: selectedProject,
+                resourceType: resourceType,
+                cores: params.cores,
+                ram: params.ram,
+                gpus: params.gpus,
+                launchedAt: Date()
+            )
 
-                // Reset form
-                generateSessionName()
-            } else {
-                // Non-throwing call but no session ID — a server/contract
-                // failure. Report it rather than claiming success and storing a
-                // meaningless "unknown" RecentLaunch.
-                hasError = true
-                errorMessage = String(localized: "The server accepted the launch but returned no session ID.")
-                launchStatus = String(localized: "Launch failed")
-                task.fail(errorMessage)
-            }
+            // Reset form
+            generateSessionName()
         } catch {
+            // A launch with no session ID is a failure too (LaunchedWithoutID):
+            // no "unknown" RecentLaunch is stored.
             hasError = true
             errorMessage = error.localizedDescription
             launchStatus = String(localized: "Launch failed")
-            task.fail(errorMessage)
         }
 
         isLaunching = false
@@ -750,7 +742,7 @@ final class SessionLaunchModel {
         }
 
         do {
-            _ = try await sessionService.launchSession(params)
+            _ = try await launches.launch(params)
             launchSuccess = true
             launchStatus = String(localized: "Session relaunched!")
 

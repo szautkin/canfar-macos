@@ -634,6 +634,8 @@ final class AppState {
     let researchModel = ResearchModel()
     /// Launching batch jobs for an assistant, by the Batch Jobs form's rule (plan 19 T1).
     @ObservationIgnored private(set) lazy var headlessLaunches = HeadlessLaunches(service: headlessService)
+    /// An assistant's session launches, on the activity bar (plan 30 W1).
+    @ObservationIgnored private(set) lazy var sessionLaunches = SessionLaunches(service: sessionService, listing: sessionService)
     /// Deleting and renewing sessions for an assistant, by the Portal's rule (plan 17 A1).
     @ObservationIgnored private(set) lazy var sessionActions = SessionActions(service: sessionService)
     /// The one archive client for Research, its answers kept in the app's

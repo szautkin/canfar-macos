@@ -125,11 +125,20 @@ final class DecisionLogTests: XCTestCase {
 
     func testADeadlineWithNothingWaitingSaysSo() async {
         let heard = Heard()
-        _ = try? await RequestTrace().run {
-            try await withApplierTimeout(seconds: 0.1, label: "export_thing", decisions: heard.log) {
-                try await Task.sleep(for: .seconds(5))
+        var said = ""
+        do {
+            try await RequestTrace().run {
+                try await withApplierTimeout(seconds: 0.1, label: "export_thing", decisions: heard.log) {
+                    try await Task.sleep(for: .seconds(5))
+                }
             }
-        }
+        } catch let error as ProposalApplyError {
+            said = error.message
+        } catch {}
         XCTAssertTrue(heard.decisions.first?.sentence.contains("no request to CADC or CANFAR was waiting") == true)
+        // Plan 30 W2: it may have gone through — never "check the activity
+        // feed", which may hold no record of it.
+        XCTAssertTrue(said.contains("it may have gone through all the same: check before trying again"), said)
+        XCTAssertFalse(said.contains("activity feed"), said)
     }
 }

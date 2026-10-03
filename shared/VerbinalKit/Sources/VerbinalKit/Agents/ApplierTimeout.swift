@@ -45,7 +45,7 @@ public func withApplierTimeout<T: Sendable>(
             // What was still in flight, said and recorded (plan 23 A).
             let detail = decisions.deadlineReached(label, after: seconds)
             throw ProposalApplyError.backendError(
-                "\(label) exceeded \(Int(seconds))s deadline — \(detail.isEmpty ? "operation may still be running app-side" : detail); check the in-app activity feed before retrying"
+                "\(label) exceeded \(Int(seconds))s deadline — \(detail.isEmpty ? "operation may still be running app-side" : detail); it may have gone through all the same: check before trying again"
             )
         }
         defer { group.cancelAll() }
