@@ -22,18 +22,22 @@ Time: ~3 h
 - [ ] **Bulk-download the series** — Pull every usable epoch into the research archive in one go.
       Tool: download_observations_bulk
       View: research
-- [ ] **Create the photometry notebook** — Seed an aperture-photometry notebook for the first
-      downloaded observation (template: photometry), then generalize it over all epochs.
-      Tool: create_analysis_notebook
-      View: notebook
+- [ ] **Write the photometry code** — Aperture photometry of the first downloaded observation
+      in Python (astropy, photutils) with run_code on Remote Compute, then generalize it over all
+      epochs. With the Notebook add-on, seed a notebook instead (template: photometry).
+      Tool: run_code
+      Add-on: create_analysis_notebook
+      View: remoteCompute
 - [ ] **Measure per-epoch photometry** — Aperture photometry of the target and 5–10 comparison
       stars in every epoch; build differential magnitudes against the comparison ensemble.
-      Tool: run_all_cells
-      View: notebook
+      Tool: run_code
+      Add-on: run_all_cells
+      View: remoteCompute
 - [ ] **Search for variability** — Plot light curves; compute scatter vs magnitude to find
       outliers; run a Lomb–Scargle periodogram on candidates.
-      View: notebook
-- [ ] **Publish the products** — Save light-curve tables and the notebook to VOSpace so the
+      Tool: run_code
+      View: remoteCompute
+- [ ] **Publish the products** — Save light-curve tables and the code to VOSpace so the
       analysis travels with the data.
       Tool: upload_file_to_vospace, create_vospace_folder
       View: storage

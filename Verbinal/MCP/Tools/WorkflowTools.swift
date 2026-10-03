@@ -3,8 +3,21 @@ import VerbinalKit
 
 struct WorkflowSummaryWire: Encodable, Sendable { let id, title, description, source: String; let tags: [String]; let doneSteps, totalSteps: Int
     init(_ item: WorkflowInfo) { id = item.id; title = item.document.title; description = item.document.description; source = item.source.rawValue; tags = item.document.tags; doneSteps = item.document.doneCount; totalSteps = item.document.steps.count } }
-struct WorkflowWire: Encodable, Sendable { let id, title, description, source, rawText: String; let tags: [String]; let doneSteps, totalSteps: Int; let steps: [WorkflowStep]
-    init(_ item: WorkflowInfo) { id = item.id; title = item.document.title; description = item.document.description; source = item.source.rawValue; rawText = item.rawText; tags = item.document.tags; doneSteps = item.document.doneCount; totalSteps = item.document.steps.count; steps = item.document.steps } }
+struct WorkflowWire: Encodable, Sendable { let id, title, description, source, rawText: String; let tags: [String]; let doneSteps, totalSteps: Int; let steps: [StepWire]
+    init(_ item: WorkflowInfo, installedAddons: Set<String>) { id = item.id; title = item.document.title; description = item.document.description; source = item.source.rawValue; rawText = item.rawText; tags = item.document.tags; doneSteps = item.document.doneCount; totalSteps = item.document.steps.count; steps = item.document.steps.map { StepWire(step: $0, use: $0.toolsHere(installed: installedAddons)) } }
+
+    /// A step, and the tools that apply to it on this Mac (plan 30 G).
+    struct StepWire: Encodable, Sendable {
+        let step: WorkflowStep
+        let use: [String]
+        private enum Key: String, CodingKey { case use }
+        func encode(to encoder: any Encoder) throws {
+            try step.encode(to: encoder)
+            var container = encoder.container(keyedBy: Key.self)
+            try container.encode(use, forKey: .use)
+        }
+    }
+}
 
 struct ListWorkflowsTool: JSONReadTool {
     typealias Args = EmptyArgs
@@ -15,9 +28,9 @@ struct ListWorkflowsTool: JSONReadTool {
 }
 struct GetWorkflowTool: JSONReadTool {
     struct Args: Decodable, Sendable { let id: String }
-    let definition = AIToolDefinition.withStaticSchema(name: "get_workflow", description: "Read one workflow's structured steps, progress, and exact raw .workflow.md text.", schema: #"{"type":"object","required":["id"],"properties":{"id":{"type":"string"}},"additionalProperties":false}"#)
-    let get: @Sendable (String) async -> WorkflowInfo?
-    func handle(_ args: Args, context: AIToolContext) async throws -> WorkflowWire { guard let item = await get(args.id) else { throw ToolFailureReason.invalidArgument("no workflow '\(args.id)' — call list_workflows for ids") }; return WorkflowWire(item) }
+    let definition = AIToolDefinition.withStaticSchema(name: "get_workflow", description: "Read one workflow's structured steps, progress, and exact raw .workflow.md text. Each step's `use` is the tools that apply on this Mac: an add-on's (`addonTools`, such as the Notebook add-on's create_analysis_notebook) where that add-on is installed, otherwise the step's own `tools` — run_code on Remote Compute for analysis.", schema: #"{"type":"object","required":["id"],"properties":{"id":{"type":"string"}},"additionalProperties":false}"#)
+    let get: @Sendable (String) async -> WorkflowWire?
+    func handle(_ args: Args, context: AIToolContext) async throws -> WorkflowWire { guard let wire = await get(args.id) else { throw ToolFailureReason.invalidArgument("no workflow '\(args.id)' — call list_workflows for ids") }; return wire }
 }
 
 struct SaveWorkflowTool: JSONWriteTool {

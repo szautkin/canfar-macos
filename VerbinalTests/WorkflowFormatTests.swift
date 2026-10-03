@@ -164,4 +164,43 @@ final class WorkflowFormatTests: XCTestCase {
             context: ctx)
         XCTAssertEqual(plan.kind, "save_workflow")
     }
+
+    /// Plan 30 G: a step's add-on tools apply where the add-on is installed;
+    /// elsewhere its own tools — run_code — do, and get_workflow says which.
+    func testAnAddOnsToolsApplyOnlyWhereItIsInstalled() throws {
+        let document = WorkflowFormat.parse("# T\n- [ ] **Measure** — Photometry.\n      Tool: run_code\n      Add-on: create_analysis_notebook, run_all_cells\n      View: remoteCompute\n")
+        let step = try XCTUnwrap(document.steps.first)
+        XCTAssertEqual(step.tools, ["run_code"])
+        XCTAssertEqual(step.addonTools, ["create_analysis_notebook", "run_all_cells"])
+        XCTAssertEqual(step.body, "Photometry.", "the add-on line is not the step's text")
+        XCTAssertEqual(step.toolsHere(installed: []), ["run_code"])
+        XCTAssertEqual(step.toolsHere(installed: [AddonTools.notebook]), ["create_analysis_notebook", "run_all_cells"])
+
+        let item = WorkflowInfo(id: "builtin:t", source: .builtIn, document: document, rawText: "")
+        let wire = try JSONSerialization.jsonObject(with: JSONEncoder().encode(WorkflowWire(item, installedAddons: []))) as? [String: Any]
+        let steps = try XCTUnwrap(wire?["steps"] as? [[String: Any]])
+        XCTAssertEqual(steps.first?["use"] as? [String], ["run_code"])
+        XCTAssertEqual(steps.first?["title"] as? String, "Measure", "the step's own fields, with `use`")
+    }
+
+    /// The guardrail: every tool a template names is Verbinal's own, or —
+    /// on an `Add-on:` line — one an add-on declares it brings.
+    @MainActor func testEveryTemplateNamesToolsThatExist() throws {
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Verbinal/Workflows/Resources/Workflows")
+        let templates = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasSuffix(WorkflowFormat.fileExtension) }
+        XCTAssertGreaterThan(templates.count, 5)
+        let known = AppState().aiGuideService.knownToolNames
+        XCTAssertGreaterThan(known.count, 150, "the tool table is there")
+        var unknown: [String] = []
+        for template in templates {
+            for step in WorkflowFormat.parse(try String(contentsOf: template, encoding: .utf8)).steps {
+                let name = "\(template.lastPathComponent) — \(step.title)"
+                unknown += step.tools.filter { !known.contains($0) }.map { "\(name): \($0)" }
+                unknown += step.addonTools.filter { !AddonTools.all.contains($0) }.map { "\(name): add-on \($0)" }
+            }
+        }
+        XCTAssertEqual(unknown, [])
+    }
 }

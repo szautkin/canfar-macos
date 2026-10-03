@@ -22,7 +22,9 @@ extension AppState {
     func makeGetWorkflowTool() -> GetWorkflowTool {
         GetWorkflowTool(get: { [weak self] id in
             guard let self else { return nil }
-            return await MainActor.run { self.workflowStore.get(id) }
+            return await MainActor.run {
+                self.workflowStore.get(id).map { WorkflowWire($0, installedAddons: Set(self.installedAddons.map(\.manifest.addonID))) }
+            }
         })
     }
 }

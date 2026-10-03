@@ -26,10 +26,12 @@ Time: ~2 h
       target class to demonstrate feasibility (source detectable, field uncrowded).
       Tool: download_observation
       View: research
-- [ ] **Make the feasibility figures** — Quick-look figures from the archival data in a notebook
-      (target visible, S/N estimate scales to your requested time).
-      Tool: create_analysis_notebook
-      View: notebook
+- [ ] **Make the feasibility figures** — Quick-look figures from the archival data (target
+      visible, S/N estimate scales to your requested time), in Python with run_code on Remote
+      Compute — or in a notebook, with the Notebook add-on.
+      Tool: run_code
+      Add-on: create_analysis_notebook
+      View: remoteCompute
 - [ ] **Write the gap-analysis summary** — Per-target notes rolled into a summary the co-Is can
       lift into the proposal text.
       Tool: update_observation_note, export_research_bundle

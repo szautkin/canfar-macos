@@ -837,6 +837,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **Workflow templates run their analysis with Remote Compute.** Four
+  templates (variable-star photometry, ESPaDOnS spectroscopy, JCMT cube
+  kinematics, proposal due diligence) sent an assistant to Notebook
+  add-on tools this Mac may not have. Their analysis steps now use
+  `run_code` on Remote Compute, with the add-on's tools as the
+  alternative, and `get_workflow` says which applies on this Mac.
 - **A cube's channel profile comes binned, in the range asked for.** An
   assistant's `get_cube_channel_profile` returned every channel — 3,610
   of them as 111 KB — with no unit. It now takes a channel range and a

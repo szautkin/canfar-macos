@@ -5,10 +5,18 @@ struct WorkflowStep: Codable, Sendable, Equatable, Identifiable {
     let title: String
     let body: String
     let tools: [String]
+    /// An add-on's tools for the step, used instead where it is installed (`AddonTools`).
+    var addonTools: [String] = []
     let view: String?
     let note: String?
     let done: Bool
     var id: Int { index }
+
+    /// The tools that apply on a Mac with `installed` add-ons: the add-on's
+    /// where it is there, else the step's own.
+    func toolsHere(installed: Set<String>) -> [String] {
+        AddonTools.available(addonTools, installed: installed) ? addonTools : tools
+    }
 }
 
 struct WorkflowDocument: Codable, Sendable, Equatable {
@@ -35,13 +43,16 @@ enum WorkflowFormat {
         var steps: [WorkflowStep] = []
         var stepTitle: String?
         var done = false
-        var body: [String] = [], tools: [String] = []
+        var body: [String] = [], tools: [String] = [], addonTools: [String] = []
         var view: String?, note: String?, inStep = false
+        func names(_ value: String) -> [String] {
+            value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        }
 
         func flush() {
             guard inStep else { return }
-            steps.append(WorkflowStep(index: steps.count, title: stepTitle?.trimmingCharacters(in: .whitespaces) .nilIfEmpty ?? "Step \(steps.count + 1)", body: body.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines), tools: tools, view: view, note: note, done: done))
-            stepTitle = nil; done = false; body.removeAll(); tools.removeAll(); view = nil; note = nil; inStep = false
+            steps.append(WorkflowStep(index: steps.count, title: stepTitle?.trimmingCharacters(in: .whitespaces) .nilIfEmpty ?? "Step \(steps.count + 1)", body: body.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines), tools: tools, addonTools: addonTools, view: view, note: note, done: done))
+            stepTitle = nil; done = false; body.removeAll(); tools.removeAll(); addonTools.removeAll(); view = nil; note = nil; inStep = false
         }
         for raw in lines {
             let line = raw.trimmingCharacters(in: .newlines)
@@ -57,7 +68,8 @@ enum WorkflowFormat {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.isEmpty { continue }
                 if trimmed.hasPrefix("#") { flush(); continue }
-                if let value = attachment(trimmed, keys: ["Tool", "Tools"]) { tools += value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+                if let value = attachment(trimmed, keys: ["Tool", "Tools"]) { tools += names(value) }
+                else if let value = attachment(trimmed, keys: ["Add-on", "Addon"]) { addonTools += names(value) }
                 else if let value = attachment(trimmed, keys: ["View"]) { view = value.trimmingCharacters(in: .whitespaces) }
                 else if let value = attachment(trimmed, keys: ["Note"]) { note = value.trimmingCharacters(in: .whitespaces) }
                 else { body.append(trimmed) }

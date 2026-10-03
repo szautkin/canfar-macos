@@ -22,16 +22,20 @@ Time: ~2 h
 - [ ] **Download the 1D products** — Calibrated, extracted spectra where available.
       Tool: download_observations_bulk
       View: research
-- [ ] **Normalize in a notebook** — Load each spectrum, fit and divide the continuum, and put all
-      epochs on a common wavelength grid.
-      Tool: create_analysis_notebook
-      View: notebook
+- [ ] **Normalize the spectra** — Load each spectrum, fit and divide the continuum, and put all
+      epochs on a common wavelength grid, in Python with run_code on Remote Compute — or in a
+      notebook, with the Notebook add-on.
+      Tool: run_code
+      Add-on: create_analysis_notebook
+      View: remoteCompute
 - [ ] **Measure RVs and equivalent widths** — Cross-correlate against a template (or fit line
       cores) per epoch; measure EWs of your diagnostic lines.
-      View: notebook
+      Tool: run_code
+      View: remoteCompute
 - [ ] **Compare across epochs** — RV variation → binarity or pulsation; EW/profile variation →
       activity or spots. Plot against time and phase-fold trial periods.
-      View: notebook
+      Tool: run_code
+      View: remoteCompute
 - [ ] **Record the measurements** — Measurement table to VOSpace; per-observation notes with the
       derived RVs and any anomalies.
       Tool: upload_file_to_vospace, update_observation_note

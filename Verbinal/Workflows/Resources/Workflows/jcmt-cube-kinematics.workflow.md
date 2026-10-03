@@ -26,13 +26,15 @@ Time: ~2 h
 - [ ] **Probe spectra at the cores** — Extract spectra at each dense core / peak; note velocity
       centroids and line widths, and look for wings that hint at outflows.
       Tool: probe_cube_spectrum
-- [ ] **Build moment maps in a notebook** — Seed the cube-analysis notebook (template: cube) —
-      moment 0 (integrated intensity), moment 1 (velocity field) — and refine masks there.
-      Tool: create_analysis_notebook
-      View: notebook
+- [ ] **Build moment maps** — Moment 0 (integrated intensity) and moment 1 (velocity field), with
+      masks refined as you go, in Python with run_code on Remote Compute — or in the cube-analysis
+      notebook (template: cube), with the Notebook add-on.
+      Tool: run_code
+      Add-on: create_analysis_notebook
+      View: remoteCompute
 - [ ] **Export figures** — Export publication figures of the key views and maps.
       Tool: export_cube_figure
-- [ ] **Store the products** — Moment maps, spectra tables, and the notebook go to VOSpace with
+- [ ] **Store the products** — Moment maps, spectra tables, and the code go to VOSpace with
       the run parameters recorded.
       Tool: upload_file_to_vospace
       View: storage
