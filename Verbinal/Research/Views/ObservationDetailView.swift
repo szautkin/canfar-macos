@@ -156,6 +156,7 @@ struct ObservationDetailView: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .help("Download only part of a file, cut on CADC's side")
+                        .opens("Cut Out")
                     }
 
                     Button {

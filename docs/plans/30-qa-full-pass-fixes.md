@@ -26,7 +26,7 @@
 | **W** | Writes on CANFAR: tasks, honest advice, no second launch by accident | done (this commit): W1 SessionLaunches, W2 advice, W3 in A2, W4 retry looks first. W0b with the person |
 | **S** | Silent no-ops and loose schemas | done — S1–S5 (this commit) |
 | **J** | Jobs CANFAR has dropped read as "gone", not "pending" | done — J1, J2 (this commit) |
-| **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | in progress — T1, T3, T4, T7 `c632316`; T5, T6 (this commit). Next: T2 |
+| **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | done — T1, T3, T4, T7 `c632316`; T5, T6 `abebf8f`; T2 (this commit): openers, right-click menus, file panels, Main Window. The hosted open_ui test needs the screen unlocked: in handout 31 |
 | **B** | The Batch Jobs filter on every tab, always shown | done (this commit) |
 | **R** | Search radius, as a field | done (this commit): R1 Radius field, R2 wait: false |
 | **D** | `download_observation` `file` from another plane of the observation | done (this commit) |

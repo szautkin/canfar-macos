@@ -134,8 +134,9 @@ final class AXElementSource: UIElementSource {
         var elements: [UIElement] = []
         var outOfSight: [UIElement] = []
         var duplicates: [String] = []
+        let shown = Set(UIPresentations.shared.shown.map { $0.name.lowercased() })
         for (ref, root) in reads {
-            let result = UIElementRules.elements(in: root, window: ref)
+            let result = UIElementRules.elements(in: root, window: ref, shown: shown)
             elements += result.elements
             outOfSight += result.outOfSight
             duplicates += result.duplicateIDs
@@ -238,11 +239,43 @@ final class AXElementSource: UIElementSource {
             try? await Task.sleep(for: .milliseconds(150))
             return Self.expanded(target) == true
         case .popUp, .menuButton, .menu:
-            DispatchQueue.main.async { AXUIElementPerformAction(target, kAXPressAction as CFString) }
+            Self.afterAnswering(target, kAXPressAction)
             return true
         default:
-            return false
+            // A control that opens a sheet or popover — or a system file
+            // panel, which holds the app until the person answers it (plan 30 T2).
+            guard element.presents != nil else { return false }
+            Self.afterAnswering(target, kAXPressAction)
+            return true
         }
+    }
+
+    /// Opens an element's right-click menu, as the person's right click
+    /// does, after this returns: the menu holds the app until they choose or
+    /// press Esc (plan 30 T2). False for one with no right-click menu.
+    func showMenu(_ element: UIElement) -> Bool {
+        guard let target = self.element(element.handle) else { return false }
+        var names: CFArray?
+        guard AXUIElementCopyActionNames(target, &names) == .success,
+              (names as? [String])?.contains(kAXShowMenuAction) == true else { return false }
+        Self.afterAnswering(target, kAXShowMenuAction)
+        return true
+    }
+
+    /// Closes a right-click menu that is open, as Esc does. False when none is.
+    func cancelOpenMenus() -> Bool {
+        let app = AXUIElementCreateApplication(getpid())
+        let menus = ((Self.value(app, kAXChildrenAttribute) as? [AXUIElement]) ?? [])
+            .filter { (Self.value($0, kAXRoleAttribute) as? String) == "AXMenu" }
+        return menus.contains { AXUIElementPerformAction($0, kAXCancelAction as CFString) == .success }
+    }
+
+    /// Acts on it once the answer is on its way. What it opens — a menu, a
+    /// system file panel — may hold the app until the person answers it;
+    /// done from the run loop, not from the main queue, it leaves the main
+    /// queue free while it waits, so the tools still answer.
+    private static func afterAnswering(_ target: AXUIElement, _ action: String) {
+        RunLoop.main.perform { AXUIElementPerformAction(target, action as CFString) }
     }
 
     /// Closes an open section, or an open menu, as the person would.

@@ -179,7 +179,7 @@ final class LocalFolderAccessStore {
     /// start its scope, and return the granted folder. Throws
     /// `CancelledError` if the user dismisses the panel.
     @discardableResult
-    func grantAccess(startingAt directory: URL? = nil) throws -> URL {
+    func grantAccess(startingAt directory: URL? = nil) async throws -> URL {
         let panel = NSOpenPanel()
         panel.message = String(localized: "Choose a folder to give Verbinal access to its FITS files.")
         panel.prompt = String(localized: "Grant Access")
@@ -188,7 +188,7 @@ final class LocalFolderAccessStore {
         panel.allowsMultipleSelection = false
         panel.directoryURL = directory ?? FileManager.default.homeDirectoryForCurrentUser
         NSApp.activate(ignoringOtherApps: true)
-        guard panel.runModal() == .OK, let url = panel.url else {
+        guard await UIPresentations.shared.runModal(panel, "Grant Folder Access") == .OK, let url = panel.url else {
             throw CancellationError()
         }
         let bookmark = try url.bookmarkData(

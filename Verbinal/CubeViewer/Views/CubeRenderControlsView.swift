@@ -212,6 +212,7 @@ struct CubeRenderControlsView: View {
         Button { showExport = true } label: {
             Label("Export Figure…", systemImage: "square.and.arrow.up")
         }
+        .opens("Export Cube Figure")
     }
     #endif
 

@@ -324,6 +324,7 @@ struct HeadlessJobsDetailSheet: View {
         .help("Show job details")
         .accessibilityLabel("Job details")
         .accessibilityHint("Opens a popover with the job's id, image, resources, and timing.")
+        .opens("Job Details")
     }
 
     @ViewBuilder

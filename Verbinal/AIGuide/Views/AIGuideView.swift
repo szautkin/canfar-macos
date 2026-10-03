@@ -408,6 +408,7 @@ struct AIGuideView: View {
                         Label("New Guide", systemImage: "plus")
                     }
                     .controlSize(.small)
+                    .opens("New Guide Tool")
                 }
                 Text("Custom read-only instruction tools you author. The agent sees each as a callable tool in `tools/list` and receives your text when it calls it — no code runs.")
                     .font(.caption)
@@ -458,6 +459,7 @@ struct AIGuideView: View {
             Spacer()
             Button("Edit") { editingGuide = guide }
                 .controlSize(.small)
+                .opens("Edit Guide Tool")
         }
         .padding(.vertical, 2)
     }

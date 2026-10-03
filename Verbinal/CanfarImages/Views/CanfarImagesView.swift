@@ -214,7 +214,7 @@ struct CanfarImagesView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Search the registry for an image the catalogue does not list")
-                .pointable("portal.findInRegistry")
+                .pointable("portal.findInRegistry", opens: "Find in Registry")
             }
             Button {
                 preselectedImageID = nil

@@ -232,6 +232,7 @@ struct ExportDialogView: View {
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
                 .disabled(isExporting || !hasEnabledModule)
+                .opens("Choose Export Destination")
             }
         }
         .padding(16)
@@ -248,7 +249,7 @@ struct ExportDialogView: View {
         completedBundleURL = nil
         isExporting = true
 
-        guard let destination = pickDestination() else {
+        guard let destination = await pickDestination() else {
             isExporting = false
             return
         }
@@ -273,7 +274,7 @@ struct ExportDialogView: View {
         }
     }
 
-    private func pickDestination() -> URL? {
+    private func pickDestination() async -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -292,7 +293,7 @@ struct ExportDialogView: View {
             panel.directoryURL = fm.urls(for: .documentDirectory, in: .userDomainMask).first
         }
 
-        return panel.runModal() == .OK ? panel.url : nil
+        return await UIPresentations.shared.runModal(panel, "Choose Export Destination") == .OK ? panel.url : nil
     }
 
     private func copyPath(_ url: URL) {

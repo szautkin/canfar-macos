@@ -148,7 +148,7 @@ final class MCPIntegrationSettingsService {
         // container. The powerbox open-panel can navigate there regardless.
         panel.directoryURL = Self.defaultConfigFolder
         NSApp.activate(ignoringOtherApps: true)
-        guard panel.runModal() == .OK, let url = panel.url else { throw MCPConfigError.cancelled }
+        guard UIPresentations.shared.runModal(panel, "Grant Access to Claude's Folder") == .OK, let url = panel.url else { throw MCPConfigError.cancelled }
         let bookmark = try url.bookmarkData(
             options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil
         )

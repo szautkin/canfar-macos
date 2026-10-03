@@ -40,7 +40,7 @@ struct ActivityBar: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(ActivitySummary.line(tasks)))
         .accessibilityHint(Text("Shows what the app is doing and what went wrong"))
-        .pointable("activity.bar")
+        .pointable("activity.bar", opens: "Activity")
         .uiPresented("Activity", .popover, isPresented: $showList)
         .popover(isPresented: $showList, arrowEdge: .top) {
             ActivityList(registry: registry)

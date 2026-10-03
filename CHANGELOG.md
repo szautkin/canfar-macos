@@ -465,6 +465,19 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **An assistant opens and closes anything that opens in the app.** It
+  could open only folded sections, menus and a few sheets of its own,
+  and close almost none: the QA pass left Cut Out up until you clicked
+  Cancel. Now every sheet, popover, confirmation, alert and system file
+  panel is known by name while it shows, and an assistant can close it
+  as Esc or Cancel would, choosing nothing inside. It opens a sheet by
+  its name when nothing has to be chosen first (Batch Jobs, Launch
+  Session, About Verbinal…), or by pressing the one control that opens
+  it (Cut Out…, Upload, Open FITS File…), as your click would. It can
+  show an element's right-click menu for you to choose from, and bring
+  back the main window when it is closed, minimized or hidden. A file
+  panel waits for you; the assistant's other tools keep answering
+  meanwhile.
 - **An assistant selects a tab or a segment, and fills the launch form's
   resources.** `select_ui` chose only a list's entries, so Flexible /
   Fixed and the Batch Jobs tabs were out of an assistant's reach. It now

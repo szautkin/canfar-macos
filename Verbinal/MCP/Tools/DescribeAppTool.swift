@@ -236,10 +236,12 @@ struct DescribeAppTool: JSONReadTool {
         something scrolled away is brought into view first.
         `clear_ui_hints` takes them down, and list_events has
         `hintsDismissed` when the person is done reading. `select_ui`
-        selects a list's entry as a click does; `open_ui` / `close_ui`
-        open a folded section, a hidden panel or a menu on purpose —
-        never a tab, which is navigated to. None of them presses a
-        button or changes data. Hints are not marks: to mark a source
+        selects a list's entry, a tab or a segment as a click does;
+        `open_ui` / `close_ui` open and close a folded section, a hidden
+        panel, a menu, a right-click menu, a sheet, a popover or a file
+        panel on purpose — a sheet by its name, or by pressing the one
+        control that opens it (`opens`). None of them chooses inside
+        what it opens, presses any other button, or changes data. Hints are not marks: to mark a source
         on an image, kept with its file, use `annotate_fits` or
         `annotate_cube`.
       * `set_search_focus` — pre-positions the search form on RA/Dec.

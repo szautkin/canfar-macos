@@ -376,6 +376,7 @@ struct FITSTabView: View {
                 Label("Open", systemImage: "doc.badge.plus").font(.caption)
             }
             .buttonStyle(.bordered).controlSize(.small)
+            .opens("Open FITS File")
             #endif
 
             Button { showHeader.toggle() } label: {
@@ -440,6 +441,7 @@ struct FITSTabView: View {
                 #if os(macOS)
                 Button("Open FITS File…") { Task { await (tabHost.activeTab ?? tabHost.addTab()).openWithPicker() } }
                     .buttonStyle(.borderedProminent)
+                    .opens("Open FITS File")
                 #endif
             }
             .fixedSize(horizontal: false, vertical: true)

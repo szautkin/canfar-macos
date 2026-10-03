@@ -583,7 +583,7 @@ final class AppState {
     /// shows or hides — and an assistant opens on purpose (`open_ui`).
     var fileBrowserShown = false
     #if os(macOS)
-    @ObservationIgnored private var appWindows: AppWindows?
+    @ObservationIgnored private(set) var appWindows: AppWindows?
 
     /// The last main window closed: every other window of the app goes with
     /// it — Settings, a sheet left behind (the launch form), hints — the

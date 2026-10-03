@@ -62,11 +62,12 @@ struct FileBrowserPanel: View {
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                     Button {
-                        model.grantAccessToCurrentFolder()
+                        Task { await model.grantAccessToCurrentFolder() }
                     } label: {
                         Label("Grant Access…", systemImage: "folder.badge.plus")
                     }
                     .controlSize(.small)
+                    .opens("Grant Folder Access")
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 8)

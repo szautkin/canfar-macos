@@ -59,9 +59,9 @@ final class FileBrowserModel {
     /// Grant access to the current folder (or a folder the user picks)
     /// via the sandbox powerbox, then reload. No-op without an access
     /// store.
-    func grantAccessToCurrentFolder() {
+    func grantAccessToCurrentFolder() async {
         guard let access else { return }
-        if let granted = try? access.grantAccess(startingAt: currentURL) {
+        if let granted = try? await access.grantAccess(startingAt: currentURL) {
             currentURL = granted
             loadDirectory()
         }

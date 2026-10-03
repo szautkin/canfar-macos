@@ -29,6 +29,22 @@ final class AppWindows {
         }
     }
 
+    /// Brings the main window back for an assistant's open_ui (plan 30 T2):
+    /// the app unhidden, a minimized window restored, a closed one opened
+    /// again as a click on the Dock icon opens it. One on another desktop
+    /// stays there.
+    func showMain() {
+        if NSApp.isHidden { NSApp.unhide(nil) }
+        let mains = NSApp.windows.filter { places.place(of: $0) == .main }
+        if let window = mains.first(where: \.isMiniaturized) {
+            window.deminiaturize(nil)
+        } else if let window = mains.first(where: \.isVisible) {
+            window.orderFrontRegardless()
+        } else {
+            _ = NSApp.delegate?.applicationShouldHandleReopen?(NSApp, hasVisibleWindows: false)
+        }
+    }
+
     deinit {
         if let observer { NotificationCenter.default.removeObserver(observer) }
     }

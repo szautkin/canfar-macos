@@ -85,7 +85,7 @@ final class SessionLogsModel: Identifiable {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "\(SessionLogExport.name(for: ids.count)).\(format.fileExtension)"
         panel.allowedContentTypes = [format == .text ? .plainText : .json]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard await UIPresentations.shared.runModal(panel, "Export Session Logs") == .OK, let url = panel.url else { return }
         var picked: [SessionLogExport.Log] = []
         for id in ids {
             if let log = await query.log(of: id) { picked.append((log.header, log.entries)) }

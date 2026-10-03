@@ -22,6 +22,10 @@ extension AppState {
         presentations.register(openable: .init(name: "Batch Jobs", screen: AppMode.portal.rawValue) { [weak self] in
             self?.headlessMonitor?.detailPresented = true
         })
+        // The main window, when none shows: closed, minimized or hidden (plan 30 T2).
+        presentations.register(openable: .init(name: "Main Window", screen: nil) { [weak self] in
+            self?.appWindows?.showMain()
+        })
         for sheet in [ActiveSheet.about, .export, .agentProposals, .features, .mcpSetupWizard] {
             presentations.register(openable: .init(name: sheet.title, screen: nil) { [weak self] in
                 self?.activeSheet = sheet

@@ -77,6 +77,7 @@ struct DownloadedFilesView: View {
                 .disabled(model.observationStore.observations.isEmpty || model.exportService.isExporting)
                 .help("Export observations and notes to a Claude-friendly bundle")
                 .accessibilityLabel("Export observations and notes")
+                .opens("Export Research")
                 #endif
             }
             .padding(.horizontal, 12)

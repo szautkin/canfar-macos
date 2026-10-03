@@ -15,8 +15,17 @@ import SwiftUI
 extension View {
     /// This control's stable id. On a `TextEditor`, use `textEditorName`
     /// instead: SwiftUI keeps the identifier off its text view on macOS.
-    func pointable(_ id: String) -> some View {
-        accessibilityIdentifier(PointableID.encode(id))
+    func pointable(_ id: String, opens: String? = nil) -> some View {
+        accessibilityIdentifier(PointableID.encode(id, opens: opens))
+    }
+
+    /// A control that opens a sheet or popover, by that presentation's name
+    /// (its `uiPresented` name): `list_ui_targets` lists it with `opens`,
+    /// and `open_ui` presses it once, as the person's click would (plan 30
+    /// T2). On a hand-tagged control, use `pointable(_:opens:)`: one
+    /// identifier carries both.
+    func opens(_ name: String) -> some View {
+        accessibilityIdentifier(PointableID.encode(opens: name))
     }
 
     /// A region's stable id — a form's section, a row of column headers. The

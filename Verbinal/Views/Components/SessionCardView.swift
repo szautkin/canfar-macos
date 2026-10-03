@@ -176,6 +176,7 @@ struct SessionCardView: View {
                 help: "View Kubernetes events and container logs",
                 action: onEvents
             )
+            .opens("Session Events")
             cardActionButton(
                 label: "Delete",
                 systemImage: "trash.fill",

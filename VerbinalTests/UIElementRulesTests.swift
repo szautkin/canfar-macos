@@ -308,4 +308,31 @@ final class UIElementRulesTests: XCTestCase {
         ])
         XCTAssertEqual(result.elements.map(\.name), ["Behind"])
     }
+
+    /// Plan 30 T2: a control that opens a sheet says so — with its hand tag,
+    /// or without one — and is closed while what it opens is not shown.
+    func testAControlSaysWhatItOpens() {
+        let tagged = PointableID.encode("portal.batchJobs", opens: "Batch Jobs")
+        XCTAssertEqual(PointableID.decode(tagged)?.id, "portal.batchJobs", "the tag is the tag alone")
+        XCTAssertEqual(PointableID.opens(tagged), "Batch Jobs")
+        let untagged = PointableID.encode(opens: "Cut Out")
+        XCTAssertNil(PointableID.decode(untagged), "no hand tag")
+        XCTAssertEqual(PointableID.opens(untagged), "Cut Out")
+        XCTAssertNil(PointableID.opens(PointableID.encode("search.run")))
+
+        let nodes = [
+            node("AXButton", rect(10, 10), label: "Jobs & History…", identifier: tagged),
+            node("AXButton", rect(10, 40), label: "Cut Out…", identifier: untagged),
+            node("AXButton", rect(10, 70), label: "Run Search"),
+        ]
+        let closed = UIElementRules.elements(in: node("AXWindow", window.frame, children: nodes), window: window)
+        XCTAssertEqual(closed.elements.map(\.presents), ["Batch Jobs", "Cut Out", nil])
+        XCTAssertEqual(closed.elements.map(\.closed), [true, true, false])
+        XCTAssertEqual(closed.elements.first?.id, "portal.batchJobs")
+        XCTAssertEqual(closed.elements.map(\.kind), [.button, .button, .button], "still buttons")
+
+        let shown = UIElementRules.elements(in: node("AXWindow", window.frame, children: nodes), window: window,
+                                            shown: ["batch jobs"])
+        XCTAssertEqual(shown.elements.map(\.closed), [false, true, false], "what is shown is not closed")
+    }
 }

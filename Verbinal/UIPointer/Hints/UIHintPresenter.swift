@@ -100,14 +100,31 @@ final class UIHintPresenter {
     }
 
     /// Opens or closes a closed section or menu of the last reading (plan 27
-    /// C), and reads the screen again. Answers whether it worked, and the
-    /// elements that appeared — what was behind it.
+    /// C) — or opens what a control opens (plan 30 T2) — and reads the
+    /// screen again. Answers whether it worked, and the elements that
+    /// appeared — what was behind it.
     func setOpen(_ element: UIElement, _ open: Bool) async -> (done: Bool, appeared: [UIElement]) {
-        // What appeared is found by identity: derived ids renumber when rows move.
+        let settles = element.kind == .disclosure ? 100 : element.presents != nil ? 700 : 400
+        return await appearing(after: settles) { [source] in
+            open ? await source.open(element) : await source.close(element)
+        }
+    }
+
+    /// Opens an element's right-click menu (plan 30 T2), and reads the screen again.
+    func showMenu(_ element: UIElement) async -> (done: Bool, appeared: [UIElement]) {
+        await appearing(after: 400) { [source] in source.showMenu(element) }
+    }
+
+    /// Closes a right-click menu that is open, as Esc does.
+    func cancelOpenMenus() -> Bool { source.cancelOpenMenus() }
+
+    /// Acts, waits for the screen to settle, and reads it again: whether it
+    /// worked, and what appeared — found by identity, since derived ids
+    /// renumber when rows move.
+    private func appearing(after milliseconds: Int, _ act: () async -> Bool) async -> (done: Bool, appeared: [UIElement]) {
         let before = source.everything()
-        let done = open ? await source.open(element) : await source.close(element)
-        guard done else { return (false, []) }
-        try? await Task.sleep(for: .milliseconds(element.kind == .disclosure ? 100 : 400))
+        guard await act() else { return (false, []) }
+        try? await Task.sleep(for: .milliseconds(milliseconds))
         let now = snapshot()
         return (true, now.elements.filter { source.element($0.handle).map { !before.contains($0) } ?? false })
     }

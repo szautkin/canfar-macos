@@ -134,6 +134,7 @@ struct MCPIntegrationSettingsTab: View {
             HStack {
                 Button("Grant Access…") { model?.applyFix(.grantConfigAccess) }
                     .controlSize(.small)
+                    .opens("Grant Access to Claude's Folder")
                 Button("Update Config") { model?.applyFix(.updateConfig) }
                     .controlSize(.small)
                     .disabled(!settings.hasConfigAccess)

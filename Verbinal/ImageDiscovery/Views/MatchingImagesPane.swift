@@ -212,6 +212,7 @@ struct MatchingImagesPane: View {
             .buttonStyle(.borderless)
             .help("Show the full failure message")
             .accessibilityLabel("Show failure details")
+            .opens("Probe Failure")
 
         case .discovered(let manifest):
             Button {
@@ -223,6 +224,7 @@ struct MatchingImagesPane: View {
             .buttonStyle(.borderless)
             .help("Show what this image contains")
             .accessibilityLabel("Show manifest details")
+            .opens("Image Manifest")
 
         case .neverDiscovered, .running:
             EmptyView()
@@ -246,6 +248,7 @@ struct MatchingImagesPane: View {
             .buttonStyle(.borderless)
             .help("View container logs for the failed probe job")
             .accessibilityLabel("View probe logs")
+            .opens("Probe Logs")
         }
     }
 

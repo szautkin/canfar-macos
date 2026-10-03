@@ -293,6 +293,7 @@ struct FITSRenderControlsView: View {
                 Label("Export Figure…", systemImage: "square.and.arrow.up")
             }
             .disabled(model.renderedImage == nil)
+            .opens("Export Figure")
             #endif
         }
         .padding(8)

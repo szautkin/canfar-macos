@@ -9,6 +9,8 @@ import SwiftUI
 /// What a presentation is.
 enum UIPresentationKind: String, Codable, Sendable {
     case sheet, popover, confirmation, alert
+    /// A system Open or Save panel.
+    case filePanel
 }
 
 /// What is shown over the screen — every sheet, popover, confirmation and
@@ -121,3 +123,35 @@ extension View {
                                                      set: { if !$0 { item.wrappedValue = nil } }))
     }
 }
+
+#if os(macOS)
+import AppKit
+
+extension UIPresentations {
+    /// Runs a system Open or Save panel, known as `name` while it is up:
+    /// `list_ui_targets` lists it, and `close_ui` cancels it, as the
+    /// person's Cancel does (plan 30 T2). Every panel in the app runs
+    /// through this; a test holds it to that.
+    ///
+    /// For a button's or menu's own action. A panel's modal loop started
+    /// inside a task holds every other main-actor job — the tools too —
+    /// until the person answers it: async code awaits the other form.
+    func runModal(_ panel: NSSavePanel, _ name: String) -> NSApplication.ModalResponse {
+        let id = begin(name, .filePanel) { panel.cancel(nil) }
+        defer { end(id) }
+        return panel.runModal()
+    }
+
+    /// The same, from async code: the panel runs from the run loop, so the
+    /// tools still answer while it waits for the person.
+    func runModal(_ panel: NSSavePanel, _ name: String) async -> NSApplication.ModalResponse {
+        await withCheckedContinuation { answered in
+            RunLoop.main.perform {
+                MainActor.assumeIsolated {
+                    answered.resume(returning: self.runModal(panel, name))
+                }
+            }
+        }
+    }
+}
+#endif

@@ -238,11 +238,11 @@ extension AppState {
         let activity = agentsService.activityStore
         return RequestFolderAccessTool(request: { [weak self] startingPath in
             guard let self else { return .cancelled }
+            let start = startingPath.map { URL(fileURLWithPath: $0, isDirectory: true) }
+            guard let granted = try? await self.localFolderAccess.grantAccess(startingAt: start) else {
+                return .cancelled
+            }
             return await MainActor.run {
-                let start = startingPath.map { URL(fileURLWithPath: $0, isDirectory: true) }
-                guard let granted = try? self.localFolderAccess.grantAccess(startingAt: start) else {
-                    return .cancelled
-                }
                 activity.append(.live(
                     kind: "request_folder_access",
                     summary: "Granted folder access: \(granted.path)",

@@ -46,6 +46,7 @@ struct CubeViewerView: View {
                     .buttonStyle(.borderless)
                     .help("Cube Viewer guide")
                     .accessibilityLabel("Cube Viewer guide")
+                    .opens("Cube Viewer Guide")
                 }
                 .padding(.horizontal, 8)
                 Divider()

@@ -88,6 +88,7 @@ struct AboutSheet: View {
                 showTerms = true
             }
             .buttonStyle(.borderless)
+            .opens("Terms of Use")
             .font(.caption)
 
             Divider()

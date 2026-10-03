@@ -20,7 +20,7 @@ struct SessionLogsSection: View {
                 sessionLogs = SessionLogsModel(query: SessionLogQuery(store: hub.store, hub: hub))
             }
             .disabled(appState.sessionLog == nil)
-            .pointable("settings.agent.sessionLogs")
+            .pointable("settings.agent.sessionLogs", opens: "Session Logs")
             .uiPresented("Session Logs", .sheet, item: $sessionLogs)
             .sheet(item: $sessionLogs) { SessionLogsView(model: $0) }
         } header: {

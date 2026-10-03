@@ -139,7 +139,7 @@ struct StorageBrowserRootView: View {
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .help("Create a new folder")
                 .accessibilityLabel("New folder")
-                .pointable("storage.newFolder")
+                .pointable("storage.newFolder", opens: "New Folder")
 
                 #if os(macOS)
                 Button { Task { await model.uploadWithPicker() } } label: {
@@ -151,7 +151,7 @@ struct StorageBrowserRootView: View {
                 .disabled(model.isBusy)
                 .help("Upload a file to the current folder")
                 .accessibilityLabel("Upload file")
-                .pointable("storage.upload")
+                .pointable("storage.upload", opens: "Upload File")
 
                 Button { Task { await model.downloadSelected() } } label: {
                     Label("Download", systemImage: "arrow.down.doc")
@@ -166,7 +166,7 @@ struct StorageBrowserRootView: View {
                       ? "Select a file to download"
                       : "Download the selected file")
                 .accessibilityLabel("Download selected file")
-                .pointable("storage.download")
+                .pointable("storage.download", opens: "Save File")
                 #endif
 
                 Button { showDeleteConfirm = true } label: {

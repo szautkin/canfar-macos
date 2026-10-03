@@ -70,7 +70,7 @@ enum FigureFile {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [format == .png ? .png : .pdf]
         panel.nameFieldStringValue = "\(name).\(format.rawValue)"
-        guard panel.runModal() == .OK, let url = panel.url else { return nil }
+        guard UIPresentations.shared.runModal(panel, "Save Figure") == .OK, let url = panel.url else { return nil }
         return Result { try write(view, as: format, scale: scale, to: url); return url }
     }
 }

@@ -80,6 +80,9 @@ struct UIElement: Equatable, Sendable, Identifiable {
     let area: String?
     /// The list item it belongs to — a recent launch, an image — by name.
     var item: String? = nil
+    /// The sheet or popover it opens, by that presentation's name
+    /// (`opens`): `open_ui` presses it once, as the person's click would.
+    var presents: String? = nil
     /// The whole element, and the part not clipped by a scroll area — both
     /// in its window's points, top-left origin. `visible` is null for an
     /// element scrolled out of sight.
@@ -114,17 +117,33 @@ enum PointableID {
     /// A tab drawn as a button (`pointableTab`): a tab, which select_ui selects.
     static let tab = "vb-tab"
     static let popUpOpen = "vb-popup-open"
+    /// Before the name of what a control opens (`opens`), after its hand tag
+    /// when it has one: one identifier carries both (plan 30 T2).
+    static let opensMarker = "#opens="
 
-    static func encode(_ id: String, canvas: Bool = false) -> String {
-        (canvas ? canvasPrefix : prefix) + id
+    static func encode(_ id: String, canvas: Bool = false, opens: String? = nil) -> String {
+        (canvas ? canvasPrefix : prefix) + id + encode(opens: opens)
+    }
+
+    /// The marker of what a control opens, for one with no hand tag.
+    static func encode(opens: String?) -> String {
+        opens.map { opensMarker + $0 } ?? ""
     }
 
     /// The id, and whether it is a canvas; nil for an identifier that is not one.
     static func decode(_ identifier: String?) -> (id: String, canvas: Bool)? {
-        guard let identifier else { return nil }
+        guard var identifier else { return nil }
+        if let marker = identifier.range(of: opensMarker) { identifier = String(identifier[..<marker.lowerBound]) }
         if identifier.hasPrefix(canvasPrefix) { return (String(identifier.dropFirst(canvasPrefix.count)), true) }
         if identifier.hasPrefix(prefix) { return (String(identifier.dropFirst(prefix.count)), false) }
         return nil
+    }
+
+    /// The name of what a control opens; nil for one that opens nothing.
+    static func opens(_ identifier: String?) -> String? {
+        guard let identifier, let marker = identifier.range(of: opensMarker) else { return nil }
+        let name = identifier[marker.upperBound...]
+        return name.isEmpty ? nil : String(name)
     }
 
     /// The windows Verbinal names.

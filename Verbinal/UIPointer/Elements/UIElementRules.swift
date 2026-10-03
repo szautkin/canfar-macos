@@ -100,12 +100,14 @@ enum UIElementRules {
 
     // MARK: - The elements of a window
 
-    static func elements(in root: UIRawNode, window: UIWindowRef) -> Result {
+    /// `shown`: the presentations shown now, by name in lower case — a
+    /// control that opens one of them is not closed.
+    static func elements(in root: UIRawNode, window: UIWindowRef, shown: Set<String> = []) -> Result {
         var drafts: [Draft] = []
         var texts: [Text] = []
         var seen: Set<String> = []
         var duplicates: [String] = []
-        walk(root, clip: window.frame, clips: [], area: nil, item: nil, holderName: nil, window: window,
+        walk(root, clip: window.frame, clips: [], area: nil, item: nil, holderName: nil, window: window, shown: shown,
              drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
 
         // A control with no words of its own is called by its caption — one
@@ -147,6 +149,7 @@ enum UIElementRules {
                 id: id, stable: draft.stableID != nil, kind: draft.kind, name: draft.name,
                 help: draft.help == draft.name ? nil : draft.help, enabled: draft.enabled, closed: draft.closed,
                 screen: window.screen, area: draft.area, item: draft.kind.holds ? nil : draft.item,
+                presents: draft.presents,
                 frame: draft.frame.offsetBy(dx: -origin.x, dy: -origin.y),
                 visible: draft.inSight ? draft.visible.offsetBy(dx: -origin.x, dy: -origin.y) : .null,
                 window: window.index, handle: draft.handle, clips: draft.clips)
@@ -167,6 +170,7 @@ enum UIElementRules {
         var help: String?
         var enabled: Bool
         var closed: Bool
+        var presents: String?
         var area: String?
         var item: String?
         var frame: CGRect
@@ -177,7 +181,7 @@ enum UIElementRules {
     }
 
     private static func walk(_ node: UIRawNode, clip: CGRect, clips: [Int], area: String?, item: String?,
-                             holderName: String?, window: UIWindowRef,
+                             holderName: String?, window: UIWindowRef, shown: Set<String>,
                              drafts: inout [Draft], texts: inout [Text],
                              seen: inout Set<String>, duplicates: inout [String]) {
         if machineryRoles.contains(node.role) || node.subrole.map(machinerySubroles.contains) == true { return }
@@ -218,10 +222,13 @@ enum UIElementRules {
             let name = ownName(node, kind: kind)
             if kind == .text, let words = name { texts.append(Text(frame: shows ? visible : node.frame, words: words, inSight: shows)) }
             let open = node.children.contains { $0.role == "AXMenu" } || node.identifier == PointableID.popUpOpen
-            let closed = kind == .disclosure ? node.expanded == false : (kind.opens && !open)
+            // A control that opens a sheet or popover is closed while that is not shown.
+            let presents = PointableID.opens(node.identifier)
+            let closed = kind == .disclosure ? node.expanded == false
+                : presents.map { !shown.contains($0.lowercased()) } ?? (kind.opens && !open)
             let lent = node.role == "AXTextArea" ? holderName : nil
             drafts.append(Draft(kind: kind, stableID: tagged?.id, name: name ?? rowWords(node, kind: kind) ?? lent,
-                                help: clean(node.help), enabled: node.enabled, closed: closed,
+                                help: clean(node.help), enabled: node.enabled, closed: closed, presents: presents,
                                 area: area, item: item, frame: node.frame, visible: shows ? visible : .null, handle: node.handle,
                                 clips: clips, inSight: shows))
         }
@@ -231,7 +238,7 @@ enum UIElementRules {
         let innerItem = kind?.holds == true ? clean(node.label) ?? rowWords(node, kind: .row) ?? item : item
         for child in node.children where !ownWindowRoles.contains(child.role) {
             walk(child, clip: clip, clips: clips, area: inner, item: innerItem, holderName: holderName, window: window,
-                 drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
+                 shown: shown, drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
         }
     }
 

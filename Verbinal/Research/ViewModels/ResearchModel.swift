@@ -440,7 +440,7 @@ final class ResearchModel {
         panel.directoryURL = url.deletingLastPathComponent()
         panel.nameFieldStringValue = url.lastPathComponent
 
-        guard panel.runModal() == .OK, let pickedURL = panel.url else { return }
+        guard UIPresentations.shared.runModal(panel, "Re-grant Access") == .OK, let pickedURL = panel.url else { return }
 
         // Persist the freshly-granted bookmark so the next open works
         // without prompting.
@@ -492,7 +492,7 @@ final class ResearchModel {
             panel.directoryURL = docs
         }
 
-        let response = panel.runModal()
+        let response = await UIPresentations.shared.runModal(panel, "Save Observation")
         guard response == .OK, let saveURL = panel.url else { return nil }
         return moveToFinal(from: tempURL, to: saveURL)
     }

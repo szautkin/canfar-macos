@@ -270,6 +270,7 @@ struct LaunchFormView: View {
                         .buttonStyle(.borderless)
                         .help(magnifierHelp(probesRunning: discoveryModel.inFlightProbeCount))
                         .accessibilityLabel(magnifierAccessibilityLabel(probesRunning: discoveryModel.inFlightProbeCount))
+                        .opens("Image Content Discovery")
                     }
                 }
             }

@@ -29,6 +29,7 @@ struct FITSViewerRootView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .accessibilityLabel(Text("Open a FITS file"))
+                    .opens("Open FITS File")
                     #endif
                 }
             } else {

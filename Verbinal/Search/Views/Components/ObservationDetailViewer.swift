@@ -200,6 +200,7 @@ struct ObservationDetailViewer: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .help("Download only part of a file, cut on CADC's side")
+                    .opens("Cut Out")
                 } else if let url = TAPClient.downloadURL(publisherID: model.publisherID) {
                     Button {
                         openURL(url)

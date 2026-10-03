@@ -276,7 +276,7 @@ final class StorageBrowserModel {
         panel.allowsMultipleSelection = false
         panel.title = "Upload File"
 
-        let response = panel.runModal()
+        let response = await UIPresentations.shared.runModal(panel, "Upload File")
         guard response == .OK, let fileURL = panel.url else { return }
 
         await performUpload(fileURL: fileURL)
@@ -293,7 +293,7 @@ final class StorageBrowserModel {
         panel.nameFieldStringValue = filename
         panel.canCreateDirectories = true
         panel.title = "Save File"
-        guard panel.runModal() == .OK, let saveURL = panel.url else { return }
+        guard await UIPresentations.shared.runModal(panel, "Save File") == .OK, let saveURL = panel.url else { return }
 
         let outcome = await performDownload(
             remotePath: path,

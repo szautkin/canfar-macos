@@ -735,7 +735,7 @@ final class FITSViewerModel: Identifiable {
         // Filter in panel message since UTI for FITS doesn't exist natively
         panel.message = String(localized: "Select a FITS file (.fits, .fit, .fts)")
 
-        let response = panel.runModal()
+        let response = await UIPresentations.shared.runModal(panel, "Open FITS File")
         guard response == .OK, let url = panel.url else { return }
         await open(url: url)
     }

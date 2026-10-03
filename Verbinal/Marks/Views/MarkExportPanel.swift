@@ -20,7 +20,7 @@ enum MarkExportPanel {
         panel.allowedContentTypes = [format == .ds9 ? UTType(filenameExtension: "reg") ?? .plainText : .json]
         let base = (URL(fileURLWithPath: file).deletingPathExtension().lastPathComponent)
         panel.nameFieldStringValue = "\(base)\(hdu.map { "-hdu\($0)" } ?? "")-marks.\(format.fileExtension)"
-        guard panel.runModal() == .OK, let url = panel.url else { return nil }
+        guard UIPresentations.shared.runModal(panel, "Export Marks") == .OK, let url = panel.url else { return nil }
         do {
             let data: Data
             switch format {

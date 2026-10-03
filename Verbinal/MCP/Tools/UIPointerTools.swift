@@ -20,8 +20,11 @@ struct UITargetView: Encodable, Sendable, Equatable {
     /// The list item it belongs to, by name.
     var item: String?
     let enabled: Bool
-    /// A folded section or a menu, shut: `open_ui` opens it.
+    /// A folded section or a menu, shut — or a control whose sheet or
+    /// popover is not shown: `open_ui` opens it.
     var closed: Bool?
+    /// The sheet or popover it opens, by name (plan 30 T2).
+    var opens: String?
     /// False when it is scrolled out of sight: a hint brings it into view.
     var inSight: Bool?
     /// x, y, width, height in its window's points — where it lies, for one
@@ -39,6 +42,7 @@ struct UITargetView: Encodable, Sendable, Equatable {
         item = element.item
         enabled = element.enabled
         closed = element.closed ? true : nil
+        opens = element.presents
         inSight = element.inSight ? nil : false
         let v = element.inSight ? element.visible : element.frame
         at = [v.minX, v.minY, v.width, v.height].map { Int($0.rounded()) }
@@ -502,7 +506,7 @@ struct OpenCloseUITool: JSONReadTool {
           "type": "object",
           "required": ["target"],
           "properties": {
-            "target": { "type": "string", "minLength": 1, "description": "A closed section or menu (closed: true in list_ui_targets), or a panel in hiddenPanels — by id or name." }
+            "target": { "type": "string", "minLength": 1, "description": "A closed section or menu (closed: true in list_ui_targets), a panel in hiddenPanels, a control that opens something (`opens`) or what it opens, by name, a presentation that is shown (`presented`), `front`, `menu` or `Main Window` — by id or name." }
           },
           "additionalProperties": false
         }
@@ -511,14 +515,14 @@ struct OpenCloseUITool: JSONReadTool {
     static func open(_ act: @escaping @Sendable (Args) async -> Output) -> Self {
         Self(definition: AIToolDefinition.withStaticSchema(
             name: "open_ui",
-            description: "Open one closed thing on purpose, to show the person what is inside: a folded section (closed: true), a panel they hid (hiddenPanels: the file browser), a menu (a pop-up's or menu button's choices), or — by its name — a sheet that needs nothing chosen first (list_ui_targets' `opensByName`: Batch Jobs, Image Content Discovery, Launch Session, About Verbinal, Export All, Pending Changes…), going to its screen first. close_ui closes any sheet, popover, confirmation or alert that is open (`presented`), by its name or `front`, as Esc would: nothing in it is chosen. Only that one opens; nothing else is touched, and nothing is pressed or chosen. It answers what appeared (`inside`), to list and hint like the rest. A menu stays open for the person — they choose from it or press Esc, and a hint never chooses for them; while it is open, list_ui_targets reads its items and show_ui_hints points at them. A long list's pop-up (the launch form's projects and images) opens a panel instead — a search field and the matching rows, at most twelve in sight; select_ui chooses a row in it. A tab is not opened: navigate there (navigate_to, select_search_tab, open_settings). close_ui closes it again. View state only; no proposal.",
+            description: "Open one closed thing on purpose, to show the person what is inside: a folded section (closed: true), a panel they hid (hiddenPanels: the file browser), a menu (a pop-up's or menu button's choices), an element's right-click menu, or — by its name — a sheet that needs nothing chosen first (list_ui_targets' `opensByName`: Batch Jobs, Image Content Discovery, Launch Session, About Verbinal, Export All, Pending Changes, Main Window when no window shows…), going to its screen first. A sheet, popover or system file panel that needs something chosen first opens from its control: one listed with `opens` (Cut Out…, Upload, Open FITS File…) is pressed once, as the person's click would — by its id, or by the name of what it opens when one control on screen opens it. A file panel then waits for the person: they choose, or close_ui closes it as Cancel. close_ui closes any sheet, popover, confirmation, alert or file panel that is open (`presented`), by its name or `front`, as Esc or Cancel would: nothing in it is chosen; `menu` closes an open right-click menu. Only that one opens; nothing else is touched, and nothing in it is chosen. It answers what appeared (`inside`), to list and hint like the rest. A menu stays open for the person — they choose from it or press Esc, and a hint never chooses for them; while a pop-up's or menu button's menu is open, list_ui_targets reads its items and show_ui_hints points at them. A long list's pop-up (the launch form's projects and images) opens a panel instead — a search field and the matching rows, at most twelve in sight; select_ui chooses a row in it. A tab is not opened: navigate there (navigate_to, select_search_tab, open_settings). close_ui closes it again. View state only; no proposal.",
             schema: schema), act: act)
     }
 
     static func close(_ act: @escaping @Sendable (Args) async -> Output) -> Self {
         Self(definition: AIToolDefinition.withStaticSchema(
             name: "close_ui",
-            description: "Close a section, panel or menu you opened with open_ui — or one the person opened, if they asked. The person can always close it too. View state only; no proposal.",
+            description: "Close a section, panel, menu, sheet, popover or file panel you opened with open_ui — or one the person opened, if they asked: a presentation by its name (`presented`) or `front`, as Esc or Cancel would, nothing in it chosen; an open right-click menu by `menu`. The person can always close it too. View state only; no proposal.",
             schema: schema), act: act)
     }
 }

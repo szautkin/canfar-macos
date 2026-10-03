@@ -213,7 +213,7 @@ final class CubeViewerModel: Identifiable {
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = ["fits", "fit", "fts"].compactMap { UTType(filenameExtension: $0) }
         panel.message = "Choose a FITS spectral cube"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard await UIPresentations.shared.runModal(panel, "Open Cube") == .OK, let url = panel.url else { return }
         await open(url: url)
     }
     #endif

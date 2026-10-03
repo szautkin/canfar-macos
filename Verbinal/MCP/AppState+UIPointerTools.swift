@@ -101,11 +101,20 @@ extension AppState {
             }
             openable.open()
             try? await Task.sleep(for: .milliseconds(600))
-            let inside = presenter.snapshot().elements.filter { !before.contains($0.id) }
+            let now = presenter.snapshot()
+            // Nothing opens in sight where no window shows: the person brings one back.
+            if now.problem == UISnapshot.notShowing {
+                return .init(done: false, target: args.target, id: "presented:\(openable.name)", kind: "presentation",
+                             message: "\(openable.name) is not in sight: no Verbinal window shows here. Ask the person to click Verbinal in the Dock, or to bring its window to this desktop.")
+            }
             agentsService.activityStore.append(.live(kind: "open_ui", summary: "Opened \(openable.name)",
                                                      origin: .external(clientID: "open_ui")))
             return .init(done: true, target: args.target, id: "presented:\(openable.name)", kind: "presentation",
-                         inside: inside.map(UITargetView.init))
+                         inside: now.elements.filter { !before.contains($0.id) }.map(UITargetView.init))
+        }
+        // A right-click menu that is open closes as Esc closes it (plan 30 T2).
+        if !open, args.target.trimmingCharacters(in: .whitespaces).lowercased() == "menu", presenter.cancelOpenMenus() {
+            return .init(done: true, target: args.target, kind: "menu")
         }
         if let panel = UIPanel.named(args.target) {
             let was = isShown(panel)
@@ -119,19 +128,27 @@ extension AppState {
                          inside: inside.map(UITargetView.init),
                          message: was == open ? "\(panel.name) was already \(open ? "shown" : "hidden")" : nil)
         }
-        switch UITargetScope.match(args.target, in: presenter.lastSnapshot,
-                                   preferring: Set(UIElementKind.allCases.filter(\.opens))) {
+        // A sheet or popover that needs something chosen first opens from its
+        // control: the one control on screen that opens it, by its name.
+        let wanted = args.target.trimmingCharacters(in: .whitespaces).lowercased()
+        let openers = presenter.lastSnapshot.elements.filter { $0.presents?.lowercased() == wanted }
+        if open, openers.count > 1 {
+            return .init(done: false, target: args.target,
+                         message: "\(openers.count) controls open \(args.target): name the one you mean",
+                         candidates: openers.map(UITargetView.init))
+        }
+        let match = openers.count == 1 && open ? UITargetScope.Match.found(openers[0])
+            : UITargetScope.match(args.target, in: presenter.lastSnapshot, preferring: Set(UIElementKind.allCases.filter(\.opens)))
+        switch match {
         case .missing(let candidates, _):
             return .init(done: false, target: args.target,
                          message: presenter.lastSnapshot.problem ?? "no single closed section, panel or menu is called \"\(args.target)\"",
                          candidates: candidates.map(UITargetView.init))
+        case .found(let element) where element.presents != nil:
+            return await openOrClose(element, presenting: element.presents ?? "", open: open, target: args.target)
         case .found(let element):
             guard element.kind.opens else {
-                let navigate = element.kind == .tab || element.kind == .segment
-                    ? "a tab is navigated to, never opened: navigate_to, select_search_tab or open_settings"
-                    : "open_ui opens a folded section, a hidden panel or a menu"
-                return .init(done: false, target: args.target, id: element.id, kind: element.kind.rawValue,
-                             message: "\(element.id) is a \(element.kind.rawValue): \(navigate)")
+                return await rightClickMenu(of: element, open: open, target: args.target)
             }
             guard element.closed == open else {
                 return .init(done: true, target: args.target, id: element.id, kind: element.kind.rawValue,
@@ -153,6 +170,62 @@ extension AppState {
                          message: !done ? "\(current.id) did not \(open ? "open" : "close")"
                              : open && menu ? "the menu waits for the person: they choose from it or press Esc" : nil)
         }
+    }
+
+    /// Opens what a control opens, pressing it once as the person's click
+    /// would — nothing inside is chosen — or closes it, as Esc would (plan
+    /// 30 T2). A system file panel stays up for the person.
+    @MainActor
+    private func openOrClose(_ element: UIElement, presenting name: String, open: Bool,
+                             target: String) async -> OpenCloseUITool.Output {
+        let presentations = UIPresentations.shared
+        let id = "presented:\(name)"
+        if let shown = presentations.shown(named: name), shown.name.lowercased() == name.lowercased() {
+            guard !open else { return .init(done: true, target: target, id: id, kind: shown.kind.rawValue, message: "\(name) was already open") }
+            presentations.close(shown)
+            agentsService.activityStore.append(.live(kind: "close_ui", summary: "Closed \(name)", origin: .external(clientID: "close_ui")))
+            return .init(done: true, target: target, id: id, kind: shown.kind.rawValue)
+        }
+        guard open else { return .init(done: true, target: target, id: id, message: "\(name) was already closed") }
+        let presenter = uiHintPresenter
+        var current = element
+        if !element.inSight, let moved = await presenter.bringIntoView([element])[element.id] { current = moved }
+        let (pressed, appeared) = await presenter.setOpen(current, true)
+        guard pressed, let shown = presentations.shown(named: name) else {
+            return .init(done: false, target: target, id: current.id, kind: current.kind.rawValue,
+                         message: pressed ? "pressed \(current.id), and \(name) has not shown yet: list_ui_targets' `presented` says when it has"
+                             : "\(current.id) could not be pressed")
+        }
+        agentsService.activityStore.append(.live(kind: "open_ui", summary: "Opened \(name)", origin: .external(clientID: "open_ui")))
+        let panel = shown.kind == .filePanel
+        return .init(done: true, target: target, id: id, kind: shown.kind.rawValue, waiting: panel ? true : nil,
+                     inside: appeared.map(UITargetView.init),
+                     message: panel ? "the panel waits for the person: they choose, or close_ui closes it as Cancel" : nil)
+    }
+
+    /// Opens an element's right-click menu, which waits for the person — or
+    /// closes it as Esc does (plan 30 T2).
+    @MainActor
+    private func rightClickMenu(of element: UIElement, open: Bool, target: String) async -> OpenCloseUITool.Output {
+        let presenter = uiHintPresenter
+        if !open, presenter.cancelOpenMenus() { return .init(done: true, target: target, id: element.id, kind: "menu") }
+        if open {
+            var current = element
+            if !element.inSight, let moved = await presenter.bringIntoView([element])[element.id] { current = moved }
+            let (done, appeared) = await presenter.showMenu(current)
+            if done {
+                agentsService.activityStore.append(.live(kind: "open_ui", summary: "Opened the menu of \(current.name ?? current.id)",
+                                                         origin: .external(clientID: "open_ui")))
+                return .init(done: true, target: target, id: current.id, kind: "menu", waiting: true,
+                             inside: appeared.map(UITargetView.init),
+                             message: "its right-click menu waits for the person: they choose from it or press Esc; close_ui `menu` closes it")
+            }
+        }
+        let navigate = element.kind == .tab || element.kind == .segment
+            ? "a tab is navigated to, never opened: navigate_to, select_search_tab or open_settings"
+            : "open_ui opens a folded section, a hidden panel, a menu, what a control opens (`opens`) or a right-click menu, and this has none"
+        return .init(done: false, target: target, id: element.id, kind: element.kind.rawValue,
+                     message: "\(element.id) is a \(element.kind.rawValue): \(navigate)")
     }
 
     func makeClearUIHintsTool() -> ClearUIHintsTool {

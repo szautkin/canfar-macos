@@ -59,7 +59,7 @@ struct HeadlessJobsView: View {
                     Button("Jobs & History…") { model.detailPresented = true }
                         .controlSize(.small)
                         .help("Show the batch jobs, and the history of those that ended")
-                        .pointable("portal.batchJobs")
+                        .pointable("portal.batchJobs", opens: "Batch Jobs")
                 }
 
                 // Cross-fade only on the loading/empty/content BOUNDARY —

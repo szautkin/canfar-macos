@@ -249,6 +249,7 @@ struct SearchResultsView: View {
         }
         .buttonStyle(.borderless)
         .help(Text("Choose visible columns"))
+        .opens("Columns")
         .uiPresented("Columns", .popover, isPresented: $showColumnsPicker)
         .popover(isPresented: $showColumnsPicker, arrowEdge: .top) {
             ColumnsPickerPopover(model: resultsModel)
@@ -540,7 +541,7 @@ struct SearchResultsView: View {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
         panel.directoryURL = docs
 
-        let response = panel.runModal()
+        let response = await UIPresentations.shared.runModal(panel, "Save Results")
         if response == .OK, let saveURL = panel.url {
             // The person's export lands here; an assistant's is recorded
             // where it is applied (plan 23 C).

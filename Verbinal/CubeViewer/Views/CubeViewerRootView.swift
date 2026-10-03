@@ -98,6 +98,7 @@ struct CubeViewerRootView: View {
                 #if os(macOS)
                 Button("Open Cube…") { Task { await model.openWithPicker() } }
                     .buttonStyle(.borderedProminent)
+                    .opens("Open Cube")
                 #endif
             }
             RecentFilesList(recents: model.recentFiles, icon: "cube.transparent") { model.openRecent($0) }
