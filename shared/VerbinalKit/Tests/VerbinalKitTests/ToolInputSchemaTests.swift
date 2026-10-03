@@ -87,4 +87,43 @@ final class ToolInputSchemaTests: XCTestCase {
         XCTAssertEqual(ToolInputSchema.camelCase("foo_bar_baz"), "fooBarBaz")
         XCTAssertEqual(ToolInputSchema.snakeCase("proposalId"), "proposal_id")
     }
+
+    // MARK: - Nested (plan 30 S2)
+
+    /// A bulk tool's items, each an object of its own.
+    private let bulk = """
+    {"type":"object","additionalProperties":false,"required":["items"],"properties":{
+      "items":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["publisher_id"],
+        "properties":{"publisher_id":{"type":"string"},"text":{"type":"string"},"rating":{"type":"integer"}}}}}}
+    """
+
+    /// The QA pass's call: the fields nested under a key the item does not
+    /// take. It was accepted, wrote nothing, and said it had.
+    func testAnItemsUnknownKeyIsRefusedNamingWhere() {
+        let result = ToolInputSchema.check(schema: parse(bulk), arguments: Data(#"""
+        {"items":[{"publisher_id":"a"},{"publisher_id":"b","notes":{"text":"x","rating":3}}]}
+        """#.utf8))
+        guard case .refused(let why) = result else { return XCTFail("\(result)") }
+        XCTAssertTrue(why.contains("unknown argument(s) in `items[1]` [\"notes\"]"), why)
+        XCTAssertTrue(why.contains("publisher_id"), "says what it takes: \(why)")
+    }
+
+    func testAnItemsAliasIsRenamedAndItsNumberKept() throws {
+        let result = ToolInputSchema.check(schema: parse(bulk), arguments: Data(#"{"items":[{"publisherId":"a","rating":3}]}"#.utf8))
+        guard case .accepted(let data) = result else { return XCTFail("\(result)") }
+        let item = try XCTUnwrap(JSONDecoder().decode(JSONValue.self, from: data).objectValue?["items"]?.arrayValue?.first?.objectValue)
+        XCTAssertEqual(item["publisher_id"], .string("a"))
+        XCTAssertEqual(item["rating"], .int(3), "an integer stays one")
+    }
+
+    func testANestedObjectsUnknownKeyIsRefused() {
+        let schema = parse("""
+        {"type":"object","additionalProperties":false,"properties":{
+          "region":{"type":"object","additionalProperties":false,"properties":{"ra":{"type":"number"},"dec":{"type":"number"}}}}}
+        """)
+        guard case .refused(let why) = ToolInputSchema.check(schema: schema, arguments: Data(#"{"region":{"ra":1,"decl":2}}"#.utf8)) else {
+            return XCTFail()
+        }
+        XCTAssertTrue(why.contains("in `region` [\"decl\"]"), why)
+    }
 }

@@ -55,6 +55,9 @@ struct GetSearchResultsTool: JSONReadTool {
             let kind: String
             let visible: Bool
             let selectedUnit: String?
+            /// The unit ids `set_results_view` `columnUnits` takes for this
+            /// column; nil for a column with no unit choice (plan 30 S5).
+            let units: [String]?
         }
     }
 

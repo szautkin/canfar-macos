@@ -71,7 +71,11 @@ public enum ToolInputSchema {
     }
 
     /// Checks `arguments` against a schema that sets
-    /// `additionalProperties: false`, and canonicalises aliases.
+    /// `additionalProperties: false`, and canonicalises aliases — at every
+    /// level: an object argument, and each item of an array argument, is
+    /// checked against its own schema (plan 30 S2). An item that took a key
+    /// its schema does not declare was accepted, decoded with none of its
+    /// fields, and wrote nothing while the call said it had.
     ///
     /// The camelCase and snake_case twins of a declared name are accepted —
     /// the Ubuntu and Windows bridges honour both — but tools decode with a
@@ -82,34 +86,68 @@ public enum ToolInputSchema {
     /// Arguments that are not a JSON object pass through for the tool's own
     /// decoder to reject.
     public static func check(schema: JSONValue, arguments: Data) -> ArgumentCheck {
-        guard additionalPropertiesForbidden(schema),
-              let props = properties(schema),
-              let given = argumentObject(in: arguments) else { return .accepted(arguments) }
+        guard let given = argumentObject(in: arguments) else { return .accepted(arguments) }
+        switch canonical(.object(given), schema: schema, path: "") {
+        case .refused(let why):
+            return .refused(why)
+        case .value(let value, let changed):
+            guard changed, let data = try? JSONEncoder().encode(value) else { return .accepted(arguments) }
+            return .accepted(data)
+        }
+    }
 
+    private enum Canonical {
+        case value(JSONValue, changed: Bool)
+        case refused(String)
+    }
+
+    /// `value` as `schema` declares it: an object's aliases renamed and, where
+    /// the schema forbids others, its unknown keys refused, naming where they
+    /// are — and the same for each value it holds and each item of an array.
+    private static func canonical(_ value: JSONValue, schema: JSONValue, path: String) -> Canonical {
+        if let items = value.arrayValue {
+            guard let itemSchema = schema.objectValue?["items"] else { return .value(value, changed: false) }
+            var checked: [JSONValue] = []
+            var changed = false
+            for (index, item) in items.enumerated() {
+                switch canonical(item, schema: itemSchema, path: "\(path)[\(index)]") {
+                case .refused(let why): return .refused(why)
+                case .value(let item, let itemChanged):
+                    checked.append(item)
+                    changed = changed || itemChanged
+                }
+            }
+            return .value(.array(checked), changed: changed)
+        }
+        guard let given = value.objectValue, let props = properties(schema) else { return .value(value, changed: false) }
+        let forbidden = additionalPropertiesForbidden(schema)
         let spellings = declaredSpellings(props)
         var canonical: [String: JSONValue] = [:]
         var sourceKey: [String: String] = [:]
         var unknown: [String] = []
-        for (key, value) in given {
-            guard let name = spellings[key] else {
-                unknown.append(key)
+        var changed = false
+        for (key, child) in given {
+            guard let name = spellings[key], let childSchema = props[name] else {
+                if forbidden { unknown.append(key) } else { canonical[key] = child }
                 continue
             }
             if let earlier = sourceKey[name] {
                 let both = [earlier, key].sorted().joined(separator: "` and `")
-                return .refused("`\(both)` are two spellings of `\(name)`; pass it once")
+                return .refused("`\(both)` are two spellings of `\(path.isEmpty ? name : "\(path).\(name)")`; pass it once")
             }
-            canonical[name] = value
+            switch Self.canonical(child, schema: childSchema, path: path.isEmpty ? name : "\(path).\(name)") {
+            case .refused(let why): return .refused(why)
+            case .value(let checked, let childChanged):
+                canonical[name] = checked
+                changed = changed || childChanged || key != name
+            }
             sourceKey[name] = key
         }
         guard unknown.isEmpty else {
-            return .refused("unknown argument(s) \(unknown.sorted()); it takes \(propertyNames(schema))")
+            let at = path.isEmpty ? "" : " in `\(path)`"
+            return .refused("unknown argument(s)\(at) \(unknown.sorted()); it takes \(Array(props.keys).sorted())")
         }
-        let renamedAny = sourceKey.contains { $0.key != $0.value }
-        guard renamedAny, let data = try? JSONEncoder().encode(JSONValue.object(canonical)) else {
-            return .accepted(arguments)
-        }
-        return .accepted(data)
+        return .value(.object(canonical), changed: changed)
     }
 
     public static func propertyNames(_ schema: JSONValue) -> [String] {

@@ -90,6 +90,23 @@ struct GetCubeViewTool: JSONReadTool {
 /// re-adjusting the controls. Every argument is optional; only the
 /// fields present are applied.
 struct SetCubeViewTool: AITool {
+    /// A volume opacity curve, as both this tool and `set_cube_transfer`
+    /// take it (plan 30 S4).
+    static let opacityCurveSchema = #"""
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 16,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "description": "Volume opacity transfer function: [value, alpha] control points, values 0-1, non-decreasing in value — e.g. [[0,0],[0.3,0.2],[0.7,0.6],[1,1]]."
+        }
+        """#
+
     static let verbClass: VerbClass = .viewState
     static let agentSafe: Bool = true
 
@@ -240,18 +257,7 @@ struct SetCubeViewTool: AITool {
               "maximum": 60,
               "description": "Channel-playback speed in frames per second."
             },
-            "opacityCurve": {
-              "type": "array",
-              "minItems": 2,
-              "maxItems": 16,
-              "items": {
-                "type": "array",
-                "minItems": 2,
-                "maxItems": 2,
-                "items": { "type": "number", "minimum": 0, "maximum": 1 }
-              },
-              "description": "Volume opacity transfer function: [value, alpha] control points, non-decreasing in value."
-            },
+            "opacityCurve": \#(SetCubeViewTool.opacityCurveSchema),
             "autoWindow": {
               "type": "string",
               "enum": ["auto", "percentile", "full"],
@@ -558,11 +564,13 @@ struct SetCubeTransferTool: AITool {
     struct Output: Encodable, Sendable { let applied: Bool }
     let definition = AIToolDefinition.withStaticSchema(
         name: "set_cube_transfer",
-        description: "Set the Cube Viewer volume opacity curve, or reset it to the default curve. Live-applied.",
-        schema: #"{"type":"object","properties":{"opacityCurve":{"type":"array"},"reset":{"type":"boolean"}},"additionalProperties":false}"#)
+        description: "Set the Cube Viewer volume opacity curve, or reset it to the default curve. Live-applied. The curve is the one `set_cube_view` takes.",
+        schema: #"{"type":"object","properties":{"opacityCurve":\#(SetCubeViewTool.opacityCurveSchema),"reset":{"type":"boolean"}},"additionalProperties":false}"#)
     let apply: @Sendable (Args) async -> String?
     func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
-        guard let args = try? JSONDecoder().decode(Args.self, from: arguments) else { return .failed(.invalidArgument("Invalid arguments")) }
+        guard let args = try? JSONDecoder().decode(Args.self, from: arguments) else {
+            return .failed(.invalidArgument("opacityCurve is [[value, alpha], …], values 0-1 — e.g. [[0,0],[0.3,0.2],[0.7,0.6],[1,1]] — or reset: true"))
+        }
         if let error = await apply(args) { return .failed(.invalidArgument(error)) }
         return (try? .data(JSONEncoder().encode(Output(applied: true)))) ?? .failed(.backendError("encoding failed"))
     }

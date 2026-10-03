@@ -24,7 +24,7 @@
 |---|---|---|
 | **A** | What an assistant may do without asking: kinds of change, and a setting for each | done — A1 `196a757`, A2 `cb37ef1`, A3 `19dfeff`, A5 `6db6106`, A6 (this commit). Next: W1–W4 |
 | **W** | Writes on CANFAR: tasks, honest advice, no second launch by accident | done (this commit): W1 SessionLaunches, W2 advice, W3 in A2, W4 retry looks first. W0b with the person |
-| **S** | Silent no-ops and loose schemas | planned |
+| **S** | Silent no-ops and loose schemas | done — S1–S5 (this commit) |
 | **J** | Jobs CANFAR has dropped read as "gone", not "pending" | planned |
 | **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | planned — decision 1 |
 | **B** | The Batch Jobs filter on every tab, always shown | planned — decision 5 |

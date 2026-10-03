@@ -944,7 +944,8 @@ extension AppState {
                         id: $0.id, label: $0.label,
                         kind: Self.columnKindKey($0.kind),
                         visible: $0.visible,
-                        selectedUnit: resultsModel.selectedUnit(for: $0.id))
+                        selectedUnit: resultsModel.selectedUnit(for: $0.id),
+                        units: CellFormatterRegistry.availableUnits(for: $0.id)?.map(\.unitID))
                 }
 
                 var rows: [[String]] = []
@@ -1033,7 +1034,8 @@ extension AppState {
                             return .rejected("Column '\(id)' has no unit choices")
                         }
                         guard available.contains(where: { $0.unitID == unit }) else {
-                            return .rejected("Unknown unit '\(unit)' for column '\(id)'")
+                            let ids = available.map(\.unitID).joined(separator: ", ")
+                            return .rejected("Unknown unit '\(unit)' for column '\(id)': it takes \(ids)")
                         }
                     }
                 }

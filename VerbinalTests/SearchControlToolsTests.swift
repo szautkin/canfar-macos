@@ -120,7 +120,7 @@ final class SearchControlToolsTests: XCTestCase {
                          totalPages: 5, rowsPerPage: 100, sortColumnID: "obsid",
                          sortAscending: false, activeFilters: ["collection": "CFHT"],
                          columns: [.init(id: "obsid", label: "Obs. ID", kind: "text",
-                                         visible: true, selectedUnit: nil)],
+                                         visible: true, selectedUnit: nil, units: nil)],
                          returnedPage: 3, rowIDs: ["a"], rows: [["x"]],
                          rowsTruncated: false)
         })

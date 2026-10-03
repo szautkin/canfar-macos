@@ -27,10 +27,9 @@ struct UpdateObservationNoteTool: JSONWriteTool {
         let tags: [String]?
     }
 
-    let definition = AIToolDefinition.withStaticSchema(
-        name: "update_observation_note",
-        description: "Set the user's note for an observation: text body, 0-5 star rating, free-form tags. Any field may be omitted to leave it unchanged.",
-        schema: #"""
+    /// One note change: the schema of this tool's arguments, and of each
+    /// item of `bulk_update_observation_notes` (plan 30 S1).
+    static let noteSchema = #"""
         {
           "type": "object",
           "required": ["publisher_id"],
@@ -43,11 +42,26 @@ struct UpdateObservationNoteTool: JSONWriteTool {
           "additionalProperties": false
         }
         """#
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "update_observation_note",
+        description: "Set the user's note for an observation: text body, 0-5 star rating, free-form tags. Any field may be omitted to leave it unchanged, but one must be given.",
+        schema: UpdateObservationNoteTool.noteSchema
     )
 
+    /// Why a note change cannot be made: a rating out of range, or nothing
+    /// to change at all — refused rather than reported done (plan 30 S3).
+    static func refusal(_ args: Args) -> String? {
+        if let r = args.rating, !(0...5).contains(r) { return "rating must be 0-5" }
+        if args.text == nil, args.rating == nil, args.tags == nil {
+            return "nothing to change for \(args.publisher_id): give text, rating or tags"
+        }
+        return nil
+    }
+
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
-        if let r = args.rating, !(0...5).contains(r) {
-            throw ToolFailureReason.invalidArgument("rating must be 0-5")
+        if let why = Self.refusal(args) {
+            throw ToolFailureReason.invalidArgument(why)
         }
         var summary = "Update note for \(args.publisher_id)"
         if let text = args.text {
@@ -107,7 +121,7 @@ struct BulkUpdateObservationNotesTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "bulk_update_observation_notes",
-        description: "Update notes on up to 50 observations as ONE proposal envelope. Same per-item shape as `update_observation_note`. Use whenever annotating a sibling group (e.g. all 5 epochs of a time series) — lands atomically (all-or-nothing) and counts as a single proposal in strip-confirm mode.",
+        description: "Update notes on up to 50 observations as ONE proposal envelope. Each item is `update_observation_note`'s own arguments: `publisher_id`, and `text`, `rating` (0-5) or `tags`. Use whenever annotating a sibling group (e.g. all 5 epochs of a time series) — lands atomically (all-or-nothing) and counts as a single proposal when it waits in Pending.",
         schema: #"""
         {
           "type": "object",
@@ -117,7 +131,7 @@ struct BulkUpdateObservationNotesTool: JSONWriteTool {
               "type": "array",
               "minItems": 1,
               "maxItems": 50,
-              "items": { "type": "object" }
+              "items": \#(UpdateObservationNoteTool.noteSchema)
             }
           },
           "additionalProperties": false
@@ -135,8 +149,8 @@ struct BulkUpdateObservationNotesTool: JSONWriteTool {
             )
         }
         for item in args.items {
-            if let r = item.rating, !(0...5).contains(r) {
-                throw ToolFailureReason.invalidArgument("rating must be 0-5")
+            if let why = UpdateObservationNoteTool.refusal(item) {
+                throw ToolFailureReason.invalidArgument(why)
             }
         }
         let payloads = args.items.map {

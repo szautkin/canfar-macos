@@ -12,6 +12,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **An assistant's malformed change is refused, never reported done.**
+  Bulk note updates took items of any shape; one with its fields under a
+  wrong key said it had updated two notes and wrote nothing. Every tool
+  now refuses a key it does not take, at any depth, naming where it is,
+  and a note change with nothing in it is refused. The bulk note tool,
+  the cube's opacity curve and the results table's units now say the
+  shape and the values they take.
 - **A launch is on the activity bar, and trying it again cannot start a
   second one.** An assistant's session launch, and a relaunch from Recent
   Launches, now show on the activity bar like a launch from the form.
