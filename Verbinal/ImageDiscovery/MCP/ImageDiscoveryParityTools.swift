@@ -69,7 +69,7 @@ struct GetProbeLogsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_probe_logs",
-        description: "Container logs and Kubernetes events for one package-discovery probe job (jobID from `list_probe_failures`) — the discovery sheet's \"View logs\" diagnostic. Use to find out why a probe failed inside the container.",
+        description: "Container logs and Kubernetes events for one package-discovery probe job (jobID from `list_probe_failures`) — the discovery sheet's \"View logs\" diagnostic. Use to find out why a probe failed inside the container. They are there while CANFAR still lists the job; once it has dropped the job, the tool says so, and `list_probe_failures` and `list_job_history` keep its reason.",
         schema: #"""
         {
           "type": "object",
@@ -84,8 +84,15 @@ struct GetProbeLogsTool: JSONReadTool {
     let fetch: @Sendable (String) async throws -> (logs: String, events: String)
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        let result = try await fetch(args.jobID)
-        return Output(jobID: args.jobID, logs: result.logs, events: result.events)
+        do {
+            let result = try await fetch(args.jobID)
+            return Output(jobID: args.jobID, logs: result.logs, events: result.events)
+        } catch let error as NetworkError {
+            // A job CANFAR has dropped answers 404 for good (plan 30 J2).
+            guard case .httpError(404, _) = error else { throw error }
+            throw ToolFailureReason.backendError(
+                "CANFAR no longer lists probe job \(args.jobID), so its logs and events are gone — list_probe_failures and list_job_history keep its reason")
+        }
     }
 }
 

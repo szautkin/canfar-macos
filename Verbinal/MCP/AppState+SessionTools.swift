@@ -106,14 +106,20 @@ extension AppState {
         let service = self.headlessService
         return GetHeadlessJobLogsTool(fetch: { id in
             try await service.getLogs(id: id)
-        })
+        }, isListed: { id in await Self.isListed(id, service) })
     }
 
     func makeGetHeadlessJobEventsTool() -> GetHeadlessJobEventsTool {
         let service = self.headlessService
         return GetHeadlessJobEventsTool(fetch: { id in
             try await service.getEvents(id: id)
-        })
+        }, isListed: { id in await Self.isListed(id, service) })
+    }
+
+    /// Whether CANFAR lists the job now; nil when it cannot say (plan 30 J1).
+    nonisolated static func isListed(_ id: String, _ service: HeadlessService) async -> Bool? {
+        guard let jobs = try? await service.getHeadlessJobs() else { return nil }
+        return jobs.contains { $0.id == id }
     }
 
     // MARK: - Recent launches

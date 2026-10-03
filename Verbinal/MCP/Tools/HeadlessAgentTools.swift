@@ -632,11 +632,13 @@ struct GetHeadlessJobLogsTool: JSONReadTool {
         /// new output arrived). `logs` is empty in that case
         /// and the agent should pause before polling again.
         let upToDate: Bool
+        /// Set when `state` is `"gone"`: what is left to read instead.
+        var note: String? = nil
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_headless_job_logs",
-        description: "Fetch container stdout/stderr for a headless job by id. Returns plain-text logs plus a typed `state` field (`\"ready\"` / `\"pending\"`) and incremental-polling fields. For long jobs: poll with `since_bytes: nextOffset` from the previous response — you'll receive only the new bytes accumulated since the last call instead of the full log every time. `upToDate: true` signals \"no new output since your last poll\" so you know to pause before the next call. Omit `since_bytes` (or pass 0) to read the whole log from the beginning. `nextOffset` is the total log size on the server; pin it for the next poll. Skaha returns 404 during the Pending window — the tool surfaces `state: \"pending\"` with empty logs instead of throwing, so polling code doesn't need to special-case the error path.",
+        description: "Fetch container stdout/stderr for a headless job by id. Returns plain-text logs plus a typed `state` field (`\"ready\"` / `\"pending\"` / `\"gone\"` — CANFAR no longer lists the job: stop polling, `list_job_history` keeps what is known) and incremental-polling fields. For long jobs: poll with `since_bytes: nextOffset` from the previous response — you'll receive only the new bytes accumulated since the last call instead of the full log every time. `upToDate: true` signals \"no new output since your last poll\" so you know to pause before the next call. Omit `since_bytes` (or pass 0) to read the whole log from the beginning. `nextOffset` is the total log size on the server; pin it for the next poll. Skaha returns 404 during the Pending window — the tool surfaces `state: \"pending\"` with empty logs instead of throwing, so polling code doesn't need to special-case the error path.",
         schema: #"""
         {
           "type": "object",
@@ -651,19 +653,28 @@ struct GetHeadlessJobLogsTool: JSONReadTool {
     )
 
     let fetch: @Sendable (_ id: String) async throws -> String
+    /// Whether CANFAR lists the job now; nil when it cannot say.
+    var isListed: @Sendable (_ id: String) async -> Bool? = { _ in nil }
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let since = max(0, args.since_bytes ?? 0)
         do {
             let logs = try await fetch(args.id)
+            // No logs from a job CANFAR has dropped: gone, not "ready" and empty.
+            if logs.isEmpty, since == 0, await isListed(args.id) == false {
+                return Output(id: args.id, logs: "", state: "gone", nextOffset: 0, returnedBytes: 0, upToDate: true,
+                              note: HeadlessJobPresence.goneNote)
+            }
             return Self.makeOutput(id: args.id, fullLogs: logs, since: since, state: "ready")
         } catch let net as NetworkError where Self.isPendingPodSignal(net) {
             // Pending: no log content yet. nextOffset stays at
             // 0 so the caller's next poll starts from the
-            // beginning when the pod materialises.
+            // beginning when the pod materialises. Or gone.
+            let state = await HeadlessJobPresence.stateWithoutPod(args.id, isListed: isListed)
             return Output(
-                id: args.id, logs: "", state: "pending",
-                nextOffset: 0, returnedBytes: 0, upToDate: false
+                id: args.id, logs: "", state: state,
+                nextOffset: 0, returnedBytes: 0, upToDate: state == "gone",
+                note: state == "gone" ? HeadlessJobPresence.goneNote : nil
             )
         } catch {
             throw ToolFailureReason.backendError(error.localizedDescription)
@@ -707,6 +718,22 @@ struct GetHeadlessJobLogsTool: JSONReadTool {
     }
 }
 
+// MARK: - A job without a pod: coming, or gone
+
+/// Whether a job CANFAR has no pod for is still coming or gone (plan 30 J1).
+/// Its logs and events answer 404 both while it is queued and once CANFAR
+/// has dropped it; read as "pending" for ever, the documented polling loop
+/// never ends.
+enum HeadlessJobPresence {
+    static let goneNote = "CANFAR no longer lists this job: stop polling — list_job_history keeps what is known of it"
+
+    /// "gone" when the platform does not list it; else "pending" — listed,
+    /// or it cannot say.
+    static func stateWithoutPod(_ id: String, isListed: (String) async -> Bool?) async -> String {
+        await isListed(id) == false ? "gone" : "pending"
+    }
+}
+
 // MARK: - get_headless_job_events (read)
 
 struct GetHeadlessJobEventsTool: JSONReadTool {
@@ -729,13 +756,16 @@ struct GetHeadlessJobEventsTool: JSONReadTool {
         /// `"ready"` once the K8s pod exists and events are
         /// fetchable; `"pending"` while the job is still queued
         /// at Skaha and no pod has been created yet (events are
-        /// always empty in that state).
+        /// always empty in that state); `"gone"` when CANFAR no longer
+        /// lists the job.
         let state: String
+        /// Set when `state` is `"gone"`: what is left to read instead.
+        var note: String? = nil
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_headless_job_events",
-        description: "Fetch Kubernetes-level events for a headless job by id (scheduling decisions, pull errors, OOM kills, etc). Plain-text events plus a typed `state` field: `\"ready\"` when the pod exists and the body is the real event log; `\"pending\"` when the pod hasn't been created yet (Skaha returns HTTP 404 during this window — the tool catches it and surfaces a structured status so callers don't have to special-case the error). Poll every few seconds during Pending; events arrive once K8s materialises the pod.",
+        description: "Fetch Kubernetes-level events for a headless job by id (scheduling decisions, pull errors, OOM kills, etc). Plain-text events plus a typed `state` field: `\"ready\"` when the pod exists and the body is the real event log; `\"pending\"` when the pod hasn't been created yet (Skaha returns HTTP 404 during this window — the tool catches it and surfaces a structured status so callers don't have to special-case the error); `\"gone\"` when CANFAR no longer lists the job — stop polling; `list_job_history` keeps what is known. Poll every few seconds during Pending; events arrive once K8s materialises the pod.",
         schema: #"""
         {
           "type": "object",
@@ -747,6 +777,8 @@ struct GetHeadlessJobEventsTool: JSONReadTool {
     )
 
     let fetch: @Sendable (_ id: String) async throws -> String
+    /// Whether CANFAR lists the job now; nil when it cannot say.
+    var isListed: @Sendable (_ id: String) async -> Bool? = { _ in nil }
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         do {
@@ -755,8 +787,11 @@ struct GetHeadlessJobEventsTool: JSONReadTool {
         } catch let net as NetworkError where Self.isPendingPodSignal(net) {
             // Pod not yet created — job is still Pending at
             // Skaha. Surface a structured status instead of
-            // bubbling the 404 up as a generic backend error.
-            return Output(id: args.id, events: "", hasEvents: false, state: "pending")
+            // bubbling the 404 up as a generic backend error. Or
+            // gone: a job CANFAR no longer lists answers 404 for good.
+            let state = await HeadlessJobPresence.stateWithoutPod(args.id, isListed: isListed)
+            return Output(id: args.id, events: "", hasEvents: false, state: state,
+                          note: state == "gone" ? HeadlessJobPresence.goneNote : nil)
         } catch {
             throw ToolFailureReason.backendError(error.localizedDescription)
         }

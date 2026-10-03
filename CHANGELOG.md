@@ -12,6 +12,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A batch job CANFAR has dropped reads "gone", not "pending".** An
+  assistant reading the logs or events of a job CANFAR no longer lists
+  was told it was still pending, and would have polled it for ever. It
+  is now told the job is gone, and that Batch Jobs ▸ History keeps what
+  is known of it; a probe's logs say the same once CANFAR has dropped it.
 - **An assistant's malformed change is refused, never reported done.**
   Bulk note updates took items of any shape; one with its fields under a
   wrong key said it had updated two notes and wrote nothing. Every tool
