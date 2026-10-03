@@ -579,7 +579,7 @@ extension AppState {
                     resolvedDec = dec
                 case .failed(let message): statusKey = "failed: \(message)"
                 }
-                return GetSearchFormTool.Output(
+                var form = GetSearchFormTool.Output(
                     observationID: state.observationID,
                     piName: state.piName,
                     proposalID: state.proposalID,
@@ -618,6 +618,8 @@ extension AppState {
                     generatedADQL: ADQLBuilder.buildQuery(
                         formState: state,
                         resolverCoords: Self.resolverCoords(of: model)))
+                form.searchRadius = SpatialBuilder.radiusDegrees(state.searchRadius) ?? ADQL.defaultSearchRadius
+                return form
             }
         })
     }
@@ -671,6 +673,7 @@ extension AppState {
                 if let v = args.target { state.target = v }
                 if let v = resolver { state.resolver = v }
                 if let v = args.pixelScale { state.pixelScale = v }
+                if let v = args.searchRadius { state.searchRadius = v > 0 ? String(v) : "" }
                 if let v = args.observationDate { state.observationDate = v }
                 if let v = datePreset { state.datePreset = v }
                 if let v = args.integrationTime { state.integrationTime = v }
@@ -729,8 +732,14 @@ extension AppState {
                     model.nextSearchAttribution = .forLiveTool(
                         label: "set_search_form", summary: "Ran a search from the form")
                 }
-                (outcome.executed, outcome.resultCount, outcome.searchError, outcome.cancelled) =
-                    Self.report(await model.executeSearch())
+                if args.wait == false {
+                    // Started, not awaited: cancel_search can stop it (plan 30 R2).
+                    Task { @MainActor in _ = await model.executeSearch() }
+                    outcome.started = true
+                } else {
+                    (outcome.executed, outcome.resultCount, outcome.searchError, outcome.cancelled) =
+                        Self.report(await model.executeSearch())
+                }
             } else if targetTouched {
                 // Kick the UI's normal debounced resolution so the form
                 // shows the resolver status the user expects to see.
@@ -858,8 +867,13 @@ extension AppState {
                     model.nextSearchAttribution = .forLiveTool(
                         label: "set_adql_editor", summary: "Ran a query from the ADQL editor")
                 }
-                (outcome.executed, outcome.resultCount, outcome.searchError, outcome.cancelled) =
-                    Self.report(await model.executeRawQuery(adql, fromEditor: true))
+                if args.wait == false {
+                    Task { @MainActor in _ = await model.executeRawQuery(adql, fromEditor: true) }
+                    outcome.started = true
+                } else {
+                    (outcome.executed, outcome.resultCount, outcome.searchError, outcome.cancelled) =
+                        Self.report(await model.executeRawQuery(adql, fromEditor: true))
+                }
             }
             await MainActor.run {
                 activity.append(.live(

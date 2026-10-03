@@ -22,6 +22,9 @@ final class SearchFormState {
     // Spatial constraints
     var target = ""
     var resolver: ResolverValue = .all
+    /// The cone's radius: degrees, or with a unit (5', 30 arcsec); 1′ when
+    /// empty. A radius typed after the target takes precedence (plan 30 R1).
+    var searchRadius = ""
     var pixelScale = ""
     /// Download only the part of each file within the search's circle —
     /// as CADC's search page offers. Not a constraint: it shapes downloads.
@@ -96,6 +99,7 @@ final class SearchFormState {
         intent = .any
         target = ""
         resolver = .all
+        searchRadius = ""
         pixelScale = ""
         observationDate = ""
         datePreset = .none

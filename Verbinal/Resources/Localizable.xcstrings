@@ -139,6 +139,16 @@
         }
       }
     },
+    "degrees, or 5' or 30 arcsec — 1' when empty" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "degrés, ou 5' ou 30 arcsec — 1' si vide"
+          }
+        }
+      }
+    },
     "Deleting a running session, or stopping Remote Compute: unsaved work in it is lost." : {
       "localizations" : {
         "fr" : {

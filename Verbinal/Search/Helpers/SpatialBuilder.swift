@@ -20,6 +20,17 @@ enum SpatialBuilder {
         var resolver: ResolverValue
         var resolverCoords: (ra: String, dec: String)?
         var pixelScale: String
+        /// The Radius field: degrees, or with a unit; empty for the default.
+        var searchRadius: String = ""
+    }
+
+    /// The Radius field's radius in degrees; nil when it is empty or not one.
+    static func radiusDegrees(_ text: String) -> Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed.range(of: #"^[0-9.eE+-]+\s*(arcmin|arcsec|deg|')?$"#, options: [.regularExpression, .caseInsensitive]) != nil
+        else { return nil }
+        let degrees = parseRadius(trimmed)
+        return degrees > 0 ? degrees : nil
     }
 
     /// The cone a search looks in, degrees: a typed position (with its
@@ -29,11 +40,13 @@ enum SpatialBuilder {
     static func circle(_ params: Params) -> (ra: Double, dec: Double, radius: Double)? {
         let target = params.target.trimmingCharacters(in: .whitespaces)
         guard !target.isEmpty, parseCoordRange(target) == nil else { return nil }
+        // The Radius field's, else 1′ — unless one is typed after the target.
+        let fieldRadius = radiusDegrees(params.searchRadius) ?? ADQL.defaultSearchRadius
         // A pasted position is a cone search, whatever the resolver says.
-        if let pair = parseCoordinatePair(target) { return pair }
+        if let pair = parseCoordinatePair(target, defaultRadius: fieldRadius) { return pair }
         guard let coords = params.resolverCoords, let ra = Double(coords.ra), let dec = Double(coords.dec) else { return nil }
         // A radius after the target's name: "M31 0.5deg".
-        var radius = ADQL.defaultSearchRadius
+        var radius = fieldRadius
         let parts = target.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
         if parts.count > 1, let lastPart = parts.last {
             let parsed = parseRadius(lastPart)
@@ -82,7 +95,8 @@ enum SpatialBuilder {
     /// and DS9 write it) and RADIUS is an optional value with optional unit
     /// (deg/arcmin/arcsec). Returns nil if the input doesn't look like a
     /// coordinate pair (e.g. "M31").
-    static func parseCoordinatePair(_ input: String) -> (ra: Double, dec: Double, radius: Double)? {
+    static func parseCoordinatePair(_ input: String, defaultRadius: Double = ADQL.defaultSearchRadius)
+        -> (ra: Double, dec: Double, radius: Double)? {
         let parts = input.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
         guard parts.count >= 2 else { return nil }
 
@@ -90,7 +104,7 @@ enum SpatialBuilder {
               let dec = Sexagesimal.declination(parts[1]) else { return nil }
 
         // Optional third token: search radius with optional unit
-        var radius = ADQL.defaultSearchRadius
+        var radius = defaultRadius
         if parts.count >= 3 {
             let parsed = parseRadius(parts[2])
             if parsed > 0 { radius = parsed }

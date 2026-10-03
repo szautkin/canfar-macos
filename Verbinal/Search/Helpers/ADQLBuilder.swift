@@ -32,7 +32,8 @@ enum ADQLBuilder {
             target: formState.target,
             resolver: formState.resolver,
             resolverCoords: resolverCoords,
-            pixelScale: formState.pixelScale
+            pixelScale: formState.pixelScale,
+            searchRadius: formState.searchRadius
         ))
 
         // Temporal constraints

@@ -183,7 +183,8 @@ final class SearchFormModel {
     var cutoutHints: CutoutHints? {
         let circle = SpatialBuilder.circle(SpatialBuilder.Params(
             target: formState.target, resolver: formState.resolver,
-            resolverCoords: resolverCoords, pixelScale: formState.pixelScale))
+            resolverCoords: resolverCoords, pixelScale: formState.pixelScale,
+            searchRadius: formState.searchRadius))
         let band = SpectralBuilder.coverageInterval(formState.spectralCoverage)
         guard circle != nil || band != nil else { return nil }
         return CutoutHints(ra: circle?.ra, dec: circle?.dec, radius: circle?.radius, bandMin: band?.min, bandMax: band?.max)

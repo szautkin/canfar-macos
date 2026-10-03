@@ -18,6 +18,8 @@ struct SearchFormSnapshot: Codable, Equatable {
     var intent: String = ""
     var target: String = ""
     var resolver: String = "ALL"
+    /// Optional, so searches saved before it still load.
+    var searchRadius: String? = nil
     var pixelScale: String = ""
     var observationDate: String = ""
     var datePreset: String = ""
@@ -100,6 +102,7 @@ extension SearchFormState {
             intent: intent.rawValue,
             target: target,
             resolver: resolver.rawValue,
+            searchRadius: searchRadius.isEmpty ? nil : searchRadius,
             pixelScale: pixelScale,
             observationDate: observationDate,
             datePreset: datePreset.rawValue,
@@ -131,6 +134,7 @@ extension SearchFormState {
         intent = IntentValue(rawValue: snapshot.intent) ?? .any
         target = snapshot.target
         resolver = ResolverValue(rawValue: snapshot.resolver) ?? .all
+        searchRadius = snapshot.searchRadius ?? ""
         pixelScale = snapshot.pixelScale
         observationDate = snapshot.observationDate
         datePreset = DatePresetValue(rawValue: snapshot.datePreset) ?? .none

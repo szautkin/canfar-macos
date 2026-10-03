@@ -28,7 +28,7 @@
 | **J** | Jobs CANFAR has dropped read as "gone", not "pending" | done — J1, J2 (this commit) |
 | **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | planned — decision 1 |
 | **B** | The Batch Jobs filter on every tab, always shown | done (this commit) |
-| **R** | Search radius, as a field | planned — decision 2 |
+| **R** | Search radius, as a field | done (this commit): R1 Radius field, R2 wait: false |
 | **D** | `download_observation` `file` from another plane of the observation | done (this commit) |
 | **F** | The file browser opens Downloads | done (this commit): cause confirmed — a symlink listed as itself |
 | **L** | No answer longer than 45 s; long work goes on, with progress | planned — decision 3 |

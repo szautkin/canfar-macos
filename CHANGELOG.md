@@ -460,6 +460,13 @@ Catching up with Verbinal for Windows 1.4.1 (see
   first connection attempt.
 
 ### Added
+- **Search has a Radius field.** A cone search looked within 1′ of the
+  target unless you knew to type a radius after it ("M101 0.2deg"). The
+  Spatial section now has a **Radius** field — degrees, or 5' or
+  30 arcsec — kept with saved and recent searches; a radius typed after
+  the target still takes precedence. An assistant sets it as
+  `searchRadius`, and can start a search without waiting for it, so it
+  can cancel one too.
 - **Long lists in the launch form can be searched.** The Project and
   image pop-ups held hundreds of choices in a menu as tall as the screen.
   Past twelve choices, they now open a panel with a search field and a

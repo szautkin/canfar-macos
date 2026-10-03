@@ -36,6 +36,9 @@ struct GetSearchFormTool: JSONReadTool {
         let target: String
         let resolver: String
         let pixelScale: String
+        /// The cone's radius in degrees: the Radius field's, else 1′ (plan
+        /// 30 R1). A radius typed after the target takes precedence.
+        var searchRadius: Double = ADQL.defaultSearchRadius
         /// Downloads from the results cut to the search's circle.
         let spatialCutout: Bool
         let resolverStatus: String
@@ -116,6 +119,7 @@ struct SetSearchFormTool: AITool {
         var target: String?
         var resolver: String?
         var pixelScale: String?
+        var searchRadius: Double?
         var spatialCutout: Bool?
         // Temporal
         var observationDate: String?
@@ -139,6 +143,8 @@ struct SetSearchFormTool: AITool {
         var obsTypes: [String]?
         // Action
         var execute: Bool?
+        /// With `execute`, false: answer at once that it has started.
+        var wait: Bool?
 
         init() {}
     }
@@ -152,6 +158,8 @@ struct SetSearchFormTool: AITool {
         var searchError: String? = nil
         /// The person pressed Cancel while it ran.
         var cancelled: Bool = false
+        /// Run without waiting (`wait: false`): it has started, and goes on.
+        var started: Bool = false
     }
 
     /// Also `run_search`'s reply — the same button, reached two ways.
@@ -161,6 +169,8 @@ struct SetSearchFormTool: AITool {
         let resultCount: Int?
         let searchError: String?
         let cancelled: Bool
+        /// It runs on; `cancel_search` stops it (plan 30 R2).
+        let started: Bool
 
         init(_ outcome: Outcome) {
             applied = true
@@ -168,6 +178,7 @@ struct SetSearchFormTool: AITool {
             resultCount = outcome.resultCount
             searchError = outcome.searchError
             cancelled = outcome.cancelled
+            started = outcome.started
         }
     }
 
@@ -189,6 +200,7 @@ struct SetSearchFormTool: AITool {
             "target":           { "type": "string", "description": "Target name or coordinates, as the user would type them." },
             "resolver":         { "type": "string", "enum": ["all", "simbad", "ned", "vizier", "none"] },
             "pixelScale":       { "type": "string" },
+            "searchRadius":     { "type": "number", "minimum": 0, "description": "The cone's radius in degrees (the Radius field); 0 clears it to the default 1′. A radius typed after the target (\"M101 0.2deg\") takes precedence." },
             "spatialCutout":    { "type": "boolean", "description": "Downloads from the results take only the part of each file within the search's circle (cut on CADC's side), as CADC's search page offers." },
             "observationDate":  { "type": "string" },
             "datePreset":       { "type": "string", "enum": ["none", "past24Hours", "pastWeek", "pastMonth"] },
@@ -207,7 +219,8 @@ struct SetSearchFormTool: AITool {
             "calLevels":   { "type": "array", "items": { "type": "string" } },
             "dataTypes":   { "type": "array", "items": { "type": "string" } },
             "obsTypes":    { "type": "array", "items": { "type": "string" } },
-            "execute":     { "type": "boolean", "description": "Run the search after applying the fields." }
+            "execute":     { "type": "boolean", "description": "Run the search after applying the fields." },
+            "wait":        { "type": "boolean", "description": "With `execute`: false answers at once that it has started (`started: true`) — follow it with get_current_view or get_search_results, stop it with cancel_search. Default true: the answer waits for the results." }
           },
           "additionalProperties": false
         }
@@ -410,6 +423,8 @@ struct SetADQLEditorTool: AITool {
         var adql: String?
         var generateFromForm: Bool?
         var execute: Bool?
+        /// With `execute`, false: answer at once that it has started.
+        var wait: Bool?
 
         init() {}
         init(adql: String? = nil, generateFromForm: Bool? = nil, execute: Bool? = nil) {
@@ -427,6 +442,8 @@ struct SetADQLEditorTool: AITool {
         var searchError: String? = nil
         /// The person pressed Cancel while it ran.
         var cancelled: Bool = false
+        /// Run without waiting (`wait: false`): it has started, and goes on.
+        var started: Bool = false
     }
 
     /// Also `execute_adql_query`'s reply.
@@ -437,6 +454,8 @@ struct SetADQLEditorTool: AITool {
         let resultCount: Int?
         let searchError: String?
         let cancelled: Bool
+        /// It runs on; `cancel_search` stops it (plan 30 R2).
+        let started: Bool
 
         init(_ outcome: Outcome) {
             applied = true
@@ -445,6 +464,7 @@ struct SetADQLEditorTool: AITool {
             resultCount = outcome.resultCount
             searchError = outcome.searchError
             cancelled = outcome.cancelled
+            started = outcome.started
         }
     }
 
@@ -457,7 +477,8 @@ struct SetADQLEditorTool: AITool {
           "properties": {
             "adql":             { "type": "string", "description": "Raw ADQL to place in the editor; \"\" clears it." },
             "generateFromForm": { "type": "boolean", "description": "Regenerate the editor text from the current form state." },
-            "execute":          { "type": "boolean", "description": "Run the editor's content after applying." }
+            "execute":          { "type": "boolean", "description": "Run the editor's content after applying." },
+            "wait":             { "type": "boolean", "description": "With `execute`: false answers at once that it has started (`started: true`) — follow it with get_current_view or get_search_results, stop it with cancel_search. Default true: the answer waits for the results." }
           },
           "additionalProperties": false
         }

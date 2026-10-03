@@ -42,6 +42,8 @@ struct SpatialConstraintsView: View {
                 onTargetChanged()
             }
 
+            ConstraintField(label: "Radius", value: $formState.searchRadius, hint: "degrees, or 5' or 30 arcsec — 1' when empty")
+
             ConstraintField(label: "Pixel Scale", value: $formState.pixelScale, hint: "e.g. 0.5..2 arcsec")
 
             Toggle("Spatial cutout", isOn: $formState.spatialCutout)
