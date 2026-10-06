@@ -71,6 +71,48 @@ final class PresentationsTests: XCTestCase {
         XCTAssertEqual(Set(exempt.keys).subtracting(names).sorted(), [], "an exemption names one that is there")
     }
 
+    /// A view has one accessibility identifier: a hand tag set on the same
+    /// control as `.opens` replaces its mark. A tagged opener says both with
+    /// `pointable(_:opens:)` — the QA pass found Columns' mark lost so.
+    func testAnOpenerWithAHandTagSaysBothAtOnce() throws {
+        var clashes: [String] = []
+        for (file, text) in try appSources() {
+            let lines = text.components(separatedBy: "\n")
+            for (index, line) in lines.enumerated() where line.contains(".opens(\"") {
+                if Self.modifierChain(around: index, in: lines).contains(where: { $0.contains(".pointable(\"") }) {
+                    clashes.append("\(file.lastPathComponent):\(index + 1)")
+                }
+            }
+        }
+        XCTAssertEqual(clashes, [], "use pointable(_:opens:) on a hand-tagged opener")
+    }
+
+    /// The lines of the modifier chain a line is in: up and down, the
+    /// modifiers of the same view, with the closures they open.
+    private static func modifierChain(around index: Int, in lines: [String]) -> [String] {
+        func count(_ line: String, _ c: Character) -> Int { line.filter { $0 == c }.count }
+        var chain = [lines[index]]
+        var depth = 0
+        var down = index + 1
+        while down < lines.count {
+            let line = lines[down], trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard depth > 0 || trimmed.hasPrefix(".") else { break }
+            chain.append(line)
+            depth += count(line, "{") - count(line, "}")
+            down += 1
+        }
+        depth = 0
+        var up = index - 1
+        while up >= 0 {
+            let line = lines[up], trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard depth > 0 || trimmed.hasPrefix(".") || trimmed.hasPrefix("}") else { break }
+            chain.append(line)
+            depth += count(line, "}") - count(line, "{")
+            up -= 1
+        }
+        return chain
+    }
+
     /// The app's own sources, iOS's own views aside.
     private func appSources() throws -> [(file: URL, text: String)] {
         let sources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

@@ -293,4 +293,30 @@ final class RemoteComputeServiceTests: XCTestCase {
         for _ in 0..<100 where store.find("fresh")?.isFinished == false { try await Task.sleep(for: .milliseconds(10)) }
         XCTAssertEqual(store.find("fresh")?.state, "ok")
     }
+
+    /// A compute session CANFAR cannot pull the image of is not ready, and
+    /// says why — not "starting" for good — and no code is sent to it
+    /// (handout 31: ImagePullBackOff for 17 minutes).
+    func testASessionWhoseImageCannotBePulledIsNotReady() async throws {
+        sessions = FakeComputeSessions([.compute(id: "c1", status: "Pending", image: "images.canfar.net/private-test/x:1")])
+        let compute = service()
+        sessions.events["c1"] = "Normal Scheduled assigned\nWarning Failed Failed to pull image\nWarning Failed Error: ImagePullBackOff"
+        let stuck = try await compute.snapshot()
+        XCTAssertEqual(stuck.state, .notReady)
+        XCTAssertTrue(stuck.problem?.contains("cannot pull the compute image images.canfar.net/private-test/x:1") == true, stuck.problem ?? "")
+        XCTAssertTrue(stuck.state.canStop)
+        XCTAssertFalse(stuck.state.canRun(configured: true))
+        do {
+            try await compute.submit(request("r9"), by: .agent)
+            XCTFail("code went to a session that cannot start")
+        } catch let error as RemoteComputeError {
+            guard case .notReady = error else { return XCTFail("\(error)") }
+        }
+        XCTAssertTrue(files.uploads.isEmpty, "nothing dropped in its inbox")
+
+        sessions.events["c1"] = "Normal Scheduled assigned\nNormal Pulling image"
+        let starting = try await compute.snapshot()
+        XCTAssertEqual(starting.state, .starting, "still pulling: it may start")
+        XCTAssertNil(starting.problem)
+    }
 }

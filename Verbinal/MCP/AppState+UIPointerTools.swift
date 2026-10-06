@@ -183,6 +183,11 @@ extension AppState {
             return .init(done: true, target: target, id: id, kind: shown.kind.rawValue)
         }
         guard open else { return .init(done: true, target: target, id: id, message: "\(name) was already closed") }
+        // A disabled control does nothing when pressed: say so, as the person would see it.
+        guard element.enabled else {
+            return .init(done: false, target: target, id: element.id, kind: element.kind.rawValue,
+                         message: "\(element.id) is disabled now, so it cannot open \(name) — the screen may still be busy; try again when it is enabled")
+        }
         let presenter = uiHintPresenter
         var current = element
         if !element.inSight, let moved = await presenter.bringIntoView([element])[element.id] { current = moved }

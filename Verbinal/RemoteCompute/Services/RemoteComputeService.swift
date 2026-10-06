@@ -10,6 +10,7 @@ import VerbinalKit
 /// The sessions remote compute needs from the platform.
 protocol ComputeSessions: Sendable {
     func getSessions() async throws -> [Session]
+    func getSessionEvents(id: String) async throws -> String
     func launchSession(_ params: SessionLaunchParams) async throws -> String?
     func deleteSession(id: String) async throws
 }
@@ -37,11 +38,14 @@ extension VOSpaceBrowserService: ComputeFiles {
 enum RemoteComputeError: LocalizedError, Equatable {
     case signedOut
     case notSetUp
+    /// The session cannot start, and why.
+    case notReady(String)
 
     var errorDescription: String? {
         switch self {
         case .signedOut: return String(localized: "Sign in to CANFAR to use remote compute.")
         case .notSetUp: return String(localized: "No compute image is set — choose one in Settings ▸ AI Compute.")
+        case .notReady(let why): return why
         }
     }
 }
@@ -122,8 +126,18 @@ final class RemoteComputeService {
     func snapshot() async throws -> ComputeSnapshot {
         let config = configuration()
         let session = isSignedIn ? try await currentSession() : nil
-        return ComputeSnapshot(state: ComputeState(configured: config.isConfigured, sessionStatus: session?.status),
-                               session: session, configuration: config)
+        let state = ComputeState(configured: config.isConfigured, sessionStatus: session?.status)
+        if state == .starting, let session, let why = await notReady(session) {
+            return ComputeSnapshot(state: .notReady, session: session, configuration: config, problem: why)
+        }
+        return ComputeSnapshot(state: state, session: session, configuration: config)
+    }
+
+    /// Why a starting session cannot start, from its platform events; nil
+    /// while it may still start, or its events cannot be read.
+    private func notReady(_ session: Session) async -> String? {
+        guard let events = try? await sessions.getSessionEvents(id: session.id) else { return nil }
+        return ComputeState.notReadyReason(events: events, image: session.containerImage)
     }
 
     // MARK: - The session
@@ -147,7 +161,13 @@ final class RemoteComputeService {
         let config = launch ?? configuration()
         guard config.isConfigured else { throw RemoteComputeError.notSetUp }
         let user = try signedInUser()
-        if let live = try await warmSession() { return live }
+        if let live = try await warmSession() {
+            // Code dropped in the inbox of a session that cannot start would never run.
+            if ComputeState(configured: true, sessionStatus: live.status) == .starting, let why = await notReady(live) {
+                throw RemoteComputeError.notReady(why)
+            }
+            return live
+        }
         let credentials = registryAuth()
         _ = try await sessions.launchSession(SessionLaunchParams(
             type: RunCodeContract.sessionType, name: RunCodeContract.sessionName, image: config.image,

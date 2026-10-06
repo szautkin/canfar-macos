@@ -124,4 +124,26 @@ final class SessionModelTests: XCTestCase {
         XCTAssertTrue(Session(from: makeResponse(status: "error")).isFailed)
         XCTAssertTrue(Session(from: makeResponse(status: "terminating")).isPending)
     }
+
+    /// A card shows CPU and RAM whether the session is fixed or flexible: a
+    /// fixed one what it was given, a flexible one — given no sizes by the
+    /// platform — what it uses now. GPU only for a session that has one.
+    func testACardShowsResourcesFixedOrFlexible() {
+        let fixed = SessionDisplay.resources(of: Session(from: makeResponse(
+            requestedRAM: "2.15", requestedCPUCores: "1", requestedGPUCores: "0", ramInUse: "0.3", cpuCoresInUse: "0.2")))
+        XCTAssertEqual(fixed, .init(cpu: "1", ram: "2 GB", gpu: nil, inUse: false), "2 GiB, as the platform gives it")
+
+        let flexible = SessionDisplay.resources(of: Session(from: makeResponse(
+            requestedRAM: nil, requestedCPUCores: nil, requestedGPUCores: "0", ramInUse: "0.18", cpuCoresInUse: "0.002",
+            isFixedResources: false)))
+        XCTAssertEqual(flexible, .init(cpu: "<0.01", ram: "0.18 GB", gpu: nil, inUse: true))
+
+        let pending = SessionDisplay.resources(of: Session(from: makeResponse(
+            requestedRAM: nil, requestedCPUCores: nil, ramInUse: nil, cpuCoresInUse: nil, isFixedResources: false)))
+        XCTAssertEqual(pending.cpu, "—", "nothing in use yet")
+
+        let gpu = SessionDisplay.resources(of: Session(from: makeResponse(requestedRAM: "8G", requestedGPUCores: "1")))
+        XCTAssertEqual(gpu.gpu, "1")
+        XCTAssertEqual(gpu.ram, "8 GB", "with its unit too")
+    }
 }

@@ -68,18 +68,18 @@ struct SessionCardView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Resources
+            // Resources: given, or in use for a flexible session.
+            let resources = SessionDisplay.resources(of: session)
             HStack(spacing: 8) {
-                if !session.cpuAllocated.isEmpty {
-                    Label("CPU: \(session.cpuAllocated)", systemImage: "cpu")
-                }
-                if !session.memoryAllocated.isEmpty {
-                    Label("RAM: \(session.memoryAllocated)", systemImage: "memorychip")
-                }
-                if !session.gpuAllocated.isEmpty && session.gpuAllocated != "0" {
+                Label("CPU: \(resources.cpu)", systemImage: "cpu")
+                Label("RAM: \(resources.ram)", systemImage: "memorychip")
+                if let gpu = resources.gpu {
                     // Not `rectangle.stack` — that glyph is the Active
                     // Sessions list header; one symbol, one meaning.
-                    Label("GPU: \(session.gpuAllocated)", systemImage: "bolt.fill")
+                    Label("GPU: \(gpu)", systemImage: "bolt.fill")
+                }
+                if resources.inUse {
+                    Text("in use")
                 }
                 Spacer()
                 if !session.isFixedResources {

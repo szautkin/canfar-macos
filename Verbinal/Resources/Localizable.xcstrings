@@ -39,6 +39,46 @@
         }
       }
     },
+    "<0.01 GB" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "<0,01 Go"
+          }
+        }
+      }
+    },
+    "CANFAR cannot pull the compute image %@: check it in Settings ▸ AI Compute, and that its registry lets CANFAR pull it. The session will not start; stop it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CANFAR ne peut pas récupérer l'image de calcul %@ : vérifiez-la dans Réglages ▸ Calcul IA, et que son registre permet à CANFAR de la récupérer. La session ne démarrera pas ; arrêtez-la."
+          }
+        }
+      }
+    },
+    "in use" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "utilisé"
+          }
+        }
+      }
+    },
+    "Not ready" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas prêt"
+          }
+        }
+      }
+    },
     "—" : {
       "shouldTranslate" : false
     },
@@ -1047,6 +1087,7 @@
       }
     },
     "%lld items" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -5609,6 +5650,7 @@
       }
     },
     "Deleting… %lld items" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -8839,16 +8881,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "demande toujours"
-          }
-        }
-      }
-    },
-    "It ended without an answer" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terminé sans réponse"
           }
         }
       }

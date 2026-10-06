@@ -12,6 +12,11 @@ import Foundation
 /// bubble is placed at the size it is drawn.
 struct UIHintMeasure {
     static let ringOutset: CGFloat = 4
+
+    /// How dark the spotlight shades the window round the hints. A dark
+    /// window needs more to be seen: at 35% it went from 41 to 27 of 255,
+    /// and the person could not see it (handout 31).
+    static func dimming(dark: Bool) -> Double { dark ? 0.6 : 0.35 }
     static let padding: CGFloat = 10
     static let spacing: CGFloat = 4
     static let minWidth: CGFloat = 160

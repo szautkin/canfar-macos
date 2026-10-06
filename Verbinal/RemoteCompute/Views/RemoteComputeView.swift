@@ -24,6 +24,7 @@ struct RemoteComputeView: View {
             header
             toolbar
             if let message = model.message { banner(message) }
+            if let problem = model.snapshot?.problem { notReadyBanner(problem) }
             if let drift = model.snapshot?.drift { driftBanner(drift) }
             if model.isConfigured { main } else { setup }
         }
@@ -73,6 +74,23 @@ struct RemoteComputeView: View {
                 .accessibilityLabel(Text(statusLine))
                 .pointable("compute.status")
         }
+    }
+
+    /// A session that cannot start, said with why, and the way out: stop it.
+    private func notReadyBanner(_ problem: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+            Text(problem)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Stop") { confirmStop = true }
+                .disabled(model.isBusy)
+                .pointable("compute.notReady.stop")
+        }
+        .padding(10)
+        .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+        .pointableArea("compute.notReady", label: problem)
     }
 
     /// A session that differs from Settings, said, with the way to take them.
@@ -337,6 +355,7 @@ extension ComputeState {
         case .notSetUp: return String(localized: "Not set up")
         case .stopped: return String(localized: "Stopped")
         case .starting: return String(localized: "Starting")
+        case .notReady: return String(localized: "Not ready")
         case .running: return String(localized: "Running")
         case .stopping: return String(localized: "Stopping")
         case .failed: return String(localized: "Failed")

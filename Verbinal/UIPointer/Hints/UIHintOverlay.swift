@@ -132,6 +132,7 @@ private struct UIHintCanvas: View {
     let closeAll: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.colorScheme) private var colorScheme
 
     private var scene: UIHintScene { model.scene }
     private var lineWidth: CGFloat { contrast == .increased ? 4 : 2.5 }
@@ -184,7 +185,8 @@ private struct UIHintCanvas: View {
                 path.addRoundedRect(in: ring.frame.insetBy(dx: -UIHintMeasure.ringOutset, dy: -UIHintMeasure.ringOutset),
                                     cornerSize: CGSize(width: 6, height: 6))
             }
-            context.fill(path, with: .color(.black.opacity(0.35)), style: FillStyle(eoFill: true))
+            context.fill(path, with: .color(.black.opacity(UIHintMeasure.dimming(dark: colorScheme == .dark))),
+                         style: FillStyle(eoFill: true))
         }
         .allowsHitTesting(false)
     }

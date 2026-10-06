@@ -249,12 +249,11 @@ struct SearchResultsView: View {
         }
         .buttonStyle(.borderless)
         .help(Text("Choose visible columns"))
-        .opens("Columns")
         .uiPresented("Columns", .popover, isPresented: $showColumnsPicker)
         .popover(isPresented: $showColumnsPicker, arrowEdge: .top) {
             ColumnsPickerPopover(model: resultsModel)
         }
-        .pointable("results.columns")
+        .pointable("results.columns", opens: "Columns")
     }
 
     // MARK: - Results Table

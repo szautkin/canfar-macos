@@ -93,13 +93,14 @@ final class AgentsService {
     /// A call still working past its answer, on the activity bar until it
     /// ends: the assistant was told it carries on, and the person sees it
     /// (plan 30 L).
-    nonisolated static let carryOn: @Sendable (String, String) async -> (@Sendable (Bool) async -> Void) = { tool, _ in
+    nonisolated static let carryOn: @Sendable (String, String) async -> (@Sendable (String?) async -> Void) = { tool, _ in
         let task = await MainActor.run {
             TaskRegistry.shared.begin(.answer, String(localized: "Answering \(tool) for an assistant"))
         }
-        return { succeeded in
+        // How it ended, in its own words: "the CADC archive search did not answer in time…".
+        return { failure in
             await MainActor.run {
-                if succeeded { task.succeed() } else { task.fail(String(localized: "It ended without an answer")) }
+                if let failure { task.fail(failure) } else { task.succeed() }
             }
         }
     }

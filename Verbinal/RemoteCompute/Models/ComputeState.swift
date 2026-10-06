@@ -15,6 +15,9 @@ enum ComputeState: String, Codable, Sendable {
     case stopped
     /// Asked for and not running yet — a contributed session takes a minute or two.
     case starting
+    /// Asked for, and the platform cannot start it — its image cannot be
+    /// pulled: it never will, until it is stopped and the image put right.
+    case notReady
     case running
     /// Being torn down.
     case stopping
@@ -44,11 +47,21 @@ enum ComputeState: String, Codable, Sendable {
 
     /// Stop whenever a session exists and is not already going, set up or
     /// not: a session nobody can stop is the thing to avoid.
-    var canStop: Bool { self == .starting || self == .running || self == .failed }
+    var canStop: Bool { self == .starting || self == .running || self == .failed || self == .notReady }
 
-    /// Code can be sent whenever compute is set up; a stopped session is started for it.
+    /// Code can be sent whenever compute is set up; a stopped session is
+    /// started for it. Not to one that cannot start.
     func canRun(configured: Bool) -> Bool {
-        configured && self != .notSetUp && self != .stopping
+        configured && self != .notSetUp && self != .stopping && self != .notReady
+    }
+
+    /// Why a starting session cannot start, from its platform events; nil
+    /// while nothing says it cannot. A session whose image CANFAR cannot
+    /// pull sat "starting" for good (handout 31).
+    static func notReadyReason(events: String, image: String) -> String? {
+        let pullFailures = ["ErrImagePull", "ImagePullBackOff", "InvalidImageName"]
+        guard pullFailures.contains(where: events.contains) else { return nil }
+        return String(localized: "CANFAR cannot pull the compute image \(image): check it in Settings ▸ AI Compute, and that its registry lets CANFAR pull it. The session will not start; stop it.")
     }
 
     /// How long a session has been up, from the platform's start time; nil
@@ -67,4 +80,6 @@ struct ComputeSnapshot: Sendable {
     let state: ComputeState
     let session: Session?
     let configuration: RemoteComputeService.Configuration
+    /// Why it is not ready, when it is not.
+    var problem: String? = nil
 }

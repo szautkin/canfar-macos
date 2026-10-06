@@ -211,6 +211,13 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         }
     }
 
+    /// What went wrong, without its tag: for the person to read.
+    public var message: String {
+        let text = description
+        guard let colon = text.firstIndex(of: ":") else { return text }
+        return text[text.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+    }
+
     /// Stable short tag for audit logs (no PII).
     public var auditTag: String {
         switch self {

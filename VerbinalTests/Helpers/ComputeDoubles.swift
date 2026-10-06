@@ -18,6 +18,10 @@ final class FakeComputeSessions: ComputeSessions, @unchecked Sendable {
 
     func getSessions() async throws -> [Session] { lock.withLock { list } }
 
+    /// The platform's events, by session id.
+    var events: [String: String] = [:]
+    func getSessionEvents(id: String) async throws -> String { lock.withLock { events[id] ?? "" } }
+
     func launchSession(_ params: SessionLaunchParams) async throws -> String? {
         lock.withLock {
             launched.append(params)

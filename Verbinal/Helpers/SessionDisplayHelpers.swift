@@ -101,6 +101,48 @@ enum SessionDisplay {
         String(image.split(separator: "/").last ?? Substring(image))
     }
 
+    // MARK: - Resources
+
+    /// A session card's resources. A fixed session shows what it was given;
+    /// a flexible one has no sizes of its own — the platform sends none — so
+    /// it shows what it uses now. CPU and RAM always; GPU only for a session
+    /// that has one.
+    struct Resources: Equatable {
+        let cpu: String
+        let ram: String
+        let gpu: String?
+        /// Usage, not a size: a flexible session.
+        let inUse: Bool
+    }
+
+    static func resources(of session: Session) -> Resources {
+        let flexible = !session.isFixedResources
+        let gpus = Double(session.gpuAllocated.trimmingCharacters(in: .whitespaces)) ?? 0
+        return Resources(
+            cpu: cores(flexible ? session.cpuUsage : session.cpuAllocated),
+            ram: gigabytes(flexible ? session.memoryUsage : session.memoryAllocated, digits: flexible ? 2 : 0),
+            gpu: gpus > 0 ? cores(session.gpuAllocated) : nil,
+            inUse: flexible)
+    }
+
+    /// "1", "1.53", "<0.01"; "—" when the platform says nothing.
+    static func cores(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        guard let value = Double(trimmed) else { return trimmed.isEmpty ? "—" : trimmed }
+        if value > 0, value < 0.01 { return "<0.01" }
+        return value.formatted(.number.precision(.fractionLength(0...2)))
+    }
+
+    /// The platform gives RAM in GB, as a bare number ("2.15", for 2 GiB)
+    /// or with its unit ("8G"): "2 GB", "0.18 GB"; "—" when it says nothing.
+    static func gigabytes(_ raw: String, digits: Int) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        let number = trimmed.hasSuffix("G") ? String(trimmed.dropLast()) : trimmed
+        guard let value = Double(number) else { return trimmed.isEmpty ? "—" : trimmed }
+        if value > 0, value < 0.01 { return String(localized: "<0.01 GB") }
+        return String(localized: "\(value.formatted(.number.precision(.fractionLength(0...digits)))) GB")
+    }
+
     // MARK: - Logs / Events Result Display
 
     /// Converts a logs/events fetch `Result` into text for the events/logs sheet.

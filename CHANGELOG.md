@@ -12,6 +12,17 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **Remote Compute says when it cannot start.** A compute session whose
+  image CANFAR could not pull showed "Starting" for as long as it sat
+  there. It now shows **Not ready**, with why and a Stop button, and code
+  is not sent to it until it is put right.
+- **Hints dim a dark window so you can see it.** On a dark window the
+  dimming round an assistant's hints was too faint to notice. It is
+  stronger in Dark Mode.
+- **Slow work that fails says why on the activity bar.** An assistant's
+  call that carried on past its answer and then failed said only "It
+  ended without an answer"; it now says what happened, such as the
+  archive search not answering in time.
 - **"1 item", not "1 items".** Counts of items — a Research collection, a
   Storage folder, a delete under way — follow the plural rule, in English
   and French.
@@ -851,6 +862,11 @@ Catching up with Verbinal for Windows 1.4.1 (see
   (`hduChosenBy`).
 
 ### Changed
+- **Session cards show CPU and RAM, flexible or fixed.** A flexible
+  session's card showed only "FLEX": CANFAR gives such a session no sizes
+  of its own. It now shows what the session uses ("CPU <0.01 · RAM
+  0.18 GB in use"); a fixed one shows what it was given, RAM with its
+  unit ("RAM 2 GB"). GPU shows only for a session that has one.
 - **Workflow templates run their analysis with Remote Compute.** Four
   templates (variable-star photometry, ESPaDOnS spectroscopy, JCMT cube
   kinematics, proposal due diligence) sent an assistant to Notebook

@@ -43,7 +43,7 @@ final class AnswerWaitTests: XCTestCase {
         let ran = Ran()
         let router = AIToolRouter(
             tools: [SlowTool(ran: ran)], auditSink: CapturingAuditSink(),
-            onCarryOn: { tool, _ in ran.carry(tool); return { ok in ran.end(ok) } },
+            onCarryOn: { tool, _ in ran.carry(tool); return { failure in ran.end(failure == nil) } },
             answerWait: 0.15)
         let started = Date()
         let result = await router.dispatch(name: "slow", rawArguments: Data("{}".utf8),
@@ -66,7 +66,7 @@ final class AnswerWaitTests: XCTestCase {
         let ran = Ran()
         let router = AIToolRouter(
             tools: [SlowTool(ran: ran)], auditSink: CapturingAuditSink(),
-            onCarryOn: { tool, _ in ran.carry(tool); return { ok in ran.end(ok) } },
+            onCarryOn: { tool, _ in ran.carry(tool); return { failure in ran.end(failure == nil) } },
             answerWait: 5)
         let result = await router.dispatch(name: "slow", rawArguments: Data("{}".utf8),
                                            context: AIToolContext(origin: .external(clientID: "t"),
@@ -74,5 +74,40 @@ final class AnswerWaitTests: XCTestCase {
                                                                   budget: ProposalBudget(limit: 8)))
         guard case .data = result else { return XCTFail("\(result)") }
         XCTAssertTrue(ran.carried.isEmpty)
+    }
+
+    private struct FailingSlowTool: AITool {
+        static let verbClass: VerbClass = .read
+        static let agentSafe: Bool = true
+        let definition = AIToolDefinition.withStaticSchema(
+            name: "slowFail", description: "Takes a while, then fails", schema: #"{"type":"object","properties":{}}"#)
+        func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
+            try? await Task.sleep(for: .milliseconds(400))
+            return .failed(.backendError("the CADC archive search did not answer in time"))
+        }
+    }
+
+    final class Ends: @unchecked Sendable {
+        private let lock = NSLock()
+        private var _failures: [String?] = []
+        var failures: [String?] { lock.withLock { _failures } }
+        func end(_ failure: String?) { lock.withLock { _failures.append(failure) } }
+    }
+
+    /// A call that carries on and then fails says why on the activity bar —
+    /// not "it ended without an answer" (handout 31).
+    func testWorkThatFailsAfterItsAnswerSaysWhy() async throws {
+        let ends = Ends()
+        let router = AIToolRouter(
+            tools: [FailingSlowTool()], auditSink: CapturingAuditSink(),
+            onCarryOn: { _, _ in { failure in ends.end(failure) } },
+            answerWait: 0.1)
+        _ = await router.dispatch(name: "slowFail", rawArguments: Data("{}".utf8),
+                                  context: AIToolContext(origin: .external(clientID: "t"),
+                                                         proposals: InMemoryProposalStore(),
+                                                         budget: ProposalBudget(limit: 8)))
+        try await Task.sleep(for: .milliseconds(700))
+        XCTAssertEqual(ends.failures, ["the CADC archive search did not answer in time"])
+        XCTAssertEqual(ToolFailureReason.authRequired.message, "authRequired", "one with no words keeps its tag")
     }
 }

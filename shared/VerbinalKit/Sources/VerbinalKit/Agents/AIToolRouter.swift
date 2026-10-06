@@ -50,7 +50,9 @@ public actor AIToolRouter {
     private let autoApplyInlineWait: TimeInterval
     /// Shows a call that is carrying on past its answer — on the activity
     /// bar, in the app — and is told when it ends (plan 30 L).
-    private let onCarryOn: (@Sendable (_ tool: String, _ origin: String) async -> (@Sendable (_ succeeded: Bool) async -> Void))?
+    /// A call carrying on past its answer: shown, then told how it ended —
+    /// nil when it succeeded, else why it failed.
+    private let onCarryOn: (@Sendable (_ tool: String, _ origin: String) async -> (@Sendable (_ failure: String?) async -> Void))?
     /// The longest an assistant waits for an answer: `RequestTimeout.answer`.
     private let answerWait: TimeInterval
     /// Where the router's decisions are recorded: auto-applied or held, the
@@ -65,7 +67,7 @@ public actor AIToolRouter {
         onDispatchStart: (@Sendable (_ toolName: String, _ originLabel: String) -> Void)? = nil,
         applyJobs: ApplyJobRegistry = ApplyJobRegistry(),
         autoApplyInlineWait: TimeInterval = 40,
-        onCarryOn: (@Sendable (_ tool: String, _ origin: String) async -> (@Sendable (_ succeeded: Bool) async -> Void))? = nil,
+        onCarryOn: (@Sendable (_ tool: String, _ origin: String) async -> (@Sendable (_ failure: String?) async -> Void))? = nil,
         answerWait: TimeInterval = RequestTimeout.answer,
         decisions: DecisionLog = .shared
     ) {
@@ -225,7 +227,7 @@ public actor AIToolRouter {
                             "\(name) exceeded the \(Int(ceiling))s dispatch deadline — \(detail.isEmpty ? "" : detail + "; ")the app-side operation was asked to cancel and may still be finishing in the background. The server stays responsive; check state with a read tool before retrying."))
                     },
                     work: { await self.dispatchInner(name: name, rawArguments: arguments, context: context) })
-                if case .failed = result { await carried.end(succeeded: false) } else { await carried.end(succeeded: true) }
+                if case .failed(let reason) = result { await carried.end(failure: reason.message) } else { await carried.end(failure: nil) }
                 return result
             }
         ) } }
@@ -452,22 +454,24 @@ private enum AutoApplyRace: Sendable {
 /// whichever of the two comes first (plan 30 L).
 final class CarriedOn: @unchecked Sendable {
     private let lock = NSLock()
-    private var finish: (@Sendable (Bool) async -> Void)?
-    private var ended: Bool?
+    private var finish: (@Sendable (String?) async -> Void)?
+    /// How it ended: `.some(nil)` succeeded, `.some(why)` failed.
+    private var ended: String??
 
-    func begin(_ finish: @escaping @Sendable (Bool) async -> Void) async {
-        let already: Bool? = lock.withLock {
+    func begin(_ finish: @escaping @Sendable (String?) async -> Void) async {
+        let already: String?? = lock.withLock {
             self.finish = finish
             return ended
         }
         if let already { await finish(already) }
     }
 
-    func end(succeeded: Bool) async {
-        let finish: (@Sendable (Bool) async -> Void)? = lock.withLock {
-            ended = succeeded
+    /// Ended: nil when it succeeded, else why it failed.
+    func end(failure: String?) async {
+        let finish: (@Sendable (String?) async -> Void)? = lock.withLock {
+            ended = .some(failure)
             return self.finish
         }
-        await finish?(succeeded)
+        await finish?(failure)
     }
 }
