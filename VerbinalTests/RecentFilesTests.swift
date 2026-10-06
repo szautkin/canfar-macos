@@ -21,8 +21,10 @@ final class RecentFilesTests: XCTestCase {
         files.forEach { try? FileManager.default.removeItem(at: $0) }
     }
 
+    /// Not in the temporary folder: what is there never enters recents.
     private func file(_ name: String) throws -> URL {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-\(name)")
+        let caches = try XCTUnwrap(FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first)
+        let url = caches.appendingPathComponent("\(UUID().uuidString)-\(name)")
         try Data("SIMPLE".utf8).write(to: url)
         files.append(url)
         return url
@@ -51,6 +53,25 @@ final class RecentFilesTests: XCTestCase {
         try FileManager.default.removeItem(at: gone)
         XCTAssertNil(recents.resolve(recent))
         XCTAssertTrue(recents.items.isEmpty)
+    }
+
+    /// Plan 30 N6: listed, the files that are gone are left out and
+    /// forgotten; a file in the temporary folder never enters.
+    func testListedRecentsAreTheFilesStillThere() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let recents = RecentFiles(key: "cubes", defaults: defaults)
+        let kept = try file("kept.fits"), gone = try file("gone.fits")
+        recents.add(kept)
+        recents.add(gone)
+        try FileManager.default.removeItem(at: gone)
+        XCTAssertEqual(recents.present().map(\.path), [kept.path])
+        XCTAssertEqual(RecentFiles(key: "cubes", defaults: defaults).items.map(\.path), [kept.path], "forgotten for good")
+
+        let figure = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-figure.fits")
+        try Data("SIMPLE".utf8).write(to: figure)
+        files.append(figure)
+        recents.add(figure)
+        XCTAssertEqual(recents.items.map(\.path), [kept.path], "a temporary file is not kept")
     }
 
     /// The cube viewer's recents were kept as {name, path, bookmark} under

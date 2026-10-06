@@ -108,9 +108,11 @@ public final class RequestLedger: @unchecked Sendable {
     // MARK: - Recording
 
     /// Sends `request` with `send`, recording it from start to end — into
-    /// this ledger and every `RequestTrace` above the caller.
+    /// this ledger and every `RequestTrace` above the caller. `anonymous`:
+    /// sent without credentials on purpose, so a 401 is an answer.
     public func send<T>(
         _ request: URLRequest,
+        anonymous: Bool = false,
         _ send: (URLRequest) async throws -> (T, URLResponse)
     ) async throws -> (T, URLResponse) {
         let trace = RequestTrace.current
@@ -121,7 +123,8 @@ public final class RequestLedger: @unchecked Sendable {
         do {
             let (value, response) = try await send(request)
             let status = (response as? HTTPURLResponse)?.statusCode
-            let done = finish(record.id, status.map(RequestOutcome.init(status:)) ?? .ok, status: status)
+            let outcome = status.map { anonymous ? RequestOutcome(anonymousStatus: $0) : RequestOutcome(status: $0) }
+            let done = finish(record.id, outcome ?? .ok, status: status)
             trace?.note(done)
             return (value, response)
         } catch {
@@ -275,8 +278,9 @@ public final class RequestTrace: @unchecked Sendable {
 extension URLSession {
     /// `data(for:)`, recorded in `ledger`. The app sends this way, or
     /// through `NetworkClient`; nowhere else (a source test holds it).
-    public func recordedData(for request: URLRequest, in ledger: RequestLedger = .shared) async throws -> (Data, URLResponse) {
-        try await ledger.send(request) { try await self.data(for: $0) }
+    public func recordedData(for request: URLRequest, in ledger: RequestLedger = .shared,
+                             anonymous: Bool = false) async throws -> (Data, URLResponse) {
+        try await ledger.send(request, anonymous: anonymous) { try await self.data(for: $0) }
     }
 
     /// `download(for:)`, recorded in `ledger`.

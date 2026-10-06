@@ -37,9 +37,12 @@ final class RecentFiles {
         items = defaults.data(forKey: key).flatMap { try? JSONDecoder().decode([RecentFile].self, from: $0) } ?? []
     }
 
-    /// Remembers `url` at the top; a file whose bookmark cannot be made is not.
+    /// Remembers `url` at the top; a file whose bookmark cannot be made is
+    /// not, nor one in the temporary folder — a figure's own file, gone
+    /// soon (plan 30 N6).
     func add(_ url: URL) {
-        guard let bookmark = try? url.bookmarkData(options: Self.bookmarkOptions, includingResourceValuesForKeys: nil, relativeTo: nil) else {
+        guard !Self.isTemporary(url),
+              let bookmark = try? url.bookmarkData(options: Self.bookmarkOptions, includingResourceValuesForKeys: nil, relativeTo: nil) else {
             return
         }
         items.removeAll { $0.path == url.path }
@@ -50,14 +53,37 @@ final class RecentFiles {
 
     /// The file again, or nil — and it is forgotten — when it is gone.
     func resolve(_ recent: RecentFile) -> URL? {
-        var stale = false
-        guard let url = try? URL(resolvingBookmarkData: recent.bookmark, options: Self.resolveOptions,
-                                 relativeTo: nil, bookmarkDataIsStale: &stale),
-              FileManager.default.fileExists(atPath: url.path) else {
+        guard let url = Self.url(of: recent) else {
             remove(recent)
             return nil
         }
         return url
+    }
+
+    /// The files still there, newest first; those gone are forgotten (plan 30 N6).
+    func present() -> [RecentFile] {
+        let gone = items.filter { Self.url(of: $0) == nil }
+        if !gone.isEmpty {
+            items.removeAll { gone.contains($0) }
+            save()
+        }
+        return items
+    }
+
+    /// The file a recent one's bookmark points at, when it is there — looked
+    /// at within its scope, as a sandboxed app must.
+    private static func url(of recent: RecentFile) -> URL? {
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: recent.bookmark, options: resolveOptions,
+                                 relativeTo: nil, bookmarkDataIsStale: &stale) else { return nil }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    static func isTemporary(_ url: URL) -> Bool {
+        let temporary = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().standardizedFileURL.path
+        return url.resolvingSymlinksInPath().standardizedFileURL.path.hasPrefix(temporary + "/")
     }
 
     func remove(_ recent: RecentFile) {

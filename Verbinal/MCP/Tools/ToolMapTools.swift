@@ -35,7 +35,7 @@ enum ToolMap {
     /// Areas that have tools, in the catalogue's order.
     static func areas(_ tools: [ToolDefinitionWire]) -> [Area] {
         let counts = Dictionary(grouping: tools, by: { category(of: $0.name).id }).mapValues(\.count)
-        return (AIGuideCatalog.categories + [AIGuideCatalog.other]).compactMap { c in
+        return (AIGuideCatalog.categories + [AIGuideCatalog.guides]).compactMap { c in
             counts[c.id].map { Area(id: c.id, title: c.title, summary: c.summary, toolCount: $0) }
         }
     }
@@ -74,7 +74,7 @@ enum ToolMap {
 
     static func category(of name: String) -> AIGuideCatalog.Category {
         let id = AIGuideCatalog.categoryID(forTool: name)
-        return AIGuideCatalog.categories.first { $0.id == id } ?? AIGuideCatalog.other
+        return AIGuideCatalog.categories.first { $0.id == id } ?? AIGuideCatalog.guides
     }
 
     private static func entry(_ tool: ToolDefinitionWire) -> Entry {

@@ -63,4 +63,37 @@ final class ToolShapesTests: XCTestCase {
         let result = await setView.invoke(arguments: Data(#"{"columnUnits":{"ra(j20000)":"deg"}}"#.utf8), context: context)
         XCTAssertTrue("\(result)".contains("it takes hms, degrees"), "\(result)")
     }
+
+    /// Plan 30 N4: navigate_to says when the screen changed where no one
+    /// can see it.
+    func testNavigatingWithNoWindowShowingSaysSo() async throws {
+        let context = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget())
+        func answer(_ unseen: String?) async throws -> [String: Any] {
+            let tool = NavigateToTool(navigate: { _ in unseen })
+            guard case .data(let data) = await tool.invoke(arguments: Data(#"{"mode":"search"}"#.utf8), context: context) else {
+                XCTFail("navigate_to failed")
+                return [:]
+            }
+            return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        }
+        let unseen = try await answer(UISnapshot.notShowing)
+        XCTAssertEqual(unseen["navigated"] as? Bool, true)
+        XCTAssertEqual(unseen["showing"] as? Bool, false)
+        XCTAssertEqual(unseen["note"] as? String, UISnapshot.notShowing)
+        let seen = try await answer(nil)
+        XCTAssertNil(seen["showing"], "absent while a window shows")
+    }
+
+    /// Plan 30 N5: an export of the table says it holds the columns shown.
+    func testAnExportSaysItsRowsAndColumns() async throws {
+        let applier = ExportSearchResultsApplier(
+            run: { _, _, _ in SearchExport(path: "/Users/u/Downloads/results.csv", shape: SearchExport.shown(rows: 120, columns: 8)) },
+            activity: AgentActivityStore(fileName: "test-activity-\(UUID().uuidString).json"))
+        let proposal = PendingProposal(toolName: "export_search_results", kind: "export_search_results", summary: "Export",
+                                       payload: try JSONEncoder().encode(ExportSearchResultsTool.Payload(format: "csv", adql: nil, maxRecords: nil)),
+                                       origin: .external(clientID: "t"))
+        let extra = try JSONDecoder().decode(AutoAppliedAck.Extra.self, from: try await applier.applyReturningResult(proposal))
+        XCTAssertEqual(extra.file, "/Users/u/Downloads/results.csv")
+        XCTAssertTrue(extra.note?.hasPrefix("120 rows × 8 columns: the columns shown") == true, extra.note ?? "")
+    }
 }

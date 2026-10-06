@@ -110,14 +110,6 @@ final class UIHintPresenter {
         }
     }
 
-    /// Opens an element's right-click menu (plan 30 T2), and reads the screen again.
-    func showMenu(_ element: UIElement) async -> (done: Bool, appeared: [UIElement]) {
-        await appearing(after: 400) { [source] in source.showMenu(element) }
-    }
-
-    /// Closes a right-click menu that is open, as Esc does.
-    func cancelOpenMenus() -> Bool { source.cancelOpenMenus() }
-
     /// Acts, waits for the screen to settle, and reads it again: whether it
     /// worked, and what appeared — found by identity, since derived ids
     /// renumber when rows move.

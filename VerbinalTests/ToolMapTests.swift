@@ -36,6 +36,15 @@ final class ToolMapTests: XCTestCase {
         XCTAssertEqual(areas.first { $0.id == "cube" }?.toolCount, 2)
     }
 
+    /// Plan 30 N1: the person's guide tools are an area of their own, last,
+    /// not "Other — not yet sorted".
+    func testThePersonsGuideToolsAreTheirOwnArea() {
+        let areas = ToolMap.areas(tools + [tool("headless_jobs_rules", "How I run batch jobs.")])
+        XCTAssertEqual(areas.last?.id, "guides")
+        XCTAssertEqual(areas.last?.title, "Your guide tools")
+        XCTAssertEqual(areas.last?.toolCount, 1)
+    }
+
     /// "cube spectrum" matched as one phrase found nothing (Windows 1.4.1).
     func testSearchMatchesWordsNotThePhrase() {
         let hits = ToolMap.search("cube spectrum", area: nil, in: tools)

@@ -136,10 +136,10 @@ struct LaunchSessionApplier: ResultReportingApplier {
             recentLaunchStore.save(launch)
             activity.append(.applied(proposal: proposal, kind: kind))
         }
-        let note = launched.alreadyMade
-            ? "the last attempt failed, but CANFAR had made it all the same: \(launched.id); nothing new was launched"
-            : nil
-        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(id: launched.id, note: note))) ?? Data()
+        let extra = launched.alreadyMade
+            ? AutoAppliedAck.Extra.unchanged(id: launched.id, "the last attempt failed, but CANFAR had made it all the same: \(launched.id); nothing new was launched")
+            : AutoAppliedAck.Extra(id: launched.id)
+        return (try? JSONEncoder().encode(extra)) ?? Data()
     }
 }
 

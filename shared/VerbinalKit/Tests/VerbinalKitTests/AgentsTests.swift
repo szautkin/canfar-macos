@@ -1037,6 +1037,16 @@ final class MCPBridgeServiceTests: XCTestCase {
 
         let extraWins = try JSONEncoder().encode(AutoAppliedAck.Extra(id: "extra-uuid"))
         XCTAssertEqual(AutoAppliedAck(proposal: proposal, extraJSON: extraWins).id, "extra-uuid")
+
+        // Plan 30 N3: a write that found nothing to do says so, and what was there.
+        let noOp = AutoAppliedAck(proposal: proposal, extraJSON: try JSONEncoder().encode(
+            AutoAppliedAck.Extra.unchanged(id: "r1", "already in Research — left as it was")))
+        XCTAssertEqual(noOp.changed, false)
+        XCTAssertEqual(noOp.note, "already in Research — left as it was")
+        let wire = try JSONSerialization.jsonObject(with: JSONEncoder().encode(noOp)) as? [String: Any]
+        XCTAssertEqual(wire?["changed"] as? Bool, false)
+        let changedWire = try JSONSerialization.jsonObject(with: JSONEncoder().encode(ack)) as? [String: Any]
+        XCTAssertNil(changedWire?["changed"], "absent when it changed something")
     }
 
     // MARK: - Helpers

@@ -112,10 +112,6 @@ extension AppState {
             return .init(done: true, target: args.target, id: "presented:\(openable.name)", kind: "presentation",
                          inside: now.elements.filter { !before.contains($0.id) }.map(UITargetView.init))
         }
-        // A right-click menu that is open closes as Esc closes it (plan 30 T2).
-        if !open, args.target.trimmingCharacters(in: .whitespaces).lowercased() == "menu", presenter.cancelOpenMenus() {
-            return .init(done: true, target: args.target, kind: "menu")
-        }
         if let panel = UIPanel.named(args.target) {
             let was = isShown(panel)
             setShown(panel, open)
@@ -148,7 +144,7 @@ extension AppState {
             return await openOrClose(element, presenting: element.presents ?? "", open: open, target: args.target)
         case .found(let element):
             guard element.kind.opens else {
-                return await rightClickMenu(of: element, open: open, target: args.target)
+                return Self.opensNothing(element, target: args.target)
             }
             guard element.closed == open else {
                 return .init(done: true, target: args.target, id: element.id, kind: element.kind.rawValue,
@@ -203,27 +199,14 @@ extension AppState {
                      message: panel ? "the panel waits for the person: they choose, or close_ui closes it as Cancel" : nil)
     }
 
-    /// Opens an element's right-click menu, which waits for the person — or
-    /// closes it as Esc does (plan 30 T2).
-    @MainActor
-    private func rightClickMenu(of element: UIElement, open: Bool, target: String) async -> OpenCloseUITool.Output {
-        let presenter = uiHintPresenter
-        if !open, presenter.cancelOpenMenus() { return .init(done: true, target: target, id: element.id, kind: "menu") }
-        if open {
-            var current = element
-            if !element.inSight, let moved = await presenter.bringIntoView([element])[element.id] { current = moved }
-            let (done, appeared) = await presenter.showMenu(current)
-            if done {
-                agentsService.activityStore.append(.live(kind: "open_ui", summary: "Opened the menu of \(current.name ?? current.id)",
-                                                         origin: .external(clientID: "open_ui")))
-                return .init(done: true, target: target, id: current.id, kind: "menu", waiting: true,
-                             inside: appeared.map(UITargetView.init),
-                             message: "its right-click menu waits for the person: they choose from it or press Esc; close_ui `menu` closes it")
-            }
-        }
+    /// Why open_ui leaves an element as it is: it opens nothing. A
+    /// right-click menu is the person's: AppKit shows one inside the
+    /// accessibility request that asked for it, and nothing on screen can
+    /// be read until it closes (plan 30 T2).
+    private static func opensNothing(_ element: UIElement, target: String) -> OpenCloseUITool.Output {
         let navigate = element.kind == .tab || element.kind == .segment
             ? "a tab is navigated to, never opened: navigate_to, select_search_tab or open_settings"
-            : "open_ui opens a folded section, a hidden panel, a menu, what a control opens (`opens`) or a right-click menu, and this has none"
+            : "open_ui opens a folded section, a hidden panel, a menu, or what a control opens (`opens`); a right-click menu is the person's"
         return .init(done: false, target: target, id: element.id, kind: element.kind.rawValue,
                      message: "\(element.id) is a \(element.kind.rawValue): \(navigate)")
     }

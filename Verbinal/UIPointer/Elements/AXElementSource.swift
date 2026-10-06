@@ -144,11 +144,21 @@ final class AXElementSource: UIElementSource {
         let refs = reads.map(\.ref)
         var snapshot = UISnapshot(windows: refs, elements: elements, duplicateIDs: duplicates)
         snapshot.outOfSight = outOfSight
-        let own = NSApp.windows.filter { PointableID.Window(identifier: $0.identifier?.rawValue) != .hints }
         snapshot.problem = UISnapshot.problem(
-            windowsRead: refs.count, unanswered: Self.unanswered(axWindows), anyUp: own.contains(where: \.isVisible),
-            anyShowing: !NSApp.isHidden && own.contains { $0.isVisible && !$0.isMiniaturized && $0.isOnActiveSpace })
+            windowsRead: refs.count, unanswered: Self.unanswered(axWindows), anyUp: Self.ownWindows.contains(where: \.isVisible),
+            anyShowing: Self.anyShowing)
         return snapshot
+    }
+
+    /// Verbinal's own windows, the hints' overlay aside.
+    private static var ownWindows: [NSWindow] {
+        NSApp.windows.filter { PointableID.Window(identifier: $0.identifier?.rawValue) != .hints }
+    }
+
+    /// Whether a window of Verbinal's shows here: not hidden, minimized or
+    /// on another desktop — what `navigate_to` tells too (plan 30 N4).
+    static var anyShowing: Bool {
+        !NSApp.isHidden && ownWindows.contains { $0.isVisible && !$0.isMiniaturized && $0.isOnActiveSpace }
     }
 
     /// The element behind a handle from the last snapshot.
@@ -248,26 +258,6 @@ final class AXElementSource: UIElementSource {
             Self.afterAnswering(target, kAXPressAction)
             return true
         }
-    }
-
-    /// Opens an element's right-click menu, as the person's right click
-    /// does, after this returns: the menu holds the app until they choose or
-    /// press Esc (plan 30 T2). False for one with no right-click menu.
-    func showMenu(_ element: UIElement) -> Bool {
-        guard let target = self.element(element.handle) else { return false }
-        var names: CFArray?
-        guard AXUIElementCopyActionNames(target, &names) == .success,
-              (names as? [String])?.contains(kAXShowMenuAction) == true else { return false }
-        Self.afterAnswering(target, kAXShowMenuAction)
-        return true
-    }
-
-    /// Closes a right-click menu that is open, as Esc does. False when none is.
-    func cancelOpenMenus() -> Bool {
-        let app = AXUIElementCreateApplication(getpid())
-        let menus = ((Self.value(app, kAXChildrenAttribute) as? [AXUIElement]) ?? [])
-            .filter { (Self.value($0, kAXRoleAttribute) as? String) == "AXMenu" }
-        return menus.contains { AXUIElementPerformAction($0, kAXCancelAction as CFString) == .success }
     }
 
     /// Acts on it once the answer is on its way. What it opens — a menu, a

@@ -55,6 +55,13 @@ public enum RequestOutcome: String, Codable, Sendable, CaseIterable {
         }
     }
 
+    /// An answer to a request sent without credentials on purpose — a
+    /// health probe: a 401 or 403 says the service answered and its data
+    /// needs sign-in, not that the person must sign in (plan 30 N2).
+    public init(anonymousStatus status: Int) {
+        self = status == 401 || status == 403 ? .ok : RequestOutcome(status: status)
+    }
+
     /// No answer, by the error that came instead.
     public init(error: Error) {
         if error is CancellationError {

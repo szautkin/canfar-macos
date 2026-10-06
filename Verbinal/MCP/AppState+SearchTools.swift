@@ -35,10 +35,10 @@ extension AppState {
     /// omit-adql path so agents can dump what the user is looking at.
     func runSearchExport(
         format: String, adql: String?, maxRecords: Int?
-    ) async throws -> String {
+    ) async throws -> SearchExport {
         let custom = adql?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let custom, !custom.isEmpty {
-            return try await Self.exportServerADQL(format: format, adql: custom, maxRecords: maxRecords)
+            return SearchExport(path: try await Self.exportServerADQL(format: format, adql: custom, maxRecords: maxRecords), shape: nil)
         }
         let snapshot: (rows: [SearchResult], columns: SearchResultColumns, liveADQL: String) = await MainActor.run {
             let model = self.searchModel.resultsModel
@@ -50,13 +50,14 @@ extension AppState {
             )
         }
         let capped = maxRecords.map { Array(snapshot.rows.prefix($0)) } ?? snapshot.rows
+        let shown = SearchExport.shown(rows: capped.count, columns: snapshot.columns.visible.count)
         switch format {
         case "csv":
             let temp = try ResultExportService.exportClientSide(rows: capped, columns: snapshot.columns, format: .csv)
-            return try Self.moveExportToDownloads(tempURL: temp, ext: "csv")
+            return SearchExport(path: try Self.moveExportToDownloads(tempURL: temp, ext: "csv"), shape: shown)
         case "tsv":
             let temp = try ResultExportService.exportClientSide(rows: capped, columns: snapshot.columns, format: .tsv)
-            return try Self.moveExportToDownloads(tempURL: temp, ext: "tsv")
+            return SearchExport(path: try Self.moveExportToDownloads(tempURL: temp, ext: "tsv"), shape: shown)
         case "votable":
             let live = snapshot.liveADQL.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !live.isEmpty else {
@@ -64,7 +65,8 @@ extension AppState {
                     "VOTable export of the current table needs the live ADQL (none loaded). Pass `adql`, or export csv/tsv."
                 )
             }
-            return try await Self.exportServerADQL(format: format, adql: live, maxRecords: maxRecords ?? capped.count)
+            return SearchExport(path: try await Self.exportServerADQL(format: format, adql: live, maxRecords: maxRecords ?? capped.count),
+                                shape: nil)
         default:
             throw ProposalApplyError.backendError("unsupported format '\(format)'")
         }

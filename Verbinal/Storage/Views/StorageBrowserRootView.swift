@@ -255,10 +255,7 @@ struct StorageBrowserRootView: View {
                 Button("Dismiss") {
                     model.hasError = false
                     model.errorMessage = ""
-                    let count = model.nodes.count
-                    model.statusMessage = count == 1
-                        ? String(localized: "1 item")
-                        : String(localized: "\(count) items")
+                    model.statusMessage = StorageBrowserModel.itemCount(model.nodes.count)
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)

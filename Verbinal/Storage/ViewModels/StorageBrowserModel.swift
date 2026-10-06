@@ -151,10 +151,7 @@ final class StorageBrowserModel {
             guard generation == loadGeneration else { return }
             nodes = listed
             if commitPath { currentPath = path }
-            let count = listed.count
-            statusMessage = count == 1
-                ? String(localized: "1 item")
-                : String(localized: "\(count) items")
+            statusMessage = Self.itemCount(listed.count)
         } catch {
             guard generation == loadGeneration else { return }
             hasError = true
@@ -169,6 +166,11 @@ final class StorageBrowserModel {
     /// A node here, as a path from the home folder.
     private func homePath(of node: VOSpaceNode) -> String {
         currentPath.isEmpty ? node.name : "\(currentPath)/\(node.name)"
+    }
+
+    /// "1 item", "12 items" — the catalogue's plural rule (plan 30 N8).
+    static func itemCount(_ count: Int) -> String {
+        String(localized: "\(count) items")
     }
 
     /// Takes public access away — the person's own click, through the same
@@ -212,10 +214,7 @@ final class StorageBrowserModel {
             ) { [weak self] deleted, _ in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-                    self.statusMessage = String(
-                        format: String(localized: "Deleting… %lld items"),
-                        Int64(deleted)
-                    )
+                    self.statusMessage = String(localized: "Deleting… \(deleted) items")
                 }
             }
             selectedNode = nil

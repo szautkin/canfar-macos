@@ -388,16 +388,24 @@ final class CubeViewerModel: Identifiable {
 
     // MARK: - Camera
 
+    /// How far the camera tilts up or down: 80°, short of the pole (plan 30 N7).
+    static let maxElevation: Float = 80 * .pi / 180
+    static let distances: ClosedRange<Float> = 0.5...8
+
+    /// The bounds every camera move keeps to — a drag, a zoom, an agent's move.
+    static func clamped(elevation: Float) -> Float { min(max(elevation, -maxElevation), maxElevation) }
+    static func clamped(distance: Float) -> Float { min(max(distance, distances.lowerBound), distances.upperBound) }
+
     func orbitCamera(dx: Float, dy: Float) {
         cameraAnimationTask?.cancel()   // the human's drag wins over an agent move
         cameraAzimuth -= dx * 0.01
-        cameraElevation = min(max(cameraElevation + dy * 0.01, -1.4), 1.4)
+        cameraElevation = Self.clamped(elevation: cameraElevation + dy * 0.01)
         lastCameraInteraction = Date()
     }
 
     func zoomCamera(_ delta: Float) {
         cameraAnimationTask?.cancel()
-        cameraDistance = min(max(cameraDistance * exp(delta), 0.5), 8)
+        cameraDistance = Self.clamped(distance: cameraDistance * exp(delta))
         lastCameraInteraction = Date()
     }
 
@@ -419,8 +427,8 @@ final class CubeViewerModel: Identifiable {
         let start = SIMD3<Float>(cameraAzimuth, cameraElevation, cameraDistance)
         let target = SIMD3<Float>(
             azimuth ?? cameraAzimuth,
-            min(max(elevation ?? cameraElevation, -1.4), 1.4),
-            min(max(distance ?? cameraDistance, 0.5), 8)
+            Self.clamped(elevation: elevation ?? cameraElevation),
+            Self.clamped(distance: distance ?? cameraDistance)
         )
         guard duration > 0.05 else {
             cameraAzimuth = target.x

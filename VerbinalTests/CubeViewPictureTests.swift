@@ -147,4 +147,22 @@ final class CubeViewPictureTests: XCTestCase {
                                                                           context: context)
         guard case .failed(.invalidArgument) = backwards else { return XCTFail("\(backwards)") }
     }
+
+    /// Plan 30 N7: the camera answers the pose it moves to, held to its
+    /// bounds — 80°, not 80.21° — whatever the easing shows now.
+    func testTheCameraAnswersItsTargetHeldToTheBounds() async throws {
+        XCTAssertEqual(Double(CubeViewerModel.clamped(elevation: .pi / 2)) * 180 / .pi, 80, accuracy: 0.001)
+        let state = AppState()
+        cubeURL = try FITSTestFixtures.writeCube()
+        await state.cubeViewer.open(url: cubeURL)
+        let context = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget())
+        guard case .data(let data) = await state.makeSetCubeCameraTool().invoke(
+            arguments: Data(#"{"azimuthDeg":30,"elevationDeg":90,"distance":20}"#.utf8), context: context) else {
+            return XCTFail("set_cube_camera failed")
+        }
+        let camera = try XCTUnwrap((JSONSerialization.jsonObject(with: data) as? [String: Any])?["camera"] as? [String: Any])
+        XCTAssertEqual(camera["elevationDeg"] as? Double, 80)
+        XCTAssertEqual(camera["azimuthDeg"] as? Double, 30)
+        XCTAssertEqual(camera["distance"] as? Double, 8)
+    }
 }

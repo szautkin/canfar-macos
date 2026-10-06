@@ -176,7 +176,8 @@ struct AddRegistryImageApplier: ResultReportingApplier {
         let payload = try JSONDecoder().decode(AddRegistryImageTool.Payload.self, from: proposal.payload)
         let added = await add(RegistryImage(id: payload.imageID, types: payload.types))
         await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
-        let extra = AutoAppliedAck.Extra(id: payload.imageID, note: added ? nil : "already in the user's images — left as it was")
+        let extra = added ? AutoAppliedAck.Extra(id: payload.imageID)
+            : .unchanged(id: payload.imageID, "already in the user's images — left as it was")
         return (try? JSONEncoder().encode(extra)) ?? Data()
     }
 }

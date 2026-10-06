@@ -274,7 +274,8 @@ struct GetServiceHealthTool: JSONReadTool {
         request.timeoutInterval = budget
         let start = Date()
         do {
-            let (_, response) = try await session.recordedData(for: request)
+            // A probe asks without credentials: a 401 is the service answering (plan 30 N2).
+            let (_, response) = try await session.recordedData(for: request, anonymous: true)
             let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
             guard let http = response as? HTTPURLResponse else {
                 return Output.Service(

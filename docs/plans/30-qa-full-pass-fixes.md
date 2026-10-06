@@ -26,7 +26,7 @@
 | **W** | Writes on CANFAR: tasks, honest advice, no second launch by accident | done (this commit): W1 SessionLaunches, W2 advice, W3 in A2, W4 retry looks first. W0b with the person |
 | **S** | Silent no-ops and loose schemas | done — S1–S5 (this commit) |
 | **J** | Jobs CANFAR has dropped read as "gone", not "pending" | done — J1, J2 (this commit) |
-| **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | done — T1, T3, T4, T7 `c632316`; T5, T6 `abebf8f`; T2 (this commit): openers, right-click menus, file panels, Main Window. The hosted open_ui test needs the screen unlocked: in handout 31 |
+| **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | done — T1, T3, T4, T7 `c632316`; T5, T6 `abebf8f`; T2 `ff9c286`: openers, file panels, Main Window. Right-click menus were taken out again (N commit): AppKit shows a SwiftUI right-click menu inside the accessibility request that asked for it, and no read of the screen is answered until it closes — the hosted test hung on it. They stay the person's, as choosing in a menu already was. The opener test passes with the screen unlocked |
 | **B** | The Batch Jobs filter on every tab, always shown | done (this commit) |
 | **R** | Search radius, as a field | done (this commit): R1 Radius field, R2 wait: false |
 | **D** | `download_observation` `file` from another plane of the observation | done (this commit) |
@@ -36,7 +36,7 @@
 | **P** | The channel profile in a range, binned | done (this commit): `CubeSpectrumSlice` for both tools, one schema fragment, at most 500 values by default |
 | **K** | A compute run that never reports | done (this commit): watching stopped at sign-out or quit, so the run was never closed. After sign-in, runs still out are read once, watched again or closed as `noResult` (the existing "no result", not a new `lost`), by the watcher's own give-up time: timeout + 5 min. K0 (634F932B's folder) still to look at, with the person |
 | **G** | Workflow templates: `run_code` by default | done (this commit): `Add-on:` step line, `AddonTools` declared list, `use` per step in get_workflow (the Notebook add-on installed, or not); a guardrail on every template's tool names |
-| **N** | Small items | planned |
+| **N** | Small items | done (this commit): N1–N9. N7's 80.21° was the clamp itself (1.4 rad), now 80°, one clamp for drag, zoom and tools. N8 also gives the Batch Jobs page line its French, and keeps the catalogue as Xcode last wrote it |
 | **Q** | Handout 29 corrections; handout 31 | planned |
 
 ## What the report got wrong, or what was mine
@@ -243,7 +243,7 @@ A tool per sheet would not stay true as sheets are added. So this is one mechani
 |---|---|---|
 | Folded section, pop-up, menu button, hidden panel | `open_ui`, as now | `close_ui`, as now |
 | Sheet, popover, About, Settings | `open_ui` on the control that opens it. Or `open_ui` by its name, when it needs nothing chosen first: Batch Jobs, Image Content Discovery, About. | `close_ui` by its name, or the front one: its own dismissal |
-| Right-click menu | `open_ui` on the element it belongs to (`AXShowMenu`) | `close_ui` (Esc) |
+| Right-click menu | The person's: shown, it holds every read of the screen (see Status) | the person |
 | System Open/Save panel | `open_ui` on the control that opens it | `close_ui`: Cancel |
 | Confirmation, alert | Only by the action it confirms, never on its own: a destructive confirmation is the person's. | `close_ui`: Cancel |
 | The main window, when none is showing | `open_ui` `main window` (the `problem` answer names it) | the person |
@@ -327,7 +327,7 @@ Four templates name the Notebook add-on's tools, which the app does not have:
 2. **3.2:** the radius is the Radius field, or typed after the target (R1).
 3. **3.6:** `set_search_form` `execute` with `wait: false`, then `cancel_search` (R2).
 4. **9.1–9.3:** `open_ui` opens it by name or from Jobs & History… (T2, T3). The filter is on every tab
-   (B). Add cases that open and close a sheet, a popover, a right-click menu and a file panel, and select
+   (B). Add cases that open and close a sheet, a popover and a file panel, and select
    a tab and a segment (T).
 5. **10.3:** reads as `portal.sheet` from the images card and `portal.sheet.sheet` from the launch form.
 6. **14.4:** the person turns auto-apply off for this case only.

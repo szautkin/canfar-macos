@@ -31,7 +31,7 @@ struct SaveQueryTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "save_query",
-        description: "Save an ADQL query under a name. Returns the new query `id` (UUID) on auto-apply so you can chain `get_saved_query` / `update_saved_query` without re-listing. Strongly encouraged: include a `description` explaining why the query matters and tags grouping it with related work.",
+        description: "Save an ADQL query under a name. Returns the new query `id` (UUID) when it applies at once, so you can chain `get_saved_query` / `update_saved_query` without re-listing. Strongly encouraged: include a `description` explaining why the query matters and tags grouping it with related work.",
         schema: #"""
         {
           "type": "object",

@@ -491,14 +491,15 @@ extension AppState {
     private func makeNavigateToTool() -> NavigateToTool {
         let activity = agentsService.activityStore
         return NavigateToTool(navigate: { [weak self] mode in
-            guard let self else { return }
-            await MainActor.run {
+            guard let self else { return nil }
+            return await MainActor.run {
                 self.navigateTo(mode)
                 activity.append(.live(
                     kind: "navigate_to",
                     summary: "Navigated to \(AppState.modeTitle(mode))",
                     origin: .external(clientID: "navigate_to")
                 ))
+                return AXElementSource.anyShowing ? nil : UISnapshot.notShowing
             }
         })
     }

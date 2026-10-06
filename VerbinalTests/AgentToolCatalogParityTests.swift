@@ -26,7 +26,7 @@ final class AgentToolCatalogParityTests: XCTestCase {
         var uncategorized: [String] = []
         for tool in tools {
             if !seen.insert(tool.name).inserted { duplicates.append(tool.name) }
-            if AIGuideCatalog.categoryID(forTool: tool.name) == AIGuideCatalog.other.id {
+            if AIGuideCatalog.categoryID(forTool: tool.name) == AIGuideCatalog.guides.id {
                 uncategorized.append(tool.name)
             }
         }

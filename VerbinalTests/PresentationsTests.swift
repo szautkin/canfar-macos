@@ -152,16 +152,14 @@ final class PresentationsTests: XCTestCase {
     }
 
     /// open_ui presses the control that opens a sheet — by the sheet's name
-    /// — and close_ui closes it; an element's right-click menu opens for the
-    /// person and closes as Esc does (plan 30 T2).
-    func testOpenUIPressesWhatOpensASheetAndShowsARightClickMenu() async throws {
+    /// — and close_ui closes it (plan 30 T2).
+    func testOpenUIPressesWhatOpensASheet() async throws {
         try await AXReadable.require()
         struct Openers: View {
             @State private var notes = false
             var body: some View {
                 VStack(spacing: 20) {
                     Button("Notes…") { notes = true }.opens("Test Notes")
-                    Text("Spectrum").padding().contextMenu { Button("Rename") {} }
                 }
                 .frame(width: 400, height: 300)
                 .uiWindowPlace(.main)
@@ -175,10 +173,7 @@ final class PresentationsTests: XCTestCase {
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: Openers())
         window.orderFrontRegardless()
-        defer {
-            _ = state.uiHintPresenter.cancelOpenMenus()
-            window.close()
-        }
+        defer { window.close() }
         await state.uiHintPresenter.ready()
         try await Task.sleep(for: .milliseconds(400))
         let opener = try XCTUnwrap(state.uiHintPresenter.snapshot().elements.first { $0.presents == "Test Notes" })
@@ -194,12 +189,6 @@ final class PresentationsTests: XCTestCase {
         XCTAssertTrue(closed.done)
         try await Task.sleep(for: .milliseconds(500))
         XCTAssertNil(UIPresentations.shared.shown(named: "Test Notes"))
-
-        _ = state.uiHintPresenter.snapshot()
-        let menu = await state.setUIOpen(.init(target: "Spectrum"), open: true)
-        XCTAssertEqual(menu.waiting, true, "\(menu)")
-        let shut = await state.setUIOpen(.init(target: "menu"), open: false)
-        XCTAssertTrue(shut.done, "\(shut)")
     }
 
     func testTheToolsOpenAndCloseByName() async {

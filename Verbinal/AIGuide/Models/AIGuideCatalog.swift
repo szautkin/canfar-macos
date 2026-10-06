@@ -58,11 +58,13 @@ enum AIGuideCatalog {
     ]
 
     /// Fallback bucket for any tool not explicitly categorized.
-    static let other = Category(id: "other", title: "Other", systemImage: "ellipsis.circle",
-                                summary: "Tools not yet sorted into a category.")
+    /// The person's own guide tools: every built-in tool has its area (a
+    /// test holds them to it), so a tool in none is one they wrote (plan 30 N1).
+    static let guides = Category(id: "guides", title: "Your guide tools", systemImage: "book.closed",
+                                 summary: "The instruction tools you wrote in the AI Guide: each answers with your text.")
 
-    /// All categories including the fallback, for iteration in the view.
-    static var allCategories: [Category] { categories + [other] }
+    /// All categories including the person's guides, for iteration in the view.
+    static var allCategories: [Category] { categories + [guides] }
 
     /// Tool name → category id. Authored from the composition in
     /// `AppState+AgentTools.makeAgentTools()`; kept here so the grouping lives
@@ -305,7 +307,7 @@ enum AIGuideCatalog {
 
     /// Category id for a tool name, defaulting to ``other``.
     static func categoryID(forTool name: String) -> String {
-        categoryByTool[name] ?? other.id
+        categoryByTool[name] ?? guides.id
     }
 
     /// Every explicitly-mapped tool name — the parity guardrail test

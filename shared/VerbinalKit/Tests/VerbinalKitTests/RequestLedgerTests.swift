@@ -130,6 +130,11 @@ final class RequestLedgerTests: XCTestCase {
         let ledger = RequestLedger()
         _ = try await ledger.send(request("https://ws-cadc.canfar.net/ac/whoami"), answer(401))
         XCTAssertEqual(ledger.recent().last?.outcome, .signInNeeded)
+        // A health probe asks without credentials: the 401 is its answer (plan 30 N2).
+        _ = try await ledger.send(request("https://ws-cadc.canfar.net/ac/whoami"), anonymous: true, answer(401))
+        XCTAssertEqual(ledger.recent().last?.outcome, .ok)
+        XCTAssertEqual(ledger.recent().last?.code, "HTTP 401", "the status is kept")
+        XCTAssertEqual(RequestOutcome(anonymousStatus: 503), .busy, "only sign-in is expected")
         XCTAssertEqual(ledger.recent().last?.code, "HTTP 401")
     }
 

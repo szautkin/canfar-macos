@@ -98,7 +98,8 @@ struct SaveObservationToResearchApplier: ResultReportingApplier {
         let payload = try JSONDecoder().decode(SaveObservationToResearchTool.Payload.self, from: proposal.payload)
         let (id, added) = try await save(payload, AgentAttribution.from(proposal: proposal))
         await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
-        let extra = AutoAppliedAck.Extra(id: id.uuidString, note: added ? nil : "already in Research — left as it was")
+        let extra = added ? AutoAppliedAck.Extra(id: id.uuidString)
+            : .unchanged(id: id.uuidString, "already in Research — left as it was")
         return (try? JSONEncoder().encode(extra)) ?? Data()
     }
 }

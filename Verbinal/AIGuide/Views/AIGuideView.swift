@@ -111,7 +111,7 @@ struct AIGuideView: View {
 
     /// Human title for a category id, for the flat-search card subtitle.
     private func categoryTitle(_ id: String) -> String {
-        AIGuideCatalog.allCategories.first { $0.id == id }?.title ?? AIGuideCatalog.other.title
+        AIGuideCatalog.allCategories.first { $0.id == id }?.title ?? AIGuideCatalog.guides.title
     }
 
     /// The grouped `(category, rows)` pair for a category id, or `nil`.

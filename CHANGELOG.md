@@ -12,6 +12,21 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **"1 item", not "1 items".** Counts of items — a Research collection, a
+  Storage folder, a delete under way — follow the plural rule, in English
+  and French.
+- **Recent files that are gone leave the list.** The viewers' recent files
+  kept files since deleted, and temporary figure files. A file no longer
+  there drops off when the list is read, and a temporary file never joins
+  it.
+- **An assistant's answers say what is so.** Your own guide tools are an
+  area of their own, "Your guide tools", not "Other — not yet sorted". A
+  health check no longer tells an assistant to sign you in when a service
+  answers its anonymous probe as it should. A change that finds nothing to
+  do says `changed: false` and what was there. Going to a screen says when
+  no Verbinal window shows. An export says its rows and columns — the
+  columns shown in the table. The cube camera answers the angle it moves
+  to, held to 80°.
 - **A code run never stays "running" for days.** A run on the compute
   session was watched only until you signed out or quit; one sent before
   then stayed "running" for good. After you sign in, every run still out
@@ -483,9 +498,8 @@ Catching up with Verbinal for Windows 1.4.1 (see
   as Esc or Cancel would, choosing nothing inside. It opens a sheet by
   its name when nothing has to be chosen first (Batch Jobs, Launch
   Session, About Verbinal…), or by pressing the one control that opens
-  it (Cut Out…, Upload, Open FITS File…), as your click would. It can
-  show an element's right-click menu for you to choose from, and bring
-  back the main window when it is closed, minimized or hidden. A file
+  it (Cut Out…, Upload, Open FITS File…), as your click would, and it
+  brings back the main window when it is closed, minimized or hidden. A file
   panel waits for you; the assistant's other tools keep answering
   meanwhile.
 - **An assistant selects a tab or a segment, and fills the launch form's

@@ -187,8 +187,8 @@ extension AppState {
                 if let d = args.orbitByAzimuthDeg { azimuth += Float(d) * degToRad }
                 if let d = args.orbitByElevationDeg { elevation += Float(d) * degToRad }
                 if let z = args.zoomFactor { distance /= Float(z) }
-                elevation = min(max(elevation, -1.4), 1.4)
-                distance = min(max(distance, 0.5), 8)
+                elevation = CubeViewerModel.clamped(elevation: elevation)
+                distance = CubeViewerModel.clamped(distance: distance)
 
                 // The camera only exists in volume mode — switch so the
                 // user actually sees the move.
@@ -203,10 +203,13 @@ extension AppState {
                 activity.append(.live(
                     kind: "set_cube_camera", summary: "Moved the Cube camera",
                     origin: .external(clientID: "set_cube_camera")))
+                // The target it moves to, as asked or held to the bounds — not
+                // where the easing is now — to the hundredth (plan 30 N7).
+                func rounded(_ value: Double) -> Double { (value * 100).rounded() / 100 }
                 return .applied(SetCubeCameraTool.Pose(
-                    azimuthDeg: Double(azimuth) * 180 / .pi,
-                    elevationDeg: Double(elevation) * 180 / .pi,
-                    distance: Double(distance)))
+                    azimuthDeg: rounded(Double(azimuth) * 180 / .pi),
+                    elevationDeg: rounded(Double(elevation) * 180 / .pi),
+                    distance: rounded(Double(distance))))
             }
         })
     }
@@ -219,11 +222,11 @@ extension AppState {
     }
 
     func makeListRecentCubesTool() -> ListRecentFilesTool {
-        ListRecentFilesTool.cubes { await RecentFiles.cubes.items.map { .init(name: $0.name, path: $0.path) } }
+        ListRecentFilesTool.cubes { await RecentFiles.cubes.present().map { .init(name: $0.name, path: $0.path) } }
     }
 
     func makeListRecentFITSTool() -> ListRecentFilesTool {
-        ListRecentFilesTool.fits { await RecentFiles.fits.items.map { .init(name: $0.name, path: $0.path) } }
+        ListRecentFilesTool.fits { await RecentFiles.fits.present().map { .init(name: $0.name, path: $0.path) } }
     }
 
     func makeShowCubeSpectrumTool() -> ShowCubeSpectrumTool {

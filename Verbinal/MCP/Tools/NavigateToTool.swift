@@ -32,6 +32,10 @@ struct NavigateToTool: AITool {
         let navigated: Bool
         let mode: String
         let modeTitle: String
+        /// False when no Verbinal window shows: the screen changed where the
+        /// person cannot see it (plan 30 N4). Absent when one shows.
+        var showing: Bool?
+        var note: String?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
@@ -52,7 +56,8 @@ struct NavigateToTool: AITool {
         """#
     )
 
-    let navigate: @Sendable (_ mode: AppMode) async -> Void
+    /// Navigates; answers why the person cannot see it, nil when they can.
+    let navigate: @Sendable (_ mode: AppMode) async -> String?
 
     func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         let args: Args
@@ -64,11 +69,13 @@ struct NavigateToTool: AITool {
         guard let mode = Self.mode(from: args.mode) else {
             return .failed(.invalidArgument("unknown mode '\(args.mode)'"))
         }
-        await navigate(mode)
+        let unseen = await navigate(mode)
         let body = Output(
             navigated: true,
             mode: args.mode,
-            modeTitle: Self.title(for: mode)
+            modeTitle: Self.title(for: mode),
+            showing: unseen == nil ? nil : false,
+            note: unseen
         )
         do {
             let bytes = try JSONEncoder().encode(body)

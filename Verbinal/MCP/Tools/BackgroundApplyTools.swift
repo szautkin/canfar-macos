@@ -22,7 +22,7 @@ struct StartBackgroundApplyTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "start_background_apply",
-        description: "Apply a pending proposal in the background instead of waiting for it — for work longer than a tool call should be held open (a whole-observation download, a large VOSpace transfer). Answers at once with a job id (the proposal's own id); follow it with get_job_status. Only for what auto-apply would apply without the person: never a destructive change, and nothing while auto-apply is off — those wait for the person's approval in Verbinal, and this says so. (An auto-applied write that runs long already continues as a job by itself.)",
+        description: "Apply a pending proposal in the background instead of waiting for it — for work longer than a tool call should be held open (a whole-observation download, a large VOSpace transfer). Answers at once with a job id (the proposal's own id); follow it with get_job_status. Only for a change of a kind the person allows without asking (Settings ▸ AI Agent; each tool's description ends with its kind's setting): a kind they ask to approve, and anything that changes what every assistant is told, waits for them in Verbinal — this never starts it, and says so. (An auto-applied write that runs long already continues as a job by itself.)",
         schema: #"""
         {
           "type": "object",

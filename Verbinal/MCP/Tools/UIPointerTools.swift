@@ -506,7 +506,7 @@ struct OpenCloseUITool: JSONReadTool {
           "type": "object",
           "required": ["target"],
           "properties": {
-            "target": { "type": "string", "minLength": 1, "description": "A closed section or menu (closed: true in list_ui_targets), a panel in hiddenPanels, a control that opens something (`opens`) or what it opens, by name, a presentation that is shown (`presented`), `front`, `menu` or `Main Window` — by id or name." }
+            "target": { "type": "string", "minLength": 1, "description": "A closed section or menu (closed: true in list_ui_targets), a panel in hiddenPanels, a control that opens something (`opens`) or what it opens, by name, a presentation that is shown (`presented`), `front` or `Main Window` — by id or name." }
           },
           "additionalProperties": false
         }
@@ -515,14 +515,14 @@ struct OpenCloseUITool: JSONReadTool {
     static func open(_ act: @escaping @Sendable (Args) async -> Output) -> Self {
         Self(definition: AIToolDefinition.withStaticSchema(
             name: "open_ui",
-            description: "Open one closed thing on purpose, to show the person what is inside: a folded section (closed: true), a panel they hid (hiddenPanels: the file browser), a menu (a pop-up's or menu button's choices), an element's right-click menu, or — by its name — a sheet that needs nothing chosen first (list_ui_targets' `opensByName`: Batch Jobs, Image Content Discovery, Launch Session, About Verbinal, Export All, Pending Changes, Main Window when no window shows…), going to its screen first. A sheet, popover or system file panel that needs something chosen first opens from its control: one listed with `opens` (Cut Out…, Upload, Open FITS File…) is pressed once, as the person's click would — by its id, or by the name of what it opens when one control on screen opens it. A file panel then waits for the person: they choose, or close_ui closes it as Cancel. close_ui closes any sheet, popover, confirmation, alert or file panel that is open (`presented`), by its name or `front`, as Esc or Cancel would: nothing in it is chosen; `menu` closes an open right-click menu. Only that one opens; nothing else is touched, and nothing in it is chosen. It answers what appeared (`inside`), to list and hint like the rest. A menu stays open for the person — they choose from it or press Esc, and a hint never chooses for them; while a pop-up's or menu button's menu is open, list_ui_targets reads its items and show_ui_hints points at them. A long list's pop-up (the launch form's projects and images) opens a panel instead — a search field and the matching rows, at most twelve in sight; select_ui chooses a row in it. A tab is not opened: navigate there (navigate_to, select_search_tab, open_settings). close_ui closes it again. View state only; no proposal.",
+            description: "Open one closed thing on purpose, to show the person what is inside: a folded section (closed: true), a panel they hid (hiddenPanels: the file browser), a menu (a pop-up's or menu button's choices), or — by its name — a sheet that needs nothing chosen first (list_ui_targets' `opensByName`: Batch Jobs, Image Content Discovery, Launch Session, About Verbinal, Export All, Pending Changes, Main Window when no window shows…), going to its screen first. A sheet, popover or system file panel that needs something chosen first opens from its control: one listed with `opens` (Cut Out…, Upload, Open FITS File…) is pressed once, as the person's click would — by its id, or by the name of what it opens when one control on screen opens it. A file panel then waits for the person: they choose, or close_ui closes it as Cancel. close_ui closes any sheet, popover, confirmation, alert or file panel that is open (`presented`), by its name or `front`, as Esc or Cancel would: nothing in it is chosen. A right-click menu is the person's. Only that one opens; nothing else is touched, and nothing in it is chosen. It answers what appeared (`inside`), to list and hint like the rest. A menu stays open for the person — they choose from it or press Esc, and a hint never chooses for them; while a pop-up's or menu button's menu is open, list_ui_targets reads its items and show_ui_hints points at them. A long list's pop-up (the launch form's projects and images) opens a panel instead — a search field and the matching rows, at most twelve in sight; select_ui chooses a row in it. A tab is not opened: navigate there (navigate_to, select_search_tab, open_settings). close_ui closes it again. View state only; no proposal.",
             schema: schema), act: act)
     }
 
     static func close(_ act: @escaping @Sendable (Args) async -> Output) -> Self {
         Self(definition: AIToolDefinition.withStaticSchema(
             name: "close_ui",
-            description: "Close a section, panel, menu, sheet, popover or file panel you opened with open_ui — or one the person opened, if they asked: a presentation by its name (`presented`) or `front`, as Esc or Cancel would, nothing in it chosen; an open right-click menu by `menu`. The person can always close it too. View state only; no proposal.",
+            description: "Close a section, panel, menu, sheet, popover or file panel you opened with open_ui — or one the person opened, if they asked: a presentation by its name (`presented`) or `front`, as Esc or Cancel would, nothing in it chosen. The person can always close it too. View state only; no proposal.",
             schema: schema), act: act)
     }
 }
@@ -538,7 +538,7 @@ enum SettingsActions {
         return LiveActionTool(
             definition: AIToolDefinition.withStaticSchema(
                 name: "open_settings",
-                description: "Open Settings at a section, so you can show the person where something is set — then point at the control with point_at_ui (list_ui_targets lists what is there). Nothing is changed: settings are the person's to set, and some (the MCP server and auto-apply, endpoints, the compute image, sign-ins) only they should. Sections: \(SettingsSection.allCases.map(\.rawValue).joined(separator: ", ")).",
+                description: "Open Settings at a section, so you can show the person where something is set — then point at the control with point_at_ui (list_ui_targets lists what is there). Nothing is changed: settings are the person's to set, and some (the MCP server and what an assistant may do without asking, endpoints, the compute image, sign-ins) only they should. Sections: \(SettingsSection.allCases.map(\.rawValue).joined(separator: ", ")).",
                 schema: #"""
                 {
                   "type": "object",

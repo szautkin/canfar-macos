@@ -86,6 +86,10 @@ public struct AutoAppliedAck: Codable, Sendable {
     public let note: String?
     /// The file the write made on this Mac — a figure export's (QA N8).
     public let file: String?
+    /// False when the write found nothing to do — what it asked for was
+    /// already so — and `note` says what was there; absent when it changed
+    /// something (plan 30 N3).
+    public let changed: Bool?
 
     public struct FailedItem: Codable, Sendable, Equatable {
         public let id: String
@@ -108,6 +112,7 @@ public struct AutoAppliedAck: Codable, Sendable {
         self.failed = extra?.failed
         self.note = extra?.note
         self.file = extra?.file
+        self.changed = extra?.changed
     }
 
     /// Encode extra ack fields from an applier. Keep this the single
@@ -119,13 +124,20 @@ public struct AutoAppliedAck: Codable, Sendable {
         public var failed: [FailedItem]?
         public var note: String?
         public var file: String?
+        public var changed: Bool?
         public init(id: String? = nil, succeeded: [String]? = nil, failed: [FailedItem]? = nil, note: String? = nil,
-                    file: String? = nil) {
+                    file: String? = nil, changed: Bool? = nil) {
             self.id = id
             self.succeeded = succeeded
             self.failed = failed
             self.note = note
             self.file = file
+            self.changed = changed
+        }
+
+        /// The answer of a write that found nothing to do: what was there.
+        public static func unchanged(id: String? = nil, succeeded: [String]? = nil, _ note: String) -> Extra {
+            Extra(id: id, succeeded: succeeded, note: note, changed: false)
         }
     }
 
@@ -137,7 +149,7 @@ public struct AutoAppliedAck: Codable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case applied, proposalID, kind, summary, id, succeeded, failed, note, file
+        case applied, proposalID, kind, summary, id, succeeded, failed, note, file, changed
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -151,6 +163,7 @@ public struct AutoAppliedAck: Codable, Sendable {
         try c.encodeIfPresent(failed, forKey: .failed)
         try c.encodeIfPresent(note, forKey: .note)
         try c.encodeIfPresent(file, forKey: .file)
+        try c.encodeIfPresent(changed, forKey: .changed)
     }
 
     public init(from decoder: Decoder) throws {
@@ -164,6 +177,7 @@ public struct AutoAppliedAck: Codable, Sendable {
         failed = try c.decodeIfPresent([FailedItem].self, forKey: .failed)
         note = try c.decodeIfPresent(String.self, forKey: .note)
         file = try c.decodeIfPresent(String.self, forKey: .file)
+        changed = try c.decodeIfPresent(Bool.self, forKey: .changed)
     }
 }
 

@@ -396,10 +396,9 @@ struct LaunchHeadlessJobApplier: ProposalApplier, ResultReportingApplier {
 
         let launchedIDs = launched.ids
         await persist(ids: launchedIDs, payload: payload, proposal: proposal)
-        var extra = AutoAppliedAck.Extra(id: launchedIDs.first, succeeded: launchedIDs)
-        if launched.alreadyMade {
-            extra.note = "the last attempt failed, but CANFAR had made it all the same: \(launchedIDs.joined(separator: ", ")); nothing new was launched"
-        }
+        let extra = launched.alreadyMade
+            ? AutoAppliedAck.Extra.unchanged(id: launchedIDs.first, succeeded: launchedIDs, "the last attempt failed, but CANFAR had made it all the same: \(launchedIDs.joined(separator: ", ")); nothing new was launched")
+            : AutoAppliedAck.Extra(id: launchedIDs.first, succeeded: launchedIDs)
         return (try? JSONEncoder().encode(extra)) ?? Data()
     }
 

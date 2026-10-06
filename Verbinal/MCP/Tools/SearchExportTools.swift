@@ -28,7 +28,7 @@ struct ExportSearchResultsTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "export_search_results",
-        description: "Export search results as a file in the user's Downloads folder. Omit `adql` to export the current search results; pass `adql` to run a custom query and export that instead. `maxRecords` caps the row count.",
+        description: "Export search results as a file in the user's Downloads folder. Omit `adql` to export the current search results — as CSV or TSV, only the columns shown in the results table, in their order (set_results_view shows or hides them); as VOTable, every column of the query; pass `adql` to run a custom query and export every column it returns. `maxRecords` caps the row count. The answer gives the file, and its rows and columns.",
         schema: #"""
         {
           "type": "object",
@@ -72,25 +72,45 @@ struct ExportSearchResultsTool: JSONWriteTool {
     }
 }
 
+/// What an export wrote: the file, and its rows and columns when the app
+/// wrote it from the table (plan 30 N5).
+struct SearchExport: Sendable, Equatable {
+    let path: String
+    /// "120 rows × 8 columns: the columns shown in the results table";
+    /// nil for a file CADC wrote, with every column of its query.
+    let shape: String?
+
+    /// The shape of the table's own export: only the columns shown.
+    static func shown(rows: Int, columns: Int) -> String {
+        "\(rows) rows × \(columns) columns: the columns shown in the results table — set_results_view shows or hides them"
+    }
+}
+
 /// Concrete handler that runs when the user clicks Apply on an
 /// `export_search_results` proposal (or immediately under auto-apply).
-struct ExportSearchResultsApplier: ProposalApplier {
+struct ExportSearchResultsApplier: ResultReportingApplier {
     let kind = "export_search_results"
 
-    /// Returns the path of the written file; the closure owns logging.
-    let run: @Sendable (_ format: String, _ adql: String?, _ maxRecords: Int?) async throws -> String
+    /// Writes the file; the closure owns logging.
+    let run: @Sendable (_ format: String, _ adql: String?, _ maxRecords: Int?) async throws -> SearchExport
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(ExportSearchResultsTool.Payload.self, from: proposal.payload)
+        let export: SearchExport
         do {
-            _ = try await run(payload.format, payload.adql, payload.maxRecords)
+            export = try await run(payload.format, payload.adql, payload.maxRecords)
         } catch let pa as ProposalApplyError {
             throw pa
         } catch {
             throw ProposalApplyError.backendError("export failed: \(error.localizedDescription)")
         }
         await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
+        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(note: export.shape, file: export.path))) ?? Data()
     }
 }
 
