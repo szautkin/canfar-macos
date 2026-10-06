@@ -22,22 +22,22 @@
 
 | Step | What | State |
 |---|---|---|
-| **A** | What an assistant may do without asking: kinds of change, and a setting for each | done — A1 `196a757`, A2 `cb37ef1`, A3 `19dfeff`, A5 `6db6106`, A6 (this commit). Next: W1–W4 |
-| **W** | Writes on CANFAR: tasks, honest advice, no second launch by accident | done (this commit): W1 SessionLaunches, W2 advice, W3 in A2, W4 retry looks first. W0b with the person |
-| **S** | Silent no-ops and loose schemas | done — S1–S5 (this commit) |
-| **J** | Jobs CANFAR has dropped read as "gone", not "pending" | done — J1, J2 (this commit) |
-| **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | done — T1, T3, T4, T7 `c632316`; T5, T6 `abebf8f`; T2 `ff9c286`: openers, file panels, Main Window. Right-click menus were taken out again (N commit): AppKit shows a SwiftUI right-click menu inside the accessibility request that asked for it, and no read of the screen is answered until it closes — the hosted test hung on it. They stay the person's, as choosing in a menu already was. The opener test passes with the screen unlocked |
-| **B** | The Batch Jobs filter on every tab, always shown | done (this commit) |
-| **R** | Search radius, as a field | done (this commit): R1 Radius field, R2 wait: false |
-| **D** | `download_observation` `file` from another plane of the observation | done (this commit) |
-| **F** | The file browser opens Downloads | done (this commit): cause confirmed — a symlink listed as itself |
-| **L** | No answer longer than 45 s; long work goes on, with progress | done (this commit) |
-| **C** | `capture_view` shows the hints | done (this commit): each hint panel's picture drawn over the window's. Its pixel test needs the screen unlocked: in handout 31 |
-| **P** | The channel profile in a range, binned | done (this commit): `CubeSpectrumSlice` for both tools, one schema fragment, at most 500 values by default |
-| **K** | A compute run that never reports | done (this commit): watching stopped at sign-out or quit, so the run was never closed. After sign-in, runs still out are read once, watched again or closed as `noResult` (the existing "no result", not a new `lost`), by the watcher's own give-up time: timeout + 5 min. K0 (634F932B's folder) still to look at, with the person |
-| **G** | Workflow templates: `run_code` by default | done (this commit): `Add-on:` step line, `AddonTools` declared list, `use` per step in get_workflow (the Notebook add-on installed, or not); a guardrail on every template's tool names |
-| **N** | Small items | done (this commit): N1–N9. N7's 80.21° was the clamp itself (1.4 rad), now 80°, one clamp for drag, zoom and tools. N8 also gives the Batch Jobs page line its French, and keeps the catalogue as Xcode last wrote it |
-| **Q** | Handout 29 corrections; handout 31 | planned |
+| **A** | What an assistant may do without asking: kinds of change, and a setting for each | done — A1 `196a757`, A2 `cb37ef1`, A3 `19dfeff`, A5 `6db6106`, A6 `05be6b8`. Next: W1–W4 |
+| **W** | Writes on CANFAR: tasks, honest advice, no second launch by accident | done `1cff9fd`: W1 SessionLaunches, W2 advice, W3 in A2, W4 retry looks first. W0b with the person |
+| **S** | Silent no-ops and loose schemas | done — S1–S5 `78fea6c` |
+| **J** | Jobs CANFAR has dropped read as "gone", not "pending" | done — J1, J2 `08f3ef9` |
+| **T** | Everything that opens, an assistant can open and close: every modal, popover, menu, panel, window | done — T1, T3, T4, T7 `c632316`; T5, T6 `abebf8f`; T2 `ff9c286`: openers, file panels, Main Window. Right-click menus were taken out again (`c17f25e`): AppKit shows a SwiftUI right-click menu inside the accessibility request that asked for it, and no read of the screen is answered until it closes — the hosted test hung on it. They stay the person's, as choosing in a menu already was. The opener test passes with the screen unlocked |
+| **B** | The Batch Jobs filter on every tab, always shown | done `353cec8` |
+| **R** | Search radius, as a field | done `eafbd7b`: R1 Radius field, R2 wait: false |
+| **D** | `download_observation` `file` from another plane of the observation | done `f50dc4f` |
+| **F** | The file browser opens Downloads | done `9b98a17`: cause confirmed — a symlink listed as itself |
+| **L** | No answer longer than 45 s; long work goes on, with progress | done `2215123` |
+| **C** | `capture_view` shows the hints | done `6a00a70`: each hint panel's picture drawn over the window's. Its pixel test needs the screen unlocked: in handout 31 |
+| **P** | The channel profile in a range, binned | done `7a120d7`: `CubeSpectrumSlice` for both tools, one schema fragment, at most 500 values by default |
+| **K** | A compute run that never reports | done `836898e`: watching stopped at sign-out or quit, so the run was never closed. After sign-in, runs still out are read once, watched again or closed as `noResult` (the existing "no result", not a new `lost`), by the watcher's own give-up time: timeout + 5 min. K0 (634F932B's folder) still to look at, with the person |
+| **G** | Workflow templates: `run_code` by default | done `8733dcf`: `Add-on:` step line, `AddonTools` declared list, `use` per step in get_workflow (the Notebook add-on installed, or not); a guardrail on every template's tool names |
+| **N** | Small items | done `c17f25e`: N1–N9. N7's 80.21° was the clamp itself (1.4 rad), now 80°, one clamp for drag, zoom and tools. N8 also gives the Batch Jobs page line its French, and keeps the catalogue as Xcode last wrote it |
+| **Q** | Handout 29 corrections; handout 31 | done (this commit): [handout 31](./31-qa-regression-plan30.md). Its live pass needs the screen unlocked, CANFAR healthy, and the person for W0b (§2) |
 
 ## What the report got wrong, or what was mine
 
