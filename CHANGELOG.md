@@ -12,6 +12,12 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A code run's result is taken even when it comes late.** A run whose
+  result could not be read at sign-in was closed as "no result" with its
+  result waiting in your storage; and one given up on was never looked at
+  again, though the request ran hours later when a session came up. A
+  failed read now leaves the run open, and after sign-in a recent run
+  marked "no result" is read once more.
 - **The Remote Compute screen sees a session an assistant starts.** When
   an assistant started the compute session, the screen kept saying
   Stopped — Start enabled — until something else made it look again. It

@@ -234,16 +234,29 @@ final class RemoteComputeService {
         guard isSignedIn, !resuming else { return }
         resuming = true
         defer { resuming = false }
-        for run in runs.runs where !run.isFinished && watchers[run.id] == nil {
-            if giveUpAt(run) > now {
-                let task = task(for: run)
-                task.stage(String(localized: "Waiting for the result"))
-                watch(run, task)
-            } else if await !settled(run.id) {
-                runs.close(run.id, as: ComputeRun.noResult)
+        for run in runs.runs where watchers[run.id] == nil {
+            if !run.isFinished {
+                if giveUpAt(run) > now {
+                    let task = task(for: run)
+                    task.stage(String(localized: "Waiting for the result"))
+                    watch(run, task)
+                } else if case .absent? = try? await fetchOut(run.id) {
+                    runs.close(run.id, as: ComputeRun.noResult)
+                }
+                // A read that failed — the sign-in not settled, storage slow —
+                // says nothing: the run stays open, looked at again next time.
+                // One so read was closed with its result waiting (K0, 634F932B).
+            } else if run.status == ComputeRun.noResult, now.timeIntervalSince(run.submittedAt) < Self.lateResultWindow {
+                // A result can come after the app gave up: the request waits in
+                // the inbox, and a session that comes up later runs it — eight
+                // hours later, once (K0, 6278AB66). Read, it is taken.
+                _ = try? await fetchOut(run.id)
             }
         }
     }
+
+    /// How long after it was sent a run given up on is read again for a late result.
+    static let lateResultWindow: TimeInterval = 2 * 24 * 3600
 
     /// Makes sure a session is there, and drops `request` in its inbox.
     private func send(_ request: RunCodeContract.Request, as user: String,

@@ -334,4 +334,30 @@ final class RemoteComputeServiceTests: XCTestCase {
         try await compute.stop()
         XCTAssertEqual(compute.sessionChanges, 2)
     }
+
+    /// K0: a run whose result read fails at sign-in stays open — one was
+    /// closed "no result" with its result waiting — and a run given up on
+    /// whose result came later is taken when it is read again.
+    func testAFailedReadKeepsARunOpenAndALateResultIsTaken() async throws {
+        let store = ComputeRunStore(persistence: nil)
+        let long = Date().addingTimeInterval(-3600)
+        store.add(ComputeRun(request("quit-mid-run", timeout: 480), author: .agent, submittedAt: long))
+        store.add(ComputeRun(request("ran-late", timeout: 60), author: .agent, submittedAt: long))
+        store.close("ran-late", as: ComputeRun.noResult)
+        let compute = RemoteComputeService(
+            runs: store, sessions: sessions, files: files,
+            username: { [user] in user }, configuration: { [image] in .init(image: image, cores: 2, ram: 8) },
+            registryAuth: { nil }, pollInterval: .milliseconds(10), tasks: TaskRegistry())
+
+        files.failReads = true
+        await compute.resumeWatching()
+        XCTAssertEqual(store.find("quit-mid-run")?.state, ComputeRun.running, "a failed read says nothing: still open")
+
+        files.failReads = false
+        files.put(RunCodeContract.outPath(id: "quit-mid-run"), #"{"status":"ok","exit_code":0}"#)
+        files.put(RunCodeContract.outPath(id: "ran-late"), #"{"status":"ok","exit_code":0}"#)
+        await compute.resumeWatching()
+        XCTAssertEqual(store.find("quit-mid-run")?.state, "ok", "its result, read")
+        XCTAssertEqual(store.find("ran-late")?.state, "ok", "a late result is taken")
+    }
 }

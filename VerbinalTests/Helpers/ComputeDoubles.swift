@@ -59,8 +59,10 @@ final class FakeComputeFiles: ComputeFiles, @unchecked Sendable {
         lock.withLock { folders.append(parentPath.isEmpty ? folderName : "\(parentPath)/\(folderName)") }
     }
 
+    var failReads = false
     func readFile(username: String, path: String, maxBytes: Int) async throws -> Data? {
-        lock.withLock { stored[path] }
+        if failReads { throw URLError(.userAuthenticationRequired) }
+        return lock.withLock { stored[path] }
     }
 }
 
