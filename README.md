@@ -17,30 +17,51 @@ and as a notarised build from [GitHub Releases](https://github.com/szautkin/canf
 
 - **Sessions** — launch and manage Notebook, Desktop, CARTA, Contributed, and
   Firefly sessions on the CANFAR Skaha platform, no browser required. Auto-refreshing
-  status, live CPU/RAM availability, one-click re-launch from history, in-place event
-  and container logs, and headless batch jobs with in-app submission and monitoring.
-- **CADC archive search** — build queries against the CADC TAP service, review results
-  in a sortable table, switch units (RA/Dec HMS·DMS, 14-unit spectral conversion), and
-  open rich CAOM2 observation detail — with an ADQL editor for power users.
-- **Research assistant** — a workspace that tracks downloaded observations, searches
-  across them (full-text over notes and tags), and keeps notes alongside your data.
-- **VOSpace storage** — a native file browser to browse, upload, organise, and manage
-  your VOSpace files, with quota and usage at a glance.
+  status, live platform load, CPU and RAM (and GPU, when there is one) on every session
+  card, one-click re-launch from history, in-place event and container logs, and
+  headless batch jobs that keep up with thousands of jobs — with a history kept after
+  the platform drops them.
+- **Remote Compute** (new in 1.4) — run Python or Bash on a session on your own CANFAR
+  account, from the app or through your AI assistant. Every run and its output are kept,
+  and a run survives signing out and quitting the app.
+- **CADC archive search** — build queries against the CADC TAP service (with a radius for
+  cone searches and VizieR beside CADC), review results in a sortable, filterable table,
+  switch units (RA/Dec HMS·DMS, 14-unit spectral conversion), and open rich CAOM2
+  observation detail — with an ADQL editor that checks your query as you type.
+- **Research assistant** — a workspace that tracks your observations, with or without
+  their files: download whole observations, choose individual files, or cut out just the
+  region you need. Full-text search over notes and tags, and bundle export.
+- **VOSpace storage** — a native file browser to browse, upload, organise, share and
+  manage your VOSpace files, with quota and usage at a glance and a warning when a
+  sensitive file is public.
 - **FITS viewer** — hardware-accelerated, Metal-based rendering with pan/zoom, scaling
   modes, WCS-aware pixel readout, and full zenithal projections (TAN/SIN/STG/ZEA).
+  Marks on your images kept with the file and exported to DS9, plotted spectra (such as
+  HST x1d), and figures of the whole image or a region.
 - **Cube Viewer** — explore FITS spectral cubes in 3D: a GPU ray-marched volume mode and
   a quantitative slice mode with WCS sky coordinates, spectral readout, and click-to-probe
   spectra — plus publication-quality figure export to PNG/PDF.
+- **Workflows** — step-by-step research protocols (imaging, photometry, spectroscopy,
+  cube kinematics, proposal preparation) as checklists you can copy, edit and track.
 - **Image content discovery** — find which CANFAR container image carries the Python,
   R, system, and OS-level packages your workflow needs, before you launch.
 - **AI assistant integration (MCP)** — a built-in Model Context Protocol server lets
-  Claude Desktop and Claude Code search the archive, query sessions, browse storage,
-  launch jobs, and start/stop compute or run code on your behalf — with a guided setup
-  wizard, an AI Guide to tune what each tool exposes, and permission gates that keep you
-  in control. See [docs/MCP-Setup.md](docs/MCP-Setup.md).
+  Claude Desktop, Claude Code and any other MCP client work in the app with you, through
+  about two hundred tools — on your terms:
+  - you allow each assistant session, and can give it instructions it must follow;
+  - you choose, kind by kind, what an assistant may do without asking — deletes wait for
+    you by default, and every change says why;
+  - your assistant can see the window, point things out with numbered hints, and show
+    its work on the activity bar, without ever pressing a button for you;
+  - a session log explains every call, every change and every request to CADC and CANFAR.
+
+  A guided setup wizard connects Claude in a few clicks, and an AI Guide tunes what each
+  tool tells the assistant. [AGENTS.md](AGENTS.md) shows how to connect any client;
+  [docs/MCP-Setup.md](docs/MCP-Setup.md) covers how it works.
 - **Privacy first** — no analytics or telemetry; credentials live in the macOS Keychain;
   all traffic goes directly to CANFAR/CADC over HTTPS.
-- **Localized** — full English and French interfaces.
+- **Localized and accessible** — full English and French interfaces, with VoiceOver
+  support.
 
 ## Screenshots
 
@@ -48,7 +69,7 @@ The 3D **Cube Viewer** (new in 1.3) — explore FITS spectral cubes as an intera
 
 ![Verbinal — Cube Viewer 3D volume](assets/screenshot-cube-volume.png)
 
-| Home | CADC archive search |
+| Home (1.4) | CADC archive search |
 |------|---------------------|
 | ![Verbinal — home](assets/screenshot-home.png) | ![Verbinal — CADC archive search](assets/screenshot-search.png) |
 

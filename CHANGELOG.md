@@ -6,7 +6,7 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.4.0] - Unreleased
+## [1.4.0] - 2026-10-07
 
 Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
@@ -990,7 +990,7 @@ Catching up with Verbinal for Windows 1.4.1 (see
   already finished is announced when it appeared between two polls.
   Notifications are now translated.
 
-## [1.3.4] - Unreleased
+## [1.3.4] - Not released (shipped in 1.4.0)
 
 Post–1.3.3 polish: Workflows local Edit/Delete, Storage recursive folder
 delete, Cube Intel volume hardening, Research local FITS import (see
