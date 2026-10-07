@@ -9,14 +9,14 @@ final class SexagesimalTests: XCTestCase {
 
     func testSecondsThatRoundUpCarryIntoTheMinute() {
         // 23h59m59.996s — %05.2f on the float remainder printed 59m60.00s.
-        let degrees = (23 + 59.0 / 60 + 59.996 / 3600) * 15
+        let degrees: Double = (23 + 59.0 / 60 + 59.996 / 3600) * 15
         XCTAssertEqual(Sexagesimal.formatHMS(degrees: degrees), "00h00m00.00s")
-        let noon = (12 + 34.0 / 60 + 59.996 / 3600) * 15
+        let noon: Double = (12 + 34.0 / 60 + 59.996 / 3600) * 15
         XCTAssertEqual(Sexagesimal.formatHMS(degrees: noon), "12h35m00.00s")
     }
 
     func testArcsecondsThatRoundUpCarryIntoTheDegree() {
-        let dec = 41 + 59.0 / 60 + 59.97 / 3600
+        let dec: Double = 41 + 59.0 / 60 + 59.97 / 3600
         XCTAssertEqual(Sexagesimal.formatDMS(degrees: dec), "+42\u{00B0}00'00.0\"")
         XCTAssertEqual(Sexagesimal.formatDMS(degrees: -dec, style: .colons), "-42:00:00.0")
     }
@@ -48,11 +48,11 @@ final class SexagesimalTests: XCTestCase {
     // MARK: - Parsing
 
     func testStrictParsersAcceptEverySeparatorStyle() throws {
-        let ra = (0 + 42.0 / 60 + 44.33 / 3600) * 15
+        let ra: Double = (0 + 42.0 / 60 + 44.33 / 3600) * 15
         for text in ["00:42:44.33", "00 42 44.33", "00h42m44.33s", "0h42m44,33s"] {
             XCTAssertEqual(try XCTUnwrap(Sexagesimal.parseHMS(text), text), ra, accuracy: 1e-9, text)
         }
-        let dec = 41 + 16.0 / 60 + 9.0 / 3600
+        let dec: Double = 41 + 16.0 / 60 + 9.0 / 3600
         for text in ["+41:16:09", "41 16 09", "+41°16'09\"", "41°16′09″"] {
             XCTAssertEqual(try XCTUnwrap(Sexagesimal.parseDMS(text), text), dec, accuracy: 1e-9, text)
         }
