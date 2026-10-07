@@ -13,6 +13,9 @@ struct ContentView: View {
     /// from non-view contexts) honour the guard. Also selects the
     /// mode-switch and Terms-gate transitions below.
     @Environment(\.accessibilityReduceMotion) var reduceMotion
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
     @State var showAbout = false
     /// First-launch Terms-of-Use acceptance gate; blocks the app until accepted.
     @State private var legal = LegalAgreementService()
@@ -224,7 +227,14 @@ struct ContentView: View {
         }
         // Mirror the environment Reduce-Motion flag into AppState so the
         // navigation methods can consult it from non-view contexts.
-        .onAppear { appState.reduceMotion = reduceMotion }
+        .onAppear {
+            appState.reduceMotion = reduceMotion
+            #if os(macOS)
+            // How a closed main window comes back, for open_ui `Main Window`.
+            let openWindow = openWindow
+            appState.appWindows?.openMain = { openWindow(id: AppWindows.mainID) }
+            #endif
+        }
         .onChange(of: reduceMotion) { _, newValue in
             appState.reduceMotion = newValue
         }

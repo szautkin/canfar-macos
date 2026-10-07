@@ -53,5 +53,12 @@ struct LaunchProgressSheet: View {
         // the user in a buttonless sheet (the launch Task keeps running
         // and its outcome is picked up by the form's status labels).
         .onEscape { onDone() }
+        // A launch that went through closes by itself, so the session's
+        // card shows without a click (handout 31).
+        .task(id: model.launchSuccess) {
+            guard model.launchSuccess else { return }
+            try? await Task.sleep(for: .seconds(1.5))
+            if model.launchSuccess { onDone() }
+        }
     }
 }

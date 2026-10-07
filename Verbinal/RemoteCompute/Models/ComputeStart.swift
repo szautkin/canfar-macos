@@ -29,7 +29,7 @@ enum ComputeStart: Equatable, Sendable {
             return "Launched the \(name) session with \(cores) cores and \(ram) GB. Run code on it with run_code."
         case .reused(let cores, let memory, let drift):
             let size = [ComputeDrift.cores(cores).map { "\(ComputeDrift.number($0)) \($0 == 1 ? "core" : "cores")" },
-                        ComputeDrift.gigabytes(memory).map { "\(ComputeDrift.number($0)) GB" }]
+                        PlatformMemory.gigabytes(memory).map { "\(ComputeDrift.number($0)) GB" }]
                 .compactMap { $0 }.joined(separator: " and ")
             let has = size.isEmpty ? "" : ", which has \(size)"
             let differs = drift.map { " \($0.sentence) To change it: stop_compute, then start_compute." } ?? ""

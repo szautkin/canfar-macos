@@ -136,7 +136,7 @@ final class SessionModelTests: XCTestCase {
         let flexible = SessionDisplay.resources(of: Session(from: makeResponse(
             requestedRAM: nil, requestedCPUCores: nil, requestedGPUCores: "0", ramInUse: "0.18", cpuCoresInUse: "0.002",
             isFixedResources: false)))
-        XCTAssertEqual(flexible, .init(cpu: "<0.01", ram: "0.18 GB", gpu: nil, inUse: true))
+        XCTAssertEqual(flexible, .init(cpu: "<0.01", ram: "0.17 GB", gpu: nil, inUse: true), "in use, read as requests are: 0.18 GB is 0.17 of the form's")
 
         let pending = SessionDisplay.resources(of: Session(from: makeResponse(
             requestedRAM: nil, requestedCPUCores: nil, ramInUse: nil, cpuCoresInUse: nil, isFixedResources: false)))
@@ -145,5 +145,9 @@ final class SessionModelTests: XCTestCase {
         let gpu = SessionDisplay.resources(of: Session(from: makeResponse(requestedRAM: "8G", requestedGPUCores: "1")))
         XCTAssertEqual(gpu.gpu, "1")
         XCTAssertEqual(gpu.ram, "8 GB", "with its unit too")
+
+        // The person asked for 9; the platform gives back 9.66 (GB of 9 GiB). The card says 9.
+        let nine = SessionDisplay.resources(of: Session(from: makeResponse(requestedRAM: "9.66", requestedCPUCores: "4")))
+        XCTAssertEqual(nine.ram, "9 GB")
     }
 }

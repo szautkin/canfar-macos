@@ -115,7 +115,7 @@ struct RemoteComputeView: View {
         // What the session has, when the platform says; else what Settings asked.
         let session = model.snapshot?.session
         let cores = session.flatMap { ComputeDrift.cores($0.cpuAllocated) }.map(ComputeDrift.number) ?? "\(config.cores)"
-        let ram = session.flatMap { ComputeDrift.gigabytes($0.memoryAllocated) }.map(ComputeDrift.number) ?? "\(config.ram)"
+        let ram = session.flatMap { PlatformMemory.gigabytes($0.memoryAllocated) }.map(ComputeDrift.number) ?? "\(config.ram)"
         let size = String(localized: "\(cores) cores · \(ram) GB")
         guard let up = ComputeState.uptime(startedAt: model.snapshot?.session?.startedTime) else { return "\(state) · \(size)" }
         let minutes = Int(up / 60)

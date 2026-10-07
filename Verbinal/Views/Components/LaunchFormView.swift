@@ -84,14 +84,17 @@ struct LaunchFormView: View {
         }
         .uiPresented("Launch Progress", .sheet, isPresented: $showLaunchProgress)
         .sheet(isPresented: $showLaunchProgress, onDismiss: {
-            if model.launchSuccess {
-                model.savePendingRecentLaunch()
-            }
-        }) {
-            LaunchProgressSheet(model: model) {
-                showLaunchProgress = false
+            guard model.launchSuccess else { return }    // A failed launch keeps the form, to put right.
+            model.savePendingRecentLaunch()
+            // The form closes once its progress window is gone, a moment
+            // after: two stacked sheets closed at once left the form behind
+            // on the Mac, on its own when the window was minimized (handout 31).
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(250))
                 onLaunched?()
             }
+        }) {
+            LaunchProgressSheet(model: model) { showLaunchProgress = false }
         }
         .uiPresented("Recent Launch Conflict", .alert, isPresented: $model.showRecentLaunchConflict)
         .alert(

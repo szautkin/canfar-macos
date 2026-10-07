@@ -12,6 +12,14 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A launch shows its session without a click, and leaves no form
+  behind.** The progress window closes by itself a moment after a launch
+  goes through. The launch form closes after it, not with it: closed
+  together, the form could stay on screen alone once the window was
+  minimized. A launch that fails keeps the form, to put right.
+- **The main window comes back when an assistant asks.** With the
+  window closed, an assistant's `open_ui` "Main Window" could not open a
+  new one; it does now.
 - **Remote Compute says when it cannot start.** A compute session whose
   image CANFAR could not pull showed "Starting" for as long as it sat
   there. It now shows **Not ready**, with why and a Stop button, and code
@@ -865,8 +873,9 @@ Catching up with Verbinal for Windows 1.4.1 (see
 - **Session cards show CPU and RAM, flexible or fixed.** A flexible
   session's card showed only "FLEX": CANFAR gives such a session no sizes
   of its own. It now shows what the session uses ("CPU <0.01 · RAM
-  0.18 GB in use"); a fixed one shows what it was given, RAM with its
-  unit ("RAM 2 GB"). GPU shows only for a session that has one.
+  0.18 GB in use"); a fixed one shows what it was given, as the launch
+  form counts it, with its unit ("RAM 9 GB" for 9, which CANFAR reports
+  as 9.66). GPU shows only for a session that has one.
 - **Workflow templates run their analysis with Remote Compute.** Four
   templates (variable-star photometry, ESPaDOnS spectroscopy, JCMT cube
   kinematics, proposal due diligence) sent an assistant to Notebook

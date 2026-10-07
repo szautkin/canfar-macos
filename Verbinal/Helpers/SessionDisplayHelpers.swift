@@ -133,12 +133,12 @@ enum SessionDisplay {
         return value.formatted(.number.precision(.fractionLength(0...2)))
     }
 
-    /// The platform gives RAM in GB, as a bare number ("2.15", for 2 GiB)
-    /// or with its unit ("8G"): "2 GB", "0.18 GB"; "—" when it says nothing.
+    /// RAM as the launch form counts it — "2 GB" for the "2.15" the platform
+    /// gives back for 2 asked (PlatformMemory.gigabytes reads it); "—" when it
+    /// says nothing.
     static func gigabytes(_ raw: String, digits: Int) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        let number = trimmed.hasSuffix("G") ? String(trimmed.dropLast()) : trimmed
-        guard let value = Double(number) else { return trimmed.isEmpty ? "—" : trimmed }
+        guard let value = PlatformMemory.gigabytes(trimmed) else { return trimmed.isEmpty ? "—" : trimmed }
         if value > 0, value < 0.01 { return String(localized: "<0.01 GB") }
         return String(localized: "\(value.formatted(.number.precision(.fractionLength(0...digits)))) GB")
     }

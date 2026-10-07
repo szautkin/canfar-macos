@@ -103,11 +103,12 @@ final class RemoteComputeServiceTests: XCTestCase {
     }
 
     func testMemoryAndCoresAsThePlatformWritesThem() {
-        XCTAssertEqual(ComputeDrift.gigabytes("8G"), 8)
-        XCTAssertEqual(ComputeDrift.gigabytes("8Gi"), 8)
-        XCTAssertEqual(ComputeDrift.gigabytes("1.07G"), 1.07)
-        XCTAssertEqual(ComputeDrift.gigabytes("512M"), 0.5)
-        XCTAssertNil(ComputeDrift.gigabytes(""))
+        XCTAssertEqual(PlatformMemory.gigabytes("8G"), 8)
+        XCTAssertEqual(PlatformMemory.gigabytes("8Gi"), 8)
+        XCTAssertEqual(PlatformMemory.gigabytes("1.07G"), 1.07)
+        XCTAssertEqual(PlatformMemory.gigabytes("512M"), 0.5)
+        XCTAssertEqual(PlatformMemory.gigabytes("8.59")!, 8, accuracy: 0.01, "a bare number: GB of the GiB asked")
+        XCTAssertNil(PlatformMemory.gigabytes(""))
         XCTAssertEqual(ComputeDrift.cores("1.0"), 1)
         XCTAssertEqual(ComputeDrift.number(1.5), "1.5")
         XCTAssertEqual(ComputeDrift.number(4), "4")

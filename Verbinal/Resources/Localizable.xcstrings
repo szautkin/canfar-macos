@@ -39,46 +39,6 @@
         }
       }
     },
-    "<0.01 GB" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "<0,01 Go"
-          }
-        }
-      }
-    },
-    "CANFAR cannot pull the compute image %@: check it in Settings ▸ AI Compute, and that its registry lets CANFAR pull it. The session will not start; stop it." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CANFAR ne peut pas récupérer l'image de calcul %@ : vérifiez-la dans Réglages ▸ Calcul IA, et que son registre permet à CANFAR de la récupérer. La session ne démarrera pas ; arrêtez-la."
-          }
-        }
-      }
-    },
-    "in use" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "utilisé"
-          }
-        }
-      }
-    },
-    "Not ready" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pas prêt"
-          }
-        }
-      }
-    },
     "—" : {
       "shouldTranslate" : false
     },
@@ -1432,6 +1392,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bande ±1σ d'après %1$@ — médiane %2$@ du flux, plus fine que la courbe"
+          }
+        }
+      }
+    },
+    "<0.01 GB" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "<0,01 Go"
           }
         }
       }
@@ -3123,6 +3093,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "CANFAR a accepté la suppression de %@, mais elle est toujours %@. Réessayez, ou terminez-la sur le Science Portal."
+          }
+        }
+      }
+    },
+    "CANFAR cannot pull the compute image %@: check it in Settings ▸ AI Compute, and that its registry lets CANFAR pull it. The session will not start; stop it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CANFAR ne peut pas récupérer l'image de calcul %@ : vérifiez-la dans Réglages ▸ Calcul IA, et que son registre permet à CANFAR de la récupérer. La session ne démarrera pas ; arrêtez-la."
           }
         }
       }
@@ -8571,6 +8552,16 @@
         }
       }
     },
+    "in use" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "utilisé"
+          }
+        }
+      }
+    },
     "In your images" : {
       "localizations" : {
         "fr" : {
@@ -11038,6 +11029,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Introuvable : %@"
+          }
+        }
+      }
+    },
+    "Not ready" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas prêt"
           }
         }
       }

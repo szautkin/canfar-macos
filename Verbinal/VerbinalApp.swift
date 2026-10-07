@@ -14,7 +14,7 @@ struct VerbinalApp: App {
 
     var body: some Scene {
         #if os(macOS)
-        WindowGroup {
+        WindowGroup(id: AppWindows.mainID) {
             ContentView()
                 .uiWindowPlace(.main)
                 .environment(appState)

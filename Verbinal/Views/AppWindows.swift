@@ -14,6 +14,13 @@ import AppKit
 /// app's other windows are closed with it.
 @MainActor
 final class AppWindows {
+    /// The main window's scene, as `openWindow` names it.
+    static let mainID = "main"
+
+    /// Opens a new main window: SwiftUI's `openWindow`, handed over by the
+    /// main window when it shows — AppKit's reopen makes none (handout 31).
+    var openMain: (@MainActor () -> Void)?
+
     private let places: UIWindowPlaces
     private var observer: NSObjectProtocol?
 
@@ -40,6 +47,8 @@ final class AppWindows {
             window.deminiaturize(nil)
         } else if let window = mains.first(where: \.isVisible) {
             window.orderFrontRegardless()
+        } else if let openMain {
+            openMain()
         } else {
             _ = NSApp.delegate?.applicationShouldHandleReopen?(NSApp, hasVisibleWindows: false)
         }

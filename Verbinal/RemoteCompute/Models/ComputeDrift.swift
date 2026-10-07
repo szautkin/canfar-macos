@@ -31,7 +31,7 @@ struct ComputeDrift: Equatable, Sendable {
             differences.append("has \(Self.number(has)) of the \(cores) cores Settings ask")
         }
         let ram = RunCodeContract.clampRam(configuration.ram)
-        if let has = Self.gigabytes(session.memoryAllocated), has < Double(ram) - 0.05 {
+        if let has = PlatformMemory.gigabytes(session.memoryAllocated), has < Double(ram) - 0.05 {
             differences.append("has \(Self.number(has)) of the \(ram) GB Settings ask")
         }
         guard !differences.isEmpty else { return nil }
@@ -47,19 +47,6 @@ struct ComputeDrift: Equatable, Sendable {
     /// Cores as the platform reports them ("4", "1.0"); nil when unreadable.
     static func cores(_ allocated: String) -> Double? {
         Double(allocated.trimmingCharacters(in: .whitespaces))
-    }
-
-    /// Memory as the platform reports it ("8G", "8Gi", "1.07G", "512M"), in GB; nil when unreadable.
-    static func gigabytes(_ allocated: String) -> Double? {
-        let text = allocated.trimmingCharacters(in: .whitespaces).lowercased()
-        let digits = text.prefix { $0.isNumber || $0 == "." }
-        guard let value = Double(digits) else { return nil }
-        switch text.dropFirst(digits.count).trimmingCharacters(in: CharacterSet(charactersIn: "ib ")) {
-        case "", "g": return value
-        case "m": return value / 1024
-        case "t": return value * 1024
-        default: return nil
-        }
     }
 
     /// 1, 1.5, 1.07 — as few decimals as the value needs.
