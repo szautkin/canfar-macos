@@ -98,9 +98,9 @@ extension AppState {
     }
 
     private nonisolated static func moveExportToDownloads(tempURL: URL, ext: String) throws -> String {
-        let dest = DownloadsFolder.timestampedURL(stem: "verbinal-results", ext: ext)
-        try FileHelper.moveReplacing(from: tempURL, to: dest)
-        return dest.path
+        // Two exports in one second share a name: the first is kept.
+        let name = DownloadsFolder.timestampedURL(stem: "verbinal-results", ext: ext).lastPathComponent
+        return try DownloadsFolder.move(tempURL, named: name).path
     }
 
     // MARK: - Search domain
@@ -1047,9 +1047,14 @@ extension AppState {
                     }
                 }
                 if let units = args.columnUnits {
+                    // The columns that have a choice of units, to name when one is not.
+                    let withUnits = resultsModel.columns.list.map(\.id).filter { CellFormatterRegistry.availableUnits(for: $0) != nil }
                     for (id, unit) in units {
+                        guard resultsModel.columns.column(id: id) != nil else {
+                            return .rejected("Unknown column '\(id)'; the columns with units are \(withUnits.joined(separator: ", "))")
+                        }
                         guard let available = CellFormatterRegistry.availableUnits(for: id) else {
-                            return .rejected("Column '\(id)' has no unit choices")
+                            return .rejected("Column '\(id)' has no unit choices; the columns with units are \(withUnits.joined(separator: ", "))")
                         }
                         guard available.contains(where: { $0.unitID == unit }) else {
                             let ids = available.map(\.unitID).joined(separator: ", ")

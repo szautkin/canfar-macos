@@ -463,11 +463,16 @@ struct UploadToVOSpaceApplier: ProposalApplier {
     }
 }
 
-struct DownloadFromVOSpaceApplier: ProposalApplier {
+struct DownloadFromVOSpaceApplier: ResultReportingApplier {
     let kind = "download_from_vospace"
     fileprivate let context: VOSpaceAppliers
 
     func apply(_ proposal: PendingProposal) async throws {
+        _ = try await applyReturningResult(proposal)
+    }
+
+    /// Answers where the file went (handout 31: it said nowhere).
+    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
         let payload = try JSONDecoder().decode(DownloadFromVOSpaceTool.Payload.self, from: proposal.payload)
         let username = await context.username()
         guard !username.isEmpty else { throw ProposalApplyError.backendError("not authenticated") }
@@ -485,13 +490,12 @@ struct DownloadFromVOSpaceApplier: ProposalApplier {
         } catch {
             throw ProposalApplyError.backendError("download failed: \(error.localizedDescription)")
         }
-        let dir = context.downloadsDirectory()
-        let target = dir.appendingPathComponent(result.filename)
+        // A file of that name already in Downloads is the person's: kept,
+        // and this one takes a timestamp — "new files, never over one"
+        // (handout 31: it was deleted and replaced).
+        let target: URL
         do {
-            if FileManager.default.fileExists(atPath: target.path) {
-                try FileManager.default.removeItem(at: target)
-            }
-            try FileManager.default.moveItem(at: result.tempURL, to: target)
+            target = try DownloadsFolder.move(result.tempURL, named: result.filename, into: context.downloadsDirectory())
         } catch {
             try? FileManager.default.removeItem(at: result.tempURL)
             throw ProposalApplyError.backendError("move into Downloads: \(error.localizedDescription)")
@@ -499,6 +503,7 @@ struct DownloadFromVOSpaceApplier: ProposalApplier {
         await MainActor.run {
             context.activity.append(.applied(proposal: proposal, kind: kind))
         }
+        return (try? JSONEncoder().encode(AutoAppliedAck.Extra(file: DownloadsFolder.displayPath(target.path)))) ?? Data()
     }
 }
 

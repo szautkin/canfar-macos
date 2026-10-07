@@ -37,4 +37,21 @@ final class DownloadsFolderTests: XCTestCase {
                        real.appendingPathComponent("fig.pdf").path)
         XCTAssertEqual(DownloadsFolder.displayPath(""), "")
     }
+
+    /// A file already there is the person's: kept, and the new one takes a
+    /// timestamp — a VOSpace download replaced it (handout 31).
+    func testAFileAlreadyThereIsKept() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try Data("theirs".utf8).write(to: folder.appendingPathComponent("results.csv"))
+        let incoming = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".csv")
+        try Data("new".utf8).write(to: incoming)
+
+        let landed = try DownloadsFolder.move(incoming, named: "results.csv", into: folder)
+        XCTAssertNotEqual(landed.lastPathComponent, "results.csv")
+        XCTAssertTrue(landed.lastPathComponent.hasPrefix("results-") && landed.pathExtension == "csv", landed.lastPathComponent)
+        XCTAssertEqual(try String(contentsOf: folder.appendingPathComponent("results.csv"), encoding: .utf8), "theirs")
+        XCTAssertEqual(try String(contentsOf: landed, encoding: .utf8), "new")
+    }
 }

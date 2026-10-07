@@ -112,6 +112,47 @@ final class SessionGateTests: XCTestCase {
         _ = await serving.value
     }
 
+    /// A change that waits.
+    private struct Proposes: AITool {
+        static let verbClass: VerbClass = .read
+        static let agentSafe = true
+        let definition = AIToolDefinition.withStaticSchema(name: "save_query", description: "Waits in Pending.",
+                                                           schema: #"{"type":"object","properties":{}}"#)
+        func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
+            .proposed(PendingProposal(toolName: "save_query", kind: "save_query", summary: "Save \"q\"",
+                                      payload: Data("{}".utf8), origin: .external(clientID: "t")))
+        }
+    }
+
+    /// A change waiting in Pending says `proposalID`, as an applied one does
+    /// (handout 31: it said `proposalId`), in JSON a quote does not break.
+    func testAWaitingChangeSaysProposalIDAsAnAppliedOneDoes() async throws {
+        let gate = Gate()
+        await gate.allow()
+        let bridge = MCPBridgeService(
+            router: AIToolRouter(tools: [Proposes()], auditSink: CapturingAuditSink()),
+            identity: .init(name: "Verbinal", version: "1.4.0"),
+            services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8), gate: gate))
+        let (client, server) = InMemoryTransport.pair()
+        let serving = Task { await bridge.serve(on: server) }
+        var replies = client.incoming.makeAsyncIterator()
+        let hello: [String: Any] = ["jsonrpc": "2.0", "id": 0, "method": "initialize",
+                                    "params": ["protocolVersion": "2025-06-18", "capabilities": [:]]]
+        try await client.send(try JSONSerialization.data(withJSONObject: hello))
+        _ = try await replies.next()
+
+        let waiting = try await call(bridge, client, &replies, 1, "save_query")
+        let text = ((waiting["content"] as? [[String: Any]])?.first?["text"] as? String) ?? ""
+        let answer = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any], text)
+        XCTAssertNotNil(answer["proposalID"], text)
+        XCTAssertNil(answer["proposalId"])
+        XCTAssertEqual(answer["summary"] as? String, "Save \"q\"")
+
+        await server.close()
+        await client.close()
+        _ = await serving.value
+    }
+
     /// The person's answer is awaited as long as the assistant waits: no
     /// router deadline cuts a session control short.
     func testASessionControlHasNoDeadline() async {

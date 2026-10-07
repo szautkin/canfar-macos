@@ -93,6 +93,17 @@ public struct CallTiming: Codable, Sendable, Equatable {
         let lasts = last.values.sorted { $0.id < $1.id }
         let unanswered = lasts.filter { !$0.isFinished || $0.outcome == .cancelled }
         let failures = lasts.filter { $0.outcome?.isFailure == true && $0.outcome != .cancelled }
+        // A call that answered handled what its requests met — a 404 that
+        // means "not there yet", a listing still on its way: said, with no
+        // advice to ask again (handout 31: "change the request" for a
+        // result not written yet).
+        if !failed {
+            let along = failures.map { "\($0.service.name) \($0.outcome?.meaning ?? "")\($0.code.map { " (\($0))" } ?? "")" }
+                + unanswered.map { "\($0.service.name) was still being asked" }
+            if !along.isEmpty {
+                return ("It answered in \(time(seconds)); on the way, \(along.joined(separator: "; ")).", nil)
+            }
+        }
         if let failure = failures.last, let outcome = failure.outcome, let retry = outcome.retry {
             let others = failures.dropLast().map { "\($0.service.name) \($0.outcome?.meaning ?? "")" }
             let also = others.isEmpty ? "" : "; also " + others.joined(separator: "; ")

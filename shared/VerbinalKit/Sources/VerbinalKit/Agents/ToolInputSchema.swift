@@ -181,11 +181,19 @@ public enum ToolInputSchema {
         var map: [String: String] = [:]
         for name in props.keys { map[name] = name }
         for name in props.keys {
-            for alias in [camelCase(name), snakeCase(name)] where map[alias] == nil {
+            for alias in [camelCase(name), snakeCase(name), idSpelling(name)].compactMap({ $0 }) where map[alias] == nil {
                 map[alias] = name
             }
         }
         return map
+    }
+
+    /// `proposalId` ↔ `proposalID`: an id as one answer spells it, passed
+    /// back as another tool spells it (handout 31).
+    static func idSpelling(_ name: String) -> String? {
+        if name.hasSuffix("Id") { return name.dropLast(2) + "ID" }
+        if name.hasSuffix("ID"), name.count > 2 { return name.dropLast(2) + "Id" }
+        return nil
     }
 
     /// `foo_bar` → `fooBar`; a name without underscores is returned as is.

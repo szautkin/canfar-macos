@@ -496,15 +496,11 @@ public actor MCPBridgeService {
             return successResponse(id: id, body: payload)
 
         case .proposed(let proposal):
-            // Tell the agent what was queued. They can poll
-            // get_proposal_state by id.
-            let summary = """
-            {
-              "proposalId": "\(proposal.id.uuidString)",
-              "kind": "\(proposal.kind)",
-              "summary": \(escapeJSON(proposal.summary))
-            }
-            """
+            // Tell the agent what was queued — `proposalID`, as an applied
+            // change says it (handout 31: this one said `proposalId`). They
+            // can poll get_proposal_state by id.
+            let summary = (try? JSONEncoder().encode(Waiting(proposalID: proposal.id, kind: proposal.kind, summary: proposal.summary)))
+                .map { String(decoding: $0, as: UTF8.self) } ?? "{}"
             let payload = CallToolResult(content: [.text(summary)] + timing, isError: false)
             return successResponse(id: id, body: payload)
 
@@ -586,12 +582,10 @@ public actor MCPBridgeService {
     /// have nothing to report (`logging/setLevel`, `ping`).
     private struct EmptyObject: Encodable, Sendable {}
 
-    private func escapeJSON(_ s: String) -> String {
-        // Thin convenience for the inline summary string above.
-        guard let bytes = try? JSONEncoder().encode(s),
-              let str = String(data: bytes, encoding: .utf8) else {
-            return "\"\""
-        }
-        return str
+    /// What a change waiting in Pending answers.
+    private struct Waiting: Encodable, Sendable {
+        let proposalID: UUID
+        let kind: String
+        let summary: String
     }
 }

@@ -822,6 +822,7 @@ final class MCPBridgeServiceTests: XCTestCase {
                 _ = try await RequestLedger().send(request) { request in
                     (Data(), HTTPURLResponse(url: request.url!, statusCode: args.status, httpVersion: nil, headerFields: nil)!)
                 }
+                if args.status == 404 { return Output(answered: false) }    // "not there yet": handled
                 if args.status >= 400 { throw ToolFailureReason.backendError("the archive said \(args.status)") }
                 return Output(answered: true)
             }
@@ -857,6 +858,12 @@ final class MCPBridgeServiceTests: XCTestCase {
         XCTAssertEqual(failedTexts.count, 2)
         XCTAssertTrue(failedTexts[1].contains("is busy and asked to be asked later"), failedTexts[1])
         XCTAssertTrue(failedTexts[1].contains(#""retry":"later""#), failedTexts[1])
+
+        // A 404 the tool handled: an answer, with no advice to ask again (handout 31).
+        let handled = texts(try await call(5, "ask_archive", .object(["status": .int(404)])))
+        XCTAssertTrue(handled[1].contains("It answered in"), handled[1])
+        XCTAssertTrue(handled[1].contains("has no such thing (HTTP 404)"), handled[1])
+        XCTAssertFalse(handled[1].contains(#""retry""#), handled[1])
 
         let quick = texts(try await call(4, "echo", .object(["k": .string("v")])))
         XCTAssertEqual(quick.count, 1, "a quick local answer is left as it is")

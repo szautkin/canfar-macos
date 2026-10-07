@@ -12,6 +12,15 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **A file in your Downloads is never replaced by an assistant's
+  download.** Downloading from your storage into Downloads deleted a file
+  of the same name already there. Yours is kept now, and the download
+  takes a timestamp in its name; the answer says where it went.
+- **Small things an assistant is told, said right.** A change waiting in
+  Pending says `proposalID`, as an applied one does, and either spelling
+  of an id is taken back. A call that answered no longer advises asking
+  again because of something it handled on the way. A column that does
+  not exist is called that. The brief no longer says long work blocks.
 - **A launch shows its session without a click, and leaves no form
   behind.** The progress window closes by itself a moment after a launch
   goes through. The launch form closes after it, not with it: closed

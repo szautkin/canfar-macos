@@ -333,13 +333,13 @@ struct DescribeAppTool: JSONReadTool {
 
     ### Follow-on navigation (passive, user-controlled)
 
-    Independent of the explicit tools above: when an auto-applied
-    write commits, the app navigates the user's window to the section
-    where the change is visible (Saved queries → Search, observation
-    notes / downloads → Research, VOSpace edits → Storage, sessions →
-    Portal). Default ON; the user can disable in Settings ▸ Agents ▸
-    Autonomy ▸ "Follow agent activity". You can read the live state
-    via the existing `get_current_view.mode` after any write.
+    Independent of the explicit tools above: when a change applies,
+    the app navigates the user's window to the section where it is
+    visible (Saved queries → Search, observation notes / downloads →
+    Research, VOSpace edits → Storage, sessions → Portal). Default ON;
+    the user can turn it off in Settings ▸ AI Agent ▸ "Follow agent
+    activity". You can read the live state via the existing
+    `get_current_view.mode` after any write.
 
     ## Background jobs (headless)
 
@@ -419,13 +419,14 @@ struct DescribeAppTool: JSONReadTool {
         `osFamily`/`osVersion` constraints). Use BEFORE picking an
         image for `launch_session` / `launch_headless_job` when the
         user has specific tooling needs ("astropy 6 + tensorflow").
-      * `discover_image_packages` — write (semanticWrite, autonomy-
-        toggle gated). Schedules a probe job for one image. Cache-
+      * `discover_image_packages` — write, of the kind "batch jobs and
+        image probes". Schedules a probe job for one image. Cache-
         hit short-circuits with no Skaha cost. Cache-miss runs a
         small headless job (visible in Background Jobs panel; cancel
         with `delete_session`). Pass `force: true` to re-probe after
-        an image rebuild. Blocks until the manifest is cached and
-        queryable.
+        an image rebuild. A probe can take minutes: the answer comes
+        within 45 s and the probe carries on (list_activity); call
+        `get_image_manifest` when it is done.
 
     Cache lives at `<App Support>/Verbinal/ImageDiscovery/manifests/`
     on the user's Mac, keyed by image id. Contents persist across app
@@ -477,13 +478,11 @@ struct DescribeAppTool: JSONReadTool {
 
       * No multi-window control (you talk to "the app", not a specific
         window).
-      * No streaming progress in v1 — long ops complete synchronously
-        within the MCP request window. Concrete caps: bulk download
-        and bulk-note are 50 items each; single-file upload/download
-        of large files (≳ 100 MB) can exceed the MCP transport timeout
-        and return `Request timed out` even though the transfer is
-        still progressing app-side. Prefer many small operations to
-        one giant one until streaming progress lands.
+      * No streaming progress — an answer comes within 45 s, and work
+        that takes longer carries on app-side, on the activity bar
+        (`list_activity`); a change still applying answers with its job
+        (`get_job_status`). Caps: bulk download and bulk-note are 50
+        items each. Prefer many small operations to one giant one.
       * No registry credentials over MCP — if you need a private
         image, ask the user to launch it once via the in-app form
         (which has the credential UI) and then re-use that image

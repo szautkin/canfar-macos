@@ -86,6 +86,10 @@ final class ToolInputSchemaTests: XCTestCase {
         XCTAssertEqual(ToolInputSchema.camelCase("proposalId"), "proposalId")
         XCTAssertEqual(ToolInputSchema.camelCase("foo_bar_baz"), "fooBarBaz")
         XCTAssertEqual(ToolInputSchema.snakeCase("proposalId"), "proposal_id")
+        // An id as an answer spells it, passed back as the tool spells it (handout 31).
+        XCTAssertEqual(ToolInputSchema.declaredSpellings(["proposalId": .object([:])])["proposalID"], "proposalId")
+        XCTAssertEqual(ToolInputSchema.declaredSpellings(["rowID": .object([:])])["rowId"], "rowID")
+        XCTAssertNil(ToolInputSchema.idSpelling("ID"))
     }
 
     // MARK: - Nested (plan 30 S2)

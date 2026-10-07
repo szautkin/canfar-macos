@@ -62,6 +62,10 @@ final class ToolShapesTests: XCTestCase {
         let setView = try XCTUnwrap(state.makeAgentTools().first { $0.definition.name == "set_results_view" })
         let result = await setView.invoke(arguments: Data(#"{"columnUnits":{"ra(j20000)":"deg"}}"#.utf8), context: context)
         XCTAssertTrue("\(result)".contains("it takes hms, degrees"), "\(result)")
+
+        // A column that is not there is said to be so, with the ones that have units (handout 31).
+        let unknown = await setView.invoke(arguments: Data(#"{"columnUnits":{"ra":"degrees"}}"#.utf8), context: context)
+        XCTAssertTrue("\(unknown)".contains("Unknown column 'ra'; the columns with units are ra(j20000)"), "\(unknown)")
     }
 
     /// Plan 30 N4: navigate_to says when the screen changed where no one
