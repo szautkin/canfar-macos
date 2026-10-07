@@ -11,7 +11,7 @@ Project home: **[verbinal.com](https://verbinal.com)**
 [![Website](https://img.shields.io/badge/web-verbinal.com-2ea44f)](https://verbinal.com)
 
 Available on the **[Mac App Store](https://apps.apple.com/ca/app/verbinal/id6761290036)**,
-and as a notarised build from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
+and as an unsigned build from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
 
 ## Features
 
