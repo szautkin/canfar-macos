@@ -59,6 +59,7 @@ enum RemoteComputeError: LocalizedError, Equatable {
 /// Every run is remembered with who sent it (`runs`) and watched until
 /// its result arrives or it cannot still be going, so the history settles
 /// whether or not anybody asks for the output.
+@Observable
 @MainActor
 final class RemoteComputeService {
     /// What a session is launched from and at.
@@ -84,8 +85,12 @@ final class RemoteComputeService {
     /// Where each run sent is recorded (plan 23 C); the session it needs is
     /// recorded where sessions are launched.
     private let changes: ChangeLog
-    private var watchers: [String: Task<Void, Never>] = [:]
-    private var resuming = false
+    @ObservationIgnored private var watchers: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored private var resuming = false
+    /// Counts the sessions started or stopped here, whoever asked — the
+    /// screen or an assistant's tool — so the screen re-reads at once
+    /// (handout 31: Start stayed enabled after an assistant started one).
+    private(set) var sessionChanges = 0
 
     init(runs: ComputeRunStore,
          sessions: any ComputeSessions,
@@ -173,6 +178,7 @@ final class RemoteComputeService {
             type: RunCodeContract.sessionType, name: RunCodeContract.sessionName, image: config.image,
             cores: RunCodeContract.clampCores(config.cores), ram: RunCodeContract.clampRam(config.ram), gpus: 0,
             cmd: nil, registryUsername: credentials?.username, registrySecret: credentials?.secret))
+        sessionChanges += 1
         await ensureTree(user)
         return nil
     }
@@ -182,6 +188,7 @@ final class RemoteComputeService {
     func stop() async throws -> Bool {
         guard let session = try await warmSession() else { return false }
         try await sessions.deleteSession(id: session.id)
+        sessionChanges += 1
         return true
     }
 

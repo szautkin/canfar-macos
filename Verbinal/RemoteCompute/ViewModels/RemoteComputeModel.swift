@@ -65,7 +65,12 @@ final class RemoteComputeModel {
     var canStop: Bool { !isBusy && state.canStop }
     var canRun: Bool { !isBusy && state.canRun(configured: isConfigured) }
     /// Whether something is changing that a quiet re-read would show.
-    var isChanging: Bool { state == .starting || state == .stopping || runs.contains { !$0.isFinished } }
+    var isChanging: Bool {
+        state == .starting || state == .stopping || runs.contains { !$0.isFinished } || Date() < watchUntil
+    }
+    /// Re-read until then: a session just started or stopped, which the
+    /// platform takes a moment to list.
+    private var watchUntil = Date.distantPast
 
     // MARK: - Where it stands
 
@@ -81,6 +86,13 @@ final class RemoteComputeModel {
         } catch {
             if !quiet { message = Message(kind: .error, text: error.localizedDescription) }
         }
+    }
+
+    /// A session was started or stopped — here or by an assistant: read it
+    /// now, and keep reading a minute while the platform catches up.
+    func sessionChanged() async {
+        watchUntil = Date().addingTimeInterval(60)
+        await refresh(quiet: true)
     }
 
     /// A tick of the screen's timer: re-read only while something is changing.

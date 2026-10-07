@@ -12,6 +12,10 @@ Catching up with Verbinal for Windows 1.4.1 (see
 `docs/plans/10-windows-catchup.md`).
 
 ### Fixed
+- **The Remote Compute screen sees a session an assistant starts.** When
+  an assistant started the compute session, the screen kept saying
+  Stopped — Start enabled — until something else made it look again. It
+  now reads the session at once, whoever starts or stops it.
 - **A file in your Downloads is never replaced by an assistant's
   download.** Downloading from your storage into Downloads deleted a file
   of the same name already there. Yours is kept now, and the download

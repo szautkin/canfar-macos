@@ -31,6 +31,8 @@ struct RemoteComputeView: View {
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .task { await model.refresh() }
+        // Started or stopped — by the person or an assistant: seen at once.
+        .onChange(of: model.service.sessionChanges) { _, _ in Task { await model.sessionChanged() } }
         // While on screen, and only while something is changing.
         .task {
             while !Task.isCancelled {

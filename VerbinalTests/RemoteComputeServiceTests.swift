@@ -320,4 +320,18 @@ final class RemoteComputeServiceTests: XCTestCase {
         XCTAssertEqual(starting.state, .starting, "still pulling: it may start")
         XCTAssertNil(starting.problem)
     }
+
+    /// A session started or stopped — by an assistant's tool as by the
+    /// screen — is counted, so the screen re-reads at once (handout 31:
+    /// Start stayed enabled a while after an assistant started one).
+    func testStartingOrStoppingIsCountedWhoeverAsks() async throws {
+        let compute = service()
+        XCTAssertEqual(compute.sessionChanges, 0)
+        try await compute.submit(request("r1"), by: .agent)
+        XCTAssertEqual(compute.sessionChanges, 1, "run_code launched one")
+        try await compute.submit(request("r2"), by: .agent)
+        XCTAssertEqual(compute.sessionChanges, 1, "the one starting is reused: nothing new")
+        try await compute.stop()
+        XCTAssertEqual(compute.sessionChanges, 2)
+    }
 }
