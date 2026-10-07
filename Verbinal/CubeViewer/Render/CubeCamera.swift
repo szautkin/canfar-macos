@@ -52,7 +52,8 @@ struct CubeCamera {
     /// nil behind the camera.
     func screen(ofBoxPoint point: SIMD3<Float>, in size: CGSize) -> CGPoint? {
         let (model, viewProj) = matrices
-        let clip = viewProj * model * SIMD4<Float>(point, 1)
+        let modelViewProj = viewProj * model
+        let clip = modelViewProj * SIMD4(point, 1)
         guard clip.w > 0.0001 else { return nil }
         let x = clip.x / clip.w, y = clip.y / clip.w
         return CGPoint(x: CGFloat(x * 0.5 + 0.5) * size.width, y: CGFloat(1 - (y * 0.5 + 0.5)) * size.height)
