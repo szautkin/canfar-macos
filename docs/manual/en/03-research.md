@@ -59,6 +59,8 @@ Its buttons:
 
 ### Cutouts
 
+![A cutout in Research, with its original observation](../images/en/03-research/research-cutout.png)
+
 A cutout's record says what it is (**Cutout of** …) and the region it covers. **Original Observation**
 shows the complete observation it was cut from, when that one is in Research too.
 

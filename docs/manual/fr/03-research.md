@@ -65,6 +65,8 @@ Ses boutons :
 
 ### Découpes
 
+![Une découpe dans Recherche, avec son observation d’origine](../images/fr/03-research/research-cutout.png)
+
 La fiche d’une découpe dit ce qu’elle est (**Découpe de** …) et la région qu’elle couvre.
 **Observation d'origine** montre l’observation complète dont elle a été découpée, quand celle-ci est
 aussi dans Recherche.
