@@ -841,6 +841,182 @@
           }
         ]
       ]
+    },
+    {
+      "name": "cube-slice",
+      "chapter": "05-cube-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_cube",
+          {
+            "downloaded_observation_id": "475879F9-122A-4CD3-9E37-A336ABFEBD0A"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "cubeViewer"
+          }
+        ],
+        [
+          "set_cube_view",
+          {
+            "viewMode": "slice"
+          }
+        ],
+        [
+          "show_cube_spectrum",
+          {
+            "visible": true
+          }
+        ],
+        [
+          "probe_cube_spectrum",
+          {
+            "x": 26,
+            "y": 30,
+            "bin": 10
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "=Slice",
+        "Spectrum",
+        {
+          "help": "Cube Viewer guide"
+        },
+        "Play",
+        "Auto",
+        "Export Figure…"
+      ]
+    },
+    {
+      "name": "cube-volume",
+      "chapter": "05-cube-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_cube",
+          {
+            "downloaded_observation_id": "475879F9-122A-4CD3-9E37-A336ABFEBD0A"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "cubeViewer"
+          }
+        ],
+        [
+          "set_cube_view",
+          {
+            "viewMode": "volume"
+          }
+        ]
+      ],
+      "settle": 3
+    },
+    {
+      "name": "cube-guide",
+      "chapter": "05-cube-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_cube",
+          {
+            "downloaded_observation_id": "475879F9-122A-4CD3-9E37-A336ABFEBD0A"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "cubeViewer"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Cube Viewer Guide"
+          }
+        ]
+      ],
+      "settle": 1,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Cube Viewer Guide"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "cube-export",
+      "chapter": "05-cube-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_cube",
+          {
+            "downloaded_observation_id": "475879F9-122A-4CD3-9E37-A336ABFEBD0A"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "cubeViewer"
+          }
+        ],
+        [
+          "set_cube_view",
+          {
+            "viewMode": "volume"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "Export Figure…"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Export Figure"
+          }
+        ],
+        [
+          "set_cube_view",
+          {
+            "viewMode": "slice"
+          }
+        ]
+      ]
     }
   ]
 }
