@@ -185,12 +185,16 @@ def ring(session, shot, labels):
     shown = text_of(session.call('show_ui_hints', {'mode': 'replace', 'untilClosed': True, 'hints': hints}))
     if shown.get('missing'):
         print(f'  {shot["name"]}: no callout target for {[m.get("target") for m in shown["missing"]]}')
+    # Each callout keeps its own number, whether or not the ones before it were found.
+    ids = {h['target']: h['id'] for h in shown.get('shown', [])}
     placed = []
-    for callout, hint in zip(callouts, shown.get('shown', [])):
-        listing = text_of(session.call('list_ui_targets', {'kind': 'all', 'contains': hint['id'], 'limit': 50}))
-        at = next((t['at'] for t in listing.get('targets', []) if t.get('id') == hint['id']), None)
+    for number, (callout, hint) in enumerate(zip(callouts, hints), 1):
+        if hint['target'] not in ids:
+            continue
+        listing = text_of(session.call('list_ui_targets', {'kind': 'all', 'contains': ids[hint['target']], 'limit': 50}))
+        at = next((t['at'] for t in listing.get('targets', []) if t.get('id') == ids[hint['target']]), None)
         if at:
-            placed.append((at, callout.get('at', 'corner')))
+            placed.append((number, at, callout.get('at', 'corner')))
     return placed
 
 
@@ -216,8 +220,9 @@ def shoot(session, shot, lang, labels, private):
             print(f'  {shot["name"]}: {tool} found nothing for {missing}')
         if isinstance(answer, dict) and answer.get('proposalID') and not answer.get('applied'):
             proposals.append(answer['proposalID'])   # an example that waits in Pending
+    time.sleep(shot.get('settle', 0))          # what the steps opened loads before anything is ringed
     callouts = ring(session, shot, labels)
-    time.sleep(shot.get('settle', 0) + BANNER_SECONDS)
+    time.sleep(BANNER_SECONDS)
 
     answer = session.call('capture_view', {'maxPixels': 2048})
     picture, frame = None, None
@@ -262,7 +267,7 @@ def shoot(session, shot, lang, labels, private):
             font = ImageFont.truetype('/System/Library/Fonts/Helvetica.ttc', 15)
         except OSError:
             font = ImageFont.load_default()
-        for number, ((x, y, w, h), where) in enumerate(callouts, 1):
+        for number, (x, y, w, h), where in callouts:
             rect = ((x - left) * PIXELS_PER_POINT, (y - top) * PIXELS_PER_POINT,
                     w * PIXELS_PER_POINT, h * PIXELS_PER_POINT)
             badge(draw, number, rect, where, font)
@@ -311,8 +316,13 @@ def main():
 
     labels = french_labels() if args.lang == 'fr' else {}
     landing = text_of(session.call('navigate_to', {'mode': 'landing'}))
-    tiles = text_of(session.call('list_ui_targets', {'screen': 'landing'}))
-    names = {t.get('name') for t in tiles.get('targets', [])}
+    names = set()
+    for _ in range(10):                      # Home may still be drawing just after navigate_to
+        tiles = text_of(session.call('list_ui_targets', {'screen': 'landing'}))
+        names = {t.get('name') for t in tiles.get('targets', [])}
+        if 'Portal' in names or 'Portail' in names:
+            break
+        time.sleep(1)
     if localized({'target': 'Portal'}, labels)['target'] not in names:
         sys.exit(f'Verbinal is not in {args.lang}: set Settings ▸ General ▸ Language first. ({landing})')
 

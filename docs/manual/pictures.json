@@ -720,15 +720,21 @@
           }
         ],
         [
-          "navigate_to",
+          "open_fits_file",
           {
-            "mode": "fitsViewer"
+            "downloaded_observation_id": "3A03A731-26CF-4C2B-ADB9-6A58356A2617"
           }
         ],
         [
-          "switch_fits_tab",
+          "open_fits_file",
           {
-            "index": 0
+            "downloaded_observation_id": "4B3105A1-9401-4967-A433-AFF77A2B103B"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "fitsViewer"
           }
         ]
       ],
@@ -751,15 +757,15 @@
           }
         ],
         [
-          "navigate_to",
+          "open_fits_file",
           {
-            "mode": "fitsViewer"
+            "downloaded_observation_id": "4B3105A1-9401-4967-A433-AFF77A2B103B"
           }
         ],
         [
-          "switch_fits_tab",
+          "navigate_to",
           {
-            "index": 0
+            "mode": "fitsViewer"
           }
         ],
         [
@@ -789,15 +795,15 @@
           }
         ],
         [
-          "navigate_to",
+          "open_fits_file",
           {
-            "mode": "fitsViewer"
+            "downloaded_observation_id": "3A03A731-26CF-4C2B-ADB9-6A58356A2617"
           }
         ],
         [
-          "switch_fits_tab",
+          "navigate_to",
           {
-            "index": 1
+            "mode": "fitsViewer"
           }
         ]
       ],
@@ -814,15 +820,15 @@
           }
         ],
         [
-          "navigate_to",
+          "open_fits_file",
           {
-            "mode": "fitsViewer"
+            "downloaded_observation_id": "4B3105A1-9401-4967-A433-AFF77A2B103B"
           }
         ],
         [
-          "switch_fits_tab",
+          "navigate_to",
           {
-            "index": 0
+            "mode": "fitsViewer"
           }
         ],
         [
@@ -1029,7 +1035,7 @@
           }
         ]
       ],
-      "settle": 3,
+      "settle": 8,
       "callouts": [
         "Platform Load",
         "Launch Session",
@@ -1289,7 +1295,7 @@
           }
         ]
       ],
-      "settle": 6,
+      "settle": 8,
       "callouts": [
         {
           "help": "Go up one folder",
@@ -1346,7 +1352,7 @@
           }
         ]
       ],
-      "settle": 4,
+      "settle": 8,
       "after": [
         [
           "close_ui",
