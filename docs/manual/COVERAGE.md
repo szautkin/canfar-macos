@@ -90,7 +90,7 @@ screen. Areas that are about assistants only point at the AI chapter.
 | Item | Label | Chapter | Heading |
 |---|---|---|---|
 | `Finding your way (tool map)` | — | 12-ai-assistant.md | Hints: what your assistant shows you |
-| `Long work` | — | 12-ai-assistant.md | The activity bar |
+| `Long work` | — | 12-ai-assistant.md | Watching an assistant work |
 | `Seeing the viewers` | — | 12-ai-assistant.md | What an assistant can and cannot do |
 | `Search — form` | — | 02-search.md | The search form |
 | `Search — ADQL editor` | — | 02-search.md | The ADQL editor |
