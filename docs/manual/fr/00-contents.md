@@ -6,7 +6,11 @@ observations et vos notes, affiche les images FITS, les spectres et les cubes de
 stockage VOSpace, et lance sessions, tâches en lot et code sur CANFAR, le tout dans une seule fenêtre. Un
 assistant IA peut y travailler avec vous, selon vos conditions.
 
-Ce manuel couvre Verbinal 1.4, sous macOS 14 ou plus récent. [English version](../en/00-contents.md).
+Ce manuel couvre **Verbinal 1.4 pour macOS**, sous macOS 14 ou plus récent. [English version](../en/00-contents.md).
+
+Verbinal existe aussi pour [Windows](https://github.com/szautkin/CanfarDesktop) et pour
+[Linux](https://github.com/szautkin/CanfarDesktopUbuntu), en apps distinctes. Leurs manuels viendront
+plus tard ; en attendant, leurs dépôts les décrivent.
 
 ## Sommaire
 

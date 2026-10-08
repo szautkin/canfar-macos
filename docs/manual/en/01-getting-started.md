@@ -12,6 +12,10 @@ CANFAR. This chapter installs it, walks through the first launch, and shows you 
   CANFAR, an account that has access to the CANFAR science platform. See [canfar.net](https://www.canfar.net/).
 - Nothing else for **Search**, **Research**, the **FITS Viewer**, the **Cube Viewer**, **Workflows**
   and the **AI Guide**: they work without signing in.
+- On Windows or Linux: this manual is for the Mac. Verbinal for
+  [Windows](https://github.com/szautkin/CanfarDesktop) and for
+  [Linux](https://github.com/szautkin/CanfarDesktopUbuntu) are separate apps, with their own manuals to
+  come.
 
 ## Installing Verbinal
 

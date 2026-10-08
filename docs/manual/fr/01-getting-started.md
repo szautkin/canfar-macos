@@ -14,6 +14,10 @@ l’app, suit le premier lancement et fait le tour de la fenêtre.
   [canfar.net](https://www.canfar.net/).
 - Rien d’autre pour **Rechercher**, **Recherche**, la **Visionneuse FITS**, la **Visionneuse Cube**,
   **Flux de travail** et le **Guide IA** : ils fonctionnent sans connexion.
+- Sous Windows ou Linux : ce manuel est pour le Mac. Verbinal pour
+  [Windows](https://github.com/szautkin/CanfarDesktop) et pour
+  [Linux](https://github.com/szautkin/CanfarDesktopUbuntu) sont des apps distinctes, dont les manuels
+  viendront.
 
 ## Installer Verbinal
 
