@@ -448,6 +448,167 @@
           {}
         ]
       ]
+    },
+    {
+      "name": "search-form",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "search"
+          }
+        ],
+        [
+          "reset_search_form",
+          {}
+        ],
+        [
+          "set_search_form",
+          {
+            "target": "M101",
+            "collections": [
+              "CFHT"
+            ]
+          }
+        ],
+        [
+          "select_search_tab",
+          {
+            "tab": "search"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Target / Coordinates",
+        "Resolver",
+        "Radius",
+        {
+          "help": "Execute search (⌘↩)"
+        },
+        "Recent Searches",
+        "Saved Queries"
+      ]
+    },
+    {
+      "name": "search-results",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "search"
+          }
+        ],
+        [
+          "set_search_form",
+          {
+            "target": "M101",
+            "collections": [
+              "CFHT"
+            ],
+            "execute": true
+          }
+        ],
+        [
+          "select_search_tab",
+          {
+            "tab": "results"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Previous page",
+        "Rows per page",
+        "Export",
+        "Columns"
+      ]
+    },
+    {
+      "name": "observation-detail",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "search"
+          }
+        ],
+        [
+          "select_search_tab",
+          {
+            "tab": "results"
+          }
+        ],
+        [
+          "show_search_row_detail",
+          {
+            "row": 0
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Observation Detail"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "cutout",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "show_cutout_editor",
+          {
+            "publisherId": "ivo://cadc.nrc.ca/CFHT?1090282/1090282a"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Cut Out"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "adql",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "search"
+          }
+        ],
+        [
+          "select_search_tab",
+          {
+            "tab": "adql"
+          }
+        ],
+        [
+          "set_adql_editor",
+          {
+            "generateFromForm": true
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Generate from Form",
+        "Execute",
+        "Save Query"
+      ]
     }
   ]
 }
