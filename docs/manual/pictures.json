@@ -1,0 +1,1455 @@
+{
+  "pictures": [
+    {
+      "name": "home",
+      "chapter": "01-getting-started",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "toolbar",
+      "chapter": "01-getting-started",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ]
+      ],
+      "callouts": [
+        {
+          "target": "agent.pending",
+          "at": "below"
+        },
+        {
+          "target": "Show file browser",
+          "at": "below"
+        },
+        {
+          "target": "Settings",
+          "at": "below"
+        },
+        {
+          "target": "About Verbinal",
+          "at": "below"
+        },
+        {
+          "help": "Your CADC account",
+          "at": "below"
+        }
+      ],
+      "crop": [
+        1150,
+        28,
+        362,
+        66
+      ]
+    },
+    {
+      "name": "file-browser",
+      "chapter": "01-getting-started",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "panel.fileBrowser"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "panel.fileBrowser"
+          }
+        ]
+      ],
+      "blurRows": {
+        "within": [
+          0,
+          80,
+          270,
+          800
+        ],
+        "keep": [
+          ".fits",
+          ".fz",
+          ".fit",
+          ".fts"
+        ]
+      }
+    },
+    {
+      "name": "about",
+      "chapter": "01-getting-started",
+      "steps": [
+        [
+          "open_ui",
+          {
+            "target": "=About Verbinal"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=About Verbinal"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "features",
+      "chapter": "01-getting-started",
+      "steps": [
+        [
+          "open_ui",
+          {
+            "target": "=Features"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Features"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "setup-wizard",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "open_ui",
+          {
+            "target": "=AI Assistant Setup"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=AI Assistant Setup"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "pending",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "add_guide_tool",
+          {
+            "name": "observing_log_conventions",
+            "description": {
+              "en": "How I name and annotate observing logs.",
+              "fr": "Comment je nomme et annote mes journaux d’observation."
+            },
+            "body": {
+              "en": "Name each log by date and target; note seeing and transparency.",
+              "fr": "Nommez chaque journal par date et cible ; notez le seeing et la transparence."
+            },
+            "why": {
+              "en": "An example for the manual's picture of Pending; it is withdrawn right after.",
+              "fr": "Un exemple pour l’image de En attente dans le manuel ; il est retiré aussitôt après."
+            }
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Pending Changes"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Pending Changes"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "hints",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "show_ui_hints",
+          {
+            "mode": "replace",
+            "numbered": true,
+            "dim": true,
+            "untilClosed": true,
+            "hints": [
+              {
+                "target": "home.search",
+                "title": {
+                  "en": "Find observations",
+                  "fr": "Trouver des observations"
+                },
+                "text": {
+                  "en": "Start here: search the CADC archive by target or position.",
+                  "fr": "Commencez ici : cherchez dans l’archive du CADC par cible ou par position."
+                }
+              },
+              {
+                "target": "home.research",
+                "title": {
+                  "en": "Keep them",
+                  "fr": "Les garder"
+                },
+                "text": {
+                  "en": "What you keep is in Research, with your notes.",
+                  "fr": "Ce que vous gardez est dans Recherche, avec vos notes."
+                }
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "name": "settings-agent-permissions",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "agent"
+          }
+        ],
+        [
+          "point_at_ui",
+          {
+            "target": "Restore Defaults"
+          }
+        ],
+        [
+          "clear_ui_hints",
+          {}
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "session-logs",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "agent"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "settings.agent.sessionLogs"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Session Logs"
+          }
+        ],
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "ai-guide",
+      "chapter": "13-ai-guide",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "aiGuide"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "settings-general",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "general"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-portal",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "portal"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-agent",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "agent"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-imageDiscovery",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "imageDiscovery"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-aiCompute",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "aiCompute"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-mcpClients",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "mcpClients"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-endpoints",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "endpoints"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-about",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "about"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "search-form",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "search"
+          }
+        ],
+        [
+          "reset_search_form",
+          {}
+        ],
+        [
+          "set_search_form",
+          {
+            "target": "M101",
+            "collections": [
+              "CFHT"
+            ]
+          }
+        ],
+        [
+          "select_search_tab",
+          {
+            "tab": "search"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Target / Coordinates",
+        "Resolver",
+        "Radius",
+        {
+          "help": "Execute search (⌘↩)"
+        },
+        "Recent Searches",
+        "Saved Queries"
+      ]
+    },
+    {
+      "name": "search-results",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "search"
+          }
+        ],
+        [
+          "set_search_form",
+          {
+            "target": "M101",
+            "collections": [
+              "CFHT"
+            ],
+            "execute": true
+          }
+        ],
+        [
+          "select_search_tab",
+          {
+            "tab": "results"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Previous page",
+        "Rows per page",
+        "Export",
+        "Columns"
+      ]
+    },
+    {
+      "name": "observation-detail",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "search"
+          }
+        ],
+        [
+          "select_search_tab",
+          {
+            "tab": "results"
+          }
+        ],
+        [
+          "show_search_row_detail",
+          {
+            "row": 0
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Observation Detail"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "cutout",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "show_cutout_editor",
+          {
+            "publisherId": "ivo://cadc.nrc.ca/CFHT?1090282/1090282a"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Cut Out"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "adql",
+      "chapter": "02-search",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "search"
+          }
+        ],
+        [
+          "select_search_tab",
+          {
+            "tab": "adql"
+          }
+        ],
+        [
+          "set_adql_editor",
+          {
+            "generateFromForm": true
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Generate from Form",
+        "Execute",
+        "Save Query"
+      ]
+    },
+    {
+      "name": "research",
+      "chapter": "03-research",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "research"
+          }
+        ],
+        [
+          "show_research_observation",
+          {
+            "id": "A71A7740-6D49-4CCA-9E8F-0E86B8B720A8"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        {
+          "target": "Filter downloads",
+          "at": "left"
+        },
+        {
+          "help": "Export observations and notes to a Claude-friendly bundle"
+        },
+        "Open in FITS Viewer",
+        "Cut Out…",
+        "Remove File…",
+        "Delete"
+      ]
+    },
+    {
+      "name": "research-notes",
+      "chapter": "03-research",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "research"
+          }
+        ],
+        [
+          "show_research_observation",
+          {
+            "id": "A71A7740-6D49-4CCA-9E8F-0E86B8B720A8"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Quality",
+        "Tags",
+        "Notes"
+      ]
+    },
+    {
+      "name": "research-cutout",
+      "chapter": "03-research",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "research"
+          }
+        ],
+        [
+          "show_research_observation",
+          {
+            "id": "CF40FCA4-4F1F-4370-8A61-0235D5B319CC"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Original Observation"
+      ]
+    },
+    {
+      "name": "export",
+      "chapter": "03-research",
+      "steps": [
+        [
+          "open_ui",
+          {
+            "target": "=Export All"
+          }
+        ]
+      ],
+      "settle": 2,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Export All"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "fits-viewer",
+      "chapter": "04-fits-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_fits_file",
+          {
+            "downloaded_observation_id": "3A03A731-26CF-4C2B-ADB9-6A58356A2617"
+          }
+        ],
+        [
+          "open_fits_file",
+          {
+            "downloaded_observation_id": "4B3105A1-9401-4967-A433-AFF77A2B103B"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "fitsViewer"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "New tab",
+        "Link Crosshair",
+        "Sync Zoom",
+        "Blink"
+      ]
+    },
+    {
+      "name": "fits-mark",
+      "chapter": "04-fits-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_fits_file",
+          {
+            "downloaded_observation_id": "4B3105A1-9401-4967-A433-AFF77A2B103B"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "fitsViewer"
+          }
+        ],
+        [
+          "select_annotation",
+          {
+            "viewer": "fits",
+            "id": "m3"
+          }
+        ]
+      ],
+      "settle": 2,
+      "crop": [
+        330,
+        120,
+        1182,
+        750
+      ]
+    },
+    {
+      "name": "fits-spectrum",
+      "chapter": "04-fits-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_fits_file",
+          {
+            "downloaded_observation_id": "3A03A731-26CF-4C2B-ADB9-6A58356A2617"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "fitsViewer"
+          }
+        ]
+      ],
+      "settle": 2
+    },
+    {
+      "name": "fits-export",
+      "chapter": "04-fits-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_fits_file",
+          {
+            "downloaded_observation_id": "4B3105A1-9401-4967-A433-AFF77A2B103B"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "fitsViewer"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "Export Figure…"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Export Figure"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "cube-slice",
+      "chapter": "05-cube-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_cube",
+          {
+            "downloaded_observation_id": "475879F9-122A-4CD3-9E37-A336ABFEBD0A"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "cubeViewer"
+          }
+        ],
+        [
+          "set_cube_view",
+          {
+            "viewMode": "slice"
+          }
+        ],
+        [
+          "show_cube_spectrum",
+          {
+            "visible": true
+          }
+        ],
+        [
+          "probe_cube_spectrum",
+          {
+            "x": 26,
+            "y": 30,
+            "bin": 10
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "=Slice",
+        "Spectrum",
+        {
+          "help": "Cube Viewer guide"
+        },
+        "Play",
+        "Auto",
+        "Export Figure…"
+      ]
+    },
+    {
+      "name": "cube-volume",
+      "chapter": "05-cube-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_cube",
+          {
+            "downloaded_observation_id": "475879F9-122A-4CD3-9E37-A336ABFEBD0A"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "cubeViewer"
+          }
+        ],
+        [
+          "set_cube_view",
+          {
+            "viewMode": "volume"
+          }
+        ]
+      ],
+      "settle": 3
+    },
+    {
+      "name": "cube-guide",
+      "chapter": "05-cube-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_cube",
+          {
+            "downloaded_observation_id": "475879F9-122A-4CD3-9E37-A336ABFEBD0A"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "cubeViewer"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Cube Viewer Guide"
+          }
+        ]
+      ],
+      "settle": 1,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Cube Viewer Guide"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "cube-export",
+      "chapter": "05-cube-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_cube",
+          {
+            "downloaded_observation_id": "475879F9-122A-4CD3-9E37-A336ABFEBD0A"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "cubeViewer"
+          }
+        ],
+        [
+          "set_cube_view",
+          {
+            "viewMode": "volume"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "Export Figure…"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Export Figure"
+          }
+        ],
+        [
+          "set_cube_view",
+          {
+            "viewMode": "slice"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "portal",
+      "chapter": "06-portal-sessions",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ]
+      ],
+      "settle": 8,
+      "callouts": [
+        "Platform Load",
+        "Launch Session",
+        {
+          "help": "Open this session in your browser",
+          "at": "above"
+        },
+        {
+          "help": "Extend this session's lifetime",
+          "at": "above"
+        },
+        {
+          "help": "View Kubernetes events and container logs",
+          "at": "above"
+        },
+        {
+          "help": "Stop and delete this session",
+          "at": "above"
+        },
+        "Canfar Images",
+        "Recent Launches"
+      ]
+    },
+    {
+      "name": "launch-form",
+      "chapter": "06-portal-sessions",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "launch-form-advanced",
+      "chapter": "06-portal-sessions",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ],
+        [
+          "select_ui",
+          {
+            "target": "Advanced"
+          }
+        ]
+      ],
+      "settle": 2,
+      "after": [
+        [
+          "select_ui",
+          {
+            "target": "Standard"
+          }
+        ],
+        [
+          "close_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "session-events",
+      "chapter": "06-portal-sessions",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Session Events"
+          }
+        ]
+      ],
+      "settle": 4,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Session Events"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "batch-jobs",
+      "chapter": "07-batch-jobs",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Batch Jobs"
+          }
+        ]
+      ],
+      "settle": 4,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Batch Jobs"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "launch-form-headless",
+      "chapter": "07-batch-jobs",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ],
+        [
+          "select_ui",
+          {
+            "target": "Headless"
+          }
+        ]
+      ],
+      "settle": 2,
+      "after": [
+        [
+          "select_ui",
+          {
+            "target": "Standard"
+          }
+        ],
+        [
+          "close_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "image-discovery",
+      "chapter": "08-image-discovery",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Image Content Discovery"
+          }
+        ]
+      ],
+      "settle": 4,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Image Content Discovery"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "find-in-registry",
+      "chapter": "08-image-discovery",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Find in Registry"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Find in Registry"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "storage",
+      "chapter": "09-storage",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "storage"
+          }
+        ],
+        [
+          "show_storage_folder",
+          {
+            "folder": "orion-kl-cube-kinematics"
+          }
+        ],
+        [
+          "select_ui",
+          {
+            "target": "Flow27-28_CO32_cube_view.png"
+          }
+        ]
+      ],
+      "settle": 8,
+      "callouts": [
+        {
+          "help": "Go up one folder",
+          "at": "below"
+        },
+        {
+          "help": "Refresh folder contents",
+          "at": "below"
+        },
+        {
+          "target": "New Folder",
+          "at": "below"
+        },
+        {
+          "target": "Upload",
+          "at": "below"
+        },
+        {
+          "target": "Download",
+          "at": "below"
+        },
+        {
+          "target": "Delete",
+          "at": "below"
+        }
+      ],
+      "crop": [
+        0,
+        28,
+        1512,
+        200
+      ]
+    },
+    {
+      "name": "storage-new-folder",
+      "chapter": "09-storage",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "storage"
+          }
+        ],
+        [
+          "show_storage_folder",
+          {
+            "folder": "orion-kl-cube-kinematics"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "New Folder"
+          }
+        ]
+      ],
+      "settle": 8,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=New Folder"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "remote-compute",
+      "chapter": "10-remote-compute",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "remoteCompute"
+          }
+        ],
+        [
+          "show_compute_run",
+          {}
+        ]
+      ],
+      "settle": 3,
+      "callouts": [
+        "Start Session",
+        "Stop Session",
+        "Open Folder in Storage",
+        "Runs",
+        "Selected Run",
+        "Run Code"
+      ]
+    },
+    {
+      "name": "remote-compute-run",
+      "chapter": "10-remote-compute",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "remoteCompute"
+          }
+        ],
+        [
+          "set_compute_snippet",
+          {
+            "code": "from astropy.io import fits\nimport numpy as np\n\nprint('numpy', np.__version__)\nprint('Hello from CANFAR')",
+            "language": "python"
+          }
+        ]
+      ],
+      "settle": 3,
+      "callouts": [
+        "Language",
+        "Code to run",
+        "Run"
+      ]
+    },
+    {
+      "name": "workflows",
+      "chapter": "11-workflows",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "workflows"
+          }
+        ],
+        [
+          "select_ui",
+          {
+            "target": "Variable-star time-series photometry (CFHT / NEOSSat)"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        {
+          "target": {
+            "en": "TEMPLATES",
+            "fr": "MODÈLES"
+          },
+          "at": "right"
+        },
+        {
+          "target": {
+            "en": "MY WORKFLOWS",
+            "fr": "MES FLUX DE TRAVAIL"
+          },
+          "at": "right"
+        },
+        {
+          "target": "workflows/text/Variable-star time-series photometry (CF#2",
+          "at": "right"
+        }
+      ]
+    }
+  ]
+}

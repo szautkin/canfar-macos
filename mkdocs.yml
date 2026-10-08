@@ -1,0 +1,112 @@
+# The user manual as a website: GitHub Pages, built by .github/workflows/manual-site.yml.
+# The Markdown in docs/manual is the source; edit it there. See docs/plans/32-user-manual.md.
+site_name: Verbinal user manual
+site_description: >-
+  The manual of Verbinal, the Mac app for the Canadian Astronomy Data Centre (CADC) and the CANFAR
+  science platform: archive search, FITS and cube viewers, VOSpace storage, sessions, batch jobs,
+  Remote Compute, and working with an AI assistant. In English and French.
+site_url: https://szautkin.github.io/canfar-macos/
+site_author: Serhii Zautkin
+copyright: Copyright © 2025–2026 Serhii Zautkin · MPL-2.0
+repo_url: https://github.com/szautkin/canfar-macos
+repo_name: szautkin/canfar-macos
+edit_uri: edit/main/docs/manual/
+docs_dir: docs/manual
+site_dir: site
+exclude_docs: |
+  COVERAGE.md
+  pictures.json
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.footer
+    - navigation.top
+    - search.highlight
+    - content.action.edit
+
+plugins:
+  - search:
+      lang: [en, fr]
+
+markdown_extensions:
+  - tables
+  - attr_list
+  - md_in_html
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+      # The anchors GitHub makes, accents kept, so the manual's links work in both places.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+
+validation:
+  links:
+    anchors: warn
+
+extra:
+  alternate:
+    - name: English
+      link: /canfar-macos/en/00-contents/
+      lang: en
+    - name: Français
+      link: /canfar-macos/fr/00-contents/
+      lang: fr
+
+nav:
+  - Verbinal: README.md
+  - English:
+          - en/00-contents.md
+          - en/01-getting-started.md
+          - en/02-search.md
+          - en/03-research.md
+          - en/04-fits-viewer.md
+          - en/05-cube-viewer.md
+          - en/06-portal-sessions.md
+          - en/07-batch-jobs.md
+          - en/08-image-discovery.md
+          - en/09-storage.md
+          - en/10-remote-compute.md
+          - en/11-workflows.md
+          - en/12-ai-assistant.md
+          - en/13-ai-guide.md
+          - en/14-settings.md
+          - en/15-privacy.md
+          - en/16-troubleshooting.md
+          - en/a-shortcuts-and-menus.md
+          - en/b-glossary.md
+  - Français:
+          - fr/00-contents.md
+          - fr/01-getting-started.md
+          - fr/02-search.md
+          - fr/03-research.md
+          - fr/04-fits-viewer.md
+          - fr/05-cube-viewer.md
+          - fr/06-portal-sessions.md
+          - fr/07-batch-jobs.md
+          - fr/08-image-discovery.md
+          - fr/09-storage.md
+          - fr/10-remote-compute.md
+          - fr/11-workflows.md
+          - fr/12-ai-assistant.md
+          - fr/13-ai-guide.md
+          - fr/14-settings.md
+          - fr/15-privacy.md
+          - fr/16-troubleshooting.md
+          - fr/a-shortcuts-and-menus.md
+          - fr/b-glossary.md
