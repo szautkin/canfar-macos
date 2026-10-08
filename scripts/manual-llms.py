@@ -19,6 +19,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MANUAL = os.path.join(ROOT, 'docs', 'manual')
 LANGS = (('en', 'English'), ('fr', 'Français'))
 AGENTS = 'https://github.com/szautkin/canfar-macos/blob/main/AGENTS.md'
+WINDOWS = 'https://github.com/szautkin/CanfarDesktop'
+LINUX = 'https://github.com/szautkin/CanfarDesktopUbuntu'
 
 
 def site_url():
@@ -54,11 +56,13 @@ def main():
     site = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'site'))
     base = site_url()
     index = [
-        '# Verbinal user manual',
+        '# Verbinal for macOS: user manual',
         '',
-        '> The manual of Verbinal, the Mac app for the Canadian Astronomy Data Centre (CADC) and the CANFAR '
-        'science platform: archive search, FITS and cube viewers, VOSpace storage, sessions, batch jobs, '
+        '> The manual of Verbinal for macOS, the Mac app for the Canadian Astronomy Data Centre (CADC) and the '
+        'CANFAR science platform: archive search, FITS and cube viewers, VOSpace storage, sessions, batch jobs, '
         'Remote Compute, and working with an AI assistant over MCP. In English and French, for Verbinal 1.4.',
+        '',
+        f'Verbinal for Windows ({WINDOWS}) and for Linux ({LINUX}) are separate apps; their manuals will come later.',
         '',
         'Each chapter below links its Markdown. The same page as HTML is at the same address, without `.md`. '
         f'To connect an AI agent to Verbinal itself, read [AGENTS.md]({AGENTS}).',

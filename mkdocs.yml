@@ -1,6 +1,6 @@
 # The user manual as a website: GitHub Pages, built by .github/workflows/manual-site.yml.
 # The Markdown in docs/manual is the source; edit it there. See docs/plans/32-user-manual.md.
-site_name: Verbinal user manual
+site_name: Verbinal for macOS · User manual
 site_description: >-
   The manual of Verbinal, the Mac app for the Canadian Astronomy Data Centre (CADC) and the CANFAR
   science platform: archive search, FITS and cube viewers, VOSpace storage, sessions, batch jobs,
@@ -20,6 +20,8 @@ exclude_docs: |
 theme:
   name: material
   language: en
+  logo: brand/verbinal-icon.png
+  favicon: brand/favicon.png
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -60,6 +62,19 @@ validation:
     anchors: warn
 
 extra:
+  social:
+    - icon: fontawesome/brands/apple
+      link: https://apps.apple.com/ca/app/verbinal/id6761290036
+      name: Verbinal on the Mac App Store
+    - icon: fontawesome/brands/github
+      link: https://github.com/szautkin/canfar-macos
+      name: Verbinal for macOS, the source
+    - icon: fontawesome/brands/windows
+      link: https://github.com/szautkin/CanfarDesktop
+      name: Verbinal for Windows
+    - icon: fontawesome/brands/linux
+      link: https://github.com/szautkin/CanfarDesktopUbuntu
+      name: Verbinal for Linux
   alternate:
     - name: English
       link: /en/00-contents/

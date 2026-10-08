@@ -5,7 +5,11 @@ CANFAR science platform. It searches the archive, keeps your observations and no
 spectra and data cubes, manages your VOSpace storage, and runs sessions, batch jobs and code on CANFAR,
 all in one window. An AI assistant can work in it with you, on terms you set.
 
-This manual covers Verbinal 1.4, on macOS 14 or newer. [Version française](../fr/00-contents.md).
+This manual covers **Verbinal 1.4 for macOS**, on macOS 14 or newer. [Version française](../fr/00-contents.md).
+
+Verbinal also exists for [Windows](https://github.com/szautkin/CanfarDesktop) and for
+[Linux](https://github.com/szautkin/CanfarDesktopUbuntu), as separate apps. Their manuals will come
+later; until then, their repositories describe them.
 
 ## Contents
 
