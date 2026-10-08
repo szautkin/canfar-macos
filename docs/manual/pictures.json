@@ -1,0 +1,9 @@
+{
+  "pictures": [
+    {
+      "name": "home",
+      "chapter": "01-getting-started",
+      "steps": [["navigate_to", {"mode": "landing"}]]
+    }
+  ]
+}
