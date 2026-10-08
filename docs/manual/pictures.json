@@ -1355,6 +1355,56 @@
           }
         ]
       ]
+    },
+    {
+      "name": "remote-compute",
+      "chapter": "10-remote-compute",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "remoteCompute"
+          }
+        ],
+        [
+          "show_compute_run",
+          {}
+        ]
+      ],
+      "settle": 3,
+      "callouts": [
+        "Start Session",
+        "Stop Session",
+        "Open Folder in Storage",
+        "Runs",
+        "Selected Run",
+        "Run Code"
+      ]
+    },
+    {
+      "name": "remote-compute-run",
+      "chapter": "10-remote-compute",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "remoteCompute"
+          }
+        ],
+        [
+          "set_compute_snippet",
+          {
+            "code": "from astropy.io import fits\nimport numpy as np\n\nprint('numpy', np.__version__)\nprint('Hello from CANFAR')",
+            "language": "python"
+          }
+        ]
+      ],
+      "settle": 3,
+      "callouts": [
+        "Language",
+        "Code to run",
+        "Run"
+      ]
     }
   ]
 }
