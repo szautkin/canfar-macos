@@ -184,7 +184,7 @@ def ring(session, shot, labels):
     hints = [{'target': localized(c, labels)['target'], 'style': 'ring'} for c in callouts]
     shown = text_of(session.call('show_ui_hints', {'mode': 'replace', 'untilClosed': True, 'hints': hints}))
     if shown.get('missing'):
-        print(f'  {shot["name"]}: no callout target for {shown["missing"]}')
+        print(f'  {shot["name"]}: no callout target for {[m.get("target") for m in shown["missing"]]}')
     placed = []
     for callout, hint in zip(callouts, shown.get('shown', [])):
         listing = text_of(session.call('list_ui_targets', {'kind': 'all', 'contains': hint['id'], 'limit': 50}))
@@ -212,7 +212,8 @@ def shoot(session, shot, lang, labels, private):
     for tool, arguments in shot.get('steps', []):
         answer = text_of(session.call(tool, localized(arguments, labels)))
         if isinstance(answer, dict) and answer.get('missing'):
-            print(f'  {shot["name"]}: {tool} found nothing for {answer["missing"]}')
+            missing = [m.get('target', m) if isinstance(m, dict) else m for m in answer['missing']]
+            print(f'  {shot["name"]}: {tool} found nothing for {missing}')
         if isinstance(answer, dict) and answer.get('proposalID') and not answer.get('applied'):
             proposals.append(answer['proposalID'])   # an example that waits in Pending
     callouts = ring(session, shot, labels)

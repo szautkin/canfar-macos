@@ -79,13 +79,13 @@ docs/manual/
 | 0 | Contents | What Verbinal is, who it is for, how to read the manual |
 | 1 | Getting started | Install (Mac App Store, GitHub), requirements (macOS 14, Apple silicon and Intel), what works without an account, first launch and Welcome, Home and its tiles, the window (toolbar, account menu, activity bar, file browser ⌘B, Pending), signing in and out, getting around (Go menu, ⌘1…⌘8), the language setting, Help menu, What Verbinal Can Do |
 | 2 | Search the CADC archive | The form: target and name resolver, position and Radius, time, spectral range, the data train; Search (⌘↩), Reset, Cancel; results: columns, sort, filter, units, selection, previews, observation detail, data links, download, export; the ADQL editor and its checks; VizieR; history and saved queries |
-| 3 | Research | Keeping observations with or without files, choosing files, cutouts, notes, ratings, tags, search, opening in the viewers, importing FITS from this Mac, Export All and bundles |
+| 3 | Research | Keeping observations with or without files, cutouts, notes, ratings, tags, search, Spotlight, opening in the viewers, Export All and bundles (no import from this Mac: it was never built) |
 | 4 | FITS Viewer | Opening (recent files, drag, Research, Storage, the file browser), tabs, stretch, colour maps, cuts, zoom and fit (View menu), North Up, WCS readout and the probe, headers, multi-extension and fpack, blink and linked tabs, bookmarks, marks (draw, edit, DS9 export), spectra (x1d), figures of the image or a region |
 | 5 | Cube Viewer | Opening a cube, slice mode, volume mode and the camera, spectrum at a pixel, channel profile, marks, figures, the Intel note |
 | 6 | Portal: sessions | Platform load, session cards (CPU, RAM, GPU), the launch form (types, images, flexible or fixed resources, searching long lists, the registry), launch progress, opening, renewing and deleting, events and logs, recent launches, notifications |
 | 7 | Portal: batch jobs | Headless jobs: submitting, following thousands, filters on every tab, the history kept after CANFAR drops a job |
 | 8 | Image Discovery and the registry | Finding the image that has your packages; the probe job and what it costs; the registry browser |
-| 9 | Storage (VOSpace) | Browsing, upload, download, folders, rename, move, delete (a folder with everything in it), sharing and the sensitive-file warning, quota |
+| 9 | Storage (VOSpace) | Browsing, upload, download, folders, delete (a folder with everything in it), the sensitive-file warning, quota (no rename or move in the app) |
 | 10 | Remote Compute | What it is, choosing the image (**Settings ▸ AI Compute**), starting and stopping, running code, runs and their output, "not ready", what survives quitting |
 | 11 | Workflows | Templates, copying, following steps, editing and deleting your own, add-on steps |
 | 12 | Working with an AI assistant | What MCP is and what stays private; connecting (the wizard for Claude Desktop and Claude Code, other clients through AGENTS.md, **MCP Clients**); allowing a session and giving it instructions; what it may do without asking, kind by kind; Pending: reviewing, applying, the why; hints and the dimmed window; the activity bar; the session log and Diagnostics |
@@ -135,16 +135,16 @@ as the parity test does for tools.
 
 | Step | What | State |
 |---|---|---|
-| **A** | Inventory, checked against the code: `COVERAGE.md` mapping every parity area, screen, sheet, setting, menu item and shortcut to a chapter | open |
-| **B** | The skeleton: `docs/manual/` with every chapter's headings in both languages, the style notes, and `scripts/manual-coverage.py` in CI. It fails at first, by design, until every chapter is written (red first) | open |
-| **C** | Chapters 0, 1, 12, 13, 14: contents, getting started, the assistant, the guide, settings | open |
-| **D** | Chapters 2, 3: Search, Research | open |
-| **E** | Chapters 4, 5: FITS Viewer, Cube Viewer | open |
-| **F** | Chapters 6–9: Portal, batch jobs, Image Discovery, Storage (needs sign-in and CANFAR healthy) | open |
-| **G** | Chapters 10, 11, 15, 16, A, B | open |
-| **P** | Pictures, with the person at the app: English, then French | open |
-| **L** | Links: the README's top links to the manual in both languages; `docs/MCP-Setup.md` and AGENTS.md link to chapter 12 | open |
-| **R** | Review: handout 33, a new-user pass that follows the manual from first launch, in each language, and records every place it and the app disagree | open |
+| **A** | Inventory, checked against the code: `COVERAGE.md` mapping every parity area, screen, sheet, setting, menu item and shortcut to a chapter | done `613990d` |
+| **B** | The skeleton in both languages, `scripts/manual-coverage.py` in CI (red first: 196 problems), and `scripts/manual-pictures.py` with its shot list | done `613990d` |
+| **C** | Chapters 0, 1, 12, 13, 14 | done `fb635b0`, `…12`, `…13–14`, `fa45d27` (0) |
+| **D** | Chapters 2, 3 | done |
+| **E** | Chapters 4, 5 | done |
+| **F** | Chapters 6–9 | done |
+| **G** | Chapters 10, 11, 15, 16, A, B | done `fa45d27` |
+| **P** | Pictures: 49, French done in this session; English after the app is switched to English | French done; English next |
+| **L** | README's top links the manual in both languages; `docs/MCP-Setup.md` and AGENTS.md link chapter 12 | done `80e26ed` |
+| **R** | [Handout 33](./33-manual-review.md): a new-user pass in each language | handout written; the pass is the reviewer's |
 
 Each chapter is written in both languages in the same commit, with the coverage check green for what is
 written.
