@@ -137,14 +137,14 @@ as the parity test does for tools.
 |---|---|---|
 | **A** | Inventory, checked against the code: `COVERAGE.md` mapping every parity area, screen, sheet, setting, menu item and shortcut to a chapter | done `613990d` |
 | **B** | The skeleton in both languages, `scripts/manual-coverage.py` in CI (red first: 196 problems), and `scripts/manual-pictures.py` with its shot list | done `613990d` |
-| **C** | Chapters 0, 1, 12, 13, 14 | done `fb635b0`, `…12`, `…13–14`, `fa45d27` (0) |
-| **D** | Chapters 2, 3 | done |
-| **E** | Chapters 4, 5 | done |
-| **F** | Chapters 6–9 | done |
-| **G** | Chapters 10, 11, 15, 16, A, B | done `fa45d27` |
+| **C** | Chapters 0, 1, 12, 13, 14 | done `fb635b0` (1), `9be3c84` (12), `7b6900e` (13, 14), `fa45d27` (0) |
+| **D** | Chapters 2, 3 | done `8851bfc`, `eba635e` |
+| **E** | Chapters 4, 5 | done `0799096`, `ed634c8` |
+| **F** | Chapters 6–9 | done `c534d74`, `3119c4e`, `cf5151b` |
+| **G** | Chapters 10, 11, 15, 16, A, B | done `2ed4715`, `c79f230`, `3547ef4`, `fa45d27` |
 | **P** | Pictures: 49, French done in this session; English after the app is switched to English | French done; English next |
 | **L** | README's top links the manual in both languages; `docs/MCP-Setup.md` and AGENTS.md link chapter 12 | done `80e26ed` |
-| **R** | [Handout 33](./33-manual-review.md): a new-user pass in each language | handout written; the pass is the reviewer's |
+| **R** | [Handout 33](./33-manual-review.md): a new-user pass in each language | handout written `e36dd45`; the pass is the reviewer's |
 
 Each chapter is written in both languages in the same commit, with the coverage check green for what is
 written.
