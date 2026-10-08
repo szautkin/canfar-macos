@@ -14,6 +14,6 @@ VOSpace, sessions et tâches en lot, calcul à distance, et travail avec un assi
 Verbinal is free on the [Mac App Store](https://apps.apple.com/ca/app/verbinal/id6761290036). Its source
 is on [GitHub](https://github.com/szautkin/canfar-macos).
 
-For AI agents: [llms.txt](https://szautkin.github.io/canfar-macos/llms.txt) lists every page with its
+For AI agents: [llms.txt](https://docs.verbinal.com/llms.txt) lists every page with its
 Markdown, and [AGENTS.md](https://github.com/szautkin/canfar-macos/blob/main/AGENTS.md) explains how to
 connect to Verbinal.

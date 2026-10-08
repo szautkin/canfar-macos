@@ -38,8 +38,8 @@ The server is off until the person turns it on, and turning it on is their decis
 If their assistant is **Claude Desktop** or **Claude Code**, the **AI Assistant** tile on Verbinal's
 home screen runs a wizard that does steps 2 to 4 for them. The user manual explains all of it to the
 person, in English and French: [docs/manual/en/12-ai-assistant.md](docs/manual/en/12-ai-assistant.md).
-The whole manual is online at https://szautkin.github.io/canfar-macos/, with an index for agents at
-https://szautkin.github.io/canfar-macos/llms.txt and every page in Markdown.
+The whole manual is online at https://docs.verbinal.com/, with an index for agents at
+https://docs.verbinal.com/llms.txt and every page in Markdown.
 
 ## 3. The command
 

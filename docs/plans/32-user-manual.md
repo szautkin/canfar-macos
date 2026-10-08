@@ -145,7 +145,7 @@ as the parity test does for tools.
 | **P** | Pictures: 49 in each language | done: French in this session, English `495b588`, the English Storage picture retaken after Storage listed again |
 | **L** | README's top links the manual in both languages; `docs/MCP-Setup.md` and AGENTS.md link chapter 12 | done `80e26ed` |
 | **R** | [Handout 33](./33-manual-review.md): a new-user pass in each language | handout written `e36dd45`; the pass is the reviewer's |
-| **W** | The website: GitHub Pages at https://szautkin.github.io/canfar-macos/, built from `docs/manual` by MkDocs Material (`mkdocs.yml`, pinned in `.github/manual-requirements.txt`) on every push to main (`.github/workflows/manual-site.yml`), after the coverage check; `scripts/manual-llms.py` adds `llms.txt`, `llms-full.txt` and a Markdown copy of each page for agents | built and checked here; live once merged and Pages is set to GitHub Actions |
+| **W** | The website: GitHub Pages at https://docs.verbinal.com/, built from `docs/manual` by MkDocs Material (`mkdocs.yml`, pinned in `.github/manual-requirements.txt`) on every push to main (`.github/workflows/manual-site.yml`), after the coverage check; `scripts/manual-llms.py` adds `llms.txt`, `llms-full.txt` and a Markdown copy of each page for agents | built and checked here; live once merged and Pages is set to GitHub Actions |
 
 Each chapter is written in both languages in the same commit, with the coverage check green for what is
 written.
@@ -158,7 +158,7 @@ Found while writing the manual against 1.4.0 (build 17). Each is its own change 
 - The **Go** menu has no Remote Compute, and calls Home "Landing".
 - **What Verbinal Can Do** has no Cube Viewer, Portal, Remote Compute or Workflows entry.
 - **Verbinal Help** (⌘?) opens the GitHub README. That works with the README's link to the manual, but
-  the manual's own address, https://szautkin.github.io/canfar-macos/, would be a better target.
+  the manual's own address, https://docs.verbinal.com/, would be a better target.
 - ⇧⌘E is bound twice: **File ▸ Export All…** and the Search results' **Export** menu.
 - The Welcome sheet says the assistant has "~60 tools"; it has about 210.
 
