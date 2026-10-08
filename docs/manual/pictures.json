@@ -1017,6 +1017,254 @@
           }
         ]
       ]
+    },
+    {
+      "name": "portal",
+      "chapter": "06-portal-sessions",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ]
+      ],
+      "settle": 3,
+      "callouts": [
+        "Platform Load",
+        "Launch Session",
+        {
+          "help": "Open this session in your browser",
+          "at": "above"
+        },
+        {
+          "help": "Extend this session's lifetime",
+          "at": "above"
+        },
+        {
+          "help": "View Kubernetes events and container logs",
+          "at": "above"
+        },
+        {
+          "help": "Stop and delete this session",
+          "at": "above"
+        },
+        "Canfar Images",
+        "Recent Launches"
+      ]
+    },
+    {
+      "name": "launch-form",
+      "chapter": "06-portal-sessions",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "launch-form-advanced",
+      "chapter": "06-portal-sessions",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ],
+        [
+          "select_ui",
+          {
+            "target": "Advanced"
+          }
+        ]
+      ],
+      "settle": 2,
+      "after": [
+        [
+          "select_ui",
+          {
+            "target": "Standard"
+          }
+        ],
+        [
+          "close_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "session-events",
+      "chapter": "06-portal-sessions",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Session Events"
+          }
+        ]
+      ],
+      "settle": 4,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Session Events"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "batch-jobs",
+      "chapter": "07-batch-jobs",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Batch Jobs"
+          }
+        ]
+      ],
+      "settle": 4,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Batch Jobs"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "launch-form-headless",
+      "chapter": "07-batch-jobs",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ],
+        [
+          "select_ui",
+          {
+            "target": "Headless"
+          }
+        ]
+      ],
+      "settle": 2,
+      "after": [
+        [
+          "select_ui",
+          {
+            "target": "Standard"
+          }
+        ],
+        [
+          "close_ui",
+          {
+            "target": "=Launch Session"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "image-discovery",
+      "chapter": "08-image-discovery",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Image Content Discovery"
+          }
+        ]
+      ],
+      "settle": 4,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Image Content Discovery"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "find-in-registry",
+      "chapter": "08-image-discovery",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "portal"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Find in Registry"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Find in Registry"
+          }
+        ]
+      ]
     }
   ]
 }
