@@ -142,7 +142,7 @@ as the parity test does for tools.
 | **E** | Chapters 4, 5 | done `0799096`, `ed634c8` |
 | **F** | Chapters 6–9 | done `c534d74`, `3119c4e`, `cf5151b` |
 | **G** | Chapters 10, 11, 15, 16, A, B | done `2ed4715`, `c79f230`, `3547ef4`, `fa45d27` |
-| **P** | Pictures: 49, French done in this session; English after the app is switched to English | French done; English next |
+| **P** | Pictures: 49 in each language | done: French in this session, English `495b588`; the English Storage picture to retake (its listing was cancelled) |
 | **L** | README's top links the manual in both languages; `docs/MCP-Setup.md` and AGENTS.md link chapter 12 | done `80e26ed` |
 | **R** | [Handout 33](./33-manual-review.md): a new-user pass in each language | handout written `e36dd45`; the pass is the reviewer's |
 
@@ -189,6 +189,14 @@ Found while writing the manual against 1.4.0 (build 17). Each is its own change 
 - Storage: opening a folder while the previous listing is still loading shows the earlier listing under
   the new folder's path, with a "cancelled" banner, until Storage is opened again.
 - Storage has no rename or move; plan 32's outline listed them, and the manual leaves them out.
+- Storage: leaving the screen while a folder loads cancels the load, and coming back does not start it
+  again; after that every folder answers "cancelled" until **Retry** is pressed or Verbinal restarts.
+- Remote Compute: the status and the size banner show 1.07 GB as "1." ("1. Go", "has 1. of the 8 GB");
+  the banner is half English in French; the setup text still speaks of "auto-apply", which the per-kind
+  settings of 1.4 replaced.
+- Workflows: the sidebar is narrow enough to cut every name short; **New Workflow** sits in the
+  toolbar's overflow (») at a normal window size; the selected workflow's title sits under the toolbar,
+  blurred; the steps keep the last workflow's scroll position when another is selected.
 - `capture_view` leaves out popovers (Activity, Columns, a result's preview): they are windows of their
   own. The manual describes them without pictures.
 - The App Store description and the README speak of VizieR cone searches in the app; in the app VizieR
