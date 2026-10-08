@@ -1405,6 +1405,45 @@
         "Code to run",
         "Run"
       ]
+    },
+    {
+      "name": "workflows",
+      "chapter": "11-workflows",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "workflows"
+          }
+        ],
+        [
+          "select_ui",
+          {
+            "target": "Variable-star time-series photometry (CFHT / NEOSSat)"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        {
+          "target": {
+            "en": "TEMPLATES",
+            "fr": "MODÈLES"
+          },
+          "at": "right"
+        },
+        {
+          "target": {
+            "en": "MY WORKFLOWS",
+            "fr": "MES FLUX DE TRAVAIL"
+          },
+          "at": "right"
+        },
+        {
+          "target": "workflows/text/Variable-star time-series photometry (CF#2",
+          "at": "right"
+        }
+      ]
     }
   ]
 }
