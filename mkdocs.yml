@@ -5,7 +5,7 @@ site_description: >-
   The manual of Verbinal, the Mac app for the Canadian Astronomy Data Centre (CADC) and the CANFAR
   science platform: archive search, FITS and cube viewers, VOSpace storage, sessions, batch jobs,
   Remote Compute, and working with an AI assistant. In English and French.
-site_url: https://szautkin.github.io/canfar-macos/
+site_url: https://docs.verbinal.com/
 site_author: Serhii Zautkin
 copyright: Copyright © 2025–2026 Serhii Zautkin · MPL-2.0
 repo_url: https://github.com/szautkin/canfar-macos
@@ -62,10 +62,10 @@ validation:
 extra:
   alternate:
     - name: English
-      link: /canfar-macos/en/00-contents/
+      link: /en/00-contents/
       lang: en
     - name: Français
-      link: /canfar-macos/fr/00-contents/
+      link: /fr/00-contents/
       lang: fr
 
 nav:
