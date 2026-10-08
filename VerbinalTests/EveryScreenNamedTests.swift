@@ -141,10 +141,12 @@ final class EveryScreenNamedTests: XCTestCase {
         let source = AXElementSource(screenName: { state.screenName(of: $0, parentScreen: $1, title: $2) })
         await source.ready()
         try await Task.sleep(for: .milliseconds(700))
-        // The fastest of five: a busy machine (a shared CI runner) only ever
-        // adds time, so the best run is the listing's own cost.
+        // The fastest of five: a busy machine only ever adds time, so the best
+        // run is the listing's own cost. It is 40 ms on an Apple-silicon Mac
+        // and 160 ms on GitHub's macOS runner (Oct 2026); 250 ms catches a
+        // listing 1.6 times slower on CI and 6 times slower on a Mac.
         let clock = ContinuousClock()
         let took = (0..<5).map { _ in clock.measure { _ = source.snapshot() } }.min() ?? .zero
-        XCTAssertLessThan(took, .milliseconds(150), "a snapshot of Search took \(took) at best")
+        XCTAssertLessThan(took, .milliseconds(250), "a snapshot of Search took \(took) at best")
     }
 }
