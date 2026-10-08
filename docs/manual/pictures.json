@@ -609,6 +609,105 @@
         "Execute",
         "Save Query"
       ]
+    },
+    {
+      "name": "research",
+      "chapter": "03-research",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "research"
+          }
+        ],
+        [
+          "show_research_observation",
+          {
+            "id": "A71A7740-6D49-4CCA-9E8F-0E86B8B720A8"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        {
+          "target": "Filter downloads",
+          "at": "left"
+        },
+        {
+          "help": "Export observations and notes to a Claude-friendly bundle"
+        },
+        "Open in FITS Viewer",
+        "Cut Out…",
+        "Remove File…",
+        "Delete"
+      ]
+    },
+    {
+      "name": "research-notes",
+      "chapter": "03-research",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "research"
+          }
+        ],
+        [
+          "show_research_observation",
+          {
+            "id": "A71A7740-6D49-4CCA-9E8F-0E86B8B720A8"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Quality",
+        "Tags",
+        "Notes"
+      ]
+    },
+    {
+      "name": "research-cutout",
+      "chapter": "03-research",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "research"
+          }
+        ],
+        [
+          "show_research_observation",
+          {
+            "id": "CF40FCA4-4F1F-4370-8A61-0235D5B319CC"
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "Original Observation"
+      ]
+    },
+    {
+      "name": "export",
+      "chapter": "03-research",
+      "steps": [
+        [
+          "open_ui",
+          {
+            "target": "=Export All"
+          }
+        ]
+      ],
+      "settle": 2,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Export All"
+          }
+        ]
+      ]
     }
   ]
 }
