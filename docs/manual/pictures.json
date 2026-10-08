@@ -708,6 +708,139 @@
           }
         ]
       ]
+    },
+    {
+      "name": "fits-viewer",
+      "chapter": "04-fits-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "fitsViewer"
+          }
+        ],
+        [
+          "switch_fits_tab",
+          {
+            "index": 0
+          }
+        ]
+      ],
+      "settle": 2,
+      "callouts": [
+        "New tab",
+        "Link Crosshair",
+        "Sync Zoom",
+        "Blink"
+      ]
+    },
+    {
+      "name": "fits-mark",
+      "chapter": "04-fits-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "fitsViewer"
+          }
+        ],
+        [
+          "switch_fits_tab",
+          {
+            "index": 0
+          }
+        ],
+        [
+          "select_annotation",
+          {
+            "viewer": "fits",
+            "id": "m3"
+          }
+        ]
+      ],
+      "settle": 2,
+      "crop": [
+        330,
+        120,
+        1182,
+        750
+      ]
+    },
+    {
+      "name": "fits-spectrum",
+      "chapter": "04-fits-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "fitsViewer"
+          }
+        ],
+        [
+          "switch_fits_tab",
+          {
+            "index": 1
+          }
+        ]
+      ],
+      "settle": 2
+    },
+    {
+      "name": "fits-export",
+      "chapter": "04-fits-viewer",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "navigate_to",
+          {
+            "mode": "fitsViewer"
+          }
+        ],
+        [
+          "switch_fits_tab",
+          {
+            "index": 0
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "Export Figure…"
+          }
+        ]
+      ],
+      "settle": 3,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Export Figure"
+          }
+        ]
+      ]
     }
   ]
 }
