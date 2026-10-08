@@ -173,7 +173,22 @@ Found while writing the manual against 1.4.0 (build 17). Each is its own change 
   Research's metadata.
 - The observation detail's **Enregistrer dans Recherche** is cut short ("Enregistrer da…").
 
+- FITS Viewer: Blink's image **B** button reads "G" (it shares its catalogue key with the Marks panel's
+  bold button, gras); the **Marques** button is cut short ("Marq…").
+- Cube Viewer: **Slice** / **Volume**, the **Dark** / **Black** / **Light** backgrounds and the
+  **Resident** / **Streamed** mode are in English; "Faible" wraps onto two lines; the guide's "Keys"
+  reads "Clés" (it should be "Touches").
+- Portal: the images card's **Default** and **Popular** chips; Image Content Discovery's "Discovered …
+  of … images".
+
 **Other**
+- An assistant cannot open the FITS Viewer's **Header**, **Bookmarks** or **Marks** panels: they are
+  plain buttons, not openers `open_ui` knows.
+- Pointing at a control in the FITS Viewer's side panel can scroll the panel sideways, and it stays cut
+  off until the screen is opened again.
+- Storage: opening a folder while the previous listing is still loading shows the earlier listing under
+  the new folder's path, with a "cancelled" banner, until Storage is opened again.
+- Storage has no rename or move; plan 32's outline listed them, and the manual leaves them out.
 - `capture_view` leaves out popovers (Activity, Columns, a result's preview): they are windows of their
   own. The manual describes them without pictures.
 - The App Store description and the README speak of VizieR cone searches in the app; in the app VizieR

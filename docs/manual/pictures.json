@@ -1265,6 +1265,96 @@
           }
         ]
       ]
+    },
+    {
+      "name": "storage",
+      "chapter": "09-storage",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "storage"
+          }
+        ],
+        [
+          "show_storage_folder",
+          {
+            "folder": "orion-kl-cube-kinematics"
+          }
+        ],
+        [
+          "select_ui",
+          {
+            "target": "Flow27-28_CO32_cube_view.png"
+          }
+        ]
+      ],
+      "settle": 6,
+      "callouts": [
+        {
+          "help": "Go up one folder",
+          "at": "below"
+        },
+        {
+          "help": "Refresh folder contents",
+          "at": "below"
+        },
+        {
+          "target": "New Folder",
+          "at": "below"
+        },
+        {
+          "target": "Upload",
+          "at": "below"
+        },
+        {
+          "target": "Download",
+          "at": "below"
+        },
+        {
+          "target": "Delete",
+          "at": "below"
+        }
+      ],
+      "crop": [
+        0,
+        28,
+        1512,
+        200
+      ]
+    },
+    {
+      "name": "storage-new-folder",
+      "chapter": "09-storage",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "storage"
+          }
+        ],
+        [
+          "show_storage_folder",
+          {
+            "folder": "orion-kl-cube-kinematics"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "New Folder"
+          }
+        ]
+      ],
+      "settle": 4,
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=New Folder"
+          }
+        ]
+      ]
     }
   ]
 }
