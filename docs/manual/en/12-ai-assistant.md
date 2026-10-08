@@ -53,7 +53,7 @@ Restart Claude Code afterwards.
 
 Any assistant that can start a local MCP server works the same way: name `verbinal-canfar`, command
 `/Applications/Verbinal.app/Contents/MacOS/Verbinal`, argument `mcp`. There is no port, URL or key.
-[AGENTS.md](../../../AGENTS.md) has the exact settings for Codex, Cursor, Gemini CLI, Windsurf and
+[AGENTS.md](https://github.com/szautkin/canfar-macos/blob/main/AGENTS.md) has the exact settings for Codex, Cursor, Gemini CLI, Windsurf and
 VS Code; you can give that file to your assistant and let it set itself up.
 **Settings ▸ MCP Clients** shows the exact command for this Mac and copies it (**Copy Command**).
 

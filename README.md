@@ -13,8 +13,9 @@ Project home: **[verbinal.com](https://verbinal.com)**
 Available on the **[Mac App Store](https://apps.apple.com/ca/app/verbinal/id6761290036)**,
 and as an unsigned build from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
 
-**User manual:** [English](docs/manual/en/00-contents.md) · [Français](docs/manual/fr/00-contents.md),
-covering every screen, setting and shortcut of Verbinal 1.4.
+**User manual:** [read it online](https://szautkin.github.io/canfar-macos/), or here in the repository:
+[English](docs/manual/en/00-contents.md) · [Français](docs/manual/fr/00-contents.md). It covers every
+screen, setting and shortcut of Verbinal 1.4.
 
 ## Features
 

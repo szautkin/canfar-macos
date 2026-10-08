@@ -52,3 +52,6 @@ Packages/
 *.xcodeproj
 dev_info
 *.profraw
+
+# The user manual website, built by mkdocs (docs/manual)
+site/

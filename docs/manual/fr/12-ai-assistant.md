@@ -56,7 +56,7 @@ Ou collez l’extrait JSON (**Copier l'extrait JSON**) dans le `mcpServers` de p
 
 Tout assistant capable de lancer un serveur MCP local fonctionne de la même façon : nom
 `verbinal-canfar`, commande `/Applications/Verbinal.app/Contents/MacOS/Verbinal`, argument `mcp`. Il n’y
-a ni port, ni URL, ni clé. [AGENTS.md](../../../AGENTS.md) donne les réglages exacts pour Codex,
+a ni port, ni URL, ni clé. [AGENTS.md](https://github.com/szautkin/canfar-macos/blob/main/AGENTS.md) donne les réglages exacts pour Codex,
 Cursor, Gemini CLI, Windsurf et VS Code ; vous pouvez donner ce fichier à votre assistant pour qu’il se
 configure lui-même. **Réglages ▸ Clients MCP** affiche la commande exacte pour ce Mac et la copie
 (**Copier la commande**).
