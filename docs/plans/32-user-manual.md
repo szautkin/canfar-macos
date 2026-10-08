@@ -103,11 +103,14 @@ Roughly 25,000–35,000 words in each language, and 45–60 pictures in each.
 - Captured from the person's running app with Verbinal's own `capture_view`, while they are signed in.
   Every picture is then the window exactly as the person sees it, at one window size and in one
   appearance.
-- Callouts come from the app's numbered hints (`show_ui_hints`), so a picture can carry ①②③ that the
-  text refers to.
-- **Nothing personal in frame:** no name in the title bar or the account menu, and no file, session or
-  job names. Choose screens and scroll positions that leave them out. Where a picture needs a list,
-  crop or blur it, and check every picture before it is committed.
+- Callouts: the app rings each target (`show_ui_hints`), and the script numbers the rings, so a
+  picture can carry ①②③ that the text refers to. The app's own numbers do not show in a capture.
+- `scripts/manual-pictures.py` takes them from `docs/manual/pictures.json`, a shot list that can be
+  run again in either language when the app changes.
+- **The person's account may show** (their word, 2026-10-07): their name in the toolbar and on the
+  account menu. Nothing else personal: no email, no passwords or secrets, and no other person's names
+  or files. Check every picture before it is committed. `--private` blurs the name and username, for a
+  re-shoot on another account.
 - English first, then the same list again with the app switched to French in **Settings ▸ General**
   (a relaunch, and a new assistant session to allow).
 - PNG, 2× resolution, under 400 KB each.
@@ -158,5 +161,5 @@ written.
 1. **Where it lives:** outside the app. Markdown in this repository, `docs/manual/`, reached from the
    README. No app change.
 2. **Languages:** English and French together, chapter by chapter.
-3. **Pictures:** captured from the person's account through Verbinal, with anything personal kept out of
-   frame or blurred.
+3. **Pictures:** captured from the person's account through Verbinal. Later the same day: their account
+   (their name) may show.

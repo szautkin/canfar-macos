@@ -3,10 +3,23 @@
 """Take the user manual's pictures from the running Verbinal, through its own tools.
 
 Each picture in docs/manual/pictures.json is a list of steps — Verbinal tools that
-set the scene (navigate_to, select_ui, open_ui, show_ui_hints, …) — then a capture of
-the window as the person sees it (capture_view). Whatever shows the signed-in
-person's name or username is blurred; the name is read from the app at run time and
-never written anywhere. The result goes to docs/manual/images/<lang>/<chapter>/.
+set the scene (navigate_to, select_ui, open_ui, …) — then a capture of the window as
+the person sees it (capture_view). A picture can have:
+
+- callouts: targets the app rings, numbered in the picture (1, 2, 3 …), each by its
+  label, its id, or {"help": tooltip}, with "at": corner, above, below, left or right;
+- targets by their English label, translated for French; "=Name" keeps a name the app
+  never translates (a sheet's or popover's, as list_ui_targets' `presented` gives it);
+- crop: [x, y, width, height] in window points;
+- blur, blurFields, blurRects: words, text fields or rectangles to blur;
+- blurRows: {"within": [x, y, w, h], "keep": [".fits", …]}: blur the rows of a list of
+  the person's files, but for those ending so;
+- after: steps that close what the picture opened. A change a step proposes that waits in
+  Pending (an example for the picture) is withdrawn after the picture.
+
+With --private, whatever shows the signed-in person's name or username is blurred too;
+the name is read from the app at run time and never written anywhere. The result goes
+to docs/manual/images/<lang>/<chapter>/.
 
 The app's language is the person's setting (Settings ▸ General ▸ Language). Set it,
 then run once per language:
@@ -28,12 +41,12 @@ import sys
 import threading
 import time
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SHOTS = os.path.join(ROOT, 'docs', 'manual', 'pictures.json')
 IMAGES = os.path.join(ROOT, 'docs', 'manual', 'images')
-WIDTH = 1600                # a whole window's picture, in pixels
+PIXELS_PER_POINT = 1.06     # every picture at one scale: the main window is about 1600 px wide
 SIZE_LIMIT = 390 * 1024     # the coverage check allows 400 KB
 BANNER_SECONDS = 4          # the "AI agent is working…" banner lingers 3 s after a call
 
@@ -122,11 +135,15 @@ def french_labels():
 
 
 def localized(value, labels, key=None):
-    """Targets named by their English label, in the app's language."""
+    """Targets named by their English label, in the app's language; {"en": …, "fr": …} as the run's."""
     if isinstance(value, dict):
+        if set(value) == {'en', 'fr'}:
+            return value['fr' if labels else 'en']
         return {k: localized(v, labels, k) for k, v in value.items()}
     if isinstance(value, list):
         return [localized(v, labels, key) for v in value]
+    if isinstance(value, str) and value.startswith('='):
+        return value[1:]                      # a name the app never translates: a sheet's, a popover's
     if isinstance(value, str) and key in ('target', 'contains') and labels:
         return labels.get(value, value)
     return value
@@ -139,20 +156,66 @@ def personal_terms(session):
     return [t for t in (auth.get('displayName'), auth.get('username')) if t]
 
 
-def boxes(session, words):
+def boxes(session, words, fields=()):
+    """Where the words show, and the named fields, whose values the listing does not give."""
     found = []
     for word in words:
         listing = text_of(session.call('list_ui_targets', {'kind': 'all', 'contains': word, 'limit': 500}))
         found += [t['at'] for t in (listing or {}).get('targets', []) if t.get('at')]
+    for name in fields:
+        listing = text_of(session.call('list_ui_targets', {'kind': 'all', 'contains': name, 'limit': 500}))
+        found += [t['at'] for t in (listing or {}).get('targets', [])
+                  if t.get('at') and t.get('name') == name and t.get('kind') in ('textField', 'secureField')]
     return found
+
+
+def ring(session, shot, labels):
+    """Ring each callout's target in the app; answer where each is, in points, in order."""
+    callouts = [c if isinstance(c, dict) else {'target': c} for c in shot.get('callouts', [])]
+    if not callouts:
+        return []
+    if any('help' in c for c in callouts):
+        # A control named after the person (the account menu) is found by its tooltip.
+        listing = text_of(session.call('list_ui_targets', {'limit': 500}))
+        by_help = {t.get('help'): t['id'] for t in listing.get('targets', []) if t.get('help')}
+        for c in callouts:
+            if 'help' in c:
+                c['target'] = by_help.get(labels.get(c['help'], c['help']), c['help'])
+    hints = [{'target': localized(c, labels)['target'], 'style': 'ring'} for c in callouts]
+    shown = text_of(session.call('show_ui_hints', {'mode': 'replace', 'untilClosed': True, 'hints': hints}))
+    if shown.get('missing'):
+        print(f'  {shot["name"]}: no callout target for {shown["missing"]}')
+    placed = []
+    for callout, hint in zip(callouts, shown.get('shown', [])):
+        listing = text_of(session.call('list_ui_targets', {'kind': 'all', 'contains': hint['id'], 'limit': 50}))
+        at = next((t['at'] for t in listing.get('targets', []) if t.get('id') == hint['id']), None)
+        if at:
+            placed.append((at, callout.get('at', 'corner')))
+    return placed
+
+
+def badge(draw, number, rect, where, font):
+    """A numbered badge by the ringed element: at its top-right corner, or above, below, left, right."""
+    x, y, w, h = rect
+    radius = 13
+    cx, cy = {'corner': (x + w, y), 'above': (x + w / 2, y - radius - 4),
+              'below': (x + w / 2, y + h + radius + 4), 'left': (x - radius - 4, y + h / 2),
+              'right': (x + w + radius + 4, y + h / 2)}[where]
+    draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=(10, 132, 255),
+                 outline=(255, 255, 255), width=2)
+    draw.text((cx, cy), str(number), fill=(255, 255, 255), font=font, anchor='mm')
 
 
 def shoot(session, shot, lang, labels, private):
     session.call('clear_ui_hints', {})
+    proposals = []
     for tool, arguments in shot.get('steps', []):
         answer = text_of(session.call(tool, localized(arguments, labels)))
         if isinstance(answer, dict) and answer.get('missing'):
             print(f'  {shot["name"]}: {tool} found nothing for {answer["missing"]}')
+        if isinstance(answer, dict) and answer.get('proposalID') and not answer.get('applied'):
+            proposals.append(answer['proposalID'])   # an example that waits in Pending
+    callouts = ring(session, shot, labels)
     time.sleep(shot.get('settle', 0) + BANNER_SECONDS)
 
     answer = session.call('capture_view', {'maxPixels': 2048})
@@ -167,17 +230,41 @@ def shoot(session, shot, lang, labels, private):
     scale = picture.width / frame['points']['width']
 
     pad = 3
-    for x, y, w, h in boxes(session, private + shot.get('blur', [])) + shot.get('blurRects', []):
+    fields = [localized({'target': f}, labels)['target'] for f in shot.get('blurFields', [])]
+    rects = boxes(session, private + shot.get('blur', []), fields) + shot.get('blurRects', [])
+    if 'blurRows' in shot:
+        # A list of the person's own files: only the rows the picture is about stay readable.
+        ax, ay, aw, ah = shot['blurRows']['within']
+        keep = tuple(shot['blurRows'].get('keep', []))
+        listing = text_of(session.call('list_ui_targets', {'kind': 'all', 'limit': 500}))
+        rects += [t['at'] for t in listing.get('targets', [])
+                  if t.get('kind') == 'row' and t.get('at')
+                  and ax <= t['at'][0] and t['at'][0] + t['at'][2] <= ax + aw
+                  and ay <= t['at'][1] and t['at'][1] + t['at'][3] <= ay + ah
+                  and not t.get('name', '').split(', ')[0].lower().endswith(keep)]   # "name, size"
+    for x, y, w, h in rects:
         box = tuple(round(v * scale) for v in (x - pad, y - pad, x + w + pad, y + h + pad))
         region = picture.crop(box)
         small = region.resize((max(1, region.width // 12), max(1, region.height // 12)))
         picture.paste(small.resize(region.size).filter(ImageFilter.GaussianBlur(6)), box)
 
+    left, top = 0, 0
     if 'crop' in shot:
-        x, y, w, h = shot['crop']
-        picture = picture.crop(tuple(round(v * scale) for v in (x, y, x + w, y + h)))
-    factor = WIDTH / (frame['points']['width'] * scale)
+        left, top, w, h = shot['crop']
+        picture = picture.crop(tuple(round(v * scale) for v in (left, top, left + w, top + h)))
+    factor = PIXELS_PER_POINT / scale
     picture = picture.resize((round(picture.width * factor), round(picture.height * factor)), Image.LANCZOS)
+
+    if callouts:
+        draw = ImageDraw.Draw(picture)
+        try:
+            font = ImageFont.truetype('/System/Library/Fonts/Helvetica.ttc', 15)
+        except OSError:
+            font = ImageFont.load_default()
+        for number, ((x, y, w, h), where) in enumerate(callouts, 1):
+            rect = ((x - left) * PIXELS_PER_POINT, (y - top) * PIXELS_PER_POINT,
+                    w * PIXELS_PER_POINT, h * PIXELS_PER_POINT)
+            badge(draw, number, rect, where, font)
 
     folder = os.path.join(IMAGES, lang, shot['chapter'])
     os.makedirs(folder, exist_ok=True)
@@ -188,6 +275,8 @@ def shoot(session, shot, lang, labels, private):
                          dither=Image.Dither.NONE).save(path, optimize=True)
     for tool, arguments in shot.get('after', []):
         session.call(tool, localized(arguments, labels))
+    for proposal in proposals:
+        session.call('withdraw_proposal', {'id': proposal})
     print(f'  {os.path.relpath(path, ROOT)}  {picture.width}×{picture.height}  '
           f'{os.path.getsize(path) // 1024} KB')
 
@@ -198,6 +287,7 @@ def main():
     parser.add_argument('--only', help='comma-separated picture names')
     parser.add_argument('--app', default='/Applications/Verbinal.app')
     parser.add_argument('--held', metavar='DIR', help='use a session another helper already holds')
+    parser.add_argument('--private', action='store_true', help="blur the signed-in person's name and username")
     args = parser.parse_args()
 
     with open(SHOTS, encoding='utf-8') as f:
@@ -225,7 +315,7 @@ def main():
     if localized({'target': 'Portal'}, labels)['target'] not in names:
         sys.exit(f'Verbinal is not in {args.lang}: set Settings ▸ General ▸ Language first. ({landing})')
 
-    private = personal_terms(session)
+    private = personal_terms(session) if args.private else []
     print(f'{len(shots)} picture(s), in {args.lang}:')
     for shot in shots:
         shoot(session, shot, args.lang, labels, private)

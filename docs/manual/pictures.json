@@ -3,7 +3,451 @@
     {
       "name": "home",
       "chapter": "01-getting-started",
-      "steps": [["navigate_to", {"mode": "landing"}]]
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "toolbar",
+      "chapter": "01-getting-started",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ]
+      ],
+      "callouts": [
+        {
+          "target": "agent.pending",
+          "at": "below"
+        },
+        {
+          "target": "Show file browser",
+          "at": "below"
+        },
+        {
+          "target": "Settings",
+          "at": "below"
+        },
+        {
+          "target": "About Verbinal",
+          "at": "below"
+        },
+        {
+          "help": "Your CADC account",
+          "at": "below"
+        }
+      ],
+      "crop": [
+        1150,
+        28,
+        362,
+        66
+      ]
+    },
+    {
+      "name": "file-browser",
+      "chapter": "01-getting-started",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "panel.fileBrowser"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "panel.fileBrowser"
+          }
+        ]
+      ],
+      "blurRows": {
+        "within": [
+          0,
+          80,
+          270,
+          800
+        ],
+        "keep": [
+          ".fits",
+          ".fz",
+          ".fit",
+          ".fts"
+        ]
+      }
+    },
+    {
+      "name": "about",
+      "chapter": "01-getting-started",
+      "steps": [
+        [
+          "open_ui",
+          {
+            "target": "=About Verbinal"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=About Verbinal"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "features",
+      "chapter": "01-getting-started",
+      "steps": [
+        [
+          "open_ui",
+          {
+            "target": "=Features"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Features"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "setup-wizard",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "open_ui",
+          {
+            "target": "=AI Assistant Setup"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=AI Assistant Setup"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "pending",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "add_guide_tool",
+          {
+            "name": "observing_log_conventions",
+            "description": {
+              "en": "How I name and annotate observing logs.",
+              "fr": "Comment je nomme et annote mes journaux d’observation."
+            },
+            "body": {
+              "en": "Name each log by date and target; note seeing and transparency.",
+              "fr": "Nommez chaque journal par date et cible ; notez le seeing et la transparence."
+            },
+            "why": {
+              "en": "An example for the manual's picture of Pending; it is withdrawn right after.",
+              "fr": "Un exemple pour l’image de En attente dans le manuel ; il est retiré aussitôt après."
+            }
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "=Pending Changes"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Pending Changes"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "hints",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "landing"
+          }
+        ],
+        [
+          "show_ui_hints",
+          {
+            "mode": "replace",
+            "numbered": true,
+            "dim": true,
+            "untilClosed": true,
+            "hints": [
+              {
+                "target": "home.search",
+                "title": {
+                  "en": "Find observations",
+                  "fr": "Trouver des observations"
+                },
+                "text": {
+                  "en": "Start here: search the CADC archive by target or position.",
+                  "fr": "Commencez ici : cherchez dans l’archive du CADC par cible ou par position."
+                }
+              },
+              {
+                "target": "home.research",
+                "title": {
+                  "en": "Keep them",
+                  "fr": "Les garder"
+                },
+                "text": {
+                  "en": "What you keep is in Research, with your notes.",
+                  "fr": "Ce que vous gardez est dans Recherche, avec vos notes."
+                }
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "name": "settings-agent-permissions",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "agent"
+          }
+        ],
+        [
+          "point_at_ui",
+          {
+            "target": "Restore Defaults"
+          }
+        ],
+        [
+          "clear_ui_hints",
+          {}
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "session-logs",
+      "chapter": "12-ai-assistant",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "agent"
+          }
+        ],
+        [
+          "open_ui",
+          {
+            "target": "settings.agent.sessionLogs"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_ui",
+          {
+            "target": "=Session Logs"
+          }
+        ],
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "ai-guide",
+      "chapter": "13-ai-guide",
+      "steps": [
+        [
+          "navigate_to",
+          {
+            "mode": "aiGuide"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "settings-general",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "general"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-portal",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "portal"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-agent",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "agent"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-imageDiscovery",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "imageDiscovery"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-aiCompute",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "aiCompute"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-mcpClients",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "mcpClients"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-endpoints",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "endpoints"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "settings-about",
+      "chapter": "14-settings",
+      "steps": [
+        [
+          "open_settings",
+          {
+            "section": "about"
+          }
+        ]
+      ],
+      "after": [
+        [
+          "close_settings",
+          {}
+        ]
+      ]
     }
   ]
 }
