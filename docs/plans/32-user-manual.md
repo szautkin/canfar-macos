@@ -151,10 +151,36 @@ written.
 
 ## Findings so far (for the app, not this plan)
 
+Found while writing the manual against 1.4.0 (build 17). Each is its own change later.
+
+**Navigation and help**
 - The **Go** menu has no Remote Compute, and calls Home "Landing".
 - **What Verbinal Can Do** has no Cube Viewer, Portal, Remote Compute or Workflows entry.
 - **Verbinal Help** (⌘?) opens the GitHub README. That works with the README's link to the manual, but
-  the manual's own address would be a better target in a later version.
+  the manual's own address would be a better target.
+- ⇧⌘E is bound twice: **File ▸ Export All…** and the Search results' **Export** menu.
+- The Welcome sheet says the assistant has "~60 tools"; it has about 210.
+
+**French**: shown in English, or mistranslated, in the French app
+- Settings: the Portal tab's footnotes, the AI Agent tab's MCP Server footnote, the MCP Clients
+  diagnostics (each check and its detail), the Endpoints groups, service names and the **Default** /
+  **Resolved** badges.
+- AI Guide: the header's counts ("213 tools", "16 categories") and every area's title and description.
+- Search: the **Results (N)** tab.
+- Export Data: the module names **Research** and **Search**.
+- Session Logs: the **Open** badge of a live session reads "Ouvrir" (the verb).
+- "Filter" as a column or field name reads "Filtrer" (the verb): the data train's column, and
+  Research's metadata.
+- The observation detail's **Enregistrer dans Recherche** is cut short ("Enregistrer da…").
+
+**Other**
+- `capture_view` leaves out popovers (Activity, Columns, a result's preview): they are windows of their
+  own. The manual describes them without pictures.
+- The App Store description and the README speak of VizieR cone searches in the app; in the app VizieR
+  is a name resolver, and the cone search is an assistant tool.
+- Research's observations are in Spotlight, but choosing a result only opens Verbinal: nothing shows the
+  observation.
+- CHANGELOG 1.3.4 lists a "Research local FITS import" that was never built.
 
 ## Decisions (the person, 2026-10-07)
 
