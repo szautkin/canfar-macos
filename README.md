@@ -13,6 +13,9 @@ Project home: **[verbinal.com](https://verbinal.com)**
 Available on the **[Mac App Store](https://apps.apple.com/ca/app/verbinal/id6761290036)**,
 and as an unsigned build from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
 
+**User manual:** [English](docs/manual/en/00-contents.md) · [Français](docs/manual/fr/00-contents.md),
+covering every screen, setting and shortcut of Verbinal 1.4.
+
 ## Features
 
 - **Sessions** — launch and manage Notebook, Desktop, CARTA, Contributed, and
@@ -56,8 +59,9 @@ and as an unsigned build from [GitHub Releases](https://github.com/szautkin/canf
   - a session log explains every call, every change and every request to CADC and CANFAR.
 
   A guided setup wizard connects Claude in a few clicks, and an AI Guide tunes what each
-  tool tells the assistant. [AGENTS.md](AGENTS.md) shows how to connect any client;
-  [docs/MCP-Setup.md](docs/MCP-Setup.md) covers how it works.
+  tool tells the assistant. [The manual's chapter 12](docs/manual/en/12-ai-assistant.md) explains it
+  for you, [AGENTS.md](AGENTS.md) shows how to connect any client, and
+  [docs/MCP-Setup.md](docs/MCP-Setup.md) covers how it works inside.
 - **Privacy first** — no analytics or telemetry; credentials live in the macOS Keychain;
   all traffic goes directly to CANFAR/CADC over HTTPS.
 - **Localized and accessible** — full English and French interfaces, with VoiceOver

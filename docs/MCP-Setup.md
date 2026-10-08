@@ -5,6 +5,10 @@ client like Claude Desktop can search the CADC archive, read observation
 metadata, propose downloads, and prepare science-platform sessions on the
 user's behalf — under user-confirmed control via the proposal strip.
 
+This page is how it works inside. For the person's side of it (allowing a session, what an assistant
+may do without asking, Pending, hints and the session log), see the user manual,
+[Working with an AI assistant](manual/en/12-ai-assistant.md).
+
 ## How it's wired
 
 ```
