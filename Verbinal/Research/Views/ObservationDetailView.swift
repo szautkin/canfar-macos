@@ -23,6 +23,56 @@ struct ObservationDetailView: View {
     /// button can name the Cube Viewer the router will actually pick.
     @State private var isCube = false
 
+    /// The file the person asked to remove (plan 34 F).
+    @State private var removingFile: KeptFile?
+
+    /// Its other files, downloaded one by one from the Files tab or by an
+    /// assistant (plan 34 F): where each is, open, show, remove.
+    private var keptFilesList: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Files")
+                .font(.subheadline.bold())
+            ForEach(observation.keptFiles) { file in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(file.name)
+                            .font(.callout)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Text(DownloadsFolder.displayPath(file.localPath))
+                            .font(.caption)
+                            .foregroundStyle(file.local.exists ? Color.secondary : Color.orange)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                    }
+                    Spacer()
+                    if let size = file.size {
+                        Text(SharedFormatters.bytes(size))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    KeptFileButtons(file: file, research: model) { removingFile = file }
+                }
+            }
+        }
+        .uiPresented("Remove a File?", .confirmation, item: $removingFile)
+        .confirmationDialog(String(localized: "Remove \(removingFile?.name ?? "")?"), isPresented: Binding(
+            get: { removingFile != nil }, set: { if !$0 { removingFile = nil } })) {
+            Button("Remove File", role: .destructive) {
+                guard let file = removingFile else { return }
+                removingFile = nil
+                Task {
+                    do { try await model.removeFile(named: file.name, of: observation) } catch {
+                        removeFileError = String(localized: "Could not remove the file: \(error.localizedDescription)")
+                    }
+                }
+            }
+        } message: {
+            Text("The file is deleted from this computer. The observation stays in Research, with its notes, and you can download the file again.")
+        }
+    }
+
     private var title: String {
         observation.targetName.isEmpty ? observation.observationID : observation.targetName
     }
@@ -220,6 +270,10 @@ struct ObservationDetailView: View {
 
                 if let removeFileError {
                     Text(removeFileError).font(.caption).foregroundStyle(.red)
+                }
+
+                if !observation.keptFiles.isEmpty {
+                    keptFilesList
                 }
 
                 Divider()

@@ -18,7 +18,13 @@ in. Open it from its Home tile, or **Go ▸ Research** (⌘2).
 
 From [Search](02-search.md), in an observation's detail or a result's right-click menu:
 
-- **Download** fetches the file, asks where to save it, and keeps the observation here with it.
+- **Download** fetches the file into your download folder, and keeps the observation here with it.
+- The download button of a file in the detail's **Files** tab keeps that file with the observation,
+  beside its main file.
+
+Downloads go to your download folder, never over another file: **Downloads** unless you choose another
+in **Settings ▸ General ▸ Downloads**, or with **Change…** where you download. Research keeps where each
+file went.
 - **Save to Research** keeps the observation without its file, for notes now and a download later.
 - **Download Cutout** keeps the cutout here, linked to its original observation.
 
@@ -42,6 +48,9 @@ Select a row to see the observation: its preview, target, collection and observa
   **Dec**, **Start Date**, **Cal. Level**.
 - **File Info**: the file's **Path**, **Size**, when it was **Downloaded**, and whether it **Exists**.
   For an observation kept without its file, **File** says **Not downloaded**.
+- **Files**: the observation's other files, downloaded one by one from the **Files** tab or by an
+  assistant: each with where it is and its size, and buttons to open it, show it in the Finder, and
+  remove it. The trash asks first; the observation and its notes stay.
 
 Its buttons:
 
@@ -55,7 +64,7 @@ Its buttons:
 | **Download** | For an observation kept without its file: fetches it into this same record, with its notes. |
 | **Download Again** | When the file is missing, cannot be opened, or is empty: fetches it again. |
 | **Remove File…** | Deletes the file from this Mac; the observation, its details and notes stay, and **Download** fetches it again. |
-| **Delete** | Removes the observation from Research, and its file from your disk. This cannot be undone. Your notes are kept: if you keep the observation again, they come back. |
+| **Delete** | Removes the observation from Research, and its files from your disk. This cannot be undone. Your notes are kept: if you keep the observation again, they come back. |
 
 ### Cutouts
 
@@ -99,5 +108,6 @@ storage. A notification tells you when an export finishes.
 ## What an assistant can do here
 
 It can list and read your observations and notes, write notes, tags and ratings (up to 50 at once),
-open files in the viewers, download what you kept without a file, cut out, and export. Removing a file
+open files in the viewers, download what you kept without a file or one file of an observation, cut
+out, and export. Removing a file
 or an observation waits for you unless you allowed that kind of change.

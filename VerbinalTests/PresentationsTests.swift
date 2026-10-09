@@ -56,7 +56,6 @@ final class PresentationsTests: XCTestCase {
             "Launch Progress": "follows a launch",
             "Relaunch Progress": "follows a relaunch",
             "Session Action": "follows a session's action",
-            "Save Observation": "follows a download; download_observation saves without it",
             "Re-grant Access": "the app asks, when a saved file must be allowed again",
             "Save Figure": "a choice in an export sheet's Save menu, the person's; export_fits_figure and export_cube_figure write figures",
             "Save Results": "a choice in the Export menu, the person's; export_search_results writes them",

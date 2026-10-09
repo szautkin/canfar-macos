@@ -245,7 +245,7 @@ struct ObservationDetailViewer: View {
         switch selectedTab {
         case .overview:   ObservationOverviewSection(model: model)
         case .coverage:   ObservationCoverageSection(model: model)
-        case .files:      ObservationFilesSection(model: model)
+        case .files:      ObservationFilesSection(model: model, research: researchModel, dataLink: dataLink)
         case .provenance: ObservationProvenanceSection(model: model)
         case .raw:        ObservationRawSection(model: model)
         }

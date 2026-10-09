@@ -20,6 +20,8 @@ final class ResearchModel {
     /// Cuts part of an observation's file on CADC's side.
     let cutoutService: CutoutService
     let noteStore: ObservationNoteStore
+    /// An observation's files, one by one (plan 34 F).
+    let files: ResearchFiles
     #if os(macOS)
     let exportService = ExportService()
     #endif
@@ -66,6 +68,8 @@ final class ResearchModel {
         self.downloadService = downloadService
         self.noteStore = noteStore ?? ObservationNoteStore()
         self.cutoutService = CutoutService(downloads: downloadService)
+        self.files = ResearchFiles(store: self.observationStore, downloads: downloadService)
+        files.onNewRecord = { [weak self] record in self?.completeFromArchive(record) }
     }
 
     var filteredObservations: [DownloadedObservation] {
@@ -123,9 +127,10 @@ final class ResearchModel {
         }
     }
 
-    /// Fetch `record`'s file, let the person choose where it goes, and keep
-    /// the record with it — the same record (id, notes) when Research
-    /// already has the observation, as for one kept without its file.
+    /// Fetch `record`'s file into the download folder, and keep the record
+    /// with it — the same record (id, notes) when Research already has the
+    /// observation, as for one kept without its file. No question: the
+    /// person sees and chooses the folder (plan 34 F).
     func download(_ record: DownloadedObservation) async {
         let downloadID = UUID()
         activeDownloads[downloadID] = DownloadProgress(id: downloadID, observation: record)
@@ -146,38 +151,21 @@ final class ResearchModel {
 
             activeDownloads[downloadID]?.state = .completed
 
-            // Step 2: Let user choose save location
-            #if os(macOS)
-            let saveResult = await presentSavePanel(suggestedFilename: suggestedFilename, tempURL: tempURL)
-            #else
-            let saveResult: SaveResult? = nil
-            #endif
+            // Step 2: into the download folder, never over another file.
+            let placed = try await DownloadPlacement.place(tempURL, named: suggestedFilename, downloads: downloadService)
+            let companionNote = placeCompanions(companions, beside: URL(fileURLWithPath: placed.localPath))
 
-            guard let saveResult else {
-                // User cancelled — clean up temp. A failure here (orphaned
-                // temp file, read-only temp dir) is logged under category
-                // Downloads rather than swallowed, but must not interrupt the
-                // cancel flow, so we don't propagate it.
-                await downloadService.deleteFileLoggingFailure(at: tempURL)
-                for companion in companions { await downloadService.deleteFileLoggingFailure(at: companion) }
-                activeDownloads.removeValue(forKey: downloadID)
-                return
-            }
-            let finalURL = saveResult.url
-            let companionNote = placeCompanions(companions, beside: finalURL)
-
-            // Step 3: Get file size and store metadata (with the security-
-            // scoped bookmark we captured during the save panel session).
+            // Step 3: keep it, with the bookmark that opens it again.
             var observation = record
-            observation.localPath = finalURL.path
-            observation.bookmarkData = saveResult.bookmarkData
-            observation.fileSize = await downloadService.fileSize(at: finalURL)
+            observation.localPath = placed.localPath
+            observation.bookmarkData = placed.bookmark
+            observation.fileSize = placed.size
             observation.downloadedAt = Date()
 
             let stored = observationStore.save(observation)
             if selectedObservation?.recordKey == stored.recordKey { selectedObservation = stored }
             completeFromArchive(stored)
-            lastSuccess = String(localized: "Saved: \(suggestedFilename)") + (companionNote.map { " — \($0)" } ?? "")
+            lastSuccess = String(localized: "Saved in \(DownloadsFolder.url.lastPathComponent): \((placed.localPath as NSString).lastPathComponent)") + (companionNote.map { " — \($0)" } ?? "")
 
             // Clean up active download indicator
             scheduleStatusDismiss(after: 2) { [weak self] in
@@ -280,10 +268,13 @@ final class ResearchModel {
     /// Delete `observation`'s file from this computer and keep the
     /// observation — its details and notes — so Download brings it back.
     func removeFile(_ observation: DownloadedObservation) async throws {
-        if let url = observation.resolvedReadableURL {
-            try await downloadService.deleteFile(at: url)
-        }
-        if let kept = observationStore.forgetFile(of: observation.id), selectedObservation?.id == kept.id {
+        try await removeFile(named: observation.mainFile.name, of: observation)
+    }
+
+    /// Delete `observation`'s file `name` — one of its files, or its main
+    /// one — from this computer, and keep the observation (plan 34 F).
+    func removeFile(named name: String, of observation: DownloadedObservation) async throws {
+        if let kept = try await files.remove(fileNamed: name, of: observation.id), selectedObservation?.id == kept.id {
             selectedObservation = kept
         }
     }
@@ -313,8 +304,9 @@ final class ResearchModel {
     // MARK: - File Management
 
     func deleteObservation(_ observation: DownloadedObservation) {
-        // No file, nothing to delete — an empty path is the working directory.
-        let url = observation.isDownloaded ? URL(fileURLWithPath: observation.localPath) : nil
+        // Its files, the main one and the others (plan 34 F); an empty path
+        // is the working directory, never one of them.
+        let urls = observation.localFiles.compactMap { $0.readableURL ?? $0.url }
         // Delete the file off the main actor (DownloadService is an actor),
         // then apply the @Observable state mutations explicitly back on the
         // MainActor. The closure already inherits this model's @MainActor
@@ -325,7 +317,7 @@ final class ResearchModel {
             // The file may already be gone (handled as a no-op). Any genuine
             // deletion failure is logged under category Downloads for
             // diagnostics rather than surfaced to the user mid-delete.
-            if let url { await self?.downloadService.deleteFileLoggingFailure(at: url) }
+            for url in urls { await self?.downloadService.deleteFileLoggingFailure(at: url) }
             guard let self else { return }
             // Remove metadata only after file deletion is attempted.
             self.observationStore.remove(observation)
@@ -336,6 +328,26 @@ final class ResearchModel {
     }
 
     #if os(macOS)
+    /// Opens one of a record's files (plan 34 F) as `openFile` opens its
+    /// main one: a FITS file in Verbinal, anything else in its app.
+    func open(_ file: KeptFile) {
+        guard file.local.exists else { return }
+        let url = file.local.bookmarked()?.url ?? file.local.readableURL ?? URL(fileURLWithPath: file.localPath)
+        if FileHelper.isFITS(url.pathExtension.lowercased()) {
+            onOpenFile?(url)
+        } else {
+            let didStart = url.startAccessingSecurityScopedResource()
+            NSWorkspace.shared.open(url)
+            if didStart { url.stopAccessingSecurityScopedResource() }
+        }
+    }
+
+    /// Shows one of a record's files in the Finder.
+    func reveal(_ file: KeptFile) {
+        let url = file.local.bookmarked()?.url ?? file.local.readableURL ?? URL(fileURLWithPath: file.localPath)
+        NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
+    }
+
     func revealInFinder(_ observation: DownloadedObservation) {
         guard observation.isDownloaded else { return }
         let url = resolvedURL(for: observation) ?? URL(fileURLWithPath: observation.localPath)
@@ -460,62 +472,6 @@ final class ResearchModel {
             onOpenFile?(pickedURL)
         } else {
             NSWorkspace.shared.open(pickedURL)
-        }
-    }
-    #endif
-
-    // MARK: - Save Panel
-
-    /// Result of a successful save: the on-disk URL plus a security-scoped
-    /// bookmark so the sandbox can re-grant access on future launches.
-    /// `bookmarkData` is `nil` only when bookmark capture itself failed —
-    /// the file is saved, the open path will fall back to the re-grant flow.
-    struct SaveResult {
-        let url: URL
-        let bookmarkData: Data?
-    }
-
-    #if os(macOS)
-    @MainActor
-    private func presentSavePanel(suggestedFilename: String, tempURL: URL) async -> SaveResult? {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = suggestedFilename
-        panel.canCreateDirectories = true
-        panel.title = String(localized: "Save Observation")
-        panel.message = String(localized: "Choose where to save the downloaded observation file.")
-
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-        let verbinalDir = docs?.appendingPathComponent("Verbinal")
-        if let verbinalDir, FileManager.default.fileExists(atPath: verbinalDir.path) {
-            panel.directoryURL = verbinalDir
-        } else {
-            panel.directoryURL = docs
-        }
-
-        let response = await UIPresentations.shared.runModal(panel, "Save Observation")
-        guard response == .OK, let saveURL = panel.url else { return nil }
-        return moveToFinal(from: tempURL, to: saveURL)
-    }
-
-    /// Move the downloaded temp file into the user-picked location and
-    /// capture a security-scoped bookmark while we still hold the
-    /// `NSSavePanel`-issued grant. The bookmark is what lets `openFile`
-    /// read the file in subsequent launches without prompting again.
-    private func moveToFinal(from tempURL: URL, to saveURL: URL) -> SaveResult? {
-        do {
-            try FileHelper.moveReplacing(from: tempURL, to: saveURL)
-            // Capture the bookmark *after* the move so the URL points at a
-            // file that exists; capture failure is non-fatal — we still
-            // keep the saved file and surface a re-grant prompt later.
-            let bookmark = try? saveURL.bookmarkData(
-                options: .withSecurityScope,
-                includingResourceValuesForKeys: nil,
-                relativeTo: nil
-            )
-            return SaveResult(url: saveURL, bookmarkData: bookmark)
-        } catch {
-            lastError = String(localized: "Failed to save: \(error.localizedDescription)")
-            return nil
         }
     }
     #endif

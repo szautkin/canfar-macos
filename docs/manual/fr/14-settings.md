@@ -11,6 +11,7 @@ IA peut en lire certains, jamais les modifier.
 | Réglage | Ce qu’il fait |
 |---|---|
 | **Langue** | **Système** suit votre Mac ; ou choisissez **Anglais** ou **Français**. Verbinal affiche **Redémarrage requis** : cliquez sur **Redémarrer maintenant** pour l’appliquer. |
+| **Téléchargements** ▸ **Dossier de téléchargement** | Où Verbinal enregistre ce que vous téléchargez : une observation et ses fichiers, les découpes, les figures, les exports. **Téléchargements** jusqu’à ce que vous le changiez avec **Modifier…** ; **Afficher dans le Finder** le montre ; **Utiliser Téléchargements** y revient. Quand le dossier choisi n’est pas là (un disque non branché), les téléchargements vont dans Téléchargements, et ce réglage le dit. |
 
 ## Portail
 

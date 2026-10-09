@@ -11,6 +11,7 @@ them.
 | Setting | What it does |
 |---|---|
 | **Language** | **System** follows your Mac; or choose **English** or **Français**. Verbinal shows **Restart required**: click **Restart Now** to apply it. |
+| **Downloads** ▸ **Download folder** | Where Verbinal saves what you download: an observation and its files, cutouts, figures, exports. **Downloads** until you **Change…** it; **Show in Finder** shows it; **Use Downloads** goes back. When the folder you chose is not there (a drive not connected), downloads go to Downloads, and this says so. |
 
 ## Portal
 

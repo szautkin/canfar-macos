@@ -44,6 +44,9 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// Set for a cutout — part of one of the observation's files — kept
     /// beside the complete observation, never as the whole of it.
     var cutout: CutoutSpec? = nil
+    /// The observation's other files on this computer (plan 34 F); nil for
+    /// none, so records kept before read as they were written.
+    var files: [KeptFile]? = nil
 
     var isCutout: Bool { cutout != nil }
 
@@ -81,17 +84,16 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// missing from disk — see `fileExists`).
     var isDownloaded: Bool { !localPath.isEmpty }
 
+    /// The observation's main file, as Research reaches it.
+    var mainFile: LocalFile { LocalFile(path: localPath, bookmarkData: bookmarkData) }
+
     /// Full local file URL; nil when there is no file. Prefers a
     /// sandbox-readable candidate (tilde expansion, container ↔
     /// user-facing Downloads) so FITS tools and the research archive agree
-    /// on whether the file is there. Never the empty path, which is the
-    /// working directory.
-    var localURL: URL? {
-        guard isDownloaded else { return nil }
-        return resolvedReadableURL ?? URL(fileURLWithPath: expandedLocalPath)
-    }
+    /// on whether the file is there.
+    var localURL: URL? { mainFile.url }
 
-    /// The same observation without its file.
+    /// The same observation without its main file; its other files stay.
     func withoutFile() -> DownloadedObservation {
         var record = self
         record.localPath = ""
@@ -103,71 +105,68 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// Whether the local file still exists on disk — including the
     /// sandbox-mapped Downloads twin of `localPath`. Do not treat a
     /// raw-string miss as "file gone"; the bookmark may still open it.
-    /// The file is there — found through its bookmark or at its path.
-    var fileExists: Bool {
-        withReadableFile { FileManager.default.fileExists(atPath: $0.path) } ?? false
-    }
+    var fileExists: Bool { mainFile.exists }
 
     /// What is wrong with the kept file — missing, unreadable, empty, an
     /// empty archive — or nil when it holds something; nil too for a record
     /// kept without a file.
-    var fileProblem: DownloadedFileCheck.Problem? {
-        guard isDownloaded else { return nil }
-        return withReadableFile { DownloadedFileCheck.problem(at: $0) } ?? .missing
-    }
+    var fileProblem: DownloadedFileCheck.Problem? { mainFile.problem }
 
     /// The file through its security-scoped bookmark — how Verbinal reaches
     /// a file outside its own folders, such as one saved to ~/Documents —
     /// and whether the bookmark wants renewing; nil without a bookmark, or
     /// when it no longer resolves.
-    func bookmarkedFile() -> (url: URL, stale: Bool)? {
-        #if os(macOS)
-        guard let data = bookmarkData else { return nil }
-        var stale = false
-        guard let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope],
-                                 relativeTo: nil, bookmarkDataIsStale: &stale) else { return nil }
-        return (url, stale)
-        #else
-        return nil
-        #endif
-    }
+    func bookmarkedFile() -> (url: URL, stale: Bool)? { mainFile.bookmarked() }
 
     /// Runs `body` on the record's file, opened as Verbinal may open it:
     /// through its bookmark first (with the access that grants), else at
     /// its path. Nil when there is no file to open. The one way every
     /// reader of a record's file gets at it.
     func withReadableFile<T>(_ body: (URL) throws -> T) rethrows -> T? {
-        guard isDownloaded else { return nil }
-        if let bookmarked = bookmarkedFile()?.url, bookmarked.startAccessingSecurityScopedResource() {
-            defer { bookmarked.stopAccessingSecurityScopedResource() }
-            return try body(bookmarked)
-        }
-        guard let url = resolvedReadableURL else { return nil }
-        return try body(url)
+        try mainFile.withReadable(body)
     }
 
     /// First existing file URL for `localPath`, or `nil` if none of the
     /// sandbox/tilde candidates exist. Bookmark resolution is separate
     /// (FITS tools try the bookmark even when this is nil).
-    var resolvedReadableURL: URL? {
-        guard isDownloaded else { return nil }
-        #if os(macOS)
-        return LocalFolderAccessStore.readableURL(for: localPath, directory: false)
-        #else
-        var isDir: ObjCBool = false
-        let path = expandedLocalPath
-        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir),
-              !isDir.boolValue else { return nil }
-        return URL(fileURLWithPath: path)
-        #endif
+    var resolvedReadableURL: URL? { mainFile.readableURL }
+
+    // MARK: - Its other files (plan 34 F)
+
+    /// The files downloaded one by one — from the Files tab, or an
+    /// assistant's `download_observation` with `file` — beside the main one.
+    var keptFiles: [KeptFile] { files ?? [] }
+
+    /// Every file Research keeps for it: the main one, then the others.
+    var localFiles: [LocalFile] { (isDownloaded ? [mainFile] : []) + keptFiles.map(\.local) }
+
+    /// The kept file of that name, the main one included.
+    func keptFile(named name: String) -> KeptFile? {
+        if let file = keptFiles.first(where: { $0.name == name }) { return file }
+        guard isDownloaded, (localPath as NSString).lastPathComponent == name else { return nil }
+        return KeptFile(name: name, localPath: localPath, bookmarkData: bookmarkData, size: fileSize,
+                        downloadedAt: downloadedAt, agentAttribution: agentAttribution, isMain: true)
     }
 
-    private var expandedLocalPath: String {
-        #if os(macOS)
-        return LocalFolderAccessStore.expandedPath(localPath)
-        #else
-        return (localPath as NSString).expandingTildeInPath
-        #endif
+    /// The same observation with `file`, in place of one of the same name.
+    func keeping(_ file: KeptFile) -> DownloadedObservation {
+        var record = self
+        var list = keptFiles.filter { $0.name != file.name }
+        list.append(file)
+        record.files = list
+        return record
+    }
+
+    /// The same observation without its file `name`: the main one when that
+    /// is its name.
+    func forgetting(fileNamed name: String) -> DownloadedObservation {
+        if keptFiles.contains(where: { $0.name == name }) {
+            var record = self
+            let list = keptFiles.filter { $0.name != name }
+            record.files = list.isEmpty ? nil : list
+            return record
+        }
+        return keptFile(named: name)?.isMain == true ? withoutFile() : self
     }
 
     /// Display filename extracted from the local path; empty without a file.

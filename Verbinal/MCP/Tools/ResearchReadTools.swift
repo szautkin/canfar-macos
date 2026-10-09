@@ -44,6 +44,9 @@ struct ListDownloadedObservationsTool: JSONReadTool {
             /// malformed publisher id, its observation kept already. The
             /// person's to delete.
             let duplicateOf: String?
+            /// Its other files on this computer, downloaded one by one
+            /// (plan 34 F); absent when there are none.
+            let files: [FileOut]?
 
             init(_ obs: DownloadedObservationOut) {
                 id = obs.id
@@ -63,6 +66,7 @@ struct ListDownloadedObservationsTool: JSONReadTool {
                 fileSize = obs.fileSize
                 downloadedAtISO = SharedFormatters.iso8601.string(from: obs.downloadedAt)
                 duplicateOf = obs.duplicateOf
+                files = obs.files.isEmpty ? nil : obs.files
             }
         }
     }
@@ -108,7 +112,7 @@ struct GetDownloadedObservationTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_downloaded_observation",
-        description: "Fetch one Research record by its id (UUID, or a unique prefix of it), its publisher id, or its observation id. A miss that is one digit off an id names the id it most likely means.",
+        description: "Fetch one Research record by its id (UUID, or a unique prefix of it), its publisher id, or its observation id: its main file (`localPath`), and its other `files` downloaded one by one. A miss that is one digit off an id names the id it most likely means.",
         schema: #"""
         {
           "type": "object",
@@ -192,6 +196,15 @@ struct GetObservationNotesTool: JSONReadTool {
 
 /// Decoupling DTOs: the tools take these flat records via injected
 /// closures, so they don't depend on the app-side model types directly.
+/// One of a record's files, as a tool says it (plan 34 F).
+struct FileOut: Encodable, Sendable {
+    let name: String
+    let localPath: String
+    let fileExists: Bool
+    let size: Int64?
+    let downloadedAtISO: String
+}
+
 struct DownloadedObservationOut: Sendable {
     let id: String
     let publisherID: String
@@ -209,6 +222,7 @@ struct DownloadedObservationOut: Sendable {
     var cutout: CutoutSpec? = nil
     /// The record this one duplicates, when it was kept under a malformed id.
     var duplicateOf: String? = nil
+    var files: [FileOut] = []
 }
 
 struct ObservationNoteOut: Sendable {

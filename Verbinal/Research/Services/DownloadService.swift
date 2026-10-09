@@ -58,6 +58,21 @@ actor DownloadService {
         }
     }
 
+    /// Fetches one of the observation's files by its archive URI —
+    /// `cadc:CFHT/1525350p.fits.fz`, as the Files tab lists it, any plane's
+    /// (plan 34 F).
+    func downloadToTemp(artifactURI uri: String, publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
+        let name = (uri as NSString).lastPathComponent
+        return try await tasks.track(.download, Self.label(publisherID, file: name)) { _ in
+            try await self.changes.run("download_observation", "\(name) of observation \(publisherID)") {
+                guard let url = self.endpoints.dataPubURL(forArtifactURI: uri) else {
+                    throw SearchError.networkError("\(uri) has no download address")
+                }
+                return try await self.fetchToTemp(url: url, publisherID: publisherID, suggested: name)
+            }
+        }
+    }
+
     private func fetch(_ file: String, of publisherID: String) async throws -> (tempURL: URL, suggestedFilename: String) {
         if let link = await resolveDataLink(publisherID: publisherID).directFiles.first(where: { $0.filename == file }) {
             return try await fetchToTemp(url: link.url, publisherID: publisherID, suggested: file)

@@ -71,7 +71,7 @@ extension AppState {
                     (self.researchModel.cutoutMaker(for: payload.spec.cutBy), self.researchModel.downloadService)
                 }
                 let files = try await maker.make(publisherID: payload.publisherId, spec: payload.spec)
-                let placed = try await placeInDownloads(tempURL: files.cutout, suggestedFilename: payload.spec.fileName, downloadService: downloads)
+                let placed = try await DownloadPlacement.place(files.cutout, named: payload.spec.fileName, downloads: downloads)
                 // Companions go beside it, named by the same key.
                 for companion in files.companions { _ = try? DownloadsFolder.move(companion, named: companion.lastPathComponent) }
                 return await MainActor.run {

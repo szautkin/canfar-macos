@@ -207,6 +207,10 @@ every later agent is told; **read** = pure data.
 | Save to Research (Search detail, row menu) — no file | `save_observation_to_research` | write |
 | Remove File… (Research detail) — keep the observation | `remove_downloaded_file` (always waits for approval) | write |
 | Download a record kept without its file (Research detail, row menu) | `download_observation` (same record, same id) | write |
+| Files tab: download one file into Research (plan 34 F) | `download_observation` with `file` (kept among the record's `files`) | write |
+| Files tab / Research detail: a kept file's trash | `remove_downloaded_file` with `file` | write |
+| A record's files, where each is | `get_downloaded_observation` → `files` | read |
+| Settings ▸ General ▸ Downloads (the download folder) | — the person's own; each download's answer says where it went | — |
 | Select a record, detail open | `show_research_observation` | live |
 | Cutout record: Original Observation | `show_research_observation` with its publisher id | live |
 | Cut Out… (Search and Research detail): the editor, its file, region, band, checks, size | `show_cutout_editor`; `get_cutout_options` | live/read |
@@ -233,6 +237,8 @@ every later agent is told; **read** = pure data.
 | "An assistant wants to start a session": who asks, and how it presents itself | `start_session` (`agent`, `model`, `purpose`) opens it | session control |
 | Allow, with the session's instructions / Deny | — the person's alone; `start_session` answers the id and the instructions, or `sessionDeclined` | — |
 | Session Instructions (the default every window starts from) | — the person's own | — |
+| Settings ▸ AI Agent ▸ Sessions: End an idle session after (plan 34 S) | — the person's own; `describe_app` → `sessionEndsAfterIdle` | — |
+| A second start_session | `start_session` → `alreadyStarted: true` | session control |
 
 ## Session log (Settings ▸ AI Agent ▸ Session Logs)
 
@@ -244,6 +250,7 @@ every later agent is told; **read** = pure data.
 | What is happening now | `get_session_log` → `now` | read |
 | Export as Text… / as JSON Lines… | `export_session_log` | write |
 | Delete… / Delete All Closed… (never an open session) | `delete_session_logs` | write (destructive) |
+| End Session (plan 34 S) | — the person's own | — |
 | Show in Finder | — (the file path: `export_session_log` answers with it) | — |
 
 ## Wire-name aliases (Windows = canonical)

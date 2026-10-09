@@ -19676,6 +19676,206 @@
           }
         }
       }
+    },
+    "Saving to %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrement dans %@"
+          }
+        }
+      }
+    },
+    "(%@ is not available)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(%@ n’est pas disponible)"
+          }
+        }
+      }
+    },
+    "Change…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier…"
+          }
+        }
+      }
+    },
+    "Download folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dossier de téléchargement"
+          }
+        }
+      }
+    },
+    "%@ is not available: downloads go to Downloads until it is back." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n’est pas disponible : les téléchargements vont dans Téléchargements jusqu’à son retour."
+          }
+        }
+      }
+    },
+    "Use Downloads" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser Téléchargements"
+          }
+        }
+      }
+    },
+    "Where Verbinal saves what you download — an observation and its files, cutouts, figures, exports — never over another file. Research keeps where each file went." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Où Verbinal enregistre ce que vous téléchargez — une observation et ses fichiers, les découpes, les figures, les exports — jamais par-dessus un autre fichier. Recherche garde l’emplacement de chaque fichier."
+          }
+        }
+      }
+    },
+    "Choose the Download Folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir le dossier de téléchargement"
+          }
+        }
+      }
+    },
+    "Choose" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir"
+          }
+        }
+      }
+    },
+    "the chosen folder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "le dossier choisi"
+          }
+        }
+      }
+    },
+    "%@ was not downloaded: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ n’a pas été téléchargé : %2$@"
+          }
+        }
+      }
+    },
+    "Remove %@?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer %@ ?"
+          }
+        }
+      }
+    },
+    "The file is deleted from this computer. The observation stays in Research, with its notes, and you can download the file again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier est supprimé de cet ordinateur. L’observation reste dans Recherche, avec ses notes, et vous pouvez retélécharger le fichier."
+          }
+        }
+      }
+    },
+    "Download into %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger dans %@"
+          }
+        }
+      }
+    },
+    "Downloading %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargement de %@"
+          }
+        }
+      }
+    },
+    "%@ was not removed: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ n’a pas été supprimé : %2$@"
+          }
+        }
+      }
+    },
+    "Open %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir %@"
+          }
+        }
+      }
+    },
+    "Show %@ in Finder" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher %@ dans le Finder"
+          }
+        }
+      }
+    },
+    "Remove %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer %@"
+          }
+        }
+      }
+    },
+    "Saved in %@: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistré dans %1$@ : %2$@"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

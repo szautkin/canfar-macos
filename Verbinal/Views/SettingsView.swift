@@ -152,6 +152,10 @@ private struct GeneralSettingsTab: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
+
+            #if os(macOS)
+            DownloadFolderSection()
+            #endif
         }
         .formStyle(.grouped)
     }

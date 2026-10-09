@@ -21,7 +21,14 @@ tuile de l’accueil, ou par **Aller ▸ Recherche** (⌘2).
 Depuis [Rechercher](02-search.md), dans le détail d’une observation ou le menu du clic droit d’un
 résultat :
 
-- **Télécharger** récupère le fichier, demande où l’enregistrer, et garde ici l’observation avec lui.
+- **Télécharger** récupère le fichier dans votre dossier de téléchargement, et garde ici l’observation
+  avec lui.
+- Le bouton de téléchargement d’un fichier, dans l’onglet **Fichiers** du détail, garde ce fichier avec
+  l’observation, à côté de son fichier principal.
+
+Les téléchargements vont dans votre dossier de téléchargement, jamais par-dessus un autre fichier :
+**Téléchargements**, sauf si vous en choisissez un autre dans **Réglages ▸ Général ▸ Téléchargements**,
+ou avec **Modifier…** là où vous téléchargez. Recherche garde l’emplacement de chaque fichier.
 - **Enregistrer dans Recherche** garde l’observation sans son fichier, pour des notes maintenant et un
   téléchargement plus tard.
 - **Télécharger la découpe** garde ici la découpe, liée à son observation d’origine.
@@ -48,6 +55,9 @@ d’observation, puis :
   (le filtre), **AD**, **Déc**, **Date de début**, **Niv. étalonnage**.
 - **Infos du fichier** : le **Chemin** du fichier, sa **Taille**, quand il a été **Téléchargé**, et s’il
   est **Présent**. Pour une observation gardée sans son fichier, **Fichier** indique **Non téléchargé**.
+- **Fichiers** : les autres fichiers de l’observation, téléchargés un par un depuis l’onglet **Fichiers**
+  ou par un assistant : chacun avec son emplacement et sa taille, et des boutons pour l’ouvrir, l’afficher
+  dans le Finder et le supprimer. La corbeille demande d’abord ; l’observation et ses notes restent.
 
 Ses boutons :
 
@@ -61,7 +71,7 @@ Ses boutons :
 | **Télécharger** | Pour une observation gardée sans son fichier : le récupère dans cette même fiche, avec ses notes. |
 | **Télécharger de nouveau** | Quand le fichier est absent, ne peut pas être ouvert, ou est vide : le récupère à nouveau. |
 | **Supprimer le fichier…** | Supprime le fichier de ce Mac ; l’observation, ses détails et ses notes restent, et **Télécharger** le récupère de nouveau. |
-| **Supprimer** | Retire l’observation de Recherche, et son fichier de votre disque. C’est irréversible. Vos notes sont gardées : si vous gardez de nouveau l’observation, elles reviennent. |
+| **Supprimer** | Retire l’observation de Recherche, et ses fichiers de votre disque. C’est irréversible. Vos notes sont gardées : si vous gardez de nouveau l’observation, elles reviennent. |
 
 ### Découpes
 
@@ -109,5 +119,5 @@ si vous êtes connecté, **Téléverser dans VOSpace**, qui place une copie comp
 
 Il peut lister et lire vos observations et vos notes, écrire des notes, des étiquettes et des notes de
 qualité (jusqu’à 50 à la fois), ouvrir des fichiers dans les visionneuses, télécharger ce que vous avez
-gardé sans fichier, découper et exporter. Supprimer un fichier ou une observation vous attend, sauf si
+gardé sans fichier ou un fichier d’une observation, découper et exporter. Supprimer un fichier ou une observation vous attend, sauf si
 vous avez autorisé ce type de modification.

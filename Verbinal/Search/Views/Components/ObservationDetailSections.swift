@@ -289,10 +289,30 @@ struct ObservationCoverageSection: View {
 
 struct ObservationFilesSection: View {
     let model: ObservationDetailModel
+    /// Where a file is downloaded and kept (plan 34 F); nil opens it on
+    /// CADC instead.
+    var research: ResearchModel? = nil
+    /// The observation's links, for the record a file joins when Research
+    /// does not keep the observation yet.
+    var dataLink: DataLinkResult? = nil
+
+    private var details: DownloadedObservation {
+        DownloadedObservation.from(result: model.result, columns: model.columns, localPath: "", dataLink: dataLink)
+    }
+
+    @Environment(\.openURL) private var openURL
+    @State private var removing: KeptFile?
+    @State private var failure: String?
 
     var body: some View {
         VStack(spacing: 12) {
             if model.loadState == .loaded, let caom2 = model.caom2 {
+                if research != nil { DownloadFolderLine() }
+                if let failure {
+                    Label(failure, systemImage: "xmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
                 ForEach(Array(caom2.planes.enumerated()), id: \.offset) { _, plane in
                     planeFiles(plane)
                 }
@@ -304,6 +324,13 @@ struct ObservationFilesSection: View {
             } else {
                 AsyncStateBanner(state: model.loadState)
             }
+        }
+        .uiPresented("Remove a File?", .confirmation, item: $removing)
+        .confirmationDialog(String(localized: "Remove \(removing?.name ?? "")?"), isPresented: Binding(
+            get: { removing != nil }, set: { if !$0 { removing = nil } })) {
+            Button("Remove File", role: .destructive) { remove() }
+        } message: {
+            Text("The file is deleted from this computer. The observation stays in Research, with its notes, and you can download the file again.")
         }
     }
 
@@ -318,8 +345,6 @@ struct ObservationFilesSection: View {
         }
     }
 
-    @Environment(\.openURL) private var openURL
-
     @ViewBuilder
     private func artifactRow(_ artifact: CAOM2Observation.Artifact) -> some View {
         let filename = artifact.uri.split(separator: "/").last.map(String.init) ?? artifact.uri
@@ -331,16 +356,7 @@ struct ObservationFilesSection: View {
                     .truncationMode(.middle)
                     .help(Text(artifact.uri))
                 Spacer()
-                if let url = TAPClient.downloadURL(publisherID: artifact.uri) {
-                    Button {
-                        openURL(url)
-                    } label: {
-                        Image(systemName: "arrow.down.circle")
-                    }
-                    .buttonStyle(.borderless)
-                    .help(Text("Download"))
-                    .accessibilityLabel("Download \(filename)")
-                }
+                fileActions(artifact, filename)
             }
             HStack(spacing: 12) {
                 if let pt = artifact.productType, !pt.isEmpty {
@@ -365,8 +381,87 @@ struct ObservationFilesSection: View {
         .padding(.vertical, 2)
     }
 
+    /// Download; downloading; or kept — open, show, remove (plan 34 F).
+    @ViewBuilder
+    private func fileActions(_ artifact: CAOM2Observation.Artifact, _ filename: String) -> some View {
+        if let research {
+            switch research.files.state(of: filename, publisherID: model.publisherID) {
+            case .notKept:
+                Button {
+                    failure = nil
+                    let details = details
+                    Task {
+                        do {
+                            try await research.files.download(.artifact(uri: artifact.uri), for: details)
+                        } catch {
+                            failure = String(localized: "\(filename) was not downloaded: \(error.localizedDescription)")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.down.circle")
+                }
+                .buttonStyle(.borderless)
+                .help(Text("Download into \(DownloadsFolder.url.lastPathComponent)"))
+                .accessibilityLabel("Download \(filename)")
+            case .downloading:
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Downloading \(filename)")
+            case .kept(let file):
+                KeptFileButtons(file: file, research: research) { removing = file }
+            }
+        } else if let url = TAPClient.downloadURL(publisherID: artifact.uri) {
+            Button {
+                openURL(url)
+            } label: {
+                Image(systemName: "arrow.down.circle")
+            }
+            .buttonStyle(.borderless)
+            .help(Text("Download"))
+            .accessibilityLabel("Download \(filename)")
+        }
+    }
+
+    private func remove() {
+        guard let file = removing, let research,
+              let record = research.observationStore.whole(publisherID: model.publisherID) else { return }
+        removing = nil
+        Task {
+            do {
+                try await research.removeFile(named: file.name, of: record)
+            } catch {
+                failure = String(localized: "\(file.name) was not removed: \(error.localizedDescription)")
+            }
+        }
+    }
+
     private func formatBytes(_ bytes: Int64) -> String {
         SharedFormatters.bytes(bytes)
+    }
+}
+
+/// A kept file's buttons: open, show in the Finder, and the trash that
+/// removes it (plan 34 F).
+struct KeptFileButtons: View {
+    let file: KeptFile
+    let research: ResearchModel
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            #if os(macOS)
+            Button { research.open(file) } label: { Image(systemName: "arrow.up.forward.square") }
+                .help(Text("Open"))
+                .accessibilityLabel("Open \(file.name)")
+            Button { research.reveal(file) } label: { Image(systemName: "folder") }
+                .help(Text("Show in Finder"))
+                .accessibilityLabel("Show \(file.name) in Finder")
+            #endif
+            Button(role: .destructive, action: onRemove) { Image(systemName: "trash") }
+                .help(Text("Remove File…"))
+                .accessibilityLabel("Remove \(file.name)")
+        }
+        .buttonStyle(.borderless)
     }
 }
 

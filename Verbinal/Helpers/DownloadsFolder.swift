@@ -5,10 +5,13 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import os
 
-/// The person's Downloads folder — where files land that nobody chose a
-/// place for (an agent's downloads, a cutout's companions, an export) —
-/// the one place that finds it.
+/// The person's download folder — where files land that nobody chose a
+/// place for (an observation's files, an assistant's downloads, a cutout's
+/// companions, an export) — the one place that says where it is. It is
+/// `~/Downloads` until the person chooses another (plan 34 F,
+/// `DownloadFolderSetting`).
 ///
 /// In the sandbox, FileManager names the container's Downloads, a link to
 /// `~/Downloads` (the `files.downloads.read-write` entitlement): the same
@@ -16,14 +19,22 @@ import Foundation
 /// else than downloads (plan 19 F2, QA L9). Every path here is resolved.
 enum DownloadsFolder {
 
+    /// The download folder: the one the person chose, while it is there,
+    /// else `~/Downloads`.
+    static var url: URL { chosen.withLock { $0 } ?? system }
+
     /// `~/Downloads`, as the person knows it.
-    static var url: URL {
+    static var system: URL {
         ((try? FileManager.default.url(for: .downloadsDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads", isDirectory: true))
             .resolvingSymlinksInPath()
     }
 
-    /// `~/Downloads/<stem>-<yyyyMMdd-HHmmss>.<ext>`, for an export.
+    /// The folder the person chose, opened for the app's run; nil for
+    /// `~/Downloads`. Set by `DownloadFolderSetting` alone.
+    static let chosen = OSAllocatedUnfairLock<URL?>(initialState: nil)
+
+    /// `<folder>/<stem>-<yyyyMMdd-HHmmss>.<ext>`, for an export.
     static func timestampedURL(stem: String, ext: String, at date: Date = Date()) -> URL {
         url.appendingPathComponent("\(stem)-\(SharedFormatters.fileNameStamp.string(from: date)).\(ext)")
     }
@@ -34,8 +45,9 @@ enum DownloadsFolder {
         path.isEmpty ? path : URL(fileURLWithPath: path).resolvingSymlinksInPath().path
     }
 
-    /// Moves `file` into `folder` (default Downloads) as `name`; a file of
-    /// that name already there is kept, and this one gets a timestamp.
+    /// Moves `file` into `folder` (default the download folder) as `name`;
+    /// a file of that name already there is kept, and this one gets a
+    /// timestamp.
     static func move(_ file: URL, named name: String, into folder: URL? = nil) throws -> URL {
         let dir = folder ?? url
         var target = dir.appendingPathComponent(name)

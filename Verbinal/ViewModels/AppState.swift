@@ -647,6 +647,8 @@ final class AppState {
     /// FITS tools and the Research UI must share one store so ids
     /// survive relaunch and in-session downloads are visible both ways.
     let researchModel = ResearchModel()
+    /// Where downloads go: the person's choice (plan 34 F).
+    let downloadFolder = DownloadFolderSetting()
     /// Launching batch jobs for an assistant, by the Batch Jobs form's rule (plan 19 T1).
     @ObservationIgnored private(set) lazy var headlessLaunches = HeadlessLaunches(service: headlessService)
     /// An assistant's session launches, on the activity bar (plan 30 W1).

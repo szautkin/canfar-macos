@@ -121,17 +121,30 @@ final class ObservationStore {
         return (kept, true)
     }
 
-    /// Forgets a record's file (the caller deletes it), keeping the
+    /// Forgets a record's main file (the caller deletes it), keeping the
     /// observation. Nil when the id is not in Research.
     @discardableResult
     func forgetFile(of id: UUID) -> DownloadedObservation? {
-        guard let idx = observations.firstIndex(where: { $0.id == id }) else { return nil }
-        let file = (observations[idx].localPath as NSString).lastPathComponent
-        observations[idx] = observations[idx].withoutFile()
+        guard let record = observations.first(where: { $0.id == id }) else { return nil }
+        return forget(record.withoutFile(), file: (record.localPath as NSString).lastPathComponent)
+    }
+
+    /// Forgets the record's file `name` — the main one when that is its
+    /// name (plan 34 F) — keeping the observation. Nil when the id is not
+    /// in Research.
+    @discardableResult
+    func forgetFile(named name: String, of id: UUID) -> DownloadedObservation? {
+        guard let record = observations.first(where: { $0.id == id }) else { return nil }
+        return forget(record.forgetting(fileNamed: name), file: name)
+    }
+
+    private func forget(_ updated: DownloadedObservation, file: String) -> DownloadedObservation? {
+        guard let idx = observations.firstIndex(where: { $0.id == updated.id }) else { return nil }
+        observations[idx] = updated
         persistence.write(observations)
-        spotlight?.index(observations[idx])
-        changes.done("remove_downloaded_file", "the file \(file) of \(Self.describe(observations[idx]))")
-        return observations[idx]
+        spotlight?.index(updated)
+        changes.done("remove_downloaded_file", "the file \(file) of \(Self.describe(updated))")
+        return updated
     }
 
     func remove(_ observation: DownloadedObservation) {

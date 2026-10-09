@@ -93,13 +93,13 @@ Le détail montre l’aperçu de l’observation, sa cible et sa collection, et 
 |---|---|
 | **Aperçu** | La **Cible** (nom, type, décalage vers le rouge, mobile, standard, mots-clés), l’**Instrument** et le **Télescope**, et la **Proposition** (ID, chercheur principal, projet, titre). |
 | **Couverture** | Pour chaque plan : polarisation, pixels, résolution, échelle des pixels, empreinte, plage de longueurs d’onde, filtre, bande, pouvoir de résolution, et la période couverte. |
-| **Fichiers** | Chaque fichier de l’observation, chacun avec son propre **Télécharger**. |
+| **Fichiers** | Chaque fichier de l’observation. Son bouton de téléchargement télécharge ce fichier dans votre dossier de téléchargement (la ligne du haut dit lequel, avec **Modifier…**) et le garde dans Recherche avec l’observation. Une fois gardé, le fichier a des boutons pour l’ouvrir, l’afficher dans le Finder et le supprimer (la corbeille demande d’abord ; l’observation et ses notes restent). |
 | **Provenance** | Comment elle a été produite : pipeline, version, producteur, exécution, entrées, et qualité (magnitude limite, arrière-plan, sources). |
 | **Brut** | Toutes les colonnes du résultat, **Toutes les colonnes**. |
 
 Ses boutons :
 
-- **Télécharger** récupère le fichier de l’observation, demande où l’enregistrer, et garde
+- **Télécharger** récupère le fichier de l’observation dans votre dossier de téléchargement, et garde
   l’observation dans Recherche. Ensuite, il devient **Télécharger à nouveau**. Avec une découpe cochée
   dans le formulaire, il devient **Télécharger la découpe**.
 - **Enregistrer dans Recherche** garde l’observation dans Recherche sans son fichier : pour les notes, et
@@ -125,8 +125,8 @@ qu’une fraction du fichier. **Découper…** dans le détail d’une observati
   enregistrés à côté de la découpe.
 - **Plus courte (nm)** et **Plus longue (nm)** : pour un cube, les longueurs d’onde à garder.
 
-L’éditeur indique la taille approximative de la découpe. **Télécharger la découpe** la récupère, demande
-où l’enregistrer, et la garde dans Recherche avec un lien vers son observation d’origine.
+L’éditeur indique la taille approximative de la découpe. **Télécharger la découpe** la récupère dans votre
+dossier de téléchargement, et la garde dans Recherche avec un lien vers son observation d’origine.
 
 ## L’éditeur ADQL
 

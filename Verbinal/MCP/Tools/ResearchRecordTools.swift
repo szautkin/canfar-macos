@@ -109,18 +109,23 @@ struct SaveObservationToResearchApplier: ResultReportingApplier {
 struct RemoveDownloadedFileTool: JSONWriteTool {
     static let verbClass: VerbClass = .destructive
 
-    struct Args: Codable, Sendable { let id: String }
+    struct Args: Codable, Sendable {
+        let id: String
+        /// One of its files by name (plan 34 F); nil for its main file.
+        var file: String?
+    }
     typealias Payload = Args
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "remove_downloaded_file",
-        description: "Delete a Research observation's FILE from this computer while keeping the observation — its details and notes — so Download fetches it again into the same record. By downloaded_observation_id (or its first 8+ hex digits), publisher id, or observation id. To remove the observation itself, use delete_downloaded_observation.",
+        description: "Delete a Research observation's FILE from this computer while keeping the observation — its details and notes — so Download fetches it again into the same record. By downloaded_observation_id (or its first 8+ hex digits), publisher id, or observation id. Without `file`, its main file; with `file`, that one of its `files` (get_downloaded_observation lists them). To remove the observation itself, use delete_downloaded_observation.",
         schema: #"""
         {
           "type": "object",
           "required": ["id"],
           "properties": {
-            "id": { "type": "string", "minLength": 1 }
+            "id": { "type": "string", "minLength": 1 },
+            "file": { "type": "string", "minLength": 1, "description": "One of the observation's files by name; omit for its main file." }
           },
           "additionalProperties": false
         }
@@ -130,22 +135,25 @@ struct RemoveDownloadedFileTool: JSONWriteTool {
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
         let id = args.id.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !id.isEmpty else { throw ToolFailureReason.invalidArgument("id is required") }
+        let file = args.file?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let named = file?.isEmpty == false ? file : nil
         return try ProposalPlan.encoding(
             kind: "remove_downloaded_file",
-            summary: "Remove the file of \(id) from this computer (keep it in Research)",
-            payload: Args(id: id))
+            summary: named.map { "Remove \($0) of \(id) from this computer (keep it in Research)" }
+                ?? "Remove the file of \(id) from this computer (keep it in Research)",
+            payload: Args(id: id, file: named))
     }
 }
 
 struct RemoveDownloadedFileApplier: ProposalApplier {
     let kind = "remove_downloaded_file"
-    let remove: @Sendable (String) async throws -> Void
+    let remove: @Sendable (_ id: String, _ file: String?) async throws -> Void
     let activity: AgentActivityStore
 
     func apply(_ proposal: PendingProposal) async throws {
         let payload = try JSONDecoder().decode(RemoveDownloadedFileTool.Payload.self, from: proposal.payload)
         do {
-            try await remove(payload.id)
+            try await remove(payload.id, payload.file)
         } catch let failure as ProposalApplyError {
             throw failure
         } catch {

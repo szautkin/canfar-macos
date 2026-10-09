@@ -91,13 +91,13 @@ The detail shows the observation's preview, its target and collection, and five 
 |---|---|
 | **Overview** | The **Target** (name, type, redshift, moving, standard, keywords), the **Instrument** and **Telescope**, and the **Proposal** (ID, PI, project, title). |
 | **Coverage** | For each plane: polarization, pixels, resolution, pixel scale, footprint, wavelength range, filter, band, resolving power, and the time it covers. |
-| **Files** | Every file of the observation, each with its own **Download**. |
+| **Files** | Every file of the observation. Its download button downloads that file into your download folder (the line at the top says which, with **Change…**) and keeps it in Research with the observation. Once kept, the file has buttons to open it, show it in the Finder, and remove it (the trash asks first; the observation and its notes stay). |
 | **Provenance** | How it was made: pipeline, version, producer, run, inputs, and quality (limiting magnitude, background, sources). |
 | **Raw** | Every column of the result, **All Columns**. |
 
 Its buttons:
 
-- **Download** fetches the observation's file, asks where to save it, and keeps the observation in
+- **Download** fetches the observation's file into your download folder and keeps the observation in
   Research. After that it reads **Re-download**. With a cutout ticked in the form, it reads
   **Download Cutout**.
 - **Save to Research** keeps the observation in Research without its file: for notes, and to download
@@ -122,8 +122,8 @@ A cutout is the part of a file you need, cut on CADC's side, so you download a f
 - **Also cut**: companion files, such as weights, cut on the same pixels and saved beside the cutout.
 - **Shortest (nm)** and **Longest (nm)**: for a cube, the wavelengths to keep.
 
-The editor says about how big the cutout will be. **Download Cutout** fetches it, asks where to save
-it, and keeps it in Research with a link to its original observation.
+The editor says about how big the cutout will be. **Download Cutout** fetches it into your download
+folder, and keeps it in Research with a link to its original observation.
 
 ## The ADQL editor
 

@@ -75,7 +75,7 @@ struct DownloadObservationTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "download_observation",
-        description: "Download a single observation FITS to the user's Downloads folder. `publisher_id` is `ivo://cadc.nrc.ca/COLLECTION?OBSERVATION/PRODUCT` (a malformed one is refused). Uses DataLink #this when available, else the plane's CAOM-2 science file, else `/caom2ops/pkg`; `file` fetches one of the plane's files by name instead — a filename from `get_data_links` (`files[].filename` or `caom2Artifacts[].filename`), e.g. the STIS `_x1d.fits` spectrum rather than the `_flt` image. The record's details (target, instrument, filter, position, calibration level, preview) are the archive's for that plane; the ones you pass fill only what the archive lacks. Requires CADC sign-in for proprietary collections (NEOSSAT, embargoed JWST, …). Synchronous with a 10-min applier deadline. Returns the `downloaded_observation_id` (UUID) — an observation already in Research (kept without its file, or downloaded before) keeps its id — which you pass to `get_fits_header`/`get_fits_wcs`/`open_fits_file`/`upload_to_vospace`/`delete_downloaded_observation`.",
+        description: "Download a single observation FITS to the person's download folder (Downloads unless they chose another; the answer's path says where). `publisher_id` is `ivo://cadc.nrc.ca/COLLECTION?OBSERVATION/PRODUCT` (a malformed one is refused). Uses DataLink #this when available, else the plane's CAOM-2 science file, else `/caom2ops/pkg`; `file` fetches one of the plane's files by name instead — a filename from `get_data_links` (`files[].filename` or `caom2Artifacts[].filename`), e.g. the STIS `_x1d.fits` spectrum rather than the `_flt` image — and keeps it beside the record's main file, among its `files` (get_downloaded_observation lists them; remove_downloaded_file with `file` removes one). The record's details (target, instrument, filter, position, calibration level, preview) are the archive's for that plane; the ones you pass fill only what the archive lacks. Requires CADC sign-in for proprietary collections (NEOSSAT, embargoed JWST, …). Synchronous with a 10-min applier deadline. Returns the `downloaded_observation_id` (UUID) — an observation already in Research (kept without its file, or downloaded before) keeps its id — which you pass to `get_fits_header`/`get_fits_wcs`/`open_fits_file`/`upload_to_vospace`/`delete_downloaded_observation`.",
         schema: #"""
         {
           "type": "object",
@@ -176,23 +176,6 @@ struct DownloadObservationsBulkTool: JSONWriteTool {
 
 // MARK: - Appliers
 
-/// A downloaded temporary file moved into Downloads, ready to be a
-/// Research record's file: its path, its size, and a security-scoped
-/// bookmark so a sandboxed relaunch can reopen it. The temporary file is
-/// removed when the move fails.
-func placeInDownloads(tempURL: URL, suggestedFilename: String,
-                      downloadService: DownloadService) async throws -> (localPath: String, size: Int64?, bookmark: Data?) {
-    let finalURL: URL
-    do {
-        finalURL = try DownloadsFolder.move(tempURL, named: suggestedFilename)
-    } catch {
-        try? await downloadService.deleteFile(at: tempURL)
-        throw ProposalApplyError.backendError("move into Downloads failed: \(error.localizedDescription)")
-    }
-    let bookmark = try? finalURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-    return (LocalFolderAccessStore.userFacingPath(for: finalURL), await downloadService.fileSize(at: finalURL), bookmark)
-}
-
 private let downloadLogger = Logger(subsystem: "com.codebg.Verbinal.agent", category: "downloads")
 
 /// A record's details from what a request described: the app's own
@@ -206,6 +189,8 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
     let kind = "download_observation"
     let downloadService: DownloadService
     let observationStore: ObservationStore
+    /// One file of the observation, kept beside its main one (plan 34 F).
+    let files: ResearchFiles
     var describe: ResearchRecordDescriber = { ResearchRecordDetails.completing($0, from: nil) }
     let activity: AgentActivityStore
 
@@ -221,6 +206,7 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
             attribution: attribution,
             downloadService: downloadService,
             observationStore: observationStore,
+            files: files,
             describe: describe
         )
         await MainActor.run {
@@ -235,8 +221,25 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
         attribution: AgentAttribution?,
         downloadService: DownloadService,
         observationStore: ObservationStore,
+        files: ResearchFiles,
         describe: ResearchRecordDescriber
     ) async throws -> UUID {
+        // One file by name: kept beside the observation's main file, in the
+        // same record, as the Files tab keeps it (plan 34 F).
+        if let file = payload.file {
+            let details = await describe(payload.described)
+            do {
+                let kept = try await withApplierTimeout(seconds: 600, label: "download_observation") {
+                    try await files.download(.named(file), for: details, attribution: attribution)
+                }
+                downloadLogger.notice("agent download of one file applied: \(payload.publisherID, privacy: .public)")
+                return kept.record.id
+            } catch let pa as ProposalApplyError {
+                throw pa
+            } catch {
+                throw ProposalApplyError.backendError("download failed: \(error.localizedDescription)")
+            }
+        }
         // The details are looked up while the file comes down.
         async let details = describe(payload.described)
         let result: (tempURL: URL, suggestedFilename: String)
@@ -248,18 +251,17 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
             // long-tail completes — the applier always emits a
             // terminal lifecycle event. Same rationale as the
             // VOSpace upload watchdog, per F-2026-05-13-A.
-            let publisherID = payload.publisherID, file = payload.file
+            let publisherID = payload.publisherID
             result = try await withApplierTimeout(seconds: 600, label: "download_observation") {
-                if let file { return try await downloadService.downloadToTemp(publisherID: publisherID, file: file) }
-                return try await downloadService.downloadToTemp(publisherID: publisherID)
+                try await downloadService.downloadToTemp(publisherID: publisherID)
             }
         } catch let pa as ProposalApplyError {
             throw pa
         } catch {
             throw ProposalApplyError.backendError("download failed: \(error.localizedDescription)")
         }
-        let placed = try await placeInDownloads(tempURL: result.tempURL, suggestedFilename: result.suggestedFilename,
-                                                downloadService: downloadService)
+        let placed = try await DownloadPlacement.place(result.tempURL, named: result.suggestedFilename,
+                                                       downloads: downloadService)
         var observation = await details
         observation.id = UUID()
         observation.localPath = placed.localPath
@@ -281,6 +283,7 @@ struct DownloadObservationsBulkApplier: ProposalApplier, ResultReportingApplier 
     let kind = "download_observations_bulk"
     let downloadService: DownloadService
     let observationStore: ObservationStore
+    let files: ResearchFiles
     var describe: ResearchRecordDescriber = { ResearchRecordDetails.completing($0, from: nil) }
     let activity: AgentActivityStore
 
@@ -300,6 +303,7 @@ struct DownloadObservationsBulkApplier: ProposalApplier, ResultReportingApplier 
                     attribution: attribution,
                     downloadService: downloadService,
                     observationStore: observationStore,
+                    files: files,
                     describe: describe
                 )
                 succeeded.append(id.uuidString)
@@ -382,11 +386,14 @@ struct DeleteDownloadedObservationApplier: ProposalApplier {
         guard let observation else {
             throw ProposalApplyError.backendError("downloaded_observation not found: \(id)")
         }
-        if payload.deleteFile, let url = observation.resolvedReadableURL {
-            do {
-                try await downloadService.deleteFile(at: url)
-            } catch {
-                throw ProposalApplyError.backendError("file delete failed: \(error.localizedDescription)")
+        if payload.deleteFile {
+            // Its files, the main one and the others (plan 34 F).
+            for url in observation.localFiles.compactMap(\.readableURL) {
+                do {
+                    try await downloadService.deleteFile(at: url)
+                } catch {
+                    throw ProposalApplyError.backendError("file delete failed: \(error.localizedDescription)")
+                }
             }
         }
         await MainActor.run {

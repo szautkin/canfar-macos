@@ -15,7 +15,7 @@ du CADC et de CANFAR que vous utilisez, en HTTPS.
 | Les sessions d’assistant que vous avez autorisées, avec vos instructions pour chacune | Le dossier propre à Verbinal, jusqu’à un jour après la fin de chacune |
 | Les résultats de la Découverte d’images, la liste des images, le train de données, les adresses des services | Des caches dans le dossier propre à Verbinal |
 | Vos réglages | Les préférences de Verbinal |
-| Les fichiers téléchargés, figures et exportations | Où vous le choisissez, ou votre dossier Téléchargements |
+| Les fichiers téléchargés, figures et exportations | Votre dossier de téléchargement : Téléchargements, sauf si vous en choisissez un autre |
 | Les noms, collections et instruments de vos observations de Recherche | L’index Spotlight du Mac |
 
 Le dossier propre à Verbinal se trouve dans son bac à sable :

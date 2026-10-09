@@ -74,11 +74,19 @@ extension AppState {
                     return (kept.record.id, kept.added)
                 }
             }, activity: activity),
-            RemoveDownloadedFileApplier(remove: { [weak self] id in
+            RemoveDownloadedFileApplier(remove: { [weak self] id, file in
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
                 let record = await MainActor.run { self.researchModel.observationStore.record(identifiedBy: id) }
                 guard let record else {
                     throw ProposalApplyError.backendError("no observation \"\(id)\" in Research")
+                }
+                if let file {
+                    guard record.keptFile(named: file) != nil else {
+                        let names = ([record.mainFile.name] + record.keptFiles.map(\.name)).filter { !$0.isEmpty }
+                        throw ProposalApplyError.backendError("\(id) has no file \(file) on this computer\(names.isEmpty ? "" : "; it has \(names.joined(separator: ", "))")")
+                    }
+                    try await self.researchModel.removeFile(named: file, of: record)
+                    return
                 }
                 guard record.isDownloaded else {
                     throw ProposalApplyError.backendError("\(id) has no file on this computer — nothing to remove")
@@ -104,7 +112,11 @@ extension AppState {
             fileSize: obs.fileSize,
             downloadedAt: obs.downloadedAt,
             cutout: obs.cutout,
-            duplicateOf: duplicateOf
+            duplicateOf: duplicateOf,
+            files: obs.keptFiles.map {
+                FileOut(name: $0.name, localPath: DownloadsFolder.displayPath($0.localPath), fileExists: $0.local.exists,
+                        size: $0.size, downloadedAtISO: SharedFormatters.iso8601.string(from: $0.downloadedAt))
+            }
         )
     }
 
