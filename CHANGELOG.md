@@ -6,6 +6,67 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-10-08
+
+One session per assistant, a sign-in that renews itself, an observation's
+files in Research, and Verbinal's data in your storage on every device
+(see `docs/plans/34-dev-1-4-1.md`).
+
+### Added
+- **An observation's files download into Research.** The download button
+  of a file in an observation's **Files** tab downloads it with Verbinal,
+  no browser, and Research keeps it with the observation, beside its main
+  file. The file then has buttons to open it, show it in the Finder, and
+  remove it (the trash asks first; the observation and its notes stay).
+  Research's detail lists the files, with where each is.
+- **A download folder you see and choose.** Downloads go to your download
+  folder, never over another file: Downloads, until you choose another in
+  **Settings ▸ General ▸ Downloads**, or with **Change…** where you
+  download. When the folder you chose is not there, downloads go to
+  Downloads, and Verbinal says so.
+- **Verbinal's data in your storage, on every device.** A manifest in your
+  storage, `.verbinal/manifest.json`, says which kinds of Verbinal's data
+  you keep there and where; every Verbinal you sign in to reads it. Verbinal
+  syncs them right after you sign in, quietly, and never deletes anything:
+  the package lists of CANFAR images probed from any device reach Image
+  Discovery, and a Remote Compute result that came while Verbinal was not
+  watching reaches its run. **Settings ▸ Storage** shows each kind, its
+  folder and what the last sync did, with **Sync Now**.
+- **Research on every device, if you want it.** **Keep Research in
+  VOSpace** keeps your observations' details, notes, tags and quality (not
+  their files) in your storage, the same on every device. The newer change
+  wins; the one it replaced stays on the Mac where it was made. Only while
+  your `.verbinal` folder is private.
+- **An assistant's session lasts.** An assistant you allowed keeps its
+  session when Verbinal restarts: no new window, the same log. A second
+  `start_session` answers `alreadyStarted: true`. A session ends after an
+  hour without a call (**Settings ▸ AI Agent ▸ Sessions**, from 15 minutes
+  to a day), with **End Session** in Session Logs, or when you turn
+  external AI agents off; the assistant is told why.
+- **Tools:** `list_storage_kinds` and `sync_storage`;
+  `download_observation` with `file` keeps that file among the record's
+  `files`; `remove_downloaded_file` takes `file`;
+  `get_downloaded_observation` lists `files`; `describe_app` says how long
+  an idle session lasts.
+
+### Changed
+- **Download asks no more where to save.** An observation's **Download**
+  and **Download Cutout** go to your download folder, as an assistant's
+  downloads always did.
+- **Deleting an observation deletes all its files**, its main file and the
+  ones downloaded one by one.
+
+### Fixed
+- **A request that met an expired sign-in goes through.** When your CADC
+  session expired, Verbinal signed you in again with the stored password,
+  but the request that found it out failed anyway. It now waits for the
+  new session and is retried; many at once sign in once. When a service
+  refuses a sign-in CADC still accepts, Verbinal signs in once more, and
+  without a stored password only that request fails.
+- **The sign-in sheet says why it opened.** *Your CADC session ended.
+  Sign in to continue.* It opens only when Verbinal cannot sign you in by
+  itself.
+
 ## [1.4.0] - 2026-10-07
 
 Catching up with Verbinal for Windows 1.4.1 (see
