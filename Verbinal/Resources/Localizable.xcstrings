@@ -19876,6 +19876,176 @@
           }
         }
       }
+    },
+    "Sign in to see what Verbinal keeps in your storage." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous pour voir ce que Verbinal garde dans votre stockage."
+          }
+        }
+      }
+    },
+    "Keep Research in VOSpace" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder Recherche dans VOSpace"
+          }
+        }
+      }
+    },
+    "Your observations' details, notes, tags and quality — not their files — the same on every device you sign in on. Turned on here, it is on for all of them; turned off, the files stay in your storage. Only while your .verbinal folder is private." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les détails de vos observations, leurs notes, étiquettes et qualité — pas leurs fichiers — les mêmes sur chaque appareil où vous vous connectez. Activé ici, c’est activé pour tous ; désactivé, les fichiers restent dans votre stockage. Seulement tant que votre dossier .verbinal est privé."
+          }
+        }
+      }
+    },
+    "Research is not synced while your .verbinal folder is readable by anyone. Make it private in Storage." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche n’est pas synchronisé tant que votre dossier .verbinal est lisible par tous. Rendez-le privé dans Stockage."
+          }
+        }
+      }
+    },
+    "Last synced %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernière synchronisation %@"
+          }
+        }
+      }
+    },
+    "Not synced yet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore synchronisé"
+          }
+        }
+      }
+    },
+    "Sync Now" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchroniser maintenant"
+          }
+        }
+      }
+    },
+    "Verbinal's Data in Your Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les données de Verbinal dans votre stockage"
+          }
+        }
+      }
+    },
+    "A manifest in your storage, .verbinal/manifest.json, says which kinds of Verbinal's data you keep there and where, for every Verbinal you use. Verbinal syncs them right after you sign in, quietly, and never deletes anything." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un manifeste dans votre stockage, .verbinal/manifest.json, dit quels types de données de Verbinal vous y gardez et où, pour chaque Verbinal que vous utilisez. Verbinal les synchronise dès que vous vous connectez, discrètement, et ne supprime jamais rien."
+          }
+        }
+      }
+    },
+    "%@ · %lld items · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$lld éléments · %3$@"
+          }
+        }
+      }
+    },
+    "Not kept in your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas gardé dans votre stockage"
+          }
+        }
+      }
+    },
+    "%lld brought to this Mac at the last sync" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld apportés sur ce Mac à la dernière synchronisation"
+          }
+        }
+      }
+    },
+    "Show in Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher dans Stockage"
+          }
+        }
+      }
+    },
+    "Image package lists" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listes de paquets des images"
+          }
+        }
+      }
+    },
+    "Remote Compute runs" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exécutions du calcul à distance"
+          }
+        }
+      }
+    },
+    "Batch job scripts" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scripts des tâches en lot"
+          }
+        }
+      }
+    },
+    "Exports" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportations"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -52,6 +52,7 @@ chapter, in both languages.
 | `agent` | AI Agent | 14-settings.md | AI Agent |
 | `imageDiscovery` | Image Discovery | 14-settings.md | Image Discovery |
 | `aiCompute` | AI Compute | 14-settings.md | AI Compute |
+| `storage` | Storage | 14-settings.md | Storage |
 | `mcpClients` | MCP Clients | 14-settings.md | MCP Clients |
 | `endpoints` | Endpoints | 14-settings.md | Endpoints |
 | `about` | About | 14-settings.md | About |

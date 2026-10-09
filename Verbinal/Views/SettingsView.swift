@@ -50,6 +50,14 @@ struct SettingsView: View {
                 .tabItem { Label("AI Compute", systemImage: "cpu") }
                 .tag(SettingsSection.aiCompute)
 
+            #if os(macOS)
+            StorageSettingsTab()
+                .pointableArea("settings.storage", label: String(localized: "Storage"))
+                .environment(appState)
+                .tabItem { Label("Storage", systemImage: "externaldrive.connected.to.line.below") }
+                .tag(SettingsSection.storage)
+            #endif
+
             MCPIntegrationSettingsTab()
                 .pointableArea("settings.mcpClients", label: String(localized: "MCP Clients"))
                 .environment(appState)

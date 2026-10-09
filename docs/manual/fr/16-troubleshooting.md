@@ -60,6 +60,18 @@ Une sonde qui échoue dit pourquoi ; **Voir les journaux de la sonde** montre ce
 **Réglages ▸ Découverte d'images** et **Tester la connexion** : l’erreur la plus courante est le mot de
 passe CADC à la place du secret CLI Harbor.
 
+## Les données de Verbinal dans le stockage
+
+- **Recherche n’est pas synchronisé tant que votre dossier .verbinal est lisible par tous.** Rendez
+  `.verbinal` privé dans Stockage (voir
+  [Les fichiers qui ne devraient pas être publics](09-storage.md#les-fichiers-qui-ne-devraient-pas-être-publics)) ;
+  la synchronisation suivante reprend.
+- **Une synchronisation a échoué.** **Réglages ▸ Stockage** dit pourquoi. Verbinal réessaie plus tard,
+  en attendant plus longtemps à chaque fois tant que le stockage échoue ; **Synchroniser maintenant**
+  réessaie aussitôt.
+- **Une modification faite sur un autre appareil n’apparaît pas.** Verbinal synchronise quand vous vous
+  connectez et quand vous y revenez après un moment ; **Synchroniser maintenant** synchronise aussitôt.
+
 ## Les visionneuses
 
 - **« … n'est plus disponible »** : le fichier a été déplacé ou supprimé depuis son ouverture.

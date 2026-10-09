@@ -84,6 +84,23 @@ La session dans laquelle le [Calcul à distance](10-remote-compute.md) exécute 
 | **Registre** et **Identifiants** | Comme dans Découverte d’images : le registre d’où l’image de calcul est tirée, et votre nom d’utilisateur et votre secret pour lui. |
 | **Réinitialiser** | Efface l’image de calcul, l’hôte du registre, le nom d’utilisateur et le secret. |
 
+## Stockage
+
+Ce que Verbinal garde dans votre stockage VOSpace, et comment cela reste pareil sur chaque appareil que
+vous utilisez. Un manifeste dans votre stockage, `.verbinal/manifest.json`, dit quels types de données
+de Verbinal vous y gardez et où ; chaque Verbinal où vous vous connectez le lit. Verbinal les synchronise
+dès que vous vous connectez, discrètement, et ne supprime jamais rien. Connectez-vous pour voir cette
+section.
+
+| Réglage | Ce qu’il fait |
+|---|---|
+| **Recherche** ▸ **Garder Recherche dans VOSpace** | Désactivé tant que vous ne l’activez pas. Activé, les détails de vos observations, leurs notes, étiquettes et qualité (pas leurs fichiers) sont gardés dans votre stockage, dans `.verbinal/research`, et sont les mêmes sur chaque appareil. Activé ici, c’est activé pour tous les appareils ; désactivé, les fichiers restent dans votre stockage. Seulement tant que votre dossier `.verbinal` est privé : quand tout le monde peut le lire, ce réglage le dit, et Recherche attend que vous le rendiez privé dans [Stockage](09-storage.md#les-fichiers-qui-ne-devraient-pas-être-publics). |
+| **Les données de Verbinal dans votre stockage** | Chaque type : **Recherche**, **Listes de paquets des images**, **Exécutions du calcul à distance**, **Scripts des tâches en lot**, **Exportations**. Pour chacun, son dossier, combien d’éléments et leur taille, et ce que la dernière synchronisation a apporté sur ce Mac ; **Pas gardé dans votre stockage** quand le manifeste ne le déclare pas. **Afficher dans Stockage** ouvre son dossier. |
+| **Synchroniser maintenant** | Synchronise aussitôt ; à côté, quand a eu lieu la dernière synchronisation. Une synchronisation qui a échoué dit pourquoi, et la suivante est tentée plus tard. |
+
+Quand deux appareils ont modifié la même observation avant de se synchroniser, la modification la plus
+récente l’emporte, et celle qu’elle remplace est gardée sur le Mac où elle a été faite.
+
 ## Clients MCP
 
 ![Réglages ▸ Clients MCP](../images/fr/14-settings/settings-mcpClients.png)

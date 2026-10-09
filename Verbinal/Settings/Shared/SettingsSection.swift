@@ -8,7 +8,7 @@ import Foundation
 
 /// A tab of the Settings window, by a stable id an agent can name.
 enum SettingsSection: String, CaseIterable, Identifiable, Sendable {
-    case general, portal, agent, imageDiscovery, aiCompute, mcpClients, endpoints, about
+    case general, portal, agent, imageDiscovery, aiCompute, storage, mcpClients, endpoints, about
 
     var id: String { rawValue }
 }

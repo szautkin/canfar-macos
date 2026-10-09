@@ -204,6 +204,8 @@ enum AIGuideCatalog {
         // Storage (VOSpace)
         "list_vospace_path": "storage",
         "show_storage_folder": "storage",
+        "list_storage_kinds": "storage",
+        "sync_storage": "storage",
         "get_vospace_node": "storage",
         "read_vospace_file": "storage",
         "upload_to_vospace": "storage",

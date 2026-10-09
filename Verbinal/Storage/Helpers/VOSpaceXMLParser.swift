@@ -105,6 +105,19 @@ enum VOSpaceXMLParser {
         }
     }
 
+    /// The node a GET answers — a folder or a file itself, not its
+    /// children: ask with `limit=0` so it has none (plan 34 V).
+    static func parseNode(_ xml: String) -> VOSpaceNode? {
+        guard let entry = SimpleXML.nestedElements(parentLocalName: "node", childLocalName: "property", in: xml).first,
+              let uri = entry.parentAttributes["uri"], !uri.isEmpty else { return nil }
+        let name = uri.lastIndex(of: "/").map { String(uri[uri.index(after: $0)...]) } ?? uri
+        let xsiType = entry.parentAttributes["xsi:type"] ?? entry.parentAttributes["type"] ?? ""
+        let type: VOSpaceNodeType = xsiType.contains("ContainerNode") ? .container : xsiType.contains("LinkNode") ? .linkNode : .dataNode
+        var node = VOSpaceNode(name: name, path: extractPath(uri), type: type)
+        applyProperties(to: &node, properties: entry.children)
+        return node
+    }
+
     /// Extract relative path from VOSpace URI.
     /// e.g. "vos://cadc.nrc.ca~arc/home/user/folder/file.fits" → "folder/file.fits"
     static func extractPath(_ uri: String) -> String {

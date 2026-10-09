@@ -138,6 +138,21 @@ extension AppState {
         return StorageFolderShown(shown: true, folder: path, message: nil)
     }
 
+    /// Verbinal's data in VOSpace (plan 34 V), after a sync when asked.
+    func storageSyncStatus(syncing: Bool) async throws -> StorageSync.Status {
+        try requireSignInFor("Storage")
+        if syncing {
+            noteLive("sync_storage", "Synced Verbinal's data in storage")
+            await storageSync.run(.asked)?.value
+        } else if storageSync.status == nil {
+            await storageSync.run(.cameBack)?.value
+        }
+        guard let status = storageSync.status else {
+            throw ToolFailureReason.backendError("the storage sync has not started: sign in again")
+        }
+        return status
+    }
+
     private func requireSignInFor(_ screen: String) throws {
         guard isAuthenticated, !username.isEmpty else {
             throw ToolFailureReason.targetNotResolved("\(screen) needs the person signed in to CANFAR")

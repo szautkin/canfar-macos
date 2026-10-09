@@ -62,9 +62,18 @@ readable by you alone.
 Changing who else may read or write your files is done on the CANFAR website, or through an assistant,
 which waits for your approval for such a change.
 
+## Verbinal's folders
+
+Verbinal keeps some of its data in your storage: `.verbinal/manifest.json`, which says what it keeps and
+where; `.verbinal/manifests` (the package lists of CANFAR images); `.verbinal/exec` (Remote Compute's
+runs); `.verbinal/research` (Research, when you keep it there); `.verbinal-scripts` (batch job
+scripts); and `Verbinal-Exports` (exports you uploaded). They are yours like any other folder;
+**Settings ▸ Storage** says how many items each holds, and Verbinal never deletes them.
+
 ## What an assistant can do here
 
 It can list and read your files, create folders, upload files and text, download files, open FITS files
-in the viewers, show you a folder, and change who may read or write a file. Deleting, replacing a file
+in the viewers, show you a folder, and change who may read or write a file. It can also list what Verbinal
+keeps in your storage, and sync it. Deleting, replacing a file
 and sharing wait for you unless you allowed them; see
 [What an assistant may do without asking](12-ai-assistant.md#what-an-assistant-may-do-without-asking).

@@ -95,6 +95,16 @@ Sous les détails, chaque observation a vos notes :
 
 Les notes s’enregistrent pendant la saisie. Le filtre du haut les cherche aussi.
 
+## Recherche sur chaque appareil
+
+Activez **Garder Recherche dans VOSpace** dans **Réglages ▸ Stockage**, et les détails de vos
+observations, leurs notes, étiquettes et qualité sont gardés aussi dans votre stockage CANFAR : la même
+Recherche sur chaque Mac où vous vous connectez, et dans Verbinal pour Windows et Linux à mesure qu’ils
+suivent. Les fichiers non : chaque appareil télécharge les siens. Une note écrite ici atteint les autres
+quelques secondes après la fin de votre saisie ; les leurs vous parviennent quand vous vous connectez, et
+quand vous revenez dans Verbinal. Retirer une observation ici la retire là-bas aussi ; ses notes restent.
+Voir [Réglages ▸ Stockage](14-settings.md#stockage).
+
 ## Tout exporter
 
 ![Exporter les données](../images/fr/03-research/export.png)

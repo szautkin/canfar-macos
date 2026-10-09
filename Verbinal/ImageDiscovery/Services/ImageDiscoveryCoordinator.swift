@@ -1115,6 +1115,22 @@ actor ImageDiscoveryCoordinator {
     /// existing failure outcome stays in place. Returns the
     /// manifest when found (and updates the local cache as a
     /// side effect); returns nil otherwise.
+    /// A package list found in VOSpace by the storage sync (plan 34 V) —
+    /// probed from this Mac or any other device — kept when the cache has
+    /// none for its image, or an older one. True when it was kept.
+    func importManifest(_ data: Data) async -> Bool {
+        guard let manifest = try? ManifestParser.parse(data), !Self.isStubManifest(manifest) else { return false }
+        if case .success(let cached)? = await store.outcome(for: manifest.imageID), cached.capturedAt >= manifest.capturedAt {
+            return false
+        }
+        do {
+            try await store.setManifest(manifest)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     func recoverFromVOSpaceIfPresent(imageID: String) async -> ImageManifest? {
         guard let manifest = try? await fetchManifestIfPresent(for: imageID) else {
             return nil

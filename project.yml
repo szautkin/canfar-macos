@@ -125,6 +125,8 @@ targets:
           - "FITSViewer/**"
           - "CubeViewer/**"
           - "Storage/**"
+          # Verbinal's data in VOSpace (plan 34 V): over the Storage client.
+          - "StorageSync/**"
           - "RemoteCompute/**"
           - "RecentFiles/**"
           - "MCP/**"

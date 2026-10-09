@@ -82,6 +82,22 @@ The session [Remote Compute](10-remote-compute.md) runs code in.
 | **Registry** and **Credentials** | As in Image Discovery: the registry the compute image is pulled from, and your username and secret for it. |
 | **Reset to Defaults** | Clears the compute image, the registry host, the username and the secret. |
 
+## Storage
+
+What Verbinal keeps in your VOSpace storage, and how it stays the same on every device you use. A
+manifest in your storage, `.verbinal/manifest.json`, says which kinds of Verbinal's data you keep there
+and where; every Verbinal you sign in to reads it. Verbinal syncs them right after you sign in, quietly,
+and never deletes anything. Sign in to see this section.
+
+| Setting | What it does |
+|---|---|
+| **Research** ▸ **Keep Research in VOSpace** | Off until you turn it on. On, your observations' details, notes, tags and quality (not their files) are kept in your storage, in `.verbinal/research`, and are the same on every device. Turned on here, it is on for every device; turned off, the files stay in your storage. Only while your `.verbinal` folder is private: when anyone can read it, this says so, and Research waits until you make it private in [Storage](09-storage.md#files-that-should-not-be-public). |
+| **Verbinal's Data in Your Storage** | Each kind: **Research**, **Image package lists**, **Remote Compute runs**, **Batch job scripts**, **Exports**. For each, its folder, how many items and how big, and what the last sync brought to this Mac; **Not kept in your storage** when the manifest does not declare it. **Show in Storage** opens its folder. |
+| **Sync Now** | Syncs at once; beside it, when the last sync was. A sync that failed says why, and the next one is tried later. |
+
+When two devices changed the same record before they synced, the newer change wins, and the one it
+replaced is kept on the Mac where it was made.
+
 ## MCP Clients
 
 ![Settings ▸ MCP Clients](../images/en/14-settings/settings-mcpClients.png)

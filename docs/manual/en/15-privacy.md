@@ -17,6 +17,8 @@ services you use, over HTTPS.
 | Your settings | Verbinal's preferences |
 | Files you download, figures and exports | Your download folder: Downloads, unless you choose another |
 | Your Research observations' names, collections and instruments | The Mac's Spotlight index |
+| Your Research observations' details and notes, when you keep Research in VOSpace | Your CANFAR storage, `.verbinal/research`, only while that folder is private |
+| What this Mac last saw of your storage, to sync only what changed | Verbinal's own folder |
 
 Verbinal's own folder is inside its sandbox: `~/Library/Containers/com.codebg.Verbinal`. Nothing there
 is shared with other apps.

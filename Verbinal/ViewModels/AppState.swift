@@ -140,6 +140,8 @@ final class AppState {
     private(set) var sessionLog: AppEventHub?
     /// The person's say over assistant sessions, and its window (plan 25).
     let sessionApprovals = SessionApprovals(file: SessionApprovals.productionFile)
+    /// Verbinal's data in VOSpace, synced in the background (plan 34 V).
+    let storageSync = StorageSyncModel()
     @ObservationIgnored private var sessionApprovalWindow: SessionApprovalWindow?
     #endif
 
@@ -992,6 +994,8 @@ final class AppState {
         #if os(macOS)
         // Code runs still out when watching stopped — a sign-out, a quit — are looked at again (plan 30 K).
         Task { await remoteCompute.resumeWatching() }
+        // Verbinal's data in VOSpace: at once, in the background (plan 34 V).
+        startStorageSync()
         #endif
 
         // Idempotent: silent reauth no longer fires this hook, but guard
@@ -1130,8 +1134,25 @@ final class AppState {
         canfarImagesModel = nil
         #if os(macOS)
         remoteCompute.stopWatching()
+        storageSync.signedOut()
         #endif
     }
+
+    #if os(macOS)
+    /// The storage sync, given what it needs of the app (plan 34 V).
+    private func startStorageSync() {
+        let remoteCompute = remoteCompute
+        storageSync.signedIn(username: username, .init(
+            vospace: VOSpaceBrowserService(network: network, endpoints: endpoints),
+            research: researchModel.observationStore,
+            notes: researchModel.noteStore,
+            importManifest: { [weak self] data in
+                guard let coordinator = await MainActor.run(body: { self?.imageDiscoveryCoordinator }) else { return false }
+                return await coordinator.importManifest(data)
+            },
+            resumeRuns: { await remoteCompute.resumeWatching() }))
+    }
+    #endif
 
     func logout() async {
         tearDownAuthenticatedSessionResources()

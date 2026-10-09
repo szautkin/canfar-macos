@@ -200,6 +200,14 @@ extension AppState {
         tools.append(makeShowComputeRunTool())
         tools.append(makeSetComputeSnippetTool())
         tools.append(makeShowStorageFolderTool())
+        tools.append(ListStorageKindsTool(status: { [weak self] in
+            guard let self else { throw ToolFailureReason.backendError("app state gone") }
+            return try await self.storageSyncStatus(syncing: false)
+        }))
+        tools.append(SyncStorageTool(sync: { [weak self] in
+            guard let self else { throw ToolFailureReason.backendError("app state gone") }
+            return try await self.storageSyncStatus(syncing: true)
+        }))
         // Explicit lifecycle on top of the lazy `run_code`: pre-warm /
         // size the instance (`start_compute`) and tear it down
         // (`stop_compute`). Resources are an instance property set on

@@ -71,6 +71,20 @@ actor VOSpaceBrowserService {
         return VOSpaceXMLParser.parseNodeList(xml)
     }
 
+    /// The node at `path` itself — its size, date, and whether anyone may
+    /// read it — without its children; nil when it is not there.
+    func node(username: String, path: String) async throws -> VOSpaceNode? {
+        let relative = try relativePath(path, username: username)
+        let basePath = relative.isEmpty ? Self.encodeSegment(username) : "\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
+        do {
+            let (data, _) = try await network.get("\(nodesBase)/\(basePath)?detail=max&limit=0", accept: "text/xml")
+            guard let xml = String(data: data, encoding: .utf8) else { throw VOSpaceError.invalidResponse }
+            return VOSpaceXMLParser.parseNode(xml)
+        } catch NetworkError.httpError(404, _) {
+            return nil
+        }
+    }
+
     // MARK: - Download
 
     /// Protocol / agent-facing entry — no progress. The Storage UI uses the

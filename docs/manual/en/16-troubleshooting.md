@@ -50,6 +50,16 @@ A probe that fails says why; **View probe logs** shows what the probe job printe
 set your registry credentials in **Settings ▸ Image Discovery** and **Test Connection**: the most common
 mistake is the CADC password in place of the Harbor CLI secret.
 
+## Verbinal's data in storage
+
+- **Research is not synced while your .verbinal folder is readable by anyone.** Make `.verbinal` private
+  in Storage (see [Files that should not be public](09-storage.md#files-that-should-not-be-public)); the
+  next sync goes on.
+- **A sync failed.** **Settings ▸ Storage** says why. Verbinal tries again later, waiting longer each
+  time while storage fails; **Sync Now** tries at once.
+- **A change made on another device does not show.** Verbinal syncs when you sign in and when you come
+  back to it after a while; **Sync Now** syncs at once.
+
 ## The viewers
 
 - **"… is no longer available"**: the file was moved or deleted since you opened it. Open it again from

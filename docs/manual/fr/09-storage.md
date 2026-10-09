@@ -63,6 +63,15 @@ d’eux, ou **Tout rendre privé** sur la bannière, les rend lisibles par vous 
 Changer qui d’autre peut lire ou écrire vos fichiers se fait sur le site de CANFAR, ou par un assistant,
 dont la demande attend alors votre approbation.
 
+## Les dossiers de Verbinal
+
+Verbinal garde une partie de ses données dans votre stockage : `.verbinal/manifest.json`, qui dit ce
+qu’il y garde et où ; `.verbinal/manifests` (les listes de paquets des images CANFAR) ;
+`.verbinal/exec` (les exécutions du calcul à distance) ; `.verbinal/research` (Recherche, quand vous l’y
+gardez) ; `.verbinal-scripts` (les scripts des tâches en lot) ; et `Verbinal-Exports` (les exportations
+que vous avez téléversées). Ils sont à vous comme tout autre dossier ; **Réglages ▸ Stockage** dit
+combien d’éléments chacun contient, et Verbinal ne les supprime jamais.
+
 ## Ce qu’un assistant peut faire ici
 
 Il peut lister et lire vos fichiers, créer des dossiers, téléverser des fichiers et du texte, télécharger

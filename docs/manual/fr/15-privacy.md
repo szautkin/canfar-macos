@@ -17,6 +17,8 @@ du CADC et de CANFAR que vous utilisez, en HTTPS.
 | Vos réglages | Les préférences de Verbinal |
 | Les fichiers téléchargés, figures et exportations | Votre dossier de téléchargement : Téléchargements, sauf si vous en choisissez un autre |
 | Les noms, collections et instruments de vos observations de Recherche | L’index Spotlight du Mac |
+| Les détails et les notes de vos observations, quand vous gardez Recherche dans VOSpace | Votre stockage CANFAR, `.verbinal/research`, seulement tant que ce dossier est privé |
+| Ce que ce Mac a vu en dernier de votre stockage, pour ne synchroniser que ce qui a changé | Le dossier propre à Verbinal |
 
 Le dossier propre à Verbinal se trouve dans son bac à sable :
 `~/Library/Containers/com.codebg.Verbinal`. Rien de ce qu’il contient n’est partagé avec d’autres apps.
