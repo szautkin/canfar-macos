@@ -805,7 +805,8 @@ final class MCPBridgeServiceTests: XCTestCase {
         let events = await heard.events
         XCTAssertEqual(events, ["opened test/1.0", "began echo", "ended echo ok", "closed"])
         let session = await heard.session
-        XCTAssertEqual(session, bridge.session)
+        let bridgeSession = await bridge.session
+        XCTAssertEqual(session, bridgeSession)
     }
 
     /// Plan 23 L5: a reply that asked CADC or CANFAR, took a while or failed

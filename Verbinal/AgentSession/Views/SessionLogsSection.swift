@@ -17,7 +17,8 @@ struct SessionLogsSection: View {
         Section {
             Button("Show Session Logs…") {
                 guard let hub = appState.sessionLog else { return }
-                sessionLogs = SessionLogsModel(query: SessionLogQuery(store: hub.store, hub: hub))
+                sessionLogs = SessionLogsModel(query: SessionLogQuery(store: hub.store, hub: hub),
+                                               approvals: appState.sessionApprovals)
             }
             .disabled(appState.sessionLog == nil)
             .pointable("settings.agent.sessionLogs", opens: "Session Logs")
@@ -26,7 +27,7 @@ struct SessionLogsSection: View {
         } header: {
             Text("Session Logs")
         } footer: {
-            Text("A log of each assistant's session: everything that happened while it was connected — each change, who made it and why, the app's decisions, failures and what they mean. Kept 10 days, and 10 MB in all; the assistant reads it with get_session_log.")
+            Text("A log of each assistant's session: everything that happened while it was connected — each change, who made it and why, the app's decisions, failures and what they mean. Kept 10 days, and 10 MB in all; the assistant reads it with get_session_log. End Session ends an allowed session at once.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

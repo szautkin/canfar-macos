@@ -25,11 +25,19 @@ public actor NetworkClient {
         return decoder
     }()
 
+    /// Which 401 of one request the host is asked about (plan 34 A): the
+    /// first, or a second after the retry the first allowed.
+    public enum UnauthorizedAttempt: Sendable, Equatable {
+        case first
+        case again
+    }
+
     /// Optional callback invoked when a request returns 401 — the host
     /// surface (`AppState`) plugs in a token refresh / re-prompt here.
-    /// Returns `true` if the client should retry the original request once;
-    /// `false` if the 401 should propagate as `NetworkError.unauthorized`.
-    public typealias UnauthorizedHandler = @Sendable () async -> Bool
+    /// Returns `true` if the client should retry the request, with the
+    /// token stamped again; `false` if the 401 should propagate as
+    /// `NetworkError.unauthorized`. A request is retried at most twice.
+    public typealias UnauthorizedHandler = @Sendable (UnauthorizedAttempt) async -> Bool
     private var onUnauthorized: UnauthorizedHandler?
 
     public init(
@@ -436,14 +444,22 @@ public actor NetworkClient {
         allowAuthRetry: Bool = true,
         operation: (URLRequest) async throws -> T
     ) async throws -> T {
-        do {
-            return try await operation(request)
-        } catch let error as NetworkError where error.isUnauthorized && allowAuthRetry {
-            if let handler = onUnauthorized, await handler() {
-                return try await operation(restamped(request))
+        var attempt: UnauthorizedAttempt? = allowAuthRetry ? .first : nil
+        var current = request
+        while true {
+            do {
+                return try await operation(current)
+            } catch let error as NetworkError where error.isUnauthorized {
+                guard let asked = attempt, let handler = onUnauthorized, await handler(asked) else { throw error }
+                attempt = Self.next(after: asked)
+                current = restamped(request)
             }
-            throw error
         }
+    }
+
+    /// The 401 after `attempt`'s retry: a second is asked about, a third is not.
+    private static func next(after attempt: UnauthorizedAttempt) -> UnauthorizedAttempt? {
+        attempt == .first ? .again : nil
     }
 
     private func restamped(_ request: URLRequest) -> URLRequest {
@@ -479,17 +495,22 @@ public actor NetworkClient {
     }
 
     private func execute(_ request: URLRequest, allowAuthRetry: Bool = true) async throws -> (Data, HTTPURLResponse) {
+        try await execute(request, attempt: allowAuthRetry ? .first : nil)
+    }
+
+    private func execute(_ request: URLRequest, attempt: UnauthorizedAttempt?) async throws -> (Data, HTTPURLResponse) {
         let session = session
         let (data, response) = try await ledger.send(request) { try await session.data(for: $0) }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
         if httpResponse.statusCode == 401 {
-            // Give the auth-lifecycle host one chance to refresh the token
-            // (or surface a re-login UI) before we propagate the failure.
-            // The handler returns true if a retry is worth attempting.
-            if allowAuthRetry, let handler = onUnauthorized, await handler() {
-                return try await execute(restamped(request), allowAuthRetry: false)
+            // Give the auth-lifecycle host a chance to refresh the token
+            // (or surface a re-login UI) before we propagate the failure:
+            // a first 401, and a second after its retry (plan 34 A). The
+            // handler returns true if a retry is worth attempting.
+            if let attempt, let handler = onUnauthorized, await handler(attempt) {
+                return try await execute(restamped(request), attempt: Self.next(after: attempt))
             }
             throw NetworkError.unauthorized
         }

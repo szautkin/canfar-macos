@@ -140,6 +140,12 @@ Remote Compute is reached from its Home tile. Every menu and shortcut is in
 When Verbinal starts, it checks your saved session while Home is already usable; the tiles that need
 an account unlock when the check is done. If the Mac is offline, the check waits for the network.
 
+When your session with CADC expires while you work, Verbinal signs you in again with the password it
+keeps, and what you were doing goes on: a search, a download or a listing waits for the new session,
+then continues. You see **Log In to CANFAR** only when that cannot work (you did not tick **Remember
+me**, or CADC refuses the password, which Verbinal then forgets), with *Your CADC session ended. Sign in
+to continue.* After you sign in, you are back where you were.
+
 To sign out, open your account menu (your name, at the top right of Home or Portal) and choose
 **Sign Out**.
 

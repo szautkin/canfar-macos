@@ -634,6 +634,7 @@ private struct AgentsSettingsTab: View {
             }
 
             #if os(macOS)
+            SessionIdleSection()
             SessionInstructionsSection()
             SessionLogsSection()
             #endif

@@ -46,8 +46,9 @@ explains each part.
 | **Diagnostics** | How many assistants are connected, and how many tools are registered. |
 | **Activity History** | A short summary of each change and view an assistant made; **Clear** empties it. |
 | **Recent Activity** | The last five calls: what each was and how it ended, never its arguments. |
+| **Sessions** ▸ **End an idle session after** | How long an allowed session lasts without a call: **15 minutes**, **1 hour** (the default), **4 hours**, **12 hours** or **1 day**. A session continues when Verbinal restarts. |
 | **Session Instructions** | What every new session's approval window starts with, up to 250 words; **Reset** restores Verbinal's own. |
-| **Session Logs** ▸ **Show Session Logs…** | Every assistant session, what happened and why. |
+| **Session Logs** ▸ **Show Session Logs…** | Every assistant session, what happened and why; **End Session** ends an allowed one. |
 
 The kinds and **Autonomy** show while **Allow external AI agents** is on, and the sections from **Diagnostics** to **Recent Activity** while the server runs.
 

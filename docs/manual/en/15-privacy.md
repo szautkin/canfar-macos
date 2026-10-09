@@ -12,6 +12,7 @@ services you use, over HTTPS.
 | Registry secrets (Image Discovery, AI Compute) | The macOS Keychain |
 | Your Research observations, notes, tags and ratings; saved queries and recent searches; FITS bookmarks; marks; workflows; the batch job history | Verbinal's own folder, as a database and files |
 | Assistant session logs | Verbinal's own folder, 10 days and 10 MB at most |
+| The assistant sessions you allowed, with your instructions for each | Verbinal's own folder, until a day after each ends |
 | Image Discovery results, the image list, the data train, the service addresses | Caches in Verbinal's own folder |
 | Your settings | Verbinal's preferences |
 | Files you download, figures and exports | Where you choose, or your Downloads folder |

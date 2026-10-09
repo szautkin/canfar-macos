@@ -134,7 +134,8 @@ final class SessionLogStore: @unchecked Sendable {
         return files.compactMap { url -> StoredSessionLog? in
             guard let (header, entries) = read(url) else { return nil }
             let bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            let ending = entries.last(where: { $0.kind == .closed })?.outcome
+            // A session that continued after it closed (plan 34 S) is open.
+            let ending = entries.last.flatMap { $0.kind == .closed ? $0.outcome : nil }
             return StoredSessionLog(url: url, header: header, bytes: bytes, lastAt: entries.last?.at ?? header.opened,
                                     entries: entries.count, actions: entries.filter { $0.kind == .action }.count,
                                     failures: entries.filter(\.isFailure).count, ending: ending)

@@ -69,6 +69,9 @@ public actor ResilientBridge {
     private var reconnecting: Task<Void, Never>?
     /// The app refused this assistant; asking again would only ask the user again.
     private var refused = false
+    /// Made once: each connection introduces the relay with it first, so the
+    /// app continues this assistant's session after a restart (plan 34 S).
+    private let relaySecret = AgentSession.newRelaySecret()
 
     public init(client: any MCPTransport,
                 connect: @escaping @Sendable () async -> (any MCPTransport)?,
@@ -203,8 +206,9 @@ public actor ResilientBridge {
 
     // MARK: - Connecting
 
-    /// Connects to the app and, when the assistant has already shaken hands
-    /// with the bridge, replays that handshake. True once relaying.
+    /// Connects to the app, introduces the relay and, when the assistant has
+    /// already shaken hands with the bridge, replays that handshake. True
+    /// once relaying.
     private func attach() async -> Bool {
         guard let link = await connect() else { return false }
         generation += 1
@@ -214,6 +218,13 @@ public actor ResilientBridge {
                 for try await frame in link.incoming { await self?.fromApp(frame, generation: gen) }
             } catch {}
             await self?.appClosed(generation: gen)
+        }
+        do {
+            try await link.send(AgentSession.relayIntroduction(secret: relaySecret))
+        } catch {
+            generation += 1
+            await link.close()
+            return false
         }
         if let initialize = clientInitialize {
             guard await replay(initialize, over: link, generation: gen) else {

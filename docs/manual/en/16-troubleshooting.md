@@ -8,7 +8,10 @@ it says what Verbinal is doing, and what failed and why. Click it for the **Acti
 - **The sign-in is refused.** Check your CADC username and password on the CADC website. Verbinal signs
   in with your CADC account; a registry (Harbor) secret is not your password.
 - **You are asked to sign in again and again.** Tick **Remember me** when you sign in: Verbinal then signs
-  you in again by itself when your session with CADC expires.
+  you in again by itself when your session with CADC expires, and what you were doing continues.
+- **Your CADC session ended. Sign in to continue.** Verbinal could not sign you in again by itself: no
+  password is kept, or CADC refused it (you may have changed it on the CADC website). Sign in; you are
+  back where you were.
 - **Verbinal started offline.** It waits for the network and checks your session then; the tiles that
   need an account unlock by themselves.
 

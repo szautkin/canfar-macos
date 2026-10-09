@@ -33,6 +33,9 @@ extension AppState {
         describeApp.standingRules = { [weak self] in
             await MainActor.run { self?.aiGuideService.snapshot().standingRules ?? [] }
         }
+        describeApp.sessionIdleMinutes = { [weak self] in
+            await MainActor.run { self?.sessionApprovals.idleMinutes }
+        }
         tools.append(describeApp)
         tools.append(ListAppsTool(published: published))
         tools.append(SearchToolsTool(published: published))

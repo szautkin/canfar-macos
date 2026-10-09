@@ -139,7 +139,7 @@ final class AppState {
     /// it is open (plan 23).
     private(set) var sessionLog: AppEventHub?
     /// The person's say over assistant sessions, and its window (plan 25).
-    let sessionApprovals = SessionApprovals()
+    let sessionApprovals = SessionApprovals(file: SessionApprovals.productionFile)
     @ObservationIgnored private var sessionApprovalWindow: SessionApprovalWindow?
     #endif
 
@@ -397,8 +397,15 @@ final class AppState {
         self.sessionLog = sessionLog
         agentsService.sessionRecorder = sessionLog
         Task { await sessionLog.start() }
-        // No session, no tools: the person allows each one (plan 25).
-        agentsService.sessionGate = SessionApprovalGate(approvals: sessionApprovals)
+        // No session, no tools: the person allows each one (plan 25); a
+        // relay's reconnection continues its session (plan 34 S).
+        let sessionGate = SessionApprovalGate(approvals: sessionApprovals)
+        agentsService.sessionGate = sessionGate
+        agentsService.sessionContinuity = sessionGate
+        sessionApprovals.onEnded = { session, why, at in
+            Task { await sessionLog.note(session, SessionLogLine.ended(why, at: at)) }
+        }
+        agentsService.onTurnedOff = { [weak self] in self?.sessionApprovals.endAll(.agentsTurnedOff) }
         sessionApprovalWindow = SessionApprovalWindow(approvals: sessionApprovals)
         // The app's other windows go with its last main window.
         appWindows = AppWindows { [weak self] closing in self?.mainWindowClosed(closing) }
@@ -450,9 +457,9 @@ final class AppState {
         // token. We do a token re-validation rather than full re-login so
         // the user isn't prompted unless the token has actually expired.
         Task { [weak self, network] in
-            await network.setUnauthorizedHandler { [weak self] in
+            await network.setUnauthorizedHandler { [weak self] attempt in
                 guard let self else { return false }
-                return await self.handleNetworkUnauthorized()
+                return await self.handleNetworkUnauthorized(attempt)
             }
         }
     }
@@ -461,8 +468,8 @@ final class AppState {
     /// Returns true if a retry of the original request is worth attempting.
     /// Forwards to the controller, which knows how to validate and tear
     /// down the session if needed.
-    private func handleNetworkUnauthorized() async -> Bool {
-        await auth.handleNetworkUnauthorized()
+    private func handleNetworkUnauthorized(_ attempt: NetworkClient.UnauthorizedAttempt) async -> Bool {
+        await auth.handleNetworkUnauthorized(attempt)
     }
 
     /// Re-scan installed addons. Call at app launch and whenever the user

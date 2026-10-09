@@ -119,6 +119,17 @@ actor AppEventHub: AgentSessionRecorder {
     }
 
     private func open(_ session: UUID, client: String) async {
+        // A relay's reconnection continues its session's log (plan 34 S).
+        if let open = journals[session] {
+            await open.record(SessionLogLine.reconnected(client, session: session))
+            return
+        }
+        if let url = store.url(of: session), let journal = SessionJournal(continuing: url, store: store) {
+            await journal.record(SessionLogLine.reconnected(client, session: session))
+            journals[session] = journal
+            clients[session] = client
+            return
+        }
         let header = await header(session, client)
         let journal = SessionJournal(header: header, store: store)
         await journal.record(SessionLogLine.opened(header))

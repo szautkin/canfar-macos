@@ -47,8 +47,9 @@ Comment les assistants IA joignent Verbinal et ce qu’ils peuvent faire.
 | **Diagnostic** | Combien d’assistants sont connectés, et combien d’outils sont enregistrés. |
 | **Historique d'activité** | Un court résumé de chaque modification et de chaque vue faite par un assistant ; **Effacer** le vide. |
 | **Activité récente** | Les cinq derniers appels : ce que chacun était et comment il a fini, jamais ses arguments. |
+| **Sessions** ▸ **Terminer une session inactive après** | Combien de temps une session autorisée dure sans appel : **15 minutes**, **1 heure** (par défaut), **4 heures**, **12 heures** ou **1 jour**. Une session continue quand Verbinal redémarre. |
 | **Instructions de session** | Ce par quoi commence la fenêtre d’autorisation de chaque nouvelle session, jusqu’à 250 mots ; **Réinitialiser** rétablit celles de Verbinal. |
-| **Journaux de session** ▸ **Afficher les journaux de session…** | Chaque session d’assistant, ce qui s’est passé et pourquoi. |
+| **Journaux de session** ▸ **Afficher les journaux de session…** | Chaque session d’assistant, ce qui s’est passé et pourquoi ; **Terminer la session** met fin à une session autorisée. |
 
 Les types et **Autonomie** s’affichent quand **Autoriser les agents IA externes** est activé, et les
 sections de **Diagnostic** à **Activité récente** quand le serveur tourne.

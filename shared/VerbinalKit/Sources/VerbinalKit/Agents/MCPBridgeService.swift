@@ -71,9 +71,13 @@ public actor MCPBridgeService {
     private var clientID: String?
     private var initialized: Bool = false
     /// This connection's assistant session (plan 23). One bridge serves one
-    /// connection, so one session: a relay reconnecting after Verbinal
-    /// restarts is a new one.
-    public nonisolated let session = UUID()
+    /// connection, so one session; a relay reconnecting after Verbinal
+    /// restarts continues the one it had (plan 34 S).
+    public private(set) var session = UUID()
+    /// The relay's fingerprint, from its introduction (plan 34 S).
+    private var relay: String?
+    /// A modern client's session opening, which its first calls wait for.
+    private var opening: Task<Void, Never>?
     /// The MCP version the client speaks: its `initialize`'s, or what its
     /// latest request declared.
     private var mcpVersion: String?
@@ -144,6 +148,11 @@ public actor MCPBridgeService {
         let method = object?["method"] as? String
         if method == "notifications/cancelled" {
             cancel(object?["params"] as? [String: Any])
+            return
+        }
+        if method == AgentSession.relayNotification {
+            // Only before the session opens: it cannot be changed after.
+            if !initialized { relay = AgentSession.relayFingerprint(introduction: object?["params"] as? [String: Any]) }
             return
         }
         guard method == "tools/call", inFlightCalls.count < Self.maxConcurrentCalls else {
@@ -294,12 +303,26 @@ public actor MCPBridgeService {
     /// A modern client has no handshake: its first request opens the
     /// connection's session, with the identity it declares (plan 25 V).
     private func openStatelessClient(_ request: JSONRPCRequest) async {
+        // Calls run side by side: a second waits for the session to open.
+        if let opening { return await opening.value }
         guard !initialized else { return }
         let info = MCPProtocol.declaredClient(in: request.params)
-        clientID = info.map { "\($0.name)/\($0.version)" } ?? "unnamed client"
+        let client = info.map { "\($0.name)/\($0.version)" } ?? "unnamed client"
+        clientID = client
         initialized = true
-        logger.info("stateless client=\(self.clientID ?? "", privacy: .public)")
-        await services.recorder?.opened(session, client: clientID ?? "unnamed client")
+        logger.info("stateless client=\(client, privacy: .public)")
+        let open = Task { await self.openSession(client: client) }
+        opening = open
+        await open.value
+    }
+
+    /// The session opens: a relay's reconnection continues the one the
+    /// relay had (plan 34 S); any other connection keeps its new one.
+    private func openSession(client: String) async {
+        if let relay, let continuity = services.continuity {
+            session = await continuity.session(forRelay: relay, fresh: session)
+        }
+        await services.recorder?.opened(session, client: client)
     }
 
     // MARK: - initialize
@@ -336,7 +359,7 @@ public actor MCPBridgeService {
         self.mcpVersion = MCPProtocol.negotiated(params.protocolVersion)
         self.initialized = true
         logger.info("initialized client=\(cid, privacy: .public)")
-        if !reopened { await services.recorder?.opened(session, client: cid) }
+        if !reopened { await openSession(client: cid) }
 
         let result = InitializeResult(
             protocolVersion: MCPProtocol.negotiated(params.protocolVersion),
@@ -402,11 +425,12 @@ public actor MCPBridgeService {
         // it works (plan 25 M). The refusal is a call like any other, logged.
         if let gate = services.gate, !AgentSession.openBeforeSession.contains(params.name), !(await gate.isOpen(session)) {
             logger.notice("tools/call \(params.name, privacy: .public) -> no session")
+            let refusal: ToolFailureReason = await gate.endedBecause(session).map { .sessionEnded(why: $0) } ?? .sessionRequired
             let call = UUID()
             await services.recorder?.callBegan(session, call: call, tool: params.name)
             _ = await services.recorder?.callEnded(session, call: call, tool: params.name, traced: AIToolRouter.Traced(
-                result: .failed(.sessionRequired), seconds: 0, trace: RequestTrace(parent: nil)))
-            return stamped(mapToolResult(id: request.id, result: .failed(.sessionRequired)))
+                result: .failed(refusal), seconds: 0, trace: RequestTrace(parent: nil)))
+            return stamped(mapToolResult(id: request.id, result: .failed(refusal)))
         }
 
         // AI Guide tools are read-only: a call returns the stored instruction
@@ -536,17 +560,22 @@ public actor MCPBridgeService {
         /// Whether the person has allowed the session (plan 25); nil lets
         /// every call through.
         public let gate: (any AgentSessionGate)?
+        /// Which session a relay's reconnection continues (plan 34 S); nil
+        /// makes every connection a new session.
+        public let continuity: (any AgentSessionContinuity)?
 
         public init(proposals: any ProposalStore,
                     budget: ProposalBudget,
                     eventLog: EventLog? = nil,
                     recorder: (any AgentSessionRecorder)? = nil,
-                    gate: (any AgentSessionGate)? = nil) {
+                    gate: (any AgentSessionGate)? = nil,
+                    continuity: (any AgentSessionContinuity)? = nil) {
             self.proposals = proposals
             self.budget = budget
             self.eventLog = eventLog
             self.recorder = recorder
             self.gate = gate
+            self.continuity = continuity
         }
     }
 

@@ -146,6 +146,136 @@ final class SessionApprovalTests: XCTestCase {
         guard case .failed(.invalidArgument) = result else { return XCTFail("\(result)") }
     }
 
+    // MARK: - One session per assistant (plan 34 S)
+
+    private final class Clock: @unchecked Sendable {
+        var now = Date(timeIntervalSince1970: 1_800_000_000)
+        func pass(minutes: Double) { now = now.addingTimeInterval(minutes * 60) }
+    }
+
+    private func file() -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("approvals-\(UUID().uuidString).json")
+    }
+
+    /// Allows `session`, asked for by the relay of `relay`.
+    private func allow(_ approvals: SessionApprovals, relay: String, instructions: String = "Use only Verbinal.") async -> UUID {
+        let session = approvals.session(forRelay: relay, fresh: UUID())
+        answer(approvals) { approvals.allow($0, instructions: instructions) }
+        _ = await approvals.ask(request(session))
+        return session
+    }
+
+    func testAnAllowedSessionOutlivesARestartOfVerbinal() async {
+        let clock = Clock()
+        let file = file()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let before = SessionApprovals(defaults: defaults, file: file, now: { clock.now })
+        let session = await allow(before, relay: "relay-a")
+        clock.pass(minutes: 5)
+
+        let after = SessionApprovals(defaults: defaults, file: file, now: { clock.now })
+        XCTAssertEqual(after.session(forRelay: "relay-a", fresh: UUID()), session, "the relay finds its session")
+        XCTAssertEqual(after.approval(for: session)?.instructions, "Use only Verbinal.")
+        XCTAssertTrue(after.use(session))
+        XCTAssertEqual(after.allowedSessions, [session])
+        XCTAssertNotEqual(after.session(forRelay: "relay-b", fresh: UUID()), session, "another relay is another session")
+        let raw = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+        XCTAssertFalse(raw.contains("secret"), "a fingerprint is kept, never a secret")
+    }
+
+    func testADeclinedOrAbandonedSessionIsNotRemembered() async throws {
+        let file = file()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let approvals = SessionApprovals(defaults: defaults, file: file)
+        let declined = approvals.session(forRelay: "relay-d", fresh: UUID())
+        answer(approvals) { approvals.decline($0) }
+        _ = await approvals.ask(request(declined))
+        let waiting = Task { await approvals.ask(self.request(approvals.session(forRelay: "relay-e", fresh: UUID()))) }
+        for _ in 0..<200 where approvals.pending.isEmpty { try await Task.sleep(for: .milliseconds(5)) }
+        waiting.cancel()
+        _ = await waiting.value
+
+        let after = SessionApprovals(defaults: defaults, file: file)
+        XCTAssertNotEqual(after.session(forRelay: "relay-d", fresh: UUID()), declined)
+        XCTAssertTrue(after.allowedSessions.isEmpty)
+    }
+
+    func testASessionEndsAfterTheIdleTimeAndSaysWhy() async {
+        let clock = Clock()
+        let approvals = SessionApprovals(defaults: defaults, now: { clock.now })
+        var endings: [SessionApprovals.Ending] = []
+        approvals.onEnded = { _, why, _ in endings.append(why) }
+        XCTAssertEqual(approvals.idleMinutes, 60, "an hour unless the person changes it")
+        let session = await allow(approvals, relay: "relay-a")
+
+        clock.pass(minutes: 50)
+        XCTAssertTrue(approvals.use(session), "a call within the hour")
+        clock.pass(minutes: 50)
+        XCTAssertTrue(approvals.use(session), "the hour counts from the last call")
+        XCTAssertNil(approvals.endedBecause(session))
+        clock.pass(minutes: 61)
+        XCTAssertFalse(approvals.use(session))
+        XCTAssertEqual(approvals.endedBecause(session), "Your session ended after 1 hour without a call.")
+        XCTAssertEqual(endings, [.idle])
+        XCTAssertTrue(approvals.allowedSessions.isEmpty)
+        XCTAssertEqual(approvals.session(forRelay: "relay-a", fresh: UUID()), session, "the relay keeps its session")
+
+        // Asked again, the person allows the same session again.
+        answer(approvals) { approvals.allow($0, instructions: "Again.") }
+        guard case .allowed(let again) = await approvals.ask(request(session)) else { return XCTFail("not asked again") }
+        XCTAssertEqual(again.instructions, "Again.")
+        XCTAssertNil(approvals.endedBecause(session))
+    }
+
+    func testThePersonSetsTheIdleTime() async {
+        let clock = Clock()
+        let approvals = SessionApprovals(defaults: defaults, now: { clock.now })
+        approvals.idleMinutes = 15
+        XCTAssertEqual(SessionApprovals(defaults: defaults).idleMinutes, 15, "kept")
+        let session = await allow(approvals, relay: "relay-a")
+        clock.pass(minutes: 16)
+        XCTAssertEqual(approvals.endedBecause(session), "Your session ended after 15 minutes without a call.")
+        approvals.idleMinutes = 60
+        XCTAssertEqual(SessionApprovals(defaults: defaults).idleMinutes, 60)
+        XCTAssertEqual(SessionApprovals.idleChoices.map(SessionApprovals.idleText),
+                       ["15 minutes", "1 hour", "4 hours", "12 hours", "1 day"])
+    }
+
+    func testThePersonEndsASessionOrTurnsAgentsOff() async {
+        let approvals = SessionApprovals(defaults: defaults)
+        let first = await allow(approvals, relay: "relay-a")
+        let second = await allow(approvals, relay: "relay-b")
+        approvals.end(first, .byPerson)
+        XCTAssertEqual(approvals.endedBecause(first), "The person ended your session in Verbinal.")
+        XCTAssertTrue(approvals.use(second))
+        approvals.endAll(.agentsTurnedOff)
+        XCTAssertEqual(approvals.endedBecause(second), "Your session ended when the person turned off external AI agents.")
+        XCTAssertTrue(approvals.allowedSessions.isEmpty)
+        let gate = SessionApprovalGate(approvals: approvals)
+        let open = await gate.isOpen(second)
+        XCTAssertFalse(open)
+    }
+
+    func testASecondStartSessionSaysItWasAlreadyStarted() async throws {
+        let approvals = SessionApprovals(defaults: defaults)
+        let tool = StartSessionTool(approvals: approvals, note: { _, _ in })
+        let session = UUID()
+        answer(approvals) { approvals.allow($0, instructions: "Use only Verbinal.") }
+        let args = Data(#"{"agent":"Claude"}"#.utf8)
+        guard case .data(let first) = await tool.invoke(arguments: args, context: context(session)),
+              case .data(let second) = await tool.invoke(arguments: args, context: context(session)) else {
+            return XCTFail("not started")
+        }
+        let one = try XCTUnwrap(JSONSerialization.jsonObject(with: first) as? [String: Any])
+        let two = try XCTUnwrap(JSONSerialization.jsonObject(with: second) as? [String: Any])
+        XCTAssertEqual(one["alreadyStarted"] as? Bool, false)
+        XCTAssertNil(one["note"])
+        XCTAssertEqual(two["alreadyStarted"] as? Bool, true)
+        XCTAssertEqual(two["note"] as? String, StartSessionTool.alreadyStartedNote)
+        XCTAssertEqual(two["instructions"] as? String, "Use only Verbinal.")
+        XCTAssertTrue(approvals.pending.isEmpty, "no second window")
+    }
+
     // MARK: - The words (plan 25 W)
 
     /// Every assistant is told the same way: the server's instructions,

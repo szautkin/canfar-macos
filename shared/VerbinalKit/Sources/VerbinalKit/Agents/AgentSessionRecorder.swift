@@ -27,7 +27,25 @@ public protocol AgentSessionRecorder: Sendable {
 /// session first (plan 25 M). The bridge asks before every call but the
 /// few that start a session.
 public protocol AgentSessionGate: Sendable {
-    /// Whether the person has allowed `session`.
+    /// Whether the person has allowed `session`. A call it lets through
+    /// counts as the session's use.
     func isOpen(_ session: UUID) async -> Bool
+    /// Why `session`, once allowed, is not any more — said to the assistant
+    /// (plan 34 S); nil when it was never allowed.
+    func endedBecause(_ session: UUID) async -> String?
+}
+
+public extension AgentSessionGate {
+    func endedBecause(_ session: UUID) async -> String? { nil }
+}
+
+/// Which session a connection continues (plan 34 S): the relay an assistant
+/// launched introduces itself with a secret, and a reconnection of the same
+/// relay — after Verbinal restarts — is the same session, with its log and
+/// the person's answer.
+public protocol AgentSessionContinuity: Sendable {
+    /// The session the relay of `fingerprint` had; `fresh`, now the relay's,
+    /// when it had none.
+    func session(forRelay fingerprint: String, fresh: UUID) async -> UUID
 }
 

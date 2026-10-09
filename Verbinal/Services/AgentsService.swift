@@ -204,6 +204,10 @@ final class AgentsService {
     /// Whether the person has allowed a connection's session (plan 25); nil
     /// lets every call through.
     var sessionGate: (any AgentSessionGate)?
+    /// Which session a relay's reconnection continues (plan 34 S).
+    var sessionContinuity: (any AgentSessionContinuity)?
+    /// Told when the person turns external AI agents off: their sessions end.
+    var onTurnedOff: (@MainActor () -> Void)?
 
     private var server: SocketServer?
     private var serverLoopTask: Task<Void, Never>?
@@ -519,6 +523,7 @@ final class AgentsService {
             startServer()
         } else {
             stopServer()
+            onTurnedOff?()
         }
     }
 
@@ -677,7 +682,8 @@ final class AgentsService {
                 budget: ProposalBudget(),
                 eventLog: eventLog,
                 recorder: sessionRecorder,
-                gate: sessionGate
+                gate: sessionGate,
+                continuity: sessionContinuity
             ),
             approval: .allowAll,  // P3 minimum: gate is the toggle. P8 adds per-client approval.
             aiGuide: aiGuideResolver,

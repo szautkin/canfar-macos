@@ -30,6 +30,9 @@ struct DescribeAppTool: JSONReadTool {
         var buildCommit: String? = Bundle.main.infoDictionary?["VerbinalBuildCommit"] as? String
         let app: ToolMap.Area?
         let tools: [ToolMap.Entry]?
+        /// How long an allowed session lasts without a call, as the person
+        /// set it (plan 34 S): "1 hour".
+        var sessionEndsAfterIdle: String? = nil
     }
 
     let definition = AIToolDefinition.withStaticSchema(
@@ -49,13 +52,16 @@ struct DescribeAppTool: JSONReadTool {
     var published: @Sendable () async -> [ToolDefinitionWire] = { [] }
     /// The person's guide tools, read when asked.
     var standingRules: @Sendable () async -> [AIGuideSnapshot.StandingRule] = { [] }
+    /// The person's idle time for a session, in minutes; nil when none applies.
+    var sessionIdleMinutes: @Sendable () async -> Int? = { nil }
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         guard let wanted = args.app?.trimmingCharacters(in: .whitespacesAndNewlines), !wanted.isEmpty else {
             let rules = await standingRules()
             let brief = [AIGuideSnapshot.briefSection(rules), Self.brief].compactMap { $0 }.joined(separator: "\n\n")
-            return Output(standingRules: rules, brief: brief, serverVersion: version, app: nil, tools: nil)
+            return Output(standingRules: rules, brief: brief, serverVersion: version, app: nil, tools: nil,
+                          sessionEndsAfterIdle: await sessionIdleMinutes().map(SessionApprovals.idleText))
         }
         let tools = await published()
         let areas = ToolMap.areas(tools)

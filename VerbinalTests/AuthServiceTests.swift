@@ -113,7 +113,7 @@ final class AuthServiceTests: XCTestCase {
         let service = AuthService(network: network)
 
         let interceptorCalls = CallCounter()
-        await network.setUnauthorizedHandler {
+        await network.setUnauthorizedHandler { _ in
             await interceptorCalls.increment()
             return true // would trigger a retry if the interceptor were consulted
         }
@@ -139,7 +139,7 @@ final class AuthServiceTests: XCTestCase {
         let service = AuthService(network: network)
 
         let interceptorCalls = CallCounter()
-        await network.setUnauthorizedHandler {
+        await network.setUnauthorizedHandler { _ in
             await interceptorCalls.increment()
             return true
         }

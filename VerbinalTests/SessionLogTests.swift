@@ -220,6 +220,36 @@ final class SessionLogTests: XCTestCase {
         XCTAssertEqual(closed.ending, "disconnected")
     }
 
+    /// Plan 34 S: the same session, connecting again after Verbinal restarted,
+    /// continues its log — one file, its tokens after the earlier ones — and
+    /// is open again.
+    func testAReconnectedSessionContinuesItsLog() async throws {
+        let session = UUID()
+        do {
+            let before = rig()
+            await before.hub.opened(session, client: "claude-code/2.1")
+            await before.hub.note(session, SessionLogLine.signedIn("alice"))
+            await before.hub.settle()
+        }
+        // Verbinal quit, and started again.
+        try await Task.sleep(for: .milliseconds(50))
+        let after = rig()
+        after.store.closeAbandoned(open: [])
+        XCTAssertEqual(after.store.list().first?.ending, "verbinalQuit")
+
+        await after.hub.opened(session, client: "claude-code/2.1")
+        await after.hub.settle()
+        let logs = after.store.list().filter { $0.header.session == session }
+        XCTAssertEqual(logs.count, 1, "one session, one log")
+        XCTAssertNil(logs.first?.ending, "open again")
+        let kept = try XCTUnwrap(after.store.read(try XCTUnwrap(logs.first).url)).entries
+        XCTAssertEqual(kept.map(\.token), Array(1...kept.count), "tokens go on from the earlier ones")
+        XCTAssertEqual(kept.last?.line, "The assistant (claude-code/2.1) connected again: its session continues.")
+        XCTAssertEqual(kept.last?.outcome, "reconnected")
+        let journal = await entries(after, session)
+        XCTAssertEqual(journal.first?.kind, .opened, "the journal holds the earlier entries too")
+    }
+
     /// Nothing of a login — its form, its path — reaches a session's file.
     func testASignInLeavesNothingOfItsFormInTheFile() async throws {
         let rig = rig()

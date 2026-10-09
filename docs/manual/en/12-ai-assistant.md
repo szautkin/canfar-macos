@@ -80,8 +80,17 @@ Every time an assistant connects, it must start a session, and Verbinal asks you
   **Reset** them.
 - **Allow** starts the session; **Deny** refuses it. The window waits as long as the assistant waits.
 
-Until you allow it, the assistant can only ask Verbinal to describe itself. The session lasts while
-the assistant stays connected; after Verbinal or the assistant restarts, it asks again.
+Until you allow it, the assistant can only ask Verbinal to describe itself. You allow an assistant
+once: when Verbinal restarts, its session continues, with the same log, and you are not asked again. A
+session ends:
+
+- after a time without a call: **Settings ▸ AI Agent ▸ Sessions ▸ End an idle session after**, **1 hour**
+  unless you choose another, from **15 minutes** to **1 day**;
+- when you end it: **End Session**, in the session logs;
+- when you turn off **Allow external AI agents**.
+
+The assistant is told why, and when it comes back, the window asks you again. When the assistant's own
+app restarts, it is a new session, and you are asked again.
 
 Your default instructions are in **Settings ▸ AI Agent ▸ Session Instructions**. Out of the box they
 read: *"Use only Verbinal and its tools for this work: no other apps, and no network connections
@@ -180,8 +189,10 @@ not your data: no passwords, file contents, queries or paths.
 
 Open it from **Settings ▸ AI Agent ▸ Session Logs ▸ Show Session Logs…**:
 
-- The list on the left has one entry per session: the client, **Open** while it is connected, when
-  it started, and how many changes and failures it had.
+- The list on the left has one entry per session: the client, **Open** while it is connected,
+  **Allowed** while you allow it, when it started, and how many changes and failures it had.
+- **End Session** ends the selected session at once, if you allowed it: its assistant's next call is
+  refused until you allow it again.
 - Select one to read it. **Show** filters it: **All**, **Changes**, **Failures**, **Decisions**,
   **Calls**. Open an entry to see its requests: which service, what the answer meant, and how long it
   took.
@@ -217,6 +228,7 @@ Some things stay yours, on purpose:
 ## Stopping an assistant
 
 - **Deny** a session it asks for.
+- **End Session** in the session logs: its next call is refused, and it must ask you again.
 - **Reject** what waits in Pending.
 - Turn off **Allow external AI agents** in **Settings ▸ AI Agent**: the server stops, and no assistant
   can reach Verbinal until you turn it on again.

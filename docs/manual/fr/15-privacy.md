@@ -12,6 +12,7 @@ du CADC et de CANFAR que vous utilisez, en HTTPS.
 | Les secrets de registre (Découverte d’images, Calcul IA) | Le trousseau macOS |
 | Vos observations de Recherche, notes, étiquettes et notes de qualité ; requêtes enregistrées et recherches récentes ; signets FITS ; marques ; flux de travail ; l’historique des tâches en lot | Le dossier propre à Verbinal, en base de données et en fichiers |
 | Les journaux de session des assistants | Le dossier propre à Verbinal, 10 jours et 10 Mo au plus |
+| Les sessions d’assistant que vous avez autorisées, avec vos instructions pour chacune | Le dossier propre à Verbinal, jusqu’à un jour après la fin de chacune |
 | Les résultats de la Découverte d’images, la liste des images, le train de données, les adresses des services | Des caches dans le dossier propre à Verbinal |
 | Vos réglages | Les préférences de Verbinal |
 | Les fichiers téléchargés, figures et exportations | Où vous le choisissez, ou votre dossier Téléchargements |

@@ -43,6 +43,20 @@ actor SessionJournal {
         }
     }
 
+    /// Continues the log kept at `url` (plan 34 S): its entries, and the
+    /// tokens after theirs. Nil when it is not a log.
+    init?(continuing url: URL, store: SessionLogStore, maxBytes: Int = SessionLogRetention.maxSessionBytes) {
+        guard let (header, entries) = store.read(url) else { return nil }
+        self.header = header
+        self.store = store
+        self.maxBytes = maxBytes
+        self.url = url
+        self.entries = entries
+        nextToken = (entries.map(\.token).max() ?? 0) + 1
+        bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        held = SessionLogStore.hold(url)
+    }
+
     /// A journal let go without a close — the app quitting — lets go of
     /// its file, so the next launch closes it as abandoned.
     deinit {

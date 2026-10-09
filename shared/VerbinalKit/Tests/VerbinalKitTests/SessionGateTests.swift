@@ -61,8 +61,113 @@ final class SessionGateTests: XCTestCase {
 
     private actor Gate: AgentSessionGate {
         var open = false
+        var ended: String?
         func isOpen(_ session: UUID) -> Bool { open }
+        func endedBecause(_ session: UUID) -> String? { ended }
         func allow() { open = true }
+        func end(_ why: String) { open = false; ended = why }
+    }
+
+    /// Remembers which session each relay had, as the app does.
+    private actor Relays: AgentSessionContinuity {
+        var sessions: [String: UUID] = [:]
+        func session(forRelay fingerprint: String, fresh: UUID) -> UUID {
+            if let known = sessions[fingerprint] { return known }
+            sessions[fingerprint] = fresh
+            return fresh
+        }
+    }
+
+    /// One connection: the relay's introduction, if any, then the handshake;
+    /// answers the session the bridge took.
+    private func connect(introducing secret: String?, continuity: Relays, gate: Gate = Gate(),
+                         heard: Heard? = nil) async throws -> (bridge: MCPBridgeService, session: UUID) {
+        let bridge = MCPBridgeService(
+            router: AIToolRouter(tools: [Named("start_session")], auditSink: CapturingAuditSink()),
+            identity: .init(name: "Verbinal", version: "1.4.1"),
+            services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8),
+                            recorder: heard, gate: gate, continuity: continuity))
+        let (client, server) = InMemoryTransport.pair()
+        Task { await bridge.serve(on: server) }
+        var replies = client.incoming.makeAsyncIterator()
+        if let secret { try await client.send(AgentSession.relayIntroduction(secret: secret)) }
+        let hello: [String: Any] = ["jsonrpc": "2.0", "id": 0, "method": "initialize",
+                                    "params": ["protocolVersion": "2025-06-18", "capabilities": [:]]]
+        try await client.send(try JSONSerialization.data(withJSONObject: hello))
+        _ = try await replies.next()
+        let started = try await call(bridge, client, &replies, 1, "start_session")
+        let named = try XCTUnwrap((started["_meta"] as? [String: Any])?[AgentSession.metaKey] as? String)
+        await client.close()
+        await server.close()
+        return (bridge, try XCTUnwrap(UUID(uuidString: named)))
+    }
+
+    /// Plan 34 S: the same relay, connecting again after Verbinal restarts,
+    /// continues its session; another relay, or a connection that does not
+    /// introduce itself, has its own.
+    func testARelaysReconnectionContinuesItsSession() async throws {
+        let relays = Relays()
+        let secret = AgentSession.newRelaySecret()
+        let first = try await connect(introducing: secret, continuity: relays)
+        let again = try await connect(introducing: secret, continuity: relays)
+        XCTAssertEqual(again.session, first.session, "the same relay, the same session")
+        let heardSession = await again.bridge.session
+        XCTAssertEqual(heardSession, first.session)
+
+        let other = try await connect(introducing: AgentSession.newRelaySecret(), continuity: relays)
+        XCTAssertNotEqual(other.session, first.session, "another relay, another session")
+        let bare = try await connect(introducing: nil, continuity: relays)
+        XCTAssertNotEqual(bare.session, first.session, "no introduction, a new session")
+        let forged = try await connect(introducing: first.session.uuidString, continuity: relays)
+        XCTAssertNotEqual(forged.session, first.session, "the public session id is not the relay's secret")
+    }
+
+    /// An introduction after the session opened changes nothing.
+    func testALateIntroductionDoesNotMoveTheSession() async throws {
+        let relays = Relays()
+        let secret = AgentSession.newRelaySecret()
+        let first = try await connect(introducing: secret, continuity: relays)
+        let bridge = MCPBridgeService(
+            router: AIToolRouter(tools: [Named("start_session")], auditSink: CapturingAuditSink()),
+            identity: .init(name: "Verbinal", version: "1.4.1"),
+            services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8), continuity: relays))
+        let (client, server) = InMemoryTransport.pair()
+        let serving = Task { await bridge.serve(on: server) }
+        var replies = client.incoming.makeAsyncIterator()
+        let hello: [String: Any] = ["jsonrpc": "2.0", "id": 0, "method": "initialize",
+                                    "params": ["protocolVersion": "2025-06-18", "capabilities": [:]]]
+        try await client.send(try JSONSerialization.data(withJSONObject: hello))
+        _ = try await replies.next()
+        try await client.send(AgentSession.relayIntroduction(secret: secret))
+        _ = try await call(bridge, client, &replies, 1, "start_session")
+        let session = await bridge.session
+        XCTAssertNotEqual(session, first.session)
+        await client.close()
+        await server.close()
+        _ = await serving.value
+    }
+
+    /// A session that ended says why, and that start_session starts it again.
+    func testAnEndedSessionSaysWhy() async throws {
+        let gate = Gate()
+        await gate.end("Your session ended after 1 hour without a call.")
+        let bridge = MCPBridgeService(
+            router: AIToolRouter(tools: [Named("list_sessions")], auditSink: CapturingAuditSink()),
+            identity: .init(name: "Verbinal", version: "1.4.1"),
+            services: .init(proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 8), gate: gate))
+        let (client, server) = InMemoryTransport.pair()
+        let serving = Task { await bridge.serve(on: server) }
+        var replies = client.incoming.makeAsyncIterator()
+        let hello: [String: Any] = ["jsonrpc": "2.0", "id": 0, "method": "initialize",
+                                    "params": ["protocolVersion": "2025-06-18", "capabilities": [:]]]
+        try await client.send(try JSONSerialization.data(withJSONObject: hello))
+        _ = try await replies.next()
+        let refused = try await call(bridge, client, &replies, 1, "list_sessions")
+        let text = ((refused["content"] as? [[String: Any]])?.first?["text"] as? String) ?? ""
+        XCTAssertEqual(text, "sessionRequired: Your session ended after 1 hour without a call. Call start_session again, saying who you are and your purpose; the person allows it in Verbinal.")
+        await client.close()
+        await server.close()
+        _ = await serving.value
     }
 
     private func call(_ bridge: MCPBridgeService, _ client: InMemoryTransport,
@@ -94,7 +199,8 @@ final class SessionGateTests: XCTestCase {
         XCTAssertEqual(refused["isError"] as? Bool, true)
         let text = ((refused["content"] as? [[String: Any]])?.first?["text"] as? String) ?? ""
         XCTAssertTrue(text.hasPrefix("sessionRequired: No session — call start_session first"), text)
-        XCTAssertEqual((refused["_meta"] as? [String: Any])?[AgentSession.metaKey] as? String, bridge.session.uuidString)
+        let session = await bridge.session
+        XCTAssertEqual((refused["_meta"] as? [String: Any])?[AgentSession.metaKey] as? String, session.uuidString)
 
         let started = try await call(bridge, client, &replies, 2, "start_session")
         XCTAssertNotEqual(started["isError"] as? Bool, true, "starting a session works without one")
@@ -104,7 +210,7 @@ final class SessionGateTests: XCTestCase {
         await gate.allow()
         let allowed = try await call(bridge, client, &replies, 4, "list_sessions")
         XCTAssertNotEqual(allowed["isError"] as? Bool, true)
-        XCTAssertEqual((allowed["_meta"] as? [String: Any])?[AgentSession.metaKey] as? String, bridge.session.uuidString,
+        XCTAssertEqual((allowed["_meta"] as? [String: Any])?[AgentSession.metaKey] as? String, session.uuidString,
                        "every reply names its session")
 
         await server.close()

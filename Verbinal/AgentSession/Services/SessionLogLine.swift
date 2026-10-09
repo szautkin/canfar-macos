@@ -288,7 +288,34 @@ enum SessionLogLine {
         return entry
     }
 
+    /// An allowed session ended (plan 34 S).
+    static func ended(_ why: SessionApprovals.Ending, at: Date = Date()) -> SessionLogEntry {
+        var entry: SessionLogEntry
+        switch why {
+        case .idle:
+            entry = Self.entry(.app, at: at, "The session ended: no call for the idle time the person set. The assistant's next call is refused until the person allows the session again.")
+            entry.who = .app
+        case .byPerson:
+            entry = Self.entry(.app, at: at, "The person ended the session. The assistant's next call is refused until they allow it again.")
+            entry.who = .person
+        case .agentsTurnedOff:
+            entry = Self.entry(.app, at: at, "The person turned off external AI agents, which ended the session.")
+            entry.who = .person
+        }
+        entry.outcome = "ended"
+        return entry
+    }
+
     // MARK: - The session
+
+    /// The same assistant, back after Verbinal restarted (plan 34 S).
+    static func reconnected(_ client: String, session: UUID) -> SessionLogEntry {
+        var entry = Self.entry(.opened, "The assistant (\(client)) connected again: its session continues.")
+        entry.who = .assistant
+        entry.outcome = "reconnected"
+        entry.ids.session = session
+        return entry
+    }
 
     static func opened(_ header: SessionLogHeader) -> SessionLogEntry {
         let commit = header.buildCommit.map { ", \($0)" } ?? ""

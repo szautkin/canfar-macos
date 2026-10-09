@@ -54,6 +54,9 @@ struct SessionLogsView: View {
             }
             .fixedSize()
             .disabled(model.logs.isEmpty)
+            Button("End Session") { model.endSelection() }
+                .disabled(!model.canEndSelection)
+                .pointable("sessionLogs.endSession")
             Button("Delete…", role: .destructive) { confirmingDelete = true }
                 .disabled(!model.canDeleteSelection)
             Button("Delete All Closed…", role: .destructive) { confirmingDeleteAll = true }
@@ -76,6 +79,12 @@ struct SessionLogsView: View {
                                 .font(.caption2)
                                 .padding(.horizontal, 5)
                                 .background(Color.green.opacity(0.18), in: Capsule())
+                        }
+                        if model.allowed.contains(log.header.session) {
+                            Text("Allowed")
+                                .font(.caption2)
+                                .padding(.horizontal, 5)
+                                .background(Color.blue.opacity(0.18), in: Capsule())
                         }
                     }
                     Text(log.header.opened, format: .dateTime.day().month().hour().minute())

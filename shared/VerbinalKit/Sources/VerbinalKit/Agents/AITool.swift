@@ -166,6 +166,9 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
     case sessionRequired
     /// The person declined the session the assistant asked for (plan 25 S).
     case sessionDeclined
+    /// The session the person allowed has ended, for `why` (plan 34 S):
+    /// a session is required again.
+    case sessionEnded(why: String)
 
     /// Bound a user- or server-supplied string before it goes onto the wire
     /// description, so an overlong or noisy value (a giant URI, a verbose
@@ -208,6 +211,8 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
             return "sessionRequired: No session — call start_session first, saying who you are and your purpose. The person allows it in Verbinal, and may give you instructions for the session."
         case .sessionDeclined:
             return "sessionDeclined: The person declined the session in Verbinal. Ask them in the conversation before calling start_session again."
+        case .sessionEnded(let why):
+            return "sessionRequired: \(why) Call start_session again, saying who you are and your purpose; the person allows it in Verbinal."
         }
     }
 
@@ -239,6 +244,7 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
         case .payloadTooLarge: return "payloadTooLarge"
         case .sessionRequired: return "sessionRequired"
         case .sessionDeclined: return "sessionDeclined"
+        case .sessionEnded: return "sessionEnded"
         }
     }
 }

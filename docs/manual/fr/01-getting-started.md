@@ -148,6 +148,13 @@ Au démarrage, Verbinal vérifie votre session enregistrée pendant que l’accu
 les tuiles qui demandent un compte se déverrouillent quand la vérification est faite. Si le Mac est
 hors ligne, la vérification attend le réseau.
 
+Quand votre session CADC expire pendant que vous travaillez, Verbinal vous reconnecte avec le mot de
+passe qu’il garde, et ce que vous faisiez continue : une recherche, un téléchargement ou une liste
+attend la nouvelle session, puis reprend. **Se connecter à CANFAR** n’apparaît que si c’est impossible
+(vous n’avez pas coché **Se souvenir de moi**, ou le CADC refuse le mot de passe, que Verbinal oublie
+alors), avec *Votre session CADC a pris fin. Connectez-vous pour continuer.* Une fois connecté, vous
+revenez où vous étiez.
+
 Pour vous déconnecter, ouvrez le menu de votre compte (votre nom, en haut à droite de l’accueil ou de
 Portail) et choisissez **Se déconnecter**.
 

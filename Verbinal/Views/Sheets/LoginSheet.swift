@@ -35,6 +35,14 @@ struct LoginSheet: View {
                 .font(.title2)
                 .fontWeight(.semibold)
 
+            if let reason = appState.auth.signInReason {
+                Text(reason)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 260)
+            }
+
             VStack(spacing: 12) {
                 TextField("Username", text: $username)
                     .textFieldStyle(.roundedBorder)

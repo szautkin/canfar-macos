@@ -408,6 +408,173 @@ final class AuthLifecycleControllerTests: XCTestCase {
     }
 }
 
+/// Plan 34 A: a 401 signs in again with the stored credentials and retries
+/// the request that met it; the sign-in sheet only when that cannot work.
+@MainActor
+final class RenewalTests: XCTestCase {
+
+    /// CADC, as the mock answers it: one token it accepts at /whoami, one
+    /// the data service accepts, and a count of sign-ins.
+    private final class CADC: @unchecked Sendable {
+        private let lock = NSLock()
+        var accepted = "new-token"
+        var serviceAccepts = "new-token"
+        var password = "pw"
+        var unreachable = false
+        private(set) var signIns = 0
+
+        func answer(_ request: URLRequest) throws -> (HTTPURLResponse, Data) {
+            try lock.withLock {
+                let bearer = request.value(forHTTPHeaderField: "Authorization") ?? ""
+                let path = request.url?.path ?? ""
+                if unreachable, path.hasSuffix("/login") || path.hasSuffix("/whoami") {
+                    throw URLError(.notConnectedToInternet)
+                }
+                func reply(_ status: Int, _ body: String = "") -> (HTTPURLResponse, Data) {
+                    (HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+                }
+                if path.hasSuffix("/login") {
+                    signIns += 1
+                    let form = String(decoding: request.httpBody ?? Data(), as: UTF8.self)
+                    return form.contains("password=\(password)") ? reply(200, "new-token") : reply(401)
+                }
+                if path.hasSuffix("/whoami") { return bearer == "Bearer \(accepted)" ? reply(200, "alice") : reply(401) }
+                if path.contains("/users/") { return reply(200, "<user/>") }
+                return bearer == "Bearer \(serviceAccepts)" ? reply(200, "data") : reply(401)
+            }
+        }
+    }
+
+    private var cadc: CADC!
+    private var network: NetworkClient!
+    private var controller: AuthLifecycleController!
+    private var ended = 0
+    private let data = "https://ws-uv.canfar.net/arc/nodes/home/alice"
+
+    override func setUp() async throws {
+        try await super.setUp()
+        KeychainStorage.clearToken()
+        cadc = CADC()
+        MockURLProtocol.requestHandler = { [cadc] request in try cadc!.answer(request) }
+        network = NetworkClient(session: MockURLProtocol.mockSession())
+        controller = AuthLifecycleController(authService: AuthService(network: network))
+        controller.connectivityProvider = { .satisfied }
+        ended = 0
+        controller.onSessionExpired = { [weak self] in self?.ended += 1 }
+        await network.setUnauthorizedHandler { [controller] attempt in
+            await controller!.handleNetworkUnauthorized(attempt)
+        }
+    }
+
+    override func tearDown() {
+        KeychainStorage.clearToken()
+        MockURLProtocol.requestHandler = nil
+        super.tearDown()
+    }
+
+    /// Signed in with `old-token`, with or without a stored password.
+    private func signedIn(rememberMe: Bool) async {
+        KeychainStorage.saveCredentials(token: "old-token", username: "alice", password: rememberMe ? "pw" : nil)
+        await network.setToken("old-token")
+        controller.apply(username: "alice", userInfo: nil)
+    }
+
+    private func fetchAll(_ count: Int) async -> [Result<String, Error>] {
+        await withTaskGroup(of: Result<String, Error>.self) { group in
+            for _ in 0..<count {
+                group.addTask { [network, data] in
+                    do { return .success(try await network!.getText(data)) } catch { return .failure(error) }
+                }
+            }
+            return await group.reduce(into: []) { $0.append($1) }
+        }
+    }
+
+    func testAnExpiredSignInIsRenewedAndTheRequestsThatMetItAreRetried() async {
+        await signedIn(rememberMe: true)
+        let results = await fetchAll(5)
+        XCTAssertEqual(results.compactMap { try? $0.get() }, Array(repeating: "data", count: 5), "\(results)")
+        XCTAssertEqual(cadc.signIns, 1, "five 401s, one sign-in")
+        XCTAssertTrue(controller.isAuthenticated)
+        XCTAssertEqual(ended, 0)
+        XCTAssertEqual(KeychainStorage.loadToken().token, "new-token")
+        XCTAssertNil(controller.signInReason)
+    }
+
+    func testWithNoStoredPasswordTheSheetSaysWhy() async {
+        await signedIn(rememberMe: false)
+        let results = await fetchAll(3)
+        XCTAssertTrue(results.allSatisfy { if case .failure(let error) = $0 { return (error as? NetworkError)?.isUnauthorized == true }; return false })
+        XCTAssertEqual(cadc.signIns, 0)
+        XCTAssertEqual(ended, 1, "one sheet for every 401")
+        XCTAssertFalse(controller.isAuthenticated)
+        XCTAssertEqual(controller.signInReason, String(localized: "Your CADC session ended. Sign in to continue."))
+    }
+
+    func testARefusedPasswordIsClearedAndTheSheetShows() async {
+        await signedIn(rememberMe: true)
+        cadc.password = "changed"
+        _ = await fetchAll(1)
+        XCTAssertEqual(cadc.signIns, 1)
+        XCTAssertEqual(ended, 1)
+        XCTAssertNil(KeychainStorage.loadCredentials().password, "a password CADC refuses is not kept")
+        controller.apply(username: "alice", userInfo: nil)
+        XCTAssertNil(controller.signInReason, "signing in clears the reason")
+    }
+
+    /// CADC accepts the token; the service refuses it: one fresh sign-in,
+    /// one more try.
+    func testAServiceRefusingATokenCADCAcceptsGetsOneFreshSignIn() async {
+        await signedIn(rememberMe: true)
+        cadc.accepted = "old-token"
+        cadc.serviceAccepts = "new-token"
+        let results = await fetchAll(1)
+        XCTAssertEqual(try? results.first?.get(), "data")
+        XCTAssertEqual(cadc.signIns, 1)
+        XCTAssertEqual(ended, 0)
+    }
+
+    /// Without a stored password, one service's refusal fails the request
+    /// and leaves the session alone.
+    func testAServiceRefusalWithoutAPasswordLeavesTheSession() async {
+        await signedIn(rememberMe: false)
+        cadc.accepted = "old-token"
+        cadc.serviceAccepts = "never"
+        let results = await fetchAll(1)
+        if case .success = results.first { XCTFail("refused") }
+        XCTAssertEqual(cadc.signIns, 0)
+        XCTAssertEqual(ended, 0)
+        XCTAssertTrue(controller.isAuthenticated)
+        XCTAssertEqual(KeychainStorage.loadToken().token, "old-token")
+    }
+
+    /// A service that refuses even a fresh sign-in: the request fails after
+    /// it — no loop, no second sign-in, the session stays.
+    func testAServiceThatRefusesEvenAFreshSignInFailsOnce() async {
+        await signedIn(rememberMe: true)
+        cadc.accepted = "old-token"
+        cadc.serviceAccepts = "never"
+        let results = await fetchAll(1)
+        if case .success = results.first { XCTFail("refused") }
+        XCTAssertEqual(cadc.signIns, 1)
+        XCTAssertEqual(ended, 0)
+        XCTAssertTrue(controller.isAuthenticated)
+    }
+
+    /// CADC out of reach: the request fails, nothing is signed in or
+    /// cleared, and the session stays.
+    func testOfflineKeepsTheSignInAndSignsInNever() async {
+        await signedIn(rememberMe: true)
+        cadc.unreachable = true
+        let results = await fetchAll(1)
+        if case .success = results.first { XCTFail("offline") }
+        XCTAssertEqual(cadc.signIns, 0)
+        XCTAssertEqual(ended, 0)
+        XCTAssertEqual(KeychainStorage.loadCredentials().password, "pw")
+        XCTAssertTrue(controller.isAuthenticated)
+    }
+}
+
 /// Plan 23 A: the sign-in's decisions are said, with their reasons.
 @MainActor
 final class SignInDecisionTests: XCTestCase {

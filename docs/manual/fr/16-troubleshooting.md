@@ -10,7 +10,11 @@ où regarder : elle dit ce que fait Verbinal, ce qui a échoué et pourquoi. Cli
   du CADC. Verbinal se connecte avec votre compte CADC ; un secret de registre (Harbor) n’est pas votre
   mot de passe.
 - **On vous demande sans cesse de vous reconnecter.** Cochez **Se souvenir de moi** en vous connectant :
-  Verbinal vous reconnecte alors de lui-même quand votre session CADC expire.
+  Verbinal vous reconnecte alors de lui-même quand votre session CADC expire, et ce que vous faisiez
+  continue.
+- **Votre session CADC a pris fin. Connectez-vous pour continuer.** Verbinal n’a pas pu vous reconnecter
+  de lui-même : aucun mot de passe n’est gardé, ou le CADC l’a refusé (vous l’avez peut-être changé sur
+  le site du CADC). Connectez-vous ; vous revenez où vous étiez.
 - **Verbinal a démarré hors ligne.** Il attend le réseau et vérifie alors votre session ; les tuiles qui
   demandent un compte se déverrouillent d’elles-mêmes.
 

@@ -1546,16 +1546,6 @@
         }
       }
     },
-    "A log of each assistant's session: everything that happened while it was connected — each change, who made it and why, the app's decisions, failures and what they mean. Kept 10 days, and 10 MB in all; the assistant reads it with get_session_log." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un journal de la session de chaque assistant : tout ce qui s'est passé pendant sa connexion — chaque modification, qui l'a faite et pourquoi, les décisions de l'app, les échecs et leur sens. Conservé 10 jours, et 10 Mo au total ; l'assistant le lit avec get_session_log."
-          }
-        }
-      }
-    },
     "A macOS companion for the CANFAR Science Platform." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -19573,6 +19563,116 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajuster à la fenêtre"
+          }
+        }
+      }
+    },
+    "End an idle session after" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminer une session inactive après"
+          }
+        }
+      }
+    },
+    "You allow an assistant's session once: when Verbinal restarts, it continues. It ends after this long without a call, and you are asked again when the assistant comes back. End Session, in Session Logs, ends one at once." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous autorisez la session d’un assistant une seule fois : quand Verbinal redémarre, elle continue. Elle se termine après ce délai sans appel, et votre accord vous est redemandé quand l’assistant revient. Terminer la session, dans les journaux de session, en termine une aussitôt."
+          }
+        }
+      }
+    },
+    "15 minutes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15 minutes"
+          }
+        }
+      }
+    },
+    "1 hour" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 heure"
+          }
+        }
+      }
+    },
+    "4 hours" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4 heures"
+          }
+        }
+      }
+    },
+    "12 hours" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "12 heures"
+          }
+        }
+      }
+    },
+    "1 day" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 jour"
+          }
+        }
+      }
+    },
+    "End Session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminer la session"
+          }
+        }
+      }
+    },
+    "Ended the session." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session terminée."
+          }
+        }
+      }
+    },
+    "A log of each assistant's session: everything that happened while it was connected — each change, who made it and why, the app's decisions, failures and what they mean. Kept 10 days, and 10 MB in all; the assistant reads it with get_session_log. End Session ends an allowed session at once." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un journal de la session de chaque assistant : tout ce qui s'est passé pendant sa connexion — chaque modification, qui l'a faite et pourquoi, les décisions de l'app, les échecs et leur sens. Conservé 10 jours, et 10 Mo au total ; l'assistant le lit avec get_session_log. Terminer la session met fin aussitôt à une session autorisée."
+          }
+        }
+      }
+    },
+    "Your CADC session ended. Sign in to continue." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre session CADC a pris fin. Connectez-vous pour continuer."
           }
         }
       }

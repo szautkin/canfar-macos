@@ -30,7 +30,8 @@ final class EveryScreenNamedTests: XCTestCase {
                    "search.spectral", "search.dataTrain", "search.run", "search.reset"],
         "search.results": ["results.export", "results.columns", "results.rowsPerPage", "results.header", "results.filters"],
         "search.adql": ["adql.generate", "adql.execute"],
-        "settings.agent": ["settings.agent", "settings.agent.allowExternal", "settings.agent.sessionLogs"],
+        "settings.agent": ["settings.agent", "settings.agent.allowExternal", "settings.agent.sessionIdle",
+                           "settings.agent.sessionLogs"],
         "portal.launchForm": ["portal.launch"],
     ]
 

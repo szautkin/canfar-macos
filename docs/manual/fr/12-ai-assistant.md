@@ -85,9 +85,17 @@ dans une fenêtre : **Un assistant veut ouvrir une session**.
 - **Autoriser** ouvre la session ; **Refuser** la refuse. La fenêtre attend aussi longtemps que
   l’assistant attend.
 
-Tant que vous ne l’autorisez pas, l’assistant peut seulement demander à Verbinal de se décrire. La
-session dure tant que l’assistant reste connecté ; après un redémarrage de Verbinal ou de l’assistant,
-il redemande.
+Tant que vous ne l’autorisez pas, l’assistant peut seulement demander à Verbinal de se décrire. Vous
+autorisez un assistant une seule fois : quand Verbinal redémarre, sa session continue, avec le même
+journal, et rien ne vous est redemandé. Une session se termine :
+
+- après un délai sans appel : **Réglages ▸ Agent IA ▸ Sessions ▸ Terminer une session inactive après**,
+  **1 heure** sauf si vous en choisissez un autre, de **15 minutes** à **1 jour** ;
+- quand vous y mettez fin : **Terminer la session**, dans les journaux de session ;
+- quand vous désactivez **Autoriser les agents IA externes**.
+
+L’assistant apprend pourquoi, et quand il revient, la fenêtre vous redemande votre accord. Quand l’app
+de l’assistant elle-même redémarre, c’est une nouvelle session, et votre accord vous est redemandé.
 
 Vos instructions par défaut sont dans **Réglages ▸ Agent IA ▸ Instructions de session**. Au départ,
 elles disent : *« Use only Verbinal and its tools for this work: no other apps, and no network
@@ -196,7 +204,10 @@ chemins.
 Ouvrez-le depuis **Réglages ▸ Agent IA ▸ Journaux de session ▸ Afficher les journaux de session…** :
 
 - La liste de gauche a une entrée par session : le client, **Ouvrir** (le badge d’une session en
-  cours), son début, et combien de modifications et d’échecs elle a eus.
+  cours), **Autorisé** tant que vous l’autorisez, son début, et combien de modifications et d’échecs
+  elle a eus.
+- **Terminer la session** met fin aussitôt à la session sélectionnée, si vous l’aviez autorisée : le
+  prochain appel de son assistant est refusé jusqu’à ce que vous l’autorisiez de nouveau.
 - Sélectionnez-en une pour la lire. **Afficher** la filtre : **Tous**, **Modifications**, **Échecs**,
   **Décisions**, **Appels**. Ouvrez une entrée pour voir ses requêtes : quel service, ce que la réponse
   voulait dire, et combien de temps elle a pris.
@@ -237,6 +248,8 @@ Certaines choses restent à vous, exprès :
 ## Arrêter un assistant
 
 - **Refuser** une session qu’il demande.
+- **Terminer la session** dans les journaux de session : son prochain appel est refusé, et il doit vous
+  redemander votre accord.
 - **Rejeter** ce qui attend dans En attente.
 - Désactiver **Autoriser les agents IA externes** dans **Réglages ▸ Agent IA** : le serveur s’arrête,
   et aucun assistant ne peut joindre Verbinal avant que vous le réactiviez.

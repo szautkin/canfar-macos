@@ -55,6 +55,7 @@ final class ResilientBridgeTests: XCTestCase {
         func setDelay(_ value: Duration) { lock.withLock { delay = value } }
         var attemptCount: Int { lock.withLock { attempts } }
         var latest: (end: InMemoryTransport, inbox: Inbox)? { lock.withLock { links.last } }
+        var linkCount: Int { lock.withLock { links.count } }
 
         func connect() async -> (any MCPTransport)? {
             let wait = lock.withLock { delay }
@@ -235,9 +236,9 @@ final class ResilientBridgeTests: XCTestCase {
         _ = try await inbox.take(method("notifications/tools/list_changed"))
     }
 
-    private func waitForLink(_ app: FakeApp) async -> (end: InMemoryTransport, inbox: Inbox)? {
+    private func waitForLink(_ app: FakeApp, after earlier: Int = 0) async -> (end: InMemoryTransport, inbox: Inbox)? {
         for _ in 0..<200 {
-            if let link = app.latest { return link }
+            if app.linkCount > earlier, let link = app.latest { return link }
             try? await Task.sleep(for: .milliseconds(10))
         }
         return nil
@@ -288,7 +289,53 @@ final class ResilientBridgeTests: XCTestCase {
         _ = try await appSide.inbox.take(id(7))
         try await send(client, #"{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":7}}"#)
         _ = try await appSide.inbox.take(method("notifications/cancelled"))
+        _ = try await appSide.inbox.take(method(AgentSession.relayNotification))
         try await Task.sleep(for: .milliseconds(100))
         XCTAssertTrue(appSide.inbox.isEmpty, "no handshake was replayed: there was none")
+    }
+
+    /// Plan 34 S: each connection to the app starts with the relay's
+    /// introduction, the same secret every time, before the replayed
+    /// handshake — so the app continues the assistant's session.
+    func testEveryConnectionIntroducesTheRelayWithOneSecretBeforeTheHandshake() async throws {
+        let app = FakeApp()
+        let (client, inbox, task) = start(app)
+        defer { task.cancel() }
+        try await send(client, initialize)
+        _ = try await inbox.take(id(1))
+
+        var secrets: [String] = []
+        for _ in 0..<2 {
+            app.setRunning(true)
+            let found = await waitForLink(app, after: secrets.count)
+            let link = try XCTUnwrap(found)
+            let first = try await link.inbox.take()
+            XCTAssertEqual(first["method"] as? String, AgentSession.relayNotification, "the introduction comes first")
+            XCTAssertNil(first["id"], "a notification: nothing answers it")
+            let secret = try XCTUnwrap((first["params"] as? [String: Any])?["secret"] as? String)
+            XCTAssertNotNil(AgentSession.relayFingerprint(introduction: first["params"] as? [String: Any]))
+            secrets.append(secret)
+            let replay = try await link.inbox.take(method("initialize"))
+            let replayID = try XCTUnwrap(replay["id"] as? String)
+            try await send(link.end, #"{"jsonrpc":"2.0","id":"\#(replayID)","result":{"protocolVersion":"2025-06-18","capabilities":{},"serverInfo":{"name":"Verbinal","version":"1.4.1"}}}"#)
+            _ = try await inbox.take(method("notifications/tools/list_changed"))
+            // Verbinal quits.
+            app.setRunning(false)
+            await link.end.close()
+            try await Task.sleep(for: .milliseconds(60))
+        }
+        XCTAssertEqual(secrets[0], secrets[1], "one relay, one secret")
+        XCTAssertNotEqual(AgentSession.newRelaySecret(), secrets[0], "another relay has another")
+    }
+
+    func testOnlyASecretOfTheRelaysShapeHasAFingerprint() {
+        let secret = AgentSession.newRelaySecret()
+        let fingerprint = AgentSession.relayFingerprint(introduction: ["secret": secret])
+        XCTAssertEqual(fingerprint?.count, 64)
+        XCTAssertFalse(fingerprint?.contains(secret) ?? true, "the app keeps a hash, not the secret")
+        XCTAssertEqual(AgentSession.relayFingerprint(introduction: ["secret": secret]), fingerprint, "the same secret, the same fingerprint")
+        XCTAssertNil(AgentSession.relayFingerprint(introduction: ["secret": "short"]))
+        XCTAssertNil(AgentSession.relayFingerprint(introduction: ["secret": String(repeating: "/", count: 43)]))
+        XCTAssertNil(AgentSession.relayFingerprint(introduction: nil))
     }
 }

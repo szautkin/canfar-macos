@@ -42,8 +42,26 @@ final class SessionLogsModel: Identifiable {
     /// What the last export or delete came to.
     private(set) var message: String?
 
-    init(query: SessionLogQuery) {
+    /// Whose sessions the person may end (plan 34 S); nil offers none.
+    private let approvals: SessionApprovals?
+
+    init(query: SessionLogQuery, approvals: SessionApprovals? = nil) {
         self.query = query
+        self.approvals = approvals
+    }
+
+    /// The sessions allowed now.
+    var allowed: Set<UUID> { approvals?.allowedSessions ?? [] }
+
+    /// One allowed session selected: the person may end it.
+    var canEndSelection: Bool { selection.count == 1 && selection.isSubset(of: allowed) }
+
+    /// Ends the selected session: its assistant's next call is refused until
+    /// the person allows it again.
+    func endSelection() {
+        guard canEndSelection, let session = selection.first else { return }
+        approvals?.end(session, .byPerson)
+        message = String(localized: "Ended the session.")
     }
 
     var totalBytes: Int { logs.map(\.bytes).reduce(0, +) }
