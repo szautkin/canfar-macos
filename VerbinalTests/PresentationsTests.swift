@@ -246,4 +246,22 @@ final class PresentationsTests: XCTestCase {
         XCTAssertEqual(state.activeSheet, .about)
         XCTAssertTrue(UIPresentations.shared.openable.map(\.name).contains("Batch Jobs"))
     }
+
+    /// Plan 36 2.13 (QA P4-3): open_ui("Launch Session") answered done with
+    /// the Pending sheet's insides. With another in front, it says so instead.
+    func testASheetDoesNotOpenOverAnother() async {
+        let window = NSWindow(contentRect: NSRect(x: 300, y: 300, width: 200, height: 100), styleMask: [.titled],
+                              backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.orderFrontRegardless()
+        defer { window.close() }
+        let state = AppState()
+        state.registerOpenablePresentations()
+        let pending = UIPresentations.shared.begin("Pending Changes", .sheet) {}
+        defer { UIPresentations.shared.end(pending) }
+        let opened = await state.setUIOpen(.init(target: "Launch Session"), open: true)
+        XCTAssertFalse(opened.done)
+        XCTAssertFalse(state.launchFormPresented, "nothing was asked to open")
+        XCTAssertTrue(opened.message?.hasPrefix("Pending Changes is open in front") == true, opened.message ?? "")
+    }
 }

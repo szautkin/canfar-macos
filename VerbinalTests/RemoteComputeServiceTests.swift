@@ -124,6 +124,25 @@ final class RemoteComputeServiceTests: XCTestCase {
         XCTAssertNil(none)
     }
 
+    /// Plan 36 2.8: a run keeps the image it ran on — the session's it went
+    /// to, or the Settings' for a session it launched.
+    func testARunKeepsTheImageItRanOn() async throws {
+        sessions = FakeComputeSessions([.compute(id: "old", status: "Running", image: "images.canfar.net/p/compute:0")])
+        let reusing = service(poll: .seconds(60))
+        try await reusing.submit(request(), by: .agent)
+        XCTAssertEqual(reusing.runs.find("r1")?.image, "images.canfar.net/p/compute:0")
+        reusing.stopWatching()
+
+        sessions = FakeComputeSessions()
+        let launching = service(poll: .seconds(60))
+        try await launching.submit(request("r2"), by: .agent)
+        let run = try XCTUnwrap(launching.runs.find("r2"))
+        XCTAssertEqual(run.image, image)
+        XCTAssertEqual(ListComputeRunsTool.Entry(run).image, image)
+        XCTAssertEqual(RemoteComputeView.meta(of: run, truncated: false), "running · compute:1")
+        launching.stopWatching()
+    }
+
     // MARK: - The session
 
     func testASessionIsReusedOrLaunchedWithTheRegistryCredentials() async throws {
@@ -143,6 +162,24 @@ final class RemoteComputeServiceTests: XCTestCase {
         XCTAssertEqual(sessions.deleted, ["launched-1"])
         let stoppedAgain = try await compute.stop()
         XCTAssertFalse(stoppedAgain, "nothing left to stop")
+    }
+
+    /// Plan 36 2.9 (QA P2-1): the run folders are seen to once per app run,
+    /// and looked at again after an upload fails.
+    func testTheRunFoldersAreSeenToOncePerAppRun() async throws {
+        sessions = FakeComputeSessions([.compute(id: "c", status: "Running")])
+        let compute = service(poll: .seconds(60))
+        try await compute.submit(request("r1"), by: .agent)
+        try await compute.submit(request("r2"), by: .agent)
+        XCTAssertEqual(files.ensured, 2, "inbox and out, once")
+        XCTAssertEqual(files.folders, [".verbinal", ".verbinal/exec", ".verbinal/exec/inbox", ".verbinal/exec/out"])
+
+        files.failUploads = true
+        _ = try? await compute.submit(request("r3"), by: .agent)
+        files.failUploads = false
+        try await compute.submit(request("r4"), by: .agent)
+        XCTAssertEqual(files.ensured, 4, "after a failed upload, the next run looks again")
+        compute.stopWatching()
     }
 
     /// Plan 19 S3 (QA N18): kept a 1-core session and said "4 cores / 8 GB".

@@ -29,6 +29,10 @@ struct GetSearchResultsTool: JSONReadTool {
     }
 
     struct Output: Encodable, Sendable {
+        /// searching, ready, failed or empty: `SearchFormModel.Readiness`.
+        var state = SearchFormModel.Readiness.ready.rawValue
+        /// Why the last search failed, with `state: failed`.
+        var searchError: String? = nil
         let hasResults: Bool
         let adqlQuery: String
         let totalRows: Int
@@ -63,7 +67,7 @@ struct GetSearchResultsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_search_results",
-        description: "Read the in-app Search results table exactly as the user sees it: the loaded query, row counts (total + after the user's live per-column filters), sort state, active filters, pagination, and column metadata (id, label, kind, visibility, selected display unit). Returns one page of raw row values (positional per `columns`) plus `rowIDs` for `open_observation_detail` — each row's plane publisher ID, so each calibration level of an observation is its own row. Column `id`s are stable keys shared with Verbinal for Windows (built from the header: \"RA (J2000.0)\" is `ra(j20000)`); `label` is the column's name. `download` holds the plane's publisher ID when it can be downloaded. Pass `page` to read a different page than the one on screen, `allColumns: true` to include hidden columns, `includeRows: false` for state only. Rows are capped by `maxRows` (default 200, max 1000).",
+        description: "Read the in-app Search results table exactly as the user sees it. `state` says whether it holds what was last asked for: `searching` (a search runs — the rows are the previous search's, or none: read again, or run the search with wait), `ready`, `failed` (`searchError` says why; the rows are an earlier search's) or `empty`. Then: the loaded query, row counts (total + after the user's live per-column filters), sort state, active filters, pagination, and column metadata (id, label, kind, visibility, selected display unit). Returns one page of raw row values (positional per `columns`) plus `rowIDs` for `open_observation_detail` — each row's plane publisher ID, so each calibration level of an observation is its own row. Column `id`s are stable keys shared with Verbinal for Windows (built from the header: \"RA (J2000.0)\" is `ra(j20000)`); `label` is the column's name. `download` holds the plane's publisher ID when it can be downloaded. Pass `page` to read a different page than the one on screen, `allColumns: true` to include hidden columns, `includeRows: false` for state only. Rows are capped by `maxRows` (default 200, max 1000).",
         schema: #"""
         {
           "type": "object",
@@ -79,9 +83,17 @@ struct GetSearchResultsTool: JSONReadTool {
     )
 
     let snapshot: @Sendable (Args) async -> Output
+    /// The search's readiness and error, read with the snapshot.
+    var readiness: @Sendable () async -> (state: SearchFormModel.Readiness, error: String?) = { (.ready, nil) }
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        await snapshot(args)
+        // Read first: a search ending in between reads as still running,
+        // never its old rows as the new ones.
+        let now = await readiness()
+        var output = await snapshot(args)
+        output.state = now.state.rawValue
+        output.searchError = now.state == .failed ? now.error : nil
+        return output
     }
 }
 

@@ -39,6 +39,9 @@ struct ComputeRun: Codable, Equatable, Identifiable, Sendable {
     var exitCode: Int?
     var durationMs: Int?
     var finishedAt: Date?
+    /// The image of the session it went to (plan 36 2.8): what the code ran
+    /// on, for a result to be repeated. Nil for runs from before.
+    var image: String?
 
     init(_ request: RunCodeContract.Request, author: Author, submittedAt: Date = Date()) {
         id = request.id

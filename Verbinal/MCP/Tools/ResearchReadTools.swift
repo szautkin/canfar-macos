@@ -9,11 +9,13 @@ import VerbinalKit
 
 // MARK: - list_downloaded_observations
 
-/// Inventory of locally-downloaded observations. Optional filter by
-/// collection.
+/// Inventory of locally-downloaded observations, found as the Research
+/// screen's filter finds them, by collection, or by a tag.
 struct ListDownloadedObservationsTool: JSONReadTool {
     struct Args: Decodable, Sendable {
         var collection: String?
+        var text: String?
+        var tag: String?
     }
 
     struct Output: Encodable, Sendable {
@@ -47,6 +49,9 @@ struct ListDownloadedObservationsTool: JSONReadTool {
             /// Its other files on this computer, downloaded one by one
             /// (plan 34 F); absent when there are none.
             let files: [FileOut]?
+            /// Its note's tags and rating (1–5); absent when none.
+            let tags: [String]?
+            let rating: Int?
 
             init(_ obs: DownloadedObservationOut) {
                 id = obs.id
@@ -67,18 +72,22 @@ struct ListDownloadedObservationsTool: JSONReadTool {
                 downloadedAtISO = SharedFormatters.iso8601.string(from: obs.downloadedAt)
                 duplicateOf = obs.duplicateOf
                 files = obs.files.isEmpty ? nil : obs.files
+                tags = obs.tags.isEmpty ? nil : obs.tags
+                rating = obs.rating > 0 ? obs.rating : nil
             }
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_downloaded_observations",
-        description: "List the observations kept in Research — downloaded, or kept without their file (`downloaded: false`; save_observation_to_research, remove_downloaded_file). `fileProblem` says when a kept file is missing, cannot be opened, or holds nothing (empty, an empty archive) — such a record is `downloaded: false` — and download_observation fetches it again into the same record. Optional filter by collection (e.g. 'JWST').",
+        description: "List the observations kept in Research — downloaded, or kept without their file (`downloaded: false`; save_observation_to_research, remove_downloaded_file). `fileProblem` says when a kept file is missing, cannot be opened, or holds nothing (empty, an empty archive) — such a record is `downloaded: false` — and download_observation fetches it again into the same record. Each carries its note's `tags` and `rating`. `text` finds records as the Research screen's filter does: in the target, collection, instrument or observation id, or a word of the note or its tags; `tag` keeps those with that tag; `collection` (e.g. 'JWST') that collection's.",
         schema: #"""
         {
           "type": "object",
           "properties": {
-            "collection": { "type": "string" }
+            "collection": { "type": "string" },
+            "text": { "type": "string", "description": "Words, as the Research screen's filter takes them." },
+            "tag": { "type": "string", "description": "One of a note's tags, whole (any case)." }
           },
           "additionalProperties": false
         }
@@ -86,17 +95,22 @@ struct ListDownloadedObservationsTool: JSONReadTool {
     )
 
     let snapshot: @Sendable () async -> [DownloadedObservationOut]
+    /// The records whose note's text or tags hold some words: the note index.
+    var noteMatches: @Sendable (_ text: String) async -> Set<String> = { _ in [] }
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        let all = await snapshot()
-        let filtered: [DownloadedObservationOut]
-        if let collection = args.collection?.trimmingCharacters(in: .whitespaces),
-           !collection.isEmpty {
-            filtered = all.filter { $0.collection.caseInsensitiveCompare(collection) == .orderedSame }
-        } else {
-            filtered = all
+        var found = await snapshot()
+        if let collection = args.collection?.trimmingCharacters(in: .whitespaces), !collection.isEmpty {
+            found = found.filter { $0.collection.caseInsensitiveCompare(collection) == .orderedSame }
         }
-        return Output(entries: filtered.map(Output.Entry.init))
+        if let text = args.text, !text.trimmingCharacters(in: .whitespaces).isEmpty {
+            let filter = ResearchFilter(text, noteMatches: await noteMatches(text))
+            found = found.filter(filter.keeps)
+        }
+        if let tag = args.tag?.trimmingCharacters(in: .whitespaces), !tag.isEmpty {
+            found = found.filter { $0.tags.contains { $0.caseInsensitiveCompare(tag) == .orderedSame } }
+        }
+        return Output(entries: found.map(Output.Entry.init))
     }
 }
 
@@ -223,7 +237,12 @@ struct DownloadedObservationOut: Sendable {
     /// The record this one duplicates, when it was kept under a malformed id.
     var duplicateOf: String? = nil
     var files: [FileOut] = []
+    /// Its note's.
+    var tags: [String] = []
+    var rating = 0
 }
+
+extension DownloadedObservationOut: ResearchFilterable {}
 
 struct ObservationNoteOut: Sendable {
     let publisherID: String

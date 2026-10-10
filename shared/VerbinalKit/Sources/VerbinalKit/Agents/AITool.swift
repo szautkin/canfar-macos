@@ -193,7 +193,8 @@ public enum ToolFailureReason: Sendable, Equatable, CustomStringConvertible {
             return "planePublisherIdNotSupported: '\(Self.clip(id, max: 120))' looks like a Plane publisher_id; couldn't reduce to an Observation URI."
         case .authRequired: return "authRequired"
         case .perTurnProposalCapExceeded(let limit): return "perTurnProposalCapExceeded(\(limit))"
-        case .backendError(let msg): return "backendError: \(Self.clip(msg))"
+        // A service's reason runs long (VizieR names every unresolved column): 500 (plan 36 2.6).
+        case .backendError(let msg): return "backendError: \(Self.clip(msg, max: 500))"
         case .notImplemented: return "notImplemented"
         case .previewNotFound(let msg): return "previewNotFound: \(Self.clip(msg))"
         case .previewTooLarge(let bytes): return "previewTooLarge: \(bytes) bytes exceeds the max_bytes cap"

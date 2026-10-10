@@ -346,6 +346,7 @@ struct RemoteComputeView: View {
         if let code = run.exitCode { parts.append(String(localized: "exit \(code)")) }
         if let ms = run.durationMs { parts.append(String(localized: "\((Double(ms) / 1000).formatted(.number.precision(.fractionLength(0...1)))) s")) }
         if truncated { parts.append(String(localized: "output cut short")) }
+        if let image = run.image { parts.append(image.split(separator: "/").last.map(String.init) ?? image) }
         return parts.joined(separator: " · ")
     }
 }

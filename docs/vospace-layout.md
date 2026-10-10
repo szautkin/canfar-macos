@@ -47,7 +47,7 @@ device is synced on all of them.
 | `imagePackages` | `.verbinal/manifests` | `<image id, sanitized>.json`: an image's installed packages | Image Discovery's probe jobs, running on CANFAR |
 | `computeRuns` | `.verbinal/exec` (`inbox/`, `out/`) | A run's request in `inbox/`, its result in `out/` | Remote Compute: Verbinal writes the request, the CANFAR session the result |
 | `stagedScripts` | `.verbinal-scripts` | `<sha>.py`: a batch job's script | A batch job launched with a `script` |
-| `exports` | `Verbinal-Exports` | A zipped export bundle | **Upload to VOSpace** after an export |
+| `exports` | `Verbinal-Exports` | A zipped export bundle, or a search's results (`verbinal-results-<time>.csv`, `.tsv`, `.xml`) | **Upload to VOSpace** after an export; Search's **Export ▸ To Storage**; `export_search_results` with `uploadToVOSpace` |
 
 ## Syncing
 

@@ -55,9 +55,16 @@ final class FakeComputeFiles: ComputeFiles, @unchecked Sendable {
         lock.withLock { uploads[remotePath] = data }
     }
 
-    func createFolder(username: String, parentPath: String, folderName: String) async throws {
-        lock.withLock { folders.append(parentPath.isEmpty ? folderName : "\(parentPath)/\(folderName)") }
+    /// Each folder of `path` not made before, parents first.
+    func ensureFolder(username: String, path: String) async throws {
+        ensured += 1
+        var here = ""
+        for folder in path.split(separator: "/") {
+            here = here.isEmpty ? String(folder) : "\(here)/\(folder)"
+            lock.withLock { if !folders.contains(here) { folders.append(here) } }
+        }
     }
+    private(set) var ensured = 0
 
     var failReads = false
     func readFile(username: String, path: String, maxBytes: Int) async throws -> Data? {

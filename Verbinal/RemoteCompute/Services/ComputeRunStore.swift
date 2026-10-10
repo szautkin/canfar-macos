@@ -53,6 +53,11 @@ final class ComputeRunStore {
         }
     }
 
+    /// Records the image of the session a run went to.
+    func ranOn(_ id: String, image: String) {
+        update(id) { $0.image = image }
+    }
+
     /// Closes a run still out with the app's own verdict (`noResult`, `notSent`).
     func close(_ id: String, as status: String) {
         update(id) { run in

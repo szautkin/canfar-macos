@@ -52,7 +52,7 @@ struct ListJobHistoryTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_job_history",
-        description: "Finished batch jobs the app remembers after CANFAR has removed them — the Batch Jobs sheet's History: the person's own and those an assistant launched (`origin: agent`) — list_headless_jobs shows only what the platform still lists — and image discovery's probes, newest first, with the outcome, when, and a failure's reason taken while the job still existed. Use it when a job has vanished from list_headless_jobs, or to see why a probe failed an hour ago.",
+        description: "Finished batch jobs the app remembers after CANFAR has removed them — the Batch Jobs sheet's History: the person's own and those an assistant launched (`origin: agent`) — list_headless_jobs shows only what the platform still lists — and image discovery's probes, newest first, with the outcome, when, and a failure's reason taken while the job still existed. Use it when a job has vanished from list_headless_jobs, or to see why a probe failed an hour ago. `id` is the batch job's id: get_headless_job, get_headless_job_logs and get_headless_job_events take it; get_job_status does not.",
         schema: #"""
         {
           "type": "object",

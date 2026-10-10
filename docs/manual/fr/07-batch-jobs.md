@@ -62,5 +62,6 @@ avec la façon dont chacune s’est terminée : vous retrouvez une tâche même 
 
 Il peut lister vos tâches et leur historique, lire les détails, événements et journaux d’une tâche,
 lancer des tâches (avec un script Python, ou une commande), et les arrêter ou les supprimer, ce qui vous
-attend sauf si vous l’avez autorisé. Lancer des tâches utilise votre allocation, et c’est un type de
+attend sauf si vous l’avez autorisé. Une tâche que CANFAR ne liste plus, il la lit dans **Historique**,
+comme vous. Lancer des tâches utilise votre allocation, et c’est un type de
 modification que vous pouvez régler sur **Me demander**.

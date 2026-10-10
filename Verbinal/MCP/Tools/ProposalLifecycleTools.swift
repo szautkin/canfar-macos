@@ -165,11 +165,14 @@ struct WithdrawProposalTool: AITool {
         let withdrew: Bool
         /// Proposals this client may still make; a withdrawn one's slot is given back.
         let budgetRemaining: Int
+        /// Not withdrawn: where it stands — applied, rejected, withdrawn
+        /// (an auto-apply that failed is, at once), expired or unknown (plan 36 2.13).
+        var state: String? = nil
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "withdraw_proposal",
-        description: "Retract one of your own pending proposals. Only meaningful for a proposal still waiting in Pending — every destructive one, and any other while Auto-apply is off (with it on, other writes apply at once, leaving nothing to withdraw). Use when you realised mid-flow that the proposal was wrong; the user no longer sees it in the strip, and its slot in your proposal budget is given back (`budgetRemaining`). Returns withdrew=false if the id is unknown or already resolved.",
+        description: "Retract one of your own pending proposals. Only meaningful for a proposal still waiting in Pending — every destructive one, and any other while Auto-apply is off (with it on, other writes apply at once, leaving nothing to withdraw). Use when you realised mid-flow that the proposal was wrong; the user no longer sees it in the strip, and its slot in your proposal budget is given back (`budgetRemaining`). Returns withdrew=false, with its `state`, if the id is unknown or already resolved — an auto-apply that failed was withdrawn when it failed.",
         schema: #"""
         {
           "type": "object",
@@ -195,7 +198,8 @@ struct WithdrawProposalTool: AITool {
         if didWithdraw, let origin { await context.budget.release(origin: origin) }
         do {
             let bytes = try JSONEncoder().encode(Output(id: args.id, withdrew: didWithdraw,
-                                                        budgetRemaining: await context.budget.remaining(for: context.origin)))
+                                                        budgetRemaining: await context.budget.remaining(for: context.origin),
+                                                        state: didWithdraw ? nil : await context.proposals.state(uuid).rawValue))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))

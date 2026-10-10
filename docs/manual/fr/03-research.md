@@ -127,7 +127,8 @@ si vous êtes connecté, **Téléverser dans VOSpace**, qui place une copie comp
 
 ## Ce qu’un assistant peut faire ici
 
-Il peut lister et lire vos observations et vos notes, écrire des notes, des étiquettes et des notes de
+Il peut lister et lire vos observations et vos notes, en les trouvant comme le filtre (un mot d’une note,
+ou une étiquette), écrire des notes, des étiquettes et des notes de
 qualité (jusqu’à 50 à la fois), ouvrir des fichiers dans les visionneuses, télécharger ce que vous avez
 gardé sans fichier ou un fichier d’une observation, découper et exporter. Supprimer un fichier ou une observation vous attend, sauf si
 vous avez autorisé ce type de modification.

@@ -172,6 +172,32 @@ final class JobHistoryTests: XCTestCase {
         XCTAssertEqual(listed.first?["failureReason"] as? String, "OOMKilled")
         XCTAssertEqual(listed.first?["origin"] as? String, "user")
     }
+
+    /// Plan 36 2.7 (QA P3-2): an id list_job_history gave is found by
+    /// get_headless_job after CANFAR stops listing the job; the platform's
+    /// listing wins while it has it.
+    func testGetHeadlessJobFindsAFinishedJobInTheHistory() async throws {
+        let kept = [job("t9nqdskz", reason: "OOMKilled")]
+        let listed = [HeadlessJob.failed(id: "live1")]
+        let tool = GetHeadlessJobTool(fetch: { listed }, remembered: { id in kept.first { $0.id == id } })
+        let ctx = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 9))
+        func answer(_ id: String) async throws -> [String: Any]? {
+            guard case .data(let data) = await tool.invoke(arguments: Data(#"{"id":"\#(id)"}"#.utf8), context: ctx) else { return nil }
+            return try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        }
+        let found = try await answer("t9nqdskz")
+        let gone = try XCTUnwrap(found)
+        XCTAssertEqual(gone["source"] as? String, "history")
+        XCTAssertEqual(gone["phase"] as? String, "failed")
+        XCTAssertEqual(gone["failureReason"] as? String, "OOMKilled")
+        XCTAssertNotNil(gone["finishedAt"])
+
+        let listedAnswer = try await answer("live1")
+        let live = try XCTUnwrap(listedAnswer)
+        XCTAssertNil(live["source"], "the platform's own listing carries no source")
+        let unknown = try await answer("nope")
+        XCTAssertNil(unknown, "neither has it")
+    }
 }
 
 private extension HeadlessJob {

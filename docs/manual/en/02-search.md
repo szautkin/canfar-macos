@@ -60,7 +60,9 @@ The **Results** tab shows how many observations matched, a page at a time.
 2. **Rows per page**: 50, 100, 500, or **All**, up to the number it shows.
 3. **Export** (⇧⌘E): the rows as you see them (**Current View**: **CSV (filtered)**,
    **TSV (filtered)**), or the whole query again from CADC (**Full Query (server)**: **CSV**, **TSV**,
-   **VOTable**). You choose where to save the file.
+   **VOTable**). You choose where to save the file. **To Storage** puts it in your CANFAR storage
+   instead, in **Verbinal-Exports**, so it is there from any Mac (**CSV (filtered)**, **TSV (filtered)**,
+   **VOTable (full query)**); the activity bar says where it went.
 4. **Columns**: which columns show. **Show All**, **Hide All**, **Reset to Defaults**, or tick them one
    by one; **Filter columns** finds one by name.
 

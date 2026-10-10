@@ -54,5 +54,6 @@ each ended, so you can still find a job after CANFAR has forgotten it. **Clear H
 ## What an assistant can do here
 
 It can list your jobs and their history, read a job's details, events and logs, launch jobs (with a
-Python script, or a command), and stop or delete them, which waits for you unless you allowed it.
+Python script, or a command), and stop or delete them, which waits for you unless you allowed it. A job
+CANFAR no longer lists, it reads from **History**, as you do.
 Starting jobs uses your allocation, and is a kind of change you can set to **Ask me**.

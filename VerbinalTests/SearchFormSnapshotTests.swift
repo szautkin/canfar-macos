@@ -237,4 +237,21 @@ final class SearchFormSnapshotTests: XCTestCase {
         // "No filters" in en, "Aucun filtre" in fr — both non-empty.
         XCTAssertFalse(snapshot.filterSummary().isEmpty)
     }
+
+    // MARK: - Resolver names
+
+    /// Plan 36 2.1: `simbad` is SIMBAD, not "all".
+    func testAResolverIsKnownByAnyCase() {
+        for name in ["simbad", "SIMBAD", "Simbad", " simbad "] {
+            XCTAssertEqual(ResolverValue(named: name), .simbad, name)
+        }
+        XCTAssertEqual(ResolverValue(named: "ned"), .ned)
+        XCTAssertNil(ResolverValue(named: "simbadx"))
+
+        var snapshot = SearchFormSnapshot()
+        snapshot.resolver = "vizier"
+        let state = SearchFormState()
+        state.loadFromSnapshot(snapshot)
+        XCTAssertEqual(state.resolver, .vizier)
+    }
 }

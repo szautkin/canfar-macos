@@ -115,8 +115,8 @@ struct DescribeAppTool: JSONReadTool {
         Accepts target name (resolved server-side), RA/Dec + radius, or
         free-form ADQL. Always cap maxRec sensibly.
       * `vizier_cone_search` — TAP cone-search against any VizieR
-        catalogue at CDS (Clement+2001 `V/97/variabls` for globular-cluster
-        variables, OGLE/ASAS-SN/ZTF for general transients, etc.).
+        catalogue at CDS (`B/vsx/vsx` for variable stars, `I/355/gaiadr3`
+        for Gaia DR3, OGLE/ASAS-SN/ZTF for general transients, etc.).
         Public, no auth, returns parsed rows.
       * `resolve_target` — name → coordinates via the CADC resolver.
       * `get_observation_caom2` — full CAOM-2 metadata document for an

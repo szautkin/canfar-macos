@@ -60,13 +60,7 @@ struct VOSpaceStorageRemote: StorageRemote {
 
     func write(_ data: Data, to path: String) async throws {
         let parts = path.split(separator: "/").map(String.init)
-        var parent = ""
-        for folder in parts.dropLast() {
-            if try await list(parent.isEmpty ? folder : "\(parent)/\(folder)") == nil {
-                try await vospace.createFolder(username: username, parentPath: parent, folderName: folder)
-            }
-            parent = parent.isEmpty ? folder : "\(parent)/\(folder)"
-        }
+        try await vospace.ensureFolder(username: username, path: parts.dropLast().joined(separator: "/"))
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("verbinal-sync-\(UUID().uuidString)-\(parts.last ?? "item")")
         try data.write(to: file)
         defer { try? FileManager.default.removeItem(at: file) }

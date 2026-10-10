@@ -34,9 +34,13 @@ enum ResultExportService {
         case invalidResponse
         case httpStatus(Int)
         case noRows
+        /// The query has no export address.
+        case noURL
 
         var errorDescription: String? {
             switch self {
+            case .noURL:
+                return String(localized: "No export URL available for this query.")
             case .invalidResponse:
                 return String(localized: "Invalid server response.")
             case .httpStatus(let code):

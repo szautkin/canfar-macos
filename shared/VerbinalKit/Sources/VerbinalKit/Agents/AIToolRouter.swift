@@ -353,7 +353,7 @@ public actor AIToolRouter {
                                   outcome: .failed(tag: "autoApplyFailed"),
                                   verbClass: meta.verbClass,
                                   durationMS: msSince(started))
-                        return .failed(.backendError("auto-apply failed: \(message)"))
+                        return .failed(.backendError("auto-apply failed, and nothing waits in Pending: \(message)"))
                     case .stillApplying:
                         emitAudit(name: name, args: rawArguments, context: context,
                                   outcome: .proposed(proposal.id),

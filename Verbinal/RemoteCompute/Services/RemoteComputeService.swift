@@ -18,7 +18,8 @@ protocol ComputeSessions: Sendable {
 /// The files remote compute needs in the person's home on /arc.
 protocol ComputeFiles: Sendable {
     func uploadFile(username: String, remotePath: String, fileURL: URL) async throws
-    func createFolder(username: String, parentPath: String, folderName: String) async throws
+    /// Makes the folder at `path` and its parents, those not there.
+    func ensureFolder(username: String, path: String) async throws
     /// The file's first `maxBytes`, or nil when it is not there (404).
     func readFile(username: String, path: String, maxBytes: Int) async throws -> Data?
 }
@@ -87,6 +88,8 @@ final class RemoteComputeService {
     private let changes: ChangeLog
     @ObservationIgnored private var watchers: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var resuming = false
+    /// Whose run folders are known to be there, this app run (plan 36 2.9).
+    @ObservationIgnored private var treeReady: Set<String> = []
     /// Counts the sessions started or stopped here, whoever asked — the
     /// screen or an assistant's tool — so the screen re-reads at once
     /// (handout 31: Start stayed enabled after an assistant started one).
@@ -263,13 +266,21 @@ final class RemoteComputeService {
                       launch: Configuration?) async throws -> ComputeDrift? {
         let reused = try await reuseOrLaunch(launch)
         let drift = reused.flatMap { ComputeDrift(session: $0, configuration: launch ?? configuration()) }
+        let running = reused?.containerImage.trimmingCharacters(in: .whitespaces) ?? ""
+        runs.ranOn(request.id, image: running.isEmpty ? (launch ?? configuration()).image : running)
         // A just-launched session may not have made its inbox yet, and a missing parent 404s the PUT.
         await ensureTree(user)
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent("runcode-\(RunCodeContract.sanitize(request.id)).json")
         try JSONEncoder().encode(request).write(to: file)
         defer { try? FileManager.default.removeItem(at: file) }
-        try await files.uploadFile(username: user, remotePath: RunCodeContract.inboxPath(id: request.id), fileURL: file)
+        do {
+            try await files.uploadFile(username: user, remotePath: RunCodeContract.inboxPath(id: request.id), fileURL: file)
+        } catch {
+            // The folders may be what went: the next run looks again.
+            treeReady.remove(user)
+            throw error
+        }
         return drift
     }
 
@@ -349,9 +360,13 @@ final class RemoteComputeService {
 
     /// The coordination tree, a level at a time; one already there is fine.
     private func ensureTree(_ user: String) async {
-        try? await files.createFolder(username: user, parentPath: "", folderName: ".verbinal")
-        try? await files.createFolder(username: user, parentPath: ".verbinal", folderName: "exec")
-        try? await files.createFolder(username: user, parentPath: RunCodeContract.execDir, folderName: "inbox")
-        try? await files.createFolder(username: user, parentPath: RunCodeContract.execDir, folderName: "out")
+        guard !treeReady.contains(user) else { return }
+        do {
+            try await files.ensureFolder(username: user, path: RunCodeContract.inboxDir)
+            try await files.ensureFolder(username: user, path: RunCodeContract.outDir)
+            treeReady.insert(user)
+        } catch {
+            // The request's upload says what is wrong; the next run looks again.
+        }
     }
 }

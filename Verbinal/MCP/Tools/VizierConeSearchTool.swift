@@ -45,13 +45,13 @@ struct VizierConeSearchTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "vizier_cone_search",
-        description: "Cone-search a VizieR catalogue at CDS. Standard pattern for catalogue cross-matches against any of VizieR's many holdings (Clement+2001 variables-in-globular-clusters as V/97/variabls, OGLE catalogues, ASAS-SN, ZTF, etc.). Public, no auth. `catalogue` is the VizieR identifier exactly (`V/97/variabls`, `B/vsx/vsx`, `I/355/gaiadr3`, …). Position columns default to RAJ2000 / DEJ2000, except Gaia DR3 (`I/355/…`) which defaults to RA_ICRS / DE_ICRS — override `raColumn` / `decColumn` if the catalogue uses different names. `radiusArcsec` is in arcseconds for the convenience of typical cluster work; the tool converts to degrees internally. Rows come nearest first, each with its separation from the centre in a last column, `sep_arcsec` — so with `maxRec` they are the nearest. `columns` picks the catalogue's columns to return (Gaia DR3 has ~250; e.g. [\"Source\", \"RA_ICRS\", \"DE_ICRS\", \"Gmag\"]); all of them when omitted. Returns parsed rows + a `probablyTruncated` hint when the row count hit the cap.",
+        description: "Cone-search a VizieR catalogue at CDS. Standard pattern for catalogue cross-matches against any of VizieR's many holdings (variable stars as B/vsx/vsx, Gaia DR3 as I/355/gaiadr3, OGLE, ASAS-SN, ZTF, etc.). Public, no auth. `catalogue` is the VizieR identifier exactly (`B/vsx/vsx`, `I/355/gaiadr3`, …); a catalogue without position columns cannot be cone-searched, and the answer says so. Position columns default to RAJ2000 / DEJ2000, except Gaia DR3 (`I/355/…`) which defaults to RA_ICRS / DE_ICRS — override `raColumn` / `decColumn` if the catalogue uses different names. `radiusArcsec` is in arcseconds for the convenience of typical cluster work; the tool converts to degrees internally. Rows come nearest first, each with its separation from the centre in a last column, `sep_arcsec` — so with `maxRec` they are the nearest. `columns` picks the catalogue's columns to return (Gaia DR3 has ~250; e.g. [\"Source\", \"RA_ICRS\", \"DE_ICRS\", \"Gmag\"]); all of them when omitted. Returns parsed rows + a `probablyTruncated` hint when the row count hit the cap.",
         schema: #"""
         {
           "type": "object",
           "required": ["catalogue", "raDeg", "decDeg", "radiusArcsec"],
           "properties": {
-            "catalogue":    { "type": "string", "minLength": 1, "description": "VizieR catalogue identifier, e.g. V/97/variabls." },
+            "catalogue":    { "type": "string", "minLength": 1, "description": "VizieR catalogue identifier, e.g. B/vsx/vsx." },
             "raDeg":        { "type": "number" },
             "decDeg":       { "type": "number" },
             "radiusArcsec": { "type": "number", "minimum": 0, "description": "Cone radius in arcseconds; converted to degrees internally." },

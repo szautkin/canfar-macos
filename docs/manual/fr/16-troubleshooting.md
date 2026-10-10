@@ -93,6 +93,11 @@ passe CADC à la place du secret CLI Harbor.
 4. **Réglages ▸ Clients MCP ▸ Diagnostic** vérifie chaque maillon et répare ce qu’il peut.
 5. Quittez complètement l’app de l’assistant et rouvrez-la.
 
+Tant que Verbinal est injoignable, les outils de l’assistant disent pourquoi : Verbinal **n’est pas
+ouvert** (ou **Autoriser les agents IA externes** est désactivé), ou le Verbinal avec lequel il parlait
+**s’est fermé**. Dès que Verbinal est rouvert, ses outils reviennent d’eux-mêmes ; rien n’est à relancer
+dans l’assistant.
+
 Si l’assistant se connecte mais ne peut rien faire, il attend que vous autorisiez sa session : cherchez la
 fenêtre **Un assistant veut ouvrir une session**. Une modification qu’il a proposée attend dans
 **En attente**, et expire après trois heures. Voir [Travailler avec un assistant IA](12-ai-assistant.md).

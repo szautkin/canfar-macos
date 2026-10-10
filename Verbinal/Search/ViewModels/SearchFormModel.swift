@@ -45,6 +45,25 @@ final class SearchFormModel {
         case refused(String)
     }
 
+    /// Whether the results table holds what was last asked for — the one
+    /// signal the screen and the tools read (plan 36 2.12; QA P4-2: a read
+    /// right after a search started took the grid as "no results").
+    enum Readiness: String, Sendable {
+        /// A search runs; the rows are the previous search's, or none.
+        case searching
+        /// The last search failed (`searchError`); the rows are an earlier one's.
+        case failed
+        case ready
+        /// No search has filled the table.
+        case empty
+    }
+
+    var readiness: Readiness {
+        if isSearching { return .searching }
+        if searchError != nil { return .failed }
+        return resultsModel.results.isEmpty ? .empty : .ready
+    }
+
     /// The query in flight; `cancelSearch()` stops it.
     private var runningQuery: Task<(headers: [String], rows: [[String]]), Error>?
 

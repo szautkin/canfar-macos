@@ -161,8 +161,6 @@ final class VizierConeSearchTests: XCTestCase {
                                               raColumn: "RA_ICRS", decColumn: "DE_ICRS",
                                               columns: ["Source", "Gmag", "BP-RP"])
         XCTAssertTrue(chosen.hasPrefix("SELECT Source, Gmag, \"BP-RP\","), chosen)
-        XCTAssertEqual(TAPClient.canonicalVizierCatalogue("V/97/catalog"), "V/97/variabls")
-        XCTAssertEqual(TAPClient.canonicalVizierCatalogue("I/355/gaiadr3"), "I/355/gaiadr3")
         XCTAssertEqual(TAPClient.vizierDefaultPositionColumns(catalogue: "I/355/gaiadr3").ra, "RA_ICRS")
     }
 
@@ -173,5 +171,41 @@ final class VizierConeSearchTests: XCTestCase {
         XCTAssertEqual(fields["LANG"], "ADQL")
         XCTAssertEqual(fields["MAXREC"], "10")
         XCTAssertEqual(fields["QUERY"], "SELECT 1")
+    }
+
+    // MARK: - Plan 36 2.6: the reason, not the XML
+
+    private let refusal = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <VOTABLE version="1.4" xmlns="http://www.ivoa.net/xml/VOTable/v1.3">
+      <RESOURCE type="results">
+        <INFO name="QUERY_STATUS" value="ERROR">Incorrect ADQL query: 2 unresolved identifiers: RAJ2000 [l.1 c.8 - l.1 c.15], DEJ2000 [l.1 c.17 - l.1 c.24]! Cause: Unknown column &quot;RAJ2000&quot;</INFO>
+      </RESOURCE>
+    </VOTABLE>
+    """
+
+    func testAServicesReasonIsReadFromItsVOTable() {
+        XCTAssertEqual(TAPClient.errorReason(refusal),
+                       "Incorrect ADQL query: 2 unresolved identifiers: RAJ2000 [l.1 c.8 - l.1 c.15], DEJ2000 [l.1 c.17 - l.1 c.24]! Cause: Unknown column \"RAJ2000\"")
+        XCTAssertEqual(TAPClient.errorReason("<html><body><h1>Bad request</h1> no table</body></html>"), "Bad request no table")
+        XCTAssertEqual(TAPClient.errorReason(""), "no reason given")
+    }
+
+    func testARefusedQuerySaysWhyFirstAndNamesTheMissingColumns() async throws {
+        let body = refusal
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        defer { MockURLProtocol.requestHandler = nil }
+        do {
+            _ = try await TAPClient(session: MockURLProtocol.mockSession())
+                .vizierConeSearch(catalogue: "V/97/variabls", raDeg: 10.68, decDeg: 41.27, radiusDeg: 0.01)
+            XCTFail("refused")
+        } catch {
+            let message = ToolFailureReason.backendError("vizier_cone_search: \(error.localizedDescription)").description
+            XCTAssertTrue(message.contains("refused the query: TAP query failed (HTTP 400): Incorrect ADQL query"), message)
+            XCTAssertTrue(message.contains("The catalogue has no RAJ2000 column"), message)
+            XCTAssertFalse(message.contains("<?xml"), message)
+        }
     }
 }

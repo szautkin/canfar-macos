@@ -91,7 +91,7 @@ final class ToolShapesTests: XCTestCase {
     /// Plan 30 N5: an export of the table says it holds the columns shown.
     func testAnExportSaysItsRowsAndColumns() async throws {
         let applier = ExportSearchResultsApplier(
-            run: { _, _, _ in SearchExport(path: "/Users/u/Downloads/results.csv", shape: SearchExport.shown(rows: 120, columns: 8)) },
+            run: { _ in SearchExport(path: "/Users/u/Downloads/results.csv", shape: SearchExport.shown(rows: 120, columns: 8)) },
             activity: AgentActivityStore(fileName: "test-activity-\(UUID().uuidString).json"))
         let proposal = PendingProposal(toolName: "export_search_results", kind: "export_search_results", summary: "Export",
                                        payload: try JSONEncoder().encode(ExportSearchResultsTool.Payload(format: "csv", adql: nil, maxRecords: nil)),

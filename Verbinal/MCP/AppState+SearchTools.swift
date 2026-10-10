@@ -28,81 +28,6 @@ extension AppState {
         })
     }
 
-    // MARK: - Export
-
-    /// Export current in-app results (when `adql` is omitted) or a
-    /// caller-supplied TAP query. Matches `get_search_results` for the
-    /// omit-adql path so agents can dump what the user is looking at.
-    func runSearchExport(
-        format: String, adql: String?, maxRecords: Int?
-    ) async throws -> SearchExport {
-        let custom = adql?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let custom, !custom.isEmpty {
-            return SearchExport(path: try await Self.exportServerADQL(format: format, adql: custom, maxRecords: maxRecords), shape: nil)
-        }
-        let snapshot: (rows: [SearchResult], columns: SearchResultColumns, liveADQL: String) = await MainActor.run {
-            let model = self.searchModel.resultsModel
-            return (model.fullFilteredSortedResults, model.columns, model.adqlQuery)
-        }
-        guard !snapshot.rows.isEmpty else {
-            throw ProposalApplyError.backendError(
-                "No current search results to export — run a search or pass `adql`."
-            )
-        }
-        let capped = maxRecords.map { Array(snapshot.rows.prefix($0)) } ?? snapshot.rows
-        let shown = SearchExport.shown(rows: capped.count, columns: snapshot.columns.visible.count)
-        switch format {
-        case "csv":
-            let temp = try ResultExportService.exportClientSide(rows: capped, columns: snapshot.columns, format: .csv)
-            return SearchExport(path: try Self.moveExportToDownloads(tempURL: temp, ext: "csv"), shape: shown)
-        case "tsv":
-            let temp = try ResultExportService.exportClientSide(rows: capped, columns: snapshot.columns, format: .tsv)
-            return SearchExport(path: try Self.moveExportToDownloads(tempURL: temp, ext: "tsv"), shape: shown)
-        case "votable":
-            let live = snapshot.liveADQL.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !live.isEmpty else {
-                throw ProposalApplyError.backendError(
-                    "VOTable export of the current table needs the live ADQL (none loaded). Pass `adql`, or export csv/tsv."
-                )
-            }
-            return SearchExport(path: try await Self.exportServerADQL(format: format, adql: live, maxRecords: maxRecords ?? capped.count),
-                                shape: nil)
-        default:
-            throw ProposalApplyError.backendError("unsupported format '\(format)'")
-        }
-    }
-
-    private nonisolated static func exportServerADQL(
-        format: String, adql: String, maxRecords: Int?
-    ) async throws -> String {
-        let ext: String
-        switch format {
-        case "csv": ext = "csv"
-        case "tsv": ext = "tsv"
-        case "votable": ext = "xml"
-        default: throw ProposalApplyError.backendError("unsupported format '\(format)'")
-        }
-        var components = URLComponents(string: TAPConfig.syncURL)
-        components?.queryItems = [
-            URLQueryItem(name: "LANG", value: "ADQL"),
-            URLQueryItem(name: "FORMAT", value: format),
-            URLQueryItem(name: "QUERY", value: adql),
-            URLQueryItem(name: "MAXREC", value: String(maxRecords ?? TAPConfig.maxRecords)),
-        ]
-        guard let url = components?.url else {
-            throw ProposalApplyError.backendError("could not build the TAP export URL")
-        }
-        let temp = try await ResultExportService.exportServerSide(
-            url: url, ext: ext, session: ResultExportService.makeExportSession())
-        return try moveExportToDownloads(tempURL: temp, ext: ext)
-    }
-
-    private nonisolated static func moveExportToDownloads(tempURL: URL, ext: String) throws -> String {
-        // Two exports in one second share a name: the first is kept.
-        let name = DownloadsFolder.timestampedURL(stem: "verbinal-results", ext: ext).lastPathComponent
-        return try DownloadsFolder.move(tempURL, named: name).path
-    }
-
     // MARK: - Search domain
 
     func makeSearchObservationsTool(tap: TAPClient,
@@ -147,7 +72,7 @@ extension AppState {
 
     func makeResolveTargetTool(resolver: TargetResolverService) -> ResolveTargetTool {
         ResolveTargetTool(resolve: { name, service in
-            let svc = ResolverValue(rawValue: service) ?? .all
+            let svc = ResolverValue(named: service) ?? .all  // the schema's enum refuses any other name
             let r: ResolverResult
             do {
                 r = try await resolver.resolve(target: name, service: svc)
@@ -644,7 +569,7 @@ extension AppState {
             }
             let resolver: ResolverValue?
             if let raw = args.resolver {
-                guard let value = ResolverValue(rawValue: raw.uppercased()) else {
+                guard let value = ResolverValue(named: raw) else {
                     return .init(error: "Unknown resolver '\(raw)'")
                 }
                 resolver = value
@@ -1015,6 +940,8 @@ extension AppState {
                     rows: rows,
                     rowsTruncated: truncated)
             }
+        }, readiness: { [weak self] in
+            await MainActor.run { (self?.searchModel.readiness ?? .empty, self?.searchModel.searchError) }
         })
     }
 

@@ -210,6 +210,8 @@ final class AgentsService {
     var onTurnedOff: (@MainActor () -> Void)?
 
     private var server: SocketServer?
+    /// Where `Verbinal mcp` finds the server, kept true (plan 36 2.2, 2.3).
+    private let sidecar = SidecarKeeper()
     private var serverLoopTask: Task<Void, Never>?
     private var router: AIToolRouter?
     /// In-flight agent connections, keyed by a per-connection token. Each
@@ -561,9 +563,7 @@ final class AgentsService {
                                   onCarryOn: Self.carryOn)
         self.router = router
 
-        // Compute a fresh socket path for this app instance. Including
-        // the PID prevents stale-socket collisions when a previous
-        // crashed run left files behind.
+        // A fresh socket per instance (its PID): a crashed run's file confuses no one.
         let path = SocketSidecar.suggestedSocketPath()
         let server = SocketServer(socketPath: path)
         do {
@@ -576,7 +576,7 @@ final class AgentsService {
         self.server = server
         self.socketPath = path
         do {
-            _ = try SocketSidecar.write(socketPath: path)
+            try sidecar.serving(at: path)
         } catch {
             logger.error("sidecar write failed: \(error.localizedDescription, privacy: .public)")
             // Server is up but helper won't find us — surface, don't fail.
@@ -619,7 +619,7 @@ final class AgentsService {
         if !live.isEmpty {
             Task { for transport in live { await transport.close() } }
         }
-        SocketSidecar.clear()
+        sidecar.stopped()
         socketPath = nil
         isRunning = false
         connectionCount = 0

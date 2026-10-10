@@ -189,6 +189,40 @@ public enum SocketSidecar {
         }
     }
 
+    /// Remove the sidecar only while it names `socketPath` (plan 36 2.2):
+    /// another Verbinal — the one running, after a test host or a crash —
+    /// keeps the sidecar it wrote.
+    public static func clear(ifNaming socketPath: String, directory: URL? = nil) {
+        let dirs = directory.map { [$0] } ?? candidateDirectories()
+        guard (try? read(directories: dirs)) == socketPath else { return }
+        clear(directory: directory)
+    }
+
+    /// The sockets apps opened in `directory`, newest first (plan 36 2.4):
+    /// where the relay looks when the sidecar names one that is gone.
+    public static func socketsNewestFirst(in directory: URL? = groupContainerDirectory()) -> [String] {
+        guard let directory,
+              let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
+        else { return [] }
+        func modified(_ url: URL) -> Date {
+            (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        }
+        return files.filter { $0.lastPathComponent.hasPrefix("mcp-") && $0.pathExtension == "sock" }
+            .sorted { modified($0) > modified($1) }.map(\.path)
+    }
+
+    /// Whether something listens at `socketPath`: a connect succeeds, and is closed.
+    public static func isListening(_ socketPath: String) -> Bool {
+        let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else { return false }
+        defer { Darwin.close(fd) }
+        var listening = false
+        try? withUnixAddr(path: socketPath) { addr, len in
+            try ptr(of: &addr) { listening = Darwin.connect(fd, $0, len) == 0 }
+        }
+        return listening
+    }
+
     /// Build a fresh socket path. Prefers the App Group container so
     /// the sandboxed helper can `connect()` to it; falls back to the
     /// process-local temp directory for unsandboxed dev builds.

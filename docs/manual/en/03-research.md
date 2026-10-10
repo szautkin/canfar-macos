@@ -116,7 +116,8 @@ storage. A notification tells you when an export finishes.
 
 ## What an assistant can do here
 
-It can list and read your observations and notes, write notes, tags and ratings (up to 50 at once),
+It can list and read your observations and notes, finding them as the filter does (a word of a note, or
+a tag), write notes, tags and ratings (up to 50 at once),
 open files in the viewers, download what you kept without a file or one file of an observation, cut
 out, and export. Removing a file
 or an observation waits for you unless you allowed that kind of change.

@@ -88,6 +88,7 @@ every later agent is told; **read** = pure data.
 | Quick-search cell links | `quick_search` | live |
 | Double-click row → detail sheet | `open_observation_detail` (row id), `show_search_row_detail` (row on the page), `show_observation_detail` (publisher id) | live |
 | Export menu (server-side CSV/TSV/VOTable) | `export_search_results` (pre-existing) | write |
+| Export ▸ To Storage | `export_search_results` `uploadToVOSpace` / `vospacePath` / `keepLocal` (plan 36 2.11) | write |
 | Detail sheet's Download | `download_observation` (pre-existing) | write |
 
 ## Search — side panel

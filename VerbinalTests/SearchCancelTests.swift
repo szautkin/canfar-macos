@@ -95,6 +95,41 @@ final class SearchCancelTests: XCTestCase {
         XCTAssertEqual(model.recentSearchStore.searches.count, recents, "a cancelled search is not kept")
     }
 
+    /// Plan 36 2.12 (QA P4-2): while a search runs, the results read as
+    /// `searching` — not as its rows — and as `ready` once they are there.
+    func testTheResultsSayWhetherTheyAreThere() async throws {
+        let model = makeModel()
+        XCTAssertEqual(model.readiness, .empty)
+        model.formState.observationID = "obs"
+        await model.executeSearch()
+        XCTAssertEqual(model.readiness, .ready)
+
+        holdRequests = true
+        model.formState.observationID = "other"
+        let running = Task { await model.executeSearch() }
+        await waitUntilSearching(model)
+        XCTAssertEqual(model.readiness, .searching)
+        let shown = GetSearchResultsTool.Output(
+            hasResults: true, adqlQuery: "", totalRows: 2, filteredCount: 2, maxRecordReached: false, currentPage: 0,
+            totalPages: 1, rowsPerPage: 100, sortColumnID: nil, sortAscending: true, activeFilters: [:], columns: [],
+            returnedPage: nil, rowIDs: [], rows: [], rowsTruncated: false)
+        let tool = GetSearchResultsTool(snapshot: { _ in shown },
+                                        readiness: { await MainActor.run { (model.readiness, model.searchError) } })
+        let ctx = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 9))
+        guard case .data(let data) = await tool.invoke(arguments: Data("{}".utf8), context: ctx) else { return XCTFail() }
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(object["state"] as? String, "searching", "the rows are the previous search's")
+        release.signal()
+        _ = await running.value
+        XCTAssertEqual(model.readiness, .ready)
+
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!, Data("bad".utf8))
+        }
+        await model.executeSearch()
+        XCTAssertEqual(model.readiness, .failed)
+    }
+
     func testTheADQLEditorCancelsTheSameWay() async {
         let model = makeModel()
         holdRequests = true

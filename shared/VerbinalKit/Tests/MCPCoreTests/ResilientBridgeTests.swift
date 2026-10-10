@@ -328,6 +328,30 @@ final class ResilientBridgeTests: XCTestCase {
         XCTAssertNotEqual(AgentSession.newRelaySecret(), secrets[0], "another relay has another")
     }
 
+    /// Plan 36 2.5: when the relay knows why the app cannot be reached, a
+    /// call is told that, rather than to turn on a switch that is on.
+    func testACallIsToldWhyTheAppCannotBeReached() async throws {
+        let app = FakeApp()
+        let cache = ToolManifestCache(url: cacheURL)
+        cache.save([ToolDefinitionWire(name: "run_search", description: "", inputSchema: .object(["type": .string("object")]))])
+        let (clientEnd, bridgeEnd) = InMemoryTransport.pair()
+        let bridge = ResilientBridge(client: bridgeEnd, connect: { await app.connect() }, manifest: cache,
+                                     configuration: .init(serverName: "Verbinal", serverVersion: "1.4.1",
+                                                          notRunningMessage: notRunning,
+                                                          whyClosed: { "The server it last named has quit." },
+                                                          reconnectInterval: .milliseconds(20),
+                                                          firstConnectGrace: .milliseconds(50)))
+        let task = Task { await bridge.run() }
+        defer { task.cancel() }
+        let inbox = Inbox(clientEnd)
+        try await send(clientEnd, initialize)
+        _ = try await inbox.take(id(1))
+        try await send(clientEnd, #"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"run_search","arguments":{}}}"#)
+        let call = result(try await inbox.take(id(2)))
+        let text = ((call["content"] as? [[String: Any]])?.first?["text"] as? String) ?? ""
+        XCTAssertEqual(text, "The server it last named has quit.")
+    }
+
     func testOnlyASecretOfTheRelaysShapeHasAFingerprint() {
         let secret = AgentSession.newRelaySecret()
         let fingerprint = AgentSession.relayFingerprint(introduction: ["secret": secret])

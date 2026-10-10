@@ -62,7 +62,7 @@ Each run in the list says who sent it (**You** or **Assistant**), its language, 
 **running**, **ok**, **error**, **timed out**, **no result**, or **not sent**. Select one to see, under
 **Selected Run**:
 
-- its status, exit code and how long it took;
+- its status, exit code, how long it took, and the image it ran on, so a result can be repeated;
 - its **Code**, its **Output** and its **Errors** (**output cut short** when it was too long);
 - **Copy Code**, and **Run Again** to send the same code once more.
 

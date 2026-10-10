@@ -299,6 +299,25 @@ actor VOSpaceBrowserService {
         }
     }
 
+    /// Makes sure the folder at `path` is there, parents first, asking
+    /// before creating (plan 36 2.9): a folder already there is not made
+    /// again — storage refuses that (409), and the log kept a failed change.
+    func ensureFolder(username: String, path: String) async throws {
+        var parent = ""
+        var missing = false
+        for folder in path.split(separator: "/").map(String.init) {
+            let here = parent.isEmpty ? folder : "\(parent)/\(folder)"
+            // Below a folder just made, nothing is there yet.
+            if missing {
+                try await createFolder(username: username, parentPath: parent, folderName: folder)
+            } else if try await node(username: username, path: here) == nil {
+                try await createFolder(username: username, parentPath: parent, folderName: folder)
+                missing = true
+            }
+            parent = here
+        }
+    }
+
     private func makeFolder(username: String, parentPath: String, folderName: String) async throws {
         let parent = try relativePath(parentPath, username: username)
         let fullPath = parent.isEmpty ? "\(username)/\(folderName)" : "\(username)/\(parent)/\(folderName)"

@@ -99,7 +99,7 @@ extension AppState {
         let service = self.headlessService
         return GetHeadlessJobTool(fetch: {
             try await service.getHeadlessJobs()
-        })
+        }, remembered: { [weak self] id in await self?.jobHistory.jobs.first { $0.id == id } })
     }
 
     func makeGetHeadlessJobLogsTool() -> GetHeadlessJobLogsTool {

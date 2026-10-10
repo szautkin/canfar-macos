@@ -95,6 +95,12 @@ extension AppState {
                 return .init(done: true, target: args.target, id: "presented:\(openable.name)", kind: "presentation",
                              message: "\(openable.name) was already open")
             }
+            // One at a time: another in front keeps it from showing, and what
+            // appeared would be that one's (plan 36 2.13, QA P4-3).
+            if let front = presentations.shown(named: "front") {
+                return .init(done: false, target: args.target, id: "presented:\(openable.name)", kind: "presentation",
+                             message: "\(front.name) is open in front, and \(openable.name) cannot open over it: close_ui \"\(front.name)\" first, or ask the person")
+            }
             if let screen = openable.screen, let mode = AppMode(rawValue: screen), currentMode != mode {
                 navigateTo(mode)
                 try? await Task.sleep(for: .milliseconds(300))

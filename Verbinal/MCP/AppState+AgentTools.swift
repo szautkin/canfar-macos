@@ -80,8 +80,8 @@ extension AppState {
         // ids downloaded last session (or via the UI) resolve after relaunch.
         let observationStore = researchModel.observationStore
         let noteStore = researchModel.noteStore
-        tools.append(makeListDownloadedObservationsTool(store: observationStore))
-        tools.append(makeGetDownloadedObservationTool(store: observationStore))
+        tools.append(makeListDownloadedObservationsTool(store: observationStore, notes: noteStore))
+        tools.append(makeGetDownloadedObservationTool(store: observationStore, notes: noteStore))
         tools.append(makeGetObservationNotesTool(store: noteStore))
         tools.append(makeListWorkflowsTool())
         tools.append(makeGetWorkflowTool())

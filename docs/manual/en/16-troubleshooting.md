@@ -79,6 +79,10 @@ mistake is the CADC password in place of the Harbor CLI secret.
 4. **Settings ▸ MCP Clients ▸ Diagnostics** checks each link and fixes what it can.
 5. Quit the assistant's app completely and open it again.
 
+While Verbinal cannot be reached, the assistant's tools say why: Verbinal is **not running** (or **Allow
+external AI agents** is off), or the Verbinal it was talking to **has quit**. Once Verbinal is open again,
+its tools come back on their own; nothing in the assistant needs restarting.
+
 If the assistant connects but cannot do anything, it is waiting for you to allow its session: look for
 the window **An assistant wants to start a session**. A change it proposed waits in **Pending**, and
 expires after three hours. See [Working with an AI assistant](12-ai-assistant.md).

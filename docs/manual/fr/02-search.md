@@ -61,7 +61,10 @@ L’onglet **Résultats** indique combien d’observations correspondent, une pa
 2. **Lignes par page** : 50, 100, 500, ou **Tout**, jusqu’au nombre indiqué.
 3. **Exporter** (⇧⌘E) : les lignes telles que vous les voyez (**Vue actuelle** : **CSV (filtré)**,
    **TSV (filtré)**), ou toute la requête à nouveau depuis le CADC (**Requête complète (serveur)** :
-   **CSV**, **TSV**, **VOTable**). Vous choisissez où enregistrer le fichier.
+   **CSV**, **TSV**, **VOTable**). Vous choisissez où enregistrer le fichier. **Vers le stockage** le
+   met plutôt dans votre stockage CANFAR, dans **Verbinal-Exports**, pour l’avoir depuis n’importe quel
+   Mac (**CSV (filtré)**, **TSV (filtré)**, **VOTable (requête complète)**) ; la barre d’activité dit où
+   il est allé.
 4. **Colonnes** : quelles colonnes s’affichent. **Tout afficher**, **Tout masquer**, **Réinitialiser**,
    ou cochez-les une à une ; **Filtrer les colonnes** en trouve une par son nom.
 

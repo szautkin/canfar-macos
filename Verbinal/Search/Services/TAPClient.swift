@@ -91,7 +91,7 @@ actor TAPClient {
                 if httpResponse.statusCode >= 500 {
                     throw NetworkError.httpError(httpResponse.statusCode, body)
                 }
-                throw SearchError.networkError("TAP query failed (HTTP \(httpResponse.statusCode)): \(body)")
+                throw SearchError.networkError("TAP query failed (HTTP \(httpResponse.statusCode)): \(Self.errorReason(body))")
             }
 
             return String(data: data, encoding: .utf8) ?? ""
@@ -138,10 +138,9 @@ actor TAPClient {
     /// was tried so the user knows whether this is a "VizieR is down
     /// globally" or "your query is wrong" situation.
     ///
-    /// `catalogue` is the VizieR catalogue identifier (e.g.
-    /// `"V/97/variabls"` for Clement+2001 variables-in-globular-
-    /// clusters — TAP_SCHEMA lists `variabls`, not `catalog`). Defaults
-    /// (`"RAJ2000"` / `"DEJ2000"`) cover the majority of VizieR holdings.
+    /// `catalogue` is the VizieR catalogue identifier (e.g. `"B/vsx/vsx"`,
+    /// `"I/355/gaiadr3"`). Defaults (`"RAJ2000"` / `"DEJ2000"`) cover most
+    /// VizieR holdings; a catalogue without them is said so (plan 36 2.6).
     /// Build the VizieR TAP ADQL for a cone search. `TOP` is intentionally
     /// omitted — VizieR TAP 1.1 rejects `SELECT TOP N` when `MAXREC` is
     /// also posted (HTTP 400 on every catalogue, 2026-08-28 QA). Row
@@ -179,13 +178,22 @@ actor TAPClient {
         return plain ? name : "\"\(name.replacingOccurrences(of: "\"", with: "\"\""))\""
     }
 
-    /// Clement+2001 globular-cluster variables live in TAP_SCHEMA as
-    /// `V/97/variabls`. Agents still pass the QA example `V/97/catalog`.
-    static func canonicalVizierCatalogue(_ catalogue: String) -> String {
-        switch catalogue.trimmingCharacters(in: .whitespacesAndNewlines) {
-        case "V/97", "V/97/catalog": return "V/97/variabls"
-        default: return catalogue
+    /// What a TAP service says went wrong, as a sentence (plan 36 2.6):
+    /// a VOTable error's `QUERY_STATUS` text, else the body without markup.
+    /// The VOTable's XML prologue was all that survived the clip before.
+    static func errorReason(_ body: String) -> String {
+        let status = #"<INFO[^>]*name="QUERY_STATUS"[^>]*>([\s\S]*?)</INFO>"#
+        var text = body
+        if let range = body.range(of: status, options: .regularExpression),
+           let inner = body[range].range(of: #">([\s\S]*?)</"#, options: .regularExpression) {
+            text = String(body[range][inner].dropFirst().dropLast(2))
+        } else {
+            text = body.replacingOccurrences(of: #"<[^>]+>"#, with: " ", options: .regularExpression)
         }
+        text = text.replacingOccurrences(of: "&quot;", with: "\"").replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">").replacingOccurrences(of: "&amp;", with: "&")
+        let words = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return words.isEmpty ? "no reason given" : words
     }
 
     /// Default RA/Dec column names for a VizieR catalogue identifier.
@@ -208,7 +216,7 @@ actor TAPClient {
         maxRec: Int = 500
     ) async throws -> (headers: [String], rows: [[String]]) {
         let adql = Self.vizierConeADQL(
-            catalogue: Self.canonicalVizierCatalogue(catalogue),
+            catalogue: catalogue,
             raDeg: raDeg,
             decDeg: decDeg,
             radiusDeg: radiusDeg,
@@ -222,10 +230,13 @@ actor TAPClient {
                 let csv = try await tapQueryAt(endpoint: endpoint.syncURL, adql: adql, maxRec: maxRec)
                 return CSVParser.parse(csv)
             } catch {
-                let body = (error as? SearchError).map { "\($0)" } ?? error.localizedDescription
                 if !Self.isHostFailoverWorthy(error) {
+                    // The reason first: the answer is clipped, and the reason is what matters.
+                    let reason = error.localizedDescription
+                    let missing = [raColumn, decColumn].filter { reason.contains("\"\($0)\"") }
+                    let hint = missing.isEmpty ? "" : " The catalogue has no \(missing.joined(separator: " or ")) column: pass raColumn and decColumn (TAP_SCHEMA lists its columns), or it holds no positions."
                     throw SearchError.networkError(
-                        "vizier_cone_search at \(endpoint.host): HTTP/query error — \(body). ADQL sent: \(adql.replacingOccurrences(of: "\n", with: " ")). Not retrying other mirrors (looks like a query problem, not a host problem)."
+                        "\(endpoint.host) refused the query: \(reason).\(hint) ADQL sent: \(adql.replacingOccurrences(of: "\n", with: " "))"
                     )
                 }
                 attempts.append((endpoint.host, error))

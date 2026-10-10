@@ -133,7 +133,7 @@ extension SearchFormState {
         publicOnly = snapshot.publicOnly
         intent = IntentValue(rawValue: snapshot.intent) ?? .any
         target = snapshot.target
-        resolver = ResolverValue(rawValue: snapshot.resolver) ?? .all
+        resolver = ResolverValue(named: snapshot.resolver) ?? .all
         searchRadius = snapshot.searchRadius ?? ""
         pixelScale = snapshot.pixelScale
         observationDate = snapshot.observationDate

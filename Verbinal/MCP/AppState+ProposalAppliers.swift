@@ -145,9 +145,9 @@ extension AppState {
             renew: { [sessionActions] id in try await sessionActions.renew(id: id) },
             activity: activity))
         appliers.append(ExportSearchResultsApplier(
-            run: { [weak self] format, adql, maxRecords in
+            run: { [weak self] request in
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
-                return try await self.runSearchExport(format: format, adql: adql, maxRecords: maxRecords)
+                return try await self.runSearchExport(request, vospace: vospace)
             },
             activity: activity))
         appliers.append(UploadFileToVOSpaceApplier(

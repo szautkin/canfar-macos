@@ -162,8 +162,8 @@ final class ExportService {
     // MARK: - VOSpace upload
 
     #if os(macOS)
-    /// Zip the bundle folder and upload it to VOSpace at `Verbinal-Exports/<name>.zip`.
-    /// Creates the parent container if needed. Returns the remote path on success.
+    /// Zip the bundle folder and upload it to VOSpace at `Verbinal-Exports/<name>.zip`,
+    /// as every result goes there (`ResultUpload`). Returns the remote path on success.
     func uploadBundleToVOSpace(
         bundleURL: URL,
         vospace: VOSpaceBrowserService,
@@ -171,25 +171,7 @@ final class ExportService {
     ) async throws -> String {
         let zipURL = try Self.zipFolder(at: bundleURL)
         defer { try? FileManager.default.removeItem(at: zipURL) }
-
-        // Ensure the parent container exists (idempotent — VOSpace returns 409 on already-exists)
-        do {
-            try await vospace.createFolder(
-                username: username,
-                parentPath: "",
-                folderName: "Verbinal-Exports"
-            )
-        } catch {
-            // 409 (conflict) = folder already exists — expected. Log other errors for diagnostics.
-            Self.logger.info("VOSpace folder creation note: \(error.localizedDescription, privacy: .public)")
-        }
-
-        let remotePath = "Verbinal-Exports/\(zipURL.lastPathComponent)"
-        try await vospace.uploadFile(
-            username: username,
-            remotePath: remotePath,
-            fileURL: zipURL
-        )
+        let remotePath = try await ResultUpload(vospace: vospace, username: username).upload(zipURL)
         Self.logger.log("Uploaded bundle to VOSpace: \(remotePath, privacy: .public)")
         return remotePath
     }

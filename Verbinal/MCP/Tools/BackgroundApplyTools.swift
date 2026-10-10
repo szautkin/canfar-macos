@@ -62,7 +62,7 @@ struct GetJobStatusTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_job_status",
-        description: "How a background job is getting on — one started by start_background_apply, or an auto-applied write that was still applying when its call answered (`applying: true`, with a jobId). `status` is running, succeeded or failed, with `elapsedSeconds`, the failure `message`, or the apply's `result`. For an id that never ran as a job, the proposal's own state.",
+        description: "How a background job is getting on — one started by start_background_apply, or an auto-applied write that was still applying when its call answered (`applying: true`, with a jobId). `status` is running, succeeded or failed, with `elapsedSeconds`, the failure `message`, or the apply's `result`. For an id that never ran as a job, the proposal's own state. A batch job's id (list_headless_jobs, list_job_history) is not one: read those with get_headless_job.",
         schema: #"""
         {
           "type": "object",

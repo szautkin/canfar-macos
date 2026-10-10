@@ -9,7 +9,9 @@ import XCTest
 /// any interpolated input.
 final class ToolFailureReasonTests: XCTestCase {
 
-    private let huge = String(repeating: "A", count: 500)
+    /// Longer than every clip: backendError keeps 500 (plan 36 2.6, a VizieR
+    /// reason and its ADQL), the others 200 or less.
+    private let huge = String(repeating: "A", count: 1000)
 
     func testDescriptionTruncatesOverlongInput() {
         let cases: [ToolFailureReason] = [
@@ -23,7 +25,7 @@ final class ToolFailureReasonTests: XCTestCase {
         for reason in cases {
             let desc = reason.description
             XCTAssertTrue(desc.contains("… (truncated)"), "\(reason.auditTag) should truncate overlong input")
-            // The raw 500-char run must not appear verbatim.
+            // The raw run must not appear verbatim.
             XCTAssertFalse(desc.contains(huge), "\(reason.auditTag) leaked the full input")
         }
     }

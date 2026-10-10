@@ -113,8 +113,7 @@ final class CodeQualityGuardrailTests: XCTestCase {
     static let overBudget: [String: Int] = [
         "Verbinal/ImageDiscovery/Services/ImageDiscoveryCoordinator.swift": 1227,
         "Verbinal/ViewModels/AppState.swift": 1175,
-        "Verbinal/MCP/AppState+SearchTools.swift": 1162,
-        "Verbinal/MCP/Tools/HeadlessAgentTools.swift": 806,
+        "Verbinal/MCP/AppState+SearchTools.swift": 1089,
         "Verbinal/MCP/Tools/SearchControlTools.swift": 805,
         "Verbinal/ViewModels/SessionLaunchModel.swift": 803,
         "Verbinal/Views/SettingsView.swift": 782,

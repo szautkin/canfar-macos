@@ -121,6 +121,8 @@ struct ListComputeRunsTool: JSONReadTool {
         let exitCode: Int?
         let durationMs: Int?
         let finishedAt: String?
+        /// The image the code ran on; absent for runs from before it was kept.
+        let image: String?
         let codePreview: String
         let codeLength: Int
 
@@ -134,6 +136,7 @@ struct ListComputeRunsTool: JSONReadTool {
             exitCode = run.exitCode
             durationMs = run.durationMs
             finishedAt = run.finishedAt.map(iso.string(from:))
+            image = run.image
             codePreview = String(run.code.prefix(ListComputeRunsTool.previewLength))
             codeLength = run.code.count
         }
@@ -141,7 +144,7 @@ struct ListComputeRunsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_compute_runs",
-        description: "The code sent to remote compute from this app, newest first — by an assistant through run_code or by the person from the Remote Compute screen: who sent it (agent or user), the language, when, and its status (running while it is out; then ok, error, timeout, noResult or notSent), with the start of the code. Fetch a run's output with run_code_output(execution_id).",
+        description: "The code sent to remote compute from this app, newest first — by an assistant through run_code or by the person from the Remote Compute screen: who sent it (agent or user), the language, when, and its status (running while it is out; then ok, error, timeout, noResult or notSent), the image it ran on, with the start of the code. Fetch a run's output with run_code_output(execution_id).",
         schema: #"""
         {
           "type": "object",

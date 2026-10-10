@@ -35,6 +35,12 @@ enum ResolverValue: String, CaseIterable, Identifiable {
     case none = "NONE"
 
     var id: String { rawValue }
+
+    /// A service as anyone names it — `simbad`, `SIMBAD`, `Simbad` — or nil
+    /// (plan 36 2.1: `resolve_target`'s `simbad` fell back to all).
+    init?(named name: String) {
+        self.init(rawValue: name.trimmingCharacters(in: .whitespaces).uppercased())
+    }
 }
 
 // MARK: - Intent

@@ -76,7 +76,10 @@ final class RemoteComputeScreenTests: XCTestCase {
         _ = try await screen.service.fetchOut(run.id)
         await screen.loadOutput()
         XCTAssertEqual(screen.output, .text(stdout: "hi\n", stderr: "warn", truncated: true))
-        XCTAssertEqual(RemoteComputeView.meta(of: try XCTUnwrap(screen.selectedRun), truncated: true).components(separatedBy: " · ").count, 3)
+        // ok · exit 0 · output cut short · the image it ran on (plan 36 2.8).
+        let meta = RemoteComputeView.meta(of: try XCTUnwrap(screen.selectedRun), truncated: true).components(separatedBy: " · ")
+        XCTAssertEqual(meta.count, 4)
+        XCTAssertEqual(meta.last, "compute:1")
 
         await screen.runAgain()
         XCTAssertEqual(screen.runs.count, 2)

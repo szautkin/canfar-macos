@@ -220,7 +220,7 @@ struct SetSearchFormTool: AITool {
             "dataTypes":   { "type": "array", "items": { "type": "string" } },
             "obsTypes":    { "type": "array", "items": { "type": "string" } },
             "execute":     { "type": "boolean", "description": "Run the search after applying the fields." },
-            "wait":        { "type": "boolean", "description": "With `execute`: false answers at once that it has started (`started: true`) — follow it with get_current_view or get_search_results, stop it with cancel_search. Default true: the answer waits for the results." }
+            "wait":        { "type": "boolean", "description": "With `execute`: false answers at once that it has started (`started: true`) — get_search_results then says `state: searching` until its results are there; cancel_search stops it. Default true: the answer waits for the results." }
           },
           "additionalProperties": false
         }
@@ -478,7 +478,7 @@ struct SetADQLEditorTool: AITool {
             "adql":             { "type": "string", "description": "Raw ADQL to place in the editor; \"\" clears it." },
             "generateFromForm": { "type": "boolean", "description": "Regenerate the editor text from the current form state." },
             "execute":          { "type": "boolean", "description": "Run the editor's content after applying." },
-            "wait":             { "type": "boolean", "description": "With `execute`: false answers at once that it has started (`started: true`) — follow it with get_current_view or get_search_results, stop it with cancel_search. Default true: the answer waits for the results." }
+            "wait":             { "type": "boolean", "description": "With `execute`: false answers at once that it has started (`started: true`) — get_search_results then says `state: searching` until its results are there; cancel_search stops it. Default true: the answer waits for the results." }
           },
           "additionalProperties": false
         }

@@ -73,4 +73,40 @@ final class SocketSidecarTests: XCTestCase {
         XCTAssertTrue(path.contains("mcp-\(pid)"))
         XCTAssertTrue(path.hasSuffix(".sock"))
     }
+
+    // MARK: - Plan 36 2.2–2.4: a sidecar no one else's run can spoil
+
+    /// A short socket path in the temporary directory (sun_path is 104 bytes).
+    private func socketPath(_ name: String) -> String {
+        "/tmp/vb-\(name)-\(UUID().uuidString.prefix(8)).sock"
+    }
+
+    func testClearingRemovesOnlyTheSidecarThatNamesThisSocket() throws {
+        try SocketSidecar.write(socketPath: "/tmp/theirs.sock", directory: sidecarDir)
+        SocketSidecar.clear(ifNaming: "/tmp/mine.sock", directory: sidecarDir)
+        XCTAssertEqual(try SocketSidecar.read(directories: [sidecarDir]), "/tmp/theirs.sock", "another's sidecar stays")
+        SocketSidecar.clear(ifNaming: "/tmp/theirs.sock", directory: sidecarDir)
+        XCTAssertThrowsError(try SocketSidecar.read(directories: [sidecarDir]), "its own goes")
+    }
+
+    func testSocketsAreListedNewestFirst() throws {
+        let fm = FileManager.default
+        for (name, age) in [("mcp-1.sock", 300.0), ("mcp-2.sock", 10.0), ("mcp-3.sock", 100.0), ("other.txt", 0.0)] {
+            let url = sidecarDir.appendingPathComponent(name)
+            fm.createFile(atPath: url.path, contents: Data())
+            try fm.setAttributes([.modificationDate: Date().addingTimeInterval(-age)], ofItemAtPath: url.path)
+        }
+        XCTAssertEqual(SocketSidecar.socketsNewestFirst(in: sidecarDir).map { ($0 as NSString).lastPathComponent },
+                       ["mcp-2.sock", "mcp-3.sock", "mcp-1.sock"])
+    }
+
+    func testASocketIsListeningOnlyWhileAServerHoldsIt() throws {
+        let path = socketPath("listen")
+        let server = SocketServer(socketPath: path)
+        try server.start()
+        XCTAssertTrue(SocketSidecar.isListening(path))
+        server.stop()
+        XCTAssertFalse(SocketSidecar.isListening(path))
+        XCTAssertFalse(SocketSidecar.isListening(socketPath("never")))
+    }
 }

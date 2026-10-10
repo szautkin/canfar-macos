@@ -66,7 +66,8 @@ Chaque exécution de la liste dit qui l’a envoyée (**Vous** ou **Assistant**)
 elle a fini : **en cours**, **ok**, **erreur**, **délai dépassé**, **aucun résultat** ou **non envoyé**.
 Sélectionnez-en une pour voir, sous **Exécution choisie** :
 
-- son état, son code de sortie et sa durée ;
+- son état, son code de sortie, sa durée, et l’image sur laquelle elle a tourné, pour refaire un
+  résultat ;
 - son **Code**, sa **Sortie** et ses **Erreurs** (**sortie tronquée** quand elle était trop longue) ;
 - **Copier le code**, et **Exécuter de nouveau** pour renvoyer le même code.
 

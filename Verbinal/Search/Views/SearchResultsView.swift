@@ -49,6 +49,9 @@ struct SearchResultsView: View {
     var onQuickSearch: ((String, String) -> Void)? = nil
 
     @Environment(\.openURL) private var openURL
+    #if os(macOS)
+    @Environment(AppState.self) private var appState
+    #endif
     @State private var selectedResult: SearchResult?
     @State private var selectedRowID: String?
     @State private var isExporting = false
@@ -228,6 +231,14 @@ struct SearchResultsView: View {
                 Button("TSV") { Task { await exportServerSide(format: "tsv", ext: "tsv") } }
                 Button("VOTable") { Task { await exportServerSide(format: "votable", ext: "xml") } }
             }
+            #if os(macOS)
+            Section("To Storage") {
+                Button("CSV (filtered)") { Task { await exportToStorage { try clientSideFile(.csv) } } }
+                Button("TSV (filtered)") { Task { await exportToStorage { try clientSideFile(.tsv) } } }
+                Button("VOTable (full query)") { Task { await exportToStorage { try await serverSideFile("votable", ext: "xml") } } }
+            }
+            .disabled(appState.username.isEmpty)
+            #endif
         } label: {
             HStack(spacing: 4) {
                 if isExporting { ProgressView().controlSize(.small) }
@@ -483,22 +494,25 @@ struct SearchResultsView: View {
 
     // MARK: - Export
 
-    private func exportServerSide(format: String, ext: String) async {
+    private func serverSideFile(_ format: String, ext: String) async throws -> URL {
         guard let url = resultsModel.exportURL(format: format) else {
-            exportErrorMessage = String(localized: "No export URL available for this query.")
-            return
+            throw ResultExportService.ExportError.noURL
         }
-        isExporting = true
-        defer { isExporting = false }
-
         let session = ResultExportService.makeExportSession()
         defer { session.invalidateAndCancel() }
+        return try await ResultExportService.exportServerSide(url: url, ext: ext, session: session)
+    }
+
+    private func clientSideFile(_ format: ClientExporter.Format) throws -> URL {
+        try ResultExportService.exportClientSide(rows: resultsModel.fullFilteredSortedResults,
+                                                 columns: resultsModel.columns, format: format)
+    }
+
+    private func exportServerSide(format: String, ext: String) async {
+        isExporting = true
+        defer { isExporting = false }
         do {
-            let tempURL = try await ResultExportService.exportServerSide(
-                url: url,
-                ext: ext,
-                session: session
-            )
+            let tempURL = try await serverSideFile(format, ext: ext)
             #if os(macOS)
             await presentExportSavePanel(filename: "results.\(ext)", tempURL: tempURL)
             #else
@@ -514,11 +528,7 @@ struct SearchResultsView: View {
         defer { isExporting = false }
 
         do {
-            let tempURL = try ResultExportService.exportClientSide(
-                rows: resultsModel.fullFilteredSortedResults,
-                columns: resultsModel.columns,
-                format: format
-            )
+            let tempURL = try clientSideFile(format)
             #if os(macOS)
             await presentExportSavePanel(filename: "results.\(format.pathExtension)", tempURL: tempURL)
             #else
@@ -530,6 +540,23 @@ struct SearchResultsView: View {
     }
 
     #if os(macOS)
+    /// The export, in the person's storage — Verbinal-Exports, as the
+    /// assistant's goes (plan 36 2.11); where it went shows on the activity bar.
+    private func exportToStorage(_ write: () async throws -> URL) async {
+        isExporting = true
+        defer { isExporting = false }
+        let task = TaskRegistry.shared.begin(.storage, String(localized: "Export search results to storage"))
+        do {
+            let file = try ResultUpload.stamped(try await write(), stem: "verbinal-results")
+            defer { try? FileManager.default.removeItem(at: file) }
+            let vospace = VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints)
+            task.succeed(try await ResultUpload(vospace: vospace, username: appState.username).upload(file))
+        } catch {
+            task.fail(error.localizedDescription)
+            exportErrorMessage = error.localizedDescription
+        }
+    }
+
     @MainActor
     private func presentExportSavePanel(filename: String, tempURL: URL) async {
         let panel = NSSavePanel()

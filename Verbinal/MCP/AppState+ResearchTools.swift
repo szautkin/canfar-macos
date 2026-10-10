@@ -10,16 +10,16 @@ import VerbinalKit
 
 /// Research: downloaded observations, their notes, and the bundle export.
 extension AppState {
-    func makeListDownloadedObservationsTool(store: ObservationStore) -> ListDownloadedObservationsTool {
+    func makeListDownloadedObservationsTool(store: ObservationStore, notes: ObservationNoteStore) -> ListDownloadedObservationsTool {
         ListDownloadedObservationsTool(snapshot: { @MainActor in
-            store.observations.map { Self.flatten($0, duplicateOf: store.original(of: $0)?.id.uuidString) }
-        })
+            store.observations.map { Self.flatten($0, duplicateOf: store.original(of: $0)?.id.uuidString, note: notes.note(for: $0.publisherID)) }
+        }, noteMatches: { @MainActor text in ResearchFilter(text, notes: notes).noteMatches })
     }
 
-    func makeGetDownloadedObservationTool(store: ObservationStore) -> GetDownloadedObservationTool {
+    func makeGetDownloadedObservationTool(store: ObservationStore, notes: ObservationNoteStore) -> GetDownloadedObservationTool {
         GetDownloadedObservationTool(lookup: { @MainActor raw in
             let record = try store.recordForTool(raw)
-            return Self.flatten(record, duplicateOf: store.original(of: record)?.id.uuidString)
+            return Self.flatten(record, duplicateOf: store.original(of: record)?.id.uuidString, note: notes.note(for: record.publisherID))
         })
     }
 
@@ -96,7 +96,8 @@ extension AppState {
         ]
     }
 
-    private nonisolated static func flatten(_ obs: DownloadedObservation, duplicateOf: String? = nil) -> DownloadedObservationOut {
+    private nonisolated static func flatten(_ obs: DownloadedObservation, duplicateOf: String? = nil,
+                                            note: ObservationNote? = nil) -> DownloadedObservationOut {
         DownloadedObservationOut(
             id: obs.id.uuidString,
             publisherID: obs.publisherID,
@@ -116,7 +117,9 @@ extension AppState {
             files: obs.keptFiles.map {
                 FileOut(name: $0.name, localPath: DownloadsFolder.displayPath($0.localPath), fileExists: $0.local.exists,
                         size: $0.size, downloadedAtISO: SharedFormatters.iso8601.string(from: $0.downloadedAt))
-            }
+            },
+            tags: note?.tags ?? [],
+            rating: note?.rating ?? 0
         )
     }
 

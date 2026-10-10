@@ -503,6 +503,14 @@ final class ParityToolsTests: XCTestCase {
             arguments: argsData(["id": proposal.id.uuidString]), context: context))
         XCTAssertEqual(withdrawn["withdrew"] as? Bool, true)
         XCTAssertEqual(withdrawn["budgetRemaining"] as? Int, 8, "7 of 8 before; the slot is back")
+        XCTAssertNil(withdrawn["state"])
+
+        // Plan 36 2.13 (QA P4-3): asked again — as after an auto-apply that
+        // failed, withdrawn at once — it says where it stands.
+        let again = try decodeJSON(await WithdrawProposalTool().invoke(
+            arguments: argsData(["id": proposal.id.uuidString]), context: context))
+        XCTAssertEqual(again["withdrew"] as? Bool, false)
+        XCTAssertEqual(again["state"] as? String, "withdrawn")
     }
 
     func testGetProposalStateRequiresAnId() async {

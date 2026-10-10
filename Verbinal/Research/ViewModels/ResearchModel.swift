@@ -74,15 +74,8 @@ final class ResearchModel {
 
     var filteredObservations: [DownloadedObservation] {
         guard !filterText.isEmpty else { return observationStore.observations }
-        let query = filterText.lowercased()
-        return observationStore.observations.filter { obs in
-            obs.targetName.lowercased().contains(query) ||
-            obs.collection.lowercased().contains(query) ||
-            obs.instrument.lowercased().contains(query) ||
-            obs.observationID.lowercased().contains(query) ||
-            // Also match what the user wrote ABOUT the observation (note FTS).
-            noteMatchedPublisherIDs.contains(obs.publisherID)
-        }
+        let filter = ResearchFilter(filterText, noteMatches: noteMatchedPublisherIDs)
+        return observationStore.observations.filter(filter.keeps)
     }
 
     /// Debounced refresh of the note-text/tag FTS matches for `filterText`.

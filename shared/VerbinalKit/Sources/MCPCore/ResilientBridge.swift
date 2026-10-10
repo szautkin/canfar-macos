@@ -21,10 +21,16 @@ import Foundation
 public actor ResilientBridge {
 
     public struct Configuration: Sendable {
+        /// What an assistant reads while the app cannot be reached.
+        var closedMessage: String { whyClosed?() ?? notRunningMessage }
+
         public var serverName: String
         public var serverVersion: String
         /// The tool error and handshake instructions while the app is closed.
         public var notRunningMessage: String
+        /// Why the app cannot be reached now, when the relay knows better
+        /// than `notRunningMessage` (plan 36 2.5); nil keeps that.
+        public var whyClosed: (@Sendable () -> String?)? = nil
         /// What the handshake tells an assistant besides that the app is
         /// closed — how to start once it is running.
         public var instructions: String?
@@ -39,8 +45,10 @@ public actor ResilientBridge {
         public var firstConnectGrace: Duration
 
         public init(serverName: String, serverVersion: String, notRunningMessage: String, instructions: String? = nil,
+                    whyClosed: (@Sendable () -> String?)? = nil,
                     reconnectInterval: Duration = .seconds(2), handshakeTimeout: Duration = .seconds(120),
                     firstConnectGrace: Duration = .seconds(3)) {
+            self.whyClosed = whyClosed
             self.serverName = serverName
             self.serverVersion = serverVersion
             self.notRunningMessage = notRunningMessage
@@ -125,7 +133,7 @@ public actor ResilientBridge {
     }
 
     private func answerWhileClosed(_ request: JSONRPCRequest) async {
-        let message = configuration.notRunningMessage
+        let message = configuration.closedMessage
         let handshake = [message, configuration.instructions].compactMap { $0 }.joined(separator: " ")
         // A modern request (2026-07-28) declares its version; it is answered
         // in its own shape, and a version Verbinal does not speak refused
@@ -199,7 +207,7 @@ public actor ResilientBridge {
         for (id, method) in unanswered {
             await send(.failure(id: id, error: JSONRPCErrorPayload(
                 code: JSONRPCErrorCode.serviceUnavailable,
-                message: "Verbinal closed before answering \(method). \(configuration.notRunningMessage)")))
+                message: "Verbinal closed before answering \(method). \(configuration.closedMessage)")))
         }
         startReconnecting()
     }

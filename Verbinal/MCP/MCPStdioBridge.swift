@@ -38,6 +38,7 @@
 #if os(macOS)
 import Foundation
 import MCPCore
+import os
 
 /// Entry point invoked from `VerbinalMain` when the `mcp` argument is
 /// present. Runs the bridge to completion, then terminates the process —
@@ -62,7 +63,8 @@ enum MCPStdioBridge {
                     serverName: "Verbinal",
                     serverVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
                     notRunningMessage: notRunningMessage,
-                    instructions: AgentSession.instructions),
+                    instructions: AgentSession.instructions,
+                    whyClosed: { lastMiss.withLock { $0?.message } }),
                 log: { BridgeLog.info($0) })
             await bridge.run()
             sem.signal()
@@ -75,19 +77,47 @@ enum MCPStdioBridge {
     /// What an assistant reads while Verbinal is closed.
     static let notRunningMessage = "Verbinal is not running. Open Verbinal and turn on Settings ▸ AI Agent ▸ Allow external AI agents; its tools come back on their own once it is running."
 
-    /// The running app's socket, or nil while it is closed.
+    /// Why the last attempt found no app (plan 36 2.5): an assistant is told
+    /// which, rather than to turn on a switch that is on.
+    enum Miss: Equatable {
+        /// No sidecar: Verbinal never served here, or its server is off.
+        case noSidecar
+        /// The sidecar names a server that has gone, and no other answers.
+        case gone
+
+        var message: String {
+            switch self {
+            case .noSidecar:
+                "Verbinal is not running, or Settings ▸ AI Agent ▸ Allow external AI agents is off. Its tools come back on their own once it is running."
+            case .gone:
+                "Verbinal is not running: the server it last named has quit (Verbinal quit or crashed). Open Verbinal; its tools come back on their own. Settings ▸ AI Agent ▸ Diagnostics shows the server's state."
+            }
+        }
+    }
+
+    private static let lastMiss = OSAllocatedUnfairLock<Miss?>(initialState: nil)
+
+    /// The running app's socket, or nil while it is closed. The sidecar's
+    /// socket first; when it is gone, any other socket a Verbinal opened here,
+    /// newest first (plan 36 2.4).
     @Sendable
     private static func connectToApp() async -> (any MCPTransport)? {
-        guard let socketPath = try? SocketSidecar.read() else { return nil }
-        let socket = SocketTransport.client(socketPath: socketPath)
-        do {
-            try await socket.start()
-            BridgeLog.info("connected to \(socketPath)")
-            return socket
-        } catch {
-            BridgeLog.info("connect to \(socketPath) failed — \(error)")
-            return nil
+        let named = try? SocketSidecar.read()
+        var paths = named.map { [$0] } ?? []
+        paths += SocketSidecar.socketsNewestFirst().filter { $0 != named }
+        for socketPath in paths {
+            let socket = SocketTransport.client(socketPath: socketPath)
+            do {
+                try await socket.start()
+                BridgeLog.info("connected to \(socketPath)\(socketPath == named ? "" : " (the sidecar named \(named ?? "none"))")")
+                lastMiss.withLock { $0 = nil }
+                return socket
+            } catch {
+                BridgeLog.info("connect to \(socketPath) failed — \(error)")
+            }
         }
+        lastMiss.withLock { $0 = named == nil ? .noSidecar : .gone }
+        return nil
     }
 }
 
