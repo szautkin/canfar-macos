@@ -27,10 +27,10 @@ struct LaunchResources: Equatable, Sendable {
 final class SessionLaunchModel {
     private let sessionService: any SessionLaunching
     private let imageService: ImageService
-    private let recentLaunchStore: RecentLaunchStore
-    private let cacheService: PortalImageCacheService?
-    private let settingsService: PortalSettingsService?
-    private let username: String
+    let recentLaunchStore: RecentLaunchStore
+    let cacheService: PortalImageCacheService?
+    let settingsService: PortalSettingsService?
+    let username: String
 
     private var imagesByTypeAndProject: [String: [String: [ParsedImage]]] = [:]
     private let userImages: UserImageStore?
@@ -280,43 +280,6 @@ final class SessionLaunchModel {
         }
     }
 
-    // MARK: - Default management
-
-    /// Toggle whether the current project selection is saved as the user's default.
-    func toggleDefaultProject() {
-        guard let settingsService, !username.isEmpty, !selectedProject.isEmpty else { return }
-        let current = settingsService.settings(for: username)?.defaultProject
-        let next = (current == selectedProject) ? nil : selectedProject
-        settingsService.setDefaultProject(next, for: username)
-    }
-
-    /// Toggle whether the current image selection is saved as the user's default.
-    func toggleDefaultImage() {
-        guard let settingsService, !username.isEmpty, let img = selectedImage else { return }
-        let current = settingsService.settings(for: username)?.defaultContainerImageID
-        let next = (current == img.id) ? nil : img.id
-        settingsService.setDefaultImage(next, for: username)
-    }
-
-    /// Toggle whether the current session type is saved as the user's default.
-    func toggleDefaultSessionType() {
-        guard let settingsService, !username.isEmpty else { return }
-        let current = settingsService.settings(for: username)?.defaultSessionType
-        let next = (current == selectedType) ? nil : selectedType
-        settingsService.setDefaultSessionType(next, for: username)
-        recomputeDefaultFlags()
-    }
-
-    var isSelectedProjectDefault: Bool {
-        guard let settingsService, !username.isEmpty, !selectedProject.isEmpty else { return false }
-        return settingsService.settings(for: username)?.defaultProject == selectedProject
-    }
-
-    var isSelectedImageDefault: Bool {
-        guard let settingsService, !username.isEmpty, let img = selectedImage else { return false }
-        return settingsService.settings(for: username)?.defaultContainerImageID == img.id
-    }
-
     /// Cached "current selection matches saved default" flags.
     ///
     /// Recomputed eagerly via ``recomputeDefaultFlags()`` whenever an input
@@ -325,145 +288,8 @@ final class SessionLaunchModel {
     /// re-reading `settingsService.settings(for:)` on every SwiftUI body
     /// evaluation (ticket 059). Exposed read-only so views observe a plain
     /// stored property and nothing mutates model state during rendering.
-    private(set) var isSelectedSessionTypeDefault = false
-    private(set) var isSelectedResourcesDefault = false
-
-    private func computeIsSelectedSessionTypeDefault() -> Bool {
-        guard let settingsService, !username.isEmpty else { return false }
-        return settingsService.settings(for: username)?.defaultSessionType == selectedType
-    }
-
-    /// True when the current resource selection matches the saved defaults.
-    private func computeIsSelectedResourcesDefault() -> Bool {
-        guard let settingsService, !username.isEmpty,
-              let saved = settingsService.settings(for: username),
-              let savedType = saved.defaultResourceType else { return false }
-        guard savedType == resourceType else { return false }
-        if savedType == "flexible" { return true }
-        return saved.defaultCores == cores
-            && saved.defaultRam == ram
-            && saved.defaultGpus == gpus
-    }
-
-    /// Recompute the cached default-match flags from the current form inputs
-    /// and saved settings. Cheap (one settings lookup); called only at change
-    /// points, never from a view body.
-    func recomputeDefaultFlags() {
-        isSelectedSessionTypeDefault = computeIsSelectedSessionTypeDefault()
-        isSelectedResourcesDefault = computeIsSelectedResourcesDefault()
-    }
-
-    /// Save (or clear) the current resource selection as the user's default.
-    func toggleDefaultResources() {
-        guard let settingsService, !username.isEmpty else { return }
-        if isSelectedResourcesDefault {
-            settingsService.setDefaultResources(
-                resourceType: nil, cores: nil, ram: nil, gpus: nil,
-                for: username
-            )
-        } else {
-            settingsService.setDefaultResources(
-                resourceType: resourceType,
-                cores: resourceType == "fixed" ? cores : nil,
-                ram: resourceType == "fixed" ? ram : nil,
-                gpus: resourceType == "fixed" ? gpus : nil,
-                for: username
-            )
-        }
-        recomputeDefaultFlags()
-    }
-
-    private static let cacheAgeFormatter: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .short
-        return f
-    }()
-
-    /// Relative description of when the image cache was last updated, e.g. "3h ago".
-    var cacheAgeDescription: String? {
-        guard let timestamp = cacheService?.cacheTimestamp else { return nil }
-        return Self.cacheAgeFormatter.localizedString(for: timestamp, relativeTo: Date())
-    }
-
-    // MARK: - External resources
-
-    /// Why the form cannot show `asked`: a size with Flexible, or a size it
-    /// does not offer. Nil when it can, or when it has no sizes yet to check.
-    func refusal(_ asked: LaunchResources) -> String? {
-        if asked.type == "flexible", asked.asksForASize {
-            return "cores, ram and gpus are a fixed size: resources \"flexible\" takes none"
-        }
-        let gpusOffered = gpuOptions.isEmpty ? [] : Array(0...(gpuOptions.max() ?? 0))
-        for (name, value, offered) in [("cores", asked.cores, coreOptions), ("ram", asked.ram, ramOptions),
-                                       ("gpus", asked.gpus, gpusOffered)] {
-            if let value, !offered.isEmpty, !offered.contains(value) {
-                return "\(name) \(value) is not one the form offers: \(offered.map(String.init).joined(separator: ", "))"
-            }
-        }
-        return nil
-    }
-
-    /// Sets the form's resources as its Flexible / Fixed and steppers would.
-    func apply(_ asked: LaunchResources) {
-        if let type = asked.resolvedType { resourceType = type }
-        if let cores = asked.cores { self.cores = cores }
-        if let ram = asked.ram { self.ram = ram }
-        if let gpus = asked.gpus { self.gpus = gpus }
-    }
-
-    // MARK: - External image selection
-
-    /// Drive the form's full type → project → image cascade from a
-    /// single `ParsedImage`. Used by surfaces outside the form
-    /// (Canfar Images widget, agent tools) so a click in those
-    /// places lands on the same model state the user would reach
-    /// by walking the pickers manually.
-    ///
-    /// Cascade order matters — assigning out of order leaves the
-    /// model with mismatched lists (e.g. a `selectedImage` that
-    /// isn't in the current `images` array because the project
-    /// hasn't rebuilt yet). The `didSet` observers do all the
-    /// repopulation work; we just trigger them in the right order.
-    ///
-    /// Resource sliders, session name, and other form state are
-    /// preserved — only the image-identity fields change.
-    func applyImageSelection(_ image: ParsedImage, preferredType: String? = nil) {
-        // Catalogue images bypass the advanced "custom image" mode.
-        if useCustomImage { useCustomImage = false }
-
-        // 1. Session type — first cascade step. Honor the type the user was
-        // filtering by (`preferredType`) when the image actually supports it;
-        // catalogue images are frequently multi-type (e.g. notebook+headless),
-        // so the first declared type isn't necessarily the one the user meant.
-        // Fall back to the image's primary declared type otherwise. Skip if the
-        // image declares no types (cache-only fallback path).
-        let imageTypes = image.types.map { $0.lowercased() }
-        let chosenType = preferredType
-            .map { $0.lowercased() }
-            .flatMap { imageTypes.contains($0) ? $0 : nil }
-            ?? imageTypes.first
-        if let chosenType,
-           sessionTypes.contains(chosenType),
-           selectedType != chosenType {
-            selectedType = chosenType
-        }
-
-        // 2. Project — only assign if the rebuilt projects list
-        // actually contains it; otherwise stay on whatever the
-        // type cascade landed on.
-        if projects.contains(image.project),
-           selectedProject != image.project {
-            selectedProject = image.project
-        }
-
-        // 3. Image — prefer the catalogue's instance so identity
-        // matches what the picker enumerates. Fall back to the
-        // passed-in value when the catalogue can't produce one
-        // (e.g. cache-only browse during a Skaha catalogue
-        // outage).
-        selectedImage = images.first(where: { $0.id == image.id }) ?? image
-    }
-
+    var isSelectedSessionTypeDefault = false
+    var isSelectedResourcesDefault = false
     // MARK: - Cascading Selection
 
     private func onRegistryChanged() {
@@ -568,90 +394,6 @@ final class SessionLaunchModel {
         // Try exact label match, then ID suffix match
         return images.first(where: { $0.label == defaultName })
             ?? images.first(where: { $0.id.hasSuffix(defaultName) })
-    }
-
-    // MARK: - Session Name
-
-    func generateSessionName() {
-        let existingNames = Set(sessionNamesForType?(selectedType) ?? [])
-        var n = existingNames.count + 1
-        // Find the next number that doesn't collide with an existing session
-        while existingNames.contains("\(selectedType)\(n)") {
-            n += 1
-        }
-        sessionName = "\(selectedType)\(n)"
-    }
-
-    /// Re-generates the name only if the user hasn't customised it.
-    func refreshSessionNameIfNeeded() {
-        guard isAutoGeneratedName else { return }
-        generateSessionName()
-    }
-
-    private var isAutoGeneratedName: Bool {
-        if sessionName.isEmpty { return true }
-        for type in sessionTypes {
-            if sessionName.hasPrefix(type),
-               Int(String(sessionName.dropFirst(type.count))) != nil {
-                return true
-            }
-        }
-        return false
-    }
-
-    // MARK: - Recent Launch Save (after progress sheet dismissed)
-
-    /// Call after the launch progress sheet is closed.
-    /// Saves to recent launches, or asks for confirmation on name collision.
-    func savePendingRecentLaunch() {
-        guard let pending = pendingRecentLaunch else { return }
-        if recentLaunchStore.contains(name: pending.name) {
-            showRecentLaunchConflict = true
-        } else {
-            recentLaunchStore.save(pending)
-            pendingRecentLaunch = nil
-        }
-    }
-
-    func confirmRecentLaunchOverride() {
-        if let pending = pendingRecentLaunch {
-            recentLaunchStore.save(pending)
-        }
-        pendingRecentLaunch = nil
-        showRecentLaunchConflict = false
-    }
-
-    func skipRecentLaunchSave() {
-        pendingRecentLaunch = nil
-        showRecentLaunchConflict = false
-    }
-
-    // MARK: - Session Limit
-
-    func updateSessionLimit() {
-        let total = totalSessionCounter?() ?? 0
-        isAtSessionLimit = total >= maxConcurrentSessions
-        sessionLimitMessage = isAtSessionLimit
-            ? Self.sessionLimitMessage(total: total, max: maxConcurrentSessions)
-            : ""
-    }
-
-    /// Build the "Session limit reached (N/M)" string.
-    ///
-    /// The view layer renders `Label(model.sessionLimitMessage, ...)` with a
-    /// `String`, bypassing `LocalizedStringKey`, so the message is resolved
-    /// here at assignment time. The counts are formatted as locale-aware
-    /// number arguments (rather than interpolated raw `Int`s) so that the
-    /// catalog string can reorder them per language and the digits follow the
-    /// user's locale conventions.
-    static func sessionLimitMessage(total: Int, max: Int) -> String {
-        let current = total.formatted(.number)
-        let limit = max.formatted(.number)
-        return String(
-            format: String(localized: "Session limit reached (%1$@/%2$@)"),
-            current,
-            limit
-        )
     }
 
     // MARK: - Launch

@@ -65,4 +65,37 @@ extension AppState {
             exposedSecret: node.isExposedSecret
         )
     }
+
+    func makeShowStorageFolderTool() -> ShowStorageFolderTool {
+        ShowStorageFolderTool(show: { [weak self] folder in
+            guard let self else { throw ToolFailureReason.backendError("app state unavailable") }
+            return try await self.showStorageFolder(forAgent: folder)
+        })
+    }
+
+    /// Opens Storage at a folder of the person's own home.
+    func showStorageFolder(forAgent folder: String) throws -> StorageFolderShown {
+        try requireSignInFor("Storage")
+        guard let path = ShowStorageFolderTool.homeRelative(folder, username: username) else {
+            throw ToolFailureReason.invalidArgument("'\(folder)' is not in \(username)'s home — read other areas with list_vospace_path")
+        }
+        showStorageFolder(path)
+        noteLive("show_storage_folder", "Opened Storage at \(path.isEmpty ? "the home folder" : path)")
+        return StorageFolderShown(shown: true, folder: path, message: nil)
+    }
+
+    func makeGetStorageQuotaTool() -> GetStorageQuotaTool {
+        let service = storageService
+        return GetStorageQuotaTool(fetch: { [weak self] in
+            guard let self else { throw ToolFailureReason.backendError("appState gone") }
+            let user = await self.username
+            guard !user.isEmpty else { throw ToolFailureReason.authRequired }
+            let quota = try await service.getQuota(username: user)
+            return GetStorageQuotaTool.Output(
+                usedBytes: quota.usedBytes, quotaBytes: quota.quotaBytes,
+                usedGB: quota.usedGB, quotaGB: quota.quotaGB,
+                usagePercent: quota.usagePercent
+            )
+        })
+    }
 }

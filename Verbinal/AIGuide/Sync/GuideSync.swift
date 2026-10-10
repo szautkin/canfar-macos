@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import GRDB
 
 /// What the person tells assistants, as their work in VOSpace (plan 36
 /// 3.4): their guides, their descriptions of Verbinal's tools, and their
@@ -48,5 +49,54 @@ extension SessionApprovals {
         guard hasOwnInstructions else { return [] }
         return [GuideEntry(kind: .sessionInstructions, name: "", text: defaultInstructions,
                            modified: instructionsChangedAt ?? .distantPast)]
+    }
+}
+
+/// The guides and tool descriptions, read and kept for the sync (plan 36 3.4).
+extension AIGuideService {
+    /// The person's guides and tool descriptions, each with when it last changed.
+    func syncEntries() -> [GuideEntry] {
+        let rows = try? db.reader.read { d in
+            (try Row.fetchAll(d, sql: "SELECT name, description, body, updatedAt FROM aiGuideTool WHERE deletedAt IS NULL"),
+             try Row.fetchAll(d, sql: "SELECT toolName, userDescription, updatedAt FROM aiToolOverride WHERE deletedAt IS NULL"))
+        }
+        let guides = rows?.0.compactMap { row -> GuideEntry? in
+            guard let name: String = row["name"], let text: String = row["description"] else { return nil }
+            return GuideEntry(kind: .guide, name: name, text: text, body: row["body"], modified: Self.date(row["updatedAt"]))
+        } ?? []
+        let descriptions = rows?.1.compactMap { row -> GuideEntry? in
+            guard let name: String = row["toolName"], let text: String = row["userDescription"] else { return nil }
+            return GuideEntry(kind: .toolDescription, name: name, text: text, modified: Self.date(row["updatedAt"]))
+        } ?? []
+        return guides + descriptions
+    }
+
+    /// Keeps a guide or a tool's description as another device has it.
+    func keep(_ entry: GuideEntry) {
+        switch entry.kind {
+        case .guide:
+            if let guide = guides.first(where: { $0.name == entry.name }) {
+                try? updateGuide(id: guide.id, name: entry.name, description: entry.text, body: entry.body)
+            } else {
+                try? addGuide(name: entry.name, description: entry.text, body: entry.body)
+            }
+        case .toolDescription:
+            try? setOverride(toolName: entry.name, description: entry.text)
+        case .sessionInstructions:
+            break
+        }
+    }
+
+    /// Removes a guide, or puts a tool's description back: another device did.
+    func remove(_ kind: GuideEntry.Kind, named name: String) {
+        switch kind {
+        case .guide: if let guide = guides.first(where: { $0.name == name }) { deleteGuide(id: guide.id) }
+        case .toolDescription: clearOverride(toolName: name)
+        case .sessionInstructions: break
+        }
+    }
+
+    private static func date(_ text: String?) -> Date {
+        text.flatMap { isoFormatter.date(from: $0) } ?? .distantPast
     }
 }

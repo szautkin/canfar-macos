@@ -167,16 +167,10 @@ extension AppState {
         tools.append(ClearUserSiteTool())
         let downloadVOSpace = DownloadFromVOSpaceTool()
         tools.append(downloadVOSpace)
-        tools.append(AliasedToolBox(
-            name: "download_from_vospace",
-            description: "Alias of `download_vospace_file`.",
-            inner: downloadVOSpace))
+        tools.append(StorageAliases.downloadFromVOSpace(downloadVOSpace))
         let mkdirVOSpace = VOSpaceMkdirTool()
         tools.append(mkdirVOSpace)
-        tools.append(AliasedToolBox(
-            name: "vospace_mkdir",
-            description: "Alias of `create_vospace_folder`.",
-            inner: mkdirVOSpace))
+        tools.append(StorageAliases.vospaceMkdir(mkdirVOSpace))
         tools.append(DeleteVOSpaceNodeTool())
         tools.append(OpenVOSpaceFileTool())
 
@@ -274,20 +268,14 @@ extension AppState {
         tools.append(makeValidateADQLQueryTool())
         let getConstraints = makeGetDataTrainOptionsTool()
         tools.append(getConstraints)
-        tools.append(AliasedToolBox(
-            name: "get_data_train_options",
-            description: "Alias of `get_search_constraints`.",
-            inner: getConstraints))
+        tools.append(SearchAliases.getDataTrainOptions(getConstraints))
         tools.append(SetSearchConstraintsTool(apply: { args in
             await setSearchForm.apply(args)
         }))
         tools.append(makeRefreshDataTrainTool())
         let setADQL = makeSetADQLEditorTool()
         tools.append(setADQL)
-        tools.append(AliasedToolBox(
-            name: "set_adql_editor",
-            description: "Alias of `set_adql_query`.",
-            inner: setADQL))
+        tools.append(SearchAliases.setADQLEditor(setADQL))
         tools.append(ExecuteADQLQueryTool(apply: { args in
             await setADQL.apply(args)
         }))
@@ -296,10 +284,7 @@ extension AppState {
         tools.append(makeGetSearchResultsTool())
         let setResults = makeSetResultsViewTool()
         tools.append(setResults)
-        tools.append(AliasedToolBox(
-            name: "set_results_view",
-            description: "Alias of `set_search_results_view`.",
-            inner: setResults))
+        tools.append(SearchAliases.setResultsView(setResults))
         tools.append(makeOpenObservationDetailTool())
         tools.append(makeShowSearchRowDetailTool())
         tools.append(makeShowObservationDetailTool())

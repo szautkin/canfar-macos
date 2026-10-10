@@ -13,72 +13,6 @@ import VerbinalKit
 /// Endpoints / AI-Compute settings. Capability closures are injected at
 /// wiring time.
 
-// MARK: - open_vospace_file
-
-/// Download a VOSpace file and open it in the right viewer (FITS or
-/// Cube) — the Storage browser's "Open in FITS Viewer" context action.
-struct OpenVOSpaceFileTool: JSONWriteTool {
-    static let verbClass: VerbClass = .semanticWrite
-
-    struct Args: Decodable, Sendable {
-        let path: String
-    }
-
-    struct Payload: Codable, Sendable {
-        let path: String
-    }
-
-    let definition = AIToolDefinition.withStaticSchema(
-        name: "open_vospace_file",
-        description: "Download a FITS file from VOSpace (path relative to the user's home, from `list_vospace_path`) and open it in the right viewer — 2D images route to the FITS Viewer; NAXIS≥3 files show the Open as… sheet (`get_current_view.pendingViewerChoice`) and this ack's `note` tells you to call `choose_viewer`. The Storage browser's \"Open in FITS Viewer\" action. Downloads to a temporary location; proposal-gated like other VOSpace transfers.",
-        schema: #"""
-        {
-          "type": "object",
-          "required": ["path"],
-          "properties": {
-            "path": { "type": "string", "minLength": 1, "description": "VOSpace file path relative to the user's home." }
-          },
-          "additionalProperties": false
-        }
-        """#
-    )
-
-    func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
-        let path = args.path.trimmingCharacters(in: .whitespaces)
-        guard !path.isEmpty else {
-            throw ToolFailureReason.invalidArgument("path is empty")
-        }
-        guard !path.contains("..") else {
-            throw ToolFailureReason.invalidArgument("path must not contain '..'")
-        }
-        return try ProposalPlan.encoding(
-            kind: "open_vospace_file",
-            summary: "Open VOSpace file in viewer: \(path)",
-            payload: Payload(path: path)
-        )
-    }
-}
-
-struct OpenVOSpaceFileApplier: ProposalApplier, ResultReportingApplier {
-    let kind = "open_vospace_file"
-    /// Downloads the file and routes it into the appropriate viewer.
-    /// Returns an agent note when the Open as… sheet is showing.
-    let openFile: @Sendable (String) async throws -> String?
-    let activity: AgentActivityStore
-
-    func apply(_ proposal: PendingProposal) async throws {
-        _ = try await applyReturningResult(proposal)
-    }
-
-    func applyReturningResult(_ proposal: PendingProposal) async throws -> Data {
-        let payload = try JSONDecoder().decode(OpenVOSpaceFileTool.Payload.self, from: proposal.payload)
-        let note = try await openFile(payload.path)
-        await MainActor.run { activity.append(.applied(proposal: proposal, kind: kind)) }
-        let extra = AutoAppliedAck.Extra(note: note)
-        return (try? JSONEncoder().encode(extra)) ?? Data()
-    }
-}
-
 // MARK: - list_local_folder
 
 /// List a local folder — the file-browser panel's directory view.
@@ -294,42 +228,6 @@ struct GetEndpointsTool: JSONReadTool {
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_endpoints",
         description: "The EFFECTIVE backend base URLs this app instance talks to (after Settings ▸ Endpoints overrides and IVOA registry resolution): login, Skaha, AC, storage, registry, archive, and external web. Read-only — endpoint changes stay a user decision in Settings. Pair with `get_service_health` to see whether these backends are reachable.",
-        schema: #"""
-        {
-          "type": "object",
-          "properties": {},
-          "additionalProperties": false
-        }
-        """#
-    )
-
-    let snapshot: @Sendable () async -> Output
-
-    func handle(_ args: EmptyArgs, context: AIToolContext) async throws -> Output {
-        await snapshot()
-    }
-}
-
-// MARK: - get_compute_config
-
-/// The AI-Compute settings that gate `run_code` — read-only, secrets
-/// reported only as presence.
-struct GetComputeConfigTool: JSONReadTool {
-    typealias Args = EmptyArgs
-
-    struct Output: Encodable, Sendable {
-        let isEnabled: Bool
-        let image: String
-        let cores: Int
-        let ramGB: Int
-        let registryHost: String
-        let registryUsername: String
-        let hasRegistrySecret: Bool
-    }
-
-    let definition = AIToolDefinition.withStaticSchema(
-        name: "get_compute_config",
-        description: "The Settings ▸ AI Compute configuration that gates `run_code` / `start_compute`: whether compute is enabled, the container image, default cores/RAM, and the private-registry host/username (the secret itself is never returned — only whether one is stored). Read-only; changing these stays a user decision in Settings.",
         schema: #"""
         {
           "type": "object",

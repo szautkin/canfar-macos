@@ -86,36 +86,6 @@ extension AppState {
         })
     }
 
-    // MARK: - Headless / batch
-
-    func makeListHeadlessJobsTool() -> ListHeadlessJobsTool {
-        let service = self.headlessService
-        return ListHeadlessJobsTool(fetch: {
-            try await service.getHeadlessJobs()
-        })
-    }
-
-    func makeGetHeadlessJobTool() -> GetHeadlessJobTool {
-        let service = self.headlessService
-        return GetHeadlessJobTool(fetch: {
-            try await service.getHeadlessJobs()
-        }, remembered: { [weak self] id in await self?.jobHistory.jobs.first { $0.id == id } })
-    }
-
-    func makeGetHeadlessJobLogsTool() -> GetHeadlessJobLogsTool {
-        let service = self.headlessService
-        return GetHeadlessJobLogsTool(fetch: { id in
-            try await service.getLogs(id: id)
-        }, isListed: { id in await Self.isListed(id, service) })
-    }
-
-    func makeGetHeadlessJobEventsTool() -> GetHeadlessJobEventsTool {
-        let service = self.headlessService
-        return GetHeadlessJobEventsTool(fetch: { id in
-            try await service.getEvents(id: id)
-        }, isListed: { id in await Self.isListed(id, service) })
-    }
-
     /// Whether CANFAR lists the job now; nil when it cannot say (plan 30 J1).
     nonisolated static func isListed(_ id: String, _ service: HeadlessService) async -> Bool? {
         guard let jobs = try? await service.getHeadlessJobs() else { return nil }
@@ -172,21 +142,6 @@ extension AppState {
                     .init(requestedGB: $0.requestedRAM.map { PlatformLoadModel.parseRamGB($0) },
                           availableGB: $0.ramAvailable.map { PlatformLoadModel.parseRamGB($0) })
                 }
-            )
-        })
-    }
-
-    func makeGetStorageQuotaTool() -> GetStorageQuotaTool {
-        let service = storageService
-        return GetStorageQuotaTool(fetch: { [weak self] in
-            guard let self else { throw ToolFailureReason.backendError("appState gone") }
-            let user = await self.username
-            guard !user.isEmpty else { throw ToolFailureReason.authRequired }
-            let quota = try await service.getQuota(username: user)
-            return GetStorageQuotaTool.Output(
-                usedBytes: quota.usedBytes, quotaBytes: quota.quotaBytes,
-                usedGB: quota.usedGB, quotaGB: quota.quotaGB,
-                usagePercent: quota.usagePercent
             )
         })
     }

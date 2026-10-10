@@ -64,6 +64,8 @@ targets:
       - path: Verbinal
         excludes:
           - "**/*.py"
+          # Each area's README is for the people who work on it, not the app.
+          - "**/README.md"
           # Bundled as a folder resource below so Bundle looks under Workflows/.
           - "Workflows/Resources/**"
       - path: Verbinal/Workflows/Resources/Workflows
@@ -108,6 +110,7 @@ targets:
       - path: Verbinal
         excludes:
           - "**/*.py"
+          - "**/README.md"
           # Without explicit excludes, xcodegen also bundles the macOS
           # Info.plist as a resource alongside the iOS one set via
           # INFOPLIST_FILE, producing "Multiple commands produce Info.plist".
@@ -130,6 +133,8 @@ targets:
           - "RemoteCompute/**"
           - "RecentFiles/**"
           - "MCP/**"
+          # Each area's tools for assistants (plan 36 tier 6): the MCP server is macOS only.
+          - "**/MCP/**"
           # Each area's sync adapter (plan 36 3.x): over the storage sync, macOS only like it.
           - "**/Sync/**"
           # The assistant's session log: macOS only, like the MCP server (plan 23).

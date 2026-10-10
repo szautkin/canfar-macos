@@ -93,13 +93,6 @@ extension AppState {
         })
     }
 
-    func makeShowStorageFolderTool() -> ShowStorageFolderTool {
-        ShowStorageFolderTool(show: { [weak self] folder in
-            guard let self else { throw ToolFailureReason.backendError("app state unavailable") }
-            return try await self.showStorageFolder(forAgent: folder)
-        })
-    }
-
     /// Selects a run — the newest when none is named — as a click would, and
     /// shows the screen.
     func showComputeRun(_ id: String?) async throws -> ComputeScreenView {
@@ -127,39 +120,15 @@ extension AppState {
             ? nil : "remote compute is not set up, so the person sees the setup steps rather than the box")
     }
 
-    /// Opens Storage at a folder of the person's own home.
-    func showStorageFolder(forAgent folder: String) throws -> StorageFolderShown {
-        try requireSignInFor("Storage")
-        guard let path = ShowStorageFolderTool.homeRelative(folder, username: username) else {
-            throw ToolFailureReason.invalidArgument("'\(folder)' is not in \(username)'s home — read other areas with list_vospace_path")
-        }
-        showStorageFolder(path)
-        noteLive("show_storage_folder", "Opened Storage at \(path.isEmpty ? "the home folder" : path)")
-        return StorageFolderShown(shown: true, folder: path, message: nil)
-    }
-
-    /// Verbinal's data in VOSpace (plan 34 V), after a sync when asked.
-    func storageSyncStatus(syncing: Bool) async throws -> StorageSync.Status {
-        try requireSignInFor("Storage")
-        if syncing {
-            noteLive("sync_storage", "Synced Verbinal's data in storage")
-            await storageSync.run(.asked)?.value
-        } else if storageSync.status == nil {
-            await storageSync.run(.cameBack)?.value
-        }
-        guard let status = storageSync.status else {
-            throw ToolFailureReason.backendError("the storage sync has not started: sign in again")
-        }
-        return status
-    }
-
-    private func requireSignInFor(_ screen: String) throws {
+    /// An agent's screen that needs the person signed in to CANFAR.
+    func requireSignInFor(_ screen: String) throws {
         guard isAuthenticated, !username.isEmpty else {
             throw ToolFailureReason.targetNotResolved("\(screen) needs the person signed in to CANFAR")
         }
     }
 
-    private func noteLive(_ kind: String, _ summary: String) {
+    /// A live change an agent made, on the activity feed.
+    func noteLive(_ kind: String, _ summary: String) {
         agentsService.activityStore.append(.live(kind: kind, summary: summary, origin: .external(clientID: kind)))
     }
 }
