@@ -191,8 +191,20 @@ final class VizierConeSearchTests: XCTestCase {
         XCTAssertEqual(TAPClient.errorReason(""), "no reason given")
     }
 
+    /// Plan 36 2.6, and the live pass of handout 37 (Q1): VizieR's own
+    /// refusal is long and says each column twice, so the hint — what to
+    /// do — comes first, before the clip can take it.
+    private let longRefusal = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <VOTABLE version="1.4" xmlns="http://www.ivoa.net/xml/VOTable/v1.3">
+      <RESOURCE type="results">
+        <INFO name="QUERY_STATUS" value="ERROR">Incorrect ADQL query: 5 unresolved identifiers: RAJ2000 [l.2 c.28 - l.2 c.35], DEJ2000 [l.2 c.37 - l.2 c.44], RAJ2000 [l.5 c.19 - l.5 c.26], DEJ2000 [l.5 c.28 - l.5 c.35]! - Unknown column &quot;RAJ2000&quot; ! - Unknown column &quot;DEJ2000&quot; ! - Unknown column &quot;RAJ2000&quot; ! - Unknown column &quot;DEJ2000&quot; ! - 4 unresolved identifiers: RAJ2000 [l.2 c.28 - l.2 c.35], DEJ2000 [l.2 c.37 - l.2 c.44], RAJ2000 [l.5 c.19 - l.5 c.26], DEJ2000 [l.5 c.28 - l.5 c.35]! - Unknown column &quot;RAJ2000&quot; ! - Unknown column &quot;DEJ2000&quot;</INFO>
+      </RESOURCE>
+    </VOTABLE>
+    """
+
     func testARefusedQuerySaysWhyFirstAndNamesTheMissingColumns() async throws {
-        let body = refusal
+        let body = longRefusal
         MockURLProtocol.requestHandler = { request in
             (HTTPURLResponse(url: request.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
         }
@@ -203,8 +215,8 @@ final class VizierConeSearchTests: XCTestCase {
             XCTFail("refused")
         } catch {
             let message = ToolFailureReason.backendError("vizier_cone_search: \(error.localizedDescription)").description
+            XCTAssertTrue(message.contains("V/97/variabls has no RAJ2000 or DEJ2000 column: pass raColumn and decColumn"), message)
             XCTAssertTrue(message.contains("refused the query: TAP query failed (HTTP 400): Incorrect ADQL query"), message)
-            XCTAssertTrue(message.contains("The catalogue has no RAJ2000 column"), message)
             XCTAssertFalse(message.contains("<?xml"), message)
         }
     }

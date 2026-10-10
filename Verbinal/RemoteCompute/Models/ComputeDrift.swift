@@ -49,10 +49,10 @@ struct ComputeDrift: Equatable, Sendable {
         Double(allocated.trimmingCharacters(in: .whitespaces))
     }
 
-    /// 1, 1.5, 1.07 — as few decimals as the value needs.
+    /// 1, 1.5, 1.07 — as few decimals as the value needs; 3.999 is 4, not "4.".
     static func number(_ value: Double) -> String {
-        value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value)
-            .replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+        String(format: "%.2f", value)
+            .replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
     }
 }
 

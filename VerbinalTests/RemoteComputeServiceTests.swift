@@ -112,6 +112,10 @@ final class RemoteComputeServiceTests: XCTestCase {
         XCTAssertEqual(ComputeDrift.cores("1.0"), 1)
         XCTAssertEqual(ComputeDrift.number(1.5), "1.5")
         XCTAssertEqual(ComputeDrift.number(4), "4")
+        // Handout 37's live pass: the platform's 3.999 GB read "4." (a point and no decimals).
+        XCTAssertEqual(ComputeDrift.number(3.999), "4")
+        XCTAssertEqual(ComputeDrift.number(4.0001), "4")
+        XCTAssertEqual(ComputeDrift.number(1.07), "1.07")
     }
 
     /// run_code reusing an older session says so.

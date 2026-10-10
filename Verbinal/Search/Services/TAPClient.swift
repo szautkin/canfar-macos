@@ -231,12 +231,13 @@ actor TAPClient {
                 return CSVParser.parse(csv)
             } catch {
                 if !Self.isHostFailoverWorthy(error) {
-                    // The reason first: the answer is clipped, and the reason is what matters.
+                    // What to do first, then the service's reason: the answer is clipped,
+                    // and VizieR's own reason is long (each column, twice).
                     let reason = error.localizedDescription
                     let missing = [raColumn, decColumn].filter { reason.contains("\"\($0)\"") }
-                    let hint = missing.isEmpty ? "" : " The catalogue has no \(missing.joined(separator: " or ")) column: pass raColumn and decColumn (TAP_SCHEMA lists its columns), or it holds no positions."
+                    let hint = missing.isEmpty ? "" : "\(catalogue) has no \(missing.joined(separator: " or ")) column: pass raColumn and decColumn (TAP_SCHEMA lists its columns), or it holds no positions. "
                     throw SearchError.networkError(
-                        "\(endpoint.host) refused the query: \(reason).\(hint) ADQL sent: \(adql.replacingOccurrences(of: "\n", with: " "))"
+                        "\(hint)\(endpoint.host) refused the query: \(reason). ADQL sent: \(adql.replacingOccurrences(of: "\n", with: " "))"
                     )
                 }
                 attempts.append((endpoint.host, error))
