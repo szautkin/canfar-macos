@@ -22,6 +22,9 @@ struct KeptFile: Codable, Equatable, Identifiable, Sendable {
     var downloadedAt: Date
     /// When an assistant downloaded it.
     var agentAttribution: AgentAttribution? = nil
+    /// Where it is in the person's storage too, from their home, once sent
+    /// there as a result (plan 36 4.1, 5.1).
+    var storagePath: String? = nil
     /// The record's main file, seen as one of its files; never stored.
     var isMain = false
 
@@ -29,6 +32,6 @@ struct KeptFile: Codable, Equatable, Identifiable, Sendable {
     var local: LocalFile { LocalFile(path: localPath, bookmarkData: bookmarkData) }
 
     private enum CodingKeys: String, CodingKey {
-        case name, uri, localPath, bookmarkData, size, downloadedAt, agentAttribution
+        case name, uri, localPath, bookmarkData, size, downloadedAt, agentAttribution, storagePath
     }
 }

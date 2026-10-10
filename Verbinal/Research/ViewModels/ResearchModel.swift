@@ -72,6 +72,7 @@ final class ResearchModel {
         files.onNewRecord = { [weak self] record in self?.completeFromArchive(record) }
         let store = self.observationStore
         FileOrigins.shared.research = { [weak store] url in store?.portableIdentity(of: url) }
+        ResultDestination.shared.sent = { [weak store] url, path in store?.noteInStorage(url, at: path) }
     }
 
     var filteredObservations: [DownloadedObservation] {

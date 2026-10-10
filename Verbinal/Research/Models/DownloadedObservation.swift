@@ -41,6 +41,9 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// download themselves through the in-app UI. Drives the wand
     /// badge in research observation rows.
     var agentAttribution: AgentAttribution? = nil
+    /// Where the main file is in the person's storage too, from their home,
+    /// once sent there as a result (plan 36 4.1, 5.1).
+    var storagePath: String? = nil
     /// Set for a cutout — part of one of the observation's files — kept
     /// beside the complete observation, never as the whole of it.
     var cutout: CutoutSpec? = nil

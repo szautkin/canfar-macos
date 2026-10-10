@@ -194,6 +194,24 @@ struct AppDatabase {
             }
         }
 
+        // v4 — Research's records (plan 36 5.1): each kept whole, by its key —
+        // its publisher ID and which cutout. v1's table, never used, was keyed
+        // by the publisher ID alone, which refused a cutout of an observation
+        // kept already. A removed record stays as a mark (`removedAt`).
+        migrator.registerMigration("v4") { db in
+            try db.drop(table: "observation")
+            try db.create(table: "observation") { t in
+                t.primaryKey("uuid", .text).notNull()
+                t.column("recordKey", .text).notNull().unique()
+                t.column("record", .blob).notNull()         // DownloadedObservation, JSON; device-local fields too
+                t.column("downloadedAt", .text)
+                t.column("updatedAt", .text)
+                t.column("version", .integer).notNull().defaults(to: 1)
+                t.column("removedAt", .text)
+                t.column("lastWriterDeviceID", .text)
+            }
+        }
+
         return migrator
     }
 }

@@ -42,8 +42,11 @@ final class ResultDestination {
 
     /// Whether the person keeps their results in storage: set from the manifest.
     var keeping = false
-    /// Sends a file to a folder of the person's storage; set while signed in.
-    var send: (@Sendable (_ file: URL, _ folder: String) async throws -> Void)?
+    /// Sends a file to a folder of the person's storage, answering where it
+    /// went; set while signed in.
+    var send: (@Sendable (_ file: URL, _ folder: String) async throws -> String)?
+    /// Told where each result went: Research records it (plan 36 5.1).
+    var sent: ((_ file: URL, _ storagePath: String) -> Void)?
     private(set) var waiting: [Waiting] = []
     private let persistence: DiskPersistence<[Waiting]>?
 
@@ -75,8 +78,10 @@ final class ResultDestination {
         for entry in waiting {
             guard FileManager.default.fileExists(atPath: entry.path) else { letGo(entry); continue }
             do {
-                try await send(URL(fileURLWithPath: entry.path), entry.folder)
+                let url = URL(fileURLWithPath: entry.path)
+                let path = try await send(url, entry.folder)
                 letGo(entry)
+                self.sent?(url, path)
                 sent += 1
             } catch {
                 break

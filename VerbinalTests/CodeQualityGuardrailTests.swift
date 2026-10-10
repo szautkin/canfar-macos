@@ -179,7 +179,7 @@ final class CodeQualityGuardrailTests: XCTestCase {
     /// for assistants, compute runs, job history, added images, recent
     /// launches and Portal defaults.
     static let synced: Set<String> = [
-        "downloaded_observations.json", "note", "noteTag", "saved_queries.json", "recent_searches.json",
+        "observation", "note", "noteTag", "saved_queries.json", "recent_searches.json",
         "aiGuideTool", "aiToolOverride", "compute_runs.json", "job_history.json", "user_images.json",
         "recent_launches.json", "portal_settings.json", "bookmarks.json", "marks.json",
     ]
@@ -192,8 +192,9 @@ final class CodeQualityGuardrailTests: XCTestCase {
         "file_origins.json", "result_uploads.json",
         "archiveObservation", "portal_image_cache.json", "meta", "noteSearch", "observation_notes.json",
     ]
-    /// The person's work not yet synced: Research's database (plan 36 5.1). Shrink only.
-    static let notSyncedYet: Set<String> = ["observation"]
+    /// The person's work not yet synced. Shrink only: everything is, since
+    /// plan 36 tier 5 — a new store says which it is.
+    static let notSyncedYet: Set<String> = []
 
     func testEveryStoreIsSyncedOrTheDevices() {
         let text = Self.sources(in: ["Verbinal"]).map(\.text).joined(separator: "\n")

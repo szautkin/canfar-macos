@@ -9,12 +9,14 @@ import Observation
 import os.log
 import VerbinalKit
 
-/// Persists metadata for downloaded observations.
+/// Persists metadata for downloaded observations: in the app's database,
+/// each record by its key (plan 36 5.1).
 @Observable
 @MainActor
 final class ObservationStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ObservationStore")
-    private let persistence: DiskPersistence<[DownloadedObservation]>
+    nonisolated static let defaultFileName = "downloaded_observations.json"
+    private let records: ResearchRecords
     /// Spotlight indexer — every save/remove fans out so the user can find
     /// their downloaded observations from the macOS Spotlight bar by target
     /// name, collection, instrument, etc. Optional so unit tests can opt out.
@@ -26,27 +28,40 @@ final class ObservationStore {
     /// is its download's, not a second change.
     private let changes: ChangeLog
 
+    /// - Parameters:
+    ///   - fileName: the JSON file Research was kept in before, read into
+    ///     the database once. Another name — a test's — has a database of its
+    ///     own, shared by every store of that name, as they shared the file.
+    ///   - database: where the records are kept; the app's own by default.
     init(
-        fileName: String = "downloaded_observations.json",
+        fileName: String = ObservationStore.defaultFileName,
         spotlight: ObservationSpotlightIndexer? = ObservationSpotlightIndexer(),
-        changes: ChangeLog = .shared
+        changes: ChangeLog = .shared,
+        database: AppDatabase? = nil
     ) {
         self.changes = changes
-        self.persistence = DiskPersistence(
-            subdirectory: "Verbinal",
-            fileName: fileName,
-            logger: Self.logger
-        )
+        let legacy = DiskPersistence<[DownloadedObservation]>(subdirectory: "Verbinal", fileName: fileName, logger: Self.logger)
+        let db = database ?? (fileName == Self.defaultFileName ? .shared : Self.database(named: fileName))
+        self.records = ResearchRecords(database: db, legacy: legacy)
         self.spotlight = spotlight
         // File existence is surfaced via DownloadedObservation.fileExists — do not prune on load.
         // Pruning on launch would silently destroy metadata for files on remounted/offline volumes.
         // Newest first, whatever order an older build wrote them in (QA L9).
-        self.observations = (persistence.read() ?? []).sorted { $0.downloadedAt > $1.downloadedAt }
+        self.observations = records.all().sorted { $0.downloadedAt > $1.downloadedAt }
         // Refresh the Spotlight index off-disk on launch so coverage stays
         // current across schema changes / out-of-process index loss.
         if !observations.isEmpty {
             spotlight?.reindexAll(observations)
         }
+    }
+
+    /// The database of the stores named `fileName`, other than the app's.
+    private static var databases: [String: AppDatabase] = [:]
+    private static func database(named fileName: String) -> AppDatabase {
+        if let kept = databases[fileName] { return kept }
+        let made = (try? AppDatabase.makeInMemory()) ?? .shared
+        databases[fileName] = made
+        return made
     }
 
     /// Keeps `observation`, replacing Research's record of the same
@@ -63,7 +78,7 @@ final class ObservationStore {
         // Newest first: a re-download comes to the top with its new date.
         let place = observations.firstIndex { $0.downloadedAt <= stored.downloadedAt } ?? observations.endIndex
         observations.insert(stored, at: place)
-        persistence.write(observations)
+        records.saved(stored, all: observations)
         spotlight?.index(stored)
         return stored
     }
@@ -104,7 +119,7 @@ final class ObservationStore {
         let was = observations[idx].publisherID
         spotlight?.deindex(observations[idx])
         observations[idx] = corrected
-        persistence.write(observations)
+        records.saved(corrected, all: observations)
         spotlight?.index(corrected)
         changes.done("correct_publisher_id", "the publisher ID of Research record \(corrected.observationID), \(was) → \(publisherID)")
         return corrected
@@ -141,7 +156,7 @@ final class ObservationStore {
     private func forget(_ updated: DownloadedObservation, file: String) -> DownloadedObservation? {
         guard let idx = observations.firstIndex(where: { $0.id == updated.id }) else { return nil }
         observations[idx] = updated
-        persistence.write(observations)
+        records.saved(updated, all: observations)
         spotlight?.index(updated)
         changes.done("remove_downloaded_file", "the file \(file) of \(Self.describe(updated))")
         return updated
@@ -149,15 +164,16 @@ final class ObservationStore {
 
     func remove(_ observation: DownloadedObservation) {
         observations.removeAll { $0.id == observation.id }
-        persistence.write(observations)
+        records.removed([observation], all: observations)
         spotlight?.deindex(observation)
         changes.done("delete_downloaded_observation", "Research record \(Self.describe(observation))")
     }
 
     func clear() {
         let count = observations.count
+        let gone = observations
         observations.removeAll()
-        persistence.write(observations)
+        records.removed(gone, all: observations)
         spotlight?.deindexAll()
         changes.done("clear_research_archive", "the Research archive (\(count) records)")
     }
@@ -183,7 +199,7 @@ final class ObservationStore {
     /// store instance before they were unified).
     @discardableResult
     func reload() -> [DownloadedObservation] {
-        observations = persistence.read() ?? observations
+        observations = records.all().sorted { $0.downloadedAt > $1.downloadedAt }
         return observations
     }
 
@@ -285,5 +301,28 @@ extension ObservationStore {
             }
         }
         return nil
+    }
+}
+
+extension ObservationStore {
+    /// The file at `url`, one of a record's, was sent to the person's
+    /// storage at `path`: the record says so (plan 36 5.1).
+    func noteInStorage(_ url: URL, at path: String) {
+        let wanted = FileIdentity.key(url), name = url.lastPathComponent
+        func same(_ local: String) -> Bool {
+            !local.isEmpty && (local as NSString).lastPathComponent == name && FileIdentity.key(URL(fileURLWithPath: local)) == wanted
+        }
+        for record in observations {
+            var updated = record
+            if same(record.localPath) {
+                updated.storagePath = path
+            } else if let index = record.keptFiles.firstIndex(where: { same($0.localPath) }) {
+                updated.files?[index].storagePath = path
+            } else {
+                continue
+            }
+            save(updated)
+            return
+        }
     }
 }

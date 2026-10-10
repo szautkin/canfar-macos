@@ -116,10 +116,12 @@ extension AppState {
             duplicateOf: duplicateOf,
             files: obs.keptFiles.map {
                 FileOut(name: $0.name, localPath: DownloadsFolder.displayPath($0.localPath), fileExists: $0.local.exists,
-                        size: $0.size, downloadedAtISO: SharedFormatters.iso8601.string(from: $0.downloadedAt))
+                        size: $0.size, downloadedAtISO: SharedFormatters.iso8601.string(from: $0.downloadedAt),
+                        storagePath: $0.storagePath)
             },
             tags: note?.tags ?? [],
-            rating: note?.rating ?? 0
+            rating: note?.rating ?? 0,
+            storagePath: obs.storagePath
         )
     }
 

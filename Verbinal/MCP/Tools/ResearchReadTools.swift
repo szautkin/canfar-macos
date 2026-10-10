@@ -52,6 +52,9 @@ struct ListDownloadedObservationsTool: JSONReadTool {
             /// Its note's tags and rating (1–5); absent when none.
             let tags: [String]?
             let rating: Int?
+            /// Where the main file is in the person's storage too, once
+            /// sent there as a result (Settings ▸ Storage ▸ Results).
+            let storagePath: String?
 
             init(_ obs: DownloadedObservationOut) {
                 id = obs.id
@@ -74,6 +77,7 @@ struct ListDownloadedObservationsTool: JSONReadTool {
                 files = obs.files.isEmpty ? nil : obs.files
                 tags = obs.tags.isEmpty ? nil : obs.tags
                 rating = obs.rating > 0 ? obs.rating : nil
+                storagePath = obs.storagePath
             }
         }
     }
@@ -217,6 +221,8 @@ struct FileOut: Encodable, Sendable {
     let fileExists: Bool
     let size: Int64?
     let downloadedAtISO: String
+    /// Where it is in the person's storage too, once sent there as a result.
+    var storagePath: String? = nil
 }
 
 struct DownloadedObservationOut: Sendable {
@@ -240,6 +246,8 @@ struct DownloadedObservationOut: Sendable {
     /// Its note's.
     var tags: [String] = []
     var rating = 0
+    /// Where the main file is in the person's storage too.
+    var storagePath: String? = nil
 }
 
 extension DownloadedObservationOut: ResearchFilterable {}

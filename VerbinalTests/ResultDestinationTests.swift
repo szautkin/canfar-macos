@@ -18,11 +18,13 @@ final class ResultDestinationTests: XCTestCase {
         private let lock = NSLock()
         private var list: [(String, String)] = []
         var failing = false
-        func add(_ file: URL, _ folder: String) throws {
+        @discardableResult
+        func add(_ file: URL, _ folder: String) throws -> String {
             try lock.withLock {
                 if failing { throw URLError(.notConnectedToInternet) }
                 list.append((file.lastPathComponent, folder))
             }
+            return "\(folder)/\(file.lastPathComponent)"
         }
         var all: [String] { lock.withLock { list.map { "\($0.1)/\($0.0)" } } }
     }
