@@ -44,6 +44,7 @@ final class SavedQueryStore {
     func save(_ query: SavedQuery) {
         var updated = query
         updated.savedAt = Date()
+        updated.changedAt = updated.savedAt
         let isNew = !queries.contains { $0.id == query.id }
         changes.done(isNew ? "save_query" : "update_saved_query", "the query \"\(query.name)\"")
         queries.removeAll { $0.id == query.id }
@@ -63,6 +64,7 @@ final class SavedQueryStore {
     func rename(_ query: SavedQuery, to newName: String) {
         if let idx = queries.firstIndex(where: { $0.id == query.id }) {
             queries[idx].name = newName
+            queries[idx].changedAt = Date()
             persistence.write(queries)
             changes.done("rename_saved_query", "the saved query \"\(query.name)\" to \"\(newName)\"")
         }
@@ -73,6 +75,24 @@ final class SavedQueryStore {
         queries.removeAll()
         persistence.write(queries)
         changes.done("clear_saved_queries", "every saved query (\(count))")
+    }
+
+    // MARK: - From another device (plan 36 3.5)
+
+    /// Keeps `query` as another device has it, its dates too, in its place
+    /// among the newest.
+    func keep(_ query: SavedQuery) {
+        let isNew = !queries.contains { $0.id == query.id }
+        queries.removeAll { $0.id == query.id }
+        queries.append(query)
+        queries.sort { $0.savedAt > $1.savedAt }
+        queries = Array(queries.prefix(maxEntries))
+        persistence.write(queries)
+        changes.done(isNew ? "save_query" : "update_saved_query", "the query \"\(query.name)\"")
+    }
+
+    func remove(id: UUID) {
+        if let query = queries.first(where: { $0.id == id }) { remove(query) }
     }
 
     /// Brings a v1 file to v2: the newest row of each query, its `&amp;`

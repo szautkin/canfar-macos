@@ -7,7 +7,7 @@
 import Foundation
 import VerbinalKit
 
-struct RecentLaunch: Codable, Identifiable, Equatable {
+struct RecentLaunch: Codable, Identifiable, Equatable, Sendable {
     var id: UUID = UUID()
     var name: String = ""
     var type: String = ""

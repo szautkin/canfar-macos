@@ -112,7 +112,7 @@ final class CodeQualityGuardrailTests: XCTestCase {
     /// shrink, never grow. Shrink only.
     static let overBudget: [String: Int] = [
         "Verbinal/ImageDiscovery/Services/ImageDiscoveryCoordinator.swift": 1227,
-        "Verbinal/ViewModels/AppState.swift": 1175,
+        "Verbinal/ViewModels/AppState.swift": 1159,
         "Verbinal/MCP/AppState+SearchTools.swift": 1089,
         "Verbinal/MCP/Tools/SearchControlTools.swift": 805,
         "Verbinal/ViewModels/SessionLaunchModel.swift": 803,
@@ -150,20 +150,26 @@ final class CodeQualityGuardrailTests: XCTestCase {
 
     // MARK: - Every store is synced, or the device's
 
-    /// Synced through CANFAR storage (plan 34 V): Research and its notes.
-    static let synced: Set<String> = ["downloaded_observations.json", "note", "noteTag"]
+    /// Synced through CANFAR storage when the person chooses (plan 34 V, 36
+    /// tier 3): Research and its notes, saved and recent searches, guides
+    /// for assistants, compute runs, job history, added images, recent
+    /// launches and Portal defaults.
+    static let synced: Set<String> = [
+        "downloaded_observations.json", "note", "noteTag", "saved_queries.json", "recent_searches.json",
+        "aiGuideTool", "aiToolOverride", "compute_runs.json", "job_history.json", "user_images.json",
+        "recent_launches.json", "portal_settings.json",
+    ]
     /// Never synced: an assistant's sessions on this Mac, caches, indexes,
-    /// the app's own bookkeeping, and the notes file read once into the database.
+    /// the app's own bookkeeping — the jobs launched and not yet ended,
+    /// whose records sync once they end — and the notes file read once into
+    /// the database.
     static let deviceOnly: Set<String> = [
-        "agent_activity.json", "assistant_made.json", "pending_proposals.json",
+        "agent_activity.json", "assistant_made.json", "pending_proposals.json", "job_launches.json",
         "archiveObservation", "portal_image_cache.json", "meta", "noteSearch", "observation_notes.json",
     ]
-    /// The person's work not yet synced: plan 36 tiers 3–5. Shrink only.
-    static let notSyncedYet: Set<String> = [
-        "saved_queries.json", "recent_searches.json", "bookmarks.json", "marks.json",
-        "compute_runs.json", "job_history.json", "job_launches.json", "user_images.json",
-        "recent_launches.json", "portal_settings.json", "aiGuideTool", "aiToolOverride", "observation",
-    ]
+    /// The person's work not yet synced: marks and bookmarks by a file's
+    /// identity (plan 36 4.2), Research's database (5.1). Shrink only.
+    static let notSyncedYet: Set<String> = ["bookmarks.json", "marks.json", "observation"]
 
     func testEveryStoreIsSyncedOrTheDevices() {
         let text = Self.sources(in: ["Verbinal"]).map(\.text).joined(separator: "\n")

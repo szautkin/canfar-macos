@@ -130,6 +130,8 @@ targets:
           - "RemoteCompute/**"
           - "RecentFiles/**"
           - "MCP/**"
+          # Each area's sync adapter (plan 36 3.x): over the storage sync, macOS only like it.
+          - "**/Sync/**"
           # The assistant's session log: macOS only, like the MCP server (plan 23).
           - "AgentSession/**"
           # Bundled as a folder resource below so Bundle looks under Workflows/.

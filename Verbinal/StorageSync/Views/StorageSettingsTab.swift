@@ -6,9 +6,10 @@
 
 import SwiftUI
 
-/// Settings ▸ Storage (plan 34 V): what Verbinal keeps in the person's
-/// VOSpace, as the manifest there declares it, and how the last sync went.
-/// The sync itself runs unseen; this is where it is seen.
+/// Settings ▸ Storage (plan 34 V, 36 3.2): which of their work the person
+/// keeps in their CANFAR storage — each collection their own choice — and
+/// what else Verbinal keeps there, as the manifest declares it, with how the
+/// last sync went. The sync itself runs unseen; this is where it is seen.
 struct StorageSettingsTab: View {
     @Environment(AppState.self) private var appState
 
@@ -22,8 +23,14 @@ struct StorageSettingsTab: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            } else if sync.hasStorage == false {
+                Section {
+                    Label("Your account has no CANFAR storage, so your work stays on this Mac.", systemImage: "externaldrive.badge.xmark")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             } else {
-                researchSection
+                workSection
                 kindsSection
             }
         }
@@ -31,18 +38,19 @@ struct StorageSettingsTab: View {
         .onAppear { if appState.isAuthenticated, sync.status == nil { sync.run(.cameBack) } }
     }
 
-    private var researchSection: some View {
+    private var workSection: some View {
         Section {
-            Toggle("Keep Research in VOSpace", isOn: Binding(
-                get: { sync.keepsResearch },
-                set: { sync.setKeepsResearch($0) }))
-                .pointable("settings.storage.keepResearch")
-            if let note = kind("research")?.note {
-                Label(note == ResearchKind.publicNote
-                      ? String(localized: "Research is not synced while your .verbinal folder is readable by anyone. Make it private in Storage.")
-                      : note, systemImage: "lock.trianglebadge.exclamationmark")
+            if kinds(work: true).contains(where: { $0.note == CollectionSync.publicNote }) {
+                Label("Your work is not synced while your .verbinal folder is readable by anyone. Make it private in Storage.",
+                      systemImage: "lock.trianglebadge.exclamationmark")
                     .font(.caption)
                     .foregroundStyle(.orange)
+            }
+            ForEach(kinds(work: true), id: \.id) { kind in
+                Toggle(isOn: Binding(get: { sync.keeps(kind.id) }, set: { sync.setKeeps(kind.id, $0) })) {
+                    kindLabel(kind)
+                }
+                .pointable("settings.storage.keep.\(kind.id)")
             }
             if let problem = sync.problem {
                 Label(problem, systemImage: "xmark.circle")
@@ -50,9 +58,9 @@ struct StorageSettingsTab: View {
                     .foregroundStyle(.red)
             }
         } header: {
-            Text("Research")
+            Text("Your Work in VOSpace")
         } footer: {
-            Text("Your observations' details, notes, tags and quality — not their files — the same on every device you sign in on. Turned on here, it is on for all of them; turned off, the files stay in your storage. Only while your .verbinal folder is private.")
+            Text("Choose what Verbinal keeps in your CANFAR storage, to have it the same on every device you sign in on. A choice made here is made for all of them; turned off, the files stay in your storage. Nothing moves while your .verbinal folder is readable by anyone. Sign-ins, what assistants may do, session logs and the files on this Mac stay on it.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -60,8 +68,16 @@ struct StorageSettingsTab: View {
 
     private var kindsSection: some View {
         Section {
-            ForEach(sync.status?.kinds ?? [], id: \.id) { kind in
-                kindRow(kind)
+            ForEach(kinds(work: false), id: \.id) { kind in
+                HStack(alignment: .firstTextBaseline) {
+                    kindLabel(kind)
+                    Spacer()
+                    if kind.declared {
+                        Button("Show in Storage") { appState.showStorageFolder(kind.folder) }
+                            .buttonStyle(.link)
+                            .font(.caption)
+                    }
+                }
             }
             HStack {
                 if let last = sync.status?.lastSync {
@@ -90,30 +106,23 @@ struct StorageSettingsTab: View {
         }
     }
 
-    private func kind(_ id: String) -> StorageSync.KindStatus? {
-        sync.status?.kinds.first { $0.id == id }
+    /// The person's collections, or the rest of what Verbinal keeps there.
+    private func kinds(work: Bool) -> [StorageSync.KindStatus] {
+        (sync.status?.kinds ?? []).filter { StorageKindCatalog.work.contains($0.id) == work }
     }
 
-    private func kindRow(_ kind: StorageSync.KindStatus) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(Self.title(kind.id))
-                Text(kind.declared
-                     ? String(localized: "\(kind.folder) · \(kind.items) items · \(SharedFormatters.bytes(kind.bytes))")
-                     : String(localized: "Not kept in your storage"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if let failure = kind.failure {
-                    Text(failure).font(.caption).foregroundStyle(.orange)
-                } else if kind.imported > 0 {
-                    Text("\(kind.imported) brought to this Mac at the last sync").font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            if kind.declared {
-                Button("Show in Storage") { appState.showStorageFolder(kind.folder) }
-                    .buttonStyle(.link)
-                    .font(.caption)
+    private func kindLabel(_ kind: StorageSync.KindStatus) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(Self.title(kind.id))
+            Text(kind.declared
+                 ? String(localized: "\(kind.folder) · \(kind.items) items · \(SharedFormatters.bytes(kind.bytes))")
+                 : String(localized: "Not kept in your storage"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let failure = kind.failure {
+                Text(failure).font(.caption).foregroundStyle(.orange)
+            } else if kind.imported > 0 {
+                Text("\(kind.imported) brought to this Mac at the last sync").font(.caption).foregroundStyle(.secondary)
             }
         }
     }
@@ -122,6 +131,15 @@ struct StorageSettingsTab: View {
     static func title(_ id: String) -> String {
         switch id {
         case "research": String(localized: "Research")
+        case "workflows": String(localized: "Workflows")
+        case "savedQueries": String(localized: "Saved queries")
+        case "recentSearches": String(localized: "Recent searches")
+        case "guides": String(localized: "Guides for assistants")
+        case "computeHistory": String(localized: "Remote Compute history")
+        case "jobHistory": String(localized: "Batch job history")
+        case "userImages": String(localized: "Your added images")
+        case "recentLaunches": String(localized: "Recent launches")
+        case "portalDefaults": String(localized: "Portal launch defaults")
         case "imagePackages": String(localized: "Image package lists")
         case "computeRuns": String(localized: "Remote Compute runs")
         case "stagedScripts": String(localized: "Batch job scripts")

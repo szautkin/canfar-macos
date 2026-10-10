@@ -55,6 +55,11 @@ Une telle modification est du type **Les consignes données à chaque assistant*
 toujours dans En attente, quels que soient vos autres réglages : voir
 [En attente](12-ai-assistant.md#en-attente--les-modifications-qui-vous-attendent).
 
+Avec **Guides pour les assistants** activé dans [Réglages ▸ Stockage](14-settings.md#stockage), vos
+guides, vos descriptions et vos consignes de session par défaut sont les mêmes sur chaque appareil où
+vous vous connectez. Seul ce qui y est en vigueur voyage : une modification proposée par un assistant vous
+attend sur l’appareil où elle a été proposée, et va aux autres une fois que vous l’appliquez.
+
 ## Masquer la tuile
 
 Si vous ne vous en servez pas, désactivez **Afficher le Guide IA sur l'écran d'accueil** dans

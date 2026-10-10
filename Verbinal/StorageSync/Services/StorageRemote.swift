@@ -34,6 +34,9 @@ protocol StorageRemote: Sendable {
     func write(_ data: Data, to path: String) async throws
     /// Whether anyone may read the folder.
     func isPublic(_ folder: String) async throws -> Bool
+    /// Whether the account has a storage home: only CANFAR's accounts do,
+    /// not every CADC one.
+    func hasHome() async throws -> Bool
 }
 
 /// The person's VOSpace, through the Storage client.
@@ -65,6 +68,15 @@ struct VOSpaceStorageRemote: StorageRemote {
         try data.write(to: file)
         defer { try? FileManager.default.removeItem(at: file) }
         try await vospace.uploadFile(username: username, remotePath: path, fileURL: file)
+    }
+
+    func hasHome() async throws -> Bool {
+        do {
+            return try await vospace.node(username: username, path: "") != nil
+        } catch let error as NetworkError {
+            if case .httpError(403, _) = error { return false }
+            throw error
+        }
     }
 
     func isPublic(_ folder: String) async throws -> Bool {

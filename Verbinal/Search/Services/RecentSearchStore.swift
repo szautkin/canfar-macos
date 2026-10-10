@@ -15,7 +15,9 @@ import VerbinalKit
 @MainActor
 final class RecentSearchStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "RecentSearches")
-    private let maxEntries = 20
+    /// The last 100, the same on every device that keeps the person's work
+    /// in VOSpace (plan 36 decision 5).
+    private let maxEntries = 100
     private let persistence: DiskPersistence<[RecentSearch]>
     private(set) var searches: [RecentSearch] = []
 
@@ -55,9 +57,31 @@ final class RecentSearchStore {
     func rename(_ search: RecentSearch, to newName: String) {
         if let idx = searches.firstIndex(where: { $0.id == search.id }) {
             searches[idx].name = newName
+            searches[idx].changedAt = Date()
             persistence.write(searches)
             changes.done("rename_recent_search", "the recent search \"\(search.name)\" to \"\(newName)\"")
         }
+    }
+
+    // MARK: - From another device (plan 36 3.5)
+
+    /// Keeps `search` as another device has it, in its place among the
+    /// newest. The same search run on two devices is one: the newer stays.
+    func keep(_ search: RecentSearch) {
+        searches.removeAll { $0.id == search.id }
+        if let same = searches.firstIndex(where: { $0.formSnapshot == search.formSnapshot && $0.adql == search.adql }) {
+            guard searches[same].savedAt < search.savedAt else { return }
+            searches.remove(at: same)
+        }
+        searches.append(search)
+        searches.sort { $0.savedAt > $1.savedAt }
+        searches = Array(searches.prefix(maxEntries))
+        persistence.write(searches)
+    }
+
+    func remove(id: UUID) {
+        searches.removeAll { $0.id == id }
+        persistence.write(searches)
     }
 
     func clear() {

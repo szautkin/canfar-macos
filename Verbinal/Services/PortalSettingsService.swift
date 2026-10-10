@@ -14,7 +14,7 @@ import VerbinalKit
 /// Per-user Portal preferences: which project/image/session-type to auto-select when
 /// the user opens the Portal, plus optional resource defaults. Keyed by username so
 /// shared machines do not leak defaults.
-struct PortalSettings: Codable, Equatable {
+struct PortalSettings: Codable, Equatable, Sendable {
     var username: String
     var defaultProject: String?
     var defaultContainerImageID: String?
@@ -93,6 +93,13 @@ final class PortalSettingsService {
     /// Load settings (creating default if absent), apply `transform`, then save.
     /// Callers: `update(for: user) { $0.defaultProject = "skaha" }`.
     /// Closes the service against future "new default field" additions.
+    /// Keeps `settings` as another device has them, their date too (plan 36 3.6).
+    func keep(_ settings: PortalSettings) {
+        guard !settings.username.isEmpty else { return }
+        settingsByUser[settings.username] = settings
+        persistence.write(settingsByUser)
+    }
+
     func update(for username: String, _ transform: (inout PortalSettings) -> Void) {
         guard !username.isEmpty else { return }
         var current = settingsByUser[username] ?? PortalSettings(username: username)

@@ -9,19 +9,28 @@ import Foundation
 import Observation
 import VerbinalKit
 
+/// One collection of the person's work, as its area gives it to the sync
+/// (plan 36 3.1): its kind, and what to watch for its changes.
+struct WorkCollection {
+    let kind: any StorageKind
+    /// Reads what changes when the collection does, for observation.
+    let watch: @MainActor () -> Void
+}
+
 /// The storage sync as the app runs it (plan 34 V): at once after sign-in,
 /// in the background and unseen; again when Verbinal comes back to the
-/// front and the last sync is over 15 minutes old; a few seconds after
-/// Research changes, while Research is kept in VOSpace; and when asked.
-/// Nothing after sign-out. Settings ▸ Storage and the tools read its status.
+/// front and the last sync is over 15 minutes old; a few seconds after a
+/// collection the person keeps in VOSpace changes; and when asked. Nothing
+/// after sign-out, and nothing for an account without CANFAR storage.
+/// Settings ▸ Storage and the tools read its status.
 @Observable
 @MainActor
 final class StorageSyncModel {
     /// What the sync is given of the app, at sign-in.
     struct Dependencies {
         let vospace: VOSpaceBrowserService
-        let research: ObservationStore
-        let notes: ObservationNoteStore
+        /// The person's work, each collection from its area.
+        let work: [WorkCollection]
         let importManifest: @Sendable (Data) async -> Bool
         let resumeRuns: @Sendable () async -> Void
     }
@@ -30,19 +39,25 @@ final class StorageSyncModel {
     /// Why the last change of the person's failed.
     private(set) var problem: String?
     private var sync: StorageSync?
-    private var research: ObservationStore?
-    private var notes: ObservationNoteStore?
-    private var researchChange: Task<Void, Never>?
+    private var work: [WorkCollection] = []
+    private var changed: [String: Task<Void, Never>] = [:]
     private var activation: NSObjectProtocol?
     private static let comeBackAfter: TimeInterval = 15 * 60
-    private static let researchSettles: Duration = .seconds(5)
+    private static let changeSettles: Duration = .seconds(5)
 
-    var keepsResearch: Bool { status?.kinds.first { $0.id == "research" }?.declared ?? false }
+    /// Whether the person keeps collection `id` in VOSpace — their choice,
+    /// one collection at a time (plan 36 3.2), declared in the manifest so
+    /// every device makes the same.
+    func keeps(_ id: String) -> Bool {
+        status?.kinds.first { $0.id == id }?.declared ?? false
+    }
+
+    /// False for an account without CANFAR storage: nothing is synced.
+    var hasStorage: Bool? { status?.hasStorage }
 
     /// The kinds this build knows, given what each needs of the app.
     static func catalog(_ deps: Dependencies) -> StorageKindCatalog {
-        StorageKindCatalog(kinds: [
-            ResearchKind(source: ResearchSyncAdapter(store: deps.research, notes: deps.notes)),
+        StorageKindCatalog(kinds: deps.work.map(\.kind) + [
             ImagePackagesKind(importManifest: deps.importManifest),
             ComputeRunsKind(resume: deps.resumeRuns),
             CountedKind.stagedScripts,
@@ -55,10 +70,9 @@ final class StorageSyncModel {
         let sync = StorageSync(remote: VOSpaceStorageRemote(vospace: deps.vospace, username: username),
                                catalog: Self.catalog(deps), stateFile: StorageSyncState.file(for: username))
         self.sync = sync
-        research = deps.research
-        notes = deps.notes
+        work = deps.work
         run(.signedIn)
-        watchResearch()
+        for collection in work { watch(collection) }
         activation = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
                                                             object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.cameBack() }
@@ -66,15 +80,15 @@ final class StorageSyncModel {
     }
 
     func signedOut() {
-        researchChange?.cancel()
+        changed.values.forEach { $0.cancel() }
+        changed = [:]
         if let activation { NotificationCenter.default.removeObserver(activation) }
         activation = nil
         let stopping = sync
         Task { await stopping?.stop() }
         sync = nil
         status = nil
-        research = nil
-        notes = nil
+        work = []
     }
 
     /// Sync Now.
@@ -86,8 +100,7 @@ final class StorageSyncModel {
         guard let sync else { return nil }
         let task = Task { [weak self] in
             await sync.sync(reason, only: kind)
-            let status = await sync.status()
-            self?.status = status
+            self?.status = await sync.status()
         }
         Task { [weak self] in self?.status = await sync.status() }
         return task
@@ -98,15 +111,17 @@ final class StorageSyncModel {
         run(.cameBack)
     }
 
-    /// Keep Research in VOSpace, or no longer: declared in the manifest, so
-    /// every device does the same. The files stay when it is turned off.
-    func setKeepsResearch(_ keep: Bool) {
+    /// Keeps collection `id` in VOSpace, or no longer: declared in the
+    /// manifest, or taken out, so every device does the same. A collection
+    /// is kept only when the person chooses it; its files stay when they
+    /// stop.
+    func setKeeps(_ id: String, _ keep: Bool) {
         guard let sync else { return }
         problem = nil
         Task { [weak self] in
             do {
-                try await sync.setDeclared("research", keep)
-                await sync.sync(.asked, only: keep ? "research" : nil)
+                try await sync.setDeclared([id], keep)
+                if keep { await sync.sync(.asked, only: id) }
             } catch {
                 self?.problem = error.localizedDescription
             }
@@ -114,29 +129,27 @@ final class StorageSyncModel {
         }
     }
 
-    /// Research changed here: once it settles, its records go, while it is
-    /// kept in VOSpace. Research is watched, never told.
-    private func watchResearch() {
-        guard let research, let notes else { return }
+    /// A collection changed here: once it settles, its items go, while the
+    /// person keeps it in VOSpace. The areas are watched, never told.
+    private func watch(_ collection: WorkCollection) {
         withObservationTracking {
-            _ = research.observations
-            _ = notes.notes
+            collection.watch()
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self, self.sync != nil else { return }
-                self.researchChanged()
-                self.watchResearch()
+                self.collectionChanged(collection.kind.id)
+                self.watch(collection)
             }
         }
     }
 
-    private func researchChanged() {
-        guard keepsResearch else { return }
-        researchChange?.cancel()
-        researchChange = Task { [weak self] in
-            try? await Task.sleep(for: Self.researchSettles)
+    private func collectionChanged(_ id: String) {
+        guard keeps(id) else { return }
+        changed[id]?.cancel()
+        changed[id] = Task { [weak self] in
+            try? await Task.sleep(for: Self.changeSettles)
             guard !Task.isCancelled else { return }
-            self?.run(.changed, only: "research")
+            self?.run(.changed, only: id)
         }
     }
 }

@@ -88,7 +88,7 @@ Notes are saved as you type. The filter at the top searches them too.
 
 ## Research on every device
 
-Turn on **Keep Research in VOSpace** in **Settings ▸ Storage**, and your observations' details, notes,
+Turn on **Research** under **Your Work in VOSpace** in **Settings ▸ Storage**, and your observations' details, notes,
 tags and quality are kept in your CANFAR storage too: the same Research on every Mac you sign in on, and
 in Verbinal for Windows and Linux as they follow. Files are not: each device downloads its own. A note
 you write here reaches the others a few seconds after you stop typing; theirs reach you when you sign in,

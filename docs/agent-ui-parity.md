@@ -194,7 +194,7 @@ every later agent is told; **read** = pure data.
 | Open a folder of your home on screen | `show_storage_folder` | live |
 | Settings ▸ Storage: the kinds of Verbinal's data in storage, each folder, items, last sync (plan 34 V) | `list_storage_kinds` | read |
 | Settings ▸ Storage: Sync Now | `sync_storage` | live |
-| Settings ▸ Storage: Keep Research in VOSpace | — the person's own | — |
+| Settings ▸ Storage: Your Work in VOSpace (one switch per collection, plan 36 3.2) | — the person's own; `list_storage_kinds` reports `declared` | — |
 | Settings ▸ Storage: Show in Storage | `show_storage_folder` with the kind's folder | live |
 
 ## Shell / navigation / settings

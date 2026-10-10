@@ -61,19 +61,28 @@ final class StorageSyncTests: XCTestCase {
             put(path, data)
         }
         func isPublic(_ folder: String) async throws -> Bool { publicFolders.contains(folder) }
+        var home = true
+        func setHome(_ value: Bool) { home = value }
+        func hasHome() async throws -> Bool { home }
         func text(_ path: String) -> String? { files[path].map { String(decoding: $0.data, as: UTF8.self) } }
     }
 
     /// Research on one device, in memory.
-    actor FakeResearch: ResearchSyncSource {
+    actor FakeResearch: SyncCollection {
         private(set) var records: [String: ResearchItem] = [:]
-        private(set) var replacedOnes: [ResearchItem] = []
         func items() async -> [ResearchItem] { Array(records.values) }
         func apply(_ item: ResearchItem) async { var kept = item; kept.removedAt = nil; records[item.recordKey] = kept }
-        func remove(recordKey: String) async { records.removeValue(forKey: recordKey) }
-        func replaced(_ item: ResearchItem, by newer: ResearchItem) async { replacedOnes.append(item) }
+        func remove(key: String) async { records.removeValue(forKey: key) }
+        nonisolated func title(of item: ResearchItem) -> String { item.details.targetName }
         func set(_ item: ResearchItem) { records[item.recordKey] = item }
         func drop(_ key: String) { records.removeValue(forKey: key) }
+    }
+
+    /// What a newer change replaced on `device`, as kept on that Mac.
+    private func replaced(on device: String) throws -> [ResearchItem] {
+        let folder = directory.appendingPathComponent("replaced-\(device)/research")
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+        return try files.map { try ResearchItem.decode(Data(contentsOf: $0)) }
     }
 
     private final class Imports: @unchecked Sendable {
@@ -98,7 +107,8 @@ final class StorageSyncTests: XCTestCase {
     private func sync(_ remote: FakeVOSpace, research: FakeResearch = FakeResearch(), imports: Imports = Imports(),
                       device: String = "mac") -> StorageSync {
         let catalog = StorageKindCatalog(kinds: [
-            ResearchKind(source: research),
+            CollectionKind(id: "research", defaultFolder: ".verbinal/research", collection: research,
+                           replacedFolder: directory.appendingPathComponent("replaced-\(device)")),
             ImagePackagesKind(importManifest: { imports.add($0); return true }),
             ComputeRunsKind(resume: {}),
             CountedKind.stagedScripts,
@@ -164,7 +174,7 @@ final class StorageSyncTests: XCTestCase {
         await remote.put(StorageManifest.path, original)
         let storage = sync(remote)
         await storage.sync(.signedIn)
-        try await storage.setDeclared("research", true)
+        try await storage.setDeclared(["research"], true)
 
         let text = await remote.text(StorageManifest.path) ?? ""
         let written = try StorageManifest.decode(Data(text.utf8))
@@ -173,7 +183,7 @@ final class StorageSyncTests: XCTestCase {
         XCTAssertTrue(written.declares("research"))
         XCTAssertFalse(text.contains("bookmark") || text.contains("/Users/"), "folder names and dates only")
 
-        try await storage.setDeclared("research", false)
+        try await storage.setDeclared(["research"], false)
         let after = try StorageManifest.decode(try await remote.read(StorageManifest.path))
         XCTAssertFalse(after.declares("research"))
         XCTAssertTrue(after.declares("linuxNotebooks"))
@@ -254,8 +264,7 @@ final class StorageSyncTests: XCTestCase {
         await syncA.sync(.changed)
         let onA = await a.records[key]?.note?.text
         XCTAssertEqual(onA, "from B", "the newer wins")
-        let replaced = await a.replacedOnes.map { $0.note?.text }
-        XCTAssertEqual(replaced, ["from A"], "and the one it replaced is kept")
+        XCTAssertEqual(try replaced(on: "a").map { $0.note?.text }, ["from A"], "and the one it replaced is kept")
     }
 
     func testARemovalTravelsAsAMarkAndAMissingItemRemovesNothing() async throws {
@@ -324,7 +333,7 @@ final class StorageSyncTests: XCTestCase {
         let files = await remote.files.keys.filter { $0.contains("research") }
         XCTAssertTrue(files.isEmpty, "nothing sent")
         let note = await storage.status().kinds.first { $0.id == "research" }?.note
-        XCTAssertEqual(note, ResearchKind.publicNote)
+        XCTAssertEqual(note, CollectionSync.publicNote)
     }
 
     // MARK: - The sync
@@ -360,10 +369,10 @@ final class StorageSyncTests: XCTestCase {
     /// with its title for the person.
     @MainActor
     func testTheCatalogueListsEveryKind() {
+        let work = AppState().workCollections(username: "someone")
+        XCTAssertEqual(work.map(\.kind.id), StorageKindCatalog.work, "every collection, in the order the person reads them")
         let catalog = StorageSyncModel.catalog(.init(
-            vospace: VOSpaceBrowserService(network: NetworkClient()),
-            research: ObservationStore(fileName: "unused-\(UUID().uuidString).json", spotlight: nil),
-            notes: ObservationNoteStore(database: try! AppDatabase.makeInMemory(), legacyNotesSource: nil),
+            vospace: VOSpaceBrowserService(network: NetworkClient()), work: work,
             importManifest: { _ in false }, resumeRuns: {}))
         XCTAssertEqual(catalog.kinds.map(\.id).sorted(), StorageKindCatalog.order.sorted())
         for id in StorageKindCatalog.order {

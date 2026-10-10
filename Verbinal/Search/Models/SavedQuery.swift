@@ -8,7 +8,7 @@ import Foundation
 import VerbinalKit
 
 /// A saved ADQL query for re-use.
-struct SavedQuery: Codable, Identifiable, Equatable {
+struct SavedQuery: Codable, Identifiable, Equatable, Sendable {
     var id: UUID = UUID()
     var name: String
     var adql: String
@@ -28,4 +28,7 @@ struct SavedQuery: Codable, Identifiable, Equatable {
     /// via the proposal flow. `nil` for entries the user authored
     /// directly. Drives the wand badge in the saved-queries list.
     var agentAttribution: AgentAttribution?
+    /// When it last changed — saved, edited or renamed; nil in data from
+    /// before, where `savedAt` says it (plan 36 3.5).
+    var changedAt: Date?
 }

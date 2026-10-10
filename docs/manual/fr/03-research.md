@@ -97,7 +97,7 @@ Les notes s’enregistrent pendant la saisie. Le filtre du haut les cherche auss
 
 ## Recherche sur chaque appareil
 
-Activez **Garder Recherche dans VOSpace** dans **Réglages ▸ Stockage**, et les détails de vos
+Activez **Recherche** sous **Votre travail dans VOSpace** dans **Réglages ▸ Stockage**, et les détails de vos
 observations, leurs notes, étiquettes et qualité sont gardés aussi dans votre stockage CANFAR : la même
 Recherche sur chaque Mac où vous vous connectez, et dans Verbinal pour Windows et Linux à mesure qu’ils
 suivent. Les fichiers non : chaque appareil télécharge les siens. Une note écrite ici atteint les autres

@@ -67,6 +67,20 @@ final class ComputeRunStore {
         }
     }
 
+    // MARK: - From another device (plan 36 3.6)
+
+    /// Keeps `run` as another device has it, in its place by when it was sent.
+    func keep(_ run: ComputeRun) {
+        runs.removeAll { Self.same($0.id, run.id) }
+        runs = Array((runs + [run]).sorted { $0.submittedAt > $1.submittedAt }.prefix(Self.maxRuns))
+        save()
+    }
+
+    func remove(id: String) {
+        runs.removeAll { Self.same($0.id, id) }
+        save()
+    }
+
     func clear() {
         runs = []
         save()

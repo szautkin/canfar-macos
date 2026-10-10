@@ -32,6 +32,8 @@ actor StorageSync {
     }
 
     struct Status: Equatable, Sendable {
+        /// Whether the account has CANFAR storage; nil until a sync looked.
+        var hasStorage: Bool?
         var hasManifest: Bool
         var kinds: [KindStatus]
         var lastSync: Date?
@@ -52,6 +54,11 @@ actor StorageSync {
     private let now: @Sendable () -> Date
     private var state: StorageSyncState
     private var running: Task<Void, Never>?
+    /// What changed while a sync ran: it goes when that sync ends (nil: every kind).
+    private var queued: Set<String>? = []
+    /// Whether the account has CANFAR storage, once a sync looked: without
+    /// it nothing is read or written, and only a sync asked for looks again.
+    private var hasStorage: Bool?
     private var stopped = false
 
     init(remote: any StorageRemote, catalog: StorageKindCatalog, stateFile: URL,
@@ -72,17 +79,31 @@ actor StorageSync {
     // MARK: - Syncing
 
     /// Syncs every declared kind, or only `kind`. A sync already under way
-    /// is waited for; an automatic one waits longer after each failure.
+    /// is waited for, and a change made meanwhile goes when it ends; an
+    /// automatic sync waits longer after each failure.
     func sync(_ reason: Reason, only kind: String? = nil) async {
         guard !stopped else { return }
-        if let running { return await running.value }
+        if let running {
+            guard reason == .changed else { return await running.value }
+            if let kind { queued?.insert(kind) } else { queued = nil }
+            return
+        }
+        if reason.isAutomatic, hasStorage == false { return }
         if reason.isAutomatic, let wait = backOff(), now().timeIntervalSince(state.lastSync ?? .distantPast) < wait {
             return
         }
-        let task = Task(priority: .background) { await self.run(reason, only: kind) }
-        running = task
-        await task.value
-        running = nil
+        var only: Set<String>? = kind.map { [$0] }
+        var why = reason
+        while true {
+            let task = Task(priority: .background) { [only, why] in await self.run(why, only: only) }
+            running = task
+            await task.value
+            running = nil
+            guard !stopped, queued?.isEmpty != true else { break }
+            only = queued
+            queued = []
+            why = .changed
+        }
     }
 
     /// How long an automatic sync waits after failures in a row: 1, 2, 4 …
@@ -92,13 +113,13 @@ actor StorageSync {
         return min(3600, 60 * pow(2, Double(state.failuresInARow - 1)))
     }
 
-    private func run(_ reason: Reason, only kindID: String?) async {
+    private func run(_ reason: Reason, only kindIDs: Set<String>?) async {
         Self.logger.info("sync (\(reason.rawValue, privacy: .public)) begins")
         do {
             let manifest = try await currentManifest()
             for id in StorageKindCatalog.order {
                 guard !Task.isCancelled, !stopped else { break }
-                guard kindID == nil || kindID == id, let kind = catalog.kind(id),
+                guard kindIDs?.contains(id) ?? true, let kind = catalog.kind(id),
                       let declared = manifest?.kinds[id] else { continue }
                 await sync(kind, declared: declared)
             }
@@ -148,7 +169,10 @@ actor StorageSync {
 
     /// The manifest: as last read when it has not changed, read again when
     /// it has, written when there is none and Verbinal's folders are there.
+    /// None for an account without CANFAR storage.
     private func currentManifest() async throws -> StorageManifest? {
+        if hasStorage != true { hasStorage = try await remote.hasHome() }
+        guard hasStorage == true else { return nil }
         let root = try await remote.list(".verbinal") ?? []
         if let item = root.first(where: { $0.name == "manifest.json" }) {
             if item.stamp == state.manifestStamp, let data = state.manifest, let kept = try? StorageManifest.decode(data) {
@@ -190,20 +214,26 @@ actor StorageSync {
         state.manifest = data
     }
 
-    /// Declares `kind` in the manifest — the person kept Research in VOSpace
-    /// — or, with `declared` false, takes it out; its files stay.
-    func setDeclared(_ kindID: String, _ declared: Bool) async throws {
-        guard let kind = catalog.kind(kindID) else { return }
+    /// Declares `kinds` in the manifest — the person keeps their work in
+    /// VOSpace — or, with `declared` false, takes them out; their files
+    /// stay. One write, whatever the number.
+    func setDeclared(_ kindIDs: [String], _ declared: Bool) async throws {
+        if hasStorage != true { hasStorage = try await remote.hasHome() }
+        guard hasStorage == true else { throw NoStorage() }
         var manifest = try await latestManifest() ?? StorageManifest()
-        guard manifest.declares(kindID) != declared else { return }
-        if declared {
-            manifest.kinds[kindID] = .init(folder: kind.defaultFolder, format: kind.format, since: now())
-        } else {
-            manifest.kinds.removeValue(forKey: kindID)
+        let changing = kindIDs.compactMap { catalog.kind($0) }.filter { manifest.declares($0.id) != declared }
+        guard !changing.isEmpty else { return }
+        for kind in changing {
+            if declared {
+                manifest.kinds[kind.id] = .init(folder: kind.defaultFolder, format: kind.format, since: now())
+            } else {
+                manifest.kinds.removeValue(forKey: kind.id)
+            }
         }
+        let what = changing.map(\.id).joined(separator: ", ")
         try await write(manifest, why: declared
-            ? "the person keeps \(kindID) in VOSpace, for every device"
-            : "the person no longer keeps \(kindID) in VOSpace; its files stay")
+            ? "the person keeps their work in VOSpace, for every device: \(what)"
+            : "the person no longer keeps their work in VOSpace (\(what)); its files stay")
         state.save(to: stateFile)
     }
 
@@ -212,6 +242,13 @@ actor StorageSync {
     private func latestManifest() async throws -> StorageManifest? {
         guard try await remote.list(".verbinal")?.contains(where: { $0.name == "manifest.json" }) == true else { return nil }
         return try StorageManifest.decode(try await remote.read(StorageManifest.path))
+    }
+
+    /// The account has no CANFAR storage: nothing can be kept there.
+    struct NoStorage: LocalizedError {
+        var errorDescription: String? {
+            String(localized: "Your account has no CANFAR storage, so your work stays on this Mac.")
+        }
     }
 
     // MARK: - Status
@@ -226,7 +263,7 @@ actor StorageSync {
                               items: kept?.items.count ?? 0, bytes: kept?.bytes ?? 0, lastSync: kept?.lastSync,
                               imported: kept?.imported ?? 0, sent: kept?.sent ?? 0, note: kept?.note, failure: kept?.failure)
         }
-        return Status(hasManifest: manifest != nil, kinds: kinds, lastSync: state.lastSync,
+        return Status(hasStorage: hasStorage, hasManifest: manifest != nil, kinds: kinds, lastSync: state.lastSync,
                       lastFailure: state.lastFailure, running: running != nil)
     }
 }

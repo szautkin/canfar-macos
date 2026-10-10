@@ -25,6 +25,9 @@ struct StorageKindsOut: Encodable, Sendable {
     }
 
     let manifest: String
+    /// False for an account without CANFAR storage: nothing is synced, the
+    /// person's work stays on this Mac. Absent until a sync looked.
+    let hasStorage: Bool?
     let hasManifest: Bool
     let lastSyncISO: String?
     let lastFailure: String?
@@ -35,6 +38,7 @@ struct StorageKindsOut: Encodable, Sendable {
     init(_ status: StorageSync.Status) {
         let iso = SharedFormatters.iso8601
         manifest = StorageManifest.path
+        hasStorage = status.hasStorage
         hasManifest = status.hasManifest
         lastSyncISO = status.lastSync.map { iso.string(from: $0) }
         lastFailure = status.lastFailure
@@ -44,7 +48,7 @@ struct StorageKindsOut: Encodable, Sendable {
                  items: $0.items, bytes: $0.bytes, lastSyncISO: $0.lastSync.map { iso.string(from: $0) },
                  imported: $0.imported, sent: $0.sent, note: $0.note, failure: $0.failure)
         }
-        note = "Keeping Research in VOSpace is the person's choice, in Settings ▸ Storage; files there are read and changed with the storage tools."
+        note = "Which of their work the person keeps in VOSpace is their choice, one collection at a time, in Settings ▸ Storage (`declared`); files there are read and changed with the storage tools."
     }
 }
 
@@ -55,7 +59,7 @@ struct ListStorageKindsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_storage_kinds",
-        description: "List the kinds of Verbinal's data the person keeps in their VOSpace — Research, the CANFAR images' package lists, Remote Compute runs, batch job scripts, exports — as the manifest .verbinal/manifest.json declares them: each kind's folder, how many items and bytes, and what the last sync brought to this Mac or sent. Verbinal syncs them by itself after sign-in; sync_storage syncs now. Requires sign-in.",
+        description: "List the kinds of Verbinal's data the person keeps in their VOSpace, as the manifest .verbinal/manifest.json declares them: the collections of their work they chose to keep there, each by itself (Research, workflows, saved queries, recent searches, guides for assistants, Remote Compute history, batch job history, added images, recent launches, Portal launch defaults), and what Verbinal keeps there anyway (the CANFAR images' package lists, Remote Compute results, batch job scripts, exports). Each with its folder, how many items and bytes, and what the last sync brought to this Mac or sent. `hasStorage: false`: the account has no CANFAR storage, and nothing is synced. Verbinal syncs by itself after sign-in; sync_storage syncs now. Requires sign-in.",
         schema: #"{ "type": "object", "properties": {}, "additionalProperties": false }"#
     )
 
@@ -74,7 +78,7 @@ struct SyncStorageTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "sync_storage",
-        description: "Sync Verbinal's data in VOSpace now, as Sync Now in Settings ▸ Storage does, and answer how it went (list_storage_kinds' answer). It brings to this Mac what another device kept — package lists, results, Research when the person keeps it there — and sends this Mac's Research changes; it never deletes. Usually not needed: Verbinal syncs after sign-in by itself. Requires sign-in. Live-applied.",
+        description: "Sync Verbinal's data in VOSpace now, as Sync Now in Settings ▸ Storage does, and answer how it went (list_storage_kinds' answer). It brings to this Mac what another device kept — package lists, results, and the collections of their work the person keeps there — and sends this Mac's changes to those collections; it never deletes. Usually not needed: Verbinal syncs after sign-in by itself. Requires sign-in. Live-applied.",
         schema: #"{ "type": "object", "properties": {}, "additionalProperties": false }"#
     )
 

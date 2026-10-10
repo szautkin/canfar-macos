@@ -68,6 +68,11 @@ struct StorageKindCatalog: Sendable {
 
     func kind(_ id: String) -> (any StorageKind)? { kinds.first { $0.id == id } }
 
+    /// The person's work: the collections they may keep in VOSpace, each by
+    /// their own choice (plan 36 3.2), in the order they read them.
+    static let work = ["research", "workflows", "savedQueries", "recentSearches", "guides",
+                       "computeHistory", "jobHistory", "userImages", "recentLaunches", "portalDefaults"]
+
     /// The ids, in the order the person reads them.
-    static let order = ["research", "imagePackages", "computeRuns", "stagedScripts", "exports"]
+    static let order = work + ["imagePackages", "computeRuns", "stagedScripts", "exports"]
 }

@@ -20076,6 +20076,126 @@
           }
         }
       }
+    },
+    "Your account has no CANFAR storage, so your work stays on this Mac." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre compte n’a pas de stockage CANFAR : votre travail reste sur ce Mac."
+          }
+        }
+      }
+    },
+    "Your work is not synced while your .verbinal folder is readable by anyone. Make it private in Storage." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre travail n’est pas synchronisé tant que tout le monde peut lire votre dossier .verbinal. Rendez-le privé dans Stockage."
+          }
+        }
+      }
+    },
+    "Your Work in VOSpace" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre travail dans VOSpace"
+          }
+        }
+      }
+    },
+    "Choose what Verbinal keeps in your CANFAR storage, to have it the same on every device you sign in on. A choice made here is made for all of them; turned off, the files stay in your storage. Nothing moves while your .verbinal folder is readable by anyone. Sign-ins, what assistants may do, session logs and the files on this Mac stay on it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez ce que Verbinal garde dans votre stockage CANFAR, pour l’avoir pareil sur chaque appareil où vous vous connectez. Un choix fait ici vaut pour tous ; désactivé, les fichiers restent dans votre stockage. Rien ne bouge tant que tout le monde peut lire votre dossier .verbinal. Les connexions, ce que les assistants peuvent faire, les journaux de session et les fichiers de ce Mac y restent."
+          }
+        }
+      }
+    },
+    "Saved queries" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requêtes enregistrées"
+          }
+        }
+      }
+    },
+    "Recent searches" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherches récentes"
+          }
+        }
+      }
+    },
+    "Guides for assistants" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guides pour les assistants"
+          }
+        }
+      }
+    },
+    "Remote Compute history" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historique du calcul à distance"
+          }
+        }
+      }
+    },
+    "Batch job history" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historique des tâches en lot"
+          }
+        }
+      }
+    },
+    "Your added images" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les images que vous avez ajoutées"
+          }
+        }
+      }
+    },
+    "Recent launches" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancements récents"
+          }
+        }
+      }
+    },
+    "Portal launch defaults" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valeurs de lancement par défaut du Portail"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -1138,22 +1138,6 @@ final class AppState {
         #endif
     }
 
-    #if os(macOS)
-    /// The storage sync, given what it needs of the app (plan 34 V).
-    private func startStorageSync() {
-        let remoteCompute = remoteCompute
-        storageSync.signedIn(username: username, .init(
-            vospace: VOSpaceBrowserService(network: network, endpoints: endpoints),
-            research: researchModel.observationStore,
-            notes: researchModel.noteStore,
-            importManifest: { [weak self] data in
-                guard let coordinator = await MainActor.run(body: { self?.imageDiscoveryCoordinator }) else { return false }
-                return await coordinator.importManifest(data)
-            },
-            resumeRuns: { await remoteCompute.resumeWatching() }))
-    }
-    #endif
-
     func logout() async {
         tearDownAuthenticatedSessionResources()
 

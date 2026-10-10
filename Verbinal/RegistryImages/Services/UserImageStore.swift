@@ -65,6 +65,13 @@ final class UserImageStore {
         return true
     }
 
+    /// Keeps `image` as another device has it (plan 36 3.6).
+    func keep(_ image: RegistryImage) {
+        guard let index = index(of: image.id) else { add(image); return }
+        images[index] = image
+        save()
+    }
+
     /// `catalogue` with the added images it does not list after it — the
     /// images a launch can start.
     func merged(into catalogue: [RawImage]) -> [RawImage] {

@@ -109,6 +109,22 @@ final class JobHistoryStore {
         defaults.set(true, forKey: key)
     }
 
+    // MARK: - From another device (plan 36 3.6)
+
+    /// Keeps `job` as another device has it, merged with this Mac's record
+    /// of it, in its place by when it finished.
+    func keep(_ job: JobRecord) {
+        let earlier = jobs.first { $0.id == job.id }
+        jobs.removeAll { $0.id == job.id }
+        jobs = Array((jobs + [earlier.map(job.keeping) ?? job]).sorted { $0.finishedAt > $1.finishedAt }.prefix(Self.maxJobs))
+        save()
+    }
+
+    func remove(id: String) {
+        jobs.removeAll { $0.id == id }
+        save()
+    }
+
     func clear() {
         jobs = []
         save()

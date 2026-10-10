@@ -8,7 +8,7 @@ import Foundation
 import VerbinalKit
 
 /// A saved search with form state snapshot for quick re-use.
-struct RecentSearch: Codable, Identifiable, Equatable {
+struct RecentSearch: Codable, Identifiable, Equatable, Sendable {
     var id: UUID = UUID()
     var name: String
     var formSnapshot: SearchFormSnapshot
@@ -20,6 +20,9 @@ struct RecentSearch: Codable, Identifiable, Equatable {
     /// Set for a query run from the ADQL editor, which goes back there when
     /// loaded; nil for a search run from the form. Absent in older data.
     var adql: String?
+    /// When it was renamed, the one change a recent search has; nil in data
+    /// from before, and until then `savedAt` says it (plan 36 3.5).
+    var changedAt: Date?
 
     var isFromEditor: Bool { adql != nil }
 

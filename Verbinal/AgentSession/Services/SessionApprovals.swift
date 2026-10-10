@@ -101,6 +101,7 @@ final class SessionApprovals {
         self.now = now
         let minutes = defaults.integer(forKey: Self.idleKey)
         self.idleMinutes = Self.idleChoices.contains(minutes) ? minutes : Self.defaultIdleMinutes
+        self.instructionsChangedAt = defaults.object(forKey: Self.instructionsChangedKey) as? Date
         load()
     }
 
@@ -113,6 +114,14 @@ final class SessionApprovals {
     static let builtInInstructions = "Use only Verbinal and its tools for this work: no other apps, and no network connections outside Verbinal. Ask before anything destructive."
 
     private static let instructionsKey = "verbinal.agent.sessionInstructions"
+    private static let instructionsChangedKey = "verbinal.agent.sessionInstructionsChangedAt"
+
+    /// When the person last set their default instructions; nil before
+    /// they ever did (plan 36 3.4: the newer of two devices' wins).
+    private(set) var instructionsChangedAt: Date?
+
+    /// Whether the person set instructions of their own.
+    var hasOwnInstructions: Bool { defaults.string(forKey: Self.instructionsKey) != nil }
 
     /// The person's default instructions, as set in Settings ▸ AI Agent.
     var defaultInstructions: String {
@@ -124,6 +133,8 @@ final class SessionApprovals {
             } else {
                 defaults.set(text, forKey: Self.instructionsKey)
             }
+            instructionsChangedAt = now()
+            defaults.set(instructionsChangedAt, forKey: Self.instructionsChangedKey)
         }
     }
 

@@ -116,6 +116,34 @@ final class WorkflowStore {
         return "\(title) (\(n))"
     }
 
+    // MARK: - From another device (plan 36 3.3)
+
+    /// The working copies as files: each one's slug, text and date.
+    func files() -> [WorkflowFile] {
+        guard let urls = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey]) else { return [] }
+        return urls.filter { $0.lastPathComponent.hasSuffix(WorkflowFormat.fileExtension) }.compactMap { url in
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            return WorkflowFile(slug: slug(of: url), text: text, modified: modified ?? .distantPast)
+        }
+    }
+
+    /// Writes `file` as another device has it: the same workflow, by its slug.
+    func keep(_ file: WorkflowFile) {
+        let url = directory.appendingPathComponent(file.slug + WorkflowFormat.fileExtension)
+        let existed = FileManager.default.fileExists(atPath: url.path)
+        _ = try? recorded(existed ? "update_workflow" : "save_workflow", "the workflow \"\(WorkflowFormat.parse(file.text).title)\"") {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try Data(file.text.utf8).write(to: url, options: .atomic)
+            changeID = UUID()
+        }
+    }
+
+    func removeFile(slug: String) {
+        guard FileManager.default.fileExists(atPath: directory.appendingPathComponent(slug + WorkflowFormat.fileExtension).path) else { return }
+        try? delete(Self.localPrefix + slug)
+    }
+
     // MARK: - Agent attribution sidecar
 
     /// Slug → attribution for agent-created working copies. Lives beside

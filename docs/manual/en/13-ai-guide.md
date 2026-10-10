@@ -52,6 +52,11 @@ An assistant can propose a new guide, a change to one, or a new description. Suc
 kind **What every assistant is told**, and it always waits for you in Pending, whatever your other
 settings: see [Pending](12-ai-assistant.md#pending-changes-waiting-for-you).
 
+With **Guides for assistants** turned on in [Settings ▸ Storage](14-settings.md#storage), your guides,
+your descriptions and your default session instructions are the same on every device you sign in on.
+Only what is in force there travels: a change an assistant proposes waits for you on the device where it
+was proposed, and goes to the others once you apply it.
+
 ## Hiding the tile
 
 If you do not use it, turn off **Show AI Guide on the launchpad** in **Settings ▸ MCP Clients**. Only

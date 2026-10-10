@@ -44,6 +44,15 @@ device is synced on all of them.
 | Kind | Folder | Items | Written by |
 |---|---|---|---|
 | `research` | `.verbinal/research` | One JSON file per Research record (below) | Verbinal, when the person keeps Research in VOSpace |
+| `workflows` | `.verbinal/workflows` | One record per working copy: its file name (`slug`) and its text | Verbinal, when the person keeps their workflows there |
+| `savedQueries` | `.verbinal/queries` | One record per saved query | the same, for saved queries |
+| `recentSearches` | `.verbinal/recent-searches` | One record per recent search, the last 100 | the same |
+| `guides` | `.verbinal/guides` | One record per guide (`guide`), tool description (`toolDescription`) or the default session instructions (`sessionInstructions`) | the same; only what is in force, never a proposal |
+| `computeHistory` | `.verbinal/compute-history` | One record per Remote Compute run: who, what, on which image, how it ended | the same |
+| `jobHistory` | `.verbinal/jobs` | One record per finished batch job, with its reason | the same |
+| `userImages` | `.verbinal/images` | One record per image added to the launch list | the same |
+| `recentLaunches` | `.verbinal/launches` | One record per recent launch | the same |
+| `portalDefaults` | `.verbinal/portal` | The account's launch defaults | the same |
 | `imagePackages` | `.verbinal/manifests` | `<image id, sanitized>.json`: an image's installed packages | Image Discovery's probe jobs, running on CANFAR |
 | `computeRuns` | `.verbinal/exec` (`inbox/`, `out/`) | A run's request in `inbox/`, its result in `out/` | Remote Compute: Verbinal writes the request, the CANFAR session the result |
 | `stagedScripts` | `.verbinal-scripts` | `<sha>.py`: a batch job's script | A batch job launched with a `script` |
@@ -59,8 +68,15 @@ device is synced on all of them.
    image, or an older one. A result in `exec/out/` goes to its run. Scripts and exports are counted.
 
 Verbinal for macOS syncs right after sign-in, in the background; again when it comes back to the front
-and the last sync is over 15 minutes old; a few seconds after Research changes, while Research is kept
-in VOSpace; and with **Sync Now**. It waits longer between automatic syncs while VOSpace fails.
+and the last sync is over 15 minutes old; a few seconds after a collection the person keeps in VOSpace
+changes; and with **Sync Now**. It waits longer between automatic syncs while VOSpace fails. An account
+without a storage home (a CADC account without CANFAR) is synced not at all: nothing is read or written.
+
+The person chooses each collection of their work (`research` to `portalDefaults`) in Settings ▸
+Storage; Verbinal never declares one by itself. Every collection follows one rule — Research's, below:
+one file per item named by the hash of its key, the newer change wins, a removal is a mark, fields a
+later build wrote are kept, nothing while `.verbinal/` is readable by anyone. A record of a list is
+`{ "format": 1, "key": …, "changedAt": …, "removedAt": …, "record": { the list's own record } }`.
 
 ## Research items
 

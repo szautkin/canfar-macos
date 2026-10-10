@@ -50,6 +50,25 @@ final class RecentLaunchStore {
         persistence.write(launches)
     }
 
+    // MARK: - From another device (plan 36 3.6)
+
+    /// Keeps `launch` as another device has it, in its place by when it was
+    /// launched. A session name is one launch: the newer stays.
+    func keep(_ launch: RecentLaunch) {
+        launches.removeAll { $0.id == launch.id }
+        if let same = launches.firstIndex(where: { $0.name == launch.name }) {
+            guard launches[same].launchedAt < launch.launchedAt else { return }
+            launches.remove(at: same)
+        }
+        launches = Array((launches + [launch]).sorted { $0.launchedAt > $1.launchedAt }.prefix(maxEntries))
+        persistence.write(launches)
+    }
+
+    func remove(id: UUID) {
+        launches.removeAll { $0.id == id }
+        persistence.write(launches)
+    }
+
     func clear() {
         launches.removeAll()
         persistence.write(launches)

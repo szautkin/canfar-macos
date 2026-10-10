@@ -7,7 +7,7 @@
 import Foundation
 
 /// A Codable snapshot of all search form fields for persistence.
-struct SearchFormSnapshot: Codable, Equatable {
+struct SearchFormSnapshot: Codable, Equatable, Sendable {
     var observationID: String = ""
     var piName: String = ""
     var proposalID: String = ""

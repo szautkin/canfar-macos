@@ -90,15 +90,16 @@ Ce que Verbinal garde dans votre stockage VOSpace, et comment cela reste pareil 
 vous utilisez. Un manifeste dans votre stockage, `.verbinal/manifest.json`, dit quels types de données
 de Verbinal vous y gardez et où ; chaque Verbinal où vous vous connectez le lit. Verbinal les synchronise
 dès que vous vous connectez, discrètement, et ne supprime jamais rien. Connectez-vous pour voir cette
-section.
+section. Seuls les comptes CANFAR ont un stockage : avec un compte qui n’en a pas, cette section le dit,
+et votre travail reste sur ce Mac.
 
 | Réglage | Ce qu’il fait |
 |---|---|
-| **Recherche** ▸ **Garder Recherche dans VOSpace** | Désactivé tant que vous ne l’activez pas. Activé, les détails de vos observations, leurs notes, étiquettes et qualité (pas leurs fichiers) sont gardés dans votre stockage, dans `.verbinal/research`, et sont les mêmes sur chaque appareil. Activé ici, c’est activé pour tous les appareils ; désactivé, les fichiers restent dans votre stockage. Seulement tant que votre dossier `.verbinal` est privé : quand tout le monde peut le lire, ce réglage le dit, et Recherche attend que vous le rendiez privé dans [Stockage](09-storage.md#les-fichiers-qui-ne-devraient-pas-être-publics). |
-| **Les données de Verbinal dans votre stockage** | Chaque type : **Recherche**, **Listes de paquets des images**, **Exécutions du calcul à distance**, **Scripts des tâches en lot**, **Exportations**. Pour chacun, son dossier, combien d’éléments et leur taille, et ce que la dernière synchronisation a apporté sur ce Mac ; **Pas gardé dans votre stockage** quand le manifeste ne le déclare pas. **Afficher dans Stockage** ouvre son dossier. |
+| **Votre travail dans VOSpace** | Un interrupteur pour chaque partie de votre travail, chacun désactivé tant que vous ne l’activez pas : **Recherche** (les détails de vos observations, leurs notes, étiquettes et qualité, pas leurs fichiers), **Flux de travail**, **Requêtes enregistrées**, **Recherches récentes** (les 100 dernières), **Guides pour les assistants** (vos guides, vos descriptions des outils et vos consignes de session par défaut), **Historique du calcul à distance**, **Historique des tâches en lot**, **Les images que vous avez ajoutées**, **Lancements récents** et **Valeurs de lancement par défaut du Portail**. Ce que vous activez est gardé dans votre stockage, dans `.verbinal`, et est pareil sur chaque appareil où vous vous connectez. Un choix fait ici vaut pour tous les appareils ; désactivé, les fichiers restent dans votre stockage. Rien ne bouge tant que tout le monde peut lire votre dossier `.verbinal` : ce réglage le dit jusqu’à ce que vous le rendiez privé dans [Stockage](09-storage.md#les-fichiers-qui-ne-devraient-pas-être-publics). Les connexions, ce que les assistants peuvent faire, les journaux de session et les fichiers de ce Mac n’en sortent jamais. |
+| **Les données de Verbinal dans votre stockage** | Ce que Verbinal y garde de toute façon : **Listes de paquets des images**, **Exécutions du calcul à distance**, **Scripts des tâches en lot**, **Exportations**. Pour chacun, son dossier, combien d’éléments et leur taille, et ce que la dernière synchronisation a apporté sur ce Mac ; **Pas gardé dans votre stockage** quand le manifeste ne le déclare pas. **Afficher dans Stockage** ouvre son dossier. |
 | **Synchroniser maintenant** | Synchronise aussitôt ; à côté, quand a eu lieu la dernière synchronisation. Une synchronisation qui a échoué dit pourquoi, et la suivante est tentée plus tard. |
 
-Quand deux appareils ont modifié la même observation avant de se synchroniser, la modification la plus
+Quand deux appareils ont modifié la même chose avant de se synchroniser, la modification la plus
 récente l’emporte, et celle qu’elle remplace est gardée sur le Mac où elle a été faite.
 
 ## Clients MCP

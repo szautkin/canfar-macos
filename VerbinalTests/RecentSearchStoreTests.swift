@@ -46,12 +46,14 @@ final class RecentSearchStoreTests: XCTestCase {
         XCTAssertEqual(store.searches[0].formSnapshot.selectedCollections, ["JWST"])
     }
 
+    /// The last 100 (plan 36 decision 5), the newest first.
     func testMaxEntries() {
         let store = makeStore()
-        for i in 0..<25 {
+        for i in 0..<105 {
             store.save(makeSearch(target: "Target\(i)", collection: "Col\(i)"))
         }
-        XCTAssertEqual(store.searches.count, 20)
+        XCTAssertEqual(store.searches.count, 100)
+        XCTAssertEqual(store.searches.first?.formSnapshot.target, "Target104")
     }
 
     func testRemove() {
