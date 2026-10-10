@@ -18,7 +18,10 @@ extension AppState {
     func runSearchExport(_ request: ExportSearchResultsTool.Payload,
                          vospace: VOSpaceBrowserService) async throws -> SearchExport {
         var export = try await writeSearchExport(format: request.format, adql: request.adql, maxRecords: request.maxRecords)
-        guard request.goesToStorage, let path = export.path else { return export }
+        guard request.goesToStorage, let path = export.path else {
+            if let path = export.path { ResultDestination.shared.kept(URL(fileURLWithPath: path), area: .searches) }
+            return export
+        }
         guard !username.isEmpty else {
             throw ProposalApplyError.backendError("Sign in to CADC before exporting to storage — the file is at \(path)")
         }

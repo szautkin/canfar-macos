@@ -75,7 +75,9 @@ then **Go**. A position off the image says so.
 ### Bookmarks
 
 **Bookmarks** keeps positions you want to come back to. Place the crosshair, type a
-**Label (optional)**, and save it. Each bookmark has **Go To** and **Delete**.
+**Label (optional)**, and save it. Each bookmark has **Go To** and **Delete**. With **Sky bookmarks**
+turned on in [Settings ▸ Storage](14-settings.md#storage), they follow their file to your other devices,
+as marks do.
 
 ## Comparing images
 
@@ -93,7 +95,9 @@ With two or more tabs open:
 ![A mark selected on the image, with its grips](../images/en/04-fits-viewer/fits-mark.png)
 
 Marks are your annotations on an image: circles, boxes, callouts with a line, and text. Verbinal keeps
-them for each file (and each extension) on this Mac; open the file again and they are there.
+them for each file (and each extension); open the file again and they are there. With **Marks on
+images** turned on in [Settings ▸ Storage](14-settings.md#storage), the marks on a file from Research or
+from your storage are on every device you sign in on; those on a file of this Mac alone stay here.
 
 Open **Marks** in the side panel:
 

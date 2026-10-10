@@ -8,7 +8,7 @@ import Foundation
 import VerbinalKit
 
 /// A saved RA/Dec position for quick navigation in the FITS viewer.
-struct CoordinateBookmark: Codable, Identifiable, Equatable {
+struct CoordinateBookmark: Codable, Identifiable, Equatable, Sendable {
     let id: UUID
     var label: String
     let ra: Double

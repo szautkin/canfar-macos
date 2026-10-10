@@ -35,7 +35,9 @@ final class StorageSyncModel {
         let resumeRuns: @Sendable () async -> Void
     }
 
-    private(set) var status: StorageSync.Status?
+    private(set) var status: StorageSync.Status? {
+        didSet { ResultDestination.shared.keeping = keeps("results") }
+    }
     /// Why the last change of the person's failed.
     private(set) var problem: String?
     private var sync: StorageSync?
@@ -71,6 +73,10 @@ final class StorageSyncModel {
                                catalog: Self.catalog(deps), stateFile: StorageSyncState.file(for: username))
         self.sync = sync
         work = deps.work
+        let vospace = deps.vospace
+        ResultDestination.shared.send = { file, folder in
+            try await ResultUpload(vospace: vospace, username: username).upload(file, to: folder)
+        }
         run(.signedIn)
         for collection in work { watch(collection) }
         activation = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
@@ -84,6 +90,7 @@ final class StorageSyncModel {
         changed = [:]
         if let activation { NotificationCenter.default.removeObserver(activation) }
         activation = nil
+        ResultDestination.shared.send = nil
         let stopping = sync
         Task { await stopping?.stop() }
         sync = nil

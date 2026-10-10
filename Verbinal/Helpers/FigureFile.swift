@@ -35,6 +35,7 @@ enum FigureFile {
         do {
             try render(view, as: format, scale: scale, to: url)
             changes.done("export_figure", what)
+            ResultDestination.shared.kept(url, area: .figures)
         } catch {
             changes.failed("export_figure", what, because: error.localizedDescription)
             throw error

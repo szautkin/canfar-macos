@@ -131,6 +131,8 @@ struct StorageSettingsTab: View {
     static func title(_ id: String) -> String {
         switch id {
         case "research": String(localized: "Research")
+        case "marks": String(localized: "Marks on images")
+        case "bookmarks": String(localized: "Sky bookmarks")
         case "workflows": String(localized: "Workflows")
         case "savedQueries": String(localized: "Saved queries")
         case "recentSearches": String(localized: "Recent searches")
@@ -140,6 +142,7 @@ struct StorageSettingsTab: View {
         case "userImages": String(localized: "Your added images")
         case "recentLaunches": String(localized: "Recent launches")
         case "portalDefaults": String(localized: "Portal launch defaults")
+        case "results": String(localized: "Results: downloads, cutouts, search exports and figures")
         case "imagePackages": String(localized: "Image package lists")
         case "computeRuns": String(localized: "Remote Compute runs")
         case "stagedScripts": String(localized: "Batch job scripts")

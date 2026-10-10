@@ -25,6 +25,8 @@ extension AppState {
     func workCollections(username: String) -> [WorkCollection] {
         [
             researchModel.syncCollection(),
+            marks.syncCollection(),
+            fitsBookmarks.syncCollection(),
             workflowStore.syncCollection(),
             searchModel.savedQueryStore.syncCollection(),
             searchModel.recentSearchStore.syncCollection(),
@@ -34,6 +36,9 @@ extension AppState {
             userImages.syncCollection(),
             recentLaunchStore.syncCollection(),
             portalSettingsService.syncCollection(username: username),
+            // Not a collection: the results kept on the Mac, sent when chosen (plan 36 4.1).
+            WorkCollection(kind: ResultsKind(send: { await ResultDestination.shared.sendWaiting() }),
+                           watch: { _ = ResultDestination.shared.waiting }),
         ]
     }
 }

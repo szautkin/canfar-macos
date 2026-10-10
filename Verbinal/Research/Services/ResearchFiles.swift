@@ -27,6 +27,7 @@ enum DownloadPlacement {
             try? await downloads.deleteFile(at: tempURL)
             throw ProposalApplyError.backendError("moving \(name) into \(DownloadsFolder.url.lastPathComponent) failed: \(error.localizedDescription)")
         }
+        await ResultDestination.shared.kept(finalURL, area: .research)
         #if os(macOS)
         let bookmark = try? finalURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
         let path = LocalFolderAccessStore.userFacingPath(for: finalURL)

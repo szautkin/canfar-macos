@@ -44,6 +44,22 @@ struct ComputeRunsKind: StorageKind {
     }
 }
 
+/// The results the person keeps in their storage too (plan 36 4.1): a sync
+/// sends those waiting to go. Another device's are there to browse, never
+/// fetched.
+struct ResultsKind: StorageKind {
+    let id = "results"
+    let defaultFolder = ResultDestination.folder
+    /// Waits for the person: their allocation.
+    let declaredWhenFound = false
+    /// Sends what waits; how many went.
+    let send: @Sendable () async -> Int
+
+    func sync(_ context: StorageKindContext) async throws -> StorageKindOutcome {
+        StorageKindOutcome(sent: await send())
+    }
+}
+
 /// Files Verbinal leaves in VOSpace for the person — batch-job scripts,
 /// uploaded exports (plan 34 V): counted, with their size, never deleted.
 struct CountedKind: StorageKind {

@@ -30,9 +30,34 @@ final class BookmarkStore {
         self.bookmarks = persistence.read() ?? []
     }
 
-    /// Bookmarks for a specific file.
-    func bookmarks(for filePath: String) -> [CoordinateBookmark] {
-        bookmarks.filter { $0.sourceFilePath == filePath }
+    /// The bookmarks kept with the file at `url`: by its identity, which
+    /// every device shares for a file of Research or of the person's storage
+    /// (plan 36 4.2), or by its path here, as before.
+    func bookmarks(for url: URL) -> [CoordinateBookmark] {
+        let identity = FileOrigins.shared.identity(of: url)
+        let paths: Set<String> = [identity, url.path, FileIdentity.key(url)]
+        return bookmarks.filter { paths.contains($0.sourceFilePath) }
+    }
+
+    // MARK: - From another device (plan 36 4.2)
+
+    /// The bookmarks every device can use: of a file every device knows, or
+    /// of no file.
+    var portable: [CoordinateBookmark] {
+        bookmarks.filter { $0.sourceFilePath.isEmpty || FileOrigins.isPortable($0.sourceFilePath) }
+    }
+
+    /// Keeps `bookmark` as another device has it, in its place by when it was saved.
+    func keep(_ bookmark: CoordinateBookmark) {
+        let isNew = !bookmarks.contains { $0.id == bookmark.id }
+        bookmarks.removeAll { $0.id == bookmark.id }
+        bookmarks = (bookmarks + [bookmark]).sorted { $0.savedAt > $1.savedAt }
+        persistence.write(bookmarks)
+        changes.done(isNew ? "save_fits_bookmark" : "rename_fits_bookmark", "the sky bookmark \"\(bookmark.label)\"")
+    }
+
+    func remove(id: UUID) {
+        if let bookmark = bookmarks.first(where: { $0.id == id }) { delete(bookmark) }
     }
 
     func save(_ bookmark: CoordinateBookmark) {

@@ -45,9 +45,9 @@ final class BookmarkStoreTests: XCTestCase {
         store.save(makeBookmark(file: "/b.fits"))
         store.save(makeBookmark(file: "/a.fits"))
 
-        XCTAssertEqual(store.bookmarks(for: "/a.fits").count, 2)
-        XCTAssertEqual(store.bookmarks(for: "/b.fits").count, 1)
-        XCTAssertEqual(store.bookmarks(for: "/c.fits").count, 0)
+        XCTAssertEqual(store.bookmarks(for: URL(fileURLWithPath: "/a.fits")).count, 2)
+        XCTAssertEqual(store.bookmarks(for: URL(fileURLWithPath: "/b.fits")).count, 1)
+        XCTAssertEqual(store.bookmarks(for: URL(fileURLWithPath: "/c.fits")).count, 0)
     }
 
     func testDelete() {

@@ -14,8 +14,8 @@ struct FITSBookmarkPanel: View {
     @Environment(\.fitsToast) private var toast
 
     private var bookmarks: [CoordinateBookmark] {
-        guard let path = model.fileURL?.path else { return store.bookmarks }
-        return store.bookmarks(for: path)
+        guard let url = model.fileURL else { return store.bookmarks }
+        return store.bookmarks(for: url)
     }
 
     var body: some View {
@@ -37,7 +37,7 @@ struct FITSBookmarkPanel: View {
                         : labelText.trimmingCharacters(in: .whitespaces)
                     let bookmark = CoordinateBookmark(
                         label: resolvedLabel, ra: ra, dec: dec,
-                        sourceFilePath: model.fileURL?.path ?? ""
+                        sourceFilePath: model.fileURL.map(FileOrigins.shared.identity(of:)) ?? ""
                     )
                     store.save(bookmark)
                     labelText = ""

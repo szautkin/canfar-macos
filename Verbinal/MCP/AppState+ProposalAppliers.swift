@@ -177,7 +177,7 @@ extension AppState {
                     // Attach to the active tab's file so the panel's
                     // per-file filter shows it; a global bookmark (no
                     // viewer open) keeps an empty source path.
-                    let sourcePath = self.fitsTabHost.activeTab?.fileURL?.path ?? ""
+                    let sourcePath = self.fitsTabHost.activeTab?.fileURL.map(FileOrigins.shared.identity(of:)) ?? ""
                     let bookmark = CoordinateBookmark(
                         label: label, ra: ra, dec: dec, sourceFilePath: sourcePath,
                         agentAttribution: attribution)
@@ -204,6 +204,7 @@ extension AppState {
                 let user = await self.username
                 guard !user.isEmpty else { throw ProposalApplyError.backendError("Sign in to CADC first") }
                 let (tempURL, _) = try await vospace.downloadFile(username: user, path: path)
+                await FileOrigins.shared.noteFromStorage(tempURL, path: path)
                 let name = tempURL.lastPathComponent
                 switch try await self.openAstronomyFITSAwaitingChoice(url: tempURL) {
                 case .awaitingViewerChoice: return AppState.viewerChoiceAgentNote(filename: name)

@@ -70,6 +70,8 @@ final class ResearchModel {
         self.cutoutService = CutoutService(downloads: downloadService)
         self.files = ResearchFiles(store: self.observationStore, downloads: downloadService)
         files.onNewRecord = { [weak self] record in self?.completeFromArchive(record) }
+        let store = self.observationStore
+        FileOrigins.shared.research = { [weak store] url in store?.portableIdentity(of: url) }
     }
 
     var filteredObservations: [DownloadedObservation] {
@@ -223,8 +225,11 @@ final class ResearchModel {
         var elsewhere: [String] = []
         for companion in companions {
             let name = companion.lastPathComponent
-            if (try? DownloadsFolder.move(companion, named: name, into: cutout.deletingLastPathComponent())) == nil {
-                if let placed = try? DownloadsFolder.move(companion, named: name) { elsewhere.append(placed.lastPathComponent) }
+            if let placed = try? DownloadsFolder.move(companion, named: name, into: cutout.deletingLastPathComponent()) {
+                ResultDestination.shared.kept(placed, area: .research)
+            } else if let placed = try? DownloadsFolder.move(companion, named: name) {
+                ResultDestination.shared.kept(placed, area: .research)
+                elsewhere.append(placed.lastPathComponent)
             }
         }
         return elsewhere.isEmpty ? nil : String(localized: "\(elsewhere.joined(separator: ", ")) saved in Downloads")

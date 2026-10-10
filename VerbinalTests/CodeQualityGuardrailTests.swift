@@ -148,6 +148,30 @@ final class CodeQualityGuardrailTests: XCTestCase {
         XCTAssertEqual(problems, [])
     }
 
+    // MARK: - Every result goes through ResultDestination
+
+    /// Files that place a file on the Mac that is not a result to send: a
+    /// download of a file already in storage, a session log (the device's),
+    /// the Research bundle (its own upload choice), and the folder itself.
+    static let placesNotAResult: Set<String> = [
+        "Verbinal/Helpers/DownloadsFolder.swift", "Verbinal/MCP/Tools/VOSpaceWriteTools.swift",
+        "Verbinal/AgentSession/MCP/SessionLogWriteTools.swift", "Verbinal/MCP/AppState+ResearchTools.swift",
+    ]
+
+    /// Plan 36 4.1: a result kept on the Mac goes to the person's storage
+    /// too when they choose — so each place that keeps one says so to
+    /// `ResultDestination`, or writes it through what does (`FigureFile`,
+    /// `DownloadPlacement`).
+    func testEveryResultGoesThroughResultDestination() {
+        var unsaid: [String] = []
+        for (path, text) in Self.sources(in: ["Verbinal"]) where !Self.placesNotAResult.contains(path) {
+            guard text.contains("DownloadsFolder.move(") || text.contains("DownloadsFolder.timestampedURL(") else { continue }
+            let says = ["ResultDestination.shared.kept(", "FigureFile.write(", "DownloadPlacement.place("].contains { text.contains($0) }
+            if !says { unsaid.append(path) }
+        }
+        XCTAssertEqual(unsaid.sorted(), [], "a result kept on the Mac: tell ResultDestination (plan 36 4.1)")
+    }
+
     // MARK: - Every store is synced, or the device's
 
     /// Synced through CANFAR storage when the person chooses (plan 34 V, 36
@@ -157,7 +181,7 @@ final class CodeQualityGuardrailTests: XCTestCase {
     static let synced: Set<String> = [
         "downloaded_observations.json", "note", "noteTag", "saved_queries.json", "recent_searches.json",
         "aiGuideTool", "aiToolOverride", "compute_runs.json", "job_history.json", "user_images.json",
-        "recent_launches.json", "portal_settings.json",
+        "recent_launches.json", "portal_settings.json", "bookmarks.json", "marks.json",
     ]
     /// Never synced: an assistant's sessions on this Mac, caches, indexes,
     /// the app's own bookkeeping — the jobs launched and not yet ended,
@@ -165,11 +189,11 @@ final class CodeQualityGuardrailTests: XCTestCase {
     /// the database.
     static let deviceOnly: Set<String> = [
         "agent_activity.json", "assistant_made.json", "pending_proposals.json", "job_launches.json",
+        "file_origins.json", "result_uploads.json",
         "archiveObservation", "portal_image_cache.json", "meta", "noteSearch", "observation_notes.json",
     ]
-    /// The person's work not yet synced: marks and bookmarks by a file's
-    /// identity (plan 36 4.2), Research's database (5.1). Shrink only.
-    static let notSyncedYet: Set<String> = ["bookmarks.json", "marks.json", "observation"]
+    /// The person's work not yet synced: Research's database (plan 36 5.1). Shrink only.
+    static let notSyncedYet: Set<String> = ["observation"]
 
     func testEveryStoreIsSyncedOrTheDevices() {
         let text = Self.sources(in: ["Verbinal"]).map(\.text).joined(separator: "\n")

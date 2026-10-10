@@ -270,3 +270,20 @@ final class ObservationStore {
         return UUID(uuidString: "\(s[..<i8])-\(s[i8..<i12])-\(s[i12..<i16])-\(s[i16..<i20])-\(s[i20...])")
     }
 }
+
+extension ObservationStore {
+    /// The identity every device shares of a file kept for one of the
+    /// records: `caom:<record key>/<file name>` (plan 36 4.2); nil for a
+    /// file of none. Names are compared first, so few paths are resolved.
+    func portableIdentity(of url: URL) -> String? {
+        let name = url.lastPathComponent
+        let wanted = FileIdentity.key(url)
+        for record in observations {
+            let paths = [record.localPath] + record.keptFiles.map(\.localPath)
+            for path in paths where !path.isEmpty && (path as NSString).lastPathComponent == name {
+                if FileIdentity.key(URL(fileURLWithPath: path)) == wanted { return "caom:\(record.recordKey)/\(name)" }
+            }
+        }
+        return nil
+    }
+}

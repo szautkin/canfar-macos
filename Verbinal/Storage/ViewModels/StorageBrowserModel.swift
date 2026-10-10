@@ -325,6 +325,7 @@ final class StorageBrowserModel {
         )
         guard case .success(let tempURL, _) = outcome else { return }
         statusMessage = ""
+        FileOrigins.shared.noteFromStorage(tempURL, path: path)
         onOpenFile?(tempURL)
     }
 

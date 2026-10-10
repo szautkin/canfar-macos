@@ -82,7 +82,9 @@ cartes de l’en-tête, avec **Filtrer les mots-clés…** pour en trouver une.
 ### Signets
 
 **Signets** garde les positions où vous voulez revenir. Placez le réticule, tapez un
-**Libellé (facultatif)**, et enregistrez-le. Chaque signet a **Aller à** et **Supprimer**.
+**Libellé (facultatif)**, et enregistrez-le. Chaque signet a **Aller à** et **Supprimer**. Avec
+**Signets du ciel** activé dans [Réglages ▸ Stockage](14-settings.md#stockage), ils suivent leur fichier
+sur vos autres appareils, comme les marques.
 
 ## Comparer des images
 
@@ -101,8 +103,10 @@ Avec deux onglets ou plus :
 ![Une marque sélectionnée sur l’image, avec ses poignées](../images/fr/04-fits-viewer/fits-mark.png)
 
 Les marques sont vos annotations sur une image : cercles, rectangles, légendes avec un trait, et texte.
-Verbinal les garde pour chaque fichier (et chaque extension) sur ce Mac ; rouvrez le fichier et elles
-sont là.
+Verbinal les garde pour chaque fichier (et chaque extension) ; rouvrez le fichier et elles sont là. Avec
+**Marques sur les images** activé dans [Réglages ▸ Stockage](14-settings.md#stockage), les marques d’un
+fichier de Recherche ou de votre stockage sont sur chaque appareil où vous vous connectez ; celles d’un
+fichier de ce Mac seulement restent ici.
 
 Ouvrez **Marques** dans le panneau latéral :
 

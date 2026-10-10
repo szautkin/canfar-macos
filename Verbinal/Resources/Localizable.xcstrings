@@ -20196,6 +20196,36 @@
           }
         }
       }
+    },
+    "Marks on images" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marques sur les images"
+          }
+        }
+      }
+    },
+    "Sky bookmarks" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signets du ciel"
+          }
+        }
+      }
+    },
+    "Results: downloads, cutouts, search exports and figures" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Résultats : téléchargements, découpes, exportations de recherche et figures"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -111,6 +111,9 @@ struct Mark: Codable, Identifiable, Equatable, Sendable {
     /// Nil: however a mark by this author is drawn.
     var style: Style?
     var createdAt: Date
+    /// When it last changed; nil until it does, and in marks from before
+    /// (plan 36 4.2: the newer of two devices' marks wins).
+    var modifiedAt: Date?
 
     var effectiveStyle: Style { (style ?? .author(author)).sane() }
 
