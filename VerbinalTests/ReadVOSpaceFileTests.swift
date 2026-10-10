@@ -50,6 +50,28 @@ final class ReadVOSpaceFileTests: XCTestCase {
         ReadVOSpaceFileTool.Args(path: path, offset: offset, maxBytes: maxBytes)
     }
 
+    // MARK: - Pictures (plan 36 1.7)
+
+    /// A whole PNG comes back as an image the assistant can see; a slice of
+    /// one, and a table, do not.
+    func testAWholePictureIsAnsweredAsAnImage() async throws {
+        let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) + Data(count: 120)
+        let whole = await makeTool(data: png, totalBytes: png.count)
+            .invoke(arguments: Data(#"{"path":"run1/plots/fold.png"}"#.utf8), context: ctx())
+        guard case .image(let data, let mimeType, let caption) = whole else { return XCTFail("\(whole)") }
+        XCTAssertEqual(data, png)
+        XCTAssertEqual(mimeType, "image/png")
+        XCTAssertTrue(caption?.contains("run1/plots/fold.png") == true)
+
+        let slice = await makeTool(data: png.prefix(64), totalBytes: png.count)
+            .invoke(arguments: Data(#"{"path":"run1/plots/fold.png","maxBytes":64}"#.utf8), context: ctx())
+        guard case .data = slice else { return XCTFail("a slice stays base64: \(slice)") }
+
+        let table = await makeTool(data: Data("a,b\n1,2\n".utf8), totalBytes: 8)
+            .invoke(arguments: Data(#"{"path":"run1/out.csv"}"#.utf8), context: ctx())
+        guard case .data = table else { return XCTFail("a table stays text: \(table)") }
+    }
+
     // MARK: - Cap enforcement
 
     /// 1 MB is the documented hard cap per call. The boundary

@@ -236,8 +236,15 @@ extension AppState {
         tools.append(SetToolDescriptionTool())
         tools.append(ClearToolDescriptionTool())
         tools.append(AddGuideToolTool())
-        tools.append(UpdateGuideToolTool())
-        tools.append(DeleteGuideToolTool())
+        let findGuide: @Sendable (String) async -> UUID? = { [weak self] name in
+            await MainActor.run { self?.aiGuideService.guides.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }?.id }
+        }
+        var updateGuide = UpdateGuideToolTool()
+        updateGuide.findGuide = findGuide
+        tools.append(updateGuide)
+        var deleteGuide = DeleteGuideToolTool()
+        deleteGuide.findGuide = findGuide
+        tools.append(deleteGuide)
 
         // View-state tools — live-applied, no proposal.
         tools.append(makeOpenDownloadedTool(store: observationStore, viewer: .fits))

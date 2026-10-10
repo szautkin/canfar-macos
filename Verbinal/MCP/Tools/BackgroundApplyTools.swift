@@ -75,9 +75,15 @@ struct GetJobStatusTool: JSONReadTool {
 
     let status: @Sendable (_ jobId: String) async -> (job: ApplyJobRegistry.Job?, state: ProposalState)?
 
+    /// An id that is not a background apply's says what to use instead (plan 36 1.4): a
+    /// batch job's id (`t9nqdskz`, from list_job_history) is read with the batch job tools.
+    static func notAnApplyJob(_ id: String) -> String {
+        "'\(ToolFailureReason.clip(id, max: 40))' is not a background apply's id (a proposal UUID). A batch job's id is read with get_headless_job, get_headless_job_logs or list_job_history."
+    }
+
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         guard let found = await status(args.jobId) else {
-            throw ToolFailureReason.invalidArgument("'\(args.jobId)' is not a job id — it is the proposal's UUID")
+            throw ToolFailureReason.invalidArgument(Self.notAnApplyJob(args.jobId))
         }
         guard let job = found.job else {
             return Output(jobId: args.jobId, status: found.state.rawValue, kind: nil, summary: nil,

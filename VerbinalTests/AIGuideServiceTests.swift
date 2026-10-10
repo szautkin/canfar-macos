@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
+import VerbinalKit
 @testable import Verbinal
 
 /// Unit coverage for ``AIGuideService``: description overrides, custom guide
@@ -170,5 +171,27 @@ final class AIGuideServiceTests: XCTestCase {
         XCTAssertFalse(rows[0].isOverridden)
         XCTAssertEqual(rows[1].effectiveDescription, "override b")
         XCTAssertTrue(rows[1].isOverridden)
+    }
+
+    /// Plan 36 1.5: the guide tools take a guide's name as well as its id;
+    /// an unknown one says where the names are.
+    func testTheGuideToolsTakeAName() async throws {
+        let ctx = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 9))
+        let id = UUID()
+        var delete = DeleteGuideToolTool()
+        delete.findGuide = { $0 == "team_conventions" ? id : nil }
+        let plan = try await delete.plan(.init(id: "team_conventions"), context: ctx)
+        let payload = try JSONDecoder().decode(DeleteGuideToolTool.Payload.self, from: plan.payload)
+        XCTAssertEqual(payload.id, id.uuidString)
+        var update = UpdateGuideToolTool()
+        update.findGuide = delete.findGuide
+        let updated = try await update.plan(.init(id: id.uuidString, name: "team_conventions", description: "d", body: nil), context: ctx)
+        XCTAssertEqual(try JSONDecoder().decode(UpdateGuideToolTool.Payload.self, from: updated.payload).id, id.uuidString)
+        do {
+            _ = try await delete.plan(.init(id: "nobody"), context: ctx)
+            XCTFail("an unknown name")
+        } catch let failure as ToolFailureReason {
+            XCTAssertTrue(failure.description.contains("list_guide_tools"), failure.description)
+        }
     }
 }

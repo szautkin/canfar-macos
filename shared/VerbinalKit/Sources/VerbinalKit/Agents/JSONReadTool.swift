@@ -22,6 +22,10 @@ public protocol JSONReadTool: AITool {
     /// surface a typed failure; any other error wraps as `.backendError`.
     func handle(_ args: Args, context: AIToolContext) async throws -> Output
 
+    /// An output to give as an image an assistant can see rather than as
+    /// JSON (plan 36 1.7); nil, the default, answers JSON.
+    func imageAnswer(_ output: Output) -> ToolResult?
+
     /// Wall-clock deadline applied around every `handle(_:context:)`
     /// invocation. Default 60s.
     ///
@@ -53,6 +57,8 @@ extension JSONReadTool {
     /// with a reason of its own — a fallback to try in time.
     public var toolTimeoutSeconds: TimeInterval { RequestTimeout.toolDeadline }
 
+    public func imageAnswer(_ output: Output) -> ToolResult? { nil }
+
     public func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
         let args: Args
         do {
@@ -74,6 +80,7 @@ extension JSONReadTool {
             ) {
                 try await handle(args, context: context)
             }
+            if let image = imageAnswer(output) { return image }
             let bytes = try Self.encoder.encode(output)
             return .data(bytes)
         } catch let failure as ToolFailureReason {

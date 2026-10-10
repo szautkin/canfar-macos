@@ -18,6 +18,16 @@ final class StartupRegistrationTests: XCTestCase {
         "get_session_log", "explain_log_entry", "list_session_logs", "export_session_log", "delete_session_logs",
     ]
 
+    /// Plan 36 1.1: a test host never serves MCP, whatever its own
+    /// preferences say: its server rewrote the real app's sidecar.
+    @MainActor
+    func testATestHostNeverServes() {
+        XCTAssertTrue(AgentsService.isTestHost)
+        let state = AppState()
+        XCTAssertFalse(state.agentsService.isRunning, "started at launch")
+        XCTAssertNil(state.agentsService.socketPath, "no sidecar written")
+    }
+
     /// The tools registered at startup, not a fresh `makeAgentTools()`.
     @MainActor
     func testStartupRegistersEveryToolTheAppMakes() {

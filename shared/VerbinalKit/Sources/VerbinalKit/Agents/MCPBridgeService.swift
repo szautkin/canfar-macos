@@ -545,40 +545,6 @@ public actor MCPBridgeService {
         }
     }
 
-    // MARK: - Per-connection capability bag
-
-    /// The bridge needs concrete proposal/budget instances per connection.
-    /// Subclassing the actor for tests would be awkward; instead, the
-    /// caller injects them through `init(router:identity:services:approval:)`,
-    /// so the bridge can never be served in an unconfigured state.
-    public struct PerConnectionServices: Sendable {
-        public let proposals: any ProposalStore
-        public let budget: ProposalBudget
-        public let eventLog: EventLog?
-        /// Where this session's log is kept (plan 23); nil keeps none.
-        public let recorder: (any AgentSessionRecorder)?
-        /// Whether the person has allowed the session (plan 25); nil lets
-        /// every call through.
-        public let gate: (any AgentSessionGate)?
-        /// Which session a relay's reconnection continues (plan 34 S); nil
-        /// makes every connection a new session.
-        public let continuity: (any AgentSessionContinuity)?
-
-        public init(proposals: any ProposalStore,
-                    budget: ProposalBudget,
-                    eventLog: EventLog? = nil,
-                    recorder: (any AgentSessionRecorder)? = nil,
-                    gate: (any AgentSessionGate)? = nil,
-                    continuity: (any AgentSessionContinuity)? = nil) {
-            self.proposals = proposals
-            self.budget = budget
-            self.eventLog = eventLog
-            self.recorder = recorder
-            self.gate = gate
-            self.continuity = continuity
-        }
-    }
-
     // MARK: - Helpers
 
     private func successResponse<T: Encodable>(id: JSONRPCID, body: T) -> JSONRPCResponse {
@@ -612,9 +578,14 @@ public actor MCPBridgeService {
     private struct EmptyObject: Encodable, Sendable {}
 
     /// What a change waiting in Pending answers.
+    /// A change that waits for the person (plan 36 1.3): it says so, beside
+    /// `applied: true` for one that did not wait.
     private struct Waiting: Encodable, Sendable {
         let proposalID: UUID
         let kind: String
         let summary: String
+        var applied = false
+        var pending = true
+        var waitsFor = "the person, in Pending"
     }
 }

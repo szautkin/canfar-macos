@@ -61,7 +61,7 @@ struct SearchObservationsTool: JSONReadTool {
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let maxRec = min(max(args.maxRec ?? 100, 1), 1000)
-        let adql = try await composeADQL(args)
+        let adql = try await composeADQL(args, maxRec: maxRec)
         let result = try await runQuery(adql, maxRec)
         return Output(
             headers: result.headers,
@@ -71,7 +71,9 @@ struct SearchObservationsTool: JSONReadTool {
         )
     }
 
-    private func composeADQL(_ args: Args) async throws -> String {
+    /// The query that runs: the agent's own, or a cone of `maxRec` rows at most,
+    /// so `adqlExecuted` says what ran (plan 36 1.2).
+    func composeADQL(_ args: Args, maxRec: Int) async throws -> String {
         if let adql = args.adql, !adql.isEmpty {
             return adql
         }
@@ -104,7 +106,7 @@ struct SearchObservationsTool: JSONReadTool {
         // the geometry; agents wanting more shape control still
         // pass `adql` directly.
         return """
-        SELECT TOP 1000
+        SELECT TOP \(maxRec)
           Observation.collection,
           Observation.observationID,
           Plane.publisherID AS publisher_id,

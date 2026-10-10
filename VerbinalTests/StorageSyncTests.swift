@@ -287,6 +287,32 @@ final class StorageSyncTests: XCTestCase {
         XCTAssertNil(stillThere.removedAt)
     }
 
+    /// Plan 36 1.8: fields a later build wrote — at the top, and in
+    /// `details` and `note` — survive this build's changes to the item.
+    func testFieldsThisBuildDoesNotKnowSurviveItsChanges() async throws {
+        let key = "ivo://cadc.nrc.ca/CFHT?1525350/1525350p"
+        var later = try JSONSerialization.jsonObject(with: item(key, note: "first", at: 100).encoded()) as! [String: Any]
+        later["results"] = [["name": "fit.json", "origin": "run 42"]]
+        var details = later["details"] as! [String: Any]
+        details["status"] = "candidate"
+        later["details"] = details
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["research": ".verbinal/research"]))
+        await remote.put(".verbinal/research/" + ResearchItem.fileName(for: key), try JSONSerialization.data(withJSONObject: later))
+
+        let here = FakeResearch()
+        let storage = sync(remote, research: here)
+        await storage.sync(.signedIn)
+        await here.set(item(key, note: "edited here", at: 500))
+        await storage.sync(.changed)
+
+        let sent = try JSONSerialization.jsonObject(with: try await remote.read(".verbinal/research/" + ResearchItem.fileName(for: key))) as! [String: Any]
+        XCTAssertEqual((sent["note"] as? [String: Any])?["text"] as? String, "edited here", "this build's change went")
+        XCTAssertNotNil(sent["results"], "a later build's field stayed")
+        XCTAssertEqual((sent["details"] as? [String: Any])?["status"] as? String, "candidate", "and a nested one")
+        XCTAssertNil(sent["removedAt"])
+    }
+
     func testResearchIsNotSyncedWhileTheFolderIsPublic() async throws {
         let remote = FakeVOSpace()
         await remote.put(StorageManifest.path, manifest(["research": ".verbinal/research"]))

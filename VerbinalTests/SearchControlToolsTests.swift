@@ -153,6 +153,47 @@ final class SearchControlToolsTests: XCTestCase {
         }
     }
 
+    /// Plan 36 1.6: the corrected spelling of a position column reaches the
+    /// table as its own id, for sorting, filters, columns and units.
+    func testSetResultsViewTakesTheCorrectedPositionIDs() async throws {
+        let tool = SetResultsViewTool(apply: { args in
+            XCTAssertEqual(args.sortColumnID, "ra(j20000)")
+            XCTAssertEqual(args.filters?["dec(j20000)"], ">40")
+            XCTAssertEqual(args.visibleColumns, ["ra(j20000)", "instrument"])
+            XCTAssertEqual(args.columnUnits?["ra(j20000)"], "deg")
+            return .applied(.init(filteredCount: 3, currentPage: 0, totalPages: 1))
+        })
+        let json = try decodeJSON(await tool.invoke(arguments: argsData([
+            "sortColumnID": "ra(j2000)", "filters": ["dec(j2000)": ">40"],
+            "visibleColumns": ["ra(j2000)", "instrument"], "columnUnits": ["ra(j2000)": "deg"],
+        ]), context: ctx()))
+        XCTAssertEqual(json["filteredCount"] as? Int, 3)
+        let columns = SearchResultColumns(headers: ["RA (J2000.0)", "Dec. (J2000.0)"], sampleRows: [])
+        if columns.column(id: "ra(j20000)") != nil {
+            XCTAssertNotNil(columns.column(id: "ra(j2000)"), "the lookup finds it by either spelling")
+        }
+    }
+
+    /// Plan 36 1.2: the cone query asks TAP for the rows it reports.
+    func testSearchObservationsSaysTheRowsItAsksFor() async throws {
+        let tool = SearchObservationsTool(runQuery: { _, _ in (["a"], []) }, resolveTarget: { _ in (10.68, 41.27) })
+        let cone = try await tool.composeADQL(.init(adql: nil, target: "M31", ra: nil, dec: nil, radiusDeg: 0.1, maxRec: 20), maxRec: 20)
+        XCTAssertTrue(cone.contains("SELECT TOP 20"), cone)
+        XCTAssertFalse(cone.contains("TOP 1000"))
+        let own = try await tool.composeADQL(.init(adql: "SELECT TOP 5 * FROM caom2.Plane", target: nil, ra: nil, dec: nil, radiusDeg: nil, maxRec: 20), maxRec: 20)
+        XCTAssertEqual(own, "SELECT TOP 5 * FROM caom2.Plane", "the agent's own query, as it gave it")
+    }
+
+    /// Plan 36 1.4: an id that is not a background apply's says what it may be, whole.
+    func testGetJobStatusSaysWhereABatchJobsIdGoes() async {
+        let tool = GetJobStatusTool(status: { _ in nil })
+        let result = await tool.invoke(arguments: argsData(["jobId": "t9nqdskz"]), context: ctx())
+        guard case .failed(let reason) = result else { return XCTFail("\(result)") }
+        XCTAssertTrue(reason.description.contains("get_headless_job"), reason.description)
+        XCTAssertFalse(reason.description.contains("truncated"), "the clip keeps it whole")
+        XCTAssertFalse(reason.description.contains("it is the proposal's UUID"))
+    }
+
     // MARK: - open_observation_detail
 
     func testOpenObservationDetailReportsUnknownRow() async {

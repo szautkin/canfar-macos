@@ -6,6 +6,7 @@
 
 import CryptoKit
 import Foundation
+import MCPCore
 import VerbinalKit
 
 /// One Research record, as kept in VOSpace (plan 34 V):
@@ -30,12 +31,19 @@ struct ResearchItem: Codable, Equatable, Sendable {
         var thumbnailURL: String?
         var previewURL: String?
         var cutout: CutoutSpec?
+
+        enum CodingKeys: String, CodingKey, CaseIterable {
+            case publisherID, collection, observationID, targetName, instrument, filter, ra, dec, startDate,
+                 calLevel, thumbnailURL, previewURL, cutout
+        }
     }
 
     struct Note: Codable, Equatable, Sendable {
         var text: String
         var rating: Int
         var tags: [String]
+
+        enum CodingKeys: String, CodingKey, CaseIterable { case text, rating, tags }
     }
 
     var format = ResearchItem.format
@@ -47,6 +55,20 @@ struct ResearchItem: Codable, Equatable, Sendable {
     var removedAt: Date?
     var details: Details
     var note: Note?
+    /// The item as it was read from storage, whole: the fields this build
+    /// does not know — a later build's — go back with it (plan 36 1.8).
+    var stored: [String: JSONValue]?
+
+    enum CodingKeys: String, CodingKey, CaseIterable {
+        case format, recordKey, changedAt, removedAt, details, note
+    }
+
+    /// This item, carrying the fields `other` holds that this build does not know.
+    func keepingUnknown(of other: ResearchItem) -> ResearchItem {
+        var copy = self
+        copy.stored = other.stored
+        return copy
+    }
 
     /// Its file name in the kind's folder: the same on every device.
     static func fileName(for recordKey: String) -> String {
@@ -73,7 +95,24 @@ struct ResearchItem: Codable, Equatable, Sendable {
             var container = encoder.singleValueContainer()
             try container.encode(StorageDates.format(date))
         }
-        return (try? encoder.encode(self)) ?? Data()
+        guard let known = try? encoder.encode(self) else { return Data() }
+        guard let stored, case .object(let object)? = try? JSONDecoder().decode(JSONValue.self, from: known) else { return known }
+        return (try? encoder.encode(JSONValue.object(Self.adding(unknownOf: stored, to: object)))) ?? known
+    }
+
+    /// `object` with the fields of `stored` this build does not know, at the
+    /// top and in `details` and `note`; what it knows is `object`'s alone.
+    private static func adding(unknownOf stored: [String: JSONValue], to object: [String: JSONValue]) -> [String: JSONValue] {
+        func unknown(_ from: [String: JSONValue], _ known: [String]) -> [String: JSONValue] {
+            from.filter { !known.contains($0.key) }
+        }
+        var out = object.merging(unknown(stored, CodingKeys.allCases.map(\.rawValue))) { mine, _ in mine }
+        for (key, known) in [("details", Details.CodingKeys.allCases.map(\.rawValue)), ("note", Note.CodingKeys.allCases.map(\.rawValue))] {
+            if case .object(let mine)? = out[key], case .object(let theirs)? = stored[key] {
+                out[key] = .object(mine.merging(unknown(theirs, known)) { mine, _ in mine })
+            }
+        }
+        return out
     }
 
     static func decode(_ data: Data) throws -> ResearchItem {
@@ -85,7 +124,9 @@ struct ResearchItem: Codable, Equatable, Sendable {
             }
             return date
         }
-        return try decoder.decode(ResearchItem.self, from: data)
+        var item = try decoder.decode(ResearchItem.self, from: data)
+        if case .object(let object)? = try? JSONDecoder().decode(JSONValue.self, from: data) { item.stored = object }
+        return item
     }
 }
 
@@ -162,7 +203,7 @@ struct ResearchKind: StorageKind {
                 memory[item.name] = theirs.content
             } else {
                 await source.replaced(theirs, by: mine)
-                try await send(mine, to: context); sent += 1
+                try await send(mine.keepingUnknown(of: theirs), to: context); sent += 1
                 memory[item.name] = mine.content
             }
         }
@@ -170,7 +211,10 @@ struct ResearchKind: StorageKind {
         // What changed here.
         for (name, mine) in local where !settled.contains(name) {
             if mine.content != memory[name] || !present.contains(name) {
-                try await send(mine, to: context); sent += 1
+                // What is there may hold fields this build does not know: they go back with it.
+                let there = present.contains(name)
+                    ? (try? await context.remote.read("\(context.folder)/\(name)")).flatMap { try? ResearchItem.decode($0) } : nil
+                try await send(there.map { mine.keepingUnknown(of: $0) } ?? mine, to: context); sent += 1
                 memory[name] = mine.content
             }
         }

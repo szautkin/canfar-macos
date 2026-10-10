@@ -447,36 +447,6 @@ final class AgentsService {
         return (await applyJobs.job(id), await proposals.state(id))
     }
 
-    /// Map a proposal `kind` to the AppMode whose view will reflect the
-    /// change. Centralizing the table keeps it reviewable; new kinds
-    /// either add an entry here or fall through to `nil` (no
-    /// follow-on navigation).
-    static func navigationTarget(forKind kind: String) -> AppMode? {
-        switch kind {
-        case "save_query", "update_saved_query", "delete_saved_query":
-            return .search
-        case "update_observation_note", "bulk_update_observation_notes",
-             "download_observation", "download_observations_bulk",
-             "delete_downloaded_observation", "clear_research_archive":
-            return .research
-        case "upload_to_vospace", "upload_text_to_vospace", "upload_file_to_vospace",
-             "download_from_vospace",
-             "vospace_mkdir", "delete_vospace_node":
-            return .storage
-        case "launch_session", "delete_session", "delete_sessions_bulk",
-             "launch_headless_job", "discover_image_packages":
-            return .portal
-        // INTENTIONALLY OMITTED — `clear_user_site` falls through to nil.
-        // It wipes ~/.local/lib/python3.*/site-packages, which has no
-        // user-visible UI surface, so navigating to Storage afterward
-        // would mislead rather than help. This is a deliberate gap, not
-        // the same defect as the once-missing delete_sessions_bulk /
-        // upload_text_to_vospace cases — do not add a navigation here.
-        default:
-            return nil
-        }
-    }
-
     /// Reject a pending proposal — sets the tombstone and removes it
     /// from the queue. Idempotent; safe to call after apply.
     func rejectProposal(_ id: UUID) async {
@@ -518,6 +488,11 @@ final class AgentsService {
 
     // MARK: - Lifecycle
 
+    /// A unit-test host never serves (plan 36 1.1): it is Verbinal itself,
+    /// unsandboxed, with its own preferences, and its server rewrote the real
+    /// app's sidecar, so a running Verbinal answered "not running".
+    nonisolated static var isTestHost: Bool { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
+
     private func applyToggle() {
         if isEnabled {
             startServer()
@@ -544,7 +519,7 @@ final class AgentsService {
     }
 
     private func startServer() {
-        guard !isRunning else { return }
+        guard !isRunning, !Self.isTestHost else { return }
 
         // Build the router *now* (so any pending tool registration is
         // captured). Audit entries fan out to our capturing sink AND

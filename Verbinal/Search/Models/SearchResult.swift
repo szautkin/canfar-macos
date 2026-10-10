@@ -136,11 +136,14 @@ struct SearchResultColumns {
     /// All columns flagged visible, in original order.
     var visible: [SearchResultColumn] { list.filter(\.visible) }
 
-    /// Column by id, or nil.
+    /// Column by id, or nil. The position columns' ids keep their old
+    /// spelling, `ra(j20000)`; the corrected one finds them too (plan 36 1.6).
     func column(id: String) -> SearchResultColumn? {
-        guard let i = indexByID[id], list.indices.contains(i) else { return nil }
+        guard let i = indexByID[id] ?? indexByID[Self.aliases[id] ?? ""], list.indices.contains(i) else { return nil }
         return list[i]
     }
+
+    static let aliases = ["ra(j2000)": "ra(j20000)", "dec(j2000)": "dec(j20000)"]
 
     /// Raw value for a cell — nil if the column id is unknown or the row is short.
     func rawValue(in row: SearchResult, forID id: String) -> String? {

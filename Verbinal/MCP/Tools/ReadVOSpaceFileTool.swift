@@ -62,7 +62,7 @@ struct ReadVOSpaceFileTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "read_vospace_file",
-        description: "Read a bounded slice of a VOSpace file into the tool result — the agent-visible counterpart to `download_vospace_file` (which only writes to the user's Mac and is invisible to you). The 2026-05-15 QA report named this as a recurring pain point: three of eight Skaha jobs in a real workflow existed only to `cat` files back through stdout because the agent couldn't see what it had just written. This tool replaces that pattern with a single round-trip. `path` is relative to the user's home (`compact-groups/v1/results.fits`); absolute `/home/<user>/…` is accepted and stripped. `offset` defaults to 0 and `maxBytes` defaults to 262144 (256 KB); hard cap is 1048576 (1 MB) per call — beyond that, split into multiple calls or use `download_vospace_file` to land the file on disk for the user. The response includes `totalBytes` (the whole file's size, when known) and `truncated` (true when more data exists past the returned slice); read a large file in chunks by advancing `offset` by `returnedBytes`. `contentType` follows the same rule as `list_vospace_path`: the extension's type, else the server's. `encoding` is `\"utf8\"` for textual files whose bytes round-trip cleanly (extensions: .txt, .csv, .tsv, .json, .xml, .yaml, .yml, .py, .sh, .md, .log) and `\"base64\"` for everything else (FITS, .gz, .png, .jpg) — base64 always when in doubt.",
+        description: "Read a bounded slice of a VOSpace file into the tool result — the agent-visible counterpart to `download_vospace_file` (which only writes to the user's Mac and is invisible to you). The 2026-05-15 QA report named this as a recurring pain point: three of eight Skaha jobs in a real workflow existed only to `cat` files back through stdout because the agent couldn't see what it had just written. This tool replaces that pattern with a single round-trip. `path` is relative to the user's home (`compact-groups/v1/results.fits`); absolute `/home/<user>/…` is accepted and stripped. `offset` defaults to 0 and `maxBytes` defaults to 262144 (256 KB); hard cap is 1048576 (1 MB) per call — beyond that, split into multiple calls or use `download_vospace_file` to land the file on disk for the user. The response includes `totalBytes` (the whole file's size, when known) and `truncated` (true when more data exists past the returned slice); read a large file in chunks by advancing `offset` by `returnedBytes`. `contentType` follows the same rule as `list_vospace_path`: the extension's type, else the server's. `encoding` is `\"utf8\"` for textual files whose bytes round-trip cleanly (extensions: .txt, .csv, .tsv, .json, .xml, .yaml, .yml, .py, .sh, .md, .log) and `\"base64\"` for everything else (FITS, .gz) — base64 always when in doubt. A whole PNG or JPEG (within the cap, from offset 0) comes back as an image you can see.",
         schema: #"""
         {
           "type": "object",
@@ -134,6 +134,16 @@ struct ReadVOSpaceFileTool: JSONReadTool {
             truncated: truncated,
             content: content
         )
+    }
+
+    /// A whole PNG or JPEG is answered as an image the assistant can see —
+    /// the plots its jobs write (plan 36 1.7). A slice, or a larger file,
+    /// stays base64.
+    func imageAnswer(_ output: Output) -> ToolResult? {
+        guard ["image/png", "image/jpeg"].contains(output.contentType), output.encoding == "base64",
+              !output.truncated, output.totalBytes.map({ $0 == output.returnedBytes }) ?? true,
+              let data = Data(base64Encoded: output.content) else { return nil }
+        return .image(data: data, mimeType: output.contentType, caption: "\(output.path), \(output.returnedBytes) bytes")
     }
 
     /// Decide UTF-8 vs base64. Textual content types get a UTF-8 try

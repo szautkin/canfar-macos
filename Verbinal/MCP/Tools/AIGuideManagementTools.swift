@@ -182,7 +182,7 @@ struct UpdateGuideToolTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "update_guide_tool",
-        description: "Update a user-authored guide tool by id (name, description, body — see list_guide_tools for ids). Proposal-gated.",
+        description: "Update a user-authored guide tool by its id or its name (name, description, body — list_guide_tools gives both). Proposal-gated.",
         schema: #"""
         {
           "type": "object",
@@ -198,17 +198,18 @@ struct UpdateGuideToolTool: JSONWriteTool {
         """#
     )
 
+    /// A guide by its name, for an `id` that is one (plan 36 1.5).
+    var findGuide: @Sendable (_ name: String) async -> UUID? = { _ in nil }
+
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
-        guard UUID(uuidString: args.id) != nil else {
-            throw ToolFailureReason.invalidArgument("id is not a UUID")
-        }
+        let id = try await GuideReference.id(args.id, lookup: findGuide)
         guard !args.name.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw ToolFailureReason.invalidArgument("name is empty")
         }
         return try ProposalPlan.encoding(
             kind: "update_guide_tool",
             summary: "Update guide tool '\(args.name)'",
-            payload: Payload(id: args.id, name: args.name, description: args.description, body: args.body)
+            payload: Payload(id: id, name: args.name, description: args.description, body: args.body)
         )
     }
 }
@@ -221,7 +222,7 @@ struct DeleteGuideToolTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "delete_guide_tool",
-        description: "Permanently delete a user-authored guide tool by id.",
+        description: "Permanently delete a user-authored guide tool by its id or its name (list_guide_tools gives both).",
         schema: #"""
         {
           "type": "object",
@@ -232,15 +233,27 @@ struct DeleteGuideToolTool: JSONWriteTool {
         """#
     )
 
+    /// A guide by its name, for an `id` that is one (plan 36 1.5).
+    var findGuide: @Sendable (_ name: String) async -> UUID? = { _ in nil }
+
     func plan(_ args: Args, context: AIToolContext) async throws -> ProposalPlan {
-        guard UUID(uuidString: args.id) != nil else {
-            throw ToolFailureReason.invalidArgument("id is not a UUID")
-        }
+        let id = try await GuideReference.id(args.id, lookup: findGuide)
         return try ProposalPlan.encoding(
             kind: "delete_guide_tool",
             summary: "Delete guide tool \(args.id)",
-            payload: Payload(id: args.id)
+            payload: Payload(id: id)
         )
+    }
+}
+
+/// A guide as an assistant names it: its id, or its name, as
+/// list_guide_tools gives both (plan 36 1.5).
+enum GuideReference {
+    static func id(_ raw: String, lookup: @Sendable (String) async -> UUID?) async throws -> String {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if UUID(uuidString: text) != nil { return text }
+        if let found = await lookup(text) { return found.uuidString }
+        throw ToolFailureReason.invalidArgument("no guide '\(ToolFailureReason.clip(text, max: 60))'; list_guide_tools gives each guide's id and name")
     }
 }
 

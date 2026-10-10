@@ -160,7 +160,7 @@ struct SetResultsViewTool: AITool {
         } catch {
             return .failed(.invalidArgument("\(error)"))
         }
-        switch await apply(args) {
+        switch await apply(args.withColumnIDs()) {
         case .rejected(let message):
             return .failed(.invalidArgument(message))
         case .applied(let summary):
@@ -175,5 +175,20 @@ struct SetResultsViewTool: AITool {
                 return .failed(.backendError("\(error)"))
             }
         }
+    }
+}
+
+extension SetResultsViewTool.Args {
+    /// The same arguments with each column id as the table has it: the
+    /// corrected spelling of a position column becomes the table's own
+    /// (`ra(j2000)` → `ra(j20000)`, plan 36 1.6).
+    func withColumnIDs() -> Self {
+        func own(_ id: String) -> String { SearchResultColumns.aliases[id] ?? id }
+        var copy = self
+        copy.sortColumnID = sortColumnID.map(own)
+        copy.visibleColumns = visibleColumns?.map(own)
+        copy.filters = filters.map { Dictionary($0.map { (own($0.key), $0.value) }, uniquingKeysWith: { _, last in last }) }
+        copy.columnUnits = columnUnits.map { Dictionary($0.map { (own($0.key), $0.value) }, uniquingKeysWith: { _, last in last }) }
+        return copy
     }
 }

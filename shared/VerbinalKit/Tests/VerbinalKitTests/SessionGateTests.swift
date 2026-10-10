@@ -253,6 +253,10 @@ final class SessionGateTests: XCTestCase {
         XCTAssertNotNil(answer["proposalID"], text)
         XCTAssertNil(answer["proposalId"])
         XCTAssertEqual(answer["summary"] as? String, "Save \"q\"")
+        // Plan 36 1.3: it says it waits, as an applied one says it applied.
+        XCTAssertEqual(answer["applied"] as? Bool, false)
+        XCTAssertEqual(answer["pending"] as? Bool, true)
+        XCTAssertEqual(answer["waitsFor"] as? String, "the person, in Pending")
 
         await server.close()
         await client.close()
