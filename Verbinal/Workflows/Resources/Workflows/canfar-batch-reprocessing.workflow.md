@@ -25,7 +25,7 @@ Time: ~half a day (mostly waiting)
       Tool: get_headless_job_logs, get_headless_job_events
       View: portal
 - [ ] **Scale to the full set** — Launch the production run with replicas sized to the input list
-      (max 20 per launch; chunk the list if larger).
+      (up to 50 per launch; chunk the list if larger).
       Tool: launch_headless_job
       View: portal
 - [ ] **Monitor to completion** — Watch job states; investigate any replica that fails rather

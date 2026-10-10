@@ -17,8 +17,10 @@ l’accueil, ou par **Aller ▸ Flux de travail**.
 Les modèles couvrent la reconnaissance d’images d’archive (CFHT MegaCam), la spectroscopie stellaire
 (DAO Plaskett, CFHT ESPaDOnS), le retraitement par lots sur CANFAR, un croisement de catalogues VizieR ×
 CADC, la vérification préalable d’une proposition d’observation, la cinématique d’un nuage moléculaire à
-partir d’un cube spectral (JCMT), et la photométrie de séries temporelles d’étoiles variables. Leur texte
-est en anglais.
+partir d’un cube spectral (JCMT), la photométrie de séries temporelles d’étoiles variables, un relevé
+sur CANFAR, d’une requête aux candidats (des tâches en lot sur chaque cible, avec le décompte à chaque
+étape et les preuves gardées pour chaque candidat), et la préparation d’un assistant à un travail de
+découverte (deux guides qu’il vous propose d’approuver). Leur texte est en anglais.
 
 1. Sélectionnez un modèle à gauche pour lire ses étapes.
 2. Cliquez sur **Utiliser ce flux de travail** en bas. Verbinal le copie dans

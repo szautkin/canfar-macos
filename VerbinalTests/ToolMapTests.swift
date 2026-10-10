@@ -84,7 +84,7 @@ final class ToolMapTests: XCTestCase {
         let whole = try await describe.handle(.init(app: nil), context: ctx())
         XCTAssertNotNil(whole.brief)
         // Plan 21 V: which build answers — its version and the commit it was built from.
-        XCTAssertEqual(whole.serverVersion, "1.4.0")
+        XCTAssertEqual(whole.serverVersion, Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String, "the build's own version")
         XCTAssertNotNil(whole.buildCommit?.range(of: #"^[0-9a-f]{7,}\+?$"#, options: .regularExpression), whole.buildCommit ?? "nil")
         let cube = try await describe.handle(.init(app: "cube"), context: ctx())
         XCTAssertNil(cube.brief)

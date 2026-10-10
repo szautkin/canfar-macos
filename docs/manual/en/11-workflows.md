@@ -15,8 +15,10 @@ from their Home tile, or **Go ▸ Workflows**.
 
 The templates cover archival imaging reconnaissance (CFHT MegaCam), stellar spectroscopy (DAO Plaskett,
 CFHT ESPaDOnS), batch reprocessing on CANFAR, a VizieR × CADC catalogue cross-match, observing-proposal
-due diligence, the kinematics of a molecular cloud from a spectral cube (JCMT), and variable-star
-time-series photometry.
+due diligence, the kinematics of a molecular cloud from a spectral cube (JCMT), variable-star
+time-series photometry, a survey on CANFAR from a query to candidates (batch jobs over every target,
+with the count at every stage and the evidence kept for each candidate), and setting up an assistant
+for discovery work (two guides it proposes for you to approve).
 
 1. Select a template on the left to read its steps.
 2. Click **Use this workflow** at the bottom. Verbinal copies it into **MY WORKFLOWS**, where it is
