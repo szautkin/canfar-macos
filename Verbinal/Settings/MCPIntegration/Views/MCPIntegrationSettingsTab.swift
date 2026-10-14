@@ -67,7 +67,7 @@ struct MCPIntegrationSettingsTab: View {
                 MCPServerStatusRow(
                     isRunning: agents.isRunning,
                     socketPath: agents.socketPath,
-                    lastError: agents.lastError,
+                    lastError: agents.serverProblem?.message,
                     compact: true
                 )
                 Button("Re-check") { model?.runAll() }

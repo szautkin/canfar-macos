@@ -15,9 +15,9 @@ struct LoginSheet: View {
     @State private var password = ""
     @State private var rememberMe = true
     @State private var didPrefill = false
-    @State private var isLoggingIn = false
-    @State private var errorMessage = ""
-    @State private var hasError = false
+    /// The sign-in (plan 38): under way, done, or why not.
+    @State private var signIn: Phase<String> = .idle
+    private var isLoggingIn: Bool { signIn.isWorking }
 
     private enum Field {
         case username, password
@@ -60,8 +60,8 @@ struct LoginSheet: View {
             }
             .frame(maxWidth: 260)
 
-            if hasError {
-                Label(errorMessage, systemImage: "xmark.circle")
+            if let problem = signIn.problem {
+                Label(problem.message, systemImage: "xmark.circle")
                     .font(.caption)
                     .foregroundStyle(.red)
             }
@@ -103,8 +103,7 @@ struct LoginSheet: View {
         // Return in the password field submits it, and Return is also Log
         // In's shortcut: one key could send two sign-ins.
         guard !isLoggingIn, !username.isEmpty, !password.isEmpty else { return }
-        isLoggingIn = true
-        hasError = false
+        let attempt = signIn.begin()
 
         let result = await appState.authService.login(
             username: username,
@@ -113,16 +112,13 @@ struct LoginSheet: View {
         )
 
         if result.success {
-            appState.updateAuthState(
-                username: result.username ?? username,
-                userInfo: result.userInfo
-            )
+            let name = result.username ?? username
+            signIn.finish(attempt, with: .success(name))
+            appState.updateAuthState(username: name, userInfo: result.userInfo)
             dismiss()
         } else {
-            hasError = true
-            errorMessage = result.errorMessage ?? "Login failed"
+            // A wrong password is for the person to put right, not to try again.
+            signIn.finish(attempt, with: .failure(Problem(.refused, result.errorMessage ?? String(localized: "Login failed"), retry: false)))
         }
-
-        isLoggingIn = false
     }
 }

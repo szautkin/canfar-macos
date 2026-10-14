@@ -148,9 +148,9 @@ final class AgentsService {
     /// iOS). Set by AppState during initialize(), before the listener starts.
     var aiGuideResolver: AIGuideResolver?
 
-    private(set) var isRunning: Bool = false
+    /// Off, listening, or failed (plan 38; AgentsService+ServerState).
+    private(set) var serverState: ServerState = .off
     private(set) var connectionCount: Int = 0
-    private(set) var lastError: String?
     /// Snapshot of pending proposals for SwiftUI binding. Refreshed
     /// after each enqueue/apply/reject so the strip stays current.
     private(set) var pendingProposals: [PendingProposal] = []
@@ -570,20 +570,20 @@ final class AgentsService {
             try server.start()
         } catch {
             logger.error("listener start failed: \(error.localizedDescription, privacy: .public)")
-            self.lastError = "Listener start failed: \(error.localizedDescription)"
+            self.serverState = .failed(Problem(.other, "Listener start failed: \(error.localizedDescription)"))
             return
         }
         self.server = server
         self.socketPath = path
+        var warning: Problem?
         do {
             try sidecar.serving(at: path)
         } catch {
             logger.error("sidecar write failed: \(error.localizedDescription, privacy: .public)")
             // Server is up but helper won't find us — surface, don't fail.
-            self.lastError = "Sidecar write failed: \(error.localizedDescription)"
+            warning = Problem(.other, "Sidecar write failed: \(error.localizedDescription)")
         }
-        self.isRunning = true
-        self.lastError = nil
+        self.serverState = .listening(warning: warning)
         self.connectionCount = 0
 
         // Accept loop: pull each connection off the stream and serve it on
@@ -621,7 +621,7 @@ final class AgentsService {
         }
         sidecar.stopped()
         socketPath = nil
-        isRunning = false
+        serverState = .off
         connectionCount = 0
         logger.notice("agents service stopped")
     }

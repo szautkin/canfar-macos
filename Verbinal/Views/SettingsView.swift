@@ -661,7 +661,7 @@ private struct AgentsSettingsTab: View {
         MCPServerStatusRow(
             isRunning: appState.agentsService.isRunning,
             socketPath: appState.agentsService.socketPath,
-            lastError: appState.agentsService.lastError
+            lastError: appState.agentsService.serverProblem?.message
         )
     }
 

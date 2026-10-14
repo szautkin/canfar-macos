@@ -765,10 +765,8 @@ final class AppState {
     let auth: AuthLifecycleController
 
     var isAuthenticated: Bool { auth.isAuthenticated }
-    var isLoading: Bool {
-        get { auth.isLoading }
-        set { auth.isLoading = newValue }
-    }
+    /// The sign-in is checking or renewing the session: the toolbar's spinner.
+    var isSigningIn: Bool { auth.activity != .idle }
     var username: String { auth.username }
     var statusMessage: String {
         get { auth.statusMessage }

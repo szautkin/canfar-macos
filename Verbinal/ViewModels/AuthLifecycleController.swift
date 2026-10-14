@@ -10,7 +10,7 @@ import VerbinalKit
 
 /// Owns the auth-lifecycle slice of `AppState`: token validation, silent
 /// reauth, token-expiry coalescing, and the `username` / `isAuthenticated`
-/// / `userInfo` / `statusMessage` / `isLoading` published state.
+/// / `userInfo` / `statusMessage` / `activity` published state.
 ///
 /// The controller is intentionally narrow:
 ///  • It does *not* know about navigation, the headless monitor, the
@@ -32,7 +32,10 @@ final class AuthLifecycleController {
     // MARK: Published state
 
     private(set) var isAuthenticated: Bool = false
-    var isLoading: Bool = false
+    /// What the sign-in is doing (plan 38): nothing, checking the stored
+    /// session, or signing in again with the stored password.
+    enum Activity: String, Equatable, Sendable { case idle, validating, renewing }
+    private(set) var activity: Activity = .idle
     private(set) var username: String = ""
     private(set) var userInfo: UserInfo?
     var statusMessage: String = ""
@@ -120,7 +123,7 @@ final class AuthLifecycleController {
             return
         }
 
-        isLoading = true
+        activity = .validating
         statusMessage = String(localized: "Validating session...")
 
         switch await authService.validateToken(token) {
@@ -136,7 +139,7 @@ final class AuthLifecycleController {
             statusMessage = String(localized: "Cannot connect: \(message). Verbinal will retry when the network returns.")
         }
 
-        isLoading = false
+        activity = .idle
     }
 
     /// Re-run the stored-token validation after a network-path change.
@@ -148,7 +151,7 @@ final class AuthLifecycleController {
     /// Mid-session offline (still authenticated) soft-validates the token;
     /// cold launch / signed-out deferral runs full `validateStoredToken`.
     func retryValidationIfConnectivityRestored() async {
-        guard awaitingConnectivity, !isLoading,
+        guard awaitingConnectivity, activity == .idle,
               connectivityProvider() == .satisfied else { return }
         awaitingConnectivity = false
         if isAuthenticated {
@@ -328,7 +331,7 @@ final class AuthLifecycleController {
         let (_, storedPassword) = KeychainStorage.loadCredentials()
         if let password = storedPassword, !password.isEmpty {
             statusMessage = String(localized: "Re-authenticating…")
-            isLoading = true
+            activity = .renewing
             let result = await authService.login(
                 username: storedUser,
                 password: password,
@@ -340,7 +343,7 @@ final class AuthLifecycleController {
                     username: result.username ?? storedUser,
                     userInfo: result.userInfo
                 )
-                isLoading = false
+                activity = .idle
                 decisions.record(.signedInAgain, start == .refusedToken
                     ? "signed in again with the stored password: a service refused the sign-in CADC still accepted"
                     : "signed in again with the stored password: the sign-in had expired")
@@ -349,7 +352,7 @@ final class AuthLifecycleController {
             // Transient network / 5xx — keep credentials; connectivity
             // retry (or the next user action) will try again.
             if !result.isCredentialRejection {
-                isLoading = false
+                activity = .idle
                 decisions.record(.signInKept, "the stored password was kept: CADC did not answer the sign-in (\(result.errorMessage ?? "no reason given"))")
                 return .offline
             }
@@ -366,7 +369,7 @@ final class AuthLifecycleController {
         username = ""
         userInfo = nil
         isAuthenticated = false
-        isLoading = false
+        activity = .idle
         return .ended
     }
 

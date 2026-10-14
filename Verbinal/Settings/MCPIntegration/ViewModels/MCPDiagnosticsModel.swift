@@ -59,7 +59,7 @@ final class MCPDiagnosticsModel {
         }
 
         // 3. Listener error
-        if let err = agents.lastError {
+        if let err = agents.serverProblem?.message {
             out.append(check("listenerError", "Listener health", .fail, "\(err) (may be from a previous session).", fix: .restartServer))
         } else {
             out.append(check("listenerError", "Listener health", .pass, "No listener errors."))

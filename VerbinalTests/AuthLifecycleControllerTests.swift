@@ -230,7 +230,7 @@ final class AuthLifecycleControllerTests: XCTestCase {
         await controller.validateStoredToken()
 
         XCTAssertTrue(controller.awaitingConnectivity)
-        XCTAssertFalse(controller.isLoading, "The spinner must never engage offline")
+        XCTAssertEqual(controller.activity, .idle, "The spinner must never engage offline")
         XCTAssertFalse(controller.isAuthenticated)
         XCTAssertTrue(offlineMessages.contains(controller.statusMessage),
                       "Expected an offline status, got '\(controller.statusMessage)'")
@@ -266,7 +266,7 @@ final class AuthLifecycleControllerTests: XCTestCase {
 
         XCTAssertTrue(controller.awaitingConnectivity)
         XCTAssertFalse(controller.isAuthenticated)
-        XCTAssertFalse(controller.isLoading)
+        XCTAssertEqual(controller.activity, .idle)
     }
 
     func testRetryAfterConnectivityRestoredAuthenticates() async {

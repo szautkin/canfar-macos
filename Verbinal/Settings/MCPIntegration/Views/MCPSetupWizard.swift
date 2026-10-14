@@ -184,7 +184,7 @@ struct MCPSetupWizard: View {
                 MCPServerStatusRow(
                     isRunning: agents.isRunning,
                     socketPath: agents.socketPath,
-                    lastError: agents.lastError
+                    lastError: agents.serverProblem?.message
                 )
             }
         }

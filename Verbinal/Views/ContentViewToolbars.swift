@@ -63,7 +63,7 @@ extension ContentView {
             .accessibilityLabel("About Verbinal")
             .help("About Verbinal")
 
-            if appState.isLoading {
+            if appState.isSigningIn {
                 ProgressView().scaleEffect(0.7)
             }
 
@@ -189,7 +189,7 @@ extension ContentView {
             .accessibilityLabel("About Verbinal")
             .help("About Verbinal")
 
-            if appState.isLoading {
+            if appState.isSigningIn {
                 ProgressView().scaleEffect(0.7)
             }
 
@@ -294,7 +294,7 @@ extension ContentView {
             .accessibilityLabel("About Verbinal")
             .help("About Verbinal")
 
-            if appState.isLoading {
+            if appState.isSigningIn {
                 ProgressView()
                     .scaleEffect(0.7)
             }
