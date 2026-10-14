@@ -110,6 +110,30 @@ final class CodeQualityGuardrailTests: XCTestCase {
         XCTAssertEqual(problems, [])
     }
 
+    // MARK: - Loose state flags only go down (plan 38)
+
+    /// The flags plan 38 moves into state machines, counted as it began
+    /// (2026-10-13): each may only go down, and its ceiling with it.
+    static let looseFlagCeilings: [String: Int] = [
+        "isLoading": 14, "errorMessage": 11, "hasError": 9, "loadError": 4, "lastError": 4,
+        "statusMessage": 3, "isBusy": 2,
+    ]
+
+    func testLooseStateFlagsOnlyGoDown() throws {
+        let texts = Self.sources(in: ["Verbinal"]).map(\.text)
+        var problems: [String] = []
+        for (flag, ceiling) in Self.looseFlagCeilings.sorted(by: { $0.key < $1.key }) {
+            let pattern = try NSRegularExpression(pattern: "\\bvar\\s+\(flag)\\b")
+            let count = texts.reduce(0) { $0 + pattern.numberOfMatches(in: $1, range: NSRange($1.startIndex..., in: $1)) }
+            if count > ceiling {
+                problems.append("\(flag): \(count) declarations, over its ceiling \(ceiling) — use Phase or a Machine (plan 38)")
+            } else if count < ceiling {
+                problems.append("\(flag): down to \(count) — lower its ceiling from \(ceiling)")
+            }
+        }
+        XCTAssertEqual(problems, [])
+    }
+
     // MARK: - Every result goes through ResultDestination
 
     /// Files that place a file on the Mac that is not a result to send: a

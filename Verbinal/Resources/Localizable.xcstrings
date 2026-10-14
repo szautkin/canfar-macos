@@ -79,6 +79,16 @@
         }
       }
     },
+    "CADC refused it: you may not have access." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le CADC l’a refusé : vous n’y avez peut-être pas accès."
+          }
+        }
+      }
+    },
     "Copy the file from your storage to this Mac; it stays in your storage" : {
       "localizations" : {
         "fr" : {
@@ -329,6 +339,16 @@
         }
       }
     },
+    "Not found." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Introuvable."
+          }
+        }
+      }
+    },
     "Nothing was moved: %@" : {
       "localizations" : {
         "fr" : {
@@ -559,6 +579,16 @@
         }
       }
     },
+    "Sign in to CADC to see this." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous au CADC pour voir ceci."
+          }
+        }
+      }
+    },
     "Sign in to CANFAR to get the file from your storage" : {
       "localizations" : {
         "fr" : {
@@ -585,6 +615,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connectez-vous à CANFAR pour accéder à votre stockage."
+          }
+        }
+      }
+    },
+    "Stopped." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêté."
           }
         }
       }
@@ -655,6 +695,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La fiche n’a pas de fichier %@."
+          }
+        }
+      }
+    },
+    "Verbinal cannot reach the network: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal n’atteint pas le réseau : %@"
           }
         }
       }
