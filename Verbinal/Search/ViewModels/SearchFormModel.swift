@@ -32,11 +32,14 @@ final class SearchFormModel {
     /// resolves, and when it found nothing.
     var resolverResult: ResolverResult? { if case .ready(let result) = resolution { result } else { nil } }
 
-    // Search execution state
-    var isSearching = false
+    // Search execution state (plan 38)
+    /// The search: running (since when), done (its row count), or why not —
+    /// a refused query too. A cancelled one leaves what was there.
+    private(set) var query: Phase<Int> = .idle
+    var isSearching: Bool { query.isWorking }
     /// When the running search began — the screen says how long it has waited.
-    private(set) var searchStartedAt: Date?
-    var searchError: String?
+    var searchStartedAt: Date? { query.attempt?.started }
+    var searchError: String? { query.problem?.message }
 
     /// How a search ended. Agent tools report it: a search the person
     /// cancelled is neither a result nor an error, and one the checker
@@ -226,28 +229,27 @@ final class SearchFormModel {
         let client = tapClient
         let task = Task { try await client.tapQueryRows(adql: query) }
         runningQuery = task
-        isSearching = true
-        searchStartedAt = Date()
-        searchError = nil
-        defer {
-            // A newer search owns the spinner now.
-            if runningQuery == task {
-                runningQuery = nil
-                isSearching = false
-                searchStartedAt = nil
-            }
-        }
+        // A newer search's Attempt owns the spinner: an older one ending is dropped.
+        let attempt = self.query.begin()
+        defer { if runningQuery == task { runningQuery = nil } }
         do {
             let (headers, rows) = try await task.value
             try Task.checkCancellation()
-            guard !task.isCancelled else { return .cancelled }
+            guard !task.isCancelled else {
+                self.query.finish(attempt, with: .failure(CancellationError()))
+                return .cancelled
+            }
             resultsModel.loadResults(headers: headers, rows: rows, query: query, maxRec: TAPConfig.maxRecords)
             selectedTab = .results
+            self.query.finish(attempt, with: .success(rows.count))
             return .completed(rows: rows.count)
         } catch {
-            if task.isCancelled || error is CancellationError { return .cancelled }
+            if task.isCancelled || error is CancellationError {
+                self.query.finish(attempt, with: .failure(CancellationError()))
+                return .cancelled
+            }
             let message = SearchError.describing(error)
-            searchError = message
+            self.query.finish(attempt, with: .failure(Problem(.other, message)))
             return .failed(message)
         }
     }
@@ -309,7 +311,7 @@ final class SearchFormModel {
         // editor, an assistant or a saved query alike (QA L13: LIMIT went out).
         let problems = ADQLValidator.problems(in: adql, schema: tapSchema.cached)
         guard problems.isEmpty else {
-            searchError = problems.map(\.localizedSummary).joined(separator: "; ")
+            self.query.fail(Problem(.refused, problems.map(\.localizedSummary).joined(separator: "; "), retry: false))
             return .refused(String(localized: "Not sent: \(problems.map(\.summary).joined(separator: "; "))"))
         }
         let outcome = await runQuery(adql)
@@ -326,7 +328,7 @@ final class SearchFormModel {
     func load(_ recent: RecentSearch) {
         if let adql = recent.adql {
             resultsModel.adqlQuery = adql
-            searchError = nil
+            query.dismiss()
             selectedTab = .adql
         } else {
             loadFromSnapshot(recent.formSnapshot)
@@ -352,7 +354,7 @@ final class SearchFormModel {
     func loadFromSnapshot(_ snapshot: SearchFormSnapshot) {
         formState.loadFromSnapshot(snapshot)
         resolution = .idle
-        searchError = nil
+        query.dismiss()
         selectedTab = .search
         // Re-trigger target resolution if target is set
         if !formState.target.isEmpty && formState.resolver != .none {
@@ -365,6 +367,6 @@ final class SearchFormModel {
     func resetForm() {
         formState.reset()
         resolution = .idle
-        searchError = nil
+        query.dismiss()
     }
 }
