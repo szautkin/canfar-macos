@@ -36,9 +36,9 @@ final class EveryScreenNamedTests: XCTestCase {
     ]
 
     private func read(_ state: AppState, place: String, _ root: some View,
-                      settle: Duration = .milliseconds(700),
-                      until ready: (() -> Bool)? = nil) async throws -> [Problem] {
+                      settle: Duration = .milliseconds(700)) async throws -> [Problem] {
         try await AXReadable.require()
+        let shownBefore = Set(UIPresentations.shared.shown.map(\.id))
         let window = NSWindow(contentRect: NSRect(x: 40, y: 40, width: 1200, height: 800),
                               styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -49,12 +49,25 @@ final class EveryScreenNamedTests: XCTestCase {
         let source = AXElementSource(screenName: { state.screenName(of: $0, parentScreen: $1, title: $2) })
         await source.ready()
         try await Task.sleep(for: settle)
-        // A screen that loads first is read once it has (at most ten seconds).
-        if let ready {
-            let deadline = Date().addingTimeInterval(10)
-            while !ready(), Date() < deadline { try await Task.sleep(for: .milliseconds(100)) }
+        // A screen that loads first is read once its hand tags show (at most
+        // ten seconds): waiting on the model instead raced the redraw — the
+        // launch form's choices had loaded, its Launch button not yet drawn.
+        let wanted = Self.expected[place] ?? []
+        var snapshot = source.snapshot()
+        let loading = Date().addingTimeInterval(10)
+        while !Set(wanted).isSubset(of: snapshot.elements.filter(\.stable).map(\.id)), Date() < loading {
+            try await Task.sleep(for: .milliseconds(100))
+            snapshot = source.snapshot()
         }
-        let snapshot = source.snapshot()
+        let shownAtSnapshot = UIPresentations.shared.shown.map(\.name)
+        // Closes the sheets this screen opened, as Esc would: closing the
+        // window leaves them listed as shown, and the next test would find
+        // "About Verbinal was already open".
+        let opened = { UIPresentations.shared.shown.filter { !shownBefore.contains($0.id) } }
+        opened().forEach { UIPresentations.shared.close($0) }
+        let closing = Date().addingTimeInterval(2)
+        while !opened().isEmpty, Date() < closing { try await Task.sleep(for: .milliseconds(50)) }
+        XCTAssertEqual(opened().map(\.name), [], "\(place) closed what it opened")
         let mine = snapshot.windows.filter { $0.number == window.windowNumber || $0.kind == .sheet }
         XCTAssertFalse(mine.isEmpty, "\(place) is listed")
         var problems: [Problem] = []
@@ -72,8 +85,11 @@ final class EveryScreenNamedTests: XCTestCase {
         }
         problems += snapshot.duplicateIDs.map { Problem(place: place, what: "hand tag \($0) on more than one element") }
         let stable = Set(snapshot.elements.filter(\.stable).map(\.id))
+        // What was in sight instead, to say why a hand tag is missing.
+        let seen = mine.map { "\($0.kind.rawValue) \($0.screen) \(Int($0.frame.height)) tall, "
+            + "\(snapshot.elements(in: $0.index).count) elements" }
         problems += (Self.expected[place] ?? []).filter { !stable.contains($0) }
-            .map { Problem(place: place, what: "hand tag \($0) not found") }
+            .map { Problem(place: place, what: "hand tag \($0) not found; windows: \(seen); shown: \(shownAtSnapshot)") }
         return problems
     }
 
@@ -108,11 +124,9 @@ final class EveryScreenNamedTests: XCTestCase {
         let launching = signedIn()
         launching.currentMode = .portal
         launching.launchFormPresented = true
-        // The Launch button shows once the form's choices are loaded: from the
-        // cache it shares with the person's app, or the network — timing that
-        // made this check pass in one run and fail in the next.
-        problems += try await read(launching, place: "portal.launchForm", ContentView().uiWindowPlace(.main),
-                                   until: { launching.sessionLaunchModelForTools?.options.isWorking == false })
+        // Its Launch button shows once the form's choices are loaded, from the
+        // cache it shares with the person's app or the network.
+        problems += try await read(launching, place: "portal.launchForm", ContentView().uiWindowPlace(.main))
         XCTAssertTrue(problems.isEmpty, "\n" + problems.map(\.description).joined(separator: "\n"))
     }
 

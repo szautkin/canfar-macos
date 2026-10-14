@@ -229,7 +229,8 @@ lack today.
 | P4e | `25d7f2e7` | Remote Compute: `ComputeMachine` — the platform's look wins; a start or stop the person asked moves the state at once (stopped → starting, a live session → stopping) until the next look. |
 | P4f | `c46c85c1` | The agent session: `SessionApprovals.state(of:)` — none, asking, active, ended (why) — the one reading of what is pending and kept; `SessionMachine` says which moves it takes, and `allow` and `end` ask it. |
 | Tests | `39293c34` | Every screen in a short window, signed in where it needs it, takes no more than the window and no split overflows; a FITS tab whose open failed fits and shows no controls; the FITS and cube document states reach their tools' `state` in each state. (Table tests: `DocumentMachine`, `ComputeMachine`, `SessionMachine`, `CollectionState`, blink, the canvas tool, the hand-offs, `Phase`, `Problem`, `Attempt`, `Machine`.) |
-| AX check | (this commit) | `EveryScreenNamedTests`' launch-form read waits for the form's choices to load: its Launch button only exists then, and the snapshot taken 0.7 s after opening raced the load — the cause of "hand tag portal.launch not found". |
+| AX check | `aba2254f` | `EveryScreenNamedTests`' launch-form read waits for the form's choices to load: its Launch button only exists then, and the snapshot taken 0.7 s after opening raced the load — the cause of "hand tag portal.launch not found". |
+| AX run | (this commit) | The first run with the screen unlocked. `EveryScreenNamedTests` closed its windows with the About and Launch Session sheets still up, so they stayed listed as shown and `PresentationsTests`, run after it, found them "already open" (3 failures; alone it passes): each read now closes, as Esc would, the sheets it opened, and checks they have gone. And "portal.launch not found" came back once in a full run, in the usual 19 s — the wait had not run out: the form's choices had loaded, its Launch button was not yet drawn. A screen is now read once its hand tags show (at most ten seconds), not once its model says so; a missing tag says what windows and sheets were in sight. |
 
 ## Where it ended (2026-10-14)
 
@@ -253,6 +254,8 @@ lack today.
 - **Assistants.** `state` in `get_fits_view`, `get_cube_view`, `blink_fits_tabs` and each kind of
   `list_storage_kinds`; `canvasTool` in `get_fits_view`. The fields they replace are listed above, to
   delete in a later release.
-- **Not yet verified:** the 32 tests that read the live accessibility tree (`EveryScreenNamedTests`
-  among them) skip themselves while the screen is locked, as it was for every run after 21:30 on
-  2026-10-13. They need a run with the screen unlocked.
+- **Verified with the screen unlocked** (2026-10-14, from 05:04): the 10 classes that read the live
+  accessibility tree, 59 tests, `EveryScreenNamedTests`' launch-form check among them. Three failed, all
+  from the sheets one test left listed, and the launch form raced its redraw once in a full run (row
+  "AX run"). With both fixed: 2173 macOS tests passed, none failed, none skipped; the package tests and
+  the iOS build passed; the launch-form check and `PresentationsTests` passed four runs in a row.
