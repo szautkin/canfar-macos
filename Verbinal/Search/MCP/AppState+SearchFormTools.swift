@@ -120,14 +120,14 @@ extension AppState {
                 var resolvedRA: String?
                 var resolvedDec: String?
                 let statusKey: String
-                switch model.resolverStatus {
+                switch model.resolution {
                 case .idle: statusKey = "idle"
-                case .resolving: statusKey = "resolving"
-                case .resolved(let ra, let dec):
+                case .working: statusKey = "resolving"
+                case .ready(let result):
                     statusKey = "resolved"
-                    resolvedRA = ra
-                    resolvedDec = dec
-                case .failed(let message): statusKey = "failed: \(message)"
+                    resolvedRA = result.coordsRA
+                    resolvedDec = result.coordsDec
+                case .failed(let problem, _): statusKey = "failed: \(problem.message)"
                 }
                 var form = GetSearchFormTool.Output(
                     observationID: state.observationID,
@@ -360,7 +360,7 @@ extension AppState {
                         ISO8601DateFormatter().string(from: $0)
                     },
                     isRefreshing: dataTrain.isRefreshing,
-                    error: dataTrain.hasError ? dataTrain.errorMessage : nil)
+                    error: dataTrain.load.problem?.message)
             }
         })
     }
@@ -375,9 +375,8 @@ extension AppState {
             await model.dataTrainModel.refreshData()
             return await MainActor.run {
                 let dataTrain = model.dataTrainModel
-                if dataTrain.hasError {
-                    return RefreshDataTrainTool.Refreshed(
-                        error: dataTrain.errorMessage, lastRefreshedISO: nil)
+                if let problem = dataTrain.load.problem {
+                    return RefreshDataTrainTool.Refreshed(error: problem.message, lastRefreshedISO: nil)
                 }
                 activity.append(.live(
                     kind: "refresh_data_train",

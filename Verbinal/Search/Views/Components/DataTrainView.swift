@@ -41,27 +41,20 @@ struct DataTrainView: View {
                 .accessibilityLabel("Refresh data train")
             }
 
-            if dataTrainModel.isLoading {
+            if dataTrainModel.load.isLoadingFirst {
                 HStack {
                     Spacer()
                     ProgressView("Loading data train…")
                     Spacer()
                 }
                 .frame(height: 120)
-            } else if dataTrainModel.hasError {
-                HStack {
-                    Spacer()
-                    VStack {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
-                        Text(dataTrainModel.errorMessage)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
-                .frame(height: 120)
+            } else if dataTrainModel.load.value == nil, let problem = dataTrainModel.load.problem {
+                ProblemView(problem: problem, retry: { Task { await dataTrainModel.refreshData() } })
+                    .frame(height: 120)
             } else {
+                // A refresh that failed says so above the rows it kept.
+                ProblemView(problem: dataTrainModel.load.problem,
+                            retry: { Task { await dataTrainModel.refreshData() } }, compact: true)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 8) {
                         ForEach(Array(ADQL.dataTrainColumns.enumerated()), id: \.offset) { index, column in

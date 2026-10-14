@@ -8,7 +8,7 @@ import SwiftUI
 
 struct SpatialConstraintsView: View {
     @Bindable var formState: SearchFormState
-    var resolverStatus: ResolverStatus
+    var resolution: Phase<ResolverResult>
     var onTargetChanged: () -> Void
 
     var body: some View {
@@ -55,20 +55,20 @@ struct SpatialConstraintsView: View {
 
     @ViewBuilder
     private var resolverStatusIndicator: some View {
-        switch resolverStatus {
+        switch resolution {
         case .idle:
             EmptyView()
-        case .resolving:
+        case .working:
             ProgressView()
                 .controlSize(.small)
-        case .resolved(let ra, let dec):
+        case .ready(let result):
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-                .help("Resolved: RA \(ra), Dec \(dec)")
-        case .failed(let msg):
+                .help("Resolved: RA \(result.coordsRA), Dec \(result.coordsDec)")
+        case .failed(let problem, _):
             Image(systemName: "exclamationmark.triangle")
                 .foregroundStyle(.orange)
-                .help(msg)
+                .help(problem.message)
         }
     }
 }

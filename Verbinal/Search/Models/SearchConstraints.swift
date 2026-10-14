@@ -102,12 +102,3 @@ struct ParsedDate {
     let format: DateFormat
     let granularity: DateGranularity
 }
-
-// MARK: - Resolver Status
-
-enum ResolverStatus: Equatable {
-    case idle
-    case resolving
-    case resolved(ra: String, dec: String)
-    case failed(String)
-}

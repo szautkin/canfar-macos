@@ -342,7 +342,7 @@ final class SearchFormModelBasicTests: XCTestCase {
         XCTAssertEqual(model.formState.target, "")
         XCTAssertEqual(model.formState.piName, "")
         XCTAssertEqual(model.formState.selectedCollections, [])
-        XCTAssertEqual(model.resolverStatus, .idle)
+        XCTAssertEqual(model.resolution.stateName, "idle")
     }
 
     func testInitialState() {

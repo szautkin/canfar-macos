@@ -13,7 +13,6 @@ import XCTest
 /// without touching the network.
 @MainActor
 final class ObservationDetailLoadStateTests: XCTestCase {
-    private typealias LoadState = ObservationDetailModel.LoadState
 
     private func makeModel() -> ObservationDetailModel {
         ObservationDetailModel(
@@ -22,50 +21,48 @@ final class ObservationDetailLoadStateTests: XCTestCase {
         )
     }
 
-    func testIsRetryableAcrossAllStates() {
-        XCTAssertTrue(LoadState.idle.isRetryable)
-        XCTAssertTrue(LoadState.failed("any message").isRetryable)
-        XCTAssertTrue(LoadState.failed("").isRetryable)
-        XCTAssertFalse(LoadState.loading.isRetryable)
-        XCTAssertFalse(LoadState.loaded.isRetryable)
-        XCTAssertFalse(LoadState.authRequired.isRetryable)
-        XCTAssertFalse(LoadState.notFound.isRetryable)
+    /// Plan 38: the record's load is a Phase; whether it may (re)start is
+    /// whether trying again can help.
+    func testMayLoadAcrossThePhases() {
+        let model = makeModel()
+        XCTAssertTrue(model.mayLoad, "never started")
+        model.load = .failed(Problem(.other, "any message"), last: nil)
+        XCTAssertTrue(model.mayLoad)
+        model.load = .working(Attempt(), last: nil)
+        XCTAssertFalse(model.mayLoad)
+        model.load = .failed(Problem(.signInRequired, "sign in", retry: false), last: nil)
+        XCTAssertFalse(model.mayLoad)
+        model.load = .failed(Problem(.notFound, "gone", retry: false), last: nil)
+        XCTAssertFalse(model.mayLoad)
     }
 
     func testRetryAfterRealFailureReentersLoad() async {
         let model = makeModel()
         // Empty publisherID -> fast-fail with a non-empty message.
         await model.loadCAOM2()
-        guard case .failed(let firstMessage) = model.loadState else {
-            return XCTFail("expected .failed, got \(model.loadState)")
-        }
+        let firstMessage = model.load.problem?.message ?? ""
         XCTAssertFalse(firstMessage.isEmpty)
 
-        // Simulate a *real* (non-empty) prior failure, then retry. With the
-        // old `loadState == .failed("")` guard this would NOT re-enter and
-        // would stay at "network blip"; the fix re-runs the load.
-        model.loadState = .failed("network blip")
+        // A real prior failure, then a retry: it re-runs the load.
+        model.load = .failed(Problem(.other, "network blip"), last: nil)
         await model.loadCAOM2()
-        guard case .failed(let secondMessage) = model.loadState else {
-            return XCTFail("expected .failed after retry, got \(model.loadState)")
-        }
-        XCTAssertEqual(secondMessage, firstMessage,
+        XCTAssertEqual(model.load.problem?.message, firstMessage,
                        "retry should re-run the load, not stay stuck on the old failure")
     }
 
     func testNoOpWhileLoading() async {
         let model = makeModel()
-        model.loadState = .loading
+        model.load = .working(Attempt(), last: nil)
         await model.loadCAOM2()
-        XCTAssertEqual(model.loadState, .loading, "a load in progress must not be restarted")
+        XCTAssertEqual(model.load.stateName, "working", "a load in progress must not be restarted")
     }
 
-    func testTerminalStatesAreNotRetried() async {
-        for terminal: LoadState in [.loaded, .authRequired, .notFound] {
+    func testTerminalProblemsAreNotRetried() async {
+        for problem in [Problem(.signInRequired, "sign in", retry: false), Problem(.notFound, "gone", retry: false)] {
             let model = makeModel()
-            model.loadState = terminal
+            model.load = .failed(problem, last: nil)
             await model.loadCAOM2()
-            XCTAssertEqual(model.loadState, terminal, "\(terminal) must be terminal (no retry)")
+            XCTAssertEqual(model.load.problem, problem, "\(problem.kind) must be terminal (no retry)")
         }
     }
 }

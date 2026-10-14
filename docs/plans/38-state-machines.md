@@ -217,3 +217,5 @@ lack today.
 | P1e | `e15b71ae` | The cube's slice is a `Phase<CGImage>`; playback and volume path already one value each. |
 | P2a | `b2f16513` | The Portal's cards: `load: Phase<Date>`, Try Again; `InlineErrorLabel` takes Try Again (isLoading 6, errorMessage 7, hasError 5). |
 | P2b | `9a208521` | The launch forms: `options` and `launchPhase` (isLoading 5, errorMessage 5, hasError 3). |
+| P2c | `4141d67c` | The storage browser's listing: `Phase`, `Phase.dismiss`, Try Again (isLoading 4, errorMessage 4, hasError 2). |
+| P2d | (this commit) | Search: data train, observation detail and target resolver as `Phase`s (isLoading 3, errorMessage 3, hasError 1). The query's `isSearching`/`searchError` remain. |

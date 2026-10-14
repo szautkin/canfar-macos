@@ -27,10 +27,12 @@ final class DataTrainModel {
     /// `loadData()` kicks off a parallel performLoad against the service.
     private var inFlightTask: Task<Void, Never>?
 
-    var isLoading = false
-    var isRefreshing = false
-    var hasError = false
-    var errorMessage = ""
+    /// Loading, loaded (when), or why not (plan 38): the first load shows a
+    /// spinner, a refresh keeps the rows shown, and a background refresh
+    /// that fails says nothing — the cached rows still serve.
+    private(set) var load: Phase<Date> = .idle
+    /// A refresh under way over rows already shown.
+    var isRefreshing: Bool { load.isWorking && load.value != nil }
     var lastRefreshed: Date?
 
     init(dataTrainService: DataTrainService) {
@@ -116,57 +118,46 @@ final class DataTrainModel {
     // MARK: - Private
 
     private func performLoad() async {
-        isLoading = true
-        hasError = false
-
+        let attempt = load.begin()
         do {
             let (rows, wasCached) = try await dataTrainService.loadCachedOrFetch()
             allRows = rows
             lastRefreshed = await dataTrainService.cacheTimestamp()
-
-            if wasCached {
-                isLoading = false
-                let stale = await dataTrainService.isCacheStale()
-                if stale {
-                    await silentRefresh()
-                }
-            } else {
-                isLoading = false
+            load.finish(attempt, with: .success(lastRefreshed ?? Date()))
+            if wasCached, await dataTrainService.isCacheStale() {
+                await silentRefresh()
             }
         } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
-            isLoading = false
+            load.finish(attempt, with: .failure(error))
         }
     }
 
     /// User-triggered refresh — surfaces errors in the UI.
     private func performRefresh() async {
-        isRefreshing = true
-        hasError = false
+        let attempt = load.begin()
         do {
             let fresh = try await dataTrainService.fetchFresh()
             allRows = fresh
             lastRefreshed = Date()
+            load.finish(attempt, with: .success(Date()))
         } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
+            load.finish(attempt, with: .failure(error))
         }
-        isRefreshing = false
     }
 
     /// Background stale-cache refresh — failure is silent, because the stale
     /// cache is still usable and the user didn't ask for this.
     private func silentRefresh() async {
-        isRefreshing = true
+        let attempt = load.begin()
         do {
             let fresh = try await dataTrainService.fetchFresh()
             allRows = fresh
             lastRefreshed = Date()
+            load.finish(attempt, with: .success(Date()))
         } catch {
-            // Silent failure — stale cache is still usable.
+            // Silent: the stale cache is still usable, and stays as it was.
+            load.finish(attempt, with: .failure(CancellationError()))
         }
-        isRefreshing = false
     }
 
     private func currentSelections(_ formState: SearchFormState) -> [[String]] {

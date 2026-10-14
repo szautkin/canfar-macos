@@ -26,8 +26,11 @@ final class SearchFormModel {
     private let resolverService: TargetResolverService
 
     // Target resolution state
-    var resolverStatus: ResolverStatus = .idle
-    var resolverResult: ResolverResult?
+    /// The target's position (plan 38): resolving, resolved, or why not.
+    var resolution: Phase<ResolverResult> = .idle
+    /// What the resolver found for the target as it is now; nil while it
+    /// resolves, and when it found nothing.
+    var resolverResult: ResolverResult? { if case .ready(let result) = resolution { result } else { nil } }
 
     // Search execution state
     var isSearching = false
@@ -110,8 +113,7 @@ final class SearchFormModel {
     func setSearchCoordinates(ra: Double, dec: Double) {
         formState.target = String(format: "%.6f %.6f", ra, dec)
         formState.resolver = .none
-        resolverStatus = .idle
-        resolverResult = nil
+        resolution = .idle
         resolveTask?.cancel()
         selectedTab = .search
     }
@@ -123,33 +125,16 @@ final class SearchFormModel {
 
         let target = formState.target.trimmingCharacters(in: .whitespaces)
         guard !target.isEmpty, formState.resolver != .none else {
-            resolverStatus = .idle
-            resolverResult = nil
+            resolution = .idle
             return
         }
 
-        resolverStatus = .resolving
+        // Resolving from the keystroke; the lookup waits for a pause.
+        let attempt = resolution.begin()
         resolveTask = Task {
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled else { return }
-
-            do {
-                let result = try await resolverService.resolve(
-                    target: target,
-                    service: formState.resolver
-                )
-                guard !Task.isCancelled else { return }
-                resolverResult = result
-                if !result.coordsRA.isEmpty && !result.coordsDec.isEmpty {
-                    resolverStatus = .resolved(ra: result.coordsRA, dec: result.coordsDec)
-                } else {
-                    resolverStatus = .failed("No coordinates found")
-                }
-            } catch {
-                guard !Task.isCancelled else { return }
-                resolverResult = nil
-                resolverStatus = .failed(error.localizedDescription)
-            }
+            await resolve(target, attempt)
         }
     }
 
@@ -161,25 +146,23 @@ final class SearchFormModel {
         resolveTask?.cancel()
         let target = formState.target.trimmingCharacters(in: .whitespaces)
         guard !target.isEmpty, formState.resolver != .none else {
-            resolverStatus = .idle
-            resolverResult = nil
+            resolution = .idle
             return
         }
-        resolverStatus = .resolving
+        await resolve(target, resolution.begin())
+    }
+
+    /// The one way a target is resolved: a position, or why not — a newer
+    /// lookup's answer is the one kept.
+    private func resolve(_ target: String, _ attempt: Attempt) async {
         do {
-            let result = try await resolverService.resolve(
-                target: target,
-                service: formState.resolver
-            )
-            resolverResult = result
-            if !result.coordsRA.isEmpty && !result.coordsDec.isEmpty {
-                resolverStatus = .resolved(ra: result.coordsRA, dec: result.coordsDec)
-            } else {
-                resolverStatus = .failed("No coordinates found")
+            let result = try await resolverService.resolve(target: target, service: formState.resolver)
+            guard !result.coordsRA.isEmpty, !result.coordsDec.isEmpty else {
+                throw Problem(.notFound, String(localized: "No coordinates found"), retry: false)
             }
+            resolution.finish(attempt, with: .success(result))
         } catch {
-            resolverResult = nil
-            resolverStatus = .failed(error.localizedDescription)
+            resolution.finish(attempt, with: .failure(error))
         }
     }
 
@@ -368,8 +351,7 @@ final class SearchFormModel {
 
     func loadFromSnapshot(_ snapshot: SearchFormSnapshot) {
         formState.loadFromSnapshot(snapshot)
-        resolverStatus = .idle
-        resolverResult = nil
+        resolution = .idle
         searchError = nil
         selectedTab = .search
         // Re-trigger target resolution if target is set
@@ -382,8 +364,7 @@ final class SearchFormModel {
 
     func resetForm() {
         formState.reset()
-        resolverStatus = .idle
-        resolverResult = nil
+        resolution = .idle
         searchError = nil
     }
 }

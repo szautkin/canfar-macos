@@ -99,6 +99,9 @@ enum Phase<Value> {
 
     var isWorking: Bool { if case .working = self { true } else { false } }
 
+    /// Working with nothing to show yet: the first load, a spinner's time.
+    var isLoadingFirst: Bool { if case .working(_, nil) = self { true } else { false } }
+
     var problem: Problem? { if case .failed(let problem, _) = self { problem } else { nil } }
 
     /// The try under way, when there is one.

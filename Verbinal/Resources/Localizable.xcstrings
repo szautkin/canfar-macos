@@ -359,6 +359,16 @@
         }
       }
     },
+    "No coordinates found" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune coordonnée trouvée"
+          }
+        }
+      }
+    },
     "Not found." : {
       "localizations" : {
         "fr" : {

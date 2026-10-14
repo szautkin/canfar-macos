@@ -26,30 +26,20 @@ final class ObservationDetailModel {
     private let caom2Service: CAOM2Service
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ObservationDetail")
 
-    enum LoadState: Equatable {
-        case idle
-        case loading
-        case loaded
-        case authRequired
-        case notFound
-        case failed(String)
+    /// The CAOM-2 record (plan 38): loading, loaded, or why not — sign-in
+    /// required and not found are problems trying again does not help.
+    var load: Phase<CAOM2Observation> = .idle
+    var caom2: CAOM2Observation? { load.value }
 
-        /// States `loadCAOM2()` may (re)start a fetch from: never started, or
-        /// a recoverable failure (any message). `loading`/`loaded` are
-        /// in-flight/done; `authRequired`/`notFound` are terminal and not
-        /// auto-retried.
-        var isRetryable: Bool {
-            switch self {
-            case .idle, .failed:
-                return true
-            case .loading, .loaded, .authRequired, .notFound:
-                return false
-            }
+    /// Whether `loadCAOM2()` may (re)start: never started, or a failure
+    /// trying again can help.
+    var mayLoad: Bool {
+        switch load {
+        case .idle: true
+        case .failed(let problem, _): problem.retry
+        case .working, .ready: false
         }
     }
-
-    var caom2: CAOM2Observation?
-    var loadState: LoadState = .idle
 
     init(
         result: SearchResult,
@@ -70,27 +60,28 @@ final class ObservationDetailModel {
     /// Trigger the CAOM2 fetch. Idempotent — successive calls during a load
     /// are no-ops; calls after a successful load just return.
     func loadCAOM2() async {
-        guard loadState.isRetryable else { return }
-        loadState = .loading
+        guard mayLoad else { return }
+        let attempt = load.begin()
 
         let publisherID = self.publisherID
         guard !publisherID.isEmpty else {
-            loadState = .failed(String(localized: "No publisher ID for this row."))
+            load.finish(attempt, with: .failure(Problem(.other, String(localized: "No publisher ID for this row."))))
             return
         }
 
         do {
             let observation = try await caom2Service.fetch(publisherID: publisherID)
-            caom2 = observation
-            loadState = .loaded
+            load.finish(attempt, with: .success(observation))
         } catch CAOM2ServiceError.authenticationRequired {
             Self.logger.info("CAOM2 detail requires sign-in: \(publisherID, privacy: .public)")
-            loadState = .authRequired
+            load.finish(attempt, with: .failure(Problem(
+                .signInRequired, String(localized: "This observation's full metadata requires CADC sign-in."), retry: false)))
         } catch CAOM2ServiceError.observationNotFound {
-            loadState = .notFound
+            load.finish(attempt, with: .failure(Problem(
+                .notFound, String(localized: "Observation metadata not available."), retry: false)))
         } catch {
             Self.logger.error("CAOM2 fetch failed: \(error.localizedDescription, privacy: .public)")
-            loadState = .failed(error.localizedDescription)
+            load.finish(attempt, with: .failure(error))
         }
     }
 }

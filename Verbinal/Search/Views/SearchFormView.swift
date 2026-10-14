@@ -21,7 +21,7 @@ struct SearchFormView: View {
                             .frame(maxWidth: .infinity)
                         SpatialConstraintsView(
                             formState: searchModel.formState,
-                            resolverStatus: searchModel.resolverStatus,
+                            resolution: searchModel.resolution,
                             onTargetChanged: { searchModel.targetChanged() }
                         )
                         .pointableArea("search.spatial", label: String(localized: "Spatial constraints"))

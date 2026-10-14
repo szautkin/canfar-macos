@@ -66,35 +66,29 @@ struct DetailRow: View {
 /// Loading / auth-required / error state for sections that depend on the
 /// async CAOM2 fetch.
 struct AsyncStateBanner: View {
-    let state: ObservationDetailModel.LoadState
+    let model: ObservationDetailModel
 
     var body: some View {
-        switch state {
-        case .idle, .loading:
+        switch model.load {
+        case .idle, .working:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
                 Text("Loading observation detail…").font(.caption).foregroundStyle(.secondary)
             }
             .padding(8)
-        case .authRequired:
-            Label(
-                "This observation's full metadata requires CADC sign-in.",
-                systemImage: "lock.shield"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+        case .failed(let problem, _):
+            HStack(spacing: 8) {
+                Label(problem.message, systemImage: problem.kind == .signInRequired ? "lock.shield" : ProblemView.symbol(problem.kind))
+                    .font(.caption)
+                    .foregroundStyle(problem.retry ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                if problem.retry {
+                    Button("Try Again") { Task { await model.loadCAOM2() } }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                }
+            }
             .padding(8)
-        case .notFound:
-            Label("Observation metadata not available.", systemImage: "questionmark.circle")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(8)
-        case .failed(let msg):
-            Label(msg, systemImage: "exclamationmark.triangle")
-                .font(.caption)
-                .foregroundStyle(.orange)
-                .padding(8)
-        case .loaded:
+        case .ready:
             EmptyView()
         }
     }
@@ -110,8 +104,8 @@ struct ObservationOverviewSection: View {
             targetCard
             instrumentCard
             proposalCard
-            if model.loadState != .loaded {
-                AsyncStateBanner(state: model.loadState)
+            if model.caom2 == nil {
+                AsyncStateBanner(model: model)
             }
         }
     }
@@ -173,7 +167,7 @@ struct ObservationCoverageSection: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            if model.loadState == .loaded, let caom2 = model.caom2 {
+            if let caom2 = model.caom2 {
                 ForEach(Array(caom2.planes.enumerated()), id: \.offset) { _, plane in
                     planeCard(plane)
                 }
@@ -182,7 +176,7 @@ struct ObservationCoverageSection: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                AsyncStateBanner(state: model.loadState)
+                AsyncStateBanner(model: model)
             }
         }
     }
@@ -306,7 +300,7 @@ struct ObservationFilesSection: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            if model.loadState == .loaded, let caom2 = model.caom2 {
+            if let caom2 = model.caom2 {
                 if research != nil { DownloadFolderLine() }
                 if let failure {
                     Label(failure, systemImage: "xmark.circle")
@@ -322,7 +316,7 @@ struct ObservationFilesSection: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                AsyncStateBanner(state: model.loadState)
+                AsyncStateBanner(model: model)
             }
         }
         .uiPresented("Remove a File?", .confirmation, item: $removing)
@@ -473,7 +467,7 @@ struct ObservationProvenanceSection: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            if model.loadState == .loaded, let caom2 = model.caom2 {
+            if let caom2 = model.caom2 {
                 ForEach(Array(caom2.planes.enumerated()), id: \.offset) { _, plane in
                     planeProvenance(plane)
                 }
@@ -482,7 +476,7 @@ struct ObservationProvenanceSection: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                AsyncStateBanner(state: model.loadState)
+                AsyncStateBanner(model: model)
             }
         }
     }
