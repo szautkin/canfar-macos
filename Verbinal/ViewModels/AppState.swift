@@ -568,12 +568,10 @@ final class AppState {
         }
     }
 
-    // Cross-module actions
-    var pendingFITSURL: URL?
-
-    /// Pending cube file → Cube Viewer. The Cube Viewer is its own tile/mode,
-    /// separate from the FITS viewer; this mirrors the `pendingFITSURL` bridge.
-    var pendingCubeURL: URL?
+    // Cross-module actions: one hand-off at a time (plan 38,
+    // AppState+HandOff) — pendingFITSURL, pendingCubeURL,
+    // pendingSearchCoordinate and pendingSearchLoad read it.
+    var handOff: HandOff?
 
     /// Hoisted search model — same rationale as the viewer models below:
     /// app-owned so it survives mode switches and gives the search-control
@@ -695,7 +693,6 @@ final class AppState {
         let ra: Double
         let dec: Double
     }
-    var pendingSearchCoordinate: PendingCoordinate?
 
     /// Pending saved-query / recent-search load → Search module (the
     /// `load_saved_search` agent tool's bridge, mirroring
@@ -710,7 +707,6 @@ final class AppState {
         }
         let kind: Kind
     }
-    var pendingSearchLoad: PendingSearchLoad?
 
     enum AppAction {
         case openFITS(url: URL)

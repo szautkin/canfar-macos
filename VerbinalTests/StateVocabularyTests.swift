@@ -151,4 +151,20 @@ final class StateVocabularyTests: XCTestCase {
         XCTAssertTrue(document.send(.close))
         XCTAssertEqual(document.state, .empty)
     }
+
+    // MARK: - The app's hand-offs (P4b)
+
+    func testOneHandOffAtATimeTakenByItsScreen() {
+        let state = AppState()
+        let file = URL(fileURLWithPath: "/tmp/a.fits")
+        state.pendingFITSURL = file
+        XCTAssertEqual(state.handOff, .openFITS(file))
+        let here = AppState.PendingCoordinate(ra: 10, dec: 20)
+        state.pendingSearchCoordinate = here
+        XCTAssertNil(state.pendingFITSURL, "a newer hand-off replaces what waited")
+        state.pendingFITSURL = nil
+        XCTAssertEqual(state.pendingSearchCoordinate, here, "taking the FITS one does not clear the search's")
+        state.pendingSearchCoordinate = nil
+        XCTAssertNil(state.handOff)
+    }
 }
