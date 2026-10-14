@@ -16,9 +16,9 @@ final class FileBrowserModel {
     var nodes: [LocalFileNode] = []
     var filterText = ""
     var showOnlySupportedTypes = true
-    /// Set when the directory itself couldn't be enumerated — lets the sidebar
-    /// show a distinct "couldn't load" state instead of looking empty.
-    var loadError: String?
+    /// The folder's listing (plan 38): listed (when), or why the folder
+    /// itself could not be read — the sidebar says so instead of looking empty.
+    private(set) var listing: Phase<Date> = .idle
     /// Count of entries in the last load whose metadata read failed and were
     /// omitted from `nodes`, so a partial read is flagged rather than silently
     /// dropping files.
@@ -68,7 +68,7 @@ final class FileBrowserModel {
     }
 
     func loadDirectory() {
-        loadError = nil
+        let attempt = listing.begin()
         loadSkippedCount = 0
         needsGrant = false
         // Cheap pre-check: if the folder is outside the sandbox's reach and
@@ -77,6 +77,7 @@ final class FileBrowserModel {
         if let access, !access.hasAccess(to: currentURL) {
             nodes = []
             needsGrant = true
+            listing.finish(attempt, with: .success(Date()))
             return
         }
         do {
@@ -108,9 +109,10 @@ final class FileBrowserModel {
                 return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
             }
             loadSkippedCount = skipped
+            listing.finish(attempt, with: .success(Date()))
         } catch {
             nodes = []
-            loadError = error.localizedDescription
+            listing.finish(attempt, with: .failure(error))
         }
     }
 

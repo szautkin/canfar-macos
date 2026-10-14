@@ -85,7 +85,7 @@ final class FileBrowserModelTests: XCTestCase {
         let model = FileBrowserModel()
         model.currentURL = link
         model.loadDirectory()
-        XCTAssertNil(model.loadError)
+        XCTAssertNil(model.listing.problem)
         XCTAssertEqual(model.nodes.map(\.name), ["sample.fits"])
     }
 
@@ -106,7 +106,7 @@ final class FileBrowserModelTests: XCTestCase {
         let model = FileBrowserModel()
         model.currentURL = dir
         model.loadDirectory()
-        XCTAssertNil(model.loadError)
+        XCTAssertNil(model.listing.problem)
         XCTAssertEqual(model.nodes.count, 1)
         XCTAssertEqual(model.nodes.first?.name, "sample.fits")
     }
@@ -140,7 +140,7 @@ final class FileBrowserModelTests: XCTestCase {
         let model = FileBrowserModel()
         model.currentURL = URL(fileURLWithPath: "/does-not-exist-\(UUID().uuidString)")
         model.loadDirectory()
-        XCTAssertNotNil(model.loadError, "an un-enumerable directory must set loadError, not look empty")
+        XCTAssertNotNil(model.listing.problem, "an un-enumerable directory must say why, not look empty")
         XCTAssertTrue(model.nodes.isEmpty)
     }
 
@@ -156,7 +156,7 @@ final class FileBrowserModelTests: XCTestCase {
         model.currentURL = dir
         model.loadDirectory()
 
-        XCTAssertNil(model.loadError)
+        XCTAssertNil(model.listing.problem)
         XCTAssertEqual(model.loadSkippedCount, 0)
         XCTAssertEqual(model.nodes.count, 2, "both readable files are listed in the raw node set")
     }

@@ -219,4 +219,5 @@ lack today.
 | P2b | `9a208521` | The launch forms: `options` and `launchPhase` (isLoading 5, errorMessage 5, hasError 3). |
 | P2c | `4141d67c` | The storage browser's listing: `Phase`, `Phase.dismiss`, Try Again (isLoading 4, errorMessage 4, hasError 2). |
 | P2d | `6bbffa1f` | Search: data train, observation detail and target resolver as `Phase`s (isLoading 3, errorMessage 3, hasError 1). |
-| P2d½ | (this commit) | The search query: `query: Phase<Int>`; `isSearching`, `searchStartedAt`, `searchError` read it. |
+| P2d½ | `e510416b` | The search query: `query: Phase<Int>`; `isSearching`, `searchStartedAt`, `searchError` read it. |
+| P2e | (this commit) | Probe logs (a `Phase` per tab), export and its dialog, the file browser's listing (isLoading 2, errorMessage 1, loadError 0, lastError 3). |

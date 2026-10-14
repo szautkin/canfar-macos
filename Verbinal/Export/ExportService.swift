@@ -24,9 +24,8 @@ import AppKit
 final class ExportService {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ExportService")
 
-    var isExporting = false
-    var lastExportURL: URL?
-    var lastError: String?
+    /// An export: under way, written (its bundle), or why not (plan 38).
+    private(set) var export: Phase<URL> = .idle
 
     /// Export all supplied modules into a new timestamped folder inside `destination`.
     /// Returns the URL of the created bundle folder, or `nil` on failure.
@@ -35,9 +34,7 @@ final class ExportService {
         modules: [ExportableModule],
         options: ExportOptions = ExportOptions()
     ) async -> URL? {
-        isExporting = true
-        lastError = nil
-        defer { isExporting = false }
+        let attempt = export.begin()
 
         let bundleURL = destination.appendingPathComponent(Self.bundleName(), isDirectory: true)
         // Recorded as a change, whoever exports (plan 23 C).
@@ -107,9 +104,10 @@ final class ExportService {
             if !copyFailures.isEmpty {
                 let names = copyFailures.prefix(5).joined(separator: ", ")
                 let suffix = copyFailures.count > 5 ? ", …" : ""
-                lastError = "Export incomplete: \(copyFailures.count) attached file\(copyFailures.count == 1 ? "" : "s") could not be copied (\(names)\(suffix)). Re-export, or disable file copies."
+                let message = "Export incomplete: \(copyFailures.count) attached file\(copyFailures.count == 1 ? "" : "s") could not be copied (\(names)\(suffix)). Re-export, or disable file copies."
+                export.finish(attempt, with: .failure(Problem(.other, message)))
                 try? FileManager.default.removeItem(at: bundleURL)
-                ChangeLog.shared.failed("export_research_bundle", what, because: lastError ?? "", since: started)
+                ChangeLog.shared.failed("export_research_bundle", what, because: message, since: started)
                 return nil
             }
 
@@ -145,13 +143,13 @@ final class ExportService {
                 encoding: .utf8
             )
 
-            lastExportURL = bundleURL
+            export.finish(attempt, with: .success(bundleURL))
             Self.logger.log("Export completed: \(bundleURL.path, privacy: .public)")
             ChangeLog.shared.done("export_research_bundle", what, since: started)
             return bundleURL
 
         } catch {
-            lastError = error.localizedDescription
+            export.finish(attempt, with: .failure(error))
             Self.logger.error("Export failed: \(error.localizedDescription, privacy: .public)")
             ChangeLog.shared.failed("export_research_bundle", what, because: error.localizedDescription, since: started)
             try? FileManager.default.removeItem(at: bundleURL)

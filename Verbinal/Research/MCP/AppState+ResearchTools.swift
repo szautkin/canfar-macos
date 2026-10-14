@@ -181,7 +181,7 @@ extension AppState {
         let service = ExportService()
         let options = ExportOptions(includeFileCopies: includeFileCopies)
         guard let bundleURL = await service.exportAll(to: downloads, modules: [exporter], options: options) else {
-            throw ProposalApplyError.backendError(service.lastError ?? "export failed")
+            throw ProposalApplyError.backendError(service.export.problem?.message ?? "export failed")
         }
         if uploadToVOSpace {
             guard !username.isEmpty else {

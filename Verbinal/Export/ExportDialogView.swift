@@ -33,11 +33,16 @@ struct ExportDialogView: View {
 
     @State private var selections: [ModuleSelection]
     @State private var includeFileCopies = false
-    @State private var isExporting = false
-    @State private var isUploading = false
-    @State private var errorMessage: String?
-    @State private var completedBundleURL: URL?
-    @State private var uploadedRemotePath: String?
+    /// This dialog's export — from choosing where to its bundle — and the
+    /// bundle's upload to VOSpace (plan 38): under way, done, or why not.
+    @State private var run: Phase<URL> = .idle
+    @State private var upload: Phase<String> = .idle
+
+    private var isExporting: Bool { run.isWorking }
+    private var isUploading: Bool { upload.isWorking }
+    private var completedBundleURL: URL? { if case .ready(let url) = run { url } else { nil } }
+    private var uploadedRemotePath: String? { if case .ready(let path) = upload { path } else { nil } }
+    private var problem: Problem? { upload.problem ?? run.problem }
 
     init(
         availableModules: [ModuleSelection],
@@ -92,8 +97,8 @@ struct ExportDialogView: View {
                 if let completedBundleURL {
                     completionSection(url: completedBundleURL)
                 }
-                if let errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                if let problem {
+                    Label(problem.message, systemImage: "exclamationmark.triangle.fill")
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
@@ -245,16 +250,12 @@ struct ExportDialogView: View {
     }
 
     private func runExport() async {
-        errorMessage = nil
-        completedBundleURL = nil
-        isExporting = true
-
+        upload = .idle
+        let attempt = run.begin()
         guard let destination = await pickDestination() else {
-            isExporting = false
+            run.finish(attempt, with: .failure(CancellationError()))
             return
         }
-
-        defer { isExporting = false }
 
         let activeModules = selections
             .filter { $0.isEnabled }
@@ -267,10 +268,10 @@ struct ExportDialogView: View {
             modules: activeModules,
             options: options
         ) {
-            completedBundleURL = bundleURL
+            run.finish(attempt, with: .success(bundleURL))
             onComplete?(bundleURL)
         } else {
-            errorMessage = exportService.lastError ?? String(localized: "Export failed")
+            run.finish(attempt, with: .failure(exportService.export.problem ?? Problem(.other, String(localized: "Export failed"))))
         }
     }
 
@@ -302,15 +303,11 @@ struct ExportDialogView: View {
 
     private func runVOSpaceUpload(_ url: URL) async {
         guard let onVOSpaceUpload else { return }
-        isUploading = true
-        errorMessage = nil
-        defer { isUploading = false }
-
+        let attempt = upload.begin()
         do {
-            let remotePath = try await onVOSpaceUpload(url)
-            uploadedRemotePath = remotePath
+            upload.finish(attempt, with: .success(try await onVOSpaceUpload(url)))
         } catch {
-            errorMessage = String(localized: "VOSpace upload failed: \(error.localizedDescription)")
+            upload.finish(attempt, with: .failure(Problem(.other, String(localized: "VOSpace upload failed: \(error.localizedDescription)"))))
         }
     }
 }

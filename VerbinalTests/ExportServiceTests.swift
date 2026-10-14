@@ -220,7 +220,7 @@ final class ExportServiceTests: XCTestCase {
 
         let bundleURL = await service.exportAll(to: tmpDir, modules: [exporter])
         guard let bundleURL else {
-            XCTFail("exportAll returned nil — lastError=\(service.lastError ?? "nil")")
+            XCTFail("exportAll returned nil — lastError=\(service.export.problem?.message ?? "nil")")
             return
         }
 
@@ -230,8 +230,8 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: bundleURL.appendingPathComponent("research/observations.json").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: bundleURL.appendingPathComponent("research/notes.json").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: bundleURL.appendingPathComponent("research/notes.md").path))
-        XCTAssertEqual(service.lastExportURL, bundleURL)
-        XCTAssertFalse(service.isExporting)
+        XCTAssertEqual(service.export.value, bundleURL)
+        XCTAssertFalse(service.export.isWorking)
     }
 
     func testExportAllManifestClaudeHintsAreDerivedFromActualFiles() async throws {
@@ -367,8 +367,8 @@ final class ExportServiceTests: XCTestCase {
         let url = await service.exportAll(to: makeTempDir(), modules: [StubModule(output: out)], options: options)
 
         XCTAssertNil(url, "export must fail when an attached file can't be copied")
-        XCTAssertTrue(service.lastError?.contains("could not be copied") ?? false,
-                      "expected a copy-failure error, got: \(service.lastError ?? "nil")")
+        XCTAssertTrue(service.export.problem?.message.contains("could not be copied") ?? false,
+                      "expected a copy-failure error, got: \(service.export.problem?.message ?? "nil")")
     }
 
     // MARK: - Ticket 041: deterministic per-module file ordering
@@ -391,7 +391,7 @@ final class ExportServiceTests: XCTestCase {
             to: makeTempDir(),
             modules: [StubModule(output: out)]
         )
-        guard let bundleURL else { return XCTFail("export failed: \(service.lastError ?? "nil")") }
+        guard let bundleURL else { return XCTFail("export failed: \(service.export.problem?.message ?? "nil")") }
 
         let manifestData = try Data(contentsOf: bundleURL.appendingPathComponent("manifest.json"))
         let decoder = JSONDecoder()
@@ -425,7 +425,7 @@ final class ExportServiceTests: XCTestCase {
         options.includeFileCopies = true
 
         let bundleURL = await service.exportAll(to: makeTempDir(), modules: [StubModule(output: out)], options: options)
-        guard let bundleURL else { return XCTFail("export failed: \(service.lastError ?? "nil")") }
+        guard let bundleURL else { return XCTFail("export failed: \(service.export.problem?.message ?? "nil")") }
         XCTAssertTrue(
             FileManager.default.fileExists(atPath: bundleURL.appendingPathComponent("stub/files/real.fits").path),
             "the attached file should be copied into the bundle"

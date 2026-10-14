@@ -114,7 +114,7 @@ final class CodeQualityGuardrailTests: XCTestCase {
     /// The flags plan 38 moves into state machines, counted as it began
     /// (2026-10-13): each may only go down, and its ceiling with it.
     static let looseFlagCeilings: [String: Int] = [
-        "isLoading": 3, "errorMessage": 3, "hasError": 1, "loadError": 1, "lastError": 4,
+        "isLoading": 2, "errorMessage": 1, "hasError": 1, "loadError": 0, "lastError": 3,
         "statusMessage": 3, "isBusy": 2,
     ]
 

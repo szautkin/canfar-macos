@@ -68,7 +68,7 @@ struct DownloadedFilesView: View {
                 Button {
                     showExportDialog = true
                 } label: {
-                    if model.exportService.isExporting {
+                    if model.exportService.export.isWorking {
                         ProgressView()
                             .controlSize(.small)
                     } else {
@@ -77,7 +77,7 @@ struct DownloadedFilesView: View {
                 }
                 .buttonStyle(.borderless)
                 .controlSize(.small)
-                .disabled(model.observationStore.observations.isEmpty || model.exportService.isExporting)
+                .disabled(model.observationStore.observations.isEmpty || model.exportService.export.isWorking)
                 .help("Export observations and notes to a Claude-friendly bundle")
                 .accessibilityLabel("Export observations and notes")
                 .opens("Export Research")

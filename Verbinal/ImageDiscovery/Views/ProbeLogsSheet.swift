@@ -22,10 +22,12 @@ struct ProbeLogsSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var tab: Tab = .logs
-    @State private var logs: String?
-    @State private var events: String?
-    @State private var isLoading: Bool = false
-    @State private var errorMessage: String?
+    /// Each tab's text: loading, loaded, or why not (plan 38) — its own,
+    /// so one tab's failure is not the other's.
+    @State private var logs: Phase<String> = .idle
+    @State private var events: Phase<String> = .idle
+
+    private var current: Phase<String> { tab == .logs ? logs : events }
 
     enum Tab: String, CaseIterable, Identifiable {
         case logs = "Logs"
@@ -79,7 +81,7 @@ struct ProbeLogsSheet: View {
                     .textSelection(.enabled)
             }
             Spacer()
-            if isLoading {
+            if current.isWorking {
                 ProgressView().controlSize(.small)
             }
         }
@@ -89,27 +91,10 @@ struct ProbeLogsSheet: View {
 
     @ViewBuilder
     private var content: some View {
-        if let errorMessage {
-            Label(errorMessage, systemImage: "exclamationmark.triangle")
-                .font(.callout)
-                .foregroundStyle(.orange)
-        } else {
-            switch tab {
-            case .logs:
-                if let logs {
-                    monospaced(logs.isEmpty ? "(no log output)" : logs)
-                } else {
-                    ProgressView("Loading logs…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            case .events:
-                if let events {
-                    monospaced(events.isEmpty ? "(no events)" : events)
-                } else {
-                    ProgressView("Loading events…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            }
+        PhaseView(phase: current, isEmpty: \.isEmpty, retry: { Task { await load(tab) } }) {
+            monospaced(tab == .logs ? "(no log output)" : "(no events)")
+        } content: { text in
+            monospaced(text)
         }
     }
 
@@ -124,15 +109,9 @@ struct ProbeLogsSheet: View {
     @ViewBuilder
     private var footer: some View {
         HStack(spacing: 12) {
-            Button("Refresh") {
-                switch tab {
-                case .logs:   logs = nil
-                case .events: events = nil
-                }
-                Task { await loadCurrentTabIfNeeded() }
-            }
+            Button("Refresh") { Task { await load(tab) } }
             .keyboardShortcut("r", modifiers: .command)
-            .disabled(isLoading)
+            .disabled(current.isWorking)
             .help("Re-fetch the current tab from Skaha (⌘R)")
 
             Spacer()
@@ -149,32 +128,26 @@ struct ProbeLogsSheet: View {
     // MARK: - Loading
 
     private func loadCurrentTabIfNeeded() async {
-        switch tab {
-        case .logs where logs == nil:    await loadLogs()
-        case .events where events == nil: await loadEvents()
-        default: break
-        }
+        if current == .idle { await load(tab) }
     }
 
-    private func loadLogs() async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-        do {
-            logs = try await model.fetchLogs(jobID: jobID)
-        } catch {
-            errorMessage = "Couldn't fetch logs: \(error.localizedDescription)"
-        }
-    }
-
-    private func loadEvents() async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-        do {
-            events = try await model.fetchEvents(jobID: jobID)
-        } catch {
-            errorMessage = "Couldn't fetch events: \(error.localizedDescription)"
+    /// Fetches `which` tab's text, keeping what it showed until it lands.
+    private func load(_ which: Tab) async {
+        switch which {
+        case .logs:
+            let attempt = logs.begin()
+            do {
+                logs.finish(attempt, with: .success(try await model.fetchLogs(jobID: jobID)))
+            } catch {
+                logs.finish(attempt, with: .failure(Problem(.other, String(localized: "Couldn't fetch logs: \(error.localizedDescription)"))))
+            }
+        case .events:
+            let attempt = events.begin()
+            do {
+                events.finish(attempt, with: .success(try await model.fetchEvents(jobID: jobID)))
+            } catch {
+                events.finish(attempt, with: .failure(Problem(.other, String(localized: "Couldn't fetch events: \(error.localizedDescription)"))))
+            }
         }
     }
 }

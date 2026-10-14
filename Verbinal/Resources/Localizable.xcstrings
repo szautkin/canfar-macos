@@ -119,6 +119,26 @@
         }
       }
     },
+    "Couldn't fetch events: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de récupérer les événements : %@"
+          }
+        }
+      }
+    },
+    "Couldn't fetch logs: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de récupérer les journaux : %@"
+          }
+        }
+      }
+    },
     "Couldn't load the image catalogue: %@" : {
       "localizations" : {
         "fr" : {
