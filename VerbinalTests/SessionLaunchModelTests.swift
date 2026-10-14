@@ -36,7 +36,7 @@ final class SessionLaunchModelTests: XCTestCase {
         let model = makeModel(returning: nil)
         await model.launch()
         XCTAssertFalse(model.launchSuccess, "a no-ID launch must not report success")
-        XCTAssertTrue(model.hasError)
+        XCTAssertNotNil(model.launchPhase.problem)
         XCTAssertNil(model.pendingRecentLaunch, "no RecentLaunch should be queued for a no-ID launch")
     }
 

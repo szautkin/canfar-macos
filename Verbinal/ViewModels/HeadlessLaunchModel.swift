@@ -38,13 +38,14 @@ final class HeadlessLaunchModel {
 
     // MARK: - Status
 
-    var isLaunching: Bool = false
-    var hasError: Bool = false
-    var errorMessage: String = ""
-    var launchSuccess: Bool = false
+    /// A launch: under way, launched (its job ids), or why not — the form's
+    /// own checks too (plan 38).
+    private(set) var launchPhase: Phase<[String]> = .idle
+    var isLaunching: Bool { launchPhase.isWorking }
+    var launchSuccess: Bool { if case .ready = launchPhase { true } else { false } }
     var launchStatus: String = ""
     /// Session ids returned by the most recent launch. May be partial
-    /// after a `partialReplicaFailure` — `errorMessage` will explain.
+    /// after a `partialReplicaFailure` — `launchPhase`'s problem explains.
     private(set) var lastLaunchedJobIDs: [String] = []
 
     init(headlessService: HeadlessService, recentLaunchStore: RecentLaunchStore, tasks: TaskRegistry = .shared) {
@@ -84,30 +85,13 @@ final class HeadlessLaunchModel {
         let trimmedCmd = cmd.trimmingCharacters(in: .whitespaces)
         let trimmedArgs = args.trimmingCharacters(in: .whitespaces)
 
-        guard !trimmedName.isEmpty else {
-            hasError = true
-            errorMessage = String(localized: "Job name is required")
-            return
-        }
-        guard let image = selectedImage else {
-            hasError = true
-            errorMessage = String(localized: "Please select an image")
-            return
-        }
-        guard !trimmedCmd.isEmpty else {
-            hasError = true
-            errorMessage = String(localized: "Command is required")
-            return
-        }
-        guard replicas >= 1 else {
-            hasError = true
-            errorMessage = String(localized: "Replicas must be at least 1")
-            return
-        }
+        func refuse(_ message: String) { launchPhase.fail(Problem(.refused, message, retry: false)) }
+        guard !trimmedName.isEmpty else { return refuse(String(localized: "Job name is required")) }
+        guard let image = selectedImage else { return refuse(String(localized: "Please select an image")) }
+        guard !trimmedCmd.isEmpty else { return refuse(String(localized: "Command is required")) }
+        guard replicas >= 1 else { return refuse(String(localized: "Replicas must be at least 1")) }
 
-        isLaunching = true
-        launchSuccess = false
-        hasError = false
+        let attempt = launchPhase.begin()
         launchStatus = String(localized: "Launching headless job…")
 
         let isFixed = resourceType == "fixed"
@@ -126,25 +110,21 @@ final class HeadlessLaunchModel {
         do {
             let ids = try await launches.launch(params)
             lastLaunchedJobIDs = ids
-            launchSuccess = true
+            launchPhase.finish(attempt, with: .success(ids))
             launchStatus = ids.count == 1
                 ? String(localized: "Headless job launched (id=\(ids[0]))")
                 : String(localized: "\(ids.count) headless replicas launched")
             persistRecentLaunches(ids: ids, params: params, image: image)
         } catch let HeadlessLaunchError.partialReplicaFailure(launchedIDs, failedIdx, message) {
             lastLaunchedJobIDs = launchedIDs
-            hasError = true
-            errorMessage = HeadlessLaunchError.partialReplicaFailure(
-                launchedIDs: launchedIDs, failedAtIndex: failedIdx, underlyingMessage: message).localizedDescription
+            launchPhase.finish(attempt, with: .failure(Problem(.other, HeadlessLaunchError.partialReplicaFailure(
+                launchedIDs: launchedIDs, failedAtIndex: failedIdx, underlyingMessage: message).localizedDescription)))
             launchStatus = String(localized: "Partial launch — see error below")
             persistRecentLaunches(ids: launchedIDs, params: params, image: image)
         } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
+            launchPhase.finish(attempt, with: .failure(error))
             launchStatus = String(localized: "Launch failed")
         }
-
-        isLaunching = false
     }
 
     // MARK: - Reset
@@ -156,9 +136,7 @@ final class HeadlessLaunchModel {
         replicas = 1
         // Keep selectedProject / selectedImage — typical user pattern is
         // launching the same image with different cmds.
-        hasError = false
-        errorMessage = ""
-        launchSuccess = false
+        launchPhase = .idle
         launchStatus = ""
     }
 

@@ -26,13 +26,13 @@ struct LaunchProgressSheet: View {
                 Text(model.launchStatus)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            } else if model.hasError {
+            } else if let problem = model.launchPhase.problem {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 48))
                     .foregroundStyle(.red)
                 Text("Launch Failed")
                     .font(.headline)
-                Text(model.errorMessage)
+                Text(problem.message)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

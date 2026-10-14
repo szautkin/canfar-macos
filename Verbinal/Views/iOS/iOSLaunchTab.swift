@@ -51,7 +51,7 @@ private struct iOSLaunchFormView: View {
                 }
             }
 
-            if model.isLoading {
+            if model.options.isWorking {
                 Section {
                     HStack {
                         Spacer()
@@ -156,9 +156,9 @@ private struct iOSLaunchFormView: View {
                 }
             }
 
-            if model.hasError {
+            if let problem = model.launchPhase.problem ?? model.options.problem {
                 Section {
-                    Label(model.errorMessage, systemImage: "xmark.circle")
+                    Label(problem.message, systemImage: "xmark.circle")
                         .foregroundStyle(.red)
                 }
             }

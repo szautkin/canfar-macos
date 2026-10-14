@@ -17,7 +17,7 @@ import VerbinalKit
 /// Headless flow is deliberately different: it renders progress and
 /// feedback *inline* from `HeadlessLaunchModel`'s observable status
 /// fields (`launchStatus`, `launchSuccess`, `lastLaunchedJobIDs`,
-/// `hasError`/`errorMessage`) — there is no headless progress-sheet
+/// `launchPhase`) — there is no headless progress-sheet
 /// binding. The dead `showHeadlessLaunchProgress` flag falsely
 /// implied one existed.
 ///
@@ -65,11 +65,11 @@ final class HeadlessLaunchProgressInlineTests: XCTestCase {
         XCTAssertEqual(model.lastLaunchedJobIDs, ["headless-job-1"],
                        "inline job ids must drive the success label")
         XCTAssertFalse(model.launchStatus.isEmpty, "inline status text must be populated")
-        XCTAssertFalse(model.hasError)
+        XCTAssertNil(model.launchPhase.problem)
     }
 
     /// A failed headless launch likewise reports inline via
-    /// `hasError`/`errorMessage` — the Headless tab never gates
+    /// `launchPhase`'s problem — the Headless tab never gates
     /// feedback on a progress-sheet flag.
     func testValidationFailureSurfacesInlineError() async {
         let model = makeModel()
@@ -78,8 +78,8 @@ final class HeadlessLaunchProgressInlineTests: XCTestCase {
 
         await model.launch()
 
-        XCTAssertTrue(model.hasError, "inline error flag must drive the error label")
-        XCTAssertFalse(model.errorMessage.isEmpty, "inline error message must be populated")
+        XCTAssertNotNil(model.launchPhase.problem, "the problem must drive the error label")
+        XCTAssertFalse(model.launchPhase.problem?.message.isEmpty ?? true, "the problem's message must be populated")
         XCTAssertFalse(model.launchSuccess)
     }
 }

@@ -98,13 +98,15 @@ final class SessionLaunchModel {
     var defaultCores = 2
     var defaultRam = 8
 
-    // Status
-    var isLoading = false
-    var isLaunching = false
+    // Status (plan 38)
+    /// The form's images and resource choices: loading, loaded, or why not.
+    private(set) var options: Phase<Date> = .idle
+    /// A launch: under way, launched (its session id), or why not — the
+    /// form's own checks too. A failed launch keeps the form, to put right.
+    private(set) var launchPhase: Phase<String> = .idle
+    var isLaunching: Bool { launchPhase.isWorking }
+    var launchSuccess: Bool { if case .ready = launchPhase { true } else { false } }
     var launchStatus = ""
-    var launchSuccess = false
-    var errorMessage = ""
-    var hasError = false
     var isAtSessionLimit = false
     var sessionLimitMessage = ""
     let maxConcurrentSessions = 3
@@ -143,9 +145,7 @@ final class SessionLaunchModel {
     /// Loads images + context + repositories through the cache service (when present).
     /// Returns cached data immediately and kicks off a background refresh if stale.
     func loadImagesAndContext() async {
-        isLoading = true
-        hasError = false
-
+        let attempt = options.begin()
         do {
             if let cacheService, !username.isEmpty {
                 let (cache, wasCached) = try await cacheService.loadOrFetch(
@@ -154,7 +154,7 @@ final class SessionLaunchModel {
                 )
                 apply(cache: cache)
                 applyDefaults()
-                isLoading = false
+                options.finish(attempt, with: .success(Date()))
 
                 // Stale-while-revalidate: background refresh if the cached data is too old.
                 if wasCached && cacheService.isStale {
@@ -191,20 +191,17 @@ final class SessionLaunchModel {
                 )
                 apply(cache: cache)
                 applyDefaults()
-                isLoading = false
+                options.finish(attempt, with: .success(Date()))
             }
         } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
-            isLoading = false
+            options.finish(attempt, with: .failure(error))
         }
     }
 
     /// Force a fresh network fetch, bypassing the cache TTL.
     func refreshImages() async {
         guard let cacheService, !username.isEmpty else { return }
-        isLoading = true
-        hasError = false
+        let attempt = options.begin()
         do {
             let fresh = try await cacheService.fetchFresh(
                 username: username,
@@ -212,11 +209,10 @@ final class SessionLaunchModel {
             )
             apply(cache: fresh)
             applyDefaults()
+            options.finish(attempt, with: .success(Date()))
         } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
+            options.finish(attempt, with: .failure(error))
         }
-        isLoading = false
     }
 
     private func apply(cache: PortalImageCache) {
@@ -408,13 +404,15 @@ final class SessionLaunchModel {
         return host.isEmpty || namesRegistry ? image : "\(host)/\(image)"
     }
 
+    /// The form's own check failed: said like a failed launch, with no
+    /// Try Again — the form is to put right.
+    private func refuse(_ message: String) {
+        launchPhase.fail(Problem(.refused, message, retry: false))
+    }
+
     func launch() async {
-        // errorMessage + launchStatus are displayed via `Text(model.errorMessage)`
-        // (verbatim String initializer) — localize at assignment to keep the
-        // surface type `String` while still routing through the catalog.
         guard !sessionName.isEmpty else {
-            hasError = true
-            errorMessage = String(localized: "Session name is required")
+            refuse(String(localized: "Session name is required"))
             return
         }
 
@@ -422,8 +420,7 @@ final class SessionLaunchModel {
         if useCustomImage {
             let trimmed = RegistryImage.normalized(customImageUrl)
             guard !trimmed.isEmpty else {
-                hasError = true
-                errorMessage = String(localized: "Custom image URL is required")
+                refuse(String(localized: "Custom image URL is required"))
                 return
             }
             // Allow only characters that are legal in container image references:
@@ -432,23 +429,19 @@ final class SessionLaunchModel {
             let imageRefPattern = #"^[A-Za-z0-9][A-Za-z0-9._/:@-]*$"#
             guard trimmed.range(of: imageRefPattern, options: .regularExpression) != nil,
                   !trimmed.contains("..") else {
-                hasError = true
-                errorMessage = String(localized: "Custom image URL contains invalid characters")
+                refuse(String(localized: "Custom image URL contains invalid characters"))
                 return
             }
             imageId = Self.customImageReference(trimmed, host: repositoryHost)
         } else {
             guard let img = selectedImage else {
-                hasError = true
-                errorMessage = String(localized: "Please select an image")
+                refuse(String(localized: "Please select an image"))
                 return
             }
             imageId = img.id
         }
 
-        isLaunching = true
-        launchSuccess = false
-        hasError = false
+        let attempt = launchPhase.begin()
         launchStatus = String(localized: "Launching session…")
 
         var params = SessionLaunchParams(
@@ -475,7 +468,7 @@ final class SessionLaunchModel {
         do {
             // On the activity bar, as every launch is (SessionLaunches).
             let sessionId = try await launches.launch(params).id
-            launchSuccess = true
+            launchPhase.finish(attempt, with: .success(sessionId))
             launchStatus = String(localized: "Session launched! ID: \(sessionId)")
 
             // Hold pending entry — saved when user closes the progress sheet
@@ -497,19 +490,14 @@ final class SessionLaunchModel {
         } catch {
             // A launch with no session ID is a failure too (LaunchedWithoutID):
             // no "unknown" RecentLaunch is stored.
-            hasError = true
-            errorMessage = error.localizedDescription
+            launchPhase.finish(attempt, with: .failure(error))
             launchStatus = String(localized: "Launch failed")
         }
-
-        isLaunching = false
     }
 
     /// Relaunches with parameters from a recent launch.
     func relaunch(_ launch: RecentLaunch) async -> Bool {
-        isLaunching = true
-        launchSuccess = false
-        hasError = false
+        let attempt = launchPhase.begin()
         launchStatus = String(localized: "Relaunching session…")
 
         var params = SessionLaunchParams(
@@ -525,20 +513,17 @@ final class SessionLaunchModel {
         }
 
         do {
-            _ = try await launches.launch(params)
-            launchSuccess = true
+            let session = try await launches.launch(params)
+            launchPhase.finish(attempt, with: .success(session.id))
             launchStatus = String(localized: "Session relaunched!")
 
             var updated = launch
             updated.launchedAt = Date()
             recentLaunchStore.save(updated)
-            isLaunching = false
             return true
         } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
+            launchPhase.finish(attempt, with: .failure(error))
             launchStatus = String(localized: "Relaunch failed")
-            isLaunching = false
             return false
         }
     }

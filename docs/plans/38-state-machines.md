@@ -215,3 +215,4 @@ lack today.
 | P1c | `871a5636` | A FITS tab's picture is a `Phase<CGImage>`; `Attempt` replaces the render generation. |
 | P1d | `fa1d63ef` | Blink: one state, off / running / paused; `state` in `blink_fits_tabs`. |
 | P1e | `e15b71ae` | The cube's slice is a `Phase<CGImage>`; playback and volume path already one value each. |
+| P2a | `b2f16513` | The Portal's cards: `load: Phase<Date>`, Try Again; `InlineErrorLabel` takes Try Again (isLoading 6, errorMessage 7, hasError 5). |

@@ -50,7 +50,7 @@ struct LaunchFormView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
 
-                if model.isLoading {
+                if model.options.isWorking {
                     HStack {
                         Spacer()
                         ProgressView("Loading images...")
@@ -77,8 +77,13 @@ struct LaunchFormView: View {
                     }
                 }
 
-                if model.hasError {
-                    InlineErrorLabel(message: model.errorMessage)
+                // Why the launch did not go, else why the choices did not load
+                // (that one with Try Again).
+                if let problem = model.launchPhase.problem {
+                    InlineErrorLabel(message: problem.message)
+                } else {
+                    ProblemView(problem: model.options.problem,
+                                retry: { Task { await model.loadImagesAndContext() } }, compact: true)
                 }
             }
         }
@@ -180,8 +185,8 @@ struct LaunchFormView: View {
                 }
             }
         )
-        if hm.hasError {
-            InlineErrorLabel(message: hm.errorMessage)
+        if let problem = hm.launchPhase.problem {
+            InlineErrorLabel(message: problem.message)
         }
         if hm.launchSuccess, !hm.lastLaunchedJobIDs.isEmpty {
             Label(hm.launchStatus, systemImage: "checkmark.circle.fill")
@@ -348,7 +353,7 @@ struct LaunchFormView: View {
                 .buttonStyle(.borderless)
                 .controlSize(.mini)
                 .font(.caption2)
-                .disabled(model.isLoading)
+                .disabled(model.options.isWorking)
                 Spacer()
             }
             .padding(.top, 2)
