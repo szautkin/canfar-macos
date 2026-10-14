@@ -275,8 +275,8 @@ struct ObservationDetailViewer: View {
             if let success = research.lastSuccess {
                 downloadMessage = success
                 downloadIsError = false
-            } else if let error = research.lastError {
-                downloadMessage = error
+            } else if let problem = research.downloadProblem {
+                downloadMessage = problem.message
                 downloadIsError = true
             }
         }

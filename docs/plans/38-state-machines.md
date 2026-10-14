@@ -221,4 +221,5 @@ lack today.
 | P2d | `6bbffa1f` | Search: data train, observation detail and target resolver as `Phase`s (isLoading 3, errorMessage 3, hasError 1). |
 | P2d½ | `e510416b` | The search query: `query: Phase<Int>`; `isSearching`, `searchStartedAt`, `searchError` read it. |
 | P2e | `d0fc0ff9` | Probe logs (a `Phase` per tab), export and its dialog, the file browser's listing (isLoading 2, errorMessage 1, loadError 0, lastError 3). |
-| P3 | (this commit) | Sign-in's `activity` (idle / validating / renewing), the login sheet's `Phase`, the assistant server's `ServerState` — which shows the sidecar warning that was set and cleared at once (isLoading 0, errorMessage 0, hasError 0, lastError 2). |
+| P3 | `bbb612e7` | Sign-in's `activity` (idle / validating / renewing), the login sheet's `Phase`, the assistant server's `ServerState` — which shows the sidecar warning that was set and cleared at once (isLoading 0, errorMessage 0, hasError 0, lastError 2). |
+| P4a | (this commit) | Research's last download (`Phase<String>`), Remote Compute's changes (`Phase<Date>`). The ratchet ends: no loose flag but five kept, each with its reason in `looseFlagsKept` — the toolbar caption and storage status line (text), the storage browser's `isBusy` (a read of three regions), the volume renderer's own report. |

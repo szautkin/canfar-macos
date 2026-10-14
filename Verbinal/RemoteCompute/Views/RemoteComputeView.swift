@@ -23,7 +23,10 @@ struct RemoteComputeView: View {
         VStack(alignment: .leading, spacing: 12) {
             header
             toolbar
-            if let message = model.message { banner(message) }
+            if let problem = model.change.problem {
+                banner(RemoteComputeModel.Message(kind: .error, text: problem.message)) { model.dismissProblem() }
+            }
+            if let message = model.message { banner(message) { model.message = nil } }
             if let problem = model.snapshot?.problem { notReadyBanner(problem) }
             if let drift = model.snapshot?.drift { driftBanner(drift) }
             if model.isConfigured { main } else { setup }
@@ -87,7 +90,7 @@ struct RemoteComputeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Stop") { confirmStop = true }
-                .disabled(model.isBusy)
+                .disabled(model.change.isWorking)
                 .pointable("compute.notReady.stop")
         }
         .padding(10)
@@ -104,7 +107,7 @@ struct RemoteComputeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Restart with New Settings") { confirmRestart = true }
-                .disabled(model.isBusy)
+                .disabled(model.change.isWorking)
                 .pointable("compute.restart")
         }
         .padding(10)
@@ -143,7 +146,7 @@ struct RemoteComputeView: View {
             Button { Task { await model.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                 .help("Refresh")
                 .accessibilityLabel(Text("Refresh"))
-                .disabled(model.isBusy)
+                .disabled(model.change.isWorking)
             Button("Settings") { appState.requestSettings(.open, section: .aiCompute) }
                 .pointable("compute.settings")
             if model.isConfigured || model.hasSession {
@@ -152,17 +155,17 @@ struct RemoteComputeView: View {
                     .pointable("compute.openFolder")
             }
             Link("verbinal-execution on GitHub", destination: Self.repository)
-            if model.isBusy { ProgressView().controlSize(.small) }
+            if model.change.isWorking { ProgressView().controlSize(.small) }
         }
     }
 
-    private func banner(_ message: RemoteComputeModel.Message) -> some View {
+    private func banner(_ message: RemoteComputeModel.Message, dismiss: @escaping () -> Void) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: message.kind == .error ? "exclamationmark.triangle.fill" : "info.circle")
                 .foregroundStyle(message.kind == .error ? .orange : .secondary)
             Text(message.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
             if message.kind == .error { CopyErrorButton(message: message.text) }
-            Button { model.message = nil } label: { Image(systemName: "xmark") }
+            Button(action: dismiss) { Image(systemName: "xmark") }
                 .buttonStyle(.borderless)
                 .accessibilityLabel(Text("Dismiss"))
         }

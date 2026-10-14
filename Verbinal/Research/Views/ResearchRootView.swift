@@ -13,14 +13,14 @@ struct ResearchRootView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Error banner
-            if let error = researchModel.lastError {
+            if let problem = researchModel.downloadProblem {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(.red)
-                    Text(error)
+                    Text(problem.message)
                         .font(.caption)
                     Spacer()
-                    Button("Dismiss") { researchModel.lastError = nil }
+                    Button("Dismiss") { researchModel.dismissDownloadProblem() }
                         .font(.caption)
                 }
                 .padding(.horizontal, 12)

@@ -38,8 +38,14 @@ final class ResearchModel {
     /// inside `filteredObservations`'s body evaluation.
     private(set) var noteMatchedPublisherIDs: Set<String> = []
     private var noteSearchTask: Task<Void, Never>?
-    var lastError: String?
-    var lastSuccess: String?
+    /// The last download's outcome (plan 38): under way, saved (where it
+    /// went), or why not — said for a moment, then put away.
+    private(set) var lastDownload: Phase<String> = .idle
+    var lastSuccess: String? { if case .ready(let message) = lastDownload { message } else { nil } }
+    var downloadProblem: Problem? { lastDownload.problem }
+
+    /// The person put the download's problem away.
+    func dismissDownloadProblem() { lastDownload.dismiss() }
 
     /// Pending auto-dismiss task for toast-style status strings. A single handle
     /// ensures a new success/error replaces any in-flight dismissal, preventing an
@@ -133,8 +139,7 @@ final class ResearchModel {
     func download(_ record: DownloadedObservation) async {
         let downloadID = UUID()
         activeDownloads[downloadID] = DownloadProgress(id: downloadID, observation: record)
-        lastError = nil
-        lastSuccess = nil
+        let attempt = lastDownload.begin()
 
         do {
             // Step 1: Download to temp — a cutout is cut again, not fetched whole.
@@ -164,21 +169,22 @@ final class ResearchModel {
             let stored = observationStore.save(observation)
             if selectedObservation?.recordKey == stored.recordKey { selectedObservation = stored }
             completeFromArchive(stored)
-            lastSuccess = String(localized: "Saved in \(DownloadsFolder.url.lastPathComponent): \((placed.localPath as NSString).lastPathComponent)") + (companionNote.map { " — \($0)" } ?? "")
+            lastDownload.finish(attempt, with: .success(
+                String(localized: "Saved in \(DownloadsFolder.url.lastPathComponent): \((placed.localPath as NSString).lastPathComponent)") + (companionNote.map { " — \($0)" } ?? "")))
 
             // Clean up active download indicator
             scheduleStatusDismiss(after: 2) { [weak self] in
                 self?.activeDownloads.removeValue(forKey: downloadID)
-                self?.lastSuccess = nil
+                if case .ready = self?.lastDownload { self?.lastDownload = .idle }
             }
 
         } catch {
             activeDownloads[downloadID]?.state = .failed(error.localizedDescription)
-            lastError = error.localizedDescription
+            lastDownload.finish(attempt, with: .failure(error))
             // Auto-remove failed entry after a short delay
             scheduleStatusDismiss(after: 6) { [weak self] in
                 self?.activeDownloads.removeValue(forKey: downloadID)
-                self?.lastError = nil
+                self?.lastDownload.dismiss()
             }
         }
     }

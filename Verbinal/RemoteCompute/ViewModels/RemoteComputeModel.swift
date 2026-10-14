@@ -48,8 +48,14 @@ final class RemoteComputeModel {
     var language = RunCodeContract.supportedLanguages[0]
     var timeoutSeconds = RunCodeContract.defaultTimeoutSeconds
     var code = ""
-    private(set) var isBusy = false
+    /// The person's last change here — a refresh, a start, a stop (plan
+    /// 38): under way, done, or why not. Its problem shows as an error.
+    private(set) var change: Phase<Date> = .idle
+    /// A note about the session; an error is `change`'s problem.
     var message: Message?
+
+    /// The person put the problem away.
+    func dismissProblem() { change.dismiss() }
 
     init(service: RemoteComputeService) {
         self.service = service
@@ -61,9 +67,9 @@ final class RemoteComputeModel {
     var runs: [ComputeRun] { service.runs.runs }
     var selectedRun: ComputeRun? { selectedRunID.flatMap(service.runs.find) }
 
-    var canStart: Bool { !isBusy && state.canStart(configured: isConfigured) }
-    var canStop: Bool { !isBusy && state.canStop }
-    var canRun: Bool { !isBusy && state.canRun(configured: isConfigured) }
+    var canStart: Bool { !change.isWorking && state.canStart(configured: isConfigured) }
+    var canStop: Bool { !change.isWorking && state.canStop }
+    var canRun: Bool { !change.isWorking && state.canRun(configured: isConfigured) }
     /// Whether something is changing that a quiet re-read would show.
     var isChanging: Bool {
         state == .starting || state == .stopping || runs.contains { !$0.isFinished } || Date() < watchUntil
@@ -76,15 +82,15 @@ final class RemoteComputeModel {
 
     /// Reads the session again, saying so when it cannot — unless `quiet`.
     func refresh(quiet: Bool = false) async {
-        if !quiet { isBusy = true }
-        defer { if !quiet { isBusy = false } }
+        let attempt = quiet ? nil : change.begin()
         do {
             snapshot = try await service.snapshot()
             if !isConfigured, hasSession, message == nil {
                 message = Message(kind: .info, text: String(localized: "A compute session from another install is on your account, holding your cores. Stop it here, or set an image in Settings ▸ AI Compute to use it."))
             }
+            if let attempt { change.finish(attempt, with: .success(Date())) }
         } catch {
-            if !quiet { message = Message(kind: .error, text: error.localizedDescription) }
+            if let attempt { change.finish(attempt, with: .failure(error)) }
         }
     }
 
@@ -197,12 +203,12 @@ final class RemoteComputeModel {
     }
 
     private func perform(_ work: @escaping () async throws -> Void) async {
-        isBusy = true
-        defer { isBusy = false }
+        let attempt = change.begin()
         do {
             try await work()
+            change.finish(attempt, with: .success(Date()))
         } catch {
-            message = Message(kind: .error, text: error.localizedDescription)
+            change.finish(attempt, with: .failure(error))
         }
         await refresh(quiet: true)
     }

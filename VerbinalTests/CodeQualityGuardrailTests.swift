@@ -109,28 +109,39 @@ final class CodeQualityGuardrailTests: XCTestCase {
         XCTAssertEqual(problems, [])
     }
 
-    // MARK: - Loose state flags only go down (plan 38)
+    // MARK: - Loose state flags (plan 38)
 
-    /// The flags plan 38 moves into state machines, counted as it began
-    /// (2026-10-13): each may only go down, and its ceiling with it.
-    static let looseFlagCeilings: [String: Int] = [
-        "isLoading": 0, "errorMessage": 0, "hasError": 0, "loadError": 0, "lastError": 2,
-        "statusMessage": 3, "isBusy": 2,
+    /// The loose flags plan 38 replaced (47 when it began, 2026-10-13): a
+    /// new one is a state written by hand — use Phase or a Machine.
+    static let looseFlags = ["isLoading", "errorMessage", "hasError", "loadError", "lastError", "statusMessage", "isBusy"]
+
+    /// The few left, each with why it is not a state to replace.
+    static let looseFlagsKept: [String: String] = [
+        "Verbinal/ViewModels/AppState.swift statusMessage": "the toolbar's caption: a line of text, read from the sign-in",
+        "Verbinal/ViewModels/AuthLifecycleController.swift statusMessage": "the toolbar's caption as the sign-in words it",
+        "Verbinal/Storage/ViewModels/StorageBrowserModel.swift statusMessage": "the status line: progress and outcomes in words",
+        "Verbinal/Storage/ViewModels/StorageBrowserModel.swift isBusy": "a read of three regions — the listing, a transfer, a delete",
+        "Verbinal/CubeViewer/Render/CubeVolumeRenderer.swift lastError": "the Metal renderer's own report, which the cube's volume path takes in",
     ]
 
-    func testLooseStateFlagsOnlyGoDown() throws {
-        let texts = Self.sources(in: ["Verbinal"]).map(\.text)
+    func testLooseStateFlagsAreGoneOrKeptForAReason() throws {
+        var found: Set<String> = []
         var problems: [String] = []
-        for (flag, ceiling) in Self.looseFlagCeilings.sorted(by: { $0.key < $1.key }) {
-            let pattern = try NSRegularExpression(pattern: "\\bvar\\s+\(flag)\\b")
-            let count = texts.reduce(0) { $0 + pattern.numberOfMatches(in: $1, range: NSRange($1.startIndex..., in: $1)) }
-            if count > ceiling {
-                problems.append("\(flag): \(count) declarations, over its ceiling \(ceiling) — use Phase or a Machine (plan 38)")
-            } else if count < ceiling {
-                problems.append("\(flag): down to \(count) — lower its ceiling from \(ceiling)")
+        for (path, text) in Self.sources(in: ["Verbinal"]) {
+            for flag in Self.looseFlags {
+                let pattern = try NSRegularExpression(pattern: "\\bvar\\s+\(flag)\\b")
+                guard pattern.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil else { continue }
+                let key = "\(path) \(flag)"
+                found.insert(key)
+                if Self.looseFlagsKept[key] == nil {
+                    problems.append("\(key): a loose state flag — use Phase or a Machine (plan 38), or keep it here with why")
+                }
             }
         }
-        XCTAssertEqual(problems, [])
+        for key in Self.looseFlagsKept.keys where !found.contains(key) {
+            problems.append("\(key) is gone: take it off looseFlagsKept")
+        }
+        XCTAssertEqual(problems.sorted(), [])
     }
 
     // MARK: - Every result goes through ResultDestination

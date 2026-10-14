@@ -60,7 +60,7 @@ final class ResearchModelDeleteTests: XCTestCase {
         let (model, store) = makeModel()
         let obs = makeObservation()  // localPath points at a non-existent temp file
         store.save(obs)
-        XCTAssertNil(model.lastError)
+        XCTAssertNil(model.downloadProblem)
 
         model.deleteObservation(obs)
 
@@ -68,7 +68,7 @@ final class ResearchModelDeleteTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(5))
         }
         XCTAssertTrue(store.observations.isEmpty, "row removed despite missing file")
-        XCTAssertNil(model.lastError, "missing-file deletion must not surface an error to the user")
+        XCTAssertNil(model.downloadProblem, "missing-file deletion must not surface an error to the user")
         store.clear()
     }
 
