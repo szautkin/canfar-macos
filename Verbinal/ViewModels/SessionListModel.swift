@@ -9,15 +9,15 @@ import Observation
 
 @Observable
 @MainActor
-final class SessionListModel: CadencedPoller {
+final class SessionListModel: CadencedPoller, PhaseOwner {
     private let sessionService: SessionService
     /// Deleting and renewing, by the rule an assistant's requests follow too.
     private let actions: SessionActions
 
     var sessions: [Session] = []
-    var isLoading = false
-    var errorMessage = ""
-    var hasError = false
+    /// Loading, loaded (when), or why not (plan 38) — a failed delete or
+    /// renew says so too; the list stays.
+    private(set) var load: Phase<Date> = .idle
     var isPolling = false
     var pollCountdown = 0
 
@@ -35,11 +35,7 @@ final class SessionListModel: CadencedPoller {
     }
 
     func loadSessions() async {
-        isLoading = true
-        hasError = false
-        errorMessage = ""
-
-        do {
+        await run(\.load) {
             let fetched = try await sessionService.getSessions()
             let transitions = StatusTransitions(
                 previous: previousStatuses,
@@ -62,12 +58,8 @@ final class SessionListModel: CadencedPoller {
             // interval otherwise (a session can start from another machine).
             cadence.observe(inFlight: hasPendingSessions, changed: transitions.changed)
             startPolling()
-        } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
+            return Date()
         }
-
-        isLoading = false
     }
 
     func deleteSession(id: String) async {
@@ -76,8 +68,7 @@ final class SessionListModel: CadencedPoller {
             try await actions.delete(id: id)
             await loadSessions()
         } catch {
-            hasError = true
-            errorMessage = "Delete failed: \(error.localizedDescription)"
+            load.fail(Problem(.other, String(localized: "Delete failed: \(error.localizedDescription)")))
         }
     }
 
@@ -86,8 +77,7 @@ final class SessionListModel: CadencedPoller {
             try await actions.renew(id: id)
             await loadSessions()
         } catch {
-            hasError = true
-            errorMessage = "Renew failed: \(error.localizedDescription)"
+            load.fail(Problem(.other, String(localized: "Renew failed: \(error.localizedDescription)")))
         }
     }
 

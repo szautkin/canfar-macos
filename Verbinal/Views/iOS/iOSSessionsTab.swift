@@ -19,7 +19,7 @@ struct iOSSessionsTab: View {
 
     var body: some View {
         Group {
-            if model.sessions.isEmpty && !model.isLoading {
+            if model.sessions.isEmpty && !model.load.isWorking {
                 ContentUnavailableView(
                     "No Active Sessions",
                     systemImage: "tray",
@@ -56,7 +56,7 @@ struct iOSSessionsTab: View {
         .navigationTitle("Sessions (\(model.sessions.count))")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                if model.isLoading {
+                if model.load.isWorking {
                     ProgressView()
                 } else {
                     Button {
@@ -78,10 +78,10 @@ struct iOSSessionsTab: View {
             .iosSheetChrome()
         }
         .overlay {
-            if model.hasError {
+            if model.load.problem != nil {
                 VStack {
                     Spacer()
-                    Label(model.errorMessage, systemImage: "exclamationmark.triangle")
+                    Label(model.load.problem?.message ?? "", systemImage: "exclamationmark.triangle")
                         .font(.footnote)
                         .padding(12)
                         .background(.ultraThinMaterial)

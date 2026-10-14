@@ -14,7 +14,7 @@ struct HeadlessJobsView: View {
     /// flags onto `DataState`; `.error` is unused here because the error
     /// `Label` renders separately below the container.
     private var jobsState: DataState {
-        if model.isLoading && model.jobs.isEmpty { return .loading }
+        if model.load.isWorking && model.jobs.isEmpty { return .loading }
         if model.jobs.isEmpty { return .empty }
         return .content
     }
@@ -42,7 +42,7 @@ struct HeadlessJobsView: View {
                     Button {
                         Task { await model.loadJobs() }
                     } label: {
-                        if model.isLoading {
+                        if model.load.isWorking {
                             ProgressView()
                                 .controlSize(.small)
                         } else {
@@ -51,7 +51,7 @@ struct HeadlessJobsView: View {
                         }
                     }
                     .buttonStyle(.borderless)
-                    .disabled(model.isLoading)
+                    .disabled(model.load.isWorking)
                     .help("Refresh batch jobs now (or wait \(model.pollCountdown)s for the next auto-refresh)")
                     .accessibilityLabel("Refresh batch jobs")
                     // What opens the sheet, in sight: the summary opens it too,
@@ -88,8 +88,8 @@ struct HeadlessJobsView: View {
                     }
                 }
 
-                if model.hasError {
-                    InlineErrorLabel(message: model.errorMessage)
+                if model.load.problem != nil {
+                    ProblemView(problem: model.load.problem, retry: { Task { await model.loadJobs() } }, compact: true)
                 }
             }
         }

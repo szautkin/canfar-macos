@@ -24,6 +24,9 @@ your batch jobs. It needs you to be signed in. Open it from its Home tile, or **
 - **Batch Jobs**: how many of your jobs are running, pending, completed or failed, refreshed every
   45 seconds. **Jobs & History…** opens them: see [Batch jobs](07-batch-jobs.md).
 
+When a card cannot load, it says why, with **Try Again** and a button that copies the message; what it
+showed before stays.
+
 ## Your sessions
 
 **Active Sessions** lists your sessions, refreshed by itself (it counts down to the next refresh), or

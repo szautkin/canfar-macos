@@ -214,3 +214,4 @@ lack today.
 | P1b | `a5a04180` | `DocumentState` for the FITS and cube tabs; `state` in their view tools (isLoading 10, loadError 1). |
 | P1c | `871a5636` | A FITS tab's picture is a `Phase<CGImage>`; `Attempt` replaces the render generation. |
 | P1d | `fa1d63ef` | Blink: one state, off / running / paused; `state` in `blink_fits_tabs`. |
+| P1e | `e15b71ae` | The cube's slice is a `Phase<CGImage>`; playback and volume path already one value each. |

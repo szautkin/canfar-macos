@@ -131,6 +131,12 @@ enum Phase<Value> {
         return true
     }
 
+    /// Something done with what is shown went wrong — a delete, a renew:
+    /// the problem is said, and what was shown stays.
+    mutating func fail(_ problem: Problem) {
+        self = .failed(problem, last: value)
+    }
+
     /// How a screen shows it: a spinner until there is something, the
     /// content (kept through a refresh or a failure), or the problem.
     func dataState(isEmpty: (Value) -> Bool) -> DataState {

@@ -9,10 +9,11 @@ import Observation
 
 @Observable
 @MainActor
-final class PlatformLoadModel {
+final class PlatformLoadModel: PhaseOwner {
     private let platformService: PlatformService
 
-    var isLoading = false
+    /// Loading, loaded (when), or why not (plan 38); what loaded last stays.
+    private(set) var load: Phase<Date> = .idle
 
     // CPU — "available" = free cores, "total" = requested + available
     var cpuAvailable: Double = 0
@@ -31,19 +32,17 @@ final class PlatformLoadModel {
     var headlessInstances: Int = 0
     var hasInstanceData = false
 
-    var lastUpdate = ""
-    var errorMessage = ""
-    var hasError = false
+    /// When it last loaded, as the card says it.
+    var lastUpdate: String {
+        load.value.map { $0.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).second(.twoDigits)) } ?? ""
+    }
 
     init(platformService: PlatformService) {
         self.platformService = platformService
     }
 
     func loadStats() async {
-        isLoading = true
-        hasError = false
-
-        do {
+        await run(\.load) {
             let stats = try await platformService.getStats()
 
             if let cores = stats.cores {
@@ -72,15 +71,8 @@ final class PlatformLoadModel {
                 hasInstanceData = true
             }
 
-            let formatter = DateFormatter()
-            formatter.dateFormat = "HH:mm:ss"
-            lastUpdate = formatter.string(from: Date())
-        } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
+            return Date()
         }
-
-        isLoading = false
     }
 
     /// Parses RAM strings like "16G", "512Mi", "2T" to a Double in GB.

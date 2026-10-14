@@ -129,6 +129,16 @@
         }
       }
     },
+    "Delete failed: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La suppression a échoué : %@"
+          }
+        }
+      }
+    },
     "Drag a box on the image to export a figure of that area — or ⌘-drag at any time" : {
       "localizations" : {
         "fr" : {
@@ -485,6 +495,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rendu en cours…"
+          }
+        }
+      }
+    },
+    "Renew failed: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le renouvellement a échoué : %@"
           }
         }
       }

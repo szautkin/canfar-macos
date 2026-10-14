@@ -17,7 +17,7 @@ struct PlatformLoadView: View {
                         .font(.headline)
                     Spacer()
 
-                    if model.isLoading {
+                    if model.load.isWorking {
                         ProgressView()
                             .scaleEffect(0.6)
                     }
@@ -62,8 +62,8 @@ struct PlatformLoadView: View {
                         .foregroundStyle(.tertiary)
                 }
 
-                if model.hasError {
-                    InlineErrorLabel(message: model.errorMessage)
+                if model.load.problem != nil {
+                    ProblemView(problem: model.load.problem, retry: { Task { await model.loadStats() } }, compact: true)
                 }
             }
         }

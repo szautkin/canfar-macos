@@ -216,7 +216,6 @@ struct CanfarImagesView: View {
                 ProblemView(problem: Problem(problem.kind, String(localized: "Couldn't load the image catalogue: \(problem.message)"),
                                              retry: problem.retry),
                             retry: { Task { await model.reload() } }, compact: true)
-                CopyErrorButton(message: problem.message)
             }
         }
         HStack {

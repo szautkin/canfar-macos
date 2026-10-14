@@ -13,7 +13,7 @@ struct StorageQuotaView: View {
     /// data lands. A poll refresh keeps the state at `.content` (the bar eases
     /// to its new value instead — see `.appAnimation` below).
     private var quotaState: DataState {
-        if model.isLoading { return .loading }
+        if model.load.isWorking { return .loading }
         if model.hasData { return .content }
         return .empty
     }
@@ -43,8 +43,8 @@ struct StorageQuotaView: View {
                     quotaReadout
                 }
 
-                if model.hasError {
-                    InlineErrorLabel(message: model.errorMessage)
+                if model.load.problem != nil {
+                    ProblemView(problem: model.load.problem, retry: { Task { await model.reload() } }, compact: true)
                 }
             }
         }

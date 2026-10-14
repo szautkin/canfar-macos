@@ -75,7 +75,7 @@ struct HeadlessJobsDetailSheet: View {
                 Button {
                     Task { await model.loadJobs() }
                 } label: {
-                    if model.isLoading {
+                    if model.load.isWorking {
                         HStack(spacing: 4) {
                             ProgressView().controlSize(.small)
                             Text("Refreshing…")
@@ -85,7 +85,7 @@ struct HeadlessJobsDetailSheet: View {
                     }
                 }
                 .keyboardShortcut("r", modifiers: .command)
-                .disabled(model.isLoading)
+                .disabled(model.load.isWorking)
                 .help("Refresh batch jobs from Skaha now")
                 Button("Close") { dismiss() }
                     .buttonStyle(.bordered)

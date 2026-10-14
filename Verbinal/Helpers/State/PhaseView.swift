@@ -47,22 +47,25 @@ struct ProblemView: View {
     var compact = false
 
     var body: some View {
-        if let problem {
-            let layout = compact ? AnyLayout(HStackLayout(spacing: 8)) : AnyLayout(VStackLayout(spacing: 8))
-            layout {
+        if let problem, compact {
+            // A line, in the house style of an error beside content.
+            InlineErrorLabel(message: problem.message, retry: problem.retry ? retry : nil)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if let problem {
+            // The whole space: nothing loaded to show beside it.
+            VStack(spacing: 8) {
                 Label(problem.message, systemImage: Self.symbol(problem.kind))
-                    .font(compact ? .caption : .callout)
-                    .foregroundStyle(compact ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
-                    .multilineTextAlignment(compact ? .leading : .center)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                if compact { Spacer(minLength: 0) }
                 if let retry, problem.retry {
                     Button("Try Again", action: retry)
-                        .controlSize(compact ? .small : .regular)
                 }
             }
-            .padding(compact ? 6 : 16)
-            .frame(maxWidth: .infinity, maxHeight: compact ? nil : .infinity)
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

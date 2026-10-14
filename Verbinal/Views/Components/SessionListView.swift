@@ -30,7 +30,7 @@ struct SessionListView: View {
     /// spinner covers the loading affordance, so there is no `.loading`
     /// branch here; the error `Label` renders separately below.
     private var sessionsState: DataState {
-        (model.sessions.isEmpty && !model.isLoading) ? .empty : .content
+        (model.sessions.isEmpty && !model.load.isWorking) ? .empty : .content
     }
 
     var body: some View {
@@ -56,7 +56,7 @@ struct SessionListView: View {
 
                     Spacer()
 
-                    if model.isLoading {
+                    if model.load.isWorking {
                         ProgressView()
                             .controlSize(.small)
                     }
@@ -113,8 +113,8 @@ struct SessionListView: View {
                     }
                 }
 
-                if model.hasError {
-                    InlineErrorLabel(message: model.errorMessage)
+                if model.load.problem != nil {
+                    ProblemView(problem: model.load.problem, retry: { Task { await model.loadSessions() } }, compact: true)
                 }
             }
         }
@@ -160,9 +160,9 @@ struct SessionListView: View {
         Task {
             await action()
             actionInProgress = false
-            if model.hasError {
+            if model.load.problem != nil {
                 actionError = true
-                actionMessage = model.errorMessage
+                actionMessage = model.load.problem?.message ?? ""
             } else {
                 actionSuccess = true
                 actionMessage = successMessage

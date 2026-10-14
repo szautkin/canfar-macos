@@ -18,6 +18,8 @@ import SwiftUI
 /// one-line default everywhere.
 struct InlineErrorLabel: View {
     let message: String
+    /// Try Again, where trying again can help (plan 38).
+    var retry: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -27,6 +29,11 @@ struct InlineErrorLabel: View {
                 .lineLimit(2)
                 .truncationMode(.tail)
             CopyErrorButton(message: message)
+            if let retry {
+                Button("Try Again", action: retry)
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.tint)
+            }
         }
         .font(.caption)
         .foregroundStyle(.red)

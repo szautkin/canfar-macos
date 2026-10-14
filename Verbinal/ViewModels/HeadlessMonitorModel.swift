@@ -10,7 +10,7 @@ import VerbinalKit
 
 @Observable
 @MainActor
-final class HeadlessMonitorModel: CadencedPoller {
+final class HeadlessMonitorModel: CadencedPoller, PhaseOwner {
     private let headlessService: HeadlessService
 
     var jobs: [HeadlessJob] = []
@@ -48,11 +48,11 @@ final class HeadlessMonitorModel: CadencedPoller {
     /// by its name as the card's button does (plan 30 T).
     var detailPresented = false
 
-    var isLoading = false
+    /// Loading, loaded (when), or why not (plan 38) — a failed delete says
+    /// so too; the jobs stay.
+    private(set) var load: Phase<Date> = .idle
     var isPolling = false
     var pollCountdown = 0
-    var hasError = false
-    var errorMessage = ""
 
     /// Job ids the user has clicked Delete on but the service
     /// hasn't yet acknowledged. Rows in the detail sheet read
@@ -83,12 +83,15 @@ final class HeadlessMonitorModel: CadencedPoller {
     // MARK: - Data Loading
 
     func loadJobs() async {
-        isLoading = true
-        hasError = false
-        errorMessage = ""
-
-        do {
-            let fetched = try await headlessService.getHeadlessJobs()
+        await run(\.load) {
+            let fetched: [HeadlessJob]
+            do {
+                fetched = try await headlessService.getHeadlessJobs()
+            } catch let error as NetworkError where error.isUnauthorized {
+                stopMonitoring()
+                onAuthFailure?()
+                throw error
+            }
             let transitions = StatusTransitions(
                 previous: previousStateMap,
                 current: Dictionary(fetched.map { ($0.id, $0.status) }, uniquingKeysWith: { _, last in last }))
@@ -108,17 +111,8 @@ final class HeadlessMonitorModel: CadencedPoller {
             updateCounts()
             updateDockBadge()
             cadence.observe(inFlight: totalActive > 0, changed: transitions.changed)
-        } catch let error as NetworkError where error.isUnauthorized {
-            hasError = true
-            errorMessage = error.localizedDescription
-            stopMonitoring()
-            onAuthFailure?()
-        } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
+            return Date()
         }
-
-        isLoading = false
     }
 
     // MARK: - Polling
@@ -161,8 +155,7 @@ final class HeadlessMonitorModel: CadencedPoller {
             try await headlessService.deleteJob(id: id)
             await loadJobs()
         } catch {
-            hasError = true
-            errorMessage = "Delete failed: \(error.localizedDescription)"
+            load.fail(Problem(.other, String(localized: "Delete failed: \(error.localizedDescription)")))
         }
     }
 

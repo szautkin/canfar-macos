@@ -9,38 +9,39 @@ import Observation
 
 @Observable
 @MainActor
-final class StorageModel {
+final class StorageModel: PhaseOwner {
     private let storageService: StorageService
 
-    var isLoading = false
+    /// Loading, loaded (when), or why not (plan 38); what loaded last stays.
+    private(set) var load: Phase<Date> = .idle
     var usedGB: Double = 0
     var quotaGB: Double = 0
     var usagePercent: Double = 0
     var isWarning = false
     var hasData = false
-    var errorMessage = ""
-    var hasError = false
 
     init(storageService: StorageService) {
         self.storageService = storageService
     }
 
-    func loadQuota(username: String) async {
-        isLoading = true
-        hasError = false
+    /// Whose quota it is, for Try Again.
+    private var username = ""
 
-        do {
+    func reload() async {
+        guard !username.isEmpty else { return }
+        await loadQuota(username: username)
+    }
+
+    func loadQuota(username: String) async {
+        self.username = username
+        await run(\.load) {
             let quota = try await storageService.getQuota(username: username)
             usedGB = quota.usedGB
             quotaGB = quota.quotaGB
             usagePercent = quota.usagePercent
             isWarning = usagePercent > 90
             hasData = true
-        } catch {
-            hasError = true
-            errorMessage = error.localizedDescription
+            return Date()
         }
-
-        isLoading = false
     }
 }

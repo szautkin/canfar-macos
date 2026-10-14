@@ -239,7 +239,7 @@ private struct iPadSessionsDetail: View {
 
     var body: some View {
         ScrollView {
-            if model.sessions.isEmpty && !model.isLoading {
+            if model.sessions.isEmpty && !model.load.isWorking {
                 ContentUnavailableView(
                     "No Active Sessions",
                     systemImage: "tray",
@@ -254,8 +254,8 @@ private struct iPadSessionsDetail: View {
                 .padding()
             }
 
-            if model.hasError {
-                Label(model.errorMessage, systemImage: "exclamationmark.triangle")
+            if model.load.problem != nil {
+                Label(model.load.problem?.message ?? "", systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.red)
                     .padding()
@@ -265,7 +265,7 @@ private struct iPadSessionsDetail: View {
         .navigationTitle("Sessions (\(model.sessions.count))")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                if model.isLoading {
+                if model.load.isWorking {
                     ProgressView()
                 } else {
                     Button {

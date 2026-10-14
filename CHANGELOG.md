@@ -78,6 +78,9 @@ files in Research, and Verbinal's data in your storage on every device
 - **A new colour map or stretch shows it is being drawn.** It is drawn
   at once, without the sliders' wait, and *Rendering…* shows in the
   image's corner while it takes long enough to notice.
+- **Try Again on the Portal's cards.** Platform Load, Storage, Batch Jobs
+  and Active Sessions say why they could not load with Try Again, and
+  keep what they showed; a failed delete or renew says so the same way.
 - **The Portal's Canfar Images card has Reload**, as the other cards do,
   and Try Again when the catalogue cannot be loaded; a later load clears
   the old error, which used to stay.

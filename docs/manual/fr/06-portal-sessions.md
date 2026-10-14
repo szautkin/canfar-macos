@@ -26,6 +26,9 @@ l’accueil, ou par **Aller ▸ Portail** (⌘5).
   toutes les 45 secondes. **Tâches et historique…** les ouvre : voir
   [Tâches en lot](07-batch-jobs.md).
 
+Quand une carte ne peut pas se charger, elle dit pourquoi, avec **Réessayer** et un bouton qui copie le
+message ; ce qu’elle montrait reste.
+
 ## Vos sessions
 
 **Sessions actives** liste vos sessions, actualisées d’elles-mêmes (un compte à rebours mène à la
