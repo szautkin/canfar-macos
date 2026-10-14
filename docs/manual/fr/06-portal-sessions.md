@@ -93,6 +93,8 @@ La carte **Images CANFAR** liste les images que vous pouvez lancer, par type de 
 haut (**Default**, **Popular**, **Ajoutées**, puis chaque type) les filtrent, avec leur nombre, et
 **Filtrer…** en trouve une par son nom.
 
+- Le bouton de rechargement, en haut à droite, récupère de nouveau le catalogue. S’il ne peut pas être
+  chargé, la carte dit pourquoi en bas, avec **Réessayer**, et garde les images qu’elle avait.
 - Une étoile marque votre image par défaut pour ce type de session, et une horloge celle que vous avez
   lancée récemment.
 - Les boutons d’une ligne utilisent l’image dans le formulaire de lancement, ou montrent ce qu’elle

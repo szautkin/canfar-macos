@@ -86,6 +86,8 @@ The **Canfar Images** card lists the images you can launch, by session type: the
 (**Default**, **Popular**, **Added**, then each type) filter them, with how many each holds, and
 **Filter…** finds one by name.
 
+- The reload button at the top right fetches the catalogue again. When it cannot be loaded, the card
+  says why at the bottom, with **Try Again**, and keeps showing the images it had.
 - A star marks your default image for that session type, and a clock one you launched recently.
 - The buttons on a row use the image in the launch form, or show what it has installed.
 - The count at the top right (… **of** … **discovered**) and **More Inspection…** open

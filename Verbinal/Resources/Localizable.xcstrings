@@ -119,6 +119,16 @@
         }
       }
     },
+    "Couldn't load the image catalogue: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de charger le catalogue d’images : %@"
+          }
+        }
+      }
+    },
     "Drag a box on the image to export a figure of that area — or ⌘-drag at any time" : {
       "localizations" : {
         "fr" : {
@@ -395,6 +405,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sur ce Mac seulement"
+          }
+        }
+      }
+    },
+    "Reload images" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recharger les images"
+          }
+        }
+      }
+    },
+    "Reload the image catalogue" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recharger le catalogue d’images"
           }
         }
       }

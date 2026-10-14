@@ -177,6 +177,29 @@ final class RegistryImageTests: XCTestCase {
         XCTAssertEqual(Set(card.filteredRows.map(\.id)), ["h/me/bare:1", "h/me/tool:1"], "one naming no type still has a place")
     }
 
+    // MARK: - Reload (plan 38; the person, 2026-10-13)
+
+    func testTheCardSaysWhyTheCatalogueFailedAndALaterLoadClearsIt() async throws {
+        defer { MockURLProtocol.requestHandler = nil }
+        let card = CanfarImagesModel(imageService: ImageService(network: NetworkClient(session: MockURLProtocol.mockSession())),
+                                     coordinator: nil, recentLaunchStore: RecentLaunchStore(),
+                                     portalSettingsService: PortalSettingsService(), userImages: nil, username: "u")
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!, Data("down".utf8))
+        }
+        await card.reload()
+        XCTAssertEqual(card.phase.problem?.kind, .other)
+        XCTAssertEqual(card.totalCatalogueCount, 0)
+
+        MockURLProtocol.requestHandler = { request in
+            let body = #"[{"id": "images.canfar.net/skaha/astroml:1.0", "types": ["notebook"]}]"#
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        await card.reload()
+        XCTAssertNil(card.phase.problem, "Reload clears the old problem")
+        XCTAssertEqual(card.totalCatalogueCount, 1)
+    }
+
     // MARK: - The tools
 
     private let ctx = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 9))

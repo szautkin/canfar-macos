@@ -71,34 +71,49 @@ struct CanfarImagesView: View {
 
     @ViewBuilder
     private var header: some View {
-        // Whole header is a button so the user can open the modal
-        // by clicking anywhere on the title row, not just on the
-        // distant "More inspection…" footer button. The discovered-
-        // count gets a magnifying-glass icon as a clickability cue.
-        Button {
-            preselectedImageID = nil
-            showDiscoverySheet = true
-        } label: {
-            HStack {
-                Label("Canfar Images", systemImage: "shippingbox")
-                    .font(.headline)
-                Spacer()
-                if model.isLoading {
-                    ProgressView().controlSize(.small)
-                } else {
-                    HStack(spacing: 4) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.caption2)
-                        Text("\(model.discoveredCount) of \(model.totalCatalogueCount) discovered")
-                            .font(.caption2)
+        HStack {
+            // The title row is a button so the user can open the modal
+            // by clicking anywhere on it, not just on the distant "More
+            // inspection…" footer button. The discovered-count gets a
+            // magnifying-glass icon as a clickability cue.
+            Button {
+                preselectedImageID = nil
+                showDiscoverySheet = true
+            } label: {
+                HStack {
+                    Label("Canfar Images", systemImage: "shippingbox")
+                        .font(.headline)
+                    Spacer()
+                    if !model.phase.isWorking {
+                        HStack(spacing: 4) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.caption2)
+                            Text("\(model.discoveredCount) of \(model.totalCatalogueCount) discovered")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
                     }
-                    .foregroundStyle(.secondary)
                 }
+                .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .help("Open Image Content Discovery")
+
+            // Reload, as the Portal's other widgets have it (the person,
+            // 2026-10-13): beside the title row, not inside its button.
+            if model.phase.isWorking {
+                ProgressView().controlSize(.small)
+            }
+            Button {
+                Task { await model.reload() }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.borderless)
+            .disabled(model.phase.isWorking)
+            .help("Reload the image catalogue")
+            .accessibilityLabel("Reload images")
         }
-        .buttonStyle(.plain)
-        .help("Open Image Content Discovery")
     }
 
     // MARK: - Tabs
@@ -194,16 +209,17 @@ struct CanfarImagesView: View {
 
     @ViewBuilder
     private var footer: some View {
-        HStack {
-            if let banner = model.bannerMessage {
-                Label(banner, systemImage: "exclamationmark.triangle")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
-                CopyErrorButton(message: banner)
+        // Why the catalogue did not load, on a line of its own: beside the
+        // buttons it was squeezed to a column a word wide.
+        if let problem = model.phase.problem {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                ProblemView(problem: Problem(problem.kind, String(localized: "Couldn't load the image catalogue: \(problem.message)"),
+                                             retry: problem.retry),
+                            retry: { Task { await model.reload() } }, compact: true)
+                CopyErrorButton(message: problem.message)
             }
+        }
+        HStack {
             Spacer()
             if registrySearch != nil {
                 Button {

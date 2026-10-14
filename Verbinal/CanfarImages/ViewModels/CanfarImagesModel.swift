@@ -30,7 +30,7 @@ import Observation
 ///     Added tab.
 @Observable
 @MainActor
-final class CanfarImagesModel {
+final class CanfarImagesModel: PhaseOwner {
 
     // MARK: - Dependencies
 
@@ -41,8 +41,11 @@ final class CanfarImagesModel {
     private let userImages: UserImageStore?
     private let username: String
 
-    /// The catalogue as the platform lists it, before the added images join it.
-    private var catalogue: [RawImage] = []
+    /// The catalogue as the platform lists it, before the added images join
+    /// it: loading, loaded, or why not — the last list kept through a reload
+    /// and a failure (plan 38).
+    private(set) var phase: Phase<[RawImage]> = .idle
+    private var catalogue: [RawImage] { phase.value ?? [] }
 
     // MARK: - State
 
@@ -72,12 +75,6 @@ final class CanfarImagesModel {
     /// affordance.
     private(set) var recentImageIDsInOrder: [String] = []
 
-    /// Loading flag for the initial catalogue fetch.
-    private(set) var isLoading: Bool = false
-
-    /// Last error surfaced to the widget's banner area.
-    var bannerMessage: String?
-
     init(
         imageService: ImageService,
         coordinator: ImageDiscoveryCoordinator?,
@@ -96,20 +93,13 @@ final class CanfarImagesModel {
 
     // MARK: - Lifecycle
 
-    /// Single-shot bootstrap. Refresh re-uses this path.
+    /// Loads the catalogue — at first, and from Reload and Try Again.
     func reload() async {
-        guard !isLoading else { return }
-        isLoading = true
-        defer { isLoading = false }
+        guard !phase.isWorking else { return }
 
         // 1. Catalogue.
-        do {
-            catalogue = try await imageService.getImages()
-            mergeAddedImages()
-        } catch {
-            bannerMessage = "Couldn't load image catalogue: \(error.localizedDescription)"
-            return
-        }
+        guard await run(\.phase, { try await imageService.getImages() }), phase.problem == nil else { return }
+        mergeAddedImages()
 
         // 2. Discovery cache (best effort — coordinator is auth-
         // scoped; nil before login).

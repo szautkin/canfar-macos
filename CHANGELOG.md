@@ -78,6 +78,9 @@ files in Research, and Verbinal's data in your storage on every device
 - **A new colour map or stretch shows it is being drawn.** It is drawn
   at once, without the sliders' wait, and *Rendering…* shows in the
   image's corner while it takes long enough to notice.
+- **The Portal's Canfar Images card has Reload**, as the other cards do,
+  and Try Again when the catalogue cannot be loaded; a later load clears
+  the old error, which used to stay.
 - **Sign In, or your account, on every screen.** The toolbar's account
   control was only on Home and in Portal; it is now on every screen.
 - **The FITS Viewer fits its window with no file open.** Its empty tab
