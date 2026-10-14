@@ -98,6 +98,11 @@ final class FITSViewerModel: Identifiable {
     /// The Export Figure sheet is open on this region (a mark's menu opens
     /// it framed on the mark); nil when it is closed.
     var figureRegion: FITSFigureRegion?
+    /// Select Area is armed: the next drag on the image draws a box and
+    /// opens Export Figure on it (⌘-drag does the same unarmed).
+    var selectingArea = false
+    /// The box being dragged out, in canvas points; nil when none is.
+    var areaBand: CGRect?
 
     // Mouse readout
     var cursorRA: String = ""
@@ -181,7 +186,7 @@ final class FITSViewerModel: Identifiable {
             apply(image)
             Self.logger.info("Loaded \(image.pixels.count) pixels (drawn at \(image.picture.width)×\(image.picture.height)), HDUs=\(fitsFile.hdus.count), WCS=\(fitsFile.firstImageHDU?.wcs != nil)")
 
-            await renderImageAsync()
+            await renderImageAsync(nextRender())
             fitToWindow(canvasSize: lastCanvasSize)
             recentFiles.add(url)
         } catch {
@@ -295,9 +300,17 @@ final class FITSViewerModel: Identifiable {
     var renderImageOverride: (@MainActor () -> Void)?
 
     func renderImage() {
-        guard selectedHDU != nil, !pixels.isEmpty else { return }
+        guard selectedHDU != nil, !pixels.isEmpty else { isRendering = false; return }
         renderTask?.cancel()
-        renderTask = Task { await renderImageAsync() }
+        let generation = nextRender()
+        renderTask = Task { await renderImageAsync(generation) }
+    }
+
+    /// A new render's number; the image is busy until the newest is drawn.
+    private func nextRender() -> Int {
+        renderGeneration += 1
+        isRendering = true
+        return renderGeneration
     }
 
     /// Debounced render — waits `renderDebounceMs` after the last call before
@@ -312,6 +325,8 @@ final class FITSViewerModel: Identifiable {
     /// touch render state.
     func renderImageDebounced() {
         renderDebounceTask?.cancel()
+        // Busy from the moment it is asked for, not only once the wait is over.
+        if selectedHDU != nil, !pixels.isEmpty { isRendering = true }
         let delayMs = renderDebounceMs
         renderDebounceTask = Task {
             do {
@@ -337,12 +352,18 @@ final class FITSViewerModel: Identifiable {
         await renderDebounceTask?.value
     }
 
-    /// True while an image render is in progress (drives the sidebar spinner).
+    /// True from when a render is asked for until the newest one is drawn
+    /// (drives the spinners on the image and in the sidebar).
     var isRendering = false
+    /// The newest render's number: an older one, superseded, finishing
+    /// never says the image is drawn while the newer one is still at it.
+    private var renderGeneration = 0
 
-    private func renderImageAsync() async {
-        guard let hdu = selectedHDU, !pixels.isEmpty else { return }
-        isRendering = true
+    private func renderImageAsync(_ generation: Int) async {
+        guard let hdu = selectedHDU, !pixels.isEmpty else {
+            if generation == renderGeneration { isRendering = false }
+            return
+        }
         let known = picture
         let version = pixelsVersion
         let px = pixels
@@ -356,11 +377,11 @@ final class FITSViewerModel: Identifiable {
         }.value
         if picture == nil, version == pixelsVersion { picture = drawn }
         guard !Task.isCancelled, let image else {
-            isRendering = false
+            if generation == renderGeneration { isRendering = false }
             return
         }
         renderedImage = image
-        isRendering = false
+        if generation == renderGeneration { isRendering = false }
     }
 
     /// Callback for linked crosshair (WCS) — set by tab host.

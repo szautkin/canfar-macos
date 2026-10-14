@@ -82,8 +82,8 @@ Every screen has the same toolbar at the top and the activity bar at the bottom.
 5. **Your CADC account**: your name, with your email and institute in its menu, and **Sign Out**. When
    you are signed out, a **Sign In** button stands here instead.
 
-The account menu is on Home and in Portal. On the other screens, the toolbar starts with a back arrow
-(**Go back**) and the screen's name.
+The account menu, or **Sign In**, is on every screen. Away from Home, the toolbar starts with a back
+arrow (**Go back**) and the screen's name.
 
 ### The activity bar
 
@@ -130,7 +130,7 @@ Remote Compute is reached from its Home tile. Every menu and shortcut is in
 
 ## Signing in and out
 
-1. Click **Sign In** in the toolbar on Home, or a tile that says **Locked**.
+1. Click **Sign In** in the toolbar, on any screen, or a tile that says **Locked**.
 2. In **Log In to CANFAR**, type your CADC **Username** and **Password**.
 3. Leave **Remember me** ticked to stay signed in: Verbinal then keeps your password in the macOS
    Keychain, on this Mac only, and signs you in again by itself when your session with CADC expires.

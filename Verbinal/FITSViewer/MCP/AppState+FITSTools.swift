@@ -364,15 +364,14 @@ extension AppState {
             crosshair: crosshair,
             openTabPaths: paths,
             activeTabIndex: host.activeTabIndex,
-            shows: tab.table.map { $0.spectrum == nil ? "table" : "spectrum" })
+            shows: tab.table.map { $0.spectrum == nil ? "table" : "spectrum" }, selectingArea: tab.selectingArea ? true : nil)
     }
 
     private func applyFITSView(_ args: SetFITSViewTool.Args) -> String? {
         let host = fitsTabHost
         if let idx = args.tabIndex {
             guard host.tabs.indices.contains(idx) else {
-                return host.tabs.isEmpty
-                    ? "No FITS tabs are open"
+                return host.tabs.isEmpty ? "No FITS tabs are open"
                     : "tabIndex \(idx) out of range 0…\(host.tabs.count - 1)"
             }
             host.activeTabIndex = idx
@@ -408,6 +407,7 @@ extension AppState {
             tab.fitToWindow(canvasSize: tab.lastCanvasSize)
         }
         if args.northUp == true { tab.applyNorthUp() }
+        if let on = args.selectArea, let problem = tab.setSelectingArea(on) { return problem }
 
         agentsService.activityStore.append(.live(
             kind: "set_fits_view", summary: "Adjusted the FITS view",

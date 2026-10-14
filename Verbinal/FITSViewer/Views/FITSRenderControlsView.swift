@@ -21,14 +21,16 @@ struct FITSRenderControlsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Stretch")
                     .font(.subheadline.weight(.semibold))
-                Picker("Stretch", selection: Bindable(model).renderParams.stretch) {
-                    ForEach(FITSRenderParams.StretchMode.allCases) { mode in
-                        Text(mode.rawValue.capitalized).tag(mode)
-                    }
+                // Five segments need about 290 points and cannot shrink; the
+                // panel is 220 to 320. Wider than the panel, they pushed all
+                // of it off both edges — a menu when they do not fit.
+                ViewThatFits(in: .horizontal) {
+                    stretchPicker.pickerStyle(.segmented)
+                    stretchPicker.pickerStyle(.menu)
                 }
-                .pickerStyle(.segmented)
                 .labelsHidden()
-                .onChange(of: model.renderParams.stretch) { _, _ in model.renderImageDebounced() }
+                // A click, not a drag: drawn at once, without the sliders' wait.
+                .onChange(of: model.renderParams.stretch) { _, _ in model.renderImage() }
             }
 
             // Colormap — the shared swatch grid (what a colormap looks
@@ -38,7 +40,7 @@ struct FITSRenderControlsView: View {
                 Text("Colormap")
                     .font(.subheadline.weight(.semibold))
                 ColormapSwatchGrid(selection: Bindable(model).renderParams.colormap)
-                    .onChange(of: model.renderParams.colormap) { _, _ in model.renderImageDebounced() }
+                    .onChange(of: model.renderParams.colormap) { _, _ in model.renderImage() }
             }
 
             // Min/Max cuts
@@ -288,12 +290,14 @@ struct FITSRenderControlsView: View {
 
             #if os(macOS)
             // Export — publication figure with header + colorbar legend
-            // (the Cube panel's exporter, for 2D images).
-            Button { model.figureRegion = .image } label: {
-                Label("Export Figure…", systemImage: "square.and.arrow.up")
+            // (the Cube panel's exporter, for 2D images) — of the whole
+            // image, or of an area dragged out on it. Side by side when the
+            // panel is wide enough, one above the other when it is not: a
+            // row wider than the panel pushes all of it off the edges.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { exportFigureButton; selectAreaToggle }
+                VStack(alignment: .leading, spacing: 6) { exportFigureButton; selectAreaToggle }
             }
-            .disabled(model.renderedImage == nil)
-            .opens("Export Figure")
             #endif
         }
         .padding(8)
@@ -306,6 +310,35 @@ struct FITSRenderControlsView: View {
         }
         #endif
     }
+
+    private var stretchPicker: some View {
+        Picker("Stretch", selection: Bindable(model).renderParams.stretch) {
+            ForEach(FITSRenderParams.StretchMode.allCases) { mode in
+                Text(mode.rawValue.capitalized).tag(mode)
+            }
+        }
+    }
+
+    #if os(macOS)
+    private var exportFigureButton: some View {
+        Button { model.figureRegion = .image } label: {
+            Label("Export Figure…", systemImage: "square.and.arrow.up")
+        }
+        .disabled(model.renderedImage == nil)
+        .opens("Export Figure")
+    }
+
+    /// Select Area: the next drag on the image draws a box, and Export
+    /// Figure opens on it (⌘-drag does it unarmed).
+    private var selectAreaToggle: some View {
+        Toggle(isOn: Bindable(model).selectingArea) {
+            Label("Select Area", systemImage: "rectangle.dashed")
+        }
+        .toggleStyle(.button)
+        .disabled(model.renderedImage == nil)
+        .help("Drag a box on the image to export a figure of that area — or ⌘-drag at any time")
+    }
+    #endif
 
     private var cutRange: ClosedRange<Float> {
         model.pixelRangeDegenerate ? 0...1 : model.pixelMin...model.pixelMax

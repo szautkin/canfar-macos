@@ -87,8 +87,8 @@ Chaque écran a la même barre d’outils en haut et la barre d’activité en b
 5. **Votre compte CADC** : votre nom, avec votre courriel et votre institution dans son menu, et
    **Se déconnecter**. Quand vous n’êtes pas connecté, un bouton **Se connecter** se trouve à sa place.
 
-Le menu du compte est sur l’accueil et dans Portail. Sur les autres écrans, la barre d’outils commence
-par une flèche de retour (**Retour**) et le nom de l’écran.
+Le menu du compte, ou **Se connecter**, est sur chaque écran. Hors de l’accueil, la barre d’outils
+commence par une flèche de retour (**Retour**) et le nom de l’écran.
 
 ### La barre d’activité
 
@@ -137,7 +137,8 @@ Le Calcul à distance s’ouvre depuis sa tuile de l’accueil. Tous les menus e
 
 ## Se connecter et se déconnecter
 
-1. Cliquez sur **Se connecter** dans la barre d’outils de l’accueil, ou sur une tuile **Verrouillé**.
+1. Cliquez sur **Se connecter** dans la barre d’outils, sur n’importe quel écran, ou sur une tuile
+   **Verrouillé**.
 2. Dans **Se connecter à CANFAR**, tapez votre **Nom d'utilisateur** et votre **Mot de passe** CADC.
 3. Laissez **Se souvenir de moi** coché pour rester connecté : Verbinal garde alors votre mot de passe
    dans le trousseau macOS, sur ce Mac seulement, et vous reconnecte de lui-même quand votre session

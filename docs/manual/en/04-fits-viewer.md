@@ -19,7 +19,7 @@ Below them, the side panel has the file's extensions, the display controls, and 
 - **Open** (or **Open FITS File…** in an empty tab) chooses a file on your Mac.
 - Drag a FITS file onto the viewer.
 - With no file open, the viewer lists the files you opened recently (**RECENTLY OPENED**); click one
-  to open it again.
+  to open it again. The side panel of controls appears once a file is open.
 - From [Research](03-research.md) (**Open in FITS Viewer**), from [Storage](09-storage.md) (**Open in
   FITS Viewer**), or from the [file browser](01-getting-started.md#the-file-browser).
 
@@ -34,12 +34,13 @@ The side panel, from the top:
 
 - **HDUs**: the file's extensions, with each image's size or each table's name. Click one to show it.
 - **Stretch**: how values become brightness: **Linear**, **Log**, **Sqrt**, **Squared** or **Asinh**.
+  When the panel is too narrow for all five side by side, they are a menu.
 - **Colormap**: **Grayscale**, **Inverted**, **Heat**, **Cool**, **Viridis**, **Inferno**, **Magma** or
   **Plasma**.
 - **Cuts**: the values shown from black to white, with the **Min** and **Max** sliders or fields.
   **Auto** sets them from a little below the background to where the brightest percent begins.
 - **Crosshair**, **Go To** and **Zoom**: see below.
-- **Export Figure…**: see [Figures](#figures).
+- **Export Figure…** and **Select Area**: see [Figures](#figures).
 
 A file that lacks standard WCS shows **WCS approximate**: its coordinates are estimated and may be off.
 An image whose pixels all have the same value shows a 0…1 range instead.
@@ -125,11 +126,16 @@ plot them all. **Export Figure** saves the plot as **PNG 2×**, **PNG 4×** or *
 
 ![Export Figure](../images/en/04-fits-viewer/fits-export.png)
 
-**Export Figure…** makes a publication figure of the image, with a preview:
+**Export Figure…** makes a publication figure of the image, with a preview.
+
+To make a figure of part of the image, turn on **Select Area**, beside **Export Figure…**, and drag a
+box over that part. When you let go, **Export Figure** opens on it, and **Select Area** turns itself
+off. You can also hold ⌘ and drag at any time, without turning it on. **Esc** turns it off without
+selecting. The box is cut to the image's whole pixels.
 
 | Setting | Choices |
 |---|---|
-| **Region** | **Whole image**, **View on screen**, or **Around** a mark |
+| **Region** | **Whole image**, **View on screen**, **Around** a mark, or **Selected area** after you select one |
 | **Theme** | **Journal light** or **Cockpit dark** |
 | **Font** | **Sans**, **Mono** or **Serif** |
 | **Text color** | **Auto**, **White**, **Black**, **Cyan** or **Amber** |
@@ -145,5 +151,5 @@ the date and time.
 
 It can open files, switch tabs and extensions, set the stretch, colour map, cuts and zoom, turn North
 Up, go to a position, read pixel values and the header, save bookmarks, blink and link tabs, search
-at the crosshair, draw, edit and export marks, read spectra, and export figures. It sees the image as
-you do.
+at the crosshair, draw, edit and export marks, read spectra, and export figures — of a box of pixels too.
+It can turn on **Select Area** for you to drag. It sees the image as you do.

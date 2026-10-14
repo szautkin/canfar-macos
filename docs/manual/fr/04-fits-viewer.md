@@ -21,7 +21,8 @@ en dessous.
 - **Ouvrir** (ou **Ouvrir un fichier FITS…** dans un onglet vide) choisit un fichier sur votre Mac.
 - Glissez un fichier FITS sur la visionneuse.
 - Sans fichier ouvert, la visionneuse liste les fichiers ouverts récemment (**OUVERTS RÉCEMMENT**) ;
-  cliquez sur l’un d’eux pour le rouvrir.
+  cliquez sur l’un d’eux pour le rouvrir. Le panneau latéral des réglages apparaît une fois un fichier
+  ouvert.
 - Depuis [Recherche](03-research.md) (**Ouvrir dans la Visionneuse FITS**), depuis
   [Stockage](09-storage.md), ou depuis le
   [navigateur de fichiers](01-getting-started.md#le-navigateur-de-fichiers).
@@ -38,13 +39,14 @@ Le panneau latéral, de haut en bas :
 - **HDU** : les extensions du fichier, avec la taille de chaque image ou le nom de chaque table.
   Cliquez sur l’une pour l’afficher.
 - **Étirement** : comment les valeurs deviennent de la luminosité : **Linear**, **Log**, **Sqrt**,
-  **Squared** ou **Asinh** (ces noms restent en anglais).
+  **Squared** ou **Asinh** (ces noms restent en anglais). Quand le panneau est trop étroit pour les
+  cinq côte à côte, ils forment un menu.
 - **Palette** : **Grayscale**, **Inverted**, **Heat**, **Cool**, **Viridis**, **Inferno**, **Magma**
   ou **Plasma**.
 - **Coupes** : les valeurs affichées du noir au blanc, avec les curseurs ou les champs **Min** et
   **Max**. **Auto** les règle d’un peu sous le fond jusqu’au début du pour cent le plus brillant.
 - **Réticule**, **Aller à** et **Zoom** : voir plus bas.
-- **Exporter une figure…** : voir [Figures](#figures).
+- **Exporter une figure…** et **Sélectionner une zone** : voir [Figures](#figures).
 
 Un fichier sans WCS standard affiche **WCS approximatif** : ses coordonnées sont estimées et peuvent
 être imprécises. Une image dont tous les pixels ont la même valeur affiche une plage de 0 à 1.
@@ -139,11 +141,17 @@ enregistre le graphique en **PNG 2×**, **PNG 4×** ou **PDF…**.
 
 ![Exporter la figure](../images/fr/04-fits-viewer/fits-export.png)
 
-**Exporter une figure…** produit une figure de publication de l’image, avec un aperçu :
+**Exporter une figure…** produit une figure de publication de l’image, avec un aperçu.
+
+Pour une figure d’une partie de l’image, activez **Sélectionner une zone**, à côté de **Exporter une
+figure…**, et tracez un cadre sur cette partie. Quand vous relâchez, **Exporter la figure** s’ouvre
+dessus, et **Sélectionner une zone** se désactive. Vous pouvez aussi glisser avec ⌘ à tout moment,
+sans l’activer. **Échap** la désactive sans rien sélectionner. Le cadre est ramené aux pixels entiers
+de l’image.
 
 | Réglage | Choix |
 |---|---|
-| **Région** | **Image entière**, **Vue à l'écran**, ou **Autour de** une marque |
+| **Région** | **Image entière**, **Vue à l'écran**, **Autour de** une marque, ou **Zone sélectionnée** après en avoir sélectionné une |
 | **Thème** | **Journal clair** ou **Cockpit sombre** |
 | **Police** | **Sans**, **Mono** ou **Serif** |
 | **Couleur du texte** | **Auto**, **Blanc**, **Noir**, **Cyan** ou **Ambre** |
@@ -160,5 +168,6 @@ Téléchargements, sous un nom qui porte la date et l’heure.
 Il peut ouvrir des fichiers, changer d’onglet et d’extension, régler l’étirement, la palette, les
 coupes et le zoom, mettre le nord en haut, aller à une position, lire les valeurs des pixels et
 l’en-tête, enregistrer des signets, alterner et lier les onglets, chercher au réticule, dessiner,
-modifier et exporter des marques, lire les spectres, et exporter des figures. Il voit l’image comme
+modifier et exporter des marques, lire les spectres, et exporter des figures — d’un cadre de pixels
+aussi. Il peut activer **Sélectionner une zone** pour que vous traciez le cadre. Il voit l’image comme
 vous.

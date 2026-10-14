@@ -103,9 +103,10 @@ extension ContentView {
         .accessibilityLabel(Text(appState.fileBrowserShown ? "Hide file browser" : "Show file browser"))
     }
 
-    /// Profile / login control, shared by the landing and Portal toolbars
-    /// so the account affordance is identical everywhere it appears (same
-    /// icon, same menu, same sign-in style).
+    /// Profile / login control, shared by every toolbar — landing, Portal
+    /// and every screen's — so signing in or out is one click away wherever
+    /// the person is, and looks the same everywhere (same icon, same menu,
+    /// same sign-in style).
     @ViewBuilder
     private var accountToolbarItem: some View {
         if appState.isAuthenticated {
@@ -187,6 +188,12 @@ extension ContentView {
             .buttonStyle(.borderless)
             .accessibilityLabel("About Verbinal")
             .help("About Verbinal")
+
+            if appState.isLoading {
+                ProgressView().scaleEffect(0.7)
+            }
+
+            accountToolbarItem
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)

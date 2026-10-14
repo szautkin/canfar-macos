@@ -109,6 +109,26 @@
         }
       }
     },
+    "Drag a box on the image to export a figure of that area — or ⌘-drag at any time" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tracez un cadre sur l’image pour exporter une figure de cette zone — ou glissez avec ⌘ à tout moment"
+          }
+        }
+      }
+    },
+    "Drag a box over the part of the image to export as a figure; Esc puts Select Area down" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tracez un cadre sur la partie de l’image à exporter en figure ; Échap désactive Sélectionner une zone"
+          }
+        }
+      }
+    },
     "Get %@ from your storage" : {
       "localizations" : {
         "fr" : {
@@ -409,6 +429,16 @@
         }
       }
     },
+    "Rendering…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rendu en cours…"
+          }
+        }
+      }
+    },
     "Research data" : {
       "localizations" : {
         "fr" : {
@@ -479,6 +509,36 @@
         }
       }
     },
+    "Scroll or drag to pan, ⌘-scroll or pinch to zoom, click to place the crosshair, ⌘-drag to select an area" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Défilez ou glissez pour déplacer, ⌘-défilement ou pincement pour zoomer, cliquez pour placer le réticule, glissez avec ⌘ pour sélectionner une zone"
+          }
+        }
+      }
+    },
+    "Select Area" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionner une zone"
+          }
+        }
+      }
+    },
+    "Selected area, %lld × %lld pixels" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zone sélectionnée, %lld × %lld pixels"
+          }
+        }
+      }
+    },
     "Send %@ to your storage" : {
       "localizations" : {
         "fr" : {
@@ -525,6 +585,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connectez-vous à CANFAR pour accéder à votre stockage."
+          }
+        }
+      }
+    },
+    "That area is off the image" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette zone est hors de l’image"
           }
         }
       }

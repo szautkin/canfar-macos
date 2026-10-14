@@ -87,24 +87,15 @@ struct CubeViewerRootView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 8) {
-                Image(systemName: "cube.transparent")
-                    .font(.system(size: 50)).foregroundStyle(.secondary)
-                Text("Cube Viewer").font(.title2.bold())
-                Text("Open or drop a FITS spectral cube to explore it as native-resolution slices and a GPU-rendered 3D volume.")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center).frame(maxWidth: 420)
-                #if os(macOS)
-                Button("Open Cube…") { Task { await model.openWithPicker() } }
-                    .buttonStyle(.borderedProminent)
-                    .opens("Open Cube")
-                #endif
-            }
-            RecentFilesList(recents: model.recentFiles, icon: "cube.transparent") { model.openRecent($0) }
+        ViewerEmptyState(icon: "cube.transparent", title: "Cube Viewer",
+                         message: "Open or drop a FITS spectral cube to explore it as native-resolution slices and a GPU-rendered 3D volume.",
+                         recents: model.recentFiles, openRecent: { model.openRecent($0) }) {
+            #if os(macOS)
+            Button("Open Cube…") { Task { await model.openWithPicker() } }
+                .buttonStyle(.borderedProminent)
+                .opens("Open Cube")
+            #endif
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var loadingView: some View {

@@ -43,6 +43,19 @@ files in Research, and Verbinal's data in your storage on every device
   hour without a call (**Settings ▸ AI Agent ▸ Sessions**, from 15 minutes
   to a day), with **End Session** in Session Logs, or when you turn
   external AI agents off; the assistant is told why.
+- **Research files on this Mac and in your storage.** A laptop and a cloud
+  beside each of Research's files say where it is. Click them to send a
+  copy to your CANFAR storage (`Verbinal-Results/research/`), get one back,
+  move the file either way, or remove one of its copies. A move copies
+  first and removes the other copy only once the new one is there, and a
+  file's last copy is never removed. Assistants:
+  `send_research_file_to_storage`, `get_research_file_from_storage`,
+  `remove_research_file_from_mac`, `remove_research_file_from_storage`,
+  and each file's `places` in `list_downloaded_observations`.
+- **Select Area in the FITS Viewer.** Turn on **Select Area**, beside
+  **Export Figure…**, or hold ⌘, and drag a box on the image: **Export
+  Figure** opens on that area. Assistants can turn it on for you
+  (`set_fits_view` `selectArea`).
 - **Tools:** `list_storage_kinds` and `sync_storage`;
   `download_observation` with `file` keeps that file among the record's
   `files`; `remove_downloaded_file` takes `file`;
@@ -57,6 +70,25 @@ files in Research, and Verbinal's data in your storage on every device
   ones downloaded one by one.
 
 ### Fixed
+- **Research's records move into the database only when you choose.** The
+  menu beside Research's count says where they are kept, and **Move into
+  the Database…** backs the file up, checks every record, and undoes it
+  all on any mismatch; **Move Back to a File…** returns them. No launch,
+  and no assistant, moves them.
+- **A new colour map or stretch shows it is being drawn.** It is drawn
+  at once, without the sliders' wait, and *Rendering…* shows in the
+  image's corner while it takes long enough to notice.
+- **Sign In, or your account, on every screen.** The toolbar's account
+  control was only on Home and in Portal; it is now on every screen.
+- **The FITS Viewer fits its window with no file open.** Its empty tab
+  took more height than the window had, pushing the toolbar, the tabs and
+  the activity bar out of sight, and showed the image controls beside no
+  image. It now shows how to open a file and the recent ones, scrolling
+  when the window is short, and the controls come once a file is open.
+  The Cube Viewer's empty state scrolls the same way.
+- **The FITS Viewer's side panel fits its width.** The five stretches
+  needed more room than the panel has, which pushed everything in it past
+  both edges; they become a menu when they do not fit.
 - **A request that met an expired sign-in goes through.** When your CADC
   session expired, Verbinal signed you in again with the stored password,
   but the request that found it out failed anyway. It now waits for the

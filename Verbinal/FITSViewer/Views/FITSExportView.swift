@@ -126,6 +126,9 @@ struct FITSExportView: View {
                 if case .mark(let id) = initialRegion, let mark = marks.first(where: { $0.id == id }) {
                     Text("Around \(MarkSummary.title(mark))").tag(initialRegion)
                 }
+                if let size = initialRegion.boxSize {
+                    Text("Selected area, \(size.width) × \(size.height) pixels").tag(initialRegion)
+                }
             }
             Picker("Theme", selection: $themeRaw) {
                 Text("Journal light").tag(FITSExportStyle.Theme.light.rawValue)

@@ -15,7 +15,8 @@ import SwiftUI
 /// - Click (no drag): place crosshair
 /// - Drag: pan image
 /// Marks (`pointer`) get the first say over every press, so a press on a
-/// mark moves it instead of panning the image out from under it.
+/// mark moves it instead of panning the image out from under it — after
+/// `area`: while it is armed, or with ⌘ held, a drag draws a box.
 struct ScrollCaptureView: NSViewRepresentable {
     let onScroll: (CGFloat, CGPoint) -> Void
     var onPan: ((CGFloat, CGFloat) -> Void)?
@@ -26,6 +27,7 @@ struct ScrollCaptureView: NSViewRepresentable {
     /// The pointer left the view.
     var onHoverEnd: (() -> Void)?
     var pointer: ScrollCaptureNSView.Pointer?
+    var area: ScrollCaptureNSView.Area?
     /// False where the host takes keys through SwiftUI focus (the cube):
     /// a click must not move the keyboard to this view.
     var takesKeyFocus = true
@@ -52,8 +54,9 @@ struct ScrollCaptureView: NSViewRepresentable {
         view.onMagnify = onMagnify
         view.onHoverEnd = onHoverEnd
         view.takesKeyFocus = takesKeyFocus
-        let drawing = pointer?.drawing ?? false
+        let drawing = (pointer?.drawing ?? false) || (area?.armed ?? false)
         view.pointer = pointer
+        view.area = area
         if drawing != view.drawCursor {
             view.drawCursor = drawing
             view.window?.invalidateCursorRects(for: view)
@@ -79,6 +82,19 @@ class ScrollCaptureNSView: NSView {
 
     enum Key { case delete, escape }
 
+    /// Dragging out a box — Select Area. It is asked before the marks and
+    /// the pan, because arming it, or holding ⌘, says what the drag is for.
+    struct Area {
+        /// Every drag draws a box, not only one with ⌘ held.
+        var armed: Bool
+        /// The box as it is dragged, in the view's points; nil when it is gone.
+        var changed: (CGRect?) -> Void
+        /// Let go, from the press to here.
+        var ended: (CGPoint, CGPoint) -> Void
+        /// Escape: put it down.
+        var disarm: () -> Void
+    }
+
     var onScroll: ((CGFloat, CGPoint) -> Void)?
     var onPan: ((CGFloat, CGFloat) -> Void)?
     var onClick: ((CGPoint) -> Void)?
@@ -86,6 +102,7 @@ class ScrollCaptureNSView: NSView {
     var onHover: ((CGPoint) -> Void)?
     var onHoverEnd: (() -> Void)?
     var pointer: Pointer?
+    var area: Area?
     var drawCursor = false
     var takesKeyFocus = true
 
@@ -93,6 +110,9 @@ class ScrollCaptureNSView: NSView {
     private var didDrag = false
     /// The press went to `pointer`.
     private var pointerHasPress = false
+    /// Where a box being dragged out began, and whether it was armed.
+    private var areaStart: (point: CGPoint, armed: Bool)?
+    private var areaMoved = false
     private static let dragThreshold: CGFloat = 3.0
 
     override func scrollWheel(with event: NSEvent) {
@@ -119,6 +139,11 @@ class ScrollCaptureNSView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let location = flippedLocation(for: event)
+        if let area, area.armed || event.modifierFlags.contains(.command) {
+            areaStart = (location, area.armed)
+            areaMoved = false
+            return
+        }
         if event.clickCount == 2, pointer?.doubleClick(location) == true { return }
         pointerHasPress = pointer?.press(location) ?? false
         guard !pointerHasPress else { return }
@@ -127,6 +152,14 @@ class ScrollCaptureNSView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        if let start = areaStart?.point {
+            let current = flippedLocation(for: event)
+            if !areaMoved && hypot(current.x - start.x, current.y - start.y) < Self.dragThreshold { return }
+            areaMoved = true
+            area?.changed(CGRect(x: min(start.x, current.x), y: min(start.y, current.y),
+                                 width: abs(current.x - start.x), height: abs(current.y - start.y)))
+            return
+        }
         if pointerHasPress {
             pointer?.drag(flippedLocation(for: event))
             return
@@ -141,6 +174,17 @@ class ScrollCaptureNSView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        if let (start, armed) = areaStart {
+            areaStart = nil
+            if areaMoved {
+                area?.ended(start, flippedLocation(for: event))
+            } else {
+                area?.changed(nil)
+                // ⌘-click without a drag is a click, as before.
+                if !armed { onClick?(start) }
+            }
+            return
+        }
         if pointerHasPress {
             pointerHasPress = false
             pointer?.release()
@@ -181,6 +225,12 @@ class ScrollCaptureNSView: NSView {
         switch event.specialKey {
         case .delete?, .deleteForward?: key = .delete
         default: key = event.keyCode == 53 ? .escape : nil
+        }
+        if key == .escape, let area, area.armed || areaStart != nil {
+            areaStart = nil
+            area.changed(nil)
+            area.disarm()
+            return
         }
         if let key, pointer?.key(key) == true { return }
         super.keyDown(with: event)

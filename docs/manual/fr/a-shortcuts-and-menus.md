@@ -93,7 +93,8 @@ Portail et Stockage demandent d’abord de se connecter quand vous ne l’êtes 
 | ⇧⌘L | Chercher dans l’archive au réticule |
 | ⇧⌘B | Blink |
 | Espace, ←, → | Pendant le blink : pause, image A, image B |
-| Esc (Échap) | Retirer le réticule ; arrêter le blink |
+| ⌘-glisser | Sélectionner une zone de l’image, et en exporter une figure |
+| Esc (Échap) | Retirer le réticule ; arrêter le blink ; désactiver **Sélectionner une zone** |
 
 ### Visionneuse Cube
 

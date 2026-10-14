@@ -61,10 +61,17 @@ struct FITSImageView: View {
                         let pos = model.imageToScreen(crosshair, imgSize: imgSize, canvasSize: geometry.size)
                         CrosshairCanvasOverlay(position: pos, isLinked: model.isLinkedCrosshair)
                     }
+
+                    // Select Area: the box being dragged out
+                    if let band = model.areaBand {
+                        AreaBandOverlay(rect: band)
+                    }
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .clipped()
-                .help("Scroll or drag to pan, ⌘-scroll or pinch to zoom, click to place the crosshair")
+                .help(model.selectingArea
+                      ? Text("Drag a box over the part of the image to export as a figure; Esc puts Select Area down")
+                      : Text("Scroll or drag to pan, ⌘-scroll or pinch to zoom, click to place the crosshair, ⌘-drag to select an area"))
                 #if os(macOS)
                 .contextMenu {
                     Button("Reset View") { model.fitToWindow(canvasSize: geometry.size) }
@@ -161,7 +168,8 @@ struct FITSImageView: View {
                             let newZoom = model.viewport.zoom * (1.0 + magnification)
                             model.setZoom(newZoom)
                         },
-                        pointer: markPointer(canvasSize: geometry.size)
+                        pointer: markPointer(canvasSize: geometry.size),
+                        area: areaSelection(canvasSize: geometry.size)
                     )
                 }
                 .overlay {
@@ -176,6 +184,9 @@ struct FITSImageView: View {
                     marks?.problem = nil
                 }
                 #endif
+                .overlay(alignment: .topTrailing) {
+                    RenderingBadge(isRendering: model.isRendering)
+                }
             }
         }
     }
@@ -183,6 +194,19 @@ struct FITSImageView: View {
     // MARK: - Marks
 
     #if os(macOS)
+    /// Select Area: a box dragged out opens Export Figure on it.
+    private func areaSelection(canvasSize: CGSize) -> ScrollCaptureNSView.Area {
+        let model = self.model
+        let toast = self.toast
+        return ScrollCaptureNSView.Area(
+            armed: model.selectingArea,
+            changed: { model.areaBand = $0 },
+            ended: { start, end in
+                if let problem = model.finishArea(from: start, to: end, canvasSize: canvasSize) { toast?.show(problem) }
+            },
+            disarm: { model.selectingArea = false })
+    }
+
     private func markPointer(canvasSize: CGSize) -> ScrollCaptureNSView.Pointer? {
         guard let marks, let target = model.markTarget else { return nil }
         let model = self.model
@@ -253,6 +277,61 @@ struct FITSImageView: View {
         }
     }
 
+}
+
+// MARK: - Rendering
+
+/// "Rendering…" in the image's corner while a new colour map, stretch or cut
+/// is being drawn — once it takes long enough to notice, so a quick one
+/// does not flicker.
+private struct RenderingBadge: View {
+    let isRendering: Bool
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Group {
+            if shown {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Rendering…").font(.caption)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(.regularMaterial, in: Capsule())
+                .padding(10)
+                .transition(.opacity)
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .allowsHitTesting(false)
+        .task(id: isRendering) {
+            if isRendering {
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+            }
+            withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) { shown = isRendering }
+        }
+    }
+}
+
+// MARK: - Select Area band
+
+/// The box being dragged out: dashed, light over dark so it shows on any image.
+private struct AreaBandOverlay: View {
+    let rect: CGRect
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(Color.accentColor.opacity(0.12))
+            Rectangle().stroke(Color.black.opacity(0.6), lineWidth: 3)
+            Rectangle().stroke(Color.white, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+        }
+        .frame(width: rect.width, height: rect.height)
+        .position(x: rect.midX, y: rect.midY)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
 }
 
 // MARK: - Crosshair Canvas Overlay (screen space, always H/V)

@@ -116,6 +116,7 @@ every later agent is told; **read** = pure data.
 | Search Here (⌘⇧L) | `search_at_crosshair` | live |
 | Export Figure sheet: region (whole image / view / around a mark), marks, style, PNG/PDF | `export_fits_figure` (`region` also box and sky) | write |
 | Mark menu ▸ Export Figure Around Mark… | `export_fits_figure` `region: mark` | write |
+| Select Area (beside Export Figure…) / ⌘-drag: a box opens Export Figure on it | arm it for the person: `set_fits_view` `selectArea`, read in `get_fits_view` `selectingArea`; export a box itself: `export_fits_figure` `region: box` | live / write |
 | "Open as…" 2D vs 3D sheet (NAXIS≥3) | `choose_viewer`; `get_current_view.pendingViewerChoice` | live/read |
 | Draw a mark (Marks panel ▸ Draw, click or drag the image) | `annotate_fits` | live |
 | Move, resize (grip), rename (double-click, Edit Label), restyle (panel colour/bold/size/outline) | `update_annotation` | live |

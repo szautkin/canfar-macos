@@ -194,8 +194,11 @@ struct FITSTabView: View {
                 Divider()
             }
 
-            // Active tab content
-            if let activeModel = tabHost.activeTab {
+            // Active tab content: the controls only beside an open file —
+            // before one is open, the tab says how to open one, full width.
+            if let activeModel = tabHost.activeTab, !activeModel.isLoaded {
+                viewerPane(activeModel)
+            } else if let activeModel = tabHost.activeTab {
                 HSplitView {
                     // Sidebar: HDU list + controls + header
                     VStack(alignment: .leading, spacing: 0) {
@@ -232,42 +235,7 @@ struct FITSTabView: View {
                     }
                     .frame(minWidth: 220, idealWidth: 260, maxWidth: 320)
 
-                    // Viewer
-                    VStack(spacing: 0) {
-                        if activeModel.isLoading {
-                            Spacer()
-                            VStack(spacing: 8) {
-                                ProgressView()
-                                Text(activeModel.loadStage).font(.caption.monospaced())
-                                Text(activeModel.fileURL?.lastPathComponent ?? "").font(.caption2).foregroundStyle(.tertiary)
-                            }
-                            .accessibilityElement(children: .combine)
-                            Spacer()
-                        } else if let error = activeModel.loadError {
-                            Spacer()
-                            VStack(spacing: 8) {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .font(.title).foregroundStyle(.orange)
-                                Text(error).font(.caption)
-                                Button("Retry") {
-                                    if let url = activeModel.fileURL {
-                                        Task { await activeModel.open(url: url) }
-                                    }
-                                }
-                                .buttonStyle(.bordered).controlSize(.small)
-                            }
-                            Spacer()
-                        } else if let table = activeModel.table {
-                            FITSTableContentView(content: table, caption: activeModel.figureCaption)
-                        } else if activeModel.renderedImage != nil {
-                            FITSImageView(model: activeModel, tabHost: tabHost, marks: appState.fitsMarkEditor)
-                            Divider()
-                            FITSCoordinateBar(model: activeModel)
-                        } else {
-                            emptyState
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    viewerPane(activeModel)
                 }
                 .transaction { $0.animation = nil }
             } else {
@@ -432,30 +400,61 @@ struct FITSTabView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            ContentUnavailableView {
-                Label("No FITS file open", systemImage: "star.circle")
-            } description: {
-                Text("Open a FITS file or drag one here.")
-            } actions: {
-                #if os(macOS)
-                Button("Open FITS File…") { Task { await (tabHost.activeTab ?? tabHost.addTab()).openWithPicker() } }
-                    .buttonStyle(.borderedProminent)
-                    .opens("Open FITS File")
-                #endif
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            RecentFilesList(recents: RecentFiles.fits, icon: "star.circle") { recent in
-                Task {
-                    guard let url = RecentFiles.fits.resolve(recent) else {
-                        toast?.show(String(localized: "“\(recent.name)” is no longer available."))
-                        return
-                    }
-                    await tabHost.openFile(url: url)
+        ViewerEmptyState(icon: "star.circle", title: "No FITS file open", message: "Open a FITS file or drag one here.",
+                         recents: RecentFiles.fits, openRecent: { recent in
+            Task {
+                guard let url = RecentFiles.fits.resolve(recent) else {
+                    toast?.show(String(localized: "“\(recent.name)” is no longer available."))
+                    return
                 }
+                await tabHost.openFile(url: url)
+            }
+        }) {
+            #if os(macOS)
+            Button("Open FITS File…") { Task { await (tabHost.activeTab ?? tabHost.addTab()).openWithPicker() } }
+                .buttonStyle(.borderedProminent)
+                .opens("Open FITS File")
+            #endif
+        }
+    }
+
+    /// The open file, how its loading goes, or how to open one.
+    private func viewerPane(_ activeModel: FITSViewerModel) -> some View {
+        VStack(spacing: 0) {
+            if activeModel.isLoading {
+                Spacer()
+                VStack(spacing: 8) {
+                    ProgressView()
+                    Text(activeModel.loadStage).font(.caption.monospaced())
+                    Text(activeModel.fileURL?.lastPathComponent ?? "").font(.caption2).foregroundStyle(.tertiary)
+                }
+                .accessibilityElement(children: .combine)
+                Spacer()
+            } else if let error = activeModel.loadError {
+                Spacer()
+                VStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.title).foregroundStyle(.orange)
+                    Text(error).font(.caption)
+                    Button("Retry") {
+                        if let url = activeModel.fileURL {
+                            Task { await activeModel.open(url: url) }
+                        }
+                    }
+                    .buttonStyle(.bordered).controlSize(.small)
+                }
+                Spacer()
+            } else if let table = activeModel.table {
+                FITSTableContentView(content: table, caption: activeModel.figureCaption)
+            } else if activeModel.renderedImage != nil {
+                FITSImageView(model: activeModel, tabHost: tabHost, marks: appState.fitsMarkEditor)
+                Divider()
+                FITSCoordinateBar(model: activeModel)
+            } else {
+                emptyState
             }
         }
-        .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
 }

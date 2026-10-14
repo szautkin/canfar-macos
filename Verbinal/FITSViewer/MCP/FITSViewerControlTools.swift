@@ -36,6 +36,8 @@ struct GetFITSViewTool: JSONReadTool {
         /// "spectrum" or "table" when the tab shows a table rather than an
         /// image — `get_fits_spectrum` reads it; absent for an image.
         var shows: String?
+        /// Select Area is armed: the person's next drag draws a box.
+        var selectingArea: Bool?
 
         /// `x`/`y` are the 0-based FITS array indices of the pixel under
         /// the crosshair — the convention `probe_fits_pixel` takes.
@@ -84,6 +86,7 @@ struct SetFITSViewTool: AITool {
         let fitToWindow: Bool?
         let northUp: Bool?
         let tabIndex: Int?
+        var selectArea: Bool?
     }
 
     struct Output: Encodable, Sendable {
@@ -93,7 +96,7 @@ struct SetFITSViewTool: AITool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "set_fits_view",
-        description: "Adjust the active FITS-viewer tab's render state. All fields are optional; provide only what should change. Cut levels are normalized 0-1, zoom is a magnification factor (1 = 100%). Pass `tabIndex` to switch the active tab before applying. Live-applied; no proposal.",
+        description: "Adjust the active FITS-viewer tab's render state. All fields are optional; provide only what should change. Cut levels are normalized 0-1, zoom is a magnification factor (1 = 100%). Pass `tabIndex` to switch the active tab before applying. `selectArea` arms Select Area for the person, as its toolbar button does: their next drag on the image draws a box and opens Export Figure on it (false puts it down). To export a box yourself, use export_fits_figure with `region: box`. Live-applied; no proposal.",
         schema: #"""
         {
           "type": "object",
@@ -105,7 +108,8 @@ struct SetFITSViewTool: AITool {
             "zoom":        { "type": "number", "exclusiveMinimum": 0, "description": "Magnification factor (1 = 100%)." },
             "fitToWindow": { "type": "boolean", "description": "Fit the image to the window (overrides zoom)." },
             "northUp":     { "type": "boolean", "description": "Rotate the view so north is up (requires a WCS solution)." },
-            "tabIndex":    { "type": "integer", "minimum": 0, "description": "Switch to this open tab (0-based) before applying." }
+            "tabIndex":    { "type": "integer", "minimum": 0, "description": "Switch to this open tab (0-based) before applying." },
+            "selectArea":  { "type": "boolean", "description": "Arm (true) or put down (false) Select Area for the person." }
           },
           "additionalProperties": false
         }

@@ -93,7 +93,8 @@ Portal and Storage ask you to sign in first when you are signed out.
 | ⇧⌘L | Search the archive at the crosshair |
 | ⇧⌘B | Blink |
 | Space, ←, → | During blink: pause, image A, image B |
-| Esc | Clear the crosshair; stop blinking |
+| ⌘-drag | Select an area of the image, and export a figure of it |
+| Esc | Clear the crosshair; stop blinking; turn off **Select Area** |
 
 ### Cube Viewer
 
