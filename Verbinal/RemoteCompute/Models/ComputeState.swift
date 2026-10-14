@@ -83,3 +83,23 @@ struct ComputeSnapshot: Sendable {
     /// Why it is not ready, when it is not.
     var problem: String? = nil
 }
+
+/// How remote compute moves (plan 38): the platform's look is what it is;
+/// what the person asked moves it at once — start from stopped or failed,
+/// stop from a session that exists — until the platform's next look.
+enum ComputeMachine: StateMachine {
+    enum Ask: Equatable, Sendable { case start, stop }
+    enum Event: Sendable {
+        case observed(ComputeState)
+        case asked(Ask)
+    }
+
+    static func next(_ state: ComputeState, on event: Event) -> ComputeState? {
+        switch (state, event) {
+        case (_, .observed(let seen)): seen
+        case (.stopped, .asked(.start)), (.failed, .asked(.start)): .starting
+        case (.starting, .asked(.stop)), (.running, .asked(.stop)), (.failed, .asked(.stop)), (.notReady, .asked(.stop)): .stopping
+        default: nil
+        }
+    }
+}

@@ -61,7 +61,15 @@ final class RemoteComputeModel {
         self.service = service
     }
 
-    var state: ComputeState { snapshot?.state ?? (service.current.isConfigured ? .stopped : .notSetUp) }
+    /// What the platform last showed (or, before it was looked at, the
+    /// setup), moved at once by what the person asked (ComputeMachine).
+    var state: ComputeState {
+        let observed = snapshot?.state ?? (service.current.isConfigured ? .stopped : .notSetUp)
+        guard let ask, let moved = ComputeMachine.next(observed, on: .asked(ask)) else { return observed }
+        return moved
+    }
+    /// A start or stop the platform has not shown yet; its next look clears it.
+    private var ask: ComputeMachine.Ask?
     var isConfigured: Bool { service.current.isConfigured }
     var hasSession: Bool { snapshot?.session != nil }
     var runs: [ComputeRun] { service.runs.runs }
@@ -85,6 +93,7 @@ final class RemoteComputeModel {
         let attempt = quiet ? nil : change.begin()
         do {
             snapshot = try await service.snapshot()
+            ask = nil
             if !isConfigured, hasSession, message == nil {
                 message = Message(kind: .info, text: String(localized: "A compute session from another install is on your account, holding your cores. Stop it here, or set an image in Settings ▸ AI Compute to use it."))
             }
@@ -109,6 +118,7 @@ final class RemoteComputeModel {
     // MARK: - The session
 
     func start() async {
+        ask = .start
         await perform {
             let start = try await self.service.ensureSession()
             self.message = Message(kind: .info, text: start.reusedExisting
@@ -118,6 +128,7 @@ final class RemoteComputeModel {
     }
 
     func stop() async {
+        ask = .stop
         await perform { _ = try await self.service.stop() }
     }
 
@@ -208,6 +219,7 @@ final class RemoteComputeModel {
             try await work()
             change.finish(attempt, with: .success(Date()))
         } catch {
+            ask = nil
             change.finish(attempt, with: .failure(error))
         }
         await refresh(quiet: true)

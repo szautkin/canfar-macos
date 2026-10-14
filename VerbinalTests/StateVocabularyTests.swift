@@ -180,4 +180,21 @@ final class StateVocabularyTests: XCTestCase {
         XCTAssertEqual(State.of(declared: true, syncingNow: false, failure: nil, lastSync: nil), .waiting)
         XCTAssertEqual(State.failed("x").name, "failed")
     }
+
+    // MARK: - Remote compute (P4e)
+
+    func testComputeMovesAtOnceOnAnAskAndThePlatformsLookWins() {
+        typealias M = ComputeMachine
+        XCTAssertEqual(M.next(.stopped, on: .asked(.start)), .starting)
+        XCTAssertEqual(M.next(.failed, on: .asked(.start)), .starting, "a failed session is replaced")
+        XCTAssertNil(M.next(.running, on: .asked(.start)), "already running")
+        XCTAssertNil(M.next(.notSetUp, on: .asked(.start)), "nothing to start without an image")
+        for live: ComputeState in [.starting, .running, .failed, .notReady] {
+            XCTAssertEqual(M.next(live, on: .asked(.stop)), .stopping, "\(live) can be stopped")
+        }
+        XCTAssertNil(M.next(.stopped, on: .asked(.stop)), "nothing to stop")
+        XCTAssertNil(M.next(.stopping, on: .asked(.stop)))
+        XCTAssertEqual(M.next(.starting, on: .observed(.running)), .running, "the platform's look is what it is")
+        XCTAssertEqual(M.next(.stopping, on: .observed(.stopped)), .stopped)
+    }
 }

@@ -225,7 +225,8 @@ lack today.
 | P4a | `7ee0e59c` | Research's last download (`Phase<String>`), Remote Compute's changes (`Phase<Date>`). The ratchet ends: no loose flag but five kept, each with its reason in `looseFlagsKept` — the toolbar caption and storage status line (text), the storage browser's `isBusy` (a read of three regions), the volume renderer's own report. |
 | P4b | `64ced849` | The app's hand-offs: one `handOff` (open FITS, open a cube, search at a position, load a search), each screen still reading its own name. The "Open as…" sheet and the return after sign-in are not hand-offs and stay. |
 | P4c | `d9a23456` | Image Discovery: `catalogue`, `discovery` and `actions` as `Phase`s replace `isDiscoveryRunning` and `bannerMessage`; a recovery's note is a note. |
-| P4d | (this commit) | Storage Sync: each collection's `CollectionState` — off, waiting, syncing, synced (when), failed (why) — read by Settings ▸ Storage and `list_storage_kinds` (`state`). |
+| P4d | `c9046edd` | Storage Sync: each collection's `CollectionState` — off, waiting, syncing, synced (when), failed (why) — read by Settings ▸ Storage and `list_storage_kinds` (`state`). |
+| P4e | (this commit) | Remote Compute: `ComputeMachine` — the platform's look wins; a start or stop the person asked moves the state at once (stopped → starting, a live session → stopping) until the next look. |
 
 ## Where it ended (2026-10-14)
 
