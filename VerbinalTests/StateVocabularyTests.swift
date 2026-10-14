@@ -167,4 +167,17 @@ final class StateVocabularyTests: XCTestCase {
         state.pendingSearchCoordinate = nil
         XCTAssertNil(state.handOff)
     }
+
+    // MARK: - A storage collection (P4d)
+
+    func testACollectionsStateIsOneReadingOfWhatTheSyncKnows() {
+        typealias State = StorageSync.CollectionState
+        let when = Date(timeIntervalSince1970: 1_000)
+        XCTAssertEqual(State.of(declared: false, syncingNow: true, failure: "x", lastSync: when), .off, "not kept: nothing else counts")
+        XCTAssertEqual(State.of(declared: true, syncingNow: true, failure: "x", lastSync: when), .syncing)
+        XCTAssertEqual(State.of(declared: true, syncingNow: false, failure: "denied", lastSync: when), .failed("denied"))
+        XCTAssertEqual(State.of(declared: true, syncingNow: false, failure: nil, lastSync: when), .synced(when))
+        XCTAssertEqual(State.of(declared: true, syncingNow: false, failure: nil, lastSync: nil), .waiting)
+        XCTAssertEqual(State.failed("x").name, "failed")
+    }
 }

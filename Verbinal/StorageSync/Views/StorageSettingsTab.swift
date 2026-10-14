@@ -119,10 +119,17 @@ struct StorageSettingsTab: View {
                  : String(localized: "Not kept in your storage"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if let failure = kind.failure {
-                Text(failure).font(.caption).foregroundStyle(.orange)
-            } else if kind.imported > 0 {
+            switch kind.state {
+            case .failed(let why):
+                Text(why).font(.caption).foregroundStyle(.orange)
+            case .syncing:
+                Label("Syncing…", systemImage: "arrow.triangle.2.circlepath").font(.caption).foregroundStyle(.secondary)
+            case .synced where kind.imported > 0:
                 Text("\(kind.imported) brought to this Mac at the last sync").font(.caption).foregroundStyle(.secondary)
+            case .waiting:
+                Text("Waiting for its first sync").font(.caption).foregroundStyle(.secondary)
+            case .off, .synced:
+                EmptyView()
             }
         }
     }

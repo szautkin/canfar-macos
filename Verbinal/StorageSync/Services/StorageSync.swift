@@ -17,6 +17,33 @@ import VerbinalKit
 actor StorageSync {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "StorageSync")
 
+    /// Where a collection stands (plan 38): not kept in storage, waiting
+    /// for its first sync, syncing now, synced (when), or why not.
+    enum CollectionState: Equatable, Sendable {
+        case off, waiting, syncing
+        case synced(Date)
+        case failed(String)
+
+        /// Its state as an assistant reads it.
+        var name: String {
+            switch self {
+            case .off: "off"
+            case .waiting: "waiting"
+            case .syncing: "syncing"
+            case .synced: "synced"
+            case .failed: "failed"
+            }
+        }
+
+        /// The one reading of what the sync knows of a kind.
+        static func of(declared: Bool, syncingNow: Bool, failure: String?, lastSync: Date?) -> Self {
+            guard declared else { return .off }
+            if syncingNow { return .syncing }
+            if let failure { return .failed(failure) }
+            return lastSync.map(Self.synced) ?? .waiting
+        }
+    }
+
     /// What the person and an assistant are told of a kind.
     struct KindStatus: Equatable, Sendable {
         let id: String
@@ -29,6 +56,7 @@ actor StorageSync {
         let sent: Int
         let note: String?
         let failure: String?
+        var state: CollectionState = .off
     }
 
     struct Status: Equatable, Sendable {
@@ -54,6 +82,8 @@ actor StorageSync {
     private let now: @Sendable () -> Date
     private var state: StorageSyncState
     private var running: Task<Void, Never>?
+    /// The collection a sync is on now.
+    private var syncing: String?
     /// What changed while a sync ran: it goes when that sync ends (nil: every kind).
     private var queued: Set<String>? = []
     /// Whether the account has CANFAR storage, once a sync looked: without
@@ -121,7 +151,9 @@ actor StorageSync {
                 guard !Task.isCancelled, !stopped else { break }
                 guard kindIDs?.contains(id) ?? true, let kind = catalog.kind(id),
                       let declared = manifest?.kinds[id] else { continue }
+                syncing = id
                 await sync(kind, declared: declared)
+                syncing = nil
             }
             state.lastSync = now()
             state.lastFailure = nil
@@ -261,7 +293,9 @@ actor StorageSync {
             return KindStatus(id: id, declared: manifest?.declares(id) ?? false,
                               folder: manifest?.kinds[id]?.folder ?? kind.defaultFolder,
                               items: kept?.items.count ?? 0, bytes: kept?.bytes ?? 0, lastSync: kept?.lastSync,
-                              imported: kept?.imported ?? 0, sent: kept?.sent ?? 0, note: kept?.note, failure: kept?.failure)
+                              imported: kept?.imported ?? 0, sent: kept?.sent ?? 0, note: kept?.note, failure: kept?.failure,
+                              state: .of(declared: manifest?.declares(id) ?? false, syncingNow: syncing == id,
+                                         failure: kept?.failure, lastSync: kept?.lastSync))
         }
         return Status(hasStorage: hasStorage, hasManifest: manifest != nil, kinds: kinds, lastSync: state.lastSync,
                       lastFailure: state.lastFailure, running: running != nil)

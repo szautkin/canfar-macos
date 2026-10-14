@@ -22,6 +22,8 @@ struct StorageKindsOut: Encodable, Sendable {
         let sent: Int
         let note: String?
         let failure: String?
+        /// `off`, `waiting`, `syncing`, `synced` or `failed` (plan 38).
+        let state: String
     }
 
     let manifest: String
@@ -46,7 +48,7 @@ struct StorageKindsOut: Encodable, Sendable {
         kinds = status.kinds.map {
             Kind(id: $0.id, title: StorageSettingsTab.title($0.id), declared: $0.declared, folder: $0.folder,
                  items: $0.items, bytes: $0.bytes, lastSyncISO: $0.lastSync.map { iso.string(from: $0) },
-                 imported: $0.imported, sent: $0.sent, note: $0.note, failure: $0.failure)
+                 imported: $0.imported, sent: $0.sent, note: $0.note, failure: $0.failure, state: $0.state.name)
         }
         note = "Which of their work the person keeps in VOSpace is their choice, one collection at a time, in Settings ▸ Storage (`declared`); files there are read and changed with the storage tools."
     }

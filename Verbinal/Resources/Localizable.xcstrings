@@ -719,6 +719,16 @@
         }
       }
     },
+    "Syncing…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisation…"
+          }
+        }
+      }
+    },
     "That area is off the image" : {
       "localizations" : {
         "fr" : {
@@ -815,6 +825,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbinal écrit les %lld fiches dans le fichier de Recherche, les relit et vérifie chacune, puis les garde de nouveau dans le fichier."
+          }
+        }
+      }
+    },
+    "Waiting for its first sync" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente de sa première synchronisation"
           }
         }
       }
