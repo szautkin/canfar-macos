@@ -61,6 +61,7 @@ extension AppState {
         #if os(macOS)
         remoteCompute.stopWatching()
         storageSync.signedOut()
+        researchModel.transfer.storage = nil
         #endif
     }
 

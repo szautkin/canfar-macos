@@ -9,6 +9,9 @@ import Foundation
 extension AppState {
     /// The storage sync, given what it needs of the app (plan 34 V).
     func startStorageSync() {
+        // Research's files to and from the person's storage, while signed in.
+        researchModel.transfer.storage = VOSpaceResearchStorage(
+            vospace: VOSpaceBrowserService(network: network, endpoints: endpoints), username: username)
         let remoteCompute = remoteCompute
         storageSync.signedIn(username: username, .init(
             vospace: VOSpaceBrowserService(network: network, endpoints: endpoints),

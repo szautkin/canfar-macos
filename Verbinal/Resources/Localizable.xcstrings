@@ -26,6 +26,36 @@
         }
       }
     },
+    "%@ has no other copy: removing this one would lose it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n’a pas d’autre copie : retirer celle-ci le perdrait."
+          }
+        }
+      }
+    },
+    "%@ is not in your storage." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n’est pas dans votre stockage."
+          }
+        }
+      }
+    },
+    "%@ is not on this Mac." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n’est pas sur ce Mac."
+          }
+        }
+      }
+    },
     "-" : {
       "shouldTranslate" : false
     },
@@ -35,6 +65,566 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "— un portail scientifique CANFAR"
+          }
+        }
+      }
+    },
+    "A different file is in your storage at %@ already: nothing was written over it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un autre fichier se trouve déjà dans votre stockage à %@ : rien n’a été écrit par-dessus."
+          }
+        }
+      }
+    },
+    "Copy the file from your storage to this Mac; it stays in your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier le fichier de votre stockage vers ce Mac ; il reste dans votre stockage"
+          }
+        }
+      }
+    },
+    "Could not get the file: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de récupérer le fichier : %@"
+          }
+        }
+      }
+    },
+    "Could not move the file" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de déplacer le fichier"
+          }
+        }
+      }
+    },
+    "Get %@ from your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Récupérer %@ de votre stockage"
+          }
+        }
+      }
+    },
+    "Get a Copy from Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Récupérer une copie du stockage"
+          }
+        }
+      }
+    },
+    "Get from Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Récupérer du stockage"
+          }
+        }
+      }
+    },
+    "In your storage at" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans votre stockage à"
+          }
+        }
+      }
+    },
+    "In your storage only" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans votre stockage seulement"
+          }
+        }
+      }
+    },
+    "It is copied to this Mac first, and deleted from your storage only once it is here." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il est d’abord copié sur ce Mac, et supprimé de votre stockage seulement une fois qu’il y est."
+          }
+        }
+      }
+    },
+    "It is copied to your storage first, and deleted from this Mac only once it is there. Opening it again needs your storage." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il est d’abord copié dans votre stockage, et supprimé de ce Mac seulement une fois qu’il y est. Pour l’ouvrir de nouveau, il faudra votre stockage."
+          }
+        }
+      }
+    },
+    "it is damaged" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "il est endommagé"
+          }
+        }
+      }
+    },
+    "it was written by a newer Verbinal (format %lld)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "il a été écrit par un Verbinal plus récent (format %lld)"
+          }
+        }
+      }
+    },
+    "Move %@ to this Mac?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer %@ vers ce Mac ?"
+          }
+        }
+      }
+    },
+    "Move %@ to your storage?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer %@ vers votre stockage ?"
+          }
+        }
+      }
+    },
+    "Move Back to a File…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remettre dans un fichier…"
+          }
+        }
+      }
+    },
+    "Move into the Database…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer dans la base de données…"
+          }
+        }
+      }
+    },
+    "Move Research back to a file?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remettre Recherche dans un fichier ?"
+          }
+        }
+      }
+    },
+    "Move Research into the database?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer Recherche dans la base de données ?"
+          }
+        }
+      }
+    },
+    "Move to Storage…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer vers le stockage…"
+          }
+        }
+      }
+    },
+    "Move to This Mac…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer vers ce Mac…"
+          }
+        }
+      }
+    },
+    "Moved %lld records back into their file." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld fiches remises dans leur fichier."
+          }
+        }
+      }
+    },
+    "Moved %lld records into the database." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld fiches déplacées dans la base de données."
+          }
+        }
+      }
+    },
+    "Moved %lld records into the database. The file's backup is %@, beside it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld fiches déplacées dans la base de données. La sauvegarde du fichier est %@, à côté de lui."
+          }
+        }
+      }
+    },
+    "Nothing was moved: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n’a été déplacé : %@"
+          }
+        }
+      }
+    },
+    "Nothing was moved: %lld records did not come back as they went, so the move was undone." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n’a été déplacé : %lld fiches ne sont pas revenues telles qu’elles étaient parties, donc le déplacement a été annulé."
+          }
+        }
+      }
+    },
+    "Nothing was moved: %lld records share a key with another, and one would replace the other. %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n’a été déplacé : %lld fiches partagent une clé avec une autre, et l’une remplacerait l’autre. %@"
+          }
+        }
+      }
+    },
+    "On this Mac and in your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur ce Mac et dans votre stockage"
+          }
+        }
+      }
+    },
+    "On this Mac only" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur ce Mac seulement"
+          }
+        }
+      }
+    },
+    "Remove %@ from this Mac?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer %@ de ce Mac ?"
+          }
+        }
+      }
+    },
+    "Remove %@ from your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer %@ de votre stockage"
+          }
+        }
+      }
+    },
+    "Remove %@ from your storage?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer %@ de votre stockage ?"
+          }
+        }
+      }
+    },
+    "Remove from Storage…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer du stockage…"
+          }
+        }
+      }
+    },
+    "Remove from This Mac…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer de ce Mac…"
+          }
+        }
+      }
+    },
+    "Research data" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Données de Recherche"
+          }
+        }
+      }
+    },
+    "Research is in its file already." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche est déjà dans son fichier."
+          }
+        }
+      }
+    },
+    "Research is in the database already." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche est déjà dans la base de données."
+          }
+        }
+      }
+    },
+    "Research Records" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fiches de Recherche"
+          }
+        }
+      }
+    },
+    "Research's file cannot be read, so nothing was moved: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier de Recherche ne peut pas être lu, donc rien n’a été déplacé : %@"
+          }
+        }
+      }
+    },
+    "Research's records are kept in a file" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les fiches de Recherche sont gardées dans un fichier"
+          }
+        }
+      }
+    },
+    "Research's records are kept in the database" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les fiches de Recherche sont gardées dans la base de données"
+          }
+        }
+      }
+    },
+    "Send %@ to your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoyer %@ à votre stockage"
+          }
+        }
+      }
+    },
+    "Send a Copy to Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoyer une copie au stockage"
+          }
+        }
+      }
+    },
+    "Sign in to CANFAR to get the file from your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous à CANFAR pour récupérer le fichier de votre stockage"
+          }
+        }
+      }
+    },
+    "Sign in to CANFAR to move files to and from your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous à CANFAR pour déplacer des fichiers vers votre stockage et depuis celui-ci"
+          }
+        }
+      }
+    },
+    "Sign in to CANFAR to reach your storage." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous à CANFAR pour accéder à votre stockage."
+          }
+        }
+      }
+    },
+    "That record is not in Research." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette fiche n’est pas dans Recherche."
+          }
+        }
+      }
+    },
+    "the backup could not be made: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "la sauvegarde n’a pas pu être faite : %@"
+          }
+        }
+      }
+    },
+    "The copy in your storage is deleted. The one on this Mac stays." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La copie de votre stockage est supprimée. Celle sur ce Mac reste."
+          }
+        }
+      }
+    },
+    "The copy on this Mac is deleted. The one in your storage stays, and you can get it back." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La copie sur ce Mac est supprimée. Celle de votre stockage reste, et vous pouvez la récupérer."
+          }
+        }
+      }
+    },
+    "the file could not be written" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "le fichier n’a pas pu être écrit"
+          }
+        }
+      }
+    },
+    "The record has no file %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La fiche n’a pas de fichier %@."
+          }
+        }
+      }
+    },
+    "Verbinal copies Research's file to a dated backup, writes its %lld records into its database and checks each one. If any record does not match, nothing moves. Your files and notes are not touched, and you can move Research back to a file." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal copie le fichier de Recherche dans une sauvegarde datée, écrit ses %lld fiches dans sa base de données et vérifie chacune. Si une fiche ne correspond pas, rien n’est déplacé. Vos fichiers et vos notes ne sont pas touchés, et vous pouvez remettre Recherche dans un fichier."
+          }
+        }
+      }
+    },
+    "Verbinal writes the %lld records into Research's file, reads them back and checks each one, then keeps them in the file again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal écrit les %lld fiches dans le fichier de Recherche, les relit et vérifie chacune, puis les garde de nouveau dans le fichier."
+          }
+        }
+      }
+    },
+    "Where %@ is: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Où se trouve %@ : %@"
+          }
+        }
+      }
+    },
+    "Where Research's records are kept on this Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Où les fiches de Recherche sont gardées sur ce Mac"
           }
         }
       }

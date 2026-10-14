@@ -19,7 +19,10 @@ enum DownloadPlacement {
         let bookmark: Data?
     }
 
-    static func place(_ tempURL: URL, named name: String, downloads: DownloadService) async throws -> Placed {
+    /// `asResult`: a new result, which goes to the person's storage too when
+    /// they keep results there; false for one brought from storage.
+    static func place(_ tempURL: URL, named name: String, downloads: DownloadService,
+                      asResult: Bool = true) async throws -> Placed {
         let finalURL: URL
         do {
             finalURL = try DownloadsFolder.move(tempURL, named: name)
@@ -27,7 +30,7 @@ enum DownloadPlacement {
             try? await downloads.deleteFile(at: tempURL)
             throw ProposalApplyError.backendError("moving \(name) into \(DownloadsFolder.url.lastPathComponent) failed: \(error.localizedDescription)")
         }
-        await ResultDestination.shared.kept(finalURL, area: .research)
+        if asResult { await ResultDestination.shared.kept(finalURL, area: .research) }
         #if os(macOS)
         let bookmark = try? finalURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
         let path = LocalFolderAccessStore.userFacingPath(for: finalURL)

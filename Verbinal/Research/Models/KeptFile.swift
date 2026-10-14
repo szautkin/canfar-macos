@@ -15,7 +15,8 @@ struct KeptFile: Codable, Equatable, Identifiable, Sendable {
     let name: String
     /// The archive's URI for it, when known: `cadc:CFHT/1525350p.fits.fz`.
     var uri: String? = nil
-    /// Where it is: absolute, or as the person knows Downloads.
+    /// Where it is on this Mac: absolute, or as the person knows Downloads;
+    /// empty when it is only in the person's storage.
     var localPath: String
     var bookmarkData: Data?
     var size: Int64?
@@ -29,6 +30,8 @@ struct KeptFile: Codable, Equatable, Identifiable, Sendable {
     var isMain = false
 
     var id: String { name }
+    /// Where it is: on this Mac, in the person's storage, or both.
+    var places: FilePlaces { FilePlaces(onMac: !localPath.isEmpty, inStorage: storagePath != nil) }
     var local: LocalFile { LocalFile(path: localPath, bookmarkData: bookmarkData) }
 
     private enum CodingKeys: String, CodingKey {

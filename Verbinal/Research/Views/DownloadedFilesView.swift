@@ -13,6 +13,8 @@ struct DownloadedFilesView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var showExportDialog = false
+    /// Why sending a file to storage, or getting it back, failed.
+    @State private var transferFailure: String?
 
     /// Persisted set of collapsed collection names (newline-separated).
     /// Default = empty, meaning everything is expanded on first launch.
@@ -61,6 +63,7 @@ struct DownloadedFilesView: View {
                 Text("\(model.filteredObservations.count) files")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                ResearchDataMenu(store: model.observationStore)
                 #if os(macOS)
                 Button {
                     showExportDialog = true
@@ -143,6 +146,13 @@ struct DownloadedFilesView: View {
                                             Button("Download") { Task { await model.download(obs) } }
                                         }
                                         #endif
+                                        if let file = obs.mainKeptFile, model.transfer.storage != nil {
+                                            if file.places.onMac && !file.places.inStorage {
+                                                Button("Send a Copy to Storage") { transfer { try await model.transfer.send(file.name, of: obs.id) } }
+                                            } else if file.places.inStorage && !file.places.onMac {
+                                                Button("Get a Copy from Storage") { transfer { try await model.transfer.fetch(file.name, of: obs.id) } }
+                                            }
+                                        }
                                         Button("Copy Details") { PlatformClipboard.copy(obs.facts.detailsText) }
                                         Divider()
                                         Button("Delete", role: .destructive) {
@@ -172,6 +182,12 @@ struct DownloadedFilesView: View {
             }
         }
         .searchable(text: Bindable(model).filterText, prompt: "Filter downloads")
+        .uiPresented("Could Not Move the File", .alert, isPresented: Binding(get: { transferFailure != nil }, set: { if !$0 { transferFailure = nil } }))
+        .alert("Could not move the file", isPresented: Binding(get: { transferFailure != nil }, set: { if !$0 { transferFailure = nil } })) {
+            Button("OK", role: .cancel) { transferFailure = nil }
+        } message: {
+            Text(transferFailure ?? "")
+        }
         #if os(macOS)
         .uiPresented("Export Research", .sheet, isPresented: $showExportDialog)
         .sheet(isPresented: $showExportDialog) {
@@ -340,16 +356,35 @@ struct DownloadedFilesView: View {
                     .help(Text("Cutout: \(cutout.summary)"))
                     .accessibilityLabel(Text("Cutout"))
             }
-            if !obs.isDownloaded {
+            if let file = obs.mainKeptFile {
+                if let size = obs.fileSize {
+                    Text(SharedFormatters.bytes(size))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                if model.transfer.isBusy(file.name, of: obs.id) {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    FilePlacesBadge(places: file.places)
+                }
+            } else {
                 Image(systemName: "arrow.down.circle.dotted")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .help("Not downloaded")
                     .accessibilityLabel(Text("Not downloaded"))
-            } else if let size = obs.fileSize {
-                Text(SharedFormatters.bytes(size))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    /// Sends a record's file to storage or gets it back, from its menu.
+    private func transfer(_ work: @escaping () async throws -> DownloadedObservation) {
+        Task {
+            do {
+                let updated = try await work()
+                if model.selectedObservation?.id == updated.id { model.selectedObservation = updated }
+            } catch {
+                transferFailure = error.localizedDescription
             }
         }
     }

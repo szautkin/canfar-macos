@@ -32,10 +32,12 @@ file went.
 
 The list on the left groups your observations by collection, with how many each holds. Each row
 shows the preview, the target, the instrument and filter, and the file's size. Scissors mark a cutout;
-an arrow marks an observation kept without its file. The count at the top says how many there are.
+an arrow marks an observation kept without its file. A laptop and a cloud say where its file is: the
+laptop lit when it is on this Mac, the cloud when it is in your storage
+([This Mac and your storage](#this-mac-and-your-storage)). The count at the top says how many there are.
 
-Right-click a row for **Open File**, **Reveal in Finder**, **Download**, **Copy Details** and
-**Delete**.
+Right-click a row for **Open File**, **Reveal in Finder**, **Download**, **Send a Copy to Storage** or
+**Get a Copy from Storage**, **Copy Details** and **Delete**.
 
 Your observations also show in the Mac's Spotlight: search for a target, a collection or an instrument
 there, and choosing a result opens Verbinal.
@@ -48,9 +50,10 @@ Select a row to see the observation: its preview, target, collection and observa
   **Dec**, **Start Date**, **Cal. Level**.
 - **File Info**: the file's **Path**, **Size**, when it was **Downloaded**, and whether it **Exists**.
   For an observation kept without its file, **File** says **Not downloaded**.
-- **Files**: the observation's other files, downloaded one by one from the **Files** tab or by an
-  assistant: each with where it is and its size, and buttons to open it, show it in the Finder, and
-  remove it. The trash asks first; the observation and its notes stay.
+- **Files**: the observation's files: its main file, then those downloaded one by one from the
+  **Files** tab or by an assistant. Each shows where it is on this Mac and in your storage, its size,
+  the laptop and cloud of where it is, and buttons to open it, show it in the Finder, and remove it.
+  The trash asks first; the observation and its notes stay.
 
 Its buttons:
 
@@ -62,8 +65,9 @@ Its buttons:
 | **Cut Out…** | The [cutout editor](02-search.md#cutouts). |
 | **Copy Details** | Copies the observation's ID, position, instrument and date as text. |
 | **Download** | For an observation kept without its file: fetches it into this same record, with its notes. |
+| **Get from Storage** | For an observation whose file is only in your storage: copies it back to this Mac. It stays in your storage too. |
 | **Download Again** | When the file is missing, cannot be opened, or is empty: fetches it again. |
-| **Remove File…** | Deletes the file from this Mac; the observation, its details and notes stay, and **Download** fetches it again. |
+| **Remove File…** | Deletes the file from this Mac; the observation, its details and notes stay, and **Download** fetches it again. When the file is in your storage too, that copy stays. |
 | **Delete** | Removes the observation from Research, and its files from your disk. This cannot be undone. Your notes are kept: if you keep the observation again, they come back. |
 
 ### Cutouts
@@ -72,6 +76,32 @@ Its buttons:
 
 A cutout's record says what it is (**Cutout of** …) and the region it covers. **Original Observation**
 shows the complete observation it was cut from, when that one is in Research too.
+
+## This Mac and your storage
+
+An observation's file can be on this Mac, in your CANFAR storage, or both. Where it is shows beside it,
+in the list and in **Files**: a laptop for this Mac and a cloud for your storage, each lit where the file
+is. Hold the pointer over them to read it: **On this Mac only**, **In your storage only**, **On this Mac
+and in your storage**.
+
+Click them for what you can do with that file. You need to be signed in to CANFAR.
+
+| Choice | What it does |
+|---|---|
+| **Send a Copy to Storage** | Copies the file to `Verbinal-Results/research/` in your storage. It stays on this Mac. |
+| **Move to Storage…** | Copies it to your storage, then deletes it from this Mac once it is there. |
+| **Get a Copy from Storage** | Copies the file back to your download folder. It stays in your storage. |
+| **Move to This Mac…** | Copies it to this Mac, then deletes it from your storage once it is here. |
+| **Remove from This Mac…** | Deletes the copy on this Mac; the one in your storage stays. |
+| **Remove from Storage…** | Deletes the copy in your storage; the one on this Mac stays. |
+
+A move always copies first, and deletes the other copy only when the new one is in place, so a failure
+halfway leaves the file where it was. Verbinal never removes the last copy of a file: a file only on this
+Mac can be removed from it with **Remove File…**, which asks first. A file of the same name already in
+your storage is never written over. Moves, removals and deletions each ask you first.
+
+Removing an observation's file from this Mac frees space and keeps its details, notes and where it is in
+your storage; opening it again needs **Get from Storage** first.
 
 ## Notes, tags and rating
 
@@ -94,6 +124,17 @@ in Verbinal for Windows and Linux as they follow. Files are not: each device dow
 you write here reaches the others a few seconds after you stop typing; theirs reach you when you sign in,
 and when you come back to Verbinal. Removing an observation here removes it there too; its notes stay.
 See [Settings ▸ Storage](14-settings.md#storage).
+
+### Where Research keeps its records on this Mac
+
+The menu beside the count at the top of the list says where Research keeps its records on this Mac: in
+a file, as it always has, or in Verbinal's database. Only you move them, with **Move into the
+Database…** or **Move Back to a File…**; no update and no assistant does.
+
+Moving into the database first copies Research's file to a dated backup beside it, then writes every
+record and checks each one. If any record does not come back as it went, nothing moves and Research
+stays in its file. Your files and notes are not touched. **Move Back to a File…** writes the records into
+the file again, reads them back and checks them before it switches.
 
 ## Exporting everything
 
@@ -119,5 +160,7 @@ storage. A notification tells you when an export finishes.
 It can list and read your observations and notes, finding them as the filter does (a word of a note, or
 a tag), write notes, tags and ratings (up to 50 at once),
 open files in the viewers, download what you kept without a file or one file of an observation, cut
-out, and export. Removing a file
-or an observation waits for you unless you allowed that kind of change.
+out, and export. It can see where each file is, send a copy to your storage and get one back. Removing a
+file, from this Mac or from your storage, or an observation waits for you unless you allowed that kind of
+change. It never removes a file's last copy, and it cannot move Research's records between their file and
+the database: that is yours.

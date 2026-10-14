@@ -215,6 +215,13 @@ every later agent is told; **read** = pure data.
 | Files tab: download one file into Research (plan 34 F) | `download_observation` with `file` (kept among the record's `files`) | write |
 | Files tab / Research detail: a kept file's trash | `remove_downloaded_file` with `file` | write |
 | A record's files, where each is | `get_downloaded_observation` → `files` | read |
+| Research list and detail: where each file is — this Mac, your storage, both (the laptop and cloud badge) | `list_downloaded_observations` / `get_downloaded_observation` → `places` | read |
+| A file's badge menu: Send a Copy to Storage (row menu too) | `send_research_file_to_storage` | write |
+| A file's badge menu: Get a Copy from Storage; Get from Storage (detail; row menu too) | `get_research_file_from_storage` | write |
+| A file's badge menu: Remove from This Mac… (stays in storage) | `remove_research_file_from_mac` (destructive) | write |
+| A file's badge menu: Remove from Storage… (stays on this Mac) | `remove_research_file_from_storage` (destructive) | write |
+| A file's badge menu: Move to Storage… / Move to This Mac… | the send or get, then the matching remove | write |
+| Research Data menu: Move into the Database… / Move Back to a File… | — the person's alone: no assistant moves Research's records | — |
 | Settings ▸ General ▸ Downloads (the download folder) | — the person's own; each download's answer says where it went | — |
 | Select a record, detail open | `show_research_observation` | live |
 | Cutout record: Original Observation | `show_research_observation` with its publisher id | live |

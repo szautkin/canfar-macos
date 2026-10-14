@@ -55,6 +55,8 @@ struct ListDownloadedObservationsTool: JSONReadTool {
             /// Where the main file is in the person's storage too, once
             /// sent there as a result (Settings ▸ Storage ▸ Results).
             let storagePath: String?
+            /// Where the main file is: `mac`, `storage`, `both`, or `none`.
+            let places: String
 
             init(_ obs: DownloadedObservationOut) {
                 id = obs.id
@@ -78,13 +80,14 @@ struct ListDownloadedObservationsTool: JSONReadTool {
                 tags = obs.tags.isEmpty ? nil : obs.tags
                 rating = obs.rating > 0 ? obs.rating : nil
                 storagePath = obs.storagePath
+                places = FilePlaces(onMac: !obs.localPath.isEmpty, inStorage: obs.storagePath != nil).word
             }
         }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_downloaded_observations",
-        description: "List the observations kept in Research — downloaded, or kept without their file (`downloaded: false`; save_observation_to_research, remove_downloaded_file). `fileProblem` says when a kept file is missing, cannot be opened, or holds nothing (empty, an empty archive) — such a record is `downloaded: false` — and download_observation fetches it again into the same record. Each carries its note's `tags` and `rating`. `text` finds records as the Research screen's filter does: in the target, collection, instrument or observation id, or a word of the note or its tags; `tag` keeps those with that tag; `collection` (e.g. 'JWST') that collection's.",
+        description: "List the observations kept in Research — downloaded, or kept without their file (`downloaded: false`; save_observation_to_research, remove_downloaded_file). `places` says where each file is — `mac`, `storage` (the person's CANFAR storage, at `storagePath`), `both`, or `none` — and each of its `files` says the same; send_research_file_to_storage and get_research_file_from_storage copy one between them. `fileProblem` says when a kept file is missing, cannot be opened, or holds nothing (empty, an empty archive) — such a record is `downloaded: false` — and download_observation fetches it again into the same record. Each carries its note's `tags` and `rating`. `text` finds records as the Research screen's filter does: in the target, collection, instrument or observation id, or a word of the note or its tags; `tag` keeps those with that tag; `collection` (e.g. 'JWST') that collection's.",
         schema: #"""
         {
           "type": "object",
@@ -223,6 +226,8 @@ struct FileOut: Encodable, Sendable {
     let downloadedAtISO: String
     /// Where it is in the person's storage too, once sent there as a result.
     var storagePath: String? = nil
+    /// Where it is: `mac`, `storage`, or `both`.
+    var places = "mac"
 }
 
 struct DownloadedObservationOut: Sendable {

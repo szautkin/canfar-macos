@@ -50,7 +50,8 @@ enum AssistantMade {
         case "delete_workflow": payload["id"].map { "workflow:\($0)" }
         case "delete_fits_bookmark": payload["id"].map { "bookmark:\($0)" }
         case "remove_registry_image": payload["imageID"].map { "registryImage:\($0)" }
-        case "delete_downloaded_observation", "remove_downloaded_file": payload["id"].map { "research:\($0)" }
+        case "delete_downloaded_observation", "remove_downloaded_file", "remove_research_file_from_mac":
+            payload["id"].map { "research:\($0)" }
         case "delete_session": payload["id"].map { "session:\($0)" }
         case "delete_vospace_node": payload["path"].flatMap { vospace($0, username: username) }
         default: nil

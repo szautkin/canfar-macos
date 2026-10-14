@@ -96,14 +96,26 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// on whether the file is there.
     var localURL: URL? { mainFile.url }
 
-    /// The same observation without its main file; its other files stay.
+    /// The same observation without its main file, anywhere; its other files stay.
     func withoutFile() -> DownloadedObservation {
-        var record = self
-        record.localPath = ""
+        var record = withoutLocalCopy()
         record.fileSize = nil
-        record.bookmarkData = nil
+        record.storagePath = nil
         return record
     }
+
+    /// The same observation without its main file on this Mac: a copy in
+    /// the person's storage stays known, with its size.
+    func withoutLocalCopy() -> DownloadedObservation {
+        var record = self
+        record.localPath = ""
+        record.bookmarkData = nil
+        if storagePath == nil { record.fileSize = nil }
+        return record
+    }
+
+    /// Its main file is in the person's storage too.
+    var isInStorage: Bool { storagePath != nil }
 
     /// Whether the local file still exists on disk — including the
     /// sandbox-mapped Downloads twin of `localPath`. Do not treat a
@@ -140,36 +152,68 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
     /// assistant's `download_observation` with `file` — beside the main one.
     var keptFiles: [KeptFile] { files ?? [] }
 
-    /// Every file Research keeps for it: the main one, then the others.
-    var localFiles: [LocalFile] { (isDownloaded ? [mainFile] : []) + keptFiles.map(\.local) }
+    /// Every file Research keeps for it on this Mac: the main one, then the others.
+    var localFiles: [LocalFile] { (isDownloaded ? [mainFile] : []) + keptFiles.map(\.local).filter { !$0.isEmpty } }
 
-    /// The kept file of that name, the main one included.
-    func keptFile(named name: String) -> KeptFile? {
-        if let file = keptFiles.first(where: { $0.name == name }) { return file }
-        guard isDownloaded, (localPath as NSString).lastPathComponent == name else { return nil }
+    /// Its main file wherever it is — on this Mac, in the person's storage,
+    /// or both — seen as one of its files; nil when it has none.
+    var mainKeptFile: KeptFile? {
+        guard isDownloaded || isInStorage else { return nil }
+        let name = isDownloaded ? (localPath as NSString).lastPathComponent : ((storagePath ?? "") as NSString).lastPathComponent
         return KeptFile(name: name, localPath: localPath, bookmarkData: bookmarkData, size: fileSize,
-                        downloadedAt: downloadedAt, agentAttribution: agentAttribution, isMain: true)
+                        downloadedAt: downloadedAt, agentAttribution: agentAttribution, storagePath: storagePath, isMain: true)
     }
 
-    /// The same observation with `file`, in place of one of the same name.
+    /// Every file it has, wherever each is: the main one first.
+    var allFiles: [KeptFile] { (mainKeptFile.map { [$0] } ?? []) + keptFiles }
+
+    /// The file of that name wherever it is, the main one included — by
+    /// its name on this Mac or in storage, which differ when the download
+    /// folder had one of that name already.
+    func anyFile(named name: String) -> KeptFile? {
+        if let file = keptFiles.first(where: { $0.name == name }) { return file }
+        guard let main = mainKeptFile else { return nil }
+        let names = [localPath, storagePath ?? ""].map { ($0 as NSString).lastPathComponent }
+        return names.contains(name) ? main : nil
+    }
+
+    /// The kept file of that name on this Mac, the main one included.
+    func keptFile(named name: String) -> KeptFile? {
+        if let file = keptFiles.first(where: { $0.name == name && !$0.localPath.isEmpty }) { return file }
+        guard isDownloaded, (localPath as NSString).lastPathComponent == name else { return nil }
+        return KeptFile(name: name, localPath: localPath, bookmarkData: bookmarkData, size: fileSize,
+                        downloadedAt: downloadedAt, agentAttribution: agentAttribution, storagePath: storagePath, isMain: true)
+    }
+
+    /// The same observation with `file`, in place of one of the same name:
+    /// where that one was in storage stays known.
     func keeping(_ file: KeptFile) -> DownloadedObservation {
         var record = self
+        var kept = file
+        if kept.storagePath == nil { kept.storagePath = keptFiles.first { $0.name == file.name }?.storagePath }
         var list = keptFiles.filter { $0.name != file.name }
-        list.append(file)
+        list.append(kept)
         record.files = list
         return record
     }
 
-    /// The same observation without its file `name`: the main one when that
-    /// is its name.
+    /// The same observation without its file `name` on this Mac — the main
+    /// one when that is its name. A file also in the person's storage stays
+    /// known there.
     func forgetting(fileNamed name: String) -> DownloadedObservation {
-        if keptFiles.contains(where: { $0.name == name }) {
+        if let file = keptFiles.first(where: { $0.name == name }) {
             var record = self
-            let list = keptFiles.filter { $0.name != name }
+            var list = keptFiles.filter { $0.name != name }
+            if file.storagePath != nil {
+                var stays = file
+                stays.localPath = ""
+                stays.bookmarkData = nil
+                list.append(stays)
+            }
             record.files = list.isEmpty ? nil : list
             return record
         }
-        return keptFile(named: name)?.isMain == true ? withoutFile() : self
+        return keptFile(named: name)?.isMain == true ? withoutLocalCopy() : self
     }
 
     /// Display filename extracted from the local path; empty without a file.

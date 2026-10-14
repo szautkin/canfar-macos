@@ -17,6 +17,9 @@ final class ObservationStore {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "ObservationStore")
     nonisolated static let defaultFileName = "downloaded_observations.json"
     private let records: ResearchRecords
+    /// Where the records are kept: their file, or the database once the
+    /// person moved them there (plan 36 5.1).
+    private(set) var recordsPlace: ResearchRecords.Place
     /// Spotlight indexer — every save/remove fans out so the user can find
     /// their downloaded observations from the macOS Spotlight bar by target
     /// name, collection, instrument, etc. Optional so unit tests can opt out.
@@ -43,6 +46,7 @@ final class ObservationStore {
         let legacy = DiskPersistence<[DownloadedObservation]>(subdirectory: "Verbinal", fileName: fileName, logger: Self.logger)
         let db = database ?? (fileName == Self.defaultFileName ? .shared : Self.database(named: fileName))
         self.records = ResearchRecords(database: db, legacy: legacy)
+        self.recordsPlace = records.place
         self.spotlight = spotlight
         // File existence is surfaced via DownloadedObservation.fileExists — do not prune on load.
         // Pruning on launch would silently destroy metadata for files on remounted/offline volumes.
@@ -141,7 +145,7 @@ final class ObservationStore {
     @discardableResult
     func forgetFile(of id: UUID) -> DownloadedObservation? {
         guard let record = observations.first(where: { $0.id == id }) else { return nil }
-        return forget(record.withoutFile(), file: (record.localPath as NSString).lastPathComponent)
+        return forget(record.withoutLocalCopy(), file: (record.localPath as NSString).lastPathComponent)
     }
 
     /// Forgets the record's file `name` — the main one when that is its
@@ -176,6 +180,30 @@ final class ObservationStore {
         records.removed(gone, all: observations)
         spotlight?.deindexAll()
         changes.done("clear_research_archive", "the Research archive (\(count) records)")
+    }
+
+    // MARK: - Where the records are kept (plan 36 5.1)
+
+    /// Moves Research's records into the database: the person's action alone.
+    @discardableResult
+    func moveIntoDatabase() throws -> ResearchRecords.Moved {
+        let moved = try records.moveIntoDatabase()
+        settleMove(moved, String(localized: "Research's records into the database"))
+        return moved
+    }
+
+    /// Moves them back into their file: the person's action alone.
+    @discardableResult
+    func moveBackToFile() throws -> ResearchRecords.Moved {
+        let moved = try records.moveBackToFile()
+        settleMove(moved, String(localized: "Research's records back into their file"))
+        return moved
+    }
+
+    private func settleMove(_ moved: ResearchRecords.Moved, _ what: String) {
+        recordsPlace = records.place
+        observations = records.all().sorted { $0.downloadedAt > $1.downloadedAt }
+        changes.done("move_research_records", "\(what) (\(moved.records))")
     }
 
     /// "M31 (1525350, CFHT)" — how a change names a record.

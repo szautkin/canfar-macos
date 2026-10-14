@@ -22,6 +22,8 @@ final class ResearchModel {
     let noteStore: ObservationNoteStore
     /// An observation's files, one by one (plan 34 F).
     let files: ResearchFiles
+    /// Its files between this Mac and the person's storage.
+    let transfer: ResearchFileTransfer
     #if os(macOS)
     let exportService = ExportService()
     #endif
@@ -69,6 +71,7 @@ final class ResearchModel {
         self.noteStore = noteStore ?? ObservationNoteStore()
         self.cutoutService = CutoutService(downloads: downloadService)
         self.files = ResearchFiles(store: self.observationStore, downloads: downloadService)
+        self.transfer = ResearchFileTransfer(store: self.observationStore, files: self.files, downloads: downloadService)
         files.onNewRecord = { [weak self] record in self?.completeFromArchive(record) }
         let store = self.observationStore
         FileOrigins.shared.research = { [weak store] url in store?.portableIdentity(of: url) }

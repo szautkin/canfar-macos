@@ -9,8 +9,10 @@ import os
 import VerbinalKit
 @testable import Verbinal
 
-/// Plan 36 5.1: Research's records in the database, each by its key; the
-/// JSON file of before read in once, checked, and kept beside.
+/// Plan 36 5.1, as the person decided (2026-10-09): Research's records stay
+/// in their file until the person moves them into the database — no launch
+/// does it. The move backs the file up, checks every record, and is undone
+/// by any mismatch; they can be moved back.
 @MainActor
 final class ResearchRecordsTests: XCTestCase {
 
@@ -23,8 +25,11 @@ final class ResearchRecordsTests: XCTestCase {
 
     override func tearDown() {
         if let url = legacy().fileURL {
-            try? FileManager.default.removeItem(at: url)
-            try? FileManager.default.removeItem(at: url.appendingPathExtension("migrated"))
+            let folder = url.deletingLastPathComponent()
+            let stem = url.deletingPathExtension().lastPathComponent
+            for name in (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? [] where name.hasPrefix(stem) {
+                try? FileManager.default.removeItem(at: folder.appendingPathComponent(name))
+            }
         }
         super.tearDown()
     }
@@ -41,25 +46,70 @@ final class ResearchRecordsTests: XCTestCase {
         return record
     }
 
-    func testTheFileIsReadInOnceCheckedAndKeptBeside() throws {
+    private func backups() throws -> [String] {
+        let url = try XCTUnwrap(legacy().fileURL)
+        let stem = url.deletingPathExtension().lastPathComponent
+        return (try FileManager.default.contentsOfDirectory(atPath: url.deletingLastPathComponent().path))
+            .filter { $0.hasPrefix(stem + ".backup-") }
+    }
+
+    func testNothingMovesUntilThePersonAsks() throws {
+        let db = try AppDatabase.makeInMemory()
+        XCTAssertTrue(legacy().write([record("1525350"), record("2388466")]))
+        let store = ObservationStore(fileName: fileName, spotlight: nil, database: db)
+        XCTAssertEqual(store.recordsPlace, .file, "a launch moves nothing")
+        XCTAssertEqual(store.observations.count, 2)
+        let rows = try db.reader.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM observation") }
+        XCTAssertEqual(rows, 0)
+        let url = try XCTUnwrap(legacy().fileURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "the file stays where it is")
+    }
+
+    func testTheMoveBacksUpChecksEveryRecordAndCanBeUndone() throws {
         let db = try AppDatabase.makeInMemory()
         let whole = record("1525350")
         let cut = record("1525350", cutout: CutoutSpec(artifactID: "cadc:CFHT/1525350p.fits.fz", region: .circle(ra: 10.68, dec: 41.27, radius: 0.01)))
         XCTAssertTrue(legacy().write([whole, cut, record("2388466")]))
-
         let store = ObservationStore(fileName: fileName, spotlight: nil, database: db)
-        XCTAssertEqual(store.observations.count, 3, "a cutout beside the whole observation: the key is the record")
-        let url = try XCTUnwrap(legacy().fileURL)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: url.appendingPathExtension("migrated").path), "kept beside")
+        let before = store.observations
 
-        let again = ObservationStore(fileName: fileName, spotlight: nil, database: db)
-        XCTAssertEqual(Set(again.observations.map(\.id)), Set(store.observations.map(\.id)), "the same records, read once")
+        let moved = try store.moveIntoDatabase()
+        XCTAssertEqual(moved.records, 3, "a cutout beside the whole observation: the key is the record")
+        XCTAssertEqual(store.recordsPlace, .database)
+        XCTAssertEqual(try backups().count, 1, "a dated backup, beside the file")
+        let url = try XCTUnwrap(legacy().fileURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.appendingPathExtension("migrated").path))
+        XCTAssertEqual(Set(store.observations.map(\.id)), Set(before.map(\.id)))
+        XCTAssertEqual(ObservationStore(fileName: fileName, spotlight: nil, database: db).recordsPlace, .database,
+                       "a later launch reads the database")
+
+        let back = try store.moveBackToFile()
+        XCTAssertEqual(back.records, 3)
+        XCTAssertEqual(store.recordsPlace, .file)
+        let reread = ObservationStore(fileName: fileName, spotlight: nil, database: db)
+        XCTAssertEqual(reread.recordsPlace, .file)
+        XCTAssertEqual(Set(reread.observations.map(\.id)), Set(before.map(\.id)), "the file holds them again")
     }
 
-    func testARemovedRecordStaysAMarkAndOneKeptAgainIsNew() throws {
+    func testRecordsSharingAKeyMoveNothing() throws {
+        let db = try AppDatabase.makeInMemory()
+        var twin = record("1525350")
+        twin.id = UUID()
+        XCTAssertTrue(legacy().write([record("1525350"), twin]))
+        let store = ObservationStore(fileName: fileName, spotlight: nil, database: db)
+        XCTAssertThrowsError(try store.moveIntoDatabase()) { error in
+            guard case ResearchRecords.MoveError.sharedKeys(let keys) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(keys.count, 1)
+        }
+        XCTAssertEqual(store.recordsPlace, .file)
+        XCTAssertEqual(store.observations.count, 2, "nothing lost")
+        XCTAssertEqual(try backups().count, 0, "nothing done")
+    }
+
+    func testARemovedRecordStaysAMarkInTheDatabase() throws {
         let db = try AppDatabase.makeInMemory()
         let store = ObservationStore(fileName: fileName, spotlight: nil, database: db)
+        try store.moveIntoDatabase()
         let kept = store.save(record("1525350"))
         store.remove(kept)
         XCTAssertTrue(ObservationStore(fileName: fileName, spotlight: nil, database: db).observations.isEmpty)

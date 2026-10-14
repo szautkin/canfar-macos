@@ -96,6 +96,47 @@ extension AppState {
         ]
     }
 
+    /// A Research file between this Mac and the person's storage: each of
+    /// the four as the record's Files section does it.
+    func makeResearchFileTransferAppliers(activity: AgentActivityStore) -> [any ProposalApplier] {
+        ["send_research_file_to_storage", "get_research_file_from_storage",
+         "remove_research_file_from_mac", "remove_research_file_from_storage"].map { kind in
+            ResearchFileTransferApplier(kind: kind, run: { [weak self] args in
+                guard let self else { throw ProposalApplyError.backendError("app state gone") }
+                return try await self.transferResearchFile(kind, args)
+            }, activity: activity)
+        }
+    }
+
+    private func transferResearchFile(_ kind: String, _ args: ResearchFileTransferTools.Args) async throws -> AutoAppliedAck.Extra {
+        let store = researchModel.observationStore
+        guard let record = store.record(identifiedBy: args.id) else {
+            let hint = store.likelyID(for: args.id).map { " — did you mean \($0.uuidString)?" } ?? ""
+            throw ProposalApplyError.backendError("no observation \"\(args.id)\" in Research\(hint) — list_downloaded_observations gives the ids")
+        }
+        guard let name = args.file ?? record.mainKeptFile?.name else {
+            throw ProposalApplyError.backendError("\(args.id) has no file, on this Mac or in your storage — download_observation fetches it")
+        }
+        guard record.anyFile(named: name) != nil else {
+            let names = record.allFiles.map(\.name)
+            throw ProposalApplyError.backendError("\(args.id) has no file \(name)\(names.isEmpty ? "" : "; it has \(names.joined(separator: ", "))")")
+        }
+        let transfer = researchModel.transfer
+        let updated: DownloadedObservation
+        switch kind {
+        case "send_research_file_to_storage": updated = try await transfer.send(name, of: record.id)
+        case "get_research_file_from_storage": updated = try await transfer.fetch(name, of: record.id)
+        case "remove_research_file_from_mac": updated = try await transfer.removeFromMac(name, of: record.id)
+        default: updated = try await transfer.removeFromStorage(name, of: record.id)
+        }
+        if researchModel.selectedObservation?.id == updated.id { researchModel.selectedObservation = updated }
+        let file = args.file == nil ? updated.mainKeptFile : updated.anyFile(named: name)
+        let places = file?.places ?? FilePlaces(onMac: false, inStorage: false)
+        let at = kind == "get_research_file_from_storage"
+            ? file.map { DownloadsFolder.displayPath($0.localPath) } : file?.storagePath
+        return AutoAppliedAck.Extra(id: updated.id.uuidString, note: "\(file?.name ?? name): places \(places.word)", file: at)
+    }
+
     private nonisolated static func flatten(_ obs: DownloadedObservation, duplicateOf: String? = nil,
                                             note: ObservationNote? = nil) -> DownloadedObservationOut {
         DownloadedObservationOut(
@@ -115,9 +156,9 @@ extension AppState {
             cutout: obs.cutout,
             duplicateOf: duplicateOf,
             files: obs.keptFiles.map {
-                FileOut(name: $0.name, localPath: DownloadsFolder.displayPath($0.localPath), fileExists: $0.local.exists,
+                FileOut(name: $0.name, localPath: DownloadsFolder.displayPath($0.localPath), fileExists: $0.places.onMac && $0.local.exists,
                         size: $0.size, downloadedAtISO: SharedFormatters.iso8601.string(from: $0.downloadedAt),
-                        storagePath: $0.storagePath)
+                        storagePath: $0.storagePath, places: $0.places.word)
             },
             tags: note?.tags ?? [],
             rating: note?.rating ?? 0,

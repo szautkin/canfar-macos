@@ -250,6 +250,7 @@ extension AppState {
             activity: activity))
         appliers.append(contentsOf: makeAIGuideAppliers(activity: activity))
         appliers.append(contentsOf: makeResearchRecordAppliers(describe: describe, activity: activity))
+        appliers.append(contentsOf: makeResearchFileTransferAppliers(activity: activity))
         appliers.append(contentsOf: makeCutoutAppliers(activity: activity))
         appliers.append(contentsOf: makeSessionLogAppliers(activity: activity))
 

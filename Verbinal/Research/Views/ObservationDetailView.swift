@@ -23,56 +23,6 @@ struct ObservationDetailView: View {
     /// button can name the Cube Viewer the router will actually pick.
     @State private var isCube = false
 
-    /// The file the person asked to remove (plan 34 F).
-    @State private var removingFile: KeptFile?
-
-    /// Its other files, downloaded one by one from the Files tab or by an
-    /// assistant (plan 34 F): where each is, open, show, remove.
-    private var keptFilesList: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Files")
-                .font(.subheadline.bold())
-            ForEach(observation.keptFiles) { file in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(file.name)
-                            .font(.callout)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Text(DownloadsFolder.displayPath(file.localPath))
-                            .font(.caption)
-                            .foregroundStyle(file.local.exists ? Color.secondary : Color.orange)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .textSelection(.enabled)
-                    }
-                    Spacer()
-                    if let size = file.size {
-                        Text(SharedFormatters.bytes(size))
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                    KeptFileButtons(file: file, research: model) { removingFile = file }
-                }
-            }
-        }
-        .uiPresented("Remove a File?", .confirmation, item: $removingFile)
-        .confirmationDialog(String(localized: "Remove \(removingFile?.name ?? "")?"), isPresented: Binding(
-            get: { removingFile != nil }, set: { if !$0 { removingFile = nil } })) {
-            Button("Remove File", role: .destructive) {
-                guard let file = removingFile else { return }
-                removingFile = nil
-                Task {
-                    do { try await model.removeFile(named: file.name, of: observation) } catch {
-                        removeFileError = String(localized: "Could not remove the file: \(error.localizedDescription)")
-                    }
-                }
-            }
-        } message: {
-            Text("The file is deleted from this computer. The observation stays in Research, with its notes, and you can download the file again.")
-        }
-    }
-
     private var title: String {
         observation.targetName.isEmpty ? observation.observationID : observation.targetName
     }
@@ -172,6 +122,25 @@ struct ObservationDetailView: View {
                             .controlSize(.small)
                             .help("The kept file is missing, cannot be opened, or holds nothing — fetch it again into this record")
                         }
+                    } else if let file = observation.mainKeptFile, file.places.inStorage {
+                        Button {
+                            Task {
+                                do {
+                                    let fetched = try await model.transfer.fetch(file.name, of: observation.id)
+                                    if model.selectedObservation?.id == fetched.id { model.selectedObservation = fetched }
+                                } catch {
+                                    removeFileError = String(localized: "Could not get the file: \(error.localizedDescription)")
+                                }
+                            }
+                        } label: {
+                            Label("Get from Storage", systemImage: "icloud.and.arrow.down")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .disabled(model.transfer.storage == nil || model.transfer.isBusy(file.name, of: observation.id))
+                        .help(model.transfer.storage == nil
+                              ? Text("Sign in to CANFAR to get the file from your storage")
+                              : Text("Copy the file from your storage to this Mac; it stays in your storage"))
                     } else {
                         Button {
                             Task { await model.download(observation) }
@@ -239,7 +208,11 @@ struct ObservationDetailView: View {
                                 }
                             }
                         } message: {
-                            Text("The file is deleted from this computer. The observation, its details and notes stay in Research, and Download fetches the file again.")
+                            if observation.isInStorage {
+                                Text("The copy on this Mac is deleted. The one in your storage stays, and you can get it back.")
+                            } else {
+                                Text("The file is deleted from this computer. The observation, its details and notes stay in Research, and Download fetches the file again.")
+                            }
                         }
                     }
 
@@ -272,8 +245,8 @@ struct ObservationDetailView: View {
                     Text(removeFileError).font(.caption).foregroundStyle(.red)
                 }
 
-                if !observation.keptFiles.isEmpty {
-                    keptFilesList
+                if !observation.allFiles.isEmpty {
+                    ResearchFilesSection(observation: observation, model: model)
                 }
 
                 Divider()
