@@ -29,26 +29,31 @@ extension FITSViewerModel {
         return .box(x: left, y: Double(grid.height) - bottom, width: right - left, height: bottom - top)
     }
 
-    /// Select Area turned on or off — by its button's twin for an
-    /// assistant (`set_fits_view` `selectArea`). Answers why not when there
-    /// is no image to select from.
-    func setSelectingArea(_ on: Bool) -> String? {
-        guard !on || renderedImage != nil else { return "The active tab shows no image to select an area of" }
-        selectingArea = on
-        if !on { areaBand = nil }
-        return nil
-    }
-
     /// A box dragged out and let go: Export Figure opens on what it covers,
-    /// and Select Area puts itself down. Answers why not when it covers
-    /// nothing of the image.
-    func finishArea(from start: CGPoint, to end: CGPoint, canvasSize: CGSize) -> String? {
+    /// and the canvas goes back to panning. Answers why not when it covers
+    /// nothing of the image — Select Area stays, to try again.
+    func finishArea(from start: CGPoint, to end: CGPoint, canvasSize: CGSize, canvas: MarkEditor?) -> String? {
         areaBand = nil
         guard let region = areaRegion(from: start, to: end, canvasSize: canvasSize) else {
             return String(localized: "That area is off the image")
         }
-        selectingArea = false
+        if canvas?.tool == .selectArea { canvas?.tool = .pan }
         figureRegion = region
+        return nil
+    }
+}
+
+extension MarkEditor {
+    /// Select Area is the canvas's tool: the next drag draws a box.
+    var selectingArea: Bool { tool == .selectArea }
+
+    /// Select Area on or off over `tab` — its button's twin for an
+    /// assistant (`set_fits_view` `selectArea`). Answers why not when the
+    /// tab shows no image to select from.
+    func setSelectingArea(_ on: Bool, over tab: FITSViewerModel) -> String? {
+        guard !on || tab.renderedImage != nil else { return "The active tab shows no image to select an area of" }
+        if on { tool = .selectArea } else if tool == .selectArea { tool = .pan }
+        if !on { tab.areaBand = nil }
         return nil
     }
 }

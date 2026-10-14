@@ -37,7 +37,20 @@ struct GetFITSViewTool: JSONReadTool {
         /// image — `get_fits_spectrum` reads it; absent for an image.
         var shows: String?
         /// Select Area is armed: the person's next drag draws a box.
+        /// Deprecated (plan 38, the person's decision 2026-10-13): kept for
+        /// instructions written before `canvasTool`; to be deleted.
         var selectingArea: Bool?
+        /// What a drag on the image does: `pan`, `selectArea` or `draw`
+        /// (plan 38) — one at a time.
+        var canvasTool: String?
+
+        /// `isOpen: false`. Tabs whose load failed still list their paths,
+        /// so `openTabPaths` stays index-aligned with `activeTabIndex`.
+        static func notOpen(openTabPaths: [String] = [], activeTabIndex: Int? = nil) -> Output {
+            Output(isOpen: false, filePath: nil, hduIndex: nil, imageWidth: nil, imageHeight: nil,
+                   stretch: nil, colormap: nil, minCut: nil, maxCut: nil, zoom: nil,
+                   rotationRadians: nil, crosshair: nil, openTabPaths: openTabPaths, activeTabIndex: activeTabIndex)
+        }
 
         /// `x`/`y` are the 0-based FITS array indices of the pixel under
         /// the crosshair — the convention `probe_fits_pixel` takes.
@@ -52,7 +65,7 @@ struct GetFITSViewTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_fits_view",
-        description: "Read the active FITS-viewer tab's full render/view state: file path, HDU, image dimensions in pixels, stretch, colormap, cut levels (normalized 0-1), zoom factor, rotation (radians), crosshair position (0-based FITS array pixel, same convention as probe_fits_pixel, + RA/Dec in degrees when a WCS is present), and the list of open tabs. `openTabPaths` has one entry per tab, index-aligned with `activeTabIndex` and set_fits_view `tabIndex`. `isOpen` is false when the active tab has no loaded file; `shows` is \"spectrum\" or \"table\" when it shows a table rather than an image (read it with get_fits_spectrum).",
+        description: "Read the active FITS-viewer tab's full render/view state: file path, HDU, image dimensions in pixels, stretch, colormap, cut levels (normalized 0-1), zoom factor, rotation (radians), crosshair position (0-based FITS array pixel, same convention as probe_fits_pixel, + RA/Dec in degrees when a WCS is present), and the list of open tabs. `openTabPaths` has one entry per tab, index-aligned with `activeTabIndex` and set_fits_view `tabIndex`. `isOpen` is false when the active tab has no loaded file; `shows` is \"spectrum\" or \"table\" when it shows a table rather than an image (read it with get_fits_spectrum). `canvasTool` says what a drag on the image does: `pan`, `selectArea` or `draw` (one at a time). Deprecated, to be deleted: `selectingArea` — read `canvasTool`.",
         schema: #"""
         {
           "type": "object",

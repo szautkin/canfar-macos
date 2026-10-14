@@ -69,7 +69,7 @@ struct FITSImageView: View {
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .clipped()
-                .help(model.selectingArea
+                .help(marks?.selectingArea == true
                       ? Text("Drag a box over the part of the image to export as a figure; Esc puts Select Area down")
                       : Text("Scroll or drag to pan, ⌘-scroll or pinch to zoom, click to place the crosshair, ⌘-drag to select an area"))
                 #if os(macOS)
@@ -198,13 +198,14 @@ struct FITSImageView: View {
     private func areaSelection(canvasSize: CGSize) -> ScrollCaptureNSView.Area {
         let model = self.model
         let toast = self.toast
+        let canvas = self.marks
         return ScrollCaptureNSView.Area(
-            armed: model.selectingArea,
+            armed: canvas?.selectingArea == true,
             changed: { model.areaBand = $0 },
             ended: { start, end in
-                if let problem = model.finishArea(from: start, to: end, canvasSize: canvasSize) { toast?.show(problem) }
+                if let problem = model.finishArea(from: start, to: end, canvasSize: canvasSize, canvas: canvas) { toast?.show(problem) }
             },
-            disarm: { model.selectingArea = false })
+            disarm: { if canvas?.selectingArea == true { canvas?.tool = .pan } })
     }
 
     private func markPointer(canvasSize: CGSize) -> ScrollCaptureNSView.Pointer? {

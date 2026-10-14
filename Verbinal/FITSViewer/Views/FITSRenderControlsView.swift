@@ -11,6 +11,8 @@ struct FITSRenderControlsView: View {
     var model: FITSViewerModel
     /// Where the image's marks are kept, for the figure.
     var marks: MarkStore?
+    /// The viewer's canvas — its tool is Select Area's (plan 38).
+    var canvas: MarkEditor?
     @State private var goToRA: String = ""
     @State private var goToDec: String = ""
     @Environment(\.fitsToast) private var toast
@@ -331,11 +333,12 @@ struct FITSRenderControlsView: View {
     /// Select Area: the next drag on the image draws a box, and Export
     /// Figure opens on it (⌘-drag does it unarmed).
     private var selectAreaToggle: some View {
-        Toggle(isOn: Bindable(model).selectingArea) {
+        Toggle(isOn: Binding(get: { canvas?.selectingArea == true },
+                             set: { _ = canvas?.setSelectingArea($0, over: model) })) {
             Label("Select Area", systemImage: "rectangle.dashed")
         }
         .toggleStyle(.button)
-        .disabled(model.renderedImage == nil)
+        .disabled(model.renderedImage == nil || canvas == nil)
         .help("Drag a box on the image to export a figure of that area — or ⌘-drag at any time")
     }
     #endif

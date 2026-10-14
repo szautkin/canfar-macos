@@ -23,10 +23,17 @@ final class MarkEditor {
 
     let store: MarkStore
 
+    /// What a drag on this viewer's canvas does (plan 38): one tool at a
+    /// time, so drawing and selecting an area never both claim a press.
+    /// Putting the pencil down keeps whatever is being named.
+    var tool: CanvasTool = .pan {
+        didSet { if oldValue == .draw, tool != .draw { finishNaming() } }
+    }
+
     /// While armed, a press on empty image draws a mark instead of panning.
-    /// Putting it down keeps whatever is being named.
-    var drawArmed = false {
-        didSet { if !drawArmed { finishNaming() } }
+    var drawArmed: Bool {
+        get { tool == .draw }
+        set { if newValue { tool = .draw } else if tool == .draw { tool = .pan } }
     }
 
     /// What the pencil draws.

@@ -23,59 +23,76 @@ final class FITSAreaSelectionTests: XCTestCase {
         FITSTestFixtures.loadRamp(into: model)
         model.renderedImage = CGContext(data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 0,
                                         space: CGColorSpaceCreateDeviceGray(), bitmapInfo: 0)?.makeImage()
-        model.lastCanvasSize = canvas
+        model.lastCanvasSize = screen
         model.viewport.zoom = 4
         model.viewport.panX = 0
         model.viewport.panY = 0
         return model
     }
 
-    private let canvas = CGSize(width: 800, height: 600)
+    private let screen = CGSize(width: 800, height: 600)
 
     // MARK: - The pixels a box covers
 
     func testABoxCoversWholePixelsInFITSRowsGoingUp() throws {
         let model = tab()
-        let region = model.areaRegion(from: CGPoint(x: 240, y: 140), to: CGPoint(x: 360, y: 300), canvasSize: canvas)
+        let region = model.areaRegion(from: CGPoint(x: 240, y: 140), to: CGPoint(x: 360, y: 300), canvasSize: screen)
         XCTAssertEqual(region, .box(x: 10, y: 50, width: 30, height: 40), "display rows 10…50 are FITS rows 50…90")
         XCTAssertEqual(try model.figureRect(XCTUnwrap(region), marks: []), CGRect(x: 10, y: 10, width: 30, height: 40),
                        "the figure is of the pixels under the box")
-        XCTAssertEqual(model.areaRegion(from: CGPoint(x: 360, y: 300), to: CGPoint(x: 240, y: 140), canvasSize: canvas), region,
+        XCTAssertEqual(model.areaRegion(from: CGPoint(x: 360, y: 300), to: CGPoint(x: 240, y: 140), canvasSize: screen), region,
                        "dragged either way")
-        XCTAssertEqual(model.areaRegion(from: CGPoint(x: 241, y: 141), to: CGPoint(x: 359, y: 299), canvasSize: canvas), region,
+        XCTAssertEqual(model.areaRegion(from: CGPoint(x: 241, y: 141), to: CGPoint(x: 359, y: 299), canvasSize: screen), region,
                        "a part of a pixel is the whole pixel")
     }
 
     func testABoxPartlyOffTheImageIsCutToItAndOneOffItIsNothing() {
         let model = tab()
-        XCTAssertEqual(model.areaRegion(from: CGPoint(x: 100, y: 50), to: CGPoint(x: 240, y: 140), canvasSize: canvas),
+        XCTAssertEqual(model.areaRegion(from: CGPoint(x: 100, y: 50), to: CGPoint(x: 240, y: 140), canvasSize: screen),
                        .box(x: 0, y: 90, width: 10, height: 10))
-        XCTAssertNil(model.areaRegion(from: .zero, to: CGPoint(x: 100, y: 50), canvasSize: canvas))
-        XCTAssertNil(FITSViewerModel().areaRegion(from: .zero, to: CGPoint(x: 10, y: 10), canvasSize: canvas), "no image")
+        XCTAssertNil(model.areaRegion(from: .zero, to: CGPoint(x: 100, y: 50), canvasSize: screen))
+        XCTAssertNil(FITSViewerModel().areaRegion(from: .zero, to: CGPoint(x: 10, y: 10), canvasSize: screen), "no image")
     }
 
     func testAFlippedViewIsReadAsItIsShown() {
         let model = tab()
         model.viewport.flipX = true
-        XCTAssertEqual(model.areaRegion(from: CGPoint(x: 240, y: 140), to: CGPoint(x: 360, y: 300), canvasSize: canvas),
+        XCTAssertEqual(model.areaRegion(from: CGPoint(x: 240, y: 140), to: CGPoint(x: 360, y: 300), canvasSize: screen),
                        .box(x: 60, y: 50, width: 30, height: 40), "the left of the canvas is the right of the image")
     }
 
-    func testLettingGoOpensExportFigureOnTheBoxAndPutsSelectAreaDown() {
+    func testLettingGoOpensExportFigureOnTheBoxAndGoesBackToPanning() {
         let model = tab()
-        model.selectingArea = true
+        let canvas = MarkEditor(store: MarkStore(persistence: nil))
+        canvas.tool = .selectArea
         model.areaBand = CGRect(x: 240, y: 140, width: 120, height: 160)
-        XCTAssertNil(model.finishArea(from: CGPoint(x: 240, y: 140), to: CGPoint(x: 360, y: 300), canvasSize: canvas))
+        XCTAssertNil(model.finishArea(from: CGPoint(x: 240, y: 140), to: CGPoint(x: 360, y: 300), canvasSize: screen, canvas: canvas))
         XCTAssertEqual(model.figureRegion, .box(x: 10, y: 50, width: 30, height: 40))
-        XCTAssertFalse(model.selectingArea)
+        XCTAssertEqual(canvas.tool, .pan)
         XCTAssertNil(model.areaBand)
         XCTAssertEqual(model.figureRegion?.boxSize?.width, 30)
 
         let off = tab()
-        off.selectingArea = true
-        XCTAssertNotNil(off.finishArea(from: .zero, to: CGPoint(x: 100, y: 50), canvasSize: canvas))
+        canvas.tool = .selectArea
+        XCTAssertNotNil(off.finishArea(from: .zero, to: CGPoint(x: 100, y: 50), canvasSize: screen, canvas: canvas))
         XCTAssertNil(off.figureRegion, "nothing to export")
-        XCTAssertTrue(off.selectingArea, "still armed, to try again")
+        XCTAssertEqual(canvas.tool, .selectArea, "still armed, to try again")
+    }
+
+    /// Plan 38 P1a: one tool at a time — the pencil and Select Area never
+    /// both claim a press.
+    func testSelectAreaAndDrawingAreOneToolAtATime() {
+        let model = tab()
+        let canvas = MarkEditor(store: MarkStore(persistence: nil))
+        canvas.drawArmed = true
+        XCTAssertNil(canvas.setSelectingArea(true, over: model))
+        XCTAssertEqual(canvas.tool, .selectArea)
+        XCTAssertFalse(canvas.drawArmed, "arming Select Area puts the pencil down")
+        canvas.drawArmed = true
+        XCTAssertFalse(canvas.selectingArea, "and the pencil puts Select Area down")
+        canvas.drawArmed = false
+        XCTAssertEqual(canvas.tool, .pan)
+        XCTAssertNotNil(canvas.setSelectingArea(true, over: FITSViewerModel()), "no image, no area")
     }
 
     // MARK: - The gesture
@@ -89,7 +106,7 @@ final class FITSAreaSelectionTests: XCTestCase {
     }
 
     private func canvasView(armed: Bool, _ seen: Seen) -> ScrollCaptureNSView {
-        let view = ScrollCaptureNSView(frame: NSRect(origin: .zero, size: canvas))
+        let view = ScrollCaptureNSView(frame: NSRect(origin: .zero, size: screen))
         view.onClick = { seen.clicks.append($0) }
         view.onDrag = { _, _ in seen.drags += 1 }
         view.area = .init(armed: armed, changed: { seen.bands.append($0) }, ended: { seen.ended.append(($0, $1)) },
@@ -99,7 +116,7 @@ final class FITSAreaSelectionTests: XCTestCase {
 
     /// A mouse event at `point` on the canvas (y down, as the canvas reads it).
     private func mouse(_ type: NSEvent.EventType, _ point: CGPoint, _ flags: NSEvent.ModifierFlags = []) -> NSEvent {
-        NSEvent.mouseEvent(with: type, location: CGPoint(x: point.x, y: canvas.height - point.y), modifierFlags: flags,
+        NSEvent.mouseEvent(with: type, location: CGPoint(x: point.x, y: screen.height - point.y), modifierFlags: flags,
                            timestamp: 0, windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
     }
 
@@ -164,15 +181,16 @@ final class FITSAreaSelectionTests: XCTestCase {
         model.renderedImage = tab().renderedImage
         let set = state.makeSetFITSViewTool()
         _ = await set.invoke(arguments: Data(#"{"selectArea": true}"#.utf8), context: ctx())
-        XCTAssertTrue(model.selectingArea)
+        XCTAssertTrue(state.fitsMarkEditor.selectingArea)
         let get = try XCTUnwrap(state.makeAgentTools().first { $0.name == "get_fits_view" })
         guard case .data(let data) = await get.invoke(arguments: Data("{}".utf8), context: ctx()) else {
             return XCTFail("no view")
         }
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        XCTAssertEqual(json["selectingArea"] as? Bool, true)
+        XCTAssertEqual(json["selectingArea"] as? Bool, true, "kept, marked for deletion")
+        XCTAssertEqual(json["canvasTool"] as? String, "selectArea")
         _ = await set.invoke(arguments: Data(#"{"selectArea": false}"#.utf8), context: ctx())
-        XCTAssertFalse(model.selectingArea)
+        XCTAssertFalse(state.fitsMarkEditor.selectingArea)
     }
 }
 

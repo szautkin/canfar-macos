@@ -123,7 +123,7 @@ extension AppState {
 
     func makeGetFITSViewTool() -> GetFITSViewTool {
         GetFITSViewTool(snapshot: { [weak self] in
-            guard let self else { return Self.emptyFITSView() }
+            guard let self else { return .notOpen() }
             return await self.fitsViewSnapshot()
         })
     }
@@ -319,23 +319,11 @@ extension AppState {
         return host.tabs.count < before ? nil : "That tab cannot be closed — the Cube Viewer always keeps one"
     }
 
-    /// `isOpen: false` snapshot. Tabs whose load failed still list their
-    /// paths so `openTabPaths` stays index-aligned with `activeTabIndex`.
-    private nonisolated static func emptyFITSView(
-        openTabPaths: [String] = [], activeTabIndex: Int? = nil
-    ) -> GetFITSViewTool.Output {
-        GetFITSViewTool.Output(
-            isOpen: false, filePath: nil, hduIndex: nil, imageWidth: nil, imageHeight: nil,
-            stretch: nil, colormap: nil, minCut: nil, maxCut: nil, zoom: nil,
-            rotationRadians: nil, crosshair: nil,
-            openTabPaths: openTabPaths, activeTabIndex: activeTabIndex)
-    }
-
     private func fitsViewSnapshot() -> GetFITSViewTool.Output {
         let host = fitsTabHost
         let paths = host.tabPaths
         guard let tab = host.activeTab, tab.isLoaded, let hdu = tab.selectedHDU else {
-            return Self.emptyFITSView(
+            return .notOpen(
                 openTabPaths: paths,
                 activeTabIndex: host.tabs.isEmpty ? nil : host.activeTabIndex)
         }
@@ -364,7 +352,8 @@ extension AppState {
             crosshair: crosshair,
             openTabPaths: paths,
             activeTabIndex: host.activeTabIndex,
-            shows: tab.table.map { $0.spectrum == nil ? "table" : "spectrum" }, selectingArea: tab.selectingArea ? true : nil)
+            shows: tab.table.map { $0.spectrum == nil ? "table" : "spectrum" }, selectingArea: fitsMarkEditor.selectingArea ? true : nil,
+            canvasTool: fitsMarkEditor.tool.rawValue)
     }
 
     private func applyFITSView(_ args: SetFITSViewTool.Args) -> String? {
@@ -407,7 +396,7 @@ extension AppState {
             tab.fitToWindow(canvasSize: tab.lastCanvasSize)
         }
         if args.northUp == true { tab.applyNorthUp() }
-        if let on = args.selectArea, let problem = tab.setSelectingArea(on) { return problem }
+        if let on = args.selectArea, let problem = fitsMarkEditor.setSelectingArea(on, over: tab) { return problem }
 
         agentsService.activityStore.append(.live(
             kind: "set_fits_view", summary: "Adjusted the FITS view",

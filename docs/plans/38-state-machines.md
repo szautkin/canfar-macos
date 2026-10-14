@@ -190,7 +190,20 @@ lack today.
 2. **Try Again** on every load that fails: yes.
 3. The CANFAR Images widget gets **Reload** (P1½).
 
-## Open question for the person
+4. **Assistant answers keep their old fields**, computed from the state, each marked
+   **Deprecated, to be deleted** in the code and in its tool's description; `state` (or the region's
+   own field) is the one to read. The list below is what a later release deletes.
 
-1. **Assistant answers:** add `state` beside the old fields for one release, then drop the old
-   fields — or keep both for good?
+## Deprecated answer fields (to delete)
+
+| Tool | Field | Read instead | Since |
+|---|---|---|---|
+| `get_fits_view` | `selectingArea` | `canvasTool` | P1a |
+
+## Done
+
+| Step | Commit | What |
+|---|---|---|
+| Plan | `5a706c12` | This plan, with the decisions above. |
+| P0 | `a7544e84` | The vocabulary, its tests, the ratchet (47). |
+| P1½ | `60e589e6` | The Canfar Images card: `Phase`, Reload, Try Again (46). |

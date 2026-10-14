@@ -208,7 +208,7 @@ struct FITSTabView: View {
                             VStack(alignment: .leading, spacing: 0) {
                                 hduList(activeModel)
                                 if activeModel.table == nil {
-                                    FITSRenderControlsView(model: activeModel, marks: appState.marks)
+                                    FITSRenderControlsView(model: activeModel, marks: appState.marks, canvas: appState.fitsMarkEditor)
                                 }
                                 if showHeader {
                                     Divider()

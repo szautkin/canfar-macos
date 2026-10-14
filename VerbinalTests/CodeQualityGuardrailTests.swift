@@ -85,7 +85,7 @@ final class CodeQualityGuardrailTests: XCTestCase {
         "Verbinal/Views/ContentView.swift": 703,
         "Verbinal/ImageDiscovery/ViewModels/ImageDiscoveryModel.swift": 665,
         "Verbinal/Storage/MCP/VOSpaceWriteTools.swift": 639,
-        "Verbinal/FITSViewer/MCP/AppState+FITSTools.swift": 633,
+        "Verbinal/FITSViewer/MCP/AppState+FITSTools.swift": 622,
         "Verbinal/CubeViewer/ViewModels/CubeViewerModel.swift": 621,
         "Verbinal/CubeViewer/MCP/CubeViewerControlTools.swift": 619,
         "Verbinal/CubeViewer/Views/CubeRenderControlsView.swift": 612,

@@ -98,9 +98,6 @@ final class FITSViewerModel: Identifiable {
     /// The Export Figure sheet is open on this region (a mark's menu opens
     /// it framed on the mark); nil when it is closed.
     var figureRegion: FITSFigureRegion?
-    /// Select Area is armed: the next drag on the image draws a box and
-    /// opens Export Figure on it (⌘-drag does the same unarmed).
-    var selectingArea = false
     /// The box being dragged out, in canvas points; nil when none is.
     var areaBand: CGRect?
 
