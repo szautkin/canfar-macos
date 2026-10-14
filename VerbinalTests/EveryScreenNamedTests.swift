@@ -36,7 +36,8 @@ final class EveryScreenNamedTests: XCTestCase {
     ]
 
     private func read(_ state: AppState, place: String, _ root: some View,
-                      settle: Duration = .milliseconds(700)) async throws -> [Problem] {
+                      settle: Duration = .milliseconds(700),
+                      until ready: (() -> Bool)? = nil) async throws -> [Problem] {
         try await AXReadable.require()
         let window = NSWindow(contentRect: NSRect(x: 40, y: 40, width: 1200, height: 800),
                               styleMask: [.titled, .resizable], backing: .buffered, defer: false)
@@ -48,6 +49,11 @@ final class EveryScreenNamedTests: XCTestCase {
         let source = AXElementSource(screenName: { state.screenName(of: $0, parentScreen: $1, title: $2) })
         await source.ready()
         try await Task.sleep(for: settle)
+        // A screen that loads first is read once it has (at most ten seconds).
+        if let ready {
+            let deadline = Date().addingTimeInterval(10)
+            while !ready(), Date() < deadline { try await Task.sleep(for: .milliseconds(100)) }
+        }
         let snapshot = source.snapshot()
         let mine = snapshot.windows.filter { $0.number == window.windowNumber || $0.kind == .sheet }
         XCTAssertFalse(mine.isEmpty, "\(place) is listed")
@@ -102,7 +108,11 @@ final class EveryScreenNamedTests: XCTestCase {
         let launching = signedIn()
         launching.currentMode = .portal
         launching.launchFormPresented = true
-        problems += try await read(launching, place: "portal.launchForm", ContentView().uiWindowPlace(.main))
+        // The Launch button shows once the form's choices are loaded: from the
+        // cache it shares with the person's app, or the network — timing that
+        // made this check pass in one run and fail in the next.
+        problems += try await read(launching, place: "portal.launchForm", ContentView().uiWindowPlace(.main),
+                                   until: { launching.sessionLaunchModelForTools?.options.isWorking == false })
         XCTAssertTrue(problems.isEmpty, "\n" + problems.map(\.description).joined(separator: "\n"))
     }
 

@@ -228,22 +228,31 @@ lack today.
 | P4d | `c9046edd` | Storage Sync: each collection's `CollectionState` — off, waiting, syncing, synced (when), failed (why) — read by Settings ▸ Storage and `list_storage_kinds` (`state`). |
 | P4e | `25d7f2e7` | Remote Compute: `ComputeMachine` — the platform's look wins; a start or stop the person asked moves the state at once (stopped → starting, a live session → stopping) until the next look. |
 | P4f | `c46c85c1` | The agent session: `SessionApprovals.state(of:)` — none, asking, active, ended (why) — the one reading of what is pending and kept; `SessionMachine` says which moves it takes, and `allow` and `end` ask it. |
-| Tests | (this commit) | Every screen in a short window, signed in where it needs it, takes no more than the window and no split overflows; a FITS tab whose open failed fits and shows no controls; the FITS and cube document states reach their tools' `state` in each state. (Table tests: `DocumentMachine`, `ComputeMachine`, `SessionMachine`, `CollectionState`, blink, the canvas tool, the hand-offs, `Phase`, `Problem`, `Attempt`, `Machine`.) |
+| Tests | `39293c34` | Every screen in a short window, signed in where it needs it, takes no more than the window and no split overflows; a FITS tab whose open failed fits and shows no controls; the FITS and cube document states reach their tools' `state` in each state. (Table tests: `DocumentMachine`, `ComputeMachine`, `SessionMachine`, `CollectionState`, blink, the canvas tool, the hand-offs, `Phase`, `Problem`, `Attempt`, `Machine`.) |
+| AX check | (this commit) | `EveryScreenNamedTests`' launch-form read waits for the form's choices to load: its Launch button only exists then, and the snapshot taken 0.7 s after opening raced the load — the cause of "hand tag portal.launch not found". |
 
 ## Where it ended (2026-10-14)
 
-- **Every region in the table above is one value**, except where a value already was one and stays:
-  the cube's playback (`isPlaying`) and volume path (`volumeRenderError`); the storage sync's status,
-  a snapshot whose `running` is whether a sync task exists and whose last sync and failure are a saved
-  record; Research's file transfers, a set of the files on their way (one value per file);
-  `isAuthenticated`; the "Open as…" sheet's file; the mode to return to after sign-in.
+- **Every region in the table above is one value or one machine**, P4 included: the agent session
+  (`SessionApprovals.state(of:)`, `SessionMachine`), each storage collection
+  (`StorageSync.CollectionState`), remote compute's events (`ComputeMachine`), and Image Discovery's
+  catalogue, runs and actions (`Phase`s).
+- **Values that already were one and stay:** the cube's playback (`isPlaying`) and volume path
+  (`volumeRenderError`); Research's file transfers (a set of the files on their way, one value per
+  file); `isAuthenticated`; the "Open as…" sheet's file; the mode to return to after sign-in.
 - **The guardrail.** `CodeQualityGuardrailTests.testLooseStateFlagsAreGoneOrKeptForAReason` fails on
   any `isLoading`, `errorMessage`, `hasError`, `loadError`, `lastError`, `statusMessage` or `isBusy`
   but the five kept in `looseFlagsKept`, each with its reason. 47 when the plan began.
-- **Visible to the person.** Try Again on every load that can fail (the Portal's cards, the
-  storage browser, the data train, an observation's detail, probe logs, the file browser, the launch
-  form's choices); a refresh that fails keeps what it showed; a cube whose open failed no longer shows
-  the previous cube; the assistant server's sidecar warning, set and cleared at once before, is shown.
-- **Assistants.** `state` in `get_fits_view`, `get_cube_view` and `blink_fits_tabs`; `canvasTool` in
-  `get_fits_view`. The fields they replace are listed above, to delete in a later release.
-
+- **Tests.** A table per machine (`DocumentMachine`, `ComputeMachine`, `SessionMachine`), the
+  collection state's one reading, blink, the canvas tool, the hand-offs, the vocabulary; every screen
+  in a short window; the viewers' document states reaching their tools.
+- **Visible to the person.** Try Again on every load that can fail; a refresh that fails keeps what it
+  showed; a cube whose open failed no longer shows the previous cube; Start and Stop in Remote Compute
+  show "starting" and "stopping" at once; each storage collection says whether it waits, syncs or
+  failed; the assistant server's sidecar warning, set and cleared at once before, is shown.
+- **Assistants.** `state` in `get_fits_view`, `get_cube_view`, `blink_fits_tabs` and each kind of
+  `list_storage_kinds`; `canvasTool` in `get_fits_view`. The fields they replace are listed above, to
+  delete in a later release.
+- **Not yet verified:** the 32 tests that read the live accessibility tree (`EveryScreenNamedTests`
+  among them) skip themselves while the screen is locked, as it was for every run after 21:30 on
+  2026-10-13. They need a run with the screen unlocked.
