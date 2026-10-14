@@ -40,5 +40,4 @@ extension CubeTabHostModel: ViewerTabHosting {}
 
 extension CubeViewerModel: ViewerDocument {
     static var documentKind: String { "cube" }
-    var isLoaded: Bool { hasData }
 }

@@ -87,7 +87,6 @@ final class CodeQualityGuardrailTests: XCTestCase {
         "Verbinal/Storage/MCP/VOSpaceWriteTools.swift": 639,
         "Verbinal/FITSViewer/MCP/AppState+FITSTools.swift": 622,
         "Verbinal/CubeViewer/ViewModels/CubeViewerModel.swift": 621,
-        "Verbinal/CubeViewer/MCP/CubeViewerControlTools.swift": 619,
         "Verbinal/CubeViewer/Views/CubeRenderControlsView.swift": 612,
     ]
 
@@ -115,7 +114,7 @@ final class CodeQualityGuardrailTests: XCTestCase {
     /// The flags plan 38 moves into state machines, counted as it began
     /// (2026-10-13): each may only go down, and its ceiling with it.
     static let looseFlagCeilings: [String: Int] = [
-        "isLoading": 13, "errorMessage": 11, "hasError": 9, "loadError": 4, "lastError": 4,
+        "isLoading": 10, "errorMessage": 11, "hasError": 9, "loadError": 1, "lastError": 4,
         "statusMessage": 3, "isBusy": 2,
     ]
 

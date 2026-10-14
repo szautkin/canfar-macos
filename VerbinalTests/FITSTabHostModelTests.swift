@@ -111,7 +111,7 @@ final class FITSTabHostModelTests: XCTestCase {
 
         let tab = await host.openFile(url: url)
         XCTAssertEqual(host.tabCount, 1)
-        XCTAssertNotNil(tab.loadError)
+        XCTAssertNotNil(tab.document.state.problem)
         XCTAssertNil(tab.file)
         XCTAssertTrue(host.activeTab === tab)
     }
@@ -128,7 +128,7 @@ final class FITSTabHostModelTests: XCTestCase {
         XCTAssertNotNil(err)
         XCTAssertTrue(err?.isEmpty == false)
         XCTAssertEqual(host.tabCount, 1, "the pre-existing tab stays; the failed tab is gone")
-        XCTAssertNil(host.activeTab?.loadError)
+        XCTAssertNil(host.activeTab?.document.state.problem)
         XCTAssertNil(host.activeTab?.file)
     }
 

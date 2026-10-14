@@ -20,7 +20,7 @@ final class FITSSpectrumViewTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
         let model = FITSViewerModel()
         await model.open(url: url)
-        XCTAssertNil(model.loadError)
+        XCTAssertNil(model.document.state.problem)
         XCTAssertTrue(model.isLoaded)
         XCTAssertNil(model.renderedImage, "no picture of the table's bytes")
         XCTAssertEqual(model.selectedHDUIndex, 1)

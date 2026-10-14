@@ -107,12 +107,10 @@ final class FITSViewerModel: Identifiable {
     var cursorPixelValue: String = ""
 
     // State
-    var isLoading = false
-    /// Where an open has got to — "Reading the pixels" — while `isLoading`.
-    var loadStage = ""
+    /// Empty, opening (how far it has got), failed (why), or open (plan 38).
+    let document = Machine<DocumentMachine>(.empty)
     /// Files opened lately, for the empty screen.
     @ObservationIgnored var recentFiles = RecentFiles.fits
-    var loadError: String?
     var fileURL: URL?
     /// What the selected HDU shows when it is a table — its spectrum, or
     /// its columns — rather than a picture of its rows (plan 17 U4, QA N1).
@@ -143,8 +141,7 @@ final class FITSViewerModel: Identifiable {
 
     func open(url: URL) async {
         Self.logger.info("Opening FITS file: \(url.lastPathComponent, privacy: .public)")
-        isLoading = true
-        loadError = nil
+        document.send(.begin)
         fileURL = url
 
         // For files saved via NSSavePanel and resolved from a security-scoped
@@ -156,7 +153,7 @@ final class FITSViewerModel: Identifiable {
         defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
 
         do {
-            loadStage = String(localized: "Reading the header")
+            document.send(.stage(String(localized: "Reading the header")))
             let (data, fitsFile) = try await Task.detached {
                 // Mapped, not read: the file's size is not what memory holds.
                 let data = try Data(contentsOf: url, options: .mappedIfSafe)
@@ -170,12 +167,12 @@ final class FITSViewerModel: Identifiable {
                 selectedHDUIndex = hdu.id
                 showTable(content)
                 recentFiles.add(url)
-                isLoading = false
+                document.send(.opened)
                 return
             }
-            loadStage = Self.readingStage(of: firstImageHDU)
+            document.send(.stage(Self.readingStage(of: firstImageHDU)))
             let image = try await Task.detached { try LoadedImage(data: data, hdu: firstImageHDU) }.value
-            loadStage = String(localized: "Drawing")
+            document.send(.stage(String(localized: "Drawing")))
 
             file = fitsFile
             selectedHDUIndex = firstImageHDU.id
@@ -186,12 +183,11 @@ final class FITSViewerModel: Identifiable {
             await renderImageAsync(nextRender())
             fitToWindow(canvasSize: lastCanvasSize)
             recentFiles.add(url)
+            document.send(.opened)
         } catch {
             Self.logger.error("Failed to open FITS: \(error.localizedDescription, privacy: .public)")
-            loadError = error.localizedDescription
+            document.send(.failed(Problem(error)))
         }
-
-        isLoading = false
     }
 
     func selectHDU(_ index: Int) async {
@@ -213,7 +209,7 @@ final class FITSViewerModel: Identifiable {
                 }.value
                 if let content { showTable(content) }
             } catch {
-                loadError = error.localizedDescription
+                document.send(.failed(Problem(error)))
             }
             return
         }
@@ -226,7 +222,7 @@ final class FITSViewerModel: Identifiable {
             apply(image)
             renderImage()
         } catch {
-            loadError = error.localizedDescription
+            document.send(.failed(Problem(error)))
         }
 
         // Issue 7 / Ticket 010: reconcile the crosshair with the new HDU.
@@ -482,5 +478,4 @@ final class FITSViewerModel: Identifiable {
 
 extension FITSViewerModel: ViewerDocument {
     static var documentKind: String { "FITS file" }
-    var isLoaded: Bool { file != nil }
 }

@@ -22,7 +22,7 @@ final class CubeTabHostModelTests: XCTestCase {
         XCTAssertNotNil(err)
         XCTAssertEqual(host.tabs.count, 1, "placeholder tab remains; failed tab is gone")
         XCTAssertFalse(host.activeTab.hasData)
-        XCTAssertNil(host.activeTab.loadError)
+        XCTAssertNil(host.activeTab.document.state.problem)
     }
 
     /// Plan 17 U3 (QA N6): a cube opened leaves no empty tab beside it,

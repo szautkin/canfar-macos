@@ -11,18 +11,20 @@ import Foundation
 protocol ViewerDocument: AnyObject {
     /// Noun for the generic failure message ("FITS file", "cube").
     static var documentKind: String { get }
-    var loadError: String? { get }
-    /// True once the open produced data the viewer can show.
-    var isLoaded: Bool { get }
-    var isLoading: Bool { get }
+    /// Empty, opening, failed, or open (plan 38): the one place a tab's
+    /// document state is kept.
+    var document: Machine<DocumentMachine> { get }
     /// The file this tab shows (set when the open starts).
     var fileURL: URL? { get }
 }
 
 extension ViewerDocument {
+    /// True once the open produced data the viewer can show.
+    var isLoaded: Bool { document.state.isOpen }
+
     /// Why the last open left no usable document, or nil when it loaded.
     var loadFailure: String? {
-        if let loadError, !loadError.isEmpty { return loadError }
+        if let problem = document.state.problem { return problem.message }
         return isLoaded ? nil : "\(Self.documentKind) did not load"
     }
 }
@@ -53,8 +55,9 @@ extension ViewerTabHosting {
             return opened
         }
         if let index = tabs.firstIndex(where: { $0 === existing }) { activeTabIndex = index }
-        while existing.isLoading, !Task.isCancelled {
-            try? await Task.sleep(for: .milliseconds(100))
+        // Waits on the state, not a poll; a second at a time, so a cancel lands.
+        while existing.document.state.isOpening, !Task.isCancelled {
+            _ = await existing.document.until({ !$0.isOpening }, timeout: .seconds(1))
         }
         return existing
     }
@@ -68,13 +71,13 @@ extension ViewerTabHosting {
         let wanted = FileIdentity.key(url)
         return tabs.first { tab in
             guard let open = tab.fileURL, FileIdentity.key(open) == wanted else { return false }
-            return tab.isLoaded || tab.isLoading
+            return tab.isLoaded || tab.document.state.isOpening
         }
     }
 
     /// Closes the tabs nothing was ever opened in, keeping `kept` focused.
     private func closeEmptyTabs(besides kept: Document) {
-        for tab in tabs where tab !== kept && tab.fileURL == nil && !tab.isLoading {
+        for tab in tabs where tab !== kept && tab.fileURL == nil && !tab.document.state.isOpening {
             closeTab(tab)
         }
         if let index = tabs.firstIndex(where: { $0 === kept }) { activeTabIndex = index }

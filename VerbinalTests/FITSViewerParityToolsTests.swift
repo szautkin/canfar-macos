@@ -42,7 +42,8 @@ final class FITSViewerParityToolsTests: XCTestCase {
         FITSTestFixtures.loadRamp(into: loaded, path: "/tmp/loaded.fits")
         let failed = host.addTab()
         failed.fileURL = URL(fileURLWithPath: "/tmp/failed.fits")
-        failed.loadError = "not a FITS file"
+        failed.document.send(.begin)
+        failed.document.send(.failed(Problem(.other, "not a FITS file")))
         let tool = try XCTUnwrap(state.makeAgentTools().first { $0.name == "get_fits_view" })
 
         // Active tab failed to load: not open, yet openTabPaths still has

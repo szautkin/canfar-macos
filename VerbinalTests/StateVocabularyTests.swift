@@ -132,4 +132,23 @@ final class StateVocabularyTests: XCTestCase {
         let still = await door.until({ $0 == .locked }, timeout: .milliseconds(50))
         XCTAssertEqual(still, .open, "after the wait, the state as it is")
     }
+
+    // MARK: - A viewer tab's document (P1b)
+
+    func testADocumentMovesOnlyAsAnOpenCan() {
+        let document = Machine<DocumentMachine>(.empty)
+        XCTAssertFalse(document.send(.opened), "nothing was opening")
+        XCTAssertTrue(document.send(.begin))
+        XCTAssertTrue(document.send(.stage("Reading the header")))
+        XCTAssertEqual(document.state, .opening(stage: "Reading the header", progress: nil))
+        XCTAssertTrue(document.send(.opened))
+        XCTAssertTrue(document.state.isOpen)
+        XCTAssertFalse(document.send(.stage("late")), "a stage after it opened is refused")
+        XCTAssertTrue(document.send(.failed(Problem(.other, "bad extension"))), "an open document can fail: an HDU that will not read")
+        XCTAssertEqual(document.state.problem?.message, "bad extension")
+        XCTAssertEqual(document.state.stateName, "failed")
+        XCTAssertTrue(document.send(.begin), "Retry")
+        XCTAssertTrue(document.send(.close))
+        XCTAssertEqual(document.state, .empty)
+    }
 }

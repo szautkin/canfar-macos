@@ -24,12 +24,10 @@ struct CubeViewerRootView: View {
                 cubeTabs
             }
             Group {
-                if model.isLoading {
-                    loadingView
-                } else if model.hasData {
-                    CubeViewerView(model: model)
-                } else {
-                    emptyState
+                switch model.document.state {
+                case .opening(let stage, let progress): loadingView(stage: stage, progress: progress)
+                case .open: CubeViewerView(model: model)
+                case .empty, .failed: emptyState
                 }
             }
         }
@@ -98,10 +96,10 @@ struct CubeViewerRootView: View {
         }
     }
 
-    private var loadingView: some View {
+    private func loadingView(stage: String, progress: Double?) -> some View {
         VStack(spacing: 12) {
-            ProgressView(value: model.loadProgress) {
-                Text(model.loadStage).font(.caption.monospaced())
+            ProgressView(value: progress ?? 0) {
+                Text(stage).font(.caption.monospaced())
             }
             .frame(width: 260)
             Text(model.fileName).font(.caption2).foregroundStyle(.tertiary)
@@ -111,12 +109,12 @@ struct CubeViewerRootView: View {
 
     @ViewBuilder
     private var errorBanner: some View {
-        if let error = model.loadError {
+        if let problem = model.document.state.problem {
             HStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                Text(error).font(.callout).lineLimit(2)
+                Text(problem.message).font(.callout).lineLimit(2)
                 Spacer()
-                Button("Dismiss") { model.loadError = nil }
+                Button("Dismiss") { model.document.send(.close) }
                     .buttonStyle(.borderless)
             }
             .padding(12)

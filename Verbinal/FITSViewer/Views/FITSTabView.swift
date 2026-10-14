@@ -421,21 +421,22 @@ struct FITSTabView: View {
     /// The open file, how its loading goes, or how to open one.
     private func viewerPane(_ activeModel: FITSViewerModel) -> some View {
         VStack(spacing: 0) {
-            if activeModel.isLoading {
+            switch activeModel.document.state {
+            case .opening(let stage, _):
                 Spacer()
                 VStack(spacing: 8) {
                     ProgressView()
-                    Text(activeModel.loadStage).font(.caption.monospaced())
+                    Text(stage).font(.caption.monospaced())
                     Text(activeModel.fileURL?.lastPathComponent ?? "").font(.caption2).foregroundStyle(.tertiary)
                 }
                 .accessibilityElement(children: .combine)
                 Spacer()
-            } else if let error = activeModel.loadError {
+            case .failed(let problem):
                 Spacer()
                 VStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.title).foregroundStyle(.orange)
-                    Text(error).font(.caption)
+                    Text(problem.message).font(.caption)
                     Button("Retry") {
                         if let url = activeModel.fileURL {
                             Task { await activeModel.open(url: url) }
@@ -444,13 +445,17 @@ struct FITSTabView: View {
                     .buttonStyle(.bordered).controlSize(.small)
                 }
                 Spacer()
-            } else if let table = activeModel.table {
-                FITSTableContentView(content: table, caption: activeModel.figureCaption)
-            } else if activeModel.renderedImage != nil {
-                FITSImageView(model: activeModel, tabHost: tabHost, marks: appState.fitsMarkEditor)
-                Divider()
-                FITSCoordinateBar(model: activeModel)
-            } else {
+            case .open:
+                if let table = activeModel.table {
+                    FITSTableContentView(content: table, caption: activeModel.figureCaption)
+                } else if activeModel.renderedImage != nil {
+                    FITSImageView(model: activeModel, tabHost: tabHost, marks: appState.fitsMarkEditor)
+                    Divider()
+                    FITSCoordinateBar(model: activeModel)
+                } else {
+                    emptyState
+                }
+            case .empty:
                 emptyState
             }
         }

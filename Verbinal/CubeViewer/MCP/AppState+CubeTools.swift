@@ -53,9 +53,9 @@ extension AppState {
             guard let self else { return Self.closedCubeView() }
             return await MainActor.run {
                 let model = self.cubeViewer
-                guard model.hasData else { return Self.closedCubeView() }
+                guard model.isLoaded else { return Self.closedCubeView().with(model.document.state) }
                 return GetCubeViewTool.Output(
-                    isOpen: true,
+                    isOpen: true, state: "open",
                     fileName: model.fileName,
                     nx: model.nx, ny: model.ny, nz: model.nz,
                     channel: model.channel,

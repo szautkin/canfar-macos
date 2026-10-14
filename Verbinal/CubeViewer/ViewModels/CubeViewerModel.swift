@@ -25,10 +25,8 @@ final class CubeViewerModel: Identifiable {
     let id = UUID()
 
     // MARK: Loading
-    var isLoading = false
-    var loadError: String?
-    var loadStage = ""
-    var loadProgress: Double = 0
+    /// Empty, opening (its stage and progress), failed (why), or open (plan 38).
+    let document = Machine<DocumentMachine>(.empty)
     var fileName = ""
     /// The file this tab shows; set when an open starts.
     private(set) var fileURL: URL?
@@ -141,10 +139,8 @@ final class CubeViewerModel: Identifiable {
 
     func open(url: URL) async {
         stopPlayback()
-        isLoading = true
-        loadError = nil
-        loadStage = "OPENING"
-        loadProgress = 0
+        document.send(.begin)
+        document.send(.stage("OPENING", progress: 0))
         fileName = url.lastPathComponent
         fileURL = url
         resetSliceView()
@@ -158,8 +154,9 @@ final class CubeViewerModel: Identifiable {
             let cube = try await CubeModel.open(source: source)
             try await cube.ingest(max3D: max3D) { [weak self] progress in
                 Task { @MainActor in
-                    self?.loadStage = progress.stage
-                    self?.loadProgress = progress.fraction
+                    // A late one, after the cube opened, is refused and logged.
+                    guard self?.document.state.isOpening == true else { return }
+                    self?.document.send(.stage(progress.stage, progress: progress.fraction))
                 }
             }
 
@@ -185,11 +182,11 @@ final class CubeViewerModel: Identifiable {
             if isStreamed {
                 toast = "Large cube — slices stream from disk; the spectrum probe needs a memory-resident cube."
             }
+            document.send(.opened)
         } catch {
             Self.logger.error("Cube open failed: \(error.localizedDescription, privacy: .public)")
-            loadError = error.localizedDescription
+            document.send(.failed(Problem(error)))
         }
-        isLoading = false
     }
 
     /// Re-open a recent cube by resolving its security-scoped bookmark.

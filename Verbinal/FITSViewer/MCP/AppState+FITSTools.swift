@@ -325,7 +325,7 @@ extension AppState {
         guard let tab = host.activeTab, tab.isLoaded, let hdu = tab.selectedHDU else {
             return .notOpen(
                 openTabPaths: paths,
-                activeTabIndex: host.tabs.isEmpty ? nil : host.activeTabIndex)
+                activeTabIndex: host.tabs.isEmpty ? nil : host.activeTabIndex).with(host.activeTab?.document.state ?? .empty)
         }
         var crosshair: GetFITSViewTool.Output.Crosshair?
         if let point = tab.crosshairPixel {
@@ -353,7 +353,7 @@ extension AppState {
             openTabPaths: paths,
             activeTabIndex: host.activeTabIndex,
             shows: tab.table.map { $0.spectrum == nil ? "table" : "spectrum" }, selectingArea: fitsMarkEditor.selectingArea ? true : nil,
-            canvasTool: fitsMarkEditor.tool.rawValue)
+            canvasTool: fitsMarkEditor.tool.rawValue).with(tab.document.state)
     }
 
     private func applyFITSView(_ args: SetFITSViewTool.Args) -> String? {

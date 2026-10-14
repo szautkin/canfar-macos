@@ -20,7 +20,7 @@ final class CubeFigureMetadataTests: XCTestCase {
 
         let model = CubeViewerModel()
         await model.open(url: url)
-        XCTAssertNil(model.loadError)
+        XCTAssertNil(model.document.state.problem)
         XCTAssertTrue(model.hasData)
 
         let meta = model.figureMetadata()

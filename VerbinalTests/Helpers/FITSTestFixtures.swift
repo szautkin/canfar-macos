@@ -45,6 +45,8 @@ enum FITSTestFixtures {
         model.fileURL = model.file?.url
         model.selectedHDUIndex = 0
         model.pixels = (0..<(width * height)).map(Float.init)
+        model.document.send(.begin)
+        model.document.send(.opened)
     }
 
     /// Ramp value at FITS array (x, y) for an image `width` columns wide.

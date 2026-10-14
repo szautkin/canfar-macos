@@ -18,8 +18,14 @@ import VerbinalKit
 struct GetFITSViewTool: JSONReadTool {
     typealias Args = EmptyArgs
 
-    struct Output: Encodable, Sendable {
+    struct Output: Encodable, Sendable, DocumentStateReporting {
+        /// Deprecated (plan 38, the person's decision 2026-10-13): kept for
+        /// instructions written before `state`; to be deleted.
         let isOpen: Bool
+        /// The active tab's document: `empty`, `opening`, `failed` or `open`.
+        var state: String?
+        /// Why it failed, when `state` is `failed`.
+        var problem: String?
         let filePath: String?
         let hduIndex: Int?
         let imageWidth: Int?
@@ -65,7 +71,7 @@ struct GetFITSViewTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_fits_view",
-        description: "Read the active FITS-viewer tab's full render/view state: file path, HDU, image dimensions in pixels, stretch, colormap, cut levels (normalized 0-1), zoom factor, rotation (radians), crosshair position (0-based FITS array pixel, same convention as probe_fits_pixel, + RA/Dec in degrees when a WCS is present), and the list of open tabs. `openTabPaths` has one entry per tab, index-aligned with `activeTabIndex` and set_fits_view `tabIndex`. `isOpen` is false when the active tab has no loaded file; `shows` is \"spectrum\" or \"table\" when it shows a table rather than an image (read it with get_fits_spectrum). `canvasTool` says what a drag on the image does: `pan`, `selectArea` or `draw` (one at a time). Deprecated, to be deleted: `selectingArea` — read `canvasTool`.",
+        description: "Read the active FITS-viewer tab's full render/view state: file path, HDU, image dimensions in pixels, stretch, colormap, cut levels (normalized 0-1), zoom factor, rotation (radians), crosshair position (0-based FITS array pixel, same convention as probe_fits_pixel, + RA/Dec in degrees when a WCS is present), and the list of open tabs. `openTabPaths` has one entry per tab, index-aligned with `activeTabIndex` and set_fits_view `tabIndex`. `state` is the active tab's document — `empty`, `opening`, `failed` (with `problem`) or `open`; `shows` is \"spectrum\" or \"table\" when it shows a table rather than an image (read it with get_fits_spectrum). `canvasTool` says what a drag on the image does: `pan`, `selectArea` or `draw` (one at a time). Deprecated, to be deleted: `isOpen` — read `state`; `selectingArea` — read `canvasTool`.",
         schema: #"""
         {
           "type": "object",

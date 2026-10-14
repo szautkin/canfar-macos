@@ -199,6 +199,8 @@ lack today.
 | Tool | Field | Read instead | Since |
 |---|---|---|---|
 | `get_fits_view` | `selectingArea` | `canvasTool` | P1a |
+| `get_fits_view` | `isOpen` | `state` | P1b |
+| `get_cube_view` | `isOpen` | `state` | P1b |
 
 ## Done
 
@@ -207,3 +209,4 @@ lack today.
 | Plan | `5a706c12` | This plan, with the decisions above. |
 | P0 | `a7544e84` | The vocabulary, its tests, the ratchet (47). |
 | P1½ | `60e589e6` | The Canfar Images card: `Phase`, Reload, Try Again (46). |
+| P1a | `e47e477e` | One `CanvasTool` per viewer: pan, select an area, or draw. |
