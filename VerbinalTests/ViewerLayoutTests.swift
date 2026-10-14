@@ -83,4 +83,43 @@ final class ViewerLayoutTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - Every screen (plan 38's tests)
+
+    /// Every screen, signed in where it needs it, fits a short window: no
+    /// split view's panes taller than their room, nothing pushed out.
+    func testEveryScreenFitsAShortWindow() {
+        for mode in AppMode.allCases {
+            let state = AppState()
+            if mode.requiresAuthentication { state.auth.apply(username: "qa-person", userInfo: nil) }
+            state.currentMode = mode
+            for size in [CGSize(width: 900, height: 420)] {
+                // What the screen takes when offered the window: more is pushed out of it.
+                // (fittingSize is the ideal size: a scroll view's whole content.)
+                let taken = NSHostingController(rootView: ContentView().environment(state)).sizeThatFits(in: size)
+                XCTAssertLessThanOrEqual(taken.height, size.height + 0.5, "\(mode): taller than a \(Int(size.height))-point window")
+                laidOut(ContentView().environment(state), in: size) { host in
+                    for split in splitViews(in: host) {
+                        XCTAssertLessThanOrEqual(split.frame.height, (split.superview?.bounds.height ?? 0) + 0.5,
+                                                 "\(mode): panes taller than their room")
+                    }
+                }
+            }
+        }
+    }
+
+    func testAFITSTabWhoseOpenFailedFitsAndShowsNoControls() {
+        let state = AppState()
+        let tab = state.fitsTabHost.addTab()
+        tab.document.send(.begin)
+        tab.document.send(.failed(Problem(.other, "not a FITS file")))
+        for size in windows {
+            laidOut(FITSViewerRootView().environment(state), in: size) { host in
+                XCTAssertTrue(splitViews(in: host).isEmpty, "no controls beside a failed open")
+                XCTAssertLessThanOrEqual(NSHostingController(rootView: FITSViewerRootView().environment(state)).sizeThatFits(in: size).height,
+                                         size.height + 0.5)
+            }
+        }
+    }
 }
+

@@ -227,7 +227,8 @@ lack today.
 | P4c | `d9a23456` | Image Discovery: `catalogue`, `discovery` and `actions` as `Phase`s replace `isDiscoveryRunning` and `bannerMessage`; a recovery's note is a note. |
 | P4d | `c9046edd` | Storage Sync: each collection's `CollectionState` — off, waiting, syncing, synced (when), failed (why) — read by Settings ▸ Storage and `list_storage_kinds` (`state`). |
 | P4e | `25d7f2e7` | Remote Compute: `ComputeMachine` — the platform's look wins; a start or stop the person asked moves the state at once (stopped → starting, a live session → stopping) until the next look. |
-| P4f | (this commit) | The agent session: `SessionApprovals.state(of:)` — none, asking, active, ended (why) — the one reading of what is pending and kept; `SessionMachine` says which moves it takes, and `allow` and `end` ask it. |
+| P4f | `c46c85c1` | The agent session: `SessionApprovals.state(of:)` — none, asking, active, ended (why) — the one reading of what is pending and kept; `SessionMachine` says which moves it takes, and `allow` and `end` ask it. |
+| Tests | (this commit) | Every screen in a short window, signed in where it needs it, takes no more than the window and no split overflows; a FITS tab whose open failed fits and shows no controls; the FITS and cube document states reach their tools' `state` in each state. (Table tests: `DocumentMachine`, `ComputeMachine`, `SessionMachine`, `CollectionState`, blink, the canvas tool, the hand-offs, `Phase`, `Problem`, `Attempt`, `Machine`.) |
 
 ## Where it ended (2026-10-14)
 
