@@ -303,11 +303,13 @@ struct BlinkFITSTabsTool: AITool {
         let intervalSeconds: Double?
         let action: String?
     }
-    struct Output: Encodable, Sendable { let applied: Bool; let isBlinking: Bool; let paused: Bool }
+    /// `state` is off, running or paused (plan 38). `isBlinking` and `paused`
+    /// are deprecated, to be deleted with Windows' answer of the same shape.
+    struct Output: Encodable, Sendable { let applied: Bool; let isBlinking: Bool; let paused: Bool; let state: String }
     enum Outcome: Sendable { case applied(Output); case rejected(String) }
     let definition = AIToolDefinition.withStaticSchema(
         name: "blink_fits_tabs",
-        description: "Control FITS tab blinking in the Windows-compatible shape. Start with partnerTab (optionally intervalSeconds); use action pause, resume, or stop. Live-applied.",
+        description: "Control FITS tab blinking in the Windows-compatible shape. Start with partnerTab (optionally intervalSeconds); use action pause, resume, or stop. Answers `state` (`off`, `running` or `paused`); `isBlinking` and `paused` are deprecated, to be deleted — read `state`. Live-applied.",
         schema: #"{"type":"object","properties":{"partnerTab":{"type":"integer","minimum":0},"intervalSeconds":{"type":"number","minimum":0.5,"maximum":5},"action":{"type":"string","enum":["start","pause","resume","stop"]}},"additionalProperties":false}"#)
     let apply: @Sendable (Args) async -> Outcome
     func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {

@@ -35,10 +35,14 @@ final class FITSTabHostModel {
 
     // MARK: - Blink State
 
-    /// True while a blink session is active.
-    var isBlinking = false
-    /// True when blink animation is paused (keeps current opacity frozen).
-    var isBlinkPaused = false
+    /// Blinking two tabs (plan 38): off, running, or paused — one value, so
+    /// "paused" never outlives the session it paused.
+    enum Blink: String, Equatable, Sendable { case off, running, paused }
+    var blink: Blink = .off
+    /// While a blink session is on, running or paused.
+    var isBlinking: Bool { blink != .off }
+    /// The overlay frozen at its opacity.
+    var isBlinkPaused: Bool { blink == .paused }
     /// Index of the primary (reference) tab.
     var blinkTabA: Int = 0
     /// Index of the overlay (comparison) tab.
@@ -362,8 +366,7 @@ final class FITSTabHostModel {
         // Compute WCS alignment transform if both images have valid WCS
         blinkTransform = computeBlinkTransform(tabAModel: tabAModel, tabBModel: tabBModel)
 
-        isBlinking = true
-        isBlinkPaused = false
+        blink = .running
         blinkOpacity = 0
         blinkFadeDirection = 1
 
@@ -516,8 +519,7 @@ final class FITSTabHostModel {
 
         blinkTask?.cancel()
         blinkTask = nil
-        isBlinking = false
-        isBlinkPaused = false
+        blink = .off
         blinkOpacity = 0
         blinkFadeDirection = 1
         blinkOverlayImage = nil
@@ -525,19 +527,23 @@ final class FITSTabHostModel {
     }
 
     func toggleBlinkPause() {
-        isBlinkPaused.toggle()
+        switch blink {
+        case .running: blink = .paused
+        case .paused: blink = .running
+        case .off: break
+        }
     }
 
     /// Show image A: freeze opacity at 0 (overlay fully transparent).
     func showBlinkA() {
-        isBlinkPaused = true
+        if isBlinking { blink = .paused }
         blinkOpacity = 0
         blinkFadeDirection = 1
     }
 
     /// Show image B: freeze opacity at 1 (overlay fully opaque).
     func showBlinkB() {
-        isBlinkPaused = true
+        if isBlinking { blink = .paused }
         blinkOpacity = 1
         blinkFadeDirection = -1
     }

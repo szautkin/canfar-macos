@@ -25,7 +25,7 @@ final class FITSBlinkLifecycleTests: XCTestCase {
 
     func testTickIsNoOpWhenNotBlinking() {
         let host = FITSTabHostModel()
-        host.isBlinking = false
+        host.blink = .off
         host.blinkOpacity = 0.3
         host.tickBlink()
         XCTAssertEqual(host.blinkOpacity, 0.3, "tick must not mutate opacity when not blinking")
@@ -33,8 +33,7 @@ final class FITSBlinkLifecycleTests: XCTestCase {
 
     func testTickIsNoOpWhenPaused() {
         let host = FITSTabHostModel()
-        host.isBlinking = true
-        host.isBlinkPaused = true
+        host.blink = .paused
         host.blinkOpacity = 0.3
         host.tickBlink()
         XCTAssertEqual(host.blinkOpacity, 0.3, "tick must not mutate opacity while paused")
@@ -43,7 +42,7 @@ final class FITSBlinkLifecycleTests: XCTestCase {
     func testTickStepSize() {
         let host = FITSTabHostModel()
         host.blinkInterval = 1.0           // step = 0.05 / max(1.0, 0.1) = 0.05
-        host.isBlinking = true
+        host.blink = .running
         host.blinkOpacity = 0
         // blinkFadeDirection defaults to +1 at construction, so the first
         // tick adds one step.
@@ -54,7 +53,7 @@ final class FITSBlinkLifecycleTests: XCTestCase {
     func testTickBouncesWithinBounds() {
         let host = FITSTabHostModel()
         host.blinkInterval = 1.0           // 20 ticks per transition
-        host.isBlinking = true
+        host.blink = .running
         host.blinkOpacity = 0
 
         var hitTop = false
@@ -74,8 +73,7 @@ final class FITSBlinkLifecycleTests: XCTestCase {
 
     func testStopBlinkResetsAllState() {
         let host = FITSTabHostModel()
-        host.isBlinking = true
-        host.isBlinkPaused = true
+        host.blink = .paused
         host.blinkOpacity = 0.7
         host.blinkOverlayImage = onePixelImage()
 
@@ -97,7 +95,7 @@ final class FITSBlinkLifecycleTests: XCTestCase {
         let host = FITSTabHostModel()
         _ = host.addTab()
         _ = host.addTab()
-        host.isBlinking = true
+        host.blink = .running
         host.blinkTabA = 0
         host.blinkTabB = 1
 
@@ -112,7 +110,7 @@ final class FITSBlinkLifecycleTests: XCTestCase {
         _ = host.addTab() // 0
         _ = host.addTab() // 1
         _ = host.addTab() // 2
-        host.isBlinking = true
+        host.blink = .running
         host.blinkTabA = 0
         host.blinkTabB = 1
 
@@ -120,5 +118,20 @@ final class FITSBlinkLifecycleTests: XCTestCase {
 
         XCTAssertTrue(host.isBlinking, "closing an unrelated tab must not stop the blink")
         host.stopBlink()       // cleanup
+    }
+
+    /// Plan 38 P1d: off, running, paused — paused never outlives its session.
+    func testBlinkIsOneStateAndPauseNeedsASession() {
+        let host = FITSTabHostModel()
+        host.toggleBlinkPause()
+        XCTAssertEqual(host.blink, .off, "nothing to pause")
+        host.showBlinkA()
+        XCTAssertEqual(host.blink, .off, "showing A outside a session pauses nothing")
+        host.blink = .running
+        host.toggleBlinkPause()
+        XCTAssertEqual(host.blink, .paused)
+        host.stopBlink()
+        XCTAssertEqual(host.blink, .off)
+        XCTAssertFalse(host.isBlinkPaused, "no pause left over")
     }
 }

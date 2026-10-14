@@ -201,6 +201,7 @@ lack today.
 | `get_fits_view` | `selectingArea` | `canvasTool` | P1a |
 | `get_fits_view` | `isOpen` | `state` | P1b |
 | `get_cube_view` | `isOpen` | `state` | P1b |
+| `blink_fits_tabs` | `isBlinking`, `paused` | `state` | P1d — Windows answers the same two; delete them together |
 
 ## Done
 
@@ -211,3 +212,4 @@ lack today.
 | P1½ | `60e589e6` | The Canfar Images card: `Phase`, Reload, Try Again (46). |
 | P1a | `e47e477e` | One `CanvasTool` per viewer: pan, select an area, or draw. |
 | P1b | `a5a04180` | `DocumentState` for the FITS and cube tabs; `state` in their view tools (isLoading 10, loadError 1). |
+| P1c | `871a5636` | A FITS tab's picture is a `Phase<CGImage>`; `Attempt` replaces the render generation. |

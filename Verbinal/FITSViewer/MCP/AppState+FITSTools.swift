@@ -559,7 +559,7 @@ extension AppState {
                     host.startBlink(tabA: host.activeTabIndex, tabB: partner)
                 default: return .rejected("Unknown action '\(action)'")
                 }
-                return .applied(.init(applied: true, isBlinking: host.isBlinking, paused: host.isBlinkPaused))
+                return .applied(.init(applied: true, isBlinking: host.isBlinking, paused: host.isBlinkPaused, state: host.blink.rawValue))
             }
         })
     }
