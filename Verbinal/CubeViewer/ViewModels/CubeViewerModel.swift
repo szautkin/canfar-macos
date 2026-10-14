@@ -20,7 +20,7 @@ import UniformTypeIdentifiers
 /// modes share one window/stretch/colormap so they always agree.
 @Observable
 @MainActor
-final class CubeViewerModel: Identifiable {
+final class CubeViewerModel: Identifiable, PhaseOwner {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "CubeViewer")
     let id = UUID()
 
@@ -113,8 +113,11 @@ final class CubeViewerModel: Identifiable {
     private(set) var channelProfile: [Float]?
 
     // MARK: Slice render output
-    private(set) var sliceImage: CGImage?
-    private(set) var isRendering = false
+    /// The channel's picture, and whether it is being drawn again (plan 38):
+    /// it stays on screen through a redraw, and only the newest lands.
+    private(set) var slice: Phase<CGImage> = .idle
+    var sliceImage: CGImage? { slice.value }
+    var isRendering: Bool { slice.isWorking }
 
     // MARK: Readouts
     var spectralReadout: SpectralWCS.Readout?
@@ -293,20 +296,17 @@ final class CubeViewerModel: Identifiable {
 
     private func renderSliceAsync() async {
         guard let cube, nx > 0, ny > 0 else { return }
-        isRendering = true
-        defer { isRendering = false }
-        let width = nx, height = ny
+        let width = nx, height = ny, channel = channel
         let params = sliceRenderParams
-        let plane: [Float]
-        do {
-            plane = try await cube.plane(channel)
-        } catch {
-            return
+        await run(\.slice) {
+            let plane = try await cube.plane(channel)
+            let image = await Task.detached(priority: .userInitiated) {
+                FITSRenderEngine.render(pixels: plane, width: width, height: height, params: params)
+            }.value
+            // Nothing drawn: what was there stays.
+            guard let image else { throw CancellationError() }
+            return image
         }
-        let image = await Task.detached(priority: .userInitiated) {
-            FITSRenderEngine.render(pixels: plane, width: width, height: height, params: params)
-        }.value
-        sliceImage = image
     }
 
     // MARK: - Readouts & probe
