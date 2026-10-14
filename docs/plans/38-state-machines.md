@@ -223,4 +223,22 @@ lack today.
 | P2e | `d0fc0ff9` | Probe logs (a `Phase` per tab), export and its dialog, the file browser's listing (isLoading 2, errorMessage 1, loadError 0, lastError 3). |
 | P3 | `bbb612e7` | Sign-in's `activity` (idle / validating / renewing), the login sheet's `Phase`, the assistant server's `ServerState` — which shows the sidecar warning that was set and cleared at once (isLoading 0, errorMessage 0, hasError 0, lastError 2). |
 | P4a | `7ee0e59c` | Research's last download (`Phase<String>`), Remote Compute's changes (`Phase<Date>`). The ratchet ends: no loose flag but five kept, each with its reason in `looseFlagsKept` — the toolbar caption and storage status line (text), the storage browser's `isBusy` (a read of three regions), the volume renderer's own report. |
-| P4b | (this commit) | The app's hand-offs: one `handOff` (open FITS, open a cube, search at a position, load a search), each screen still reading its own name. The "Open as…" sheet and the return after sign-in are not hand-offs and stay. |
+| P4b | `64ced849` | The app's hand-offs: one `handOff` (open FITS, open a cube, search at a position, load a search), each screen still reading its own name. The "Open as…" sheet and the return after sign-in are not hand-offs and stay. |
+
+## Where it ended (2026-10-14)
+
+- **Every region in the table above is one value**, except where a value already was one and stays:
+  the cube's playback (`isPlaying`) and volume path (`volumeRenderError`); the storage sync's status,
+  a snapshot whose `running` is whether a sync task exists and whose last sync and failure are a saved
+  record; Research's file transfers, a set of the files on their way (one value per file);
+  `isAuthenticated`; the "Open as…" sheet's file; the mode to return to after sign-in.
+- **The guardrail.** `CodeQualityGuardrailTests.testLooseStateFlagsAreGoneOrKeptForAReason` fails on
+  any `isLoading`, `errorMessage`, `hasError`, `loadError`, `lastError`, `statusMessage` or `isBusy`
+  but the five kept in `looseFlagsKept`, each with its reason. 47 when the plan began.
+- **Visible to the person.** Try Again on every load that can fail (the Portal's cards, the
+  storage browser, the data train, an observation's detail, probe logs, the file browser, the launch
+  form's choices); a refresh that fails keeps what it showed; a cube whose open failed no longer shows
+  the previous cube; the assistant server's sidecar warning, set and cleared at once before, is shown.
+- **Assistants.** `state` in `get_fits_view`, `get_cube_view` and `blink_fits_tabs`; `canvasTool` in
+  `get_fits_view`. The fields they replace are listed above, to delete in a later release.
+

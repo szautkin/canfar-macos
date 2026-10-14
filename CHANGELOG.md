@@ -78,6 +78,15 @@ files in Research, and Verbinal's data in your storage on every device
 - **A new colour map or stretch shows it is being drawn.** It is drawn
   at once, without the sliders' wait, and *Rendering…* shows in the
   image's corner while it takes long enough to notice.
+- **Every load says how it went, the same way.** Loading, shown, or why
+  not, with Try Again where trying again can help: the storage browser,
+  the data train, an observation's detail, probe-job logs, the file
+  browser and the launch form's choices too. A refresh that fails keeps
+  what it showed; a cube whose open failed no longer shows the previous
+  cube; the assistant server's warning that its address could not be
+  written is shown (it was cleared as soon as it was set). Assistants
+  read `state` in `get_fits_view`, `get_cube_view` and `blink_fits_tabs`
+  (plan 38).
 - **Try Again on the Portal's cards.** Platform Load, Storage, Batch Jobs
   and Active Sessions say why they could not load with Try Again, and
   keep what they showed; a failed delete or renew says so the same way.
