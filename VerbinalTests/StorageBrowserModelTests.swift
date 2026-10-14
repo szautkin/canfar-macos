@@ -273,7 +273,7 @@ final class StorageBrowserNavigationTests: XCTestCase {
         await model.loadCurrentFolder()
         XCTAssertEqual(model.currentPath, "")
         XCTAssertEqual(model.nodes.map(\.name), ["keep_me"])
-        XCTAssertFalse(model.hasError)
+        XCTAssertNil(model.listing.problem)
 
         await model.navigateTo("missing_folder")
 
@@ -281,9 +281,9 @@ final class StorageBrowserNavigationTests: XCTestCase {
                        "failed nav must not advance the breadcrumb")
         XCTAssertEqual(model.nodes.map(\.name), ["keep_me"],
                        "failed nav must keep the previous listing")
-        XCTAssertTrue(model.hasError)
-        XCTAssertFalse(model.errorMessage.isEmpty)
-        XCTAssertEqual(model.statusMessage, model.errorMessage,
+        XCTAssertNotNil(model.listing.problem)
+        XCTAssertFalse(model.listing.problem?.message.isEmpty ?? true)
+        XCTAssertEqual(model.statusMessage, model.listing.problem?.message,
                        "status bar must show the same error")
     }
 
@@ -312,7 +312,7 @@ final class StorageBrowserNavigationTests: XCTestCase {
 
         XCTAssertEqual(model.currentPath, "folder_a")
         XCTAssertTrue(model.nodes.isEmpty, "empty folder listing")
-        XCTAssertFalse(model.hasError)
+        XCTAssertNil(model.listing.problem)
         XCTAssertTrue(model.statusMessage.contains("0") || model.statusMessage.lowercased().contains("item"),
                       "empty folder should report item count; got \(model.statusMessage)")
     }
@@ -358,7 +358,7 @@ final class StorageBrowserNavigationTests: XCTestCase {
 
         XCTAssertFalse(model.isTransferring)
         XCTAssertNil(model.activeTransfer)
-        XCTAssertFalse(model.hasError, "cancel must not surface as a backend error")
+        XCTAssertNil(model.listing.problem, "cancel must not surface as a backend error")
         XCTAssertEqual(model.statusMessage, String(localized: "Upload cancelled"))
     }
 
@@ -405,7 +405,7 @@ final class StorageBrowserNavigationTests: XCTestCase {
 
         XCTAssertFalse(model.isTransferring)
         XCTAssertNil(model.activeTransfer)
-        XCTAssertFalse(model.hasError)
+        XCTAssertNil(model.listing.problem)
         XCTAssertEqual(model.statusMessage, String(localized: "Download cancelled"))
     }
 

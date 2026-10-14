@@ -24,7 +24,9 @@ final class StorageBrowserModel {
     var nodes: [VOSpaceNode] = []
     var currentPath = ""
     var selectedNode: VOSpaceNode?
-    var isLoading = false
+    /// The folder's listing: loading, listed (when), or why not (plan 38) —
+    /// and why an operation on it failed; the last listing stays.
+    private(set) var listing: Phase<Date> = .idle
     /// True while a (possibly recursive) delete is in flight.
     var isDeleting = false
     /// In-flight upload or download — drives the shared status-bar progress /
@@ -32,16 +34,18 @@ final class StorageBrowserModel {
     var activeTransfer: StorageTransfer?
     /// In-flight transfer work — cancelled by the status-bar × control.
     @ObservationIgnored private var transferWork: Task<Void, Never>?
-    /// Counts listings asked for, so only the latest one lands.
-    @ObservationIgnored private var loadGeneration = 0
-    var hasError = false
-    var errorMessage = ""
     var statusMessage = ""
 
     /// True while any byte-streaming transfer is running (upload or download).
     var isTransferring: Bool { activeTransfer != nil }
     /// Busy chrome: listing, transfer, or delete.
-    var isBusy: Bool { isLoading || isTransferring || isDeleting }
+    var isBusy: Bool { listing.isWorking || isTransferring || isDeleting }
+
+    /// The person put the problem away.
+    func dismissProblem() {
+        listing.dismiss()
+        statusMessage = Self.itemCount(nodes.count)
+    }
 
     enum SortKey: String, CaseIterable { case name, size, date }
     enum SortOrder { case ascending, descending }
@@ -139,27 +143,20 @@ final class StorageBrowserModel {
     /// only on success so a flaky refresh doesn't blank the list.
     private func loadFolder(at path: String, commitPath: Bool) async {
         // The last listing asked for is the one shown: an earlier one that
-        // answers late must not replace it.
-        loadGeneration += 1
-        let generation = loadGeneration
-        isLoading = true
-        hasError = false
-        errorMessage = ""
-        defer { if generation == loadGeneration { isLoading = false } }
+        // answers late must not replace it (its Attempt is not the newest).
+        let attempt = listing.begin()
         do {
             let listed = try await service.listNodes(username: username, path: path)
-            guard generation == loadGeneration else { return }
+            guard listing.finish(attempt, with: .success(Date())) else { return }
             nodes = listed
             if commitPath { currentPath = path }
             statusMessage = Self.itemCount(listed.count)
         } catch {
-            guard generation == loadGeneration else { return }
-            hasError = true
-            errorMessage = error.localizedDescription
+            guard listing.finish(attempt, with: .failure(error)) else { return }
             // Keep the last successful listing + path; put the failure in
             // the status line so it's always visible (empty-state error
             // pane only covers the first-load / wiped-list case).
-            statusMessage = error.localizedDescription
+            if let problem = listing.problem { statusMessage = problem.message }
         }
     }
 
@@ -201,7 +198,7 @@ final class StorageBrowserModel {
         let recursive = node.isContainer
         let task = tasks.begin(.storage, String(localized: "Delete \(node.name)"))
         isDeleting = true
-        hasError = false
+        listing.dismiss()
         statusMessage = recursive
             ? String(format: String(localized: "Deleting folder %@…"), node.name)
             : String(format: String(localized: "Deleting %@…"), node.name)
@@ -230,8 +227,7 @@ final class StorageBrowserModel {
             statusMessage = doneMessage
             task.succeed(doneMessage)
         } catch is CancellationError {
-            hasError = false
-            errorMessage = ""
+            listing.dismiss()
             task.abandon()
             await loadCurrentFolder()
             statusMessage = String(localized: "Delete cancelled")
@@ -262,8 +258,7 @@ final class StorageBrowserModel {
     /// Surface a failure in both the center error pane (when the list is
     /// empty) and the always-visible status bar.
     private func reportError(_ message: String) {
-        hasError = true
-        errorMessage = message
+        listing.fail(Problem(.other, message))
         statusMessage = message
     }
 
@@ -417,7 +412,7 @@ final class StorageBrowserModel {
     ) async {
         transferWork?.cancel()
 
-        hasError = false
+        listing.dismiss()
         activeTransfer = seed
         statusMessage = seed.bytesTotal > 0
             ? seed.progressiveStatus(bytesTransferred: 0, bytesTotal: seed.bytesTotal)
@@ -455,8 +450,7 @@ final class StorageBrowserModel {
                 await onSuccess(result)
             } catch is CancellationError {
                 self.statusMessage = seed.cancelledStatus
-                self.hasError = false
-                self.errorMessage = ""
+                self.listing.dismiss()
                 task.abandon()
                 onCancelled?()
             } catch {

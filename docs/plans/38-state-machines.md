@@ -216,3 +216,4 @@ lack today.
 | P1d | `fa1d63ef` | Blink: one state, off / running / paused; `state` in `blink_fits_tabs`. |
 | P1e | `e15b71ae` | The cube's slice is a `Phase<CGImage>`; playback and volume path already one value each. |
 | P2a | `b2f16513` | The Portal's cards: `load: Phase<Date>`, Try Again; `InlineErrorLabel` takes Try Again (isLoading 6, errorMessage 7, hasError 5). |
+| P2b | `9a208521` | The launch forms: `options` and `launchPhase` (isLoading 5, errorMessage 5, hasError 3). |

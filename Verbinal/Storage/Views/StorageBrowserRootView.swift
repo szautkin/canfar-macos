@@ -17,8 +17,8 @@ struct StorageBrowserRootView: View {
     /// The `&& nodes.isEmpty` guards mirror the prior branch order so a
     /// refresh over existing content never flashes the spinner/error pane.
     private var browserState: DataState {
-        if model.isLoading && model.nodes.isEmpty { return .loading }
-        if model.hasError && model.nodes.isEmpty { return .error }
+        if model.listing.isWorking && model.nodes.isEmpty { return .loading }
+        if model.listing.problem != nil && model.nodes.isEmpty { return .error }
         if model.nodes.isEmpty { return .empty }
         return .content
     }
@@ -59,12 +59,12 @@ struct StorageBrowserRootView: View {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.title)
                         .foregroundStyle(.orange)
-                    Text(model.errorMessage)
+                    Text(model.listing.problem?.message ?? "")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
-                    Button("Retry") { Task { await model.refresh() } }
+                    Button("Try Again") { Task { await model.refresh() } }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 }
@@ -243,20 +243,21 @@ struct StorageBrowserRootView: View {
         // happened. Errors now tint the status line orange so they're
         // readable over a populated listing too.
         HStack(spacing: 6) {
-            if model.hasError {
+            if let problem = model.listing.problem {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.caption2)
                     .foregroundStyle(.orange)
-                Text(model.errorMessage.isEmpty ? model.statusMessage : model.errorMessage)
+                Text(problem.message)
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .lineLimit(2)
                 Spacer()
-                Button("Dismiss") {
-                    model.hasError = false
-                    model.errorMessage = ""
-                    model.statusMessage = StorageBrowserModel.itemCount(model.nodes.count)
+                if problem.retry {
+                    Button("Try Again") { Task { await model.refresh() } }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
                 }
+                Button("Dismiss") { model.dismissProblem() }
                 .buttonStyle(.borderless)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -298,10 +299,8 @@ struct StorageBrowserRootView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
-        .background(model.hasError ? Color.orange.opacity(0.08) : Color.clear)
-        .accessibilityLabel(model.hasError
-                            ? "Error: \(model.errorMessage)"
-                            : model.statusMessage)
+        .background(model.listing.problem != nil ? Color.orange.opacity(0.08) : Color.clear)
+        .accessibilityLabel(model.listing.problem.map { "Error: \($0.message)" } ?? model.statusMessage)
     }
 
 }

@@ -79,6 +79,6 @@ final class VOSpaceSensitivityTests: XCTestCase {
         let body = try XCTUnwrap(sent.posts.first)
         XCTAssertTrue(body.contains("#ispublic\">false<"), body)
         XCTAssertFalse(body.contains("#groupread"), "groups are left as they are")
-        XCTAssertFalse(model.hasError, model.errorMessage)
+        XCTAssertNil(model.listing.problem, model.listing.problem?.message ?? "")
     }
 }

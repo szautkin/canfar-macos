@@ -137,6 +137,12 @@ enum Phase<Value> {
         self = .failed(problem, last: value)
     }
 
+    /// The person put the problem away: what was shown stays, without it.
+    mutating func dismiss() {
+        guard case .failed(_, let last) = self else { return }
+        self = last.map(Phase.ready) ?? .idle
+    }
+
     /// How a screen shows it: a spinner until there is something, the
     /// content (kept through a refresh or a failure), or the problem.
     func dataState(isEmpty: (Value) -> Bool) -> DataState {

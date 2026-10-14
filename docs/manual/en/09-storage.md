@@ -40,7 +40,7 @@ The **Storage** card in [Portal](06-portal-sessions.md) shows how much of your q
 - **Download** saves the selected file where you choose.
 
 A transfer shows its progress at the bottom of the list, with a button to cancel it. A transfer that
-fails says why, with **Dismiss**.
+fails says why, with **Try Again** and **Dismiss**; the listing you had stays.
 
 ## New folders and deleting
 

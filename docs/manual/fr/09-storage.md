@@ -41,7 +41,7 @@ La carte **Stockage** de [Portail](06-portal-sessions.md) montre la part de votr
 - **Télécharger** enregistre le fichier sélectionné où vous voulez.
 
 Un transfert montre sa progression au bas de la liste, avec un bouton pour l’annuler. Un transfert qui
-échoue dit pourquoi, avec **Ignorer**.
+échoue dit pourquoi, avec **Réessayer** et **Ignorer** ; la liste que vous aviez reste.
 
 ## Nouveaux dossiers et suppression
 
