@@ -236,6 +236,7 @@ final class SessionApprovals {
         let text = instructions.trimmingCharacters(in: .whitespacesAndNewlines)
         let time = now()
         let approval = Approval(request: request, instructions: text, allowedAt: time)
+        guard SessionMachine.next(keptState(of: session), on: .allowed(approval)) != nil else { return }
         let relay = kept[session]?.relay ?? relays.first(where: { $0.value == session })?.key
         relays = relays.filter { $0.value != session }
         kept[session] = Kept(session: session, relay: relay, approval: approval, lastUsed: time)
@@ -264,7 +265,7 @@ final class SessionApprovals {
     /// Ends an allowed session: its next call is refused, saying why, and
     /// `start_session` asks the person again.
     func end(_ session: UUID, _ why: Ending, at time: Date? = nil) {
-        guard kept[session]?.approval != nil else { return }
+        guard SessionMachine.next(keptState(of: session), on: .ended(why)) != nil else { return }
         let at = time ?? now()
         kept[session]?.approval = nil
         kept[session]?.ended = why
@@ -277,6 +278,32 @@ final class SessionApprovals {
     /// Ends every allowed session.
     func endAll(_ why: Ending) {
         for session in allowedSessions { end(session, why) }
+    }
+
+    // MARK: - Its state (plan 38)
+
+    /// A session's state: never asked (or declined), asking the person,
+    /// allowed, or ended — and why. The one reading of `pending` and what
+    /// is kept; `SessionMachine` says which moves it takes.
+    enum SessionState: Equatable, Sendable {
+        case none, asking
+        case active(Approval)
+        case ended(Ending)
+    }
+
+    /// `session`'s state now; one idle past the time ends here.
+    func state(of session: UUID) -> SessionState {
+        _ = approval(for: session)
+        return keptState(of: session)
+    }
+
+    /// The state as kept, without ending an idle one — what `end` and
+    /// `allow` ask, so ending never re-enters itself.
+    private func keptState(of session: UUID) -> SessionState {
+        if let approval = kept[session]?.approval { return .active(approval) }
+        if pending.contains(where: { $0.id == session }) { return .asking }
+        if let ending = kept[session]?.ended { return .ended(ending) }
+        return .none
     }
 
     // MARK: - Keeping
@@ -335,3 +362,28 @@ struct SessionApprovalGate: AgentSessionGate, AgentSessionContinuity {
         await approvals.session(forRelay: fingerprint, fresh: fresh)
     }
 }
+
+/// How an assistant's session moves (plan 38): asked, it waits on the
+/// person — an allowed one is answered at once; allowed, it is active;
+/// declined, it is none; an active one ends, and can be asked for again.
+enum SessionMachine: StateMachine {
+    typealias State = SessionApprovals.SessionState
+    enum Event: Sendable {
+        case asked
+        case allowed(SessionApprovals.Approval)
+        case declined
+        case ended(SessionApprovals.Ending)
+    }
+
+    static func next(_ state: State, on event: Event) -> State? {
+        switch (state, event) {
+        case (.active, .asked): state
+        case (_, .asked): .asking
+        case (.asking, .allowed(let approval)): .active(approval)
+        case (.asking, .declined): SessionApprovals.SessionState.none
+        case (.active, .ended(let why)): .ended(why)
+        default: nil
+        }
+    }
+}
+

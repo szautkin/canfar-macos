@@ -288,4 +288,37 @@ final class SessionApprovalTests: XCTestCase {
         XCTAssertTrue(DescribeAppTool.brief.contains(AgentSession.instructions), "describe_app")
         XCTAssertTrue(AgentsService.serverIdentity.instructions?.hasPrefix(AgentSession.instructions) == true, "the server")
     }
+
+    // MARK: - Its state (plan 38 P4f)
+
+    func testASessionMovesNoneAskingActiveEnded() async {
+        let approvals = SessionApprovals(defaults: defaults)
+        let asked = request()
+        XCTAssertEqual(approvals.state(of: asked.id), .none)
+        answer(approvals) { id in
+            XCTAssertEqual(approvals.state(of: id), .asking, "asking the person")
+            approvals.allow(id, instructions: "Only reduce.")
+        }
+        guard case .allowed(let approval) = await approvals.ask(asked) else { return XCTFail("not allowed") }
+        XCTAssertEqual(approvals.state(of: asked.id), .active(approval))
+        approvals.end(asked.id, .byPerson)
+        XCTAssertEqual(approvals.state(of: asked.id), .ended(.byPerson))
+        approvals.end(asked.id, .agentsTurnedOff)
+        XCTAssertEqual(approvals.state(of: asked.id), .ended(.byPerson), "an ended session does not end again")
+    }
+
+    func testTheSessionMachinesMoves() {
+        typealias M = SessionMachine
+        let approval = SessionApprovals.Approval(request: request(), instructions: "", allowedAt: Date())
+        XCTAssertEqual(M.next(.none, on: .asked), .asking)
+        XCTAssertEqual(M.next(.ended(.idle), on: .asked), .asking, "an ended session can be asked for again")
+        XCTAssertEqual(M.next(.active(approval), on: .asked), .active(approval), "an allowed one is answered at once")
+        XCTAssertEqual(M.next(.asking, on: .allowed(approval)), .active(approval))
+        XCTAssertEqual(M.next(.asking, on: .declined), SessionApprovals.SessionState.none)
+        XCTAssertNil(M.next(.none, on: .allowed(approval)), "nothing to allow")
+        XCTAssertEqual(M.next(.active(approval), on: .ended(.idle)), .ended(.idle))
+        XCTAssertNil(M.next(.ended(.idle), on: .ended(.byPerson)), "ends once")
+        XCTAssertNil(M.next(.asking, on: .ended(.byPerson)), "only an allowed session ends")
+    }
 }
+
