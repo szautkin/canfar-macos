@@ -34,7 +34,13 @@ final class FITSViewerModel: Identifiable {
     var selectedHDUIndex = 0
     var renderParams = FITSRenderParams()
     var viewport = FITSViewport()
-    var renderedImage: CGImage?
+    /// The picture drawn, and whether it is being drawn again (plan 38):
+    /// it stays on screen through a redraw, and only the newest try lands.
+    var render: Phase<CGImage> = .idle
+    var renderedImage: CGImage? {
+        get { render.value }
+        set { render = newValue.map(Phase.ready) ?? .idle }
+    }
     /// Pixel data for the currently selected image HDU.
     ///
     /// Note: this is intentionally *not* a `didSet`-observed property. The
@@ -180,7 +186,7 @@ final class FITSViewerModel: Identifiable {
             apply(image)
             Self.logger.info("Loaded \(image.pixels.count) pixels (drawn at \(image.picture.width)×\(image.picture.height)), HDUs=\(fitsFile.hdus.count), WCS=\(fitsFile.firstImageHDU?.wcs != nil)")
 
-            await renderImageAsync(nextRender())
+            await renderImageAsync(render.begin())
             fitToWindow(canvasSize: lastCanvasSize)
             recentFiles.add(url)
             document.send(.opened)
@@ -293,17 +299,14 @@ final class FITSViewerModel: Identifiable {
     var renderImageOverride: (@MainActor () -> Void)?
 
     func renderImage() {
-        guard selectedHDU != nil, !pixels.isEmpty else { isRendering = false; return }
+        guard selectedHDU != nil, !pixels.isEmpty else {
+            // Nothing to draw: not busy, whatever was asked for before.
+            if render.isWorking { render = render.value.map(Phase.ready) ?? .idle }
+            return
+        }
         renderTask?.cancel()
-        let generation = nextRender()
-        renderTask = Task { await renderImageAsync(generation) }
-    }
-
-    /// A new render's number; the image is busy until the newest is drawn.
-    private func nextRender() -> Int {
-        renderGeneration += 1
-        isRendering = true
-        return renderGeneration
+        let attempt = render.begin()
+        renderTask = Task { await renderImageAsync(attempt) }
     }
 
     /// Debounced render — waits `renderDebounceMs` after the last call before
@@ -319,7 +322,7 @@ final class FITSViewerModel: Identifiable {
     func renderImageDebounced() {
         renderDebounceTask?.cancel()
         // Busy from the moment it is asked for, not only once the wait is over.
-        if selectedHDU != nil, !pixels.isEmpty { isRendering = true }
+        if selectedHDU != nil, !pixels.isEmpty { _ = render.begin() }
         let delayMs = renderDebounceMs
         renderDebounceTask = Task {
             do {
@@ -345,16 +348,13 @@ final class FITSViewerModel: Identifiable {
         await renderDebounceTask?.value
     }
 
-    /// True from when a render is asked for until the newest one is drawn
+    /// From when a render is asked for until the newest one is drawn
     /// (drives the spinners on the image and in the sidebar).
-    var isRendering = false
-    /// The newest render's number: an older one, superseded, finishing
-    /// never says the image is drawn while the newer one is still at it.
-    private var renderGeneration = 0
+    var isRendering: Bool { render.isWorking }
 
-    private func renderImageAsync(_ generation: Int) async {
+    private func renderImageAsync(_ attempt: Attempt) async {
         guard let hdu = selectedHDU, !pixels.isEmpty else {
-            if generation == renderGeneration { isRendering = false }
+            render.finish(attempt, with: .failure(CancellationError()))
             return
         }
         let known = picture
@@ -370,11 +370,11 @@ final class FITSViewerModel: Identifiable {
         }.value
         if picture == nil, version == pixelsVersion { picture = drawn }
         guard !Task.isCancelled, let image else {
-            if generation == renderGeneration { isRendering = false }
+            // Superseded or nothing drawn: what was there stays.
+            render.finish(attempt, with: .failure(CancellationError()))
             return
         }
-        renderedImage = image
-        if generation == renderGeneration { isRendering = false }
+        render.finish(attempt, with: .success(image))
     }
 
     /// Callback for linked crosshair (WCS) — set by tab host.

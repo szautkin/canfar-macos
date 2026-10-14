@@ -210,3 +210,4 @@ lack today.
 | P0 | `a7544e84` | The vocabulary, its tests, the ratchet (47). |
 | P1½ | `60e589e6` | The Canfar Images card: `Phase`, Reload, Try Again (46). |
 | P1a | `e47e477e` | One `CanvasTool` per viewer: pan, select an area, or draw. |
+| P1b | `a5a04180` | `DocumentState` for the FITS and cube tabs; `state` in their view tools (isLoading 10, loadError 1). |
