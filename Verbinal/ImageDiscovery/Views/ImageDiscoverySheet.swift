@@ -142,16 +142,16 @@ struct ImageDiscoverySheet: View {
     @ViewBuilder
     private var footer: some View {
         HStack(spacing: 12) {
-            if let banner = model.bannerMessage {
-                Label(banner, systemImage: "exclamationmark.triangle")
+            if let banner = model.problem?.message ?? model.recoveryNote {
+                Label(banner, systemImage: model.problem == nil ? "info.circle" : "exclamationmark.triangle")
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(model.problem == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
                     .lineLimit(2)
                     .truncationMode(.tail)
                     .textSelection(.enabled)
-                CopyErrorButton(message: banner)
+                if model.problem != nil { CopyErrorButton(message: banner) }
                 Button {
-                    model.bannerMessage = nil
+                    model.dismissBanner()
                 } label: {
                     Image(systemName: "xmark.circle")
                         .font(.caption)

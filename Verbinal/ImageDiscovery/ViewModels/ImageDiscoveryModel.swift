@@ -96,12 +96,12 @@ final class ImageDiscoveryModel {
     /// Image id the user has highlighted in the right pane.
     var selectedImageID: String?
 
-    /// True while a `discoverAll` stream is in flight.
-    private(set) var isDiscoveryRunning: Bool = false
-
-    /// Most recent error to surface in a banner; cleared on
-    /// retry / close.
-    var bannerMessage: String?
+    /// The catalogue, a discovery run, and the person's other actions, each
+    /// a Phase; and what a recovery found (plan 38; ImageDiscoveryModel+State).
+    var catalogue: Phase<Date> = .idle
+    var discovery: Phase<Date> = .idle
+    var actions: Phase<Date> = .idle
+    var recoveryNote: String?
 
     /// When non-nil, the discovery sheet presents the probe-logs
     /// sheet for this Skaha session id. Setter triggered by the
@@ -200,8 +200,9 @@ final class ImageDiscoveryModel {
     /// Skaha resources without explicit consent, and (b) failures
     /// across the catalogue cluster up faster than the user can
     /// triage.
-    func onAppear(catalogue: [ParsedImage]) async {
-        allKnownImages = catalogue
+    func onAppear(catalogue images: [ParsedImage]) async {
+        let attempt = catalogue.begin()
+        allKnownImages = images
         await refreshFromCache()
         // Cache-fallback: when the live Skaha image catalogue load
         // failed (timeout, auth blip, network), `catalogue` arrives
@@ -213,7 +214,9 @@ final class ImageDiscoveryModel {
         // without the live catalogue, but ID + label are enough for
         // browsing and re-discovery.
         if allKnownImages.isEmpty {
-            await hydrateFromCacheOnly()
+            await hydrateFromCacheOnly(attempt)
+        } else {
+            catalogue.finish(attempt, with: .success(Date()))
         }
         // 2026-05-21: re-check VOSpace for any image still
         // showing a `jobTimedOut` failure from a prior attempt
@@ -246,7 +249,7 @@ final class ImageDiscoveryModel {
         }
         if !recovered.isEmpty {
             let n = recovered.count
-            bannerMessage = "Recovered \(n) manifest\(n == 1 ? "" : "s") that completed in the background after the prior attempt's polling deadline."
+            recoveryNote = "Recovered \(n) manifest\(n == 1 ? "" : "s") that completed in the background after the prior attempt's polling deadline."
         }
     }
 
@@ -254,14 +257,17 @@ final class ImageDiscoveryModel {
     /// the live catalogue isn't available. Everything else (row
     /// states, allPackages) gets refreshed against the now-populated
     /// id list so the right pane mirrors what the cache knows.
-    private func hydrateFromCacheOnly() async {
+    private func hydrateFromCacheOnly(_ attempt: Attempt) async {
         let cachedIDs = await coordinator.knownImages()
-        guard !cachedIDs.isEmpty else { return }
+        guard !cachedIDs.isEmpty else {
+            catalogue.finish(attempt, with: .failure(Problem(.offline, "The live image catalogue is unavailable.")))
+            return
+        }
         allKnownImages = cachedIDs.map {
             ImageParser.parse(RawImage(id: $0, types: []))
         }
         await refreshFromCache()
-        bannerMessage = "Live image catalogue unavailable — showing \(cachedIDs.count) image\(cachedIDs.count == 1 ? "" : "s") from local cache."
+        catalogue.finish(attempt, with: .failure(Problem(.offline, "Live image catalogue unavailable — showing \(cachedIDs.count) image\(cachedIDs.count == 1 ? "" : "s") from local cache.", retry: false)))
     }
 
     /// Sheet about to dismiss. The coordinator's polling continues
@@ -297,9 +303,9 @@ final class ImageDiscoveryModel {
     /// Cache hits don't generate work; misses go through bounded-
     /// concurrency probes via the coordinator.
     func runDiscovery() async {
-        guard !isDiscoveryRunning else { return }
-        isDiscoveryRunning = true
-        defer { isDiscoveryRunning = false }
+        guard !discovery.isWorking else { return }
+        let attempt = discovery.begin()
+        defer { discovery.finish(attempt, with: .success(Date())) }
 
         let ids = allKnownImages.map(\.id)
         for await event in coordinator.discoverAll(ids) {
@@ -391,7 +397,7 @@ final class ImageDiscoveryModel {
             mergeIntoAllPackages(manifest)
         } catch let err as ImageDiscoveryError {
             await refreshFailureRow(imageID: imageID, message: err.displayMessage)
-            bannerMessage = "Rediscover \(imageID): \(err.displayMessage)"
+            actions.fail(Problem(.other, "Rediscover \(imageID): \(err.displayMessage)"))
         } catch {
             await refreshFailureRow(imageID: imageID, message: error.localizedDescription)
         }
@@ -412,15 +418,6 @@ final class ImageDiscoveryModel {
 
     // MARK: - Clearing failures
 
-    /// Number of rows currently in the failed state. Drives the
-    /// "Clear all errors (N)" button visibility / label in the
-    /// sheet header.
-    var failedCount: Int {
-        rowStates.values.reduce(into: 0) { acc, state in
-            if case .failed = state { acc += 1 }
-        }
-    }
-
     /// Drop the cached failure for `imageID` and reset the row to
     /// never-discovered. Doesn't re-probe — the user explicitly
     /// chose to dismiss without retrying.
@@ -430,7 +427,7 @@ final class ImageDiscoveryModel {
             rowStates[imageID] = .neverDiscovered
             failureCategories.removeValue(forKey: imageID)
         } catch {
-            bannerMessage = "Couldn't clear \(imageID): \(error.localizedDescription)"
+            actions.fail(Problem(.other, "Couldn't clear \(imageID): \(error.localizedDescription)"))
         }
     }
 
@@ -448,7 +445,7 @@ final class ImageDiscoveryModel {
                 }
             }
         } catch {
-            bannerMessage = "Couldn't clear failures: \(error.localizedDescription)"
+            actions.fail(Problem(.other, "Couldn't clear failures: \(error.localizedDescription)"))
         }
     }
 
