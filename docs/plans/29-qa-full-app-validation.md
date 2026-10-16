@@ -1,6 +1,7 @@
 # QA handout — the whole app: every feature, every tool
 
-**Date:** 2026-10-01
+**Date:** 2026-10-01 · **Updated:** 2026-10-15 ([plan 39](./39-qa-report-2026-10-15.md)): what waits follows
+the kinds the person allows; 6.12, 13.1, 14.3, 14.4 and 15.3.
 **Build:** `release/1.4.0` at `bdf4a56` or later. `describe_app` must say `serverVersion: "1.4.0"`; record
 its `buildCommit` (a `+` means uncommitted changes).
 **Audience:** an assistant new to Verbinal, connected to it over MCP, with the person watching the screen.
@@ -77,9 +78,11 @@ These hold for the whole pass. A case never overrides them.
    - Delete only what you made.
    - Never delete, clear or overwrite anything else.
 7. **Every write carries a `why`.** The person reads it in Pending.
-8. **Destructive changes always wait for the person.** That means deletes, clears, stopping a session,
-   and removing a file. Propose one only where a case says so, then ask the person whether to apply it
-   or not. Never treat the proposal as done.
+8. **What waits is the person's choice, kind by kind** (`get_current_view.permissions`). Destructive
+   changes — deletes, clears, stopping a session, removing a file — wait for them unless they allow that
+   kind. Removing what an assistant made is a kind of its own, allowed by default; a folder counts only
+   if everything in it is an assistant's. Propose a destructive change only where a case says so, then
+   ask the person whether to apply it or not. Never treat a proposal that waits as done.
 9. **Say what you are about to do** before anything that changes what the person sees: `navigate_to`,
    `select_ui`, `open_ui`, opening a sheet.
 10. **Keep the screen unlocked.** While it is locked, nothing can be read and every tool says so
@@ -93,8 +96,9 @@ These hold for the whole pass. A case never overrides them.
 ## Before you start
 
 1. The person runs Verbinal from `release/1.4.0` and signs in to CADC.
-2. Settings ▸ AI Agent: **Allow external AI agents** on; **Auto-apply** on (it applies reversible changes
-   at once; destructive ones wait regardless).
+2. Settings ▸ AI Agent: **Allow external AI agents** on. Record which kinds of change the person
+   allows and which they are asked to approve (`get_current_view.permissions`): the cases that remove
+   something expect what those settings say (rule 8).
 3. Connect as [AGENTS.md](../../AGENTS.md) says (server `verbinal-canfar`, the app's own executable with
    `mcp`). `describe_app` answers.
 4. `start_session`; the person clicks Allow.
@@ -165,7 +169,7 @@ Handout 28 covers this in depth; this is the short form.
 | 4.8 | `vizier_cone_search` around M101. | VizieR rows. |
 | 4.9 | `list_recent_searches`; `load_saved_search` one; `rename_recent_search` it to `qa-full-recent`. | The list; it loads; it is renamed (with a `why`). |
 | 4.10 | `save_query` `qa-full-query`; `list_saved_queries`; `get_saved_query`; `update_saved_query`; `run_saved_query`. | Saved, listed, read, changed, run. |
-| 4.11 | `delete_saved_query` `qa-full-query`; `remove_recent_search` `qa-full-recent`. | Both wait in Pending (destructive). The person applies them. |
+| 4.11 | `delete_saved_query` `qa-full-query`; `remove_recent_search` `qa-full-recent`. | Each as the person's kinds say (rule 8): the query, which you saved, applies at once while "Remove what an assistant made" is allowed; the recent search, never an assistant's, waits in Pending unless "Remove notes and saved things on this Mac" is allowed. |
 | 4.12 | `export_search_results` as CSV, with the person's agreement. | A proposal with a `why`; the file where the person chose. |
 
 ## 5. Research and downloads
@@ -179,7 +183,7 @@ Handout 28 covers this in depth; this is the short form.
 | 5.5 | `get_cutout_options` an image observation; `show_cutout_editor`; `download_cutout` a small region (ask). | The editor opens on the file and region; the cutout is a new record that names its original. |
 | 5.6 | `download_observations_bulk` two small ones (ask). | Both, with progress in the activity bar. |
 | 5.7 | `export_research_bundle` (ask where). | A bundle with records, notes and files. |
-| 5.8 | `remove_downloaded_file` one of yours; `delete_downloaded_observation` another of yours. | Both wait in Pending; the first keeps the record without its file. Never `clear_research_archive`. |
+| 5.8 | `remove_downloaded_file` one of yours; `delete_downloaded_observation` another of yours. | Each applies at once while "Remove what an assistant made" is allowed, and waits in Pending otherwise (rule 8); the first keeps the record without its file. Never `clear_research_archive`. |
 
 ## 6. FITS Viewer
 
@@ -198,7 +202,7 @@ Use a FITS image the person has (Research, VOSpace or this Mac). §7 uses a 3D f
 | 6.9 | Marks: `annotate_fits` a circle with a label; `update_annotation` (move, rename, colour); `select_annotation`; `list_fits_annotations`; `export_annotations` DS9; `remove_annotation`; `clear_annotations`. | Each shows on the image; the list agrees; DS9 text comes back; removed, then cleared. Hints are not involved. |
 | 6.10 | `export_fits_figure` the whole image, then around a mark, PNG and PDF (ask where). | Figures with marks and the chosen style. |
 | 6.11 | A spectrum (an HST `_x1d`, e.g. SN 2023ixf): `get_fits_spectrum`. | The plot shows; the title is the target; the columns and error band. |
-| 6.12 | A file with three or more axes: `open_fits_file`; `get_current_view` `pendingViewerChoice`; `choose_viewer` 2D. | The "Open as…" choice; it opens in the FITS Viewer. |
+| 6.12 | A file with three or more axes: `open_local_file` without `viewer` (or `open_vospace_file`); `get_current_view` `pendingViewerChoice`; `choose_viewer` 2D. | The "Open as…" choice; it opens in the FITS Viewer. (`open_fits_file` names its viewer, so it shows no choice.) |
 | 6.13 | `close_tab` by index. | That tab closes. |
 
 ## 7. Cube Viewer
@@ -224,7 +228,7 @@ Use a FITS image the person has (Research, VOSpace or this Mac). §7 uses a 3D f
 | 8.5 | In the launch form, a list with more than 12 choices (Container Image, Project): `open_ui` it; `list_ui_targets`; `select_ui` a row; and, with the person, typing in its search field. | A panel: a search field, "N of M", at most 12 rows, the choice ticked. `select_ui` chooses one and the panel closes. Typing narrows the list; ↑ ↓ and Return choose; Esc closes. Lists of 12 or fewer stay a menu. |
 | 8.6 | `get_session_events`, `get_session_logs` of a running session. | Its events; its log. |
 | 8.7 | `open_session` a running one (ask). | It opens in the browser. |
-| 8.8 | With the person's agreement only: `launch_session` a small notebook `qa-full-nb`; then `renew_session` it; then `delete_session` it. | It launches; it renews; the delete waits in Pending until the person applies it. Otherwise SKIPPED. |
+| 8.8 | With the person's agreement only: `launch_session` a small notebook `qa-full-nb`; then `renew_session` it; then `delete_session` it. | It launches; it renews; the delete — of a session you launched — applies at once while "Remove what an assistant made" is allowed, and waits in Pending otherwise (rule 8). Otherwise SKIPPED. |
 
 ## 9. Portal: batch jobs
 
@@ -249,7 +253,7 @@ Use a FITS image the person has (Research, VOSpace or this Mac). §7 uses a 3D f
 | 10.5 | `list_probe_failures`; `get_probe_logs` one. | Failures with their reasons; the probe's logs and events. |
 | 10.6 | Only if the person directs it: `discover_image_packages` one image (it starts a probe job). | The probe runs and its manifest lands. Otherwise SKIPPED. |
 | 10.7 | `search_image_registry` "astro"; `list_my_images`. | Registry images; the person's added images. |
-| 10.8 | With the person's agreement: `add_registry_image` one; then `remove_registry_image` it. | Added (it shows in the images card's Added tab); the removal waits in Pending. |
+| 10.8 | With the person's agreement: `add_registry_image` one; then `remove_registry_image` it. | Added (it shows in the images card's Added tab); the removal applies at once while "Remove what an assistant made" is allowed, and waits in Pending otherwise (rule 8). |
 | 10.9 | `clear_probe_failures` — only on the person's word. | Waits in Pending. |
 
 ## 11. Storage (VOSpace)
@@ -262,7 +266,7 @@ Use a FITS image the person has (Research, VOSpace or this Mac). §7 uses a 3D f
 | 11.4 | `upload_file_to_vospace` a small file from this Mac (the person chooses); `download_vospace_file` it back (ask where). | Up and down, the same bytes. |
 | 11.5 | `set_vospace_acl` on `verbinal-qa-full` — read only, then back. | The sharing changes and returns. |
 | 11.6 | `open_vospace_file` a FITS file. | It opens in the FITS Viewer. |
-| 11.7 | `delete_vospace_node` `verbinal-qa-full`. | Waits in Pending; the person applies it. Never `clear_user_site`. |
+| 11.7 | `delete_vospace_node` `verbinal-qa-full`. | Everything in it is yours: it applies at once while "Remove what an assistant made" is allowed, and waits in Pending otherwise (rule 8). Never `clear_user_site`. |
 
 ## 12. Remote Compute
 
@@ -278,9 +282,9 @@ Use a FITS image the person has (Research, VOSpace or this Mac). §7 uses a 3D f
 
 | # | Steps | PASS if |
 |---|---|---|
-| 13.1 | `list_workflows`; `get_workflow` a template (e.g. `variable-star-photometry`). | The seven templates and any local copies; the protocol. |
+| 13.1 | `list_workflows`; `get_workflow` a template (e.g. `variable-star-photometry`). | The nine templates and any local copies; the protocol. |
 | 13.2 | `use_workflow` it as `qa-full-workflow`; `set_workflow_step` the first step done; `update_workflow` a line; `save_workflow` a short new one `qa-full-mine`. | A local copy; the step checked; the change; the new one. |
-| 13.3 | `delete_workflow` both `qa-full-` ones. | Each waits in Pending. |
+| 13.3 | `delete_workflow` both `qa-full-` ones. | Each applies at once while "Remove what an assistant made" is allowed, and waits in Pending otherwise (rule 8). |
 
 ## 14. AI Guide, proposals and the log
 
@@ -288,8 +292,8 @@ Use a FITS image the person has (Research, VOSpace or this Mac). §7 uses a 3D f
 |---|---|---|
 | 14.1 | `navigate_to` `aiGuide`; `list_guide_tools`. | The person's guide tools, the standing rules among them. |
 | 14.2 | Do not change the guide. `set_tool_description`, `add_guide_tool` and the rest are **standing**: they change what every later assistant is told, and never auto-apply. Only on the person's word: `add_guide_tool` `qa-full-note`, then `delete_guide_tool` it. | Both wait in Pending. Otherwise SKIPPED. |
-| 14.3 | `list_pending_proposals`; `get_proposal_state` one; `withdraw_proposal` one of yours. | What waits, with each `why`; its state; withdrawn. |
-| 14.4 | `start_background_apply` a reversible proposal; `get_job_status`. | Applied in the background; the job's state. |
+| 14.3 | `list_pending_proposals`; `get_proposal_state` one; `withdraw_proposal` one of yours. | What waits, with each `why`; its state; withdrawn. An outcome is kept about five minutes: read later, it is `unknown`. |
+| 14.4 | First the person sets one reversible kind (such as notes and saved things on this Mac) to **Ask me**, so a proposal of it waits. Then `start_background_apply` it; `get_job_status`. The person sets the kind back. | Applied in the background; the job's state. |
 | 14.5 | `list_events`. | What happened: changes, who made them, hints dismissed. |
 | 14.6 | `get_session_log`; again with `only: failures`; `explain_log_entry` a `logToken`. | Your session's calls, the CADC/CANFAR requests each made, changes with who and why; the failures; one entry's causes and effects. |
 | 14.7 | `list_session_logs`; `export_session_log` yours (ask where). | The sessions kept; the file. `delete_session_logs` is the person's housekeeping: SKIPPED. |
@@ -300,7 +304,7 @@ Use a FITS image the person has (Research, VOSpace or this Mac). §7 uses a 3D f
 |---|---|---|
 | 15.1 | Open Settings; the person closes the main window (with no sheet on it — macOS does not close a window with a sheet). | Settings closes too; hints go; `list_ui_targets` says no window is showing. |
 | 15.2 | The person opens a window again (Dock icon). | Tools read it again. |
-| 15.3 | The person quits Verbinal; call `get_current_view`; the person opens it again. | "Verbinal is not running"; then the tools come back by themselves (a new `start_session` may be needed). |
+| 15.3 | The person quits Verbinal; call `get_current_view`; the person opens it again. | "Verbinal is not running"; then the tools come back by themselves, and the session continues. A client that restarts its `Verbinal mcp` process starts a new session, which the person allows again: record which happened. |
 
 ## 16. What is not an assistant's, on purpose
 
