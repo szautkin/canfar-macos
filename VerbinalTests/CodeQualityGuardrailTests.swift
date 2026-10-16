@@ -87,7 +87,6 @@ final class CodeQualityGuardrailTests: XCTestCase {
         "Verbinal/Storage/MCP/VOSpaceWriteTools.swift": 639,
         "Verbinal/FITSViewer/MCP/AppState+FITSTools.swift": 622,
         "Verbinal/CubeViewer/ViewModels/CubeViewerModel.swift": 621,
-        "Verbinal/CubeViewer/Views/CubeRenderControlsView.swift": 612,
     ]
 
     func testFilesKeepToTheirBudget() {

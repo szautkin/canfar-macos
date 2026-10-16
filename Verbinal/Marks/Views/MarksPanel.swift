@@ -114,32 +114,50 @@ struct MarksPanel: View {
 
     // MARK: - Pieces
 
+    /// One row where it fits, two where it does not: the colour, bold and
+    /// two steppers need about 240 points, and a viewer's panel can give its
+    /// content less — wider than the panel, the row pushed all of it off both
+    /// edges (2026-10-15).
     private var styleRow: some View {
-        let style = editor.style(on: target)
-        return HStack(spacing: 8) {
-            ColorPicker("Colour", selection: Binding(
-                get: { pendingColour ?? Color(hex: style.colour) },
-                set: { pendingColour = $0 }), supportsOpacity: false)
-                .labelsHidden()
-                .help("Mark colour")
-            Toggle(isOn: Binding(get: { style.bold }, set: { v in restyle { $0.bold = v } })) {
-                Text("B").bold()
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { colourAndBold; sizes }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) { colourAndBold }
+                HStack(spacing: 8) { sizes }
             }
-            .toggleStyle(.button)
-            .help("Bold label")
-            .accessibilityLabel(Text("Bold label"))
-            Stepper(value: Binding(get: { style.fontSize }, set: { v in restyle { $0.fontSize = v } }),
-                    in: 6...72, step: 1) {
-                Text("\(Int(style.fontSize)) pt").font(.caption2.monospacedDigit())
-            }
-            .help("Label size")
-            Stepper(value: Binding(get: { style.stroke }, set: { v in restyle { $0.stroke = v } }),
-                    in: 0.5...20, step: 0.5) {
-                Text("\(style.stroke, specifier: "%g") px").font(.caption2.monospacedDigit())
-            }
-            .help("Outline thickness")
         }
         .controlSize(.small)
+    }
+
+    @ViewBuilder
+    private var colourAndBold: some View {
+        let style = editor.style(on: target)
+        ColorPicker("Colour", selection: Binding(
+            get: { pendingColour ?? Color(hex: style.colour) },
+            set: { pendingColour = $0 }), supportsOpacity: false)
+            .labelsHidden()
+            .help("Mark colour")
+        Toggle(isOn: Binding(get: { style.bold }, set: { v in restyle { $0.bold = v } })) {
+            Text("B").bold()
+        }
+        .toggleStyle(.button)
+        .help("Bold label")
+        .accessibilityLabel(Text("Bold label"))
+    }
+
+    @ViewBuilder
+    private var sizes: some View {
+        let style = editor.style(on: target)
+        Stepper(value: Binding(get: { style.fontSize }, set: { v in restyle { $0.fontSize = v } }),
+                in: 6...72, step: 1) {
+            Text("\(Int(style.fontSize)) pt").font(.caption2.monospacedDigit())
+        }
+        .help("Label size")
+        Stepper(value: Binding(get: { style.stroke }, set: { v in restyle { $0.stroke = v } }),
+                in: 0.5...20, step: 0.5) {
+            Text("\(style.stroke, specifier: "%g") px").font(.caption2.monospacedDigit())
+        }
+        .help("Outline thickness")
     }
 
     /// Changes one field of the current style and applies it.

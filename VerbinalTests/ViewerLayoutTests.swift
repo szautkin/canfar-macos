@@ -74,6 +74,142 @@ final class ViewerLayoutTests: XCTestCase {
         }
     }
 
+    // MARK: - Side panels keep to their width (2026-10-15)
+
+    /// The controls that reach past `host`'s edges — the segmented pickers,
+    /// sliders, steppers and buttons AppKit draws: content that will not shrink
+    /// to its pane is centred and cut at both edges.
+    private func controlsOutside(_ host: NSView) -> [String] {
+        var found: [String] = []
+        func walk(_ view: NSView) {
+            if view is NSControl, !view.isHiddenOrHasHiddenAncestor {
+                let frame = view.convert(view.bounds, to: host)
+                // A point and a half for a control that fills its pane exactly,
+                // settling after a screen's transition; a spill is tens.
+                if frame.minX < -1.5 || frame.maxX > host.bounds.width + 1.5 {
+                    found.append("\(type(of: view)) from \(frame.minX) to \(frame.maxX) of \(host.bounds.width)")
+                }
+            }
+            view.subviews.forEach(walk)
+        }
+        walk(host)
+        return found
+    }
+
+    /// The controls in each split view's panes that reach past their pane.
+    private func controlsOutsideTheirPanes(_ host: NSView) -> [String] {
+        var found: [String] = []
+        for split in splitViews(in: host) {
+            for (index, pane) in split.arrangedSubviews.enumerated() {
+                found += controlsOutside(pane).map { "pane \(index): \($0)" }
+            }
+        }
+        return found
+    }
+
+    private func spin(_ seconds: TimeInterval) {
+        let until = Date().addingTimeInterval(seconds)
+        while Date() < until { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+    }
+
+    /// A real cube on its tab, with a mark on it, as a person has one.
+    private func cubeWithAMark(in state: AppState) async throws {
+        await state.cubeViewer.open(url: try FITSTestFixtures.writeCube())
+        let target = try XCTUnwrap(state.cubeViewer.markTarget)
+        try state.marks.add(Mark(id: "m1", kind: .circle, anchor: .init(space: .data, x: 1, y: 0.5, z: 2),
+                                 extent: .square(1), author: .user, createdAt: Date()), to: target)
+    }
+
+    /// The Cube Viewer's panel, at the narrowest, ideal and widest its split
+    /// allows, with a cube and a mark, in both modes, keeps to its width. The
+    /// person's screenshot (2026-10-15): "nsions", "inear", "kground" — cut at
+    /// both edges by a five-segment Stretch picker and a Marks row wider than
+    /// it. The layout tests asked heights, never widths.
+    func testTheCubePanelKeepsToItsWidth() async throws {
+        let state = AppState()
+        try await cubeWithAMark(in: state)
+        for mode in [CubeViewMode.slice, .volume] {
+            state.cubeViewer.viewMode = mode
+            for width in [240.0, 270.0, 340.0] {
+                let panel = CubeRenderControlsView(model: state.cubeViewer, marks: state.cubeMarkEditor, markCommands: nil)
+                laidOut(panel.frame(width: width), in: CGSize(width: width, height: 1200)) { host in
+                    XCTAssertEqual(controlsOutside(host), [], "\(mode) at \(Int(width)) points: wider than the panel")
+                }
+            }
+        }
+    }
+
+    /// The FITS Viewer's panel, from its narrowest to its widest, keeps to its width.
+    func testTheFITSPanelKeepsToItsWidth() {
+        let state = AppState()
+        let tab = state.fitsTabHost.addTab()
+        FITSTestFixtures.loadRamp(into: tab, path: "/tmp/panel.fits")
+        for width in [220.0, 270.0, 320.0] {
+            let panel = FITSRenderControlsView(model: tab, marks: state.marks, canvas: state.fitsMarkEditor)
+            laidOut(panel.frame(width: width), in: CGSize(width: width, height: 1400)) { host in
+                XCTAssertEqual(controlsOutside(host), [], "at \(Int(width)) points: wider than the panel")
+            }
+        }
+    }
+
+    /// Both viewers, in a window of the person's size and a smaller one: the
+    /// side panel keeps every control inside its pane, on first showing and
+    /// after a trip to another screen and back — the person's steps
+    /// (2026-10-16): to Storage and back, and the Cube Viewer's panel spilled.
+    func testTheViewersPanelsStayInTheirPanesAfterAScreenAndBack() async throws {
+        let state = AppState()
+        state.auth.apply(username: "qa-person", userInfo: nil)
+        state.storageSync.signedOut()
+        try await cubeWithAMark(in: state)
+        let tab = state.fitsTabHost.addTab()
+        FITSTestFixtures.loadRamp(into: tab, path: "/tmp/round-trip.fits")
+        tab.renderedImage = CGContext(data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: 0)?.makeImage()
+        for viewer in [AppMode.cubeViewer, .fitsViewer] {
+            for size in [CGSize(width: 1178, height: 685), CGSize(width: 900, height: 600)] {
+                state.currentMode = viewer
+                laidOut(ContentView().environment(state), in: size) { host in
+                    XCTAssertFalse(splitViews(in: host).isEmpty, "\(viewer): its panel is there")
+                    XCTAssertEqual(controlsOutsideTheirPanes(host), [], "\(viewer) at \(Int(size.width)): on first showing")
+                    state.navigateTo(.storage)
+                    spin(0.8)
+                    state.navigateTo(viewer)
+                    spin(1.2)
+                    host.layoutSubtreeIfNeeded()
+                    XCTAssertEqual(controlsOutsideTheirPanes(host), [], "\(viewer) at \(Int(size.width)): after Storage and back")
+                }
+            }
+        }
+    }
+
+    /// Every screen, with a cube and a FITS file open and signed in: what its
+    /// panes hold stays inside them, on first showing and after another
+    /// screen and back — the trip that spilled the Cube Viewer's panel
+    /// (2026-10-16) while its first showing fitted.
+    func testEveryScreensPanesHoldTheirControlsAfterAnotherScreenAndBack() async throws {
+        let state = AppState()
+        state.auth.apply(username: "qa-person", userInfo: nil)
+        state.storageSync.signedOut()
+        try await cubeWithAMark(in: state)
+        let tab = state.fitsTabHost.addTab()
+        FITSTestFixtures.loadRamp(into: tab, path: "/tmp/every-screen.fits")
+        tab.renderedImage = CGContext(data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: 0)?.makeImage()
+        for mode in AppMode.allCases {
+            state.currentMode = mode
+            let elsewhere: AppMode = mode == .landing ? .storage : .landing
+            laidOut(ContentView().environment(state), in: CGSize(width: 1178, height: 685)) { host in
+                XCTAssertEqual(controlsOutsideTheirPanes(host), [], "\(mode): on first showing")
+                state.navigateTo(elsewhere)
+                spin(0.8)
+                state.navigateTo(mode)
+                spin(1.2)
+                host.layoutSubtreeIfNeeded()
+                XCTAssertEqual(controlsOutsideTheirPanes(host), [], "\(mode): after \(elsewhere) and back")
+            }
+        }
+    }
+
     func testWithNoCubeOpenTheCubeViewerFits() {
         let state = AppState()
         for size in windows {
