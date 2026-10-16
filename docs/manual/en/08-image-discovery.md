@@ -34,6 +34,12 @@ An image not yet looked into says **Not yet discovered**. Its buttons:
   package with its version. **Copy as JSON** copies it; **Reveal in Finder** shows the file kept on your
   Mac.
 
+On a new Mac, the lists your probes made elsewhere come from your storage once you sign in: while they
+arrive, the window says **Bringing package lists from your storage — 120 of 288**, and rows turn to
+discovered as they come. **Discover packages** on an image probed elsewhere reads its list from your
+storage, with no job. A row with an orange arrow has a list from an older probe, which misses packages
+it did not look for: **Re-run discovery** for the full list.
+
 A probe that failed says why. **Show failure details** shows the whole message (**Copy**, ⇧⌘C);
 **View probe logs** shows the probe job's **Logs** and **Events** (**Refresh**, ⌘R); **Dismiss error**
 hides it without probing again, and **Clear** … **Error** at the top hides them all. A probe that is

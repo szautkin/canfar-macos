@@ -39,6 +39,13 @@ Une image pas encore examinée indique **Pas encore découvert**. Ses boutons :
   l’image, son SE, et chaque paquet avec sa version. **Copier en JSON** le copie ; **Afficher dans le
   Finder** montre le fichier gardé sur votre Mac.
 
+Sur un nouveau Mac, les listes que vos sondes ont faites ailleurs viennent de votre stockage une fois
+que vous êtes connecté : pendant qu’elles arrivent, la fenêtre dit **Listes de paquets en provenance de
+votre stockage — 120 sur 288**, et les lignes passent à découvert au fur et à mesure. **Découvrir les
+paquets** sur une image sondée ailleurs lit sa liste dans votre stockage, sans tâche. Une ligne avec une
+flèche orange a la liste d’une sonde plus ancienne, à laquelle manquent les paquets qu’elle ne cherchait
+pas : **Relancer la découverte** pour la liste complète.
+
 Une sonde qui a échoué dit pourquoi. **Afficher les détails de l'échec** montre le message entier
 (**Copier**, ⇧⌘C) ; **Voir les journaux de la sonde** montre les **Journaux** et les **Événements** de la
 tâche de sonde (**Actualiser**, ⌘R) ; **Masquer l'erreur** la cache sans relancer la sonde, et

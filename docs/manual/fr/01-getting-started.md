@@ -92,11 +92,16 @@ commence par une flèche de retour (**Retour**) et le nom de l’écran.
 
 ### La barre d’activité
 
-La ligne au bas de la fenêtre dit ce que fait Verbinal : **Au repos**, la tâche en cours, ou combien
-il y en a. Une tâche qui a échoué s’affiche en rouge. Cliquez sur la ligne pour voir la liste
-**Activité** : chaque tâche, qui l’a lancée (**Vous**, **Votre assistant** ou **Verbinal**), et ce
-qu’elle fait ou pourquoi elle a échoué. **Effacer les terminées** retire de la liste celles qui sont
-finies.
+La ligne au bas de la fenêtre dit ce que fait Verbinal : **Au repos**, la tâche en cours — avec où
+elle en est, comme **120 sur 288**, quand elle compte — ou combien il y en a. Une tâche qui a échoué
+s’affiche en rouge. Cliquez sur la ligne pour voir la liste **Activité** : chaque tâche, qui l’a lancée
+(**Vous**, **Votre assistant** ou **Verbinal**), et ce qu’elle fait ou pourquoi elle a échoué.
+
+Un travail qui peut attendre, comme la synchronisation de Verbinal avec votre stockage, a **Pause** : il
+s’arrête là où il en est et dit qui l’a mis en pause (**Mis en pause par vous**, **Mis en pause par
+votre assistant**). Il reste en pause, même après que Verbinal a quitté, jusqu’à ce que vous cliquiez
+sur **Reprendre**, puis continue là où il s’était arrêté. Tant que quelque chose est en pause, la ligne
+le dit. **Effacer les terminées** retire de la liste celles qui sont finies ; ce qui est en pause reste.
 
 ### Le navigateur de fichiers
 

@@ -156,7 +156,10 @@ In **Settings ▸ AI Agent ▸ Autonomy**:
 - **Play a sound when an agent starts and stops** (off): for when you are looking elsewhere.
 
 An assistant gets an answer within 45 seconds. Longer work, such as a big download or a job, carries
-on in the activity bar at the bottom of the window, started by **Your assistant**.
+on in the activity bar at the bottom of the window, started by **Your assistant**. An assistant reads
+the bar too, with how far each task has got, and can pause work that can wait, such as the storage
+sync, and resume it: the bar then says **Paused by your assistant**. What you paused stays paused until
+you resume it, or ask your assistant to.
 
 What an assistant made carries a small badge, **Created by AI agent**, with the client's name: in
 Research, Workflows, saved queries, recent searches, FITS bookmarks and recent launches.

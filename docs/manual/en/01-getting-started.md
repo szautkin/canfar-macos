@@ -87,10 +87,16 @@ arrow (**Go back**) and the screen's name.
 
 ### The activity bar
 
-The line at the bottom of the window says what Verbinal is doing: **Idle**, the task that is running,
-or how many are. A task that failed shows in red. Click the line to see the **Activity** list: each
-task, who started it (**You**, **Your assistant** or **Verbinal**), and what it is doing now or why it
-failed. **Clear Finished** empties the finished ones from the list.
+The line at the bottom of the window says what Verbinal is doing: **Idle**, the task that is running —
+with how far it has got, such as **120 of 288**, when it counts — or how many are. A task that failed
+shows in red. Click the line to see the **Activity** list: each task, who started it (**You**, **Your
+assistant** or **Verbinal**), and what it is doing now or why it failed.
+
+Work that can wait, such as Verbinal syncing with your storage, has **Pause**: it stops where it is and
+says who paused it (**Paused by you**, **Paused by your assistant**). It stays paused, even after
+Verbinal quits, until you click **Resume**, and then goes on from where it stopped. While something is
+paused, the line says so. **Clear Finished** empties the finished ones from the list; what is paused
+stays.
 
 ### The file browser
 

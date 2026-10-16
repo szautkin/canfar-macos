@@ -265,3 +265,28 @@ an import would repeat the Batch Jobs freeze, where a `List` of 10,000 rows took
   for it, but it is not in this plan.
 - **Parallel downloads for the first import.** It runs once per device, unseen, and one at a time keeps
   it light on the network and on CANFAR's storage service.
+
+## Where it ended (2026-10-15)
+
+| Step | Commit | What |
+|---|---|---|
+| Plan | `2e4f2555` | This plan. |
+| 1 | `1e81202c` | The sync declares the kinds of Verbinal's data it finds, in one write. Folders in `.verbinal` are seen in its listing; one elsewhere is looked for once a sign-in. |
+| 2 | `4b40d02d` | Tasks count ("120 of 288", at most four redraws a second) and can be paused. The bar's list has Pause and Resume. `list_activity` gives `id`, `done`, `total`, `pausable` and `pausedBy`. `pause_activity` and `resume_activity` take a `reason` — not `why`, which only a proposed change takes. The session log says who paused and resumed. The selectable detail text was refreshed for assistive reading, which had kept a running task's first words. |
+| 3 | `52560112` | The storage sync is on the bar when a run moves five items or more, counted, and can be paused: from the bar, Settings ▸ Storage or `pause_activity`. The pause is kept through relaunches, and resuming goes on from the next item: package lists are kept as each lands, with the state written every 25 items or 5 s. `list_storage_kinds` gives `paused`, `syncing` and `activityTask`. The four image tools say `arriving`. Each sign-in's sync is numbered, so a stopped one's last words do not reach the next. |
+| 4 | `a0776eb8` | The open discovery sheet hears lists arrive. The rows change at most once a second; the filters, about 7,200 rows, change once when the lists stop. The header gives the count, or who paused. The model's filtering and the coordinator's naming helpers moved to files of their own, and both ceilings came down. |
+| — | `cea9810e` | **Not in the plan: the person's report that evening.** Workflows (`NavigationSplitView` with `.toolbar`) and Research (`.searchable`) gave the window a native toolbar above Verbinal's own, which this macOS lays over the screen. Both now keep to Verbinal's toolbar, and `testNoScreenBringsTheWindowAToolbarOfItsOwn` lays out every screen in a real window. |
+| 5 | `fff76349` | A list from an older probe has a badge on its row, and `outdated: true` with a `note` in `get_image_manifest` and `describe_image`. |
+| 6 | `8f1d1b99` | Discover reads storage before it writes the probe script. |
+| 7 | `3755165a` | `AppSupport`: a test run keeps its files in a folder of its own. A full run left `~/Library/Application Support/Verbinal` at 9,772 files and the container's test files at 380, as they were. |
+| 8 | (this commit) | Manual, English and French: the activity bar, Settings ▸ Storage, the AI assistant and Image Discovery. Handout 37 gains section N. |
+
+**Where it differs from the plan, and why:**
+- **Step 3: small syncs are not on the bar.** A sync that moves fewer than five items is not shown there; a note sent five seconds after it was written would fill the list. Settings and the tools still say it.
+- **Step 3: collections run again after a pause.** Item-by-item keeping is the package lists'. A collection's memory is kept when the collection ends, so one stopped halfway runs again. Collections are small.
+- **Step 7: the sidecar is not moved.** `SocketSidecar` stays outside `AppSupport`: the relay looks for it at fixed paths.
+
+**Not verified yet:**
+- **The tests that read the accessibility tree.** The screen locked partway through. The new on-screen tests (`ActivityOnScreenTests`, `StorageSettingsOnScreenTests`, the on-screen ones in `ImageDiscoveryArrivalsTests`, `ResearchCollectionsOnScreenTests`) passed earlier with it unlocked. The last runs skipped them; they run again once it is unlocked.
+- **The live app.** The plan's on-screen check of the live app over MCP needs the person's build of this branch, in a session they allow. It is handout 37's section N.
+
