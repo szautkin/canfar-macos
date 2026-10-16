@@ -80,6 +80,8 @@ final class RemoteComputeScreenTests: XCTestCase {
         let meta = RemoteComputeView.meta(of: try XCTUnwrap(screen.selectedRun), truncated: true).components(separatedBy: " · ")
         XCTAssertEqual(meta.count, 4)
         XCTAssertEqual(meta.last, "compute:1")
+        // show_compute_run says it too, as list_compute_runs does (QA 2026-10-15, 12.2).
+        XCTAssertEqual(screen.view(shown: true).selectedRun?.image, "images.canfar.net/p/compute:1")
 
         await screen.runAgain()
         XCTAssertEqual(screen.runs.count, 2)

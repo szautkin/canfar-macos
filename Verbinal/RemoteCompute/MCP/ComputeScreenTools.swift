@@ -24,6 +24,8 @@ struct ComputeRunDetail: Encodable, Sendable, Equatable {
     let durationMs: Int?
     let finishedAt: String?
     let timeoutSeconds: Int
+    /// The image the code ran on; absent for runs from before it was kept.
+    let image: String?
     let code: String
 
     init(_ run: ComputeRun) {
@@ -37,6 +39,7 @@ struct ComputeRunDetail: Encodable, Sendable, Equatable {
         durationMs = run.durationMs
         finishedAt = run.finishedAt.map(iso.string(from:))
         timeoutSeconds = run.timeoutSeconds
+        image = run.image
         code = run.code
     }
 }
