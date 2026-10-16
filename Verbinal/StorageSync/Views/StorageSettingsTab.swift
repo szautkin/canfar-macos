@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+import VerbinalKit
 
 /// Settings ▸ Storage (plan 34 V, 36 3.2): which of their work the person
 /// keeps in their CANFAR storage — each collection their own choice — and
@@ -80,16 +81,34 @@ struct StorageSettingsTab: View {
                 }
             }
             HStack {
-                if let last = sync.status?.lastSync {
+                if let paused = sync.status?.paused {
+                    Text(Self.pausedLine(paused))
+                } else if let count = sync.current {
+                    ProgressView().controlSize(.small)
+                    Text("Syncing… \(Self.title(count.kind)), \(count.done) of \(count.total)")
+                } else if let last = sync.status?.lastSync {
                     Text("Last synced \(last, format: .relative(presentation: .named))")
                 } else {
                     Text("Not synced yet")
                 }
-                if sync.status?.running == true { ProgressView().controlSize(.small) }
+                if sync.status?.running == true, sync.current == nil, sync.status?.paused == nil {
+                    ProgressView().controlSize(.small)
+                }
                 Spacer()
-                Button("Sync Now") { sync.syncNow() }
-                    .disabled(sync.status?.running == true)
-                    .pointable("settings.storage.syncNow")
+                // Pause and Resume are the bar's too, and an assistant's
+                // pause_activity and resume_activity (plan 40).
+                if sync.isPaused {
+                    Button("Resume") { sync.resume() }
+                        .help("Go on from where it stopped")
+                        .pointable("settings.storage.resume")
+                } else {
+                    Button("Pause") { sync.pause() }
+                        .help("Stop syncing where it is, until you resume it")
+                        .pointable("settings.storage.pause")
+                    Button("Sync Now") { sync.syncNow() }
+                        .disabled(sync.status?.running == true)
+                        .pointable("settings.storage.syncNow")
+                }
             }
             .font(.caption)
             if let failure = sync.status?.lastFailure {
@@ -132,6 +151,17 @@ struct StorageSettingsTab: View {
                 EmptyView()
             }
         }
+    }
+
+    /// "Paused by you · Image package lists, 120 of 288".
+    static func pausedLine(_ paused: StorageSyncState.Paused) -> String {
+        let by = ActivitySummary.pausedBy(Initiator(rawValue: paused.by) ?? .person)
+        let at: String? = switch (paused.kind, paused.done) {
+        case (let kind?, let done?): "\(title(kind)), " + String(localized: "\(done) of \(paused.total ?? done)")
+        case (let kind?, nil): title(kind)
+        default: nil
+        }
+        return [by, at].compactMap { $0 }.joined(separator: " · ")
     }
 
     /// A kind as the person reads it.

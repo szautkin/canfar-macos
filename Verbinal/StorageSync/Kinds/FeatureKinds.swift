@@ -17,11 +17,17 @@ struct ImagePackagesKind: StorageKind {
     let importManifest: @Sendable (Data) async -> Bool
 
     func sync(_ context: StorageKindContext) async throws -> StorageKindOutcome {
-        var imported = 0
-        for item in context.changed where item.name.hasSuffix(".json") {
+        let lists = context.changed.filter { $0.name.hasSuffix(".json") }
+        var imported = 0, done = 0
+        if !lists.isEmpty { await context.progress(0, lists.count) }
+        for item in lists {
             guard !Task.isCancelled else { break }
             guard let data = try? await context.remote.read("\(context.folder)/\(item.name)") else { continue }
             if await importManifest(data) { imported += 1 }
+            done += 1
+            // Kept at once: a pause or a quit goes on from the next list.
+            await context.took(item)
+            await context.progress(done, lists.count)
         }
         return StorageKindOutcome(imported: imported)
     }

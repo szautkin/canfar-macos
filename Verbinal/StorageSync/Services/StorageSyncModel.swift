@@ -35,8 +35,30 @@ final class StorageSyncModel {
         let resumeRuns: @Sendable () async -> Void
     }
 
-    private(set) var status: StorageSync.Status? {
-        didSet { ResultDestination.shared.keeping = keeps("results") }
+    /// As the sync last said it. Set here; a test sets it to show a state.
+    var status: StorageSync.Status? {
+        didSet {
+            ResultDestination.shared.keeping = keeps("results")
+            showPausedFromBefore()
+        }
+    }
+    /// The kind syncing now, and how far it has got, as the sync says it.
+    private(set) var current: StorageSync.Progress?
+
+    /// The sync on the activity bar, while it moves enough to watch or is
+    /// paused (plan 40).
+    private var task: TaskHandle?
+    private let tasks: TaskRegistry
+    /// Each sign-in's sync is numbered: what a stopped one still says — its
+    /// last run ending after a sign-out — is not this one's (plan 40).
+    private var generation = 0
+    /// A sync that moves fewer items than this is not on the bar: a note
+    /// sent five seconds after it was written would fill the list with
+    /// lines. Settings ▸ Storage and list_storage_kinds say it all the same.
+    static let showFrom = 5
+
+    init(tasks: TaskRegistry = .shared) {
+        self.tasks = tasks
     }
     /// Why the last change of the person's failed.
     private(set) var problem: String?
@@ -69,8 +91,11 @@ final class StorageSyncModel {
 
     func signedIn(username: String, _ deps: Dependencies) {
         signedOut()
+        generation += 1
+        let mine = generation
         let sync = StorageSync(remote: VOSpaceStorageRemote(vospace: deps.vospace, username: username),
-                               catalog: Self.catalog(deps), stateFile: StorageSyncState.file(for: username))
+                               catalog: Self.catalog(deps), stateFile: StorageSyncState.file(for: username),
+                               watcher: { [weak self] event in await self?.heard(event, from: mine) })
         self.sync = sync
         work = deps.work
         let vospace = deps.vospace
@@ -86,6 +111,7 @@ final class StorageSyncModel {
     }
 
     func signedOut() {
+        generation += 1
         changed.values.forEach { $0.cancel() }
         changed = [:]
         if let activation { NotificationCenter.default.removeObserver(activation) }
@@ -95,7 +121,115 @@ final class StorageSyncModel {
         Task { await stopping?.stop() }
         sync = nil
         status = nil
+        current = nil
         work = []
+        task?.abandon()
+        task = nil
+    }
+
+    // MARK: - On the activity bar (plan 40)
+
+    /// The task's id on the bar, for the tools.
+    var taskID: Int? { task?.id }
+
+    var isPaused: Bool { status?.paused != nil || (task.map { tasks.task($0.id)?.isPaused == true } ?? false) }
+
+    /// Pauses the sync where it is — Settings ▸ Storage's Pause, or the
+    /// bar's, through the registry.
+    func pause(by initiator: Initiator = .person) {
+        if let task {
+            _ = tasks.pause(task.id, by: initiator)
+            return
+        }
+        task = beginTask(pausedBy: PauseMark(by: initiator, cause: Cause(), at: Date(), resumed: false))
+        pauseSync(by: initiator)
+    }
+
+    /// Resumes it: it goes on from where it stopped.
+    func resume(by initiator: Initiator = .person) {
+        if let task, tasks.task(task.id)?.isPaused == true {
+            _ = tasks.resume(task.id, by: initiator)
+            return
+        }
+        resumeSync()
+    }
+
+    private func beginTask(pausedBy: PauseMark?) -> TaskHandle {
+        tasks.begin(.storage, String(localized: "Syncing with your storage"), by: .app,
+                    why: "the storage sync: what another device kept comes to this Mac, and this Mac's changes go",
+                    pausing: .init(pause: { [weak self] by in self?.pauseSync(by: by) },
+                                   resume: { [weak self] _ in self?.resumeSync() }),
+                    pausedBy: pausedBy)
+    }
+
+    /// The registry marked it paused: the sync stops after the item under
+    /// way, keeping who and why.
+    private func pauseSync(by initiator: Initiator) {
+        guard let sync else { return }
+        let why = task.flatMap { tasks.task($0.id)?.pause?.cause.why }
+        let mine = generation
+        Task { [weak self] in
+            await sync.pause(by: initiator, why: why)
+            self?.update(await sync.status(), from: mine)
+        }
+    }
+
+    private func resumeSync() {
+        guard let sync else { return }
+        Task { [weak self] in
+            await sync.resume()
+            self?.run(.asked)
+        }
+    }
+
+    /// Paused before — on this Mac, before a relaunch or a sign-in — and
+    /// still: on the bar, where the person and assistants resume it.
+    private func showPausedFromBefore() {
+        guard task == nil, let paused = status?.paused else { return }
+        let by = Initiator(rawValue: paused.by) ?? .person
+        task = beginTask(pausedBy: PauseMark(by: by, cause: Cause(why: paused.why), at: paused.at, resumed: false))
+        if let kind = paused.kind { task?.stage(StorageSettingsTab.title(kind)) }
+        if let done = paused.done { task?.count(done, of: paused.total) }
+    }
+
+    /// What the sync says as it goes; a stopped sync's words are not heard.
+    func heard(_ event: StorageSync.Event, from sync: Int? = nil) {
+        guard sync.map({ $0 == generation }) ?? true else { return }
+        switch event {
+        case .progress(let count):
+            current = count
+            if task == nil, count.total >= Self.showFrom { task = beginTask(pausedBy: nil) }
+            task?.stage(StorageSettingsTab.title(count.kind))
+            task?.count(count.done, of: count.total)
+        case .ended(let imported, let sent, let failure, let paused):
+            current = nil
+            guard let task, !paused else { return }
+            if let failure { task.fail(failure) } else { task.succeed(Self.moved(imported: imported, sent: sent)) }
+            self.task = nil
+        }
+    }
+
+    /// What a sync moved, in words.
+    static func moved(imported: Int, sent: Int) -> String {
+        switch (imported, sent) {
+        case (0, 0): String(localized: "Nothing left to move")
+        case (_, 0): String(localized: "\(imported) brought to this Mac")
+        case (0, _): String(localized: "\(sent) sent to your storage")
+        default: String(localized: "\(imported) brought to this Mac, \(sent) sent")
+        }
+    }
+
+    /// Whether package lists are still coming from the person's storage, in
+    /// words, for the image tools (plan 40); nil when they are not.
+    var packageListsNote: String? {
+        if let paused = status?.paused, paused.kind == "imagePackages" {
+            let at = paused.done.map { " at \($0) of \(paused.total ?? $0)" } ?? ""
+            return "Package lists are still to come from the person's storage: the sync was paused\(at) by \(paused.by). Results may be incomplete; resume_activity resumes it."
+        }
+        if let count = current, count.kind == "imagePackages", count.done < count.total {
+            return "Package lists are still coming from the person's storage: \(count.done) of \(count.total) so far. Results may be incomplete."
+        }
+        return nil
     }
 
     /// Sync Now.
@@ -105,12 +239,19 @@ final class StorageSyncModel {
     @discardableResult
     func run(_ reason: StorageSync.Reason, only kind: String? = nil) -> Task<Void, Never>? {
         guard let sync else { return nil }
+        let mine = generation
         let task = Task { [weak self] in
             await sync.sync(reason, only: kind)
-            self?.status = await sync.status()
+            self?.update(await sync.status(), from: mine)
         }
-        Task { [weak self] in self?.status = await sync.status() }
+        Task { [weak self] in self?.update(await sync.status(), from: mine) }
         return task
+    }
+
+    /// A sync's status, unless it is a stopped one's.
+    private func update(_ status: StorageSync.Status, from sync: Int) {
+        guard sync == generation else { return }
+        self.status = status
     }
 
     private func cameBack() {
@@ -125,6 +266,7 @@ final class StorageSyncModel {
     func setKeeps(_ id: String, _ keep: Bool) {
         guard let sync else { return }
         problem = nil
+        let mine = generation
         Task { [weak self] in
             do {
                 try await sync.setDeclared([id], keep)
@@ -132,7 +274,7 @@ final class StorageSyncModel {
             } catch {
                 self?.problem = error.localizedDescription
             }
-            self?.status = await sync.status()
+            self?.update(await sync.status(), from: mine)
         }
     }
 

@@ -67,6 +67,28 @@ actor StorageSync {
         var lastSync: Date?
         var lastFailure: String?
         var running: Bool
+        /// Who paused it, why, when, and where it had got to (plan 40).
+        var paused: StorageSyncState.Paused? = nil
+        /// The kind syncing now, and how far it has got.
+        var progress: Progress? = nil
+        /// Its task on the activity bar, when it is there (the app's to say).
+        var activityTask: Int? = nil
+    }
+
+    /// How far a kind has got (plan 40).
+    struct Progress: Equatable, Sendable {
+        let kind: String
+        let done: Int
+        let total: Int
+    }
+
+    /// What a sync tells its watcher as it goes (plan 40).
+    enum Event: Equatable, Sendable {
+        /// A kind's count.
+        case progress(Progress)
+        /// The run is over: what moved, and why it failed, if it did; or it
+        /// was paused, and goes on when resumed.
+        case ended(imported: Int, sent: Int, failure: String?, paused: Bool)
     }
 
     /// Why a sync runs.
@@ -92,13 +114,25 @@ actor StorageSync {
     private var stopped = false
     /// The kinds whose folder outside `.verbinal` was looked for since sign-in.
     private var lookedFor: Set<String> = []
+    /// The kind syncing now, and how far it has got.
+    private var progress: Progress?
+    /// Who hears how a sync goes: each kind's count and each run's end.
+    private let watcher: (@Sendable (Event) async -> Void)?
+    /// Items taken since the state was last written: it is written at most
+    /// every `saveEvery` items or `saveAfter` seconds while a kind runs.
+    private var takenSinceSave = 0
+    private var savedAt = Date.distantPast
+    static let saveEvery = 25
+    static let saveAfter: TimeInterval = 5
 
     init(remote: any StorageRemote, catalog: StorageKindCatalog, stateFile: URL,
-         now: @escaping @Sendable () -> Date = Date.init) {
+         now: @escaping @Sendable () -> Date = Date.init,
+         watcher: (@Sendable (Event) async -> Void)? = nil) {
         self.remote = remote
         self.catalog = catalog
         self.stateFile = stateFile
         self.now = now
+        self.watcher = watcher
         self.state = StorageSyncState.load(from: stateFile)
     }
 
@@ -108,13 +142,36 @@ actor StorageSync {
         running?.cancel()
     }
 
+    // MARK: - Pausing (plan 40)
+
+    /// Pauses the sync where it is, for `by`: the item under way finishes,
+    /// what was taken is kept, and nothing runs — after sign-in, on coming
+    /// back, after a change, or asked — until it is resumed. Kept with the
+    /// state, so a relaunch does not resume it.
+    func pause(by: Initiator, why: String?) {
+        guard state.paused == nil else { return }
+        state.paused = .init(by: by.rawValue, why: why, at: now(), kind: progress?.kind,
+                             done: progress?.done, total: progress?.total)
+        state.save(to: stateFile)
+        running?.cancel()
+    }
+
+    /// Resumes it: the next sync goes on from where it stopped.
+    func resume() {
+        guard state.paused != nil else { return }
+        state.paused = nil
+        state.save(to: stateFile)
+    }
+
+    var isPaused: Bool { state.paused != nil }
+
     // MARK: - Syncing
 
     /// Syncs every declared kind, or only `kind`. A sync already under way
     /// is waited for, and a change made meanwhile goes when it ends; an
     /// automatic sync waits longer after each failure.
     func sync(_ reason: Reason, only kind: String? = nil) async {
-        guard !stopped else { return }
+        guard !stopped, state.paused == nil else { return }
         if let running {
             guard reason == .changed else { return await running.value }
             if let kind { queued?.insert(kind) } else { queued = nil }
@@ -131,7 +188,7 @@ actor StorageSync {
             running = task
             await task.value
             running = nil
-            guard !stopped, queued?.isEmpty != true else { break }
+            guard !stopped, state.paused == nil, queued?.isEmpty != true else { break }
             only = queued
             queued = []
             why = .changed
@@ -147,6 +204,8 @@ actor StorageSync {
 
     private func run(_ reason: Reason, only kindIDs: Set<String>?) async {
         Self.logger.info("sync (\(reason.rawValue, privacy: .public)) begins")
+        var imported = 0, sent = 0
+        var failure: String?
         do {
             let manifest = try await currentManifest()
             for id in StorageKindCatalog.order {
@@ -156,6 +215,11 @@ actor StorageSync {
                 syncing = id
                 await sync(kind, declared: declared)
                 syncing = nil
+                progress = nil
+                let kept = state.kinds[id]
+                imported += kept?.imported ?? 0
+                sent += kept?.sent ?? 0
+                if failure == nil, let kindFailure = kept?.failure { failure = kindFailure }
             }
             state.lastSync = now()
             state.lastFailure = nil
@@ -164,9 +228,37 @@ actor StorageSync {
             state.lastSync = now()
             state.lastFailure = error.localizedDescription
             state.failuresInARow += 1
+            failure = error.localizedDescription
             Self.logger.notice("sync failed: \(error.localizedDescription, privacy: .public)")
         }
+        syncing = nil
+        progress = nil
         state.save(to: stateFile)
+        await watcher?(.ended(imported: imported, sent: sent, failure: failure, paused: state.paused != nil))
+    }
+
+    /// A kind's count, for its watcher and its status.
+    private func counted(_ kind: String, _ done: Int, _ total: Int) async {
+        let count = Progress(kind: kind, done: done, total: total)
+        progress = count
+        // The item under way when it was paused finishes: where it stopped.
+        if state.paused != nil {
+            state.paused?.kind = kind
+            state.paused?.done = done
+            state.paused?.total = total
+        }
+        await watcher?(.progress(count))
+    }
+
+    /// An item a kind took: kept at once, the state written now and then.
+    private func took(_ item: StorageItem, of kind: String) {
+        state.kinds[kind, default: .init()].items[item.name] = item.stamp
+        takenSinceSave += 1
+        if takenSinceSave >= Self.saveEvery || now().timeIntervalSince(savedAt) >= Self.saveAfter {
+            state.save(to: stateFile)
+            takenSinceSave = 0
+            savedAt = now()
+        }
     }
 
     private func sync(_ kind: any StorageKind, declared: StorageManifest.Kind) async {
@@ -180,8 +272,14 @@ actor StorageSync {
             let folder = kind.itemsFolder(in: declared.folder)
             let items = (try await remote.list(folder) ?? []).filter { !$0.isFolder }
             let changed = items.filter { kindState.items[$0.name] != $0.stamp }
-            let outcome = try await kind.sync(StorageKindContext(folder: declared.folder, items: items, changed: changed,
-                                                                 memory: kindState.memory, remote: remote))
+            let id = kind.id
+            let outcome = try await kind.sync(StorageKindContext(
+                folder: declared.folder, items: items, changed: changed, memory: kindState.memory, remote: remote,
+                progress: { [weak self] done, total in await self?.counted(id, done, total) },
+                took: { [weak self] item in await self?.took(item, of: id) }))
+            // Paused or stopped halfway: what it took is kept, item by item;
+            // the rest is still to come, not seen.
+            if Task.isCancelled { return }
             // What it sent changed the folder: look again, so the next sync
             // does not take its own writes for someone else's.
             let seen = outcome.sent > 0 ? (try await remote.list(folder) ?? items).filter { !$0.isFolder } : items
@@ -194,6 +292,8 @@ actor StorageSync {
             kindState.failure = nil
             if let memory = outcome.memory { kindState.memory = memory }
         } catch {
+            if Task.isCancelled { return }
+            kindState = state.kinds[kind.id] ?? kindState
             kindState.failure = error.localizedDescription
         }
         state.kinds[kind.id] = kindState
@@ -329,6 +429,6 @@ actor StorageSync {
                                          failure: kept?.failure, lastSync: kept?.lastSync))
         }
         return Status(hasStorage: hasStorage, hasManifest: manifest != nil, kinds: kinds, lastSync: state.lastSync,
-                      lastFailure: state.lastFailure, running: running != nil)
+                      lastFailure: state.lastFailure, running: running != nil, paused: state.paused, progress: progress)
     }
 }

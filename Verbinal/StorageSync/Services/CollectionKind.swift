@@ -41,7 +41,11 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
         var settled: Set<String> = []
 
         // What changed there.
-        for item in context.changed where item.name.hasSuffix(".json") {
+        let theirs = context.changed.filter { $0.name.hasSuffix(".json") }
+        if !theirs.isEmpty { await context.progress(0, theirs.count) }
+        for (done, item) in theirs.enumerated() {
+            await context.progress(done, theirs.count)
+            guard !Task.isCancelled else { break }
             guard let data = try? await context.remote.read("\(context.folder)/\(item.name)"),
                   let theirs = try? Item.decode(data), theirs.format <= Item.format else { continue }
             settled.insert(item.name)

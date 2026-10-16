@@ -48,6 +48,13 @@ struct StorageKindContext: Sendable {
     /// What this device kept of the kind, between syncs.
     let memory: [String: String]
     let remote: any StorageRemote
+    /// Says how far the kind has got: `done` of `total` items (plan 40).
+    var progress: @Sendable (_ done: Int, _ total: Int) async -> Void = { _, _ in }
+    /// Keeps an item as taken, at once, so a pause, a quit or a failure goes
+    /// on from the next one (plan 40). Only a kind whose items stand alone
+    /// says it — the package lists; a collection's memory is kept when it
+    /// ends, so a collection stopped halfway runs again.
+    var took: @Sendable (StorageItem) async -> Void = { _ in }
 }
 
 /// What a kind's sync came to.

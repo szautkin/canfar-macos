@@ -105,17 +105,18 @@ final class StorageSyncTests: XCTestCase {
     }
 
     private func sync(_ remote: FakeVOSpace, research: FakeResearch = FakeResearch(), imports: Imports = Imports(),
-                      device: String = "mac") -> StorageSync {
+                      device: String = "mac", importing: (@Sendable (Data) async -> Bool)? = nil,
+                      watcher: (@Sendable (StorageSync.Event) async -> Void)? = nil) -> StorageSync {
         let catalog = StorageKindCatalog(kinds: [
             CollectionKind(id: "research", defaultFolder: ".verbinal/research", collection: research,
                            replacedFolder: directory.appendingPathComponent("replaced-\(device)")),
-            ImagePackagesKind(importManifest: { imports.add($0); return true }),
+            ImagePackagesKind(importManifest: importing ?? { imports.add($0); return true }),
             ComputeRunsKind(resume: {}),
             CountedKind.stagedScripts,
             CountedKind.exports,
         ])
         return StorageSync(remote: remote, catalog: catalog,
-                           stateFile: directory.appendingPathComponent("state-\(device).json"))
+                           stateFile: directory.appendingPathComponent("state-\(device).json"), watcher: watcher)
     }
 
     private func manifest(_ kinds: [String: String], extra: String = "") -> Data {
@@ -372,6 +373,135 @@ final class StorageSyncTests: XCTestCase {
         XCTAssertTrue(files.isEmpty, "nothing sent")
         let note = await storage.status().kinds.first { $0.id == "research" }?.note
         XCTAssertEqual(note, CollectionSync.publicNote)
+    }
+
+    // MARK: - How far it has got, and pausing (plan 40)
+
+    private final class Events: @unchecked Sendable {
+        private let lock = NSLock()
+        private var list: [StorageSync.Event] = []
+        func add(_ event: StorageSync.Event) { lock.withLock { list.append(event) } }
+        var all: [StorageSync.Event] { lock.withLock { list } }
+    }
+
+    /// The sync, for an import that pauses it halfway.
+    private final class Holder: @unchecked Sendable { var storage: StorageSync? }
+
+    private func lists(_ remote: FakeVOSpace, count: Int) async {
+        await remote.put(StorageManifest.path, manifest(["imagePackages": ".verbinal/manifests"]))
+        for index in 1...count {
+            await remote.put(".verbinal/manifests/image-\(index).json", Data("list \(index)".utf8))
+        }
+    }
+
+    func testASyncSaysHowFarEachKindHasGotAndWhatMoved() async throws {
+        let remote = FakeVOSpace()
+        await lists(remote, count: 10)
+        let events = Events()
+        await sync(remote, watcher: { events.add($0) }).sync(.signedIn)
+        let counts = events.all.compactMap { event -> Int? in
+            if case .progress(let count) = event, count.kind == "imagePackages" { return count.done } else { return nil }
+        }
+        XCTAssertEqual(counts, Array(0...10))
+        XCTAssertEqual(events.all.last, .ended(imported: 10, sent: 0, failure: nil, paused: false))
+    }
+
+    func testAPauseKeepsWhatWasTakenAndResumingGoesOnFromTheNext() async throws {
+        let remote = FakeVOSpace()
+        await lists(remote, count: 10)
+        let imports = Imports(), events = Events(), holder = Holder()
+        let storage = sync(remote, importing: { data in
+            imports.add(data)
+            if imports.count == 3 { await holder.storage?.pause(by: .assistant, why: "the person is on a slow network") }
+            return true
+        }, watcher: { events.add($0) })
+        holder.storage = storage
+        await storage.sync(.signedIn)
+        XCTAssertEqual(imports.count, 3, "the item under way finishes; nothing after it")
+        XCTAssertEqual(events.all.last, .ended(imported: 0, sent: 0, failure: nil, paused: true))
+        let paused = await storage.status().paused
+        XCTAssertEqual(paused?.by, "assistant")
+        XCTAssertEqual(paused?.why, "the person is on a slow network")
+        XCTAssertEqual(paused?.kind, "imagePackages")
+        XCTAssertEqual(paused?.done, 3)
+        XCTAssertEqual(paused?.total, 10)
+
+        for reason in [StorageSync.Reason.cameBack, .changed, .asked] { await storage.sync(reason) }
+        XCTAssertEqual(imports.count, 3, "nothing runs while paused, asked or not")
+
+        // A relaunch: the same state, another sync. Still paused, and the
+        // three taken are kept.
+        let again = Imports()
+        let relaunched = sync(remote, imports: again)
+        let kept = await relaunched.status()
+        XCTAssertNotNil(kept.paused, "a relaunch does not resume it")
+        XCTAssertEqual(kept.kinds.first { $0.id == "imagePackages" }?.items, 3, "each list kept as it was taken")
+        await relaunched.sync(.signedIn)
+        XCTAssertEqual(again.count, 0)
+        await relaunched.resume()
+        await relaunched.sync(.asked)
+        XCTAssertEqual(again.count, 7, "it goes on from the next list, not from the first")
+        let done = await relaunched.status()
+        XCTAssertNil(done.paused)
+        XCTAssertEqual(done.kinds.first { $0.id == "imagePackages" }?.items, 10)
+    }
+
+    @MainActor
+    func testTheBarShowsASyncThatMovesFiveOrMoreAndTheImageToolsAreTold() {
+        let registry = TaskRegistry()
+        let model = StorageSyncModel(tasks: registry)
+        model.heard(.progress(.init(kind: "savedQueries", done: 0, total: 1)))
+        model.heard(.ended(imported: 1, sent: 0, failure: nil, paused: false))
+        XCTAssertTrue(registry.tasks.isEmpty, "one saved query is not a line on the bar")
+
+        model.heard(.progress(.init(kind: "imagePackages", done: 0, total: 288)))
+        model.heard(.progress(.init(kind: "imagePackages", done: 120, total: 288)))
+        let task = try? XCTUnwrap(registry.tasks.first)
+        XCTAssertEqual(task?.label, "Syncing with your storage")
+        XCTAssertEqual(task?.startedBy, .app)
+        XCTAssertEqual(task?.stage, "Image package lists")
+        XCTAssertEqual(task?.canPause, true)
+        XCTAssertEqual(model.taskID, task?.id)
+        XCTAssertEqual(model.packageListsNote,
+                       "Package lists are still coming from the person's storage: 120 of 288 so far. Results may be incomplete.")
+        model.heard(.ended(imported: 288, sent: 0, failure: nil, paused: false))
+        XCTAssertEqual(registry.tasks.first?.progress, .succeeded)
+        XCTAssertEqual(registry.tasks.first?.message, "288 brought to this Mac")
+        XCTAssertNil(model.packageListsNote)
+        XCTAssertNil(model.taskID)
+
+        // A stopped sync's last words — its run ending after a sign-out —
+        // are not the next one's.
+        model.heard(.progress(.init(kind: "imagePackages", done: 0, total: 10)))
+        model.signedOut()
+        model.heard(.ended(imported: 10, sent: 0, failure: nil, paused: false), from: -1)
+        XCTAssertEqual(registry.tasks.last?.progress, .cancelled, "signed out: abandoned, not succeeded by the old sync")
+    }
+
+    func testTheImageToolsSayWhenListsAreStillComing() async throws {
+        struct Answers: AITool {
+            static var verbClass: VerbClass { .read }
+            static var agentSafe: Bool { true }
+            let definition = AIToolDefinition.withStaticSchema(name: "fake_images", description: "x",
+                                                               schema: #"{ "type": "object", "properties": {} }"#)
+            let fails: Bool
+            func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
+                fails ? .failed(.unknownTarget("'x' has not been probed")) : .data(Data(#"{"count":0}"#.utf8))
+            }
+        }
+        let ctx = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 9))
+        let words = "Package lists are still coming from the person's storage: 3 of 10 so far. Results may be incomplete."
+        guard case .data(let data) = await ArrivingNoteTool(wrapped: Answers(fails: false), note: { words })
+            .invoke(arguments: Data("{}".utf8), context: ctx) else { return XCTFail() }
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(object["arriving"] as? String, words)
+        XCTAssertEqual(object["count"] as? Int, 0)
+        guard case .failed(.unknownTarget(let why)) = await ArrivingNoteTool(wrapped: Answers(fails: true), note: { words })
+            .invoke(arguments: Data("{}".utf8), context: ctx) else { return XCTFail() }
+        XCTAssertEqual(why, "'x' has not been probed. " + words)
+        guard case .data(let plain) = await ArrivingNoteTool(wrapped: Answers(fails: false), note: { nil })
+            .invoke(arguments: Data("{}".utf8), context: ctx) else { return XCTFail() }
+        XCTAssertEqual(String(decoding: plain, as: UTF8.self), #"{"count":0}"#, "nothing coming: the answer as it was")
     }
 
     // MARK: - The sync

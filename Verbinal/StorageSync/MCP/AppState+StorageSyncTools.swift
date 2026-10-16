@@ -12,15 +12,23 @@ extension AppState {
     /// Verbinal's data in VOSpace (plan 34 V), after a sync when asked.
     func storageSyncStatus(syncing: Bool) async throws -> StorageSync.Status {
         try requireSignInFor("Storage")
+        if syncing, let paused = storageSync.status?.paused {
+            // A pause is someone's choice: an ask to sync does not undo it (plan 40).
+            let task = storageSync.taskID.map { " (activity task \($0))" } ?? ""
+            throw ToolFailureReason.invalidArgument(
+                "The storage sync is paused — by \(paused.by)\(paused.why.map { ", because: \($0)" } ?? "") — and stays paused until it is resumed: resume_activity\(task), or Resume in Settings ▸ Storage.")
+        }
         if syncing {
             noteLive("sync_storage", "Synced Verbinal's data in storage")
             await storageSync.run(.asked)?.value
         } else if storageSync.status == nil {
             await storageSync.run(.cameBack)?.value
         }
-        guard let status = storageSync.status else {
+        guard var status = storageSync.status else {
             throw ToolFailureReason.backendError("the storage sync has not started: sign in again")
         }
+        status.progress = storageSync.current ?? status.progress
+        status.activityTask = storageSync.taskID
         return status
     }
 }

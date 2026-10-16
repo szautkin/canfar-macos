@@ -19,6 +19,20 @@ struct StorageSyncState: Codable, Equatable, Sendable {
     var lastFailure: String?
     /// How many automatic syncs in a row failed: the next waits longer.
     var failuresInARow = 0
+    /// Paused by someone, until they resume it — kept, so a relaunch does
+    /// not resume it (plan 40).
+    var paused: Paused?
+
+    struct Paused: Codable, Equatable, Sendable {
+        /// person, assistant or app.
+        var by: String
+        var why: String?
+        var at: Date
+        /// Where it had got to: the kind, and how far.
+        var kind: String?
+        var done: Int?
+        var total: Int?
+    }
 
     struct KindState: Codable, Equatable, Sendable {
         var items: [String: StorageItem.Stamp] = [:]

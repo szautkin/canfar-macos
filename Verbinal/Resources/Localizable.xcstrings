@@ -66,12 +66,42 @@
         }
       }
     },
+    "%lld brought to this Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld apportés sur ce Mac"
+          }
+        }
+      }
+    },
+    "%lld brought to this Mac, %lld sent" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld apportés sur ce Mac, %2$lld envoyés"
+          }
+        }
+      }
+    },
     "%lld paused" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld en pause"
+          }
+        }
+      }
+    },
+    "%lld sent to your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld envoyés vers votre stockage"
           }
         }
       }
@@ -449,6 +479,16 @@
         }
       }
     },
+    "Nothing left to move" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus rien à déplacer"
+          }
+        }
+      }
+    },
     "Nothing was moved: %@" : {
       "localizations" : {
         "fr" : {
@@ -799,6 +839,16 @@
         }
       }
     },
+    "Stop syncing where it is, until you resume it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter la synchronisation là où elle en est, jusqu’à ce que vous la repreniez"
+          }
+        }
+      }
+    },
     "Stopped." : {
       "localizations" : {
         "fr" : {
@@ -809,12 +859,32 @@
         }
       }
     },
+    "Syncing with your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisation avec votre stockage"
+          }
+        }
+      }
+    },
     "Syncing…" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Synchronisation…"
+          }
+        }
+      }
+    },
+    "Syncing… %@, %lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisation… %1$@, %2$lld sur %3$lld"
           }
         }
       }

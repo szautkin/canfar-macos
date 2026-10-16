@@ -124,18 +124,20 @@ extension AppState {
         tools.append(makeOpenSessionTool())
 
         // Image discovery — local cache search + on-demand probing
-        tools.append(makeFindImagesWithPackagesTool())
+        // Each says when package lists are still coming from storage (plan 40).
+        let arriving: @Sendable () async -> String? = { [weak self] in await self?.storageSync.packageListsNote }
+        tools.append(ArrivingNoteTool(wrapped: makeFindImagesWithPackagesTool(), note: arriving))
         tools.append(DiscoverImagePackagesTool())
 
         // Image-discovery parity — the sheet's diagnostics: failure
         // rows, probe logs/events, cached manifests, clearing failures.
         tools.append(makeListProbeFailuresTool())
         tools.append(makeGetProbeLogsTool())
-        tools.append(makeGetImageManifestTool())
+        tools.append(ArrivingNoteTool(wrapped: makeGetImageManifestTool(), note: arriving))
         tools.append(ClearProbeFailuresTool())
         // What is inside probed images, and images the catalogue does not list.
-        tools.append(makeSearchPackagesTool())
-        tools.append(makeDescribeImageTool())
+        tools.append(ArrivingNoteTool(wrapped: makeSearchPackagesTool(), note: arriving))
+        tools.append(ArrivingNoteTool(wrapped: makeDescribeImageTool(), note: arriving))
         tools.append(makeSearchImageRegistryTool())
         tools.append(makeListMyImagesTool())
         tools.append(AddRegistryImageTool())
