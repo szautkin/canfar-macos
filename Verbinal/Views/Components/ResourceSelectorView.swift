@@ -12,13 +12,16 @@ struct ResourceSelectorView: View {
     @Binding var gpus: Int
     let coreOptions: [Int]
     let ramOptions: [Int]
-    let gpuOptions: [Int]
+    /// A batch job's GPU counts on offer (plan 41): its stepper runs through
+    /// 0 and them, disabled at 0 when there are none. Nil: no stepper — an
+    /// interactive session's one GPU is its checkbox.
+    let gpuOptions: [Int]?
 
     private var minCores: Int { coreOptions.min() ?? 1 }
     private var maxCores: Int { coreOptions.max() ?? 16 }
     private var minRam: Int { ramOptions.min() ?? 1 }
     private var maxRam: Int { ramOptions.max() ?? 256 }
-    private var maxGpus: Int { gpuOptions.max() ?? 0 }
+    private var gpuOffer: GPUOffer { GPUOffer(options: gpuOptions ?? []) }
 
     // Selectable RAM values. Honor the API-provided `ramOptions` exactly
     // (deduped + sorted) so a non-power-of-2 option is never silently
@@ -94,18 +97,27 @@ struct ResourceSelectorView: View {
             }
 
             // GPUs
-            if maxGpus > 0 {
+            if gpuOptions != nil {
                 HStack {
                     Text("GPUs:")
                         .frame(width: 80, alignment: .leading)
-                    Stepper(value: $gpus, in: 0...maxGpus) {
+                    Stepper {
                         Text("\(gpus)")
                             .monospacedDigit()
                             .frame(width: 40)
+                    } onIncrement: {
+                        gpus = gpuOffer.step(from: gpus, up: true)
+                    } onDecrement: {
+                        gpus = gpuOffer.step(from: gpus, up: false)
                     }
+                    .disabled(!gpuOffer.offersAny)
+                    .help(gpuOffer.offersAny ? Text("GPUs for this job: 0, or one the platform offers")
+                                             : Text("This platform offers no GPUs"))
                     .named("GPUs", value: gpus)
                     Spacer()
                 }
+                // Greyed as a whole, label and count too, while none is offered.
+                .foregroundStyle(gpuOffer.offersAny ? .primary : .tertiary)
             }
         }
     }

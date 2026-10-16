@@ -33,13 +33,14 @@ final class LaunchFormGPULayoutTests: XCTestCase {
     /// The form in a window as wide as its sheet at its narrowest (620);
     /// `body` reads its elements by id and by name, and the controls that
     /// spill out of the window.
-    private func form(_ model: SessionLaunchModel, capture: String,
+    private func form(_ model: SessionLaunchModel, batch: HeadlessLaunchModel? = nil, capture: String,
                       _ body: (_ byID: [String: UIElement], _ names: [String], _ spilled: [String]) throws -> Void) async throws {
         let state = AppState(marks: MarkStore(persistence: nil))
+        if batch != nil { state.launchFormTab = .headless }
         let window = NSWindow(contentRect: NSRect(x: 120, y: 80, width: 620, height: 640), styleMask: [.titled],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        let host = NSHostingView(rootView: ScrollView { LaunchFormView(model: model).padding(20) }
+        let host = NSHostingView(rootView: ScrollView { LaunchFormView(model: model, headlessModel: batch).padding(20) }
             .environment(state)
             .uiWindowPlace(.main))
         window.contentView = host
@@ -99,6 +100,24 @@ final class LaunchFormGPULayoutTests: XCTestCase {
             XCTAssertTrue(names.contains("CPU Cores"), "\(names)")
             XCTAssertFalse(names.contains("GPUs"), "no stepper for an interactive session")
             XCTAssertEqual(spilled, [])
+        }
+    }
+
+    /// The batch tab, Fixed: its GPU stepper, through what is offered, and
+    /// greyed where nothing is.
+    func testTheBatchTabsStepperFollowsTheOffer() async throws {
+        try await AXReadable.require()
+        for offer in [GPUOffer(options: Array(1...7)), .none] {
+            let batch = HeadlessLaunchModel(headlessService: HeadlessService(network: NetworkClient(session: .shared)),
+                                            recentLaunchStore: RecentLaunchStore())
+            batch.resourceType = "fixed"
+            try await form(model(offer: offer), batch: batch, capture: offer.offersAny ? "batch-gpus" : "batch-no-gpus") { byID, _, spilled in
+                XCTAssertEqual(spilled, [])
+                let stepper = try XCTUnwrap(byID.values.first { $0.name == "GPUs" && $0.kind == .stepper }, "\(byID.values.compactMap(\.name))")
+                XCTAssertEqual(stepper.enabled, offer.offersAny)
+                XCTAssertEqual(stepper.help, offer.offersAny ? "GPUs for this job: 0, or one the platform offers" : "This platform offers no GPUs")
+                XCTAssertNil(byID["portal.launch.gpu"], "no checkbox on the batch tab")
+            }
         }
     }
 }

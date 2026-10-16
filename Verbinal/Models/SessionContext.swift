@@ -57,4 +57,18 @@ struct GPUOffer: Equatable, Sendable {
 
     /// None, or one of the counts offered.
     func allows(_ gpus: Int) -> Bool { gpus == 0 || counts.contains(gpus) }
+
+    /// A stepper's next count from `gpus`: through 0 and the counts offered,
+    /// over any gap, no further than they go.
+    func step(from gpus: Int, up: Bool) -> Int {
+        let steps = [0] + counts
+        return (up ? steps.first { $0 > gpus } : steps.last { $0 < gpus }) ?? gpus
+    }
+
+    /// "1–7", or "1, 2, 4" with a gap.
+    var described: String {
+        guard let first = counts.first, let last = counts.last else { return "none" }
+        if counts == Array(first...last) { return first == last ? "\(first)" : "\(first)–\(last)" }
+        return counts.map(String.init).joined(separator: ", ")
+    }
 }

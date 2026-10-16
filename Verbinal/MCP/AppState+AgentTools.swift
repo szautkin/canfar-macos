@@ -116,7 +116,9 @@ extension AppState {
         tools.append(makeGetHeadlessJobTool())
         tools.append(makeGetHeadlessJobLogsTool())
         tools.append(makeGetHeadlessJobEventsTool())
-        tools.append(LaunchHeadlessJobTool())
+        tools.append(LaunchHeadlessJobTool(offer: { [weak self] in
+            await MainActor.run { self?.portalImageCacheService.cache?.context?.gpuOffer }
+        }))
 
         // Sessions parity — the Events sheet, log view, and Connect button.
         tools.append(makeGetSessionEventsTool())

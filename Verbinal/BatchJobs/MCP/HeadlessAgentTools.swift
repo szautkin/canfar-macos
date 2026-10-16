@@ -67,6 +67,10 @@ struct LaunchHeadlessJobTool: JSONWriteTool {
         let pendingScriptUpload: String?
     }
 
+    /// What the platform offers in GPUs, from the context the app has; nil
+    /// when it has none yet, and Skaha judges (plan 41).
+    var offer: @Sendable () async -> GPUOffer? = { nil }
+
     let definition = AIToolDefinition.withStaticSchema(
         name: "launch_headless_job",
         description: "Launch one or more replicas of a headless Skaha batch job. The `image` MUST be a value returned by `list_session_images` filtered to `type: \"headless\"` — hand-typed strings will fail with HTTP 400 'unknown or private image'. BEFORE picking an image when the user has specific package or capability needs (astropy ≥6, fitsio, photutils, R, CUDA, …), call `find_images_with_packages(...)` first — the platform already knows what's installed in most catalogue images; package-by-name lookup beats picking by image name and discovering missing deps after the job runs. RECOMMENDED for Python work: pass your source as the `script` parameter (any length up to 1 MB). For source ≤ ~1 KB the tool hex-encodes inline; for anything larger the applier auto-stages the source to `~/.verbinal-scripts/<hash>.py` in VOSpace and rewrites cmd/args to invoke the staged file — the agent never has to know which path ran. All the Skaha env quirks (`=`, `&`, `\"`, `$`, newline, 2 KB cap) become invisible to the caller either way. For non-Python or direct-binary work use `cmd`+`args` instead (mutually exclusive with `script`). `cmd` is the binary; `args` is a SINGLE space-separated string Skaha tokenises server-side. `env` is an ordered array of {key, value} pairs — REPLICA_ID and REPLICA_COUNT auto-injected. `replicas` ≥ 2 spawns N parallel containers suffixed `-1, -2, …`. Returns the launched job id(s); partial-replica failure surfaces as backendError with the count that DID land. SCHEDULING — read this BEFORE picking sizes. THE DEFAULT IS 1 CPU / 1 GB RAM / 0 GPU. Omitting `cores`/`ram`/`gpus` ⇒ the tool forces 1/1/0 — the smallest schedulable shape on the CANFAR cluster, which almost always lands on a warm node in <60s. Do NOT pad upward unless you have an empirical reason: 2c/8g and above frequently sit in Pending 15+ minutes (sometimes hours) under shared-cluster pressure, and the proposal summary will surface a SCHEDULING WARNING the user has to approve. For smoke tests, first runs, parameter sweeps, package probing, and any iterative work — keep the defaults. Only ask for more when a previous 1c/1g run actually OOMed or wallclocked out; estimating memory needs in advance is almost always wrong and trades real wall-clock latency for imagined headroom. GPUs are scarce and queue indefinitely on most images — pass `gpus: 1` only when the image is GPU-typed (check `list_session_images` capabilities) AND the workload is genuinely CUDA-bound. SKAHA ENV QUIRKS (rejected by the client validator before send so you get a typed error instead of a silent drop): values cannot contain `=` anywhere (every Python script trips this; use `script`), `&` (numpy `a & b` → use `np.logical_and`), newlines, or exceed 2 KB. Also documented but caller-discipline: `$VAR` is shell-expanded server-side (pass `\\$VAR` for literal), embedded `\"` can corrupt encoding.",
@@ -94,7 +98,7 @@ struct LaunchHeadlessJobTool: JSONWriteTool {
             },
             "cores":    { "type": "integer", "minimum": 1, "description": "CPU cores. DEFAULT IF OMITTED: 1 (tool-forced; not Skaha's 2). Anything >1 surfaces a scheduling warning and often sits in Pending 15+ min." },
             "ram":      { "type": "integer", "minimum": 1, "description": "RAM in GB. DEFAULT IF OMITTED: 1 (tool-forced; not Skaha's 8). Anything >1 surfaces a scheduling warning and often sits in Pending 15+ min." },
-            "gpus":     { "type": "integer", "minimum": 0, "description": "GPU count. DEFAULT IF OMITTED: 0. Non-zero asks queue indefinitely on most images; only use with GPU-typed images for genuinely CUDA-bound workloads." },
+            "gpus":     { "type": "integer", "minimum": 0, "description": "GPU count: 0, or one the platform offers (its context's options; get_platform_load says how many are free). DEFAULT IF OMITTED: 0. Non-zero asks queue indefinitely on most images; only use with GPU-typed images for genuinely CUDA-bound workloads." },
             "replicas": { "type": "integer", "minimum": 1, "maximum": 50 }
           },
           "additionalProperties": false
@@ -167,6 +171,11 @@ struct LaunchHeadlessJobTool: JSONWriteTool {
         let effectiveCores = args.cores ?? 1
         let effectiveRam   = args.ram   ?? 1
         let effectiveGpus  = args.gpus  ?? 0
+        if effectiveGpus > 0, let offer = await offer(), !offer.allows(effectiveGpus) {
+            throw ToolFailureReason.invalidArgument(offer.offersAny
+                ? "gpus \(effectiveGpus) is not offered: 0, or one of \(offer.described)."
+                : "This platform offers no GPUs.")
+        }
 
         let payload = Payload(
             name: args.name, image: args.image,

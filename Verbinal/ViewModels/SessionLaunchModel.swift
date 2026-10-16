@@ -98,8 +98,6 @@ final class SessionLaunchModel {
     var gpuOffer: GPUOffer = .none {
         didSet { if !gpuOffer.offersAny, gpus != 0 { gpus = 0 } }
     }
-    /// The batch tab's, until it reads the offer itself.
-    var gpuOptions: [Int] { gpuOffer.counts }
     var repositories: [String] = []
     var defaultCores = 2
     var defaultRam = 8

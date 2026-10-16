@@ -21,7 +21,8 @@ struct HeadlessLaunchTabView: View {
     var imagesByProject: [String: [ParsedImage]]
     var coreOptions: [Int]
     var ramOptions: [Int]
-    var gpuOptions: [Int]
+    /// What the platform offers in GPUs: a batch job takes 0, or one of them.
+    var gpuOffer: GPUOffer
     var onLaunch: () -> Void
 
     private var availableProjects: [String] {
@@ -100,11 +101,13 @@ struct HeadlessLaunchTabView: View {
                 ram: $model.ram,
                 coreOptions: coreOptions,
                 ramOptions: ramOptions,
-                gpus: .upTo($model.gpus, GPUOffer(options: gpuOptions))
+                gpus: .upTo($model.gpus, gpuOffer)
             )
 
         }
         .formStyle(.grouped)
+        .onAppear { model.gpuOffer = gpuOffer }
+        .onChange(of: gpuOffer) { _, offer in model.gpuOffer = offer }
         #if os(macOS)
         .fixedSize(horizontal: false, vertical: true)
         #else

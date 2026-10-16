@@ -179,7 +179,7 @@ struct LaunchFormView: View {
             imagesByProject: model.images(forType: "headless"),
             coreOptions: model.coreOptions,
             ramOptions: model.ramOptions,
-            gpuOptions: model.gpuOptions,
+            gpuOffer: model.gpuOffer,
             onLaunch: {
                 Task {
                     await hm.launch()

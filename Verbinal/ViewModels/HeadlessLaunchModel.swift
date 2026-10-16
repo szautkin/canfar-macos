@@ -35,6 +35,11 @@ final class HeadlessLaunchModel {
     var cores: Int = 2
     var ram: Int = 8
     var gpus: Int = 0
+    /// What the platform offers in GPUs (plan 41), as the form has it: a
+    /// count it no longer offers is cleared.
+    var gpuOffer: GPUOffer = .none {
+        didSet { if !gpuOffer.allows(gpus) { gpus = 0 } }
+    }
 
     // MARK: - Status
 

@@ -94,7 +94,7 @@ private struct iOSLaunchFormView: View {
                             gpus: .constant(0),
                             coreOptions: model.coreOptions,
                             ramOptions: model.ramOptions,
-                            gpuOptions: []
+                            gpuOptions: nil
                         )
                     }
                 }

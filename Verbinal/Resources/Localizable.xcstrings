@@ -349,6 +349,16 @@
         }
       }
     },
+    "GPUs for this job: 0, or one the platform offers" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPU pour cette tâche : 0, ou l’un des nombres que la plate-forme propose"
+          }
+        }
+      }
+    },
     "GPUs free" : {
       "localizations" : {
         "fr" : {

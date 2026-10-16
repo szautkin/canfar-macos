@@ -83,10 +83,10 @@ enum GPUChoice {
         return .constant(0)
     }
 
-    /// The stepper's counts: none for the checkbox, which has no stepper.
-    var stepperOptions: [Int] {
+    /// The stepper's counts; nil for the checkbox, which has no stepper.
+    var stepperOptions: [Int]? {
         if case .upTo(_, let offer) = self { return offer.counts }
-        return []
+        return nil
     }
 }
 
