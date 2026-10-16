@@ -6,6 +6,7 @@
 
 import XCTest
 @testable import Verbinal
+import VerbinalKit
 
 /// Stub `PortalImageProviding` whose three endpoints can each be made to
 /// succeed or throw independently, so the refresh path can be exercised with
@@ -64,7 +65,7 @@ final class PortalCacheServiceTests: XCTestCase {
     }
 
     override func tearDown() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = Optional(AppSupport.directory)
         if let dir = appSupport?.appendingPathComponent("Verbinal") {
             let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
             for file in files where file.lastPathComponent.hasPrefix("test_portal_") {
@@ -187,7 +188,7 @@ final class PortalCacheServiceTests: XCTestCase {
         let fileName = "test_portal_cache_clear_\(UUID().uuidString).json"
         let svc = PortalImageCacheService(fileName: fileName)
 
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = Optional(AppSupport.directory)!
         let dir = appSupport.appendingPathComponent("Verbinal", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let fileURL = dir.appendingPathComponent(fileName)
@@ -226,7 +227,7 @@ final class PortalCacheServiceTests: XCTestCase {
     func testPortalImageCachePersistenceRoundTrip() throws {
         let fileName = "test_portal_cache_rt_\(UUID().uuidString).json"
 
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = Optional(AppSupport.directory)!
         let dir = appSupport.appendingPathComponent("Verbinal", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let fileURL = dir.appendingPathComponent(fileName)

@@ -6,6 +6,7 @@
 
 import Foundation
 import os.log
+import VerbinalKit
 
 /// Per-image JSON file conformance of `ManifestStore`. One file per
 /// image id at `<directory>/<sanitized-id>.json`, holding the full
@@ -267,10 +268,7 @@ extension JSONManifestStore {
     /// App Support subpath where production stores the cache. Used
     /// by AppState wiring; tests pass an isolated tempdir.
     static func defaultDirectory() -> URL {
-        let base = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first ?? FileManager.default.temporaryDirectory
+        let base = AppSupport.directory
         return base
             .appendingPathComponent("Verbinal", isDirectory: true)
             .appendingPathComponent("ImageDiscovery", isDirectory: true)

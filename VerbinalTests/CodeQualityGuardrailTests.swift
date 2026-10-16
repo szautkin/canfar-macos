@@ -168,6 +168,27 @@ final class CodeQualityGuardrailTests: XCTestCase {
         XCTAssertEqual(unsaid.sorted(), [], "a result kept on the Mac: tell ResultDestination (plan 36 4.1)")
     }
 
+    // MARK: - One folder for Verbinal's files (plan 40)
+
+    /// Where Application Support is asked for but through `AppSupport`, and why.
+    static let applicationSupportKept: [String: String] = [
+        "shared/VerbinalKit/Sources/MCPCore/SocketSidecar.swift":
+            "the socket's address, where the relay looks for it at fixed paths; a test host never writes it (plan 36 Q2)",
+    ]
+
+    func testOnlyAppSupportAsksForApplicationSupport() {
+        let asking = Self.sources(in: ["Verbinal", "shared/VerbinalKit/Sources", "VerbinalTests", "shared/VerbinalKit/Tests"])
+            .filter { $0.text.contains(".applicationSupport" + "Directory") }.map(\.path)
+            .filter { !$0.hasSuffix("Storage/AppSupport.swift") && Self.applicationSupportKept[$0] == nil }
+        XCTAssertEqual(asking.sorted(), [], "Application Support through AppSupport.directory, so a test run keeps its files to itself (plan 40)")
+    }
+
+    func testATestRunKeepsItsFilesToItself() {
+        XCTAssertTrue(AppSupport.isTestHost)
+        XCTAssertNotEqual(AppSupport.directory.standardizedFileURL.path, AppSupport.realDirectory.standardizedFileURL.path)
+        XCTAssertTrue(AppSupport.directory.path.contains("VerbinalTestRuns"), AppSupport.directory.path)
+    }
+
     // MARK: - Every store is synced, or the device's
 
     /// Synced through CANFAR storage when the person chooses (plan 34 V, 36

@@ -38,7 +38,7 @@ final class ObservationStoreTests: XCTestCase {
     }
 
     override func tearDown() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = Optional(AppSupport.directory)
         if let dir = appSupport?.appendingPathComponent("Verbinal") {
             let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
             for file in files where file.lastPathComponent.hasPrefix("test_observations_") {
@@ -182,7 +182,7 @@ final class ObservationStoreTests: XCTestCase {
         // Instead verify the store was at least readable
         XCTAssertTrue(store2.observations.count <= 1)
 
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = Optional(AppSupport.directory)
         if let dir = appSupport?.appendingPathComponent("Verbinal") {
             try? FileManager.default.removeItem(at: dir.appendingPathComponent(fileName))
         }

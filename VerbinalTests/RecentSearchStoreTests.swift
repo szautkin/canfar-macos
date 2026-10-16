@@ -26,7 +26,7 @@ final class RecentSearchStoreTests: XCTestCase {
 
     override func tearDown() {
         // Clean up any test files
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = Optional(AppSupport.directory)
         if let dir = appSupport?.appendingPathComponent("Verbinal") {
             let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
             for file in files where file.lastPathComponent.hasPrefix("test_recent_searches_") {
@@ -114,7 +114,7 @@ final class RecentSearchStoreTests: XCTestCase {
         XCTAssertEqual(store2.searches[0].formSnapshot.target, "Persisted")
 
         // Cleanup
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = Optional(AppSupport.directory)
         if let dir = appSupport?.appendingPathComponent("Verbinal") {
             try? FileManager.default.removeItem(at: dir.appendingPathComponent(fileName))
         }

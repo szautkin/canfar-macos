@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import VerbinalKit
 
 /// What this device knows of the person's VOSpace between syncs (plan 34
 /// V): the manifest as last read, and each kind's items as last seen — how
@@ -53,8 +54,7 @@ struct StorageSyncState: Codable, Equatable, Sendable {
     }
 
     static var productionDirectory: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Verbinal/StorageSync", isDirectory: true)
+        AppSupport.directory.appendingPathComponent("Verbinal/StorageSync", isDirectory: true)
     }
 
     static func load(from file: URL) -> StorageSyncState {

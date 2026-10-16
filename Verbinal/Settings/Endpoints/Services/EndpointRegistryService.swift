@@ -81,10 +81,7 @@ final class EndpointRegistryService {
     }
 
     nonisolated static func defaultCacheURL() -> URL {
-        let base = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first ?? FileManager.default.temporaryDirectory
+        let base = AppSupport.directory
         return base
             .appendingPathComponent("Verbinal", isDirectory: true)
             .appendingPathComponent("endpoint-cache.json", isDirectory: false)

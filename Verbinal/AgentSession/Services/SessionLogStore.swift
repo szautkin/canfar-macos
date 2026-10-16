@@ -40,8 +40,7 @@ final class SessionLogStore: @unchecked Sendable {
     private let changes: ChangeLog
 
     static var productionDirectory: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Verbinal/AgentSessions", isDirectory: true)
+        AppSupport.directory.appendingPathComponent("Verbinal/AgentSessions", isDirectory: true)
     }
 
     init(directory: URL = SessionLogStore.productionDirectory, changes: ChangeLog = .shared) {

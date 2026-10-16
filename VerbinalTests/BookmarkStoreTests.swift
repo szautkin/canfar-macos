@@ -20,7 +20,7 @@ final class BookmarkStoreTests: XCTestCase {
     }
 
     override func tearDown() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = Optional(AppSupport.directory)
         if let dir = appSupport?.appendingPathComponent("Verbinal/Bookmarks") {
             let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
             for file in files where file.lastPathComponent.hasPrefix("test_bookmarks_") {
@@ -76,7 +76,7 @@ final class BookmarkStoreTests: XCTestCase {
         XCTAssertEqual(store2.bookmarks.count, 1)
         XCTAssertEqual(store2.bookmarks[0].label, "persisted")
 
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = Optional(AppSupport.directory)
         if let dir = appSupport?.appendingPathComponent("Verbinal/Bookmarks") {
             try? FileManager.default.removeItem(at: dir.appendingPathComponent(fileName))
         }

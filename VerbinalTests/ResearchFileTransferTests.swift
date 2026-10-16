@@ -74,7 +74,7 @@ final class ResearchFileTransferTests: XCTestCase {
     override func tearDown() {
         DownloadsFolder.chosen.withLock { $0 = nil }
         try? FileManager.default.removeItem(at: folder)
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+        let dir = Optional(AppSupport.directory)?
             .appendingPathComponent("Verbinal")
         if let dir { try? FileManager.default.removeItem(at: dir.appendingPathComponent(fileName)) }
         super.tearDown()

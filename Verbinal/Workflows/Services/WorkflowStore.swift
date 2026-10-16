@@ -28,7 +28,7 @@ final class WorkflowStore {
 
     init(directory: URL? = nil, builtins: @escaping () -> [(String, String)] = WorkflowStore.loadTemplates,
          changes: ChangeLog = .shared) {
-        self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!.appendingPathComponent("Verbinal/Workflows", isDirectory: true)
+        self.directory = directory ?? AppSupport.directory.appendingPathComponent("Verbinal/Workflows", isDirectory: true)
         self.builtins = builtins
         self.changes = changes
     }

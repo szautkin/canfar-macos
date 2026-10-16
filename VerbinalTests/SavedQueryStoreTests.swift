@@ -22,7 +22,7 @@ final class SavedQueryStoreTests: XCTestCase {
     }
 
     override func tearDown() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = Optional(AppSupport.directory)
         if let dir = appSupport?.appendingPathComponent("Verbinal") {
             let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
             for file in files where file.lastPathComponent.hasPrefix("test_saved_queries_") {
@@ -83,7 +83,7 @@ final class SavedQueryStoreTests: XCTestCase {
         XCTAssertEqual(store2.queries[0].name, "Persisted")
         XCTAssertEqual(store2.queries[0].adql, "SELECT 1")
 
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = Optional(AppSupport.directory)
         if let dir = appSupport?.appendingPathComponent("Verbinal") {
             try? FileManager.default.removeItem(at: dir.appendingPathComponent(fileName))
         }

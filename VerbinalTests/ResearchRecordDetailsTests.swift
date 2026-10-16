@@ -164,7 +164,7 @@ final class ResearchRecordDetailsTests: XCTestCase {
     @MainActor
     private func temporaryStore() -> (ObservationStore, URL) {
         let name = "test_observations_\(UUID().uuidString).json"
-        let file = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let file = AppSupport.directory
             .appendingPathComponent("Verbinal").appendingPathComponent(name)
         return (ObservationStore(fileName: name, spotlight: nil), file)
     }

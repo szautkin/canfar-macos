@@ -18,7 +18,7 @@ final class CutoutToolTests: XCTestCase {
     override func setUp() { fileName = "test-cutouts-\(UUID().uuidString).json" }
 
     override func tearDown() {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+        let dir = Optional(AppSupport.directory)?
             .appendingPathComponent("Verbinal")
         if let dir { try? FileManager.default.removeItem(at: dir.appendingPathComponent(fileName)) }
     }

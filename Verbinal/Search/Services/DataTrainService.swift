@@ -6,6 +6,7 @@
 
 import Foundation
 import os.log
+import VerbinalKit
 
 /// Cache wrapper for data train rows with a timestamp.
 private struct DataTrainCache: Codable {
@@ -75,7 +76,7 @@ actor DataTrainService {
     // MARK: - Disk Cache
 
     private var cacheURL: URL? {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport: URL? = AppSupport.directory
         guard let dir = appSupport?.appendingPathComponent("Verbinal", isDirectory: true) else { return nil }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent(Self.cacheFileName)

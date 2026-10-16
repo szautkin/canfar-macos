@@ -29,7 +29,7 @@ final class JobHistoryTests: XCTestCase {
         let notes = DiskPersistence<[JobHistoryStore.Launch]>(subdirectory: folder, fileName: "launches.json",
                                                               logger: Logger(subsystem: "tests", category: "jobs"))
         defer {
-            let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            let support = AppSupport.directory
             try? FileManager.default.removeItem(at: support.appendingPathComponent(folder))
         }
         JobHistoryStore(persistence: nil, launchPersistence: notes).noteLaunch(ids: ["j1", "j2"], by: .agent)

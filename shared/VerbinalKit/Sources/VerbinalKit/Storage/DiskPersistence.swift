@@ -32,9 +32,7 @@ public struct DiskPersistence<T: Codable>: Sendable {
     public init(subdirectory: String, fileName: String, logger: Logger, schemaVersion: Int = 1) {
         self.logger = logger
         self.schemaVersion = schemaVersion
-        let appSupport = FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask)
-            .first
+        let appSupport: URL? = AppSupport.directory
         guard let dir = appSupport?.appendingPathComponent(subdirectory, isDirectory: true) else {
             self.fileURL = nil
             return

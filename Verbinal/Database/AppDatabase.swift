@@ -7,6 +7,7 @@
 import Foundation
 import GRDB
 import os.log
+import VerbinalKit
 
 /// The app's single GRDB database (Phase 1 of the storage-DB migration; see
 /// dev_info/storage_review_1/DB_DESIGN.md). Owns one `DatabaseWriter` —
@@ -33,9 +34,7 @@ struct AppDatabase {
 
     /// On-disk pool at Application Support/Verbinal/verbinal.sqlite (WAL).
     static func makeShared() throws -> AppDatabase {
-        let dir = try FileManager.default
-            .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            .appendingPathComponent("Verbinal", isDirectory: true)
+        let dir = AppSupport.directory.appendingPathComponent("Verbinal", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let dbURL = dir.appendingPathComponent("verbinal.sqlite")
         let pool = try DatabasePool(path: dbURL.path)

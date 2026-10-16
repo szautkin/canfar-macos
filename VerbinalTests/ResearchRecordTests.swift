@@ -21,7 +21,7 @@ final class ResearchRecordTests: XCTestCase {
     }
 
     override func tearDown() {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+        let dir = Optional(AppSupport.directory)?
             .appendingPathComponent("Verbinal")
         if let dir { try? FileManager.default.removeItem(at: dir.appendingPathComponent(fileName)) }
         tempFiles.forEach { try? FileManager.default.removeItem(at: $0) }
