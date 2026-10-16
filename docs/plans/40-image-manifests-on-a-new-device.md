@@ -330,7 +330,9 @@ Settings ▸ Storage, and the assistant read the app:
   resume now carry their own time (`PauseMark.at`). `testTheSessionLogSaysWhoPausedAndResumed` checks the
   times as well as the words.
 
-**Still to verify:**
+**For the tester, by the person's decision (2026-10-16).** The plan is closed. The two cases left need a
+new device and a newly started client. Making this Mac look new would mean moving the person's sync
+records aside, and the person chose to leave both cases to the tester:
 - **A pause partway through a long sync, and its relaunch.** Everything here was synced already, so the
   pause stopped an idle sync and the resume had nothing left to move. That the count goes on from where
   it stopped, after a relaunch too, is `StorageSyncTests`' and the tester's: handout 37, N2 and N3, on a
