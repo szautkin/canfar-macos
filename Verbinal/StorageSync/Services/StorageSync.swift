@@ -90,6 +90,8 @@ actor StorageSync {
     /// it nothing is read or written, and only a sync asked for looks again.
     private var hasStorage: Bool?
     private var stopped = false
+    /// The kinds whose folder outside `.verbinal` was looked for since sign-in.
+    private var lookedFor: Set<String> = []
 
     init(remote: any StorageRemote, catalog: StorageKindCatalog, stateFile: URL,
          now: @escaping @Sendable () -> Date = Date.init) {
@@ -200,23 +202,52 @@ actor StorageSync {
     // MARK: - The manifest
 
     /// The manifest: as last read when it has not changed, read again when
-    /// it has, written when there is none and Verbinal's folders are there.
-    /// None for an account without CANFAR storage.
+    /// it has, written when there is none and Verbinal's folders are there,
+    /// and added to when one of them came after it. None for an account
+    /// without CANFAR storage.
     private func currentManifest() async throws -> StorageManifest? {
         if hasStorage != true { hasStorage = try await remote.hasHome() }
         guard hasStorage == true else { return nil }
         let root = try await remote.list(".verbinal") ?? []
-        if let item = root.first(where: { $0.name == "manifest.json" }) {
-            if item.stamp == state.manifestStamp, let data = state.manifest, let kept = try? StorageManifest.decode(data) {
-                return kept
-            }
+        guard let item = root.first(where: { $0.name == "manifest.json" }) else { return try await firstManifest() }
+        let manifest: StorageManifest
+        if item.stamp == state.manifestStamp, let data = state.manifest, let kept = try? StorageManifest.decode(data) {
+            manifest = kept
+        } else {
             let data = try await remote.read(StorageManifest.path)
-            let manifest = try StorageManifest.decode(data)
+            manifest = try StorageManifest.decode(data)
             state.manifestStamp = item.stamp
             state.manifest = data
-            return manifest
         }
-        return try await firstManifest()
+        return try await declaringFound(in: manifest, root: root)
+    }
+
+    /// The manifest, with the kinds of Verbinal's own data whose folder is
+    /// there though it does not declare them — it was written before the
+    /// folder was, when the person kept their first collection there
+    /// (plan 40 A). One write declares them all. A folder in `.verbinal` is
+    /// seen in its listing; one elsewhere is looked for once a sign-in. The
+    /// kinds the person chooses are never declared this way.
+    private func declaringFound(in manifest: StorageManifest, root: [StorageItem]) async throws -> StorageManifest {
+        var found: [any StorageKind] = []
+        for kind in catalog.kinds where kind.declaredWhenFound && !manifest.declares(kind.id) {
+            let inVerbinal = kind.defaultFolder.hasPrefix(".verbinal/") ? String(kind.defaultFolder.dropFirst(".verbinal/".count)) : nil
+            if let inVerbinal, !inVerbinal.contains("/") {
+                if root.contains(where: { $0.isFolder && $0.name == inVerbinal }) { found.append(kind) }
+            } else if lookedFor.insert(kind.id).inserted, try await remote.list(kind.defaultFolder) != nil {
+                found.append(kind)
+            }
+        }
+        guard !found.isEmpty else { return manifest }
+        var latest = try await latestManifest() ?? manifest
+        let adding = found.filter { !latest.declares($0.id) }
+        guard !adding.isEmpty else { return latest }
+        for kind in adding {
+            latest.kinds[kind.id] = .init(folder: kind.defaultFolder, format: kind.format, since: now())
+        }
+        try await write(latest, why: "Verbinal declares in VOSpace the kinds of its data found there, for every device: "
+                        + adding.map(\.id).joined(separator: ", "))
+        return latest
     }
 
     /// No manifest: one declaring the kinds whose folders are there — the

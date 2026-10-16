@@ -167,6 +167,44 @@ final class StorageSyncTests: XCTestCase {
         XCTAssertTrue(files.isEmpty, "no Verbinal data: no manifest, no folder")
     }
 
+    /// Plan 40 A: the manifest was written for a collection before any probe
+    /// made `.verbinal/manifests`; a second device would never have imported
+    /// the package lists.
+    func testAFolderThatCameAfterTheManifestIsDeclaredOnce() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["research": ".verbinal/research"]))
+        await remote.makeFolder(".verbinal/research")
+        await remote.put(".verbinal/manifests/images.canfar.net_skaha_astroml_24.07.json", Data("one".utf8))
+        await remote.makeFolder("Verbinal-Exports")
+        let imports = Imports()
+        let storage = sync(remote, imports: imports)
+        await storage.sync(.signedIn)
+        let written = try StorageManifest.decode(try await remote.read(StorageManifest.path))
+        XCTAssertEqual(Set(written.kinds.keys), ["research", "imagePackages", "exports"], "the person's kind kept")
+        XCTAssertEqual(imports.count, 1, "imported in the same sync")
+
+        let stamp = await remote.files[StorageManifest.path]?.modified
+        await remote.forgetCounts()
+        await storage.sync(.asked)
+        let again = await remote.files[StorageManifest.path]?.modified
+        XCTAssertEqual(again, stamp, "declared: not written again")
+        let lists = await remote.lists
+        XCTAssertFalse(lists.contains(".verbinal-scripts"), "a folder outside .verbinal is looked for once a sign-in")
+    }
+
+    func testNoFolderNoWriteAndThePersonsKindsAreNeverDeclaredThisWay() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["imagePackages": ".verbinal/manifests"]))
+        await remote.makeFolder(".verbinal/manifests")
+        await remote.makeFolder(".verbinal/research")
+        let stamp = await remote.files[StorageManifest.path]?.modified
+        await sync(remote).sync(.signedIn)
+        let after = await remote.files[StorageManifest.path]?.modified
+        XCTAssertEqual(after, stamp, "nothing new found: nothing written")
+        let kept = try StorageManifest.decode(try await remote.read(StorageManifest.path))
+        XCTAssertEqual(Set(kept.kinds.keys), ["imagePackages"], "research waits for the person")
+    }
+
     func testUnknownKindsAndFieldsSurviveAWrite() async throws {
         let remote = FakeVOSpace()
         let original = manifest(["imagePackages": ".verbinal/manifests", "linuxNotebooks": "notebooks"],
