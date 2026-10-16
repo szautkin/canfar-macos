@@ -304,13 +304,17 @@ Verbinal's tools only):
   resume it"), **Sync Now** and "Last synced …".
 - **A full re-sync once, at the relaunch.** The 20:54 sync took every item as changed: 288 package lists
   (all already here, so none imported) and 474 Remote Compute runs. A second sync, asked at 21:01, moved
-  nothing and put nothing on the bar. Why the first one did is not known yet; the session's rule (Verbinal's
-  tools only) kept the state file unread. It is to be watched at the next relaunch.
+  nothing and put nothing on the bar. **Found and fixed (2026-10-16):** VOSpace dates carry milliseconds,
+  the state file kept whole seconds, and stamps were compared exactly — every item looked changed after
+  every relaunch, while a second sync in the same run moved nothing. Two stamps are now the same item at
+  the same size within the same second. `testARelaunchFetchesNothingThatDidNotChange`, with fractional
+  times, failed on the previous code (5 lists fetched again, the manifest read again).
 - **`pause_activity` and `resume_activity`.** `describe_app` lists both, but this client's tool list was
   read before the relaunch and has neither, so they could not be called.
 
 **Still to verify:**
 - **Pausing and resuming live.** From the bar, from Settings ▸ Storage, and with the two tools from a
   client that has them: handout 37, N2 to N4.
-- **The re-sync at a relaunch.** Whether it happens again.
+- **The re-sync at a relaunch, on the person's Mac.** It should not happen again; at the next relaunch
+  the bar should show no sync line, or a short one for what really changed.
 

@@ -20,6 +20,20 @@ struct StorageItem: Codable, Equatable, Sendable {
     struct Stamp: Codable, Equatable, Sendable {
         let size: Int64?
         let modified: Date?
+
+        /// The same item: the same size, and dated within the same second.
+        /// VOSpace gives milliseconds and the state file keeps whole seconds;
+        /// compared exactly, every item looked changed after each relaunch —
+        /// 288 package lists and 474 runs fetched again at every launch
+        /// (2026-10-16). Two writes in one second at one size are taken as one.
+        static func == (a: Stamp, b: Stamp) -> Bool {
+            guard a.size == b.size else { return false }
+            switch (a.modified, b.modified) {
+            case (nil, nil): return true
+            case let (x?, y?): return abs(x.timeIntervalSince(y)) < 1
+            default: return false
+            }
+        }
     }
 }
 

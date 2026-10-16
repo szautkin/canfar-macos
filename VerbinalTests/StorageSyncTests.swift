@@ -23,6 +23,8 @@ final class StorageSyncTests: XCTestCase {
         var publicFolders: Set<String> = []
         var failing = false
         private var clock = Date(timeIntervalSince1970: 1_800_000_000)
+        /// Times with a fraction of a second, as VOSpace gives them.
+        func useFractionalTimes() { clock = Date(timeIntervalSince1970: 1_800_000_000.637) }
 
         func put(_ path: String, _ data: Data) {
             clock = clock.addingTimeInterval(1)
@@ -444,6 +446,31 @@ final class StorageSyncTests: XCTestCase {
         let done = await relaunched.status()
         XCTAssertNil(done.paused)
         XCTAssertEqual(done.kinds.first { $0.id == "imagePackages" }?.items, 10)
+    }
+
+    /// A relaunch takes nothing as changed that was not (2026-10-16): VOSpace
+    /// dates carry milliseconds, the state file kept whole seconds, and after
+    /// every relaunch each item looked changed — the person's 288 package
+    /// lists and 474 runs fetched again at each launch, while a second sync
+    /// in the same run moved nothing.
+    func testARelaunchFetchesNothingThatDidNotChange() async throws {
+        let remote = FakeVOSpace()
+        await remote.useFractionalTimes()
+        await lists(remote, count: 5)
+        let imports = Imports()
+        await sync(remote, imports: imports).sync(.signedIn)
+        XCTAssertEqual(imports.count, 5)
+
+        let afterRelaunch = Imports()
+        await remote.forgetCounts()
+        await sync(remote, imports: afterRelaunch).sync(.signedIn)
+        XCTAssertEqual(afterRelaunch.count, 0, "nothing changed: nothing fetched again")
+        let reads = await remote.reads
+        XCTAssertEqual(reads, [], "not even the manifest is read again")
+
+        await remote.put(".verbinal/manifests/image-3.json", Data("changed".utf8))
+        await sync(remote, imports: afterRelaunch).sync(.signedIn)
+        XCTAssertEqual(afterRelaunch.count, 1, "a list that changed still comes")
     }
 
     @MainActor
