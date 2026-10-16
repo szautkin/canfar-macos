@@ -229,7 +229,7 @@ final class SessionLaunchModel {
         if let context = cache.context {
             coreOptions = context.cores.options
             ramOptions = context.memoryGB.options
-            gpuOptions = context.gpus.options
+            gpuOptions = context.gpus?.options ?? []
             defaultCores = context.cores.default
             defaultRam = context.memoryGB.default
             cores = defaultCores

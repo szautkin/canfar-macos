@@ -282,7 +282,7 @@ private struct PortalSettingsTab: View {
     // Resource option lists derived from the cached context.
     private var coreOptions: [Int] { cache?.context?.cores.options ?? [] }
     private var ramOptions: [Int] { cache?.context?.memoryGB.options ?? [] }
-    private var gpuOptions: [Int] { cache?.context?.gpus.options ?? [] }
+    private var gpuOptions: [Int] { cache?.context?.gpus?.options ?? [] }
 
     // MARK: - Rows
 

@@ -9,7 +9,23 @@ import Foundation
 struct SessionContext: Codable {
     let cores: ResourceOptions
     let memoryGB: ResourceOptions
-    let gpus: GpuOptions
+    let gpus: GpuOptions?
+
+    /// What it offers in GPUs; the one rule every GPU control asks (plan 41).
+    var gpuOffer: GPUOffer { GPUOffer(options: gpus?.options ?? []) }
+}
+
+extension SessionContext {
+    /// Cores and memory as before; `gpus` missing, null or in a shape it
+    /// does not know is no GPUs (plan 41). A strict `gpus` had failed the
+    /// whole context, and the cache then kept none: the launch form lost
+    /// its cores and RAM too.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        cores = try container.decode(ResourceOptions.self, forKey: .cores)
+        memoryGB = try container.decode(ResourceOptions.self, forKey: .memoryGB)
+        gpus = (try? container.decodeIfPresent(GpuOptions.self, forKey: .gpus)) ?? nil
+    }
 }
 
 struct ResourceOptions: Codable {
@@ -19,4 +35,26 @@ struct ResourceOptions: Codable {
 
 struct GpuOptions: Codable {
     let options: [Int]
+}
+
+/// The GPUs a context offers (plan 41): the positive counts of its
+/// `gpus.options`, sorted, once each. None when it has no `gpus`, no
+/// options, or only 0 — the GPU controls are then disabled, and turn on by
+/// themselves when a refreshed context offers some.
+struct GPUOffer: Equatable, Sendable {
+    let counts: [Int]
+
+    static let none = GPUOffer(counts: [])
+
+    init(counts: [Int]) { self.counts = counts }
+
+    init(options: [Int]) { counts = Array(Set(options.filter { $0 > 0 })).sorted() }
+
+    var offersAny: Bool { !counts.isEmpty }
+
+    /// The most a batch job may ask for; 0 when none is offered.
+    var largest: Int { counts.last ?? 0 }
+
+    /// None, or one of the counts offered.
+    func allows(_ gpus: Int) -> Bool { gpus == 0 || counts.contains(gpus) }
 }
