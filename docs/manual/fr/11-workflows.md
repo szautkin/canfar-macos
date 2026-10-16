@@ -36,8 +36,9 @@ extension, comme l’extension de calepins ; sans elle, l’étape dit quoi util
 
 ## Écrire le vôtre
 
-Choisissez **Nouveau flux de travail** dans la barre d’outils (dans le menu » quand la fenêtre est
-étroite). Un flux de travail est du Markdown simple, comme le rappelle l’éditeur :
+Choisissez **Nouveau flux de travail** (+) dans la barre au-dessus de la liste des flux de travail ;
+**Aperçu** à côté désélectionne. Un flux de travail est du Markdown simple, comme le rappelle
+l’éditeur :
 
 ```text
 # Titre

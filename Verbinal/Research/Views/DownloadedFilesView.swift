@@ -88,6 +88,35 @@ struct DownloadedFilesView: View {
 
             Divider()
 
+            #if os(macOS)
+            // The filter, in the pane it filters: `.searchable` put it in a
+            // native toolbar above Verbinal's own, which this macOS lays over
+            // the screen (2026-10-15).
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                TextField("Filter downloads", text: Bindable(model).filterText)
+                    .textFieldStyle(.plain)
+                if !model.filterText.isEmpty {
+                    Button {
+                        model.filterText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Clear the filter")
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(RoundedRectangle(cornerRadius: 7).fill(.quaternary))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            Divider()
+            #endif
+
             // The records' details coming from the archive, while they do (plan 19 R1).
             if let progress = appState.researchRecordRepair.progress {
                 HStack(spacing: 8) {
@@ -181,7 +210,9 @@ struct DownloadedFilesView: View {
                 .listStyle(.sidebar)
             }
         }
+        #if os(iOS)
         .searchable(text: Bindable(model).filterText, prompt: "Filter downloads")
+        #endif
         .uiPresented("Could Not Move the File", .alert, isPresented: Binding(get: { transferFailure != nil }, set: { if !$0 { transferFailure = nil } }))
         .alert("Could not move the file", isPresented: Binding(get: { transferFailure != nil }, set: { if !$0 { transferFailure = nil } })) {
             Button("OK", role: .cancel) { transferFailure = nil }

@@ -34,7 +34,8 @@ notebook add-on; without it, the step says what to use instead.
 
 ## Writing your own
 
-Choose **New Workflow** in the toolbar (in the » menu when the window is narrow). A workflow is plain
+Choose **New Workflow** (+) in the bar above the list of workflows; **Overview** beside it clears the
+selection. A workflow is plain
 Markdown, as the editor reminds you:
 
 ```text

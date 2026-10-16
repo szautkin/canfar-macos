@@ -108,6 +108,23 @@ final class ViewerLayoutTests: XCTestCase {
         }
     }
 
+    /// Every screen keeps to Verbinal's own toolbar: none brings the window a
+    /// native one. Workflows' NavigationSplitView did, and this macOS lays a
+    /// native toolbar over the screen — the workflow's title blurred under
+    /// it, the sidebar's heading cut (the person, 2026-10-15). Sizes and
+    /// names never showed it; the window's toolbar does.
+    func testNoScreenBringsTheWindowAToolbarOfItsOwn() {
+        for mode in AppMode.allCases {
+            let state = AppState()
+            if mode.requiresAuthentication { state.auth.apply(username: "qa-person", userInfo: nil) }
+            state.currentMode = mode
+            laidOut(ContentView().environment(state), in: CGSize(width: 1200, height: 700)) { host in
+                let items = host.window?.toolbar?.items.map(\.itemIdentifier.rawValue) ?? []
+                XCTAssertNil(host.window?.toolbar, "\(mode) gives the window a native toolbar: \(items)")
+            }
+        }
+    }
+
     func testAFITSTabWhoseOpenFailedFitsAndShowsNoControls() {
         let state = AppState()
         let tab = state.fitsTabHost.addTab()

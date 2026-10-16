@@ -149,6 +149,16 @@
         }
       }
     },
+    "Clear the filter" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer le filtre"
+          }
+        }
+      }
+    },
     "Copy the file from your storage to this Mac; it stays in your storage" : {
       "localizations" : {
         "fr" : {

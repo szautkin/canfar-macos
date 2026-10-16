@@ -33,6 +33,8 @@ final class EveryScreenNamedTests: XCTestCase {
         "settings.agent": ["settings.agent", "settings.agent.allowExternal", "settings.agent.sessionIdle",
                            "settings.agent.sessionLogs"],
         "portal.launchForm": ["portal.launch"],
+        // Its actions in its own bar, not a native toolbar's (2026-10-15).
+        "workflows": ["workflows.new"],
     ]
 
     private func read(_ state: AppState, place: String, _ root: some View,

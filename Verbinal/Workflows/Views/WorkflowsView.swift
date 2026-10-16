@@ -44,56 +44,11 @@ struct WorkflowsView: View {
     var body: some View {
         // Touch changeID so check-off / save / delete refresh the split view.
         let _ = store.changeID
-        NavigationSplitView {
-            List(selection: $selectedID) {
-                Section(String(localized: "Wf_TemplatesHeader")) {
-                    ForEach(store.listBuiltIn()) { item in
-                        Text(item.document.title).tag(item.id)
-                    }
-                }
-                Section(String(localized: "Wf_MyWorkflowsHeader")) {
-                    ForEach(store.listLocal()) { item in
-                        HStack(spacing: 5) {
-                            #if os(macOS)
-                            if let attribution = item.agentAttribution {
-                                AgentAttributionBadge(attribution: attribution)
-                            }
-                            #endif
-                            Text("\(item.document.title) (\(item.document.doneCount)/\(item.document.steps.count))")
-                        }
-                        .tag(item.id)
-                    }
-                }
-            }
-            .navigationTitle(String(localized: "Wf_PageTitle"))
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        startCreating()
-                    } label: {
-                        Label(String(localized: "Wf_New"), systemImage: "plus")
-                    }
-                    .help(String(localized: "Wf_New"))
-                }
-                ToolbarItem(placement: .automatic) {
-                    Button {
-                        selectedID = nil
-                    } label: {
-                        Label(String(localized: "Wf_ClearSelection"), systemImage: "sidebar.squares.left")
-                    }
-                    .help(String(localized: "Wf_ClearSelection"))
-                    .disabled(selectedID == nil || editorMode != nil)
-                }
-            }
-        } detail: {
-            if let editorMode {
-                editorPane(mode: editorMode)
-            } else if let item = selected {
-                workflowDetail(item)
-            } else {
-                emptyOverview
-            }
-        }
+        // A split of its own, as every screen has, with its actions in its
+        // own bar: a NavigationSplitView brought the window a native toolbar
+        // over Verbinal's, which this macOS lays over the screen — the
+        // workflow's title blurred under it, the sidebar's heading cut.
+        split
         .uiPresented("Delete the Workflow?", .confirmation, item: $workflowPendingDelete)
         .confirmationDialog(
             String(localized: "Wf_DeleteConfirmTitle"),
@@ -122,6 +77,87 @@ struct WorkflowsView: View {
                 )
             }
         }
+    }
+
+    private var split: some View {
+        #if os(macOS)
+        HSplitView { panes }
+        #else
+        HStack(spacing: 0) { panes }
+        #endif
+    }
+
+    @ViewBuilder
+    private var panes: some View {
+        VStack(spacing: 0) {
+            actionBar
+            Divider()
+            workflowList
+        }
+        .frame(minWidth: 200, idealWidth: 240, maxWidth: 340)
+        Group {
+            if let editorMode {
+                editorPane(mode: editorMode)
+            } else if let item = selected {
+                workflowDetail(item)
+            } else {
+                emptyOverview
+            }
+        }
+        .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// New Workflow and Clear Selection, in the screen's own bar above its list.
+    private var actionBar: some View {
+        HStack(spacing: 10) {
+            Text(String(localized: "Wf_PageTitle"))
+                .font(.headline)
+            Spacer()
+            Button {
+                startCreating()
+            } label: {
+                Label(String(localized: "Wf_New"), systemImage: "plus")
+                    .labelStyle(.iconOnly)
+            }
+            .buttonStyle(.borderless)
+            .help(String(localized: "Wf_New"))
+            .pointable("workflows.new")
+            Button {
+                selectedID = nil
+            } label: {
+                Label(String(localized: "Wf_ClearSelection"), systemImage: "sidebar.squares.left")
+                    .labelStyle(.iconOnly)
+            }
+            .buttonStyle(.borderless)
+            .help(String(localized: "Wf_ClearSelection"))
+            .disabled(selectedID == nil || editorMode != nil)
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 36)
+    }
+
+    private var workflowList: some View {
+        List(selection: $selectedID) {
+                Section(String(localized: "Wf_TemplatesHeader")) {
+                    ForEach(store.listBuiltIn()) { item in
+                        Text(item.document.title).tag(item.id)
+                    }
+                }
+                Section(String(localized: "Wf_MyWorkflowsHeader")) {
+                    ForEach(store.listLocal()) { item in
+                        HStack(spacing: 5) {
+                            #if os(macOS)
+                            if let attribution = item.agentAttribution {
+                                AgentAttributionBadge(attribution: attribution)
+                            }
+                            #endif
+                            Text("\(item.document.title) (\(item.document.doneCount)/\(item.document.steps.count))")
+                        }
+                        .tag(item.id)
+                    }
+                }
+        }
+        .listStyle(.sidebar)
     }
 
     private var emptyOverview: some View {
