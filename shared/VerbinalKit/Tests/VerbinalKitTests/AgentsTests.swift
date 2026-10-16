@@ -404,8 +404,16 @@ final class AIToolRouterTests: XCTestCase {
                                            rawArguments: Data("{}".utf8),
                                            context: context)
 
-        guard case .failed(.backendError) = result else {
+        guard case .failed(.backendError(let message)) = result else {
             return XCTFail("expected backendError on apply throw, got \(result)")
+        }
+        // It names the proposal, so withdraw_proposal can say where it
+        // stands: withdrawn (QA 2026-10-15, Q11).
+        let id = await counter.lastID
+        XCTAssertTrue(message.contains("(proposal \(id?.uuidString ?? "-")):"), message)
+        if let id {
+            let state = await store.state(id)
+            XCTAssertEqual(state, .withdrawn)
         }
         // A deterministically failing auto-apply must withdraw the
         // optimistic proposal (mirroring the budget-cap path) so it
