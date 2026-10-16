@@ -292,6 +292,25 @@ after unlocking, `SearchablePickerTests.testTheToolsOpenItAndChooseInIt` failed:
 opened 300 ms after it was asked. It builds its own picker, untouched by this plan. It passed three runs
 alone and in the full set again.
 
+**On the live app** (2026-10-15, 21:00, build `af2b859d`, session `BACEA429`, which the person allowed;
+Verbinal's tools only):
+- **Workflows and Research.** Captured in the person's own window. Workflows has its bar (**Workflows**,
+  **+**, **Overview**), its title is clear with a workflow selected, and **Templates** is not cut. Research
+  has **Filter downloads** in its pane. Neither has a native toolbar.
+- **The bar.** The sync after the relaunch (20:54) was on the bar: **Syncing with your storage**, started
+  by Verbinal, **288 of 288**, "474 brought to this Mac". `list_activity` gave its `id`, `done` and `total`;
+  `list_storage_kinds` gave the kinds, synced.
+- **Settings ▸ Storage.** It has **Pause** (`settings.storage.pause`, "Stop syncing where it is, until you
+  resume it"), **Sync Now** and "Last synced …".
+- **A full re-sync once, at the relaunch.** The 20:54 sync took every item as changed: 288 package lists
+  (all already here, so none imported) and 474 Remote Compute runs. A second sync, asked at 21:01, moved
+  nothing and put nothing on the bar. Why the first one did is not known yet; the session's rule (Verbinal's
+  tools only) kept the state file unread. It is to be watched at the next relaunch.
+- **`pause_activity` and `resume_activity`.** `describe_app` lists both, but this client's tool list was
+  read before the relaunch and has neither, so they could not be called.
+
 **Still to verify:**
-- **The live app.** The plan's on-screen check of the live app over MCP needs the person's build of this branch, in a session they allow. It is handout 37's section N.
+- **Pausing and resuming live.** From the bar, from Settings ▸ Storage, and with the two tools from a
+  client that has them: handout 37, N2 to N4.
+- **The re-sync at a relaunch.** Whether it happens again.
 
