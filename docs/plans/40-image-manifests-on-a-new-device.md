@@ -312,9 +312,29 @@ Verbinal's tools only):
 - **`pause_activity` and `resume_activity`.** `describe_app` lists both, but this client's tool list was
   read before the relaunch and has neither, so they could not be called.
 
+**Pausing and resuming, on the live app** (2026-10-16, 12:58–13:01, build `745d4bf1`, session
+`BACEA429`, which the person allowed again; Verbinal's tools only). The person clicked both buttons in
+Settings ▸ Storage, and the assistant read the app:
+- **The relaunch fetched nothing again.** The sync after this launch (12:58) found the 288 package lists
+  and the 474 runs, imported none and put nothing on the bar: the `745d4bf1` fix holds on the person's Mac.
+- **Pause** (12:59:44). Settings said **Paused by you**, with **Resume** in place of Pause and Sync Now.
+  `list_activity`: "Syncing with your storage — paused", `pausedBy: person`, `pausable: true`.
+  `list_storage_kinds`: `paused: {by: person}` and `activityTask: 1`. `sync_storage` refused: "The storage
+  sync is paused — by person — and stays paused until it is resumed: resume_activity (activity task 1),
+  or Resume in Settings ▸ Storage." The log: "Paused: Syncing with your storage — by the person."
+- **Resume.** The task ran again, without `pausedBy`, and ended at 13:00:35, "Nothing left to move"; the
+  bar went back to **Idle** and Settings to "Last synced now", with Pause and Sync Now. The log:
+  "Resumed: Syncing with your storage — by the person."
+- **Found and fixed: the times of those two lines.** The Resumed line carried 12:59:44, the task's start,
+  though it came after a call at 13:00:12. Every task line took the task's start or end; a pause and a
+  resume now carry their own time (`PauseMark.at`). `testTheSessionLogSaysWhoPausedAndResumed` checks the
+  times as well as the words.
+
 **Still to verify:**
-- **Pausing and resuming live.** From the bar, from Settings ▸ Storage, and with the two tools from a
-  client that has them: handout 37, N2 to N4.
-- **The re-sync at a relaunch, on the person's Mac.** It should not happen again; at the next relaunch
-  the bar should show no sync line, or a short one for what really changed.
+- **A pause partway through a long sync, and its relaunch.** Everything here was synced already, so the
+  pause stopped an idle sync and the resume had nothing left to move. That the count goes on from where
+  it stopped, after a relaunch too, is `StorageSyncTests`' and the tester's: handout 37, N2 and N3, on a
+  new device.
+- **`pause_activity` and `resume_activity` from a client.** This client's tool list was read before they
+  existed and still lacks them: handout 37, N4, from a client started after the update.
 

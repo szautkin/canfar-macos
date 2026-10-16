@@ -232,19 +232,26 @@ final class ActivityTests: XCTestCase {
         XCTAssertEqual(entry["pausable"] as? Bool, true)
     }
 
-    /// The session log says who paused and resumed, and why (plan 40).
+    /// The session log says who paused and resumed, why, and when — at
+    /// the pause and the resume, not when the task began (plan 40; the
+    /// live check had a resume half a minute late in the log's times).
     func testTheSessionLogSaysWhoPausedAndResumed() {
         let session = UUID()
         var sync = task("Syncing with your storage")
         sync.done = 120
         sync.total = 288
         sync.progress = .paused
-        sync.pause = PauseMark(by: .assistant, cause: Cause(why: "slow network", session: session), at: Date(), resumed: false)
+        let pausedAt = sync.started.addingTimeInterval(40)
+        sync.pause = PauseMark(by: .assistant, cause: Cause(why: "slow network", session: session), at: pausedAt, resumed: false)
         let seen = SessionViewpoint(session: session)
-        XCTAssertEqual(SessionLogLine.task(sync, seen: seen).line,
-                       "Paused: Syncing with your storage at 120 of 288 — by the assistant, because: slow network.")
+        let paused = SessionLogLine.task(sync, seen: seen)
+        XCTAssertEqual(paused.line, "Paused: Syncing with your storage at 120 of 288 — by the assistant, because: slow network.")
+        XCTAssertEqual(paused.at, pausedAt)
         sync.progress = .running
-        sync.pause = PauseMark(by: .person, cause: Cause(), at: Date(), resumed: true)
-        XCTAssertEqual(SessionLogLine.task(sync, seen: seen).line, "Resumed: Syncing with your storage — by the person.")
+        let resumedAt = sync.started.addingTimeInterval(70)
+        sync.pause = PauseMark(by: .person, cause: Cause(), at: resumedAt, resumed: true)
+        let resumed = SessionLogLine.task(sync, seen: seen)
+        XCTAssertEqual(resumed.line, "Resumed: Syncing with your storage — by the person.")
+        XCTAssertEqual(resumed.at, resumedAt)
     }
 }

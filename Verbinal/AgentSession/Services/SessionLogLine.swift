@@ -121,21 +121,25 @@ enum SessionLogLine {
     static func task(_ task: TrackedTask, seen: SessionViewpoint) -> SessionLogEntry {
         let (who, client) = seen.who(task.startedBy, task.cause)
         let line: String
+        // A pause or a resume is told when it happened, not when the task began.
+        var at = task.finished ?? task.started
         switch task.progress {
         case .running where task.pause?.resumed == true:
             let mark = task.pause!
             let (resumer, resumerClient) = seen.who(mark.by, mark.cause)
             line = "Resumed: \(task.label) — \(by(resumer, client: resumerClient))\(because(mark.cause.why))."
+            at = mark.at
         case .running: line = "Began: \(task.label) — \(by(who, client: client))\(because(task.cause.why))."
         case .paused:
             let mark = task.pause
             let (pauser, pauserClient) = mark.map { seen.who($0.by, $0.cause) } ?? (who, client)
             line = "Paused: \(task.label)\(task.countText.map { " at \($0)" } ?? "") — \(by(pauser, client: pauserClient))\(because(mark?.cause.why))."
+            at = mark?.at ?? at
         case .succeeded: line = "\(task.label) succeeded in \(time(task.elapsed()))\(task.message.map { ": \($0)" } ?? "")."
         case .failed: line = "\(task.label) failed after \(time(task.elapsed())): \(task.message ?? "no reason given")."
         case .cancelled: line = "\(task.label) was abandoned after \(time(task.elapsed()))."
         }
-        var entry = Self.entry(.task, at: task.finished ?? task.started, line)
+        var entry = Self.entry(.task, at: at, line)
         entry.who = who
         entry.client = client
         entry.why = task.cause.why
