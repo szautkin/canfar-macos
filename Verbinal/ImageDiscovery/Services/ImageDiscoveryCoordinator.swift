@@ -436,6 +436,17 @@ actor ImageDiscoveryCoordinator {
     // MARK: - Discovery pipeline
 
     private func runDiscovery(for imageID: String, force: Bool = false, task: TaskHandle? = nil) async throws -> ImageManifest {
+        // A list already in storage — another device's probe, or one that
+        // finished after the wait gave up — is read before anything is
+        // written: no script, no job (plan 40); not an older probe's (plan 19 K1).
+        if !force {
+            await task?.stage(String(localized: "Looking for its list in your storage"))
+            if let manifest = try? await fetchManifestIfPresent(for: imageID), Self.isCurrent(manifest) {
+                try await keep(manifest)
+                return manifest
+            }
+        }
+
         let strategy = await strategy(for: imageID)
         await task?.stage(String(localized: "Preparing the probe"))
 
@@ -454,17 +465,6 @@ actor ImageDiscoveryCoordinator {
                 jobID: nil
             )
             throw ImageDiscoveryError.jobSubmitFailed(message: error.localizedDescription)
-        }
-
-        // Recovery short-circuit: a previous probe (either strategy)
-        // may have completed and written the manifest to VOSpace,
-        // but our poll loop timed out before catching its terminal
-        // state. The manifest is sitting at the expected path —
-        // strategy-agnostic, so the recovery just works for both.
-        // One an older probe left there is not recovered (plan 19 K1).
-        if !force, let manifest = try? await fetchManifestIfPresent(for: imageID), Self.isCurrent(manifest) {
-            try await keep(manifest)
-            return manifest
         }
 
         await task?.stage(String(localized: "Submitting the probe job"))

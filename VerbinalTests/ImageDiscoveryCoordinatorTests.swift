@@ -770,6 +770,9 @@ final class ImageDiscoveryCoordinatorTests: XCTestCase {
         XCTAssertEqual(manifest.pythonPackages.first?.name, "recovered")
         XCTAssertEqual(h.launchCalls.count, 0,
                        "must not launch a fresh probe when VOSpace already has the manifest")
+        // Read before anything is written (plan 40): a list another device
+        // probed costs this one no script in the person's storage.
+        XCTAssertTrue(v.uploads.isEmpty, "no probe script uploaded")
     }
 
     func testRediscoverIgnoresPreExistingManifestAndForcesProbe() async throws {

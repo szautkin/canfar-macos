@@ -369,6 +369,16 @@
         }
       }
     },
+    "Looking for its list in your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche de sa liste dans votre stockage"
+          }
+        }
+      }
+    },
     "Move %@ to this Mac?" : {
       "localizations" : {
         "fr" : {
