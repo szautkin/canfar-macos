@@ -170,7 +170,7 @@ enum SessionLogLine {
         return entry
     }
 
-    /// "Verbinal decided: "Delete x" waits in Pending: a delete always waits for the person."
+    /// "Verbinal decided: "Delete x" waits in Pending: the person asks to approve "Remove from storage"."
     static func decision(_ decision: Decision, seen: SessionViewpoint) -> SessionLogEntry {
         let (who, client) = seen.who(decision.startedBy, decision.cause)
         var entry = Self.entry(.decision, at: decision.at, "Verbinal decided: \(decision.sentence).")

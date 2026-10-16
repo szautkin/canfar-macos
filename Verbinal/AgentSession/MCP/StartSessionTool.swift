@@ -35,11 +35,11 @@ struct StartSessionTool: AITool {
         let note: String?
     }
 
-    static let alreadyStartedNote = "Your session was already started, and the person allowed it: there is no need to call start_session again. When Verbinal restarts, your session continues."
+    static let alreadyStartedNote = "Your session was already started, and the person allowed it: there is no need to call start_session again. When Verbinal restarts, your session continues while your client keeps the same `Verbinal mcp` process."
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "start_session",
-        description: "Start your session with Verbinal — call this first: no other tool but describe_app works before it. Say who you are (`agent`, and `model` if you know it) and, in one sentence, your `purpose`. Verbinal asks the person, who allows the session — often with instructions for it — or declines; the call waits for their answer. Allowed, it answers `session`, the id every entry of your session's log carries (get_session_log reads them), and `instructions`: the person's instructions for this session, which you must follow throughout. Call it once: when Verbinal restarts, your session continues, and a second call answers `alreadyStarted: true` without asking again. A session ends after a time without calls, set by the person; a call then fails with sessionRequired, saying why, and start_session asks the person again. Declined, it fails with sessionDeclined: ask the person in the conversation before trying again.",
+        description: "Start your session with Verbinal — call this first: no other tool but describe_app works before it. Say who you are (`agent`, and `model` if you know it) and, in one sentence, your `purpose`. Verbinal asks the person, who allows the session — often with instructions for it — or declines; the call waits for their answer. Allowed, it answers `session`, the id every entry of your session's log carries (get_session_log reads them), and `instructions`: the person's instructions for this session, which you must follow throughout. Call it once: when Verbinal restarts, your session continues while your client keeps the same `Verbinal mcp` process (a new one starts a new session), and a second call answers `alreadyStarted: true` without asking again. A session ends after a time without calls, set by the person; a call then fails with sessionRequired, saying why, and start_session asks the person again. Declined, it fails with sessionDeclined: ask the person in the conversation before trying again.",
         schema: #"""
         {
           "type": "object",

@@ -117,7 +117,7 @@ the server finds it by itself and says its tool list has changed. If the call fa
   person approves it in Verbinal and may give you instructions for the session: follow them. Its
   `session` id identifies every log entry of your session; `get_session_log` reads them. Without a
   session, no other tool works but `describe_app`. Call it once: when Verbinal restarts, your session
-  continues.
+  continues while your client keeps the same `Verbinal mcp` process; a new one starts a new session.
   - A second call answers `alreadyStarted: true`, without asking the person again.
   - A session ends after a time without calls, which the person sets (an hour unless they change it), or
     when they end it. A call then fails with `sessionRequired`, saying why, and `start_session` asks them
@@ -136,9 +136,11 @@ the server finds it by itself and says its tool list has changed. If the call fa
   - `list_activity` says what the app is doing, the same line as the activity bar at the bottom
     of the window.
 - **The person reviews your changes.** Consequential changes are proposals.
-  - With auto-apply on, reversible ones apply at once.
-  - Destructive ones, such as deleting data or stopping a session, always wait for the person to
-    approve them in the app.
+  - What applies at once is the person's choice, kind by kind, in Settings ▸ AI Agent:
+    `get_current_view.permissions` says which kinds they allow. The rest wait for them in Pending.
+  - Destructive ones, such as deleting data or stopping a session, wait unless the person allows
+    that kind. By default only removing what an assistant made is allowed.
+  - What every assistant is told (guide tools, tool descriptions) always waits.
   - `list_pending_proposals` shows what is waiting.
 - **When something is slow or fails, read the log.** Verbinal keeps a log of your session: your calls
   with the CADC and CANFAR requests each made and what their outcomes mean, every change anyone made

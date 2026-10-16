@@ -12974,12 +12974,12 @@
         }
       }
     },
-    "Pending changes — what your assistant proposed; destructive changes always wait here" : {
+    "Pending changes — what your assistant proposed that waits for your approval" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modifications en attente — ce que votre assistant a proposé ; les modifications destructives attendent toujours ici"
+            "value" : "Modifications en attente — ce que votre assistant a proposé et qui attend votre accord"
           }
         }
       }

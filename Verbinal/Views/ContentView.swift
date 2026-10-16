@@ -282,7 +282,7 @@ struct ContentView: View {
         // one network round-trip.
         VStack(spacing: 0) {
             // Every screen has its toolbar — the signed-out Portal and
-            // Storage too — so Pending, where destructive changes wait, is
+            // Storage too — so Pending, where proposals wait for the person, is
             // always one click away (plan 17 U1).
             hoistedModeToolbar
             Divider()

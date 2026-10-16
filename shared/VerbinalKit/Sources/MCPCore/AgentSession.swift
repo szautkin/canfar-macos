@@ -18,7 +18,7 @@ public enum AgentSession {
     public static let metaKey = "com.codebg.verbinal/session"
     /// What every assistant is told first, in both MCP versions' answers,
     /// `describe_app`'s brief and AGENTS.md.
-    public static let instructions = "Call `start_session` first, saying who you are and your purpose. The person approves it in Verbinal and may give you instructions for the session: follow them. Its `session` id identifies every log entry of your session; `get_session_log` reads them. Without a session, no other tool works but `describe_app`. Call it once: when Verbinal restarts, your session continues."
+    public static let instructions = "Call `start_session` first, saying who you are and your purpose. The person approves it in Verbinal and may give you instructions for the session: follow them. Its `session` id identifies every log entry of your session; `get_session_log` reads them. Without a session, no other tool works but `describe_app`. Call it once: when Verbinal restarts, your session continues while your client keeps the same `Verbinal mcp` process; a new one starts a new session."
 
     // MARK: - The relay's secret (plan 34 S)
 

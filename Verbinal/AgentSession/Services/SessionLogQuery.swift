@@ -34,7 +34,7 @@ struct SessionNow: Codable, Sendable, Equatable {
         let proposal: String
         let summary: String
         let why: String?
-        /// "waits in Pending: a delete always waits for the person".
+        /// "waits in Pending: the person asks to approve "Remove from storage"".
         let waits: String
     }
 

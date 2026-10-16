@@ -200,8 +200,8 @@ extension ContentView {
         .background(.bar)
     }
 
-    /// Pending changes — what assistants proposed, and every destructive
-    /// change, which always waits there — one click away in every toolbar,
+    /// Pending changes — what assistants proposed that waits for the
+    /// person, by the kinds they ask to approve — one click away in every toolbar,
     /// Landing and Portal included, whether or not agents are on now (a
     /// change can wait from before). A badge counts what is waiting.
     @ViewBuilder
@@ -243,7 +243,7 @@ extension ContentView {
         }
         .buttonStyle(.borderless)
         .accessibilityLabel("Pending changes")
-        .help("Pending changes — what your assistant proposed; destructive changes always wait here")
+        .help("Pending changes — what your assistant proposed that waits for your approval")
         .pointable("agent.pending")
     }
 
