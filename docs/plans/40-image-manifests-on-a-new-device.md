@@ -286,7 +286,12 @@ an import would repeat the Batch Jobs freeze, where a `List` of 10,000 rows took
 - **Step 3: collections run again after a pause.** Item-by-item keeping is the package lists'. A collection's memory is kept when the collection ends, so one stopped halfway runs again. Collections are small.
 - **Step 7: the sidecar is not moved.** `SocketSidecar` stays outside `AppSupport`: the relay looks for it at fixed paths.
 
-**Not verified yet:**
-- **The tests that read the accessibility tree.** The screen locked partway through. The new on-screen tests (`ActivityOnScreenTests`, `StorageSettingsOnScreenTests`, the on-screen ones in `ImageDiscoveryArrivalsTests`, `ResearchCollectionsOnScreenTests`) passed earlier with it unlocked. The last runs skipped them; they run again once it is unlocked.
+**Verified with the screen unlocked** (2026-10-15, from 20:53): every test that reads the accessibility tree
+— the new on-screen ones among them — and `ViewerLayoutTests`, 74 tests, passed. In the first run, 20 s
+after unlocking, `SearchablePickerTests.testTheToolsOpenItAndChooseInIt` failed: its popover had not
+opened 300 ms after it was asked. It builds its own picker, untouched by this plan. It passed three runs
+alone and in the full set again.
+
+**Still to verify:**
 - **The live app.** The plan's on-screen check of the live app over MCP needs the person's build of this branch, in a session they allow. It is handout 37's section N.
 
