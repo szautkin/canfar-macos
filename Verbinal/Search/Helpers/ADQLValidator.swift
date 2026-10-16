@@ -13,6 +13,8 @@ struct ADQLProblem: Sendable, Equatable {
         case limit
         case unknownTable(String)
         case unknownColumn(table: String, column: String)
+        /// A column written bare that none of the tables joined has.
+        case unknownBareColumn(column: String)
         /// `reference` names `column`, which every table in `tables` has.
         case ambiguous(reference: String, column: String, tables: [String])
     }
@@ -29,6 +31,7 @@ struct ADQLProblem: Sendable, Equatable {
         case .limit: return "ADQL has no LIMIT"
         case .unknownTable(let t): return "no table \"\(t)\" in this service"
         case .unknownColumn(let t, let c): return "\(t) has no column \"\(c)\""
+        case .unknownBareColumn(let c): return "no table here has a column \"\(c)\""
         case .ambiguous(let r, let c, let ts): return "\(r) is ambiguous — \(c) is in \(ts.joined(separator: " and "))"
         }
     }
@@ -43,6 +46,7 @@ struct ADQLProblem: Sendable, Equatable {
         case .limit: text = String(localized: "ADQL has no LIMIT")
         case .unknownTable(let t): text = String(localized: "no table \"\(t)\" in this service")
         case .unknownColumn(let t, let c): text = String(localized: "\(t) has no column \"\(c)\"")
+        case .unknownBareColumn(let c): text = String(localized: "no table here has a column \"\(c)\"")
         case .ambiguous(let r, let c, let ts):
             text = String(localized: "\(r) is ambiguous — \(c) is in \(ts.joined(separator: ", "))")
         }
@@ -64,14 +68,15 @@ struct ADQLProblem: Sendable, Equatable {
 /// would have worked. It reads what FROM/JOIN name and every
 /// `qualifier.column`, and reports only what it is sure of — anything it
 /// cannot resolve (a subquery, a function, a table not in the schema's
-/// view) is left alone. String literals and comments are blanked first, so
-/// `'o.obsID'` in a literal is never read as a column.
+/// view) is left alone. String literals, quoted names and comments are
+/// blanked first, so `'o.obsID'` in a literal, or `"Cal. Lev."` as a name,
+/// is never read as a column.
 ///
 /// Rules: `LIMIT` (ADQL writes `SELECT TOP n`); a table the service does
-/// not have; a column a table does not have; and a column two joined tables
-/// share, written bare (`obsID`) or with a bare table name (`Plane.obsID`)
-/// — CADC answers "Column [obsID] is ambiguous" (`caom2.Plane.obsID` or an
-/// alias is fine).
+/// not have; a column a table does not have, written with its table or
+/// bare; and a column two joined tables share, written bare (`obsID`) or
+/// with a bare table name (`Plane.obsID`) — CADC answers "Column [obsID]
+/// is ambiguous" (`caom2.Plane.obsID` or an alias is fine).
 enum ADQLValidator {
 
     /// Everything this is sure is wrong, in order. Empty means "nothing
@@ -117,9 +122,17 @@ enum ADQLValidator {
                 range: reference.range, kind: .unknownColumn(table: table, column: column),
                 fix: nearest(column, in: resolved.columns.map(\.name)).map { "\(qualifier).\($0)" }))
         }
-        problems += bareAmbiguities(tokens, from: from, schema: schema)
+        problems += bareColumnProblems(tokens, from: from, schema: schema)
         return problems.sorted { $0.range.lowerBound < $1.range.lowerBound }
     }
+
+    /// Words never written as a column: ADQL's own, the types CAST names, and
+    /// the frames geometry names.
+    private static let notColumns: Set<String> = keywords.union([
+        "double", "precision", "real", "integer", "int", "smallint", "bigint", "char", "character", "varchar",
+        "varying", "timestamp", "date", "time", "boolean", "nulls", "first", "last", "escape", "any", "some",
+        "icrs", "galactic", "fk4", "fk5", "ecliptic",
+    ])
 
     /// Words ADQL keeps for itself — never a column.
     private static let keywords: Set<String> = clauseWords.union([
@@ -127,15 +140,21 @@ enum ADQLValidator {
         "true", "false", "case", "when", "then", "else", "end", "exists", "intersect", "except",
     ])
 
-    /// A column written bare that more than one joined table has (QA M16:
-    /// `obsID` in a Plane–Observation join passed). Only where it can be
-    /// sure: one SELECT (a subquery's FROM would be mixed in), not a table,
-    /// an alias, a name given with AS, a function, or a USING column.
-    private static func bareAmbiguities(_ tokens: [Token], from: [FromEntry], schema: TapSchema) -> [ADQLProblem] {
-        guard from.count >= 2, tokens.filter({ same($0.text, "select") }).count == 1 else { return [] }
+    /// A column written bare that no table here has (QA 2026-10-15, 4.7),
+    /// or that more than one joined table has (QA M16: `obsID` in a
+    /// Plane–Observation join passed). The check refuses the query, so only
+    /// where it can be sure: one SELECT (a subquery's FROM would be mixed
+    /// in), and a word that is not a table, an alias, a name the query gives
+    /// (`AS r`, or `ra r` without AS), a function, a qualifier (`Plane.*`),
+    /// a USING column, a keyword or a type. A column no table has, only when
+    /// every table's columns are known.
+    private static func bareColumnProblems(_ tokens: [Token], from: [FromEntry], schema: TapSchema) -> [ADQLProblem] {
+        guard !from.isEmpty, tokens.filter({ same($0.text, "select") }).count == 1 else { return [] }
+        let resolved = from.compactMap { schema.table($0.written) }
+        let columnsKnown = resolved.count == from.count && resolved.allSatisfy { !$0.columns.isEmpty }
         let tables = Set(from.map(\.range.lowerBound))
-        let aliases = Set(from.compactMap { $0.alias?.lowercased() })
-        let named = Set(tokens.indices.dropLast().filter { same(tokens[$0].text, "as") }.map { tokens[$0 + 1].text.lowercased() })
+        let names = Set(from.flatMap { [$0.written, $0.bare] + [$0.alias].compactMap { $0 } }.map { $0.lowercased() })
+        let given = givenNames(tokens)
         var problems: [ADQLProblem] = []
         var usingDepth = 0, inUsing = false
         for (i, token) in tokens.enumerated() {
@@ -147,15 +166,37 @@ enum ADQLValidator {
             if same(token.text, "using") { inUsing = true; usingDepth = 0; continue }
             let word = token.text.lowercased()
             guard token.isIdentifier, token.parts.count == 1, !tables.contains(token.range.lowerBound),
-                  !keywords.contains(word), !aliases.contains(word), !named.contains(word),
-                  !(i + 1 < tokens.count && tokens[i + 1].text == "(") else { continue }
+                  !notColumns.contains(word), !names.contains(word), !given.contains(word),
+                  !(i + 1 < tokens.count && ["(", "."].contains(tokens[i + 1].text)) else { continue }
             let owners = from.filter { schema.table($0.written)?.column(token.text) != nil }.map(\.written)
-            guard owners.count > 1 else { continue }
-            problems.append(ADQLProblem(range: token.range,
-                                        kind: .ambiguous(reference: token.text, column: token.text, tables: owners),
-                                        fix: nil))
+            if owners.count > 1 {
+                problems.append(ADQLProblem(range: token.range,
+                                            kind: .ambiguous(reference: token.text, column: token.text, tables: owners),
+                                            fix: nil))
+            } else if owners.isEmpty, columnsKnown {
+                let kind: ADQLProblem.Kind = from.count == 1
+                    ? .unknownColumn(table: from[0].written, column: token.text)
+                    : .unknownBareColumn(column: token.text)
+                problems.append(ADQLProblem(range: token.range, kind: kind,
+                                            fix: nearest(token.text, in: resolved.flatMap { $0.columns.map(\.name) })))
+            }
         }
         return problems
+    }
+
+    /// The names a query gives what it selects: after AS, and after an
+    /// expression without it (`SELECT ra r`, `COUNT(*) n`, `'x' label`) —
+    /// a number counts, but not TOP's. Never a table's column.
+    private static func givenNames(_ tokens: [Token]) -> Set<String> {
+        var given = Set<String>()
+        for i in tokens.indices.dropFirst() where tokens[i].isIdentifier && tokens[i].parts.count == 1 {
+            let before = tokens[i - 1]
+            let afterExpression = [")", "'"].contains(before.text)
+                || (before.isIdentifier && !notColumns.contains(before.text.lowercased()))
+                || (before.text.first?.isNumber == true && !(i >= 2 && same(tokens[i - 2].text, "top")))
+            if same(before.text, "as") || afterExpression { given.insert(tokens[i].text.lowercased()) }
+        }
+        return given
     }
 
     // MARK: - Rules
@@ -255,16 +296,19 @@ enum ADQLValidator {
         return tokens
     }
 
-    /// The query with string literals and comments blanked, offsets kept.
+    /// The query with string literals, quoted names (`"Cal. Lev."`) and
+    /// comments blanked, offsets kept. A quoted name is left alone: what is
+    /// in it need not be a word.
     private static func masked(_ adql: String) -> [Character] {
         var characters = Array(adql)
         var i = 0
         while i < characters.count {
-            if characters[i] == "'" {
+            if characters[i] == "'" || characters[i] == "\"" {
+                let quote = characters[i]
                 i += 1
                 while i < characters.count {
-                    if characters[i] == "'" {
-                        if i + 1 < characters.count, characters[i + 1] == "'" { characters[i] = " "; characters[i + 1] = " "; i += 2; continue }
+                    if characters[i] == quote {
+                        if i + 1 < characters.count, characters[i + 1] == quote { characters[i] = " "; characters[i + 1] = " "; i += 2; continue }
                         break
                     }
                     characters[i] = " "

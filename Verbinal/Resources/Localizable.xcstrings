@@ -399,6 +399,16 @@
         }
       }
     },
+    "no table here has a column \"%@\"" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucune table ici n’a de colonne « %@ »"
+          }
+        }
+      }
+    },
     "Not found." : {
       "localizations" : {
         "fr" : {
