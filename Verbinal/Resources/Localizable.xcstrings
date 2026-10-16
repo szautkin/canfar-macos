@@ -56,6 +56,26 @@
         }
       }
     },
+    "%@ — paused" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — en pause"
+          }
+        }
+      }
+    },
+    "%lld paused" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld en pause"
+          }
+        }
+      }
+    },
     "-" : {
       "shouldTranslate" : false
     },
@@ -205,6 +225,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Récupérer du stockage"
+          }
+        }
+      }
+    },
+    "Go on from where it stopped" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprendre là où cela s’est arrêté"
           }
         }
       }
@@ -469,6 +499,46 @@
         }
       }
     },
+    "Paused" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En pause"
+          }
+        }
+      }
+    },
+    "Paused by Verbinal" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mis en pause par Verbinal"
+          }
+        }
+      }
+    },
+    "Paused by you" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mis en pause par vous"
+          }
+        }
+      }
+    },
+    "Paused by your assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mis en pause par votre assistant"
+          }
+        }
+      }
+    },
     "Reload images" : {
       "localizations" : {
         "fr" : {
@@ -715,6 +785,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connectez-vous à CANFAR pour accéder à votre stockage."
+          }
+        }
+      }
+    },
+    "Stop it where it is, until you resume it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’arrêter là où il en est, jusqu’à ce que vous le repreniez"
           }
         }
       }

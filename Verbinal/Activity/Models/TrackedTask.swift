@@ -30,6 +30,9 @@ enum TaskKind: String, Codable, Sendable {
 /// Where a task got to.
 enum TaskProgress: String, Codable, Sendable {
     case running
+    /// Stopped where it was by someone who said so, until they resume it
+    /// (plan 40). Neither running nor finished.
+    case paused
     case succeeded
     /// Carries a reason — a failure without one is what this exists to stop.
     case failed
@@ -56,12 +59,42 @@ struct TrackedTask: Identifiable, Equatable, Sendable {
     var message: String?
     let started: Date
     var finished: Date?
+    /// How far it has got, when its owner counts: `done` of `total`, the
+    /// total nil until known (plan 40).
+    var done: Int?
+    var total: Int?
+    /// Its owner can pause it and resume it.
+    var canPause = false
+    /// Who last paused or resumed it, why and when.
+    var pause: PauseMark?
 
-    var isFinished: Bool { progress != .running }
+    var isFinished: Bool { progress != .running && progress != .paused }
+    var isPaused: Bool { progress == .paused }
     var wentWrong: Bool { progress == .failed || progress == .cancelled }
+
+    /// "120 of 288", or "120" while the total is not known; nil when it
+    /// does not count.
+    var countText: String? {
+        guard let done else { return nil }
+        return total.map { String(localized: "\(done) of \($0)") } ?? "\(done)"
+    }
+    /// How much of it is done, 0 to 1, when that is known.
+    var fraction: Double? {
+        guard let done, let total, total > 0 else { return nil }
+        return min(1, Double(done) / Double(total))
+    }
 
     /// How long it ran, or has been running.
     func elapsed(now: Date = Date()) -> TimeInterval {
         (finished ?? now).timeIntervalSince(started)
     }
+}
+
+/// A pause, or the resume after it: who, why and when (plan 40).
+struct PauseMark: Equatable, Sendable {
+    let by: Initiator
+    let cause: Cause
+    let at: Date
+    /// False for a pause, true for the resume after it.
+    let resumed: Bool
 }

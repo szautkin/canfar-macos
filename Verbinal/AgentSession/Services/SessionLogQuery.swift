@@ -29,6 +29,11 @@ struct SessionNow: Codable, Sendable, Equatable {
         let startedBy: String
         /// The request it is waiting on, in words.
         let waitingOn: String?
+        /// How far it has got, when it counts (plan 40).
+        var done: Int?
+        var total: Int?
+        /// Who paused it, while it is paused: person, assistant or app.
+        var pausedBy: String?
     }
     struct Pending: Codable, Sendable, Equatable {
         let proposal: String

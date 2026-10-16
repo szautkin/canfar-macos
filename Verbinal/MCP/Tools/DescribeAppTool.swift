@@ -460,6 +460,11 @@ struct DescribeAppTool: JSONReadTool {
         `list_activity` — and is not cut off: ask again shortly for its
         answer. A change still applying answers with its job, to follow
         with `get_job_status`.
+      * A task that counts says how far it has got (`done` of `total`),
+        and one that can wait is `pausable`: `pause_activity` and
+        `resume_activity` take its `id`, as the bar's Pause and Resume
+        do — live, with a `reason`. A task the person paused stays
+        paused until they say otherwise.
       * A reply that asked CADC or CANFAR, took 2 s or more, or failed
         carries a second block, `{"timing": …}`: its requests, a
         `verdict` in one sentence, `retry` (now / later / afterSignIn /

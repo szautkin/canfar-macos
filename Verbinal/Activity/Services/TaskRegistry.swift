@@ -33,21 +33,45 @@ final class TaskRegistry {
     /// Oldest first.
     private(set) var tasks: [TrackedTask] = []
     private var nextID = 0
-    /// Each task as it begins and as it ends — for the session log (plan 23).
+    /// Each task as it begins, is paused or resumed, and ends — for the
+    /// session log (plan 23).
     nonisolated let events = Observers<TrackedTask>()
+
+    /// What pausing a task does, given by its owner when it begins (plan 40):
+    /// stop where it is, and go on. Each is told who asked.
+    struct Pausing {
+        let pause: @MainActor (Initiator) -> Void
+        let resume: @MainActor (Initiator) -> Void
+    }
+    private var pausing: [Int: Pausing] = [:]
+
+    /// A count changes the bar at most this often: work that counts fast
+    /// must not redraw it for every item.
+    nonisolated static let countInterval: TimeInterval = 0.25
+    private var counted: [Int: Date] = [:]
+    private var pendingCount: [Int: (done: Int, total: Int?)] = [:]
 
     /// Starts tracking work; the handle owns its outcome. Who started it is
     /// the task's initiator unless the caller knows better; why is its
     /// cause's, or `why` — the rule, when the app starts work of its own
     /// (plan 23 K).
+    /// Work its owner can pause gives `pausing`; work that begins paused —
+    /// paused before, and still — says by whom (`pausedBy`).
     func begin(_ kind: TaskKind, _ label: String, by initiator: Initiator = Initiator.current,
-               why: String? = nil, cause: Cause = Cause.current) -> TaskHandle {
+               why: String? = nil, cause: Cause = Cause.current,
+               pausing: Pausing? = nil, pausedBy: PauseMark? = nil) -> TaskHandle {
         nextID += 1
         let again = tasks.contains { $0.label == label && $0.progress == .failed }
         var cause = cause
         if let why { cause.why = Cause.clip(why) }
-        let task = TrackedTask(id: nextID, kind: kind, label: label, startedBy: initiator, cause: cause,
+        var task = TrackedTask(id: nextID, kind: kind, label: label, startedBy: initiator, cause: cause,
                                isAgain: again, started: Date())
+        task.canPause = pausing != nil
+        if let pausing { self.pausing[nextID] = pausing }
+        if let pausedBy {
+            task.progress = .paused
+            task.pause = pausedBy
+        }
         tasks.append(task)
         events.notify(task)
         // The oldest FINISHED go first: running work is what a reader most
@@ -81,8 +105,93 @@ final class TaskRegistry {
         }
     }
 
-    var runningCount: Int { tasks.filter { !$0.isFinished }.count }
+    var runningCount: Int { tasks.filter { $0.progress == .running }.count }
+    var pausedCount: Int { tasks.filter(\.isPaused).count }
     var failedCount: Int { tasks.filter(\.wentWrong).count }
+
+    func task(_ id: Int) -> TrackedTask? { tasks.first { $0.id == id } }
+
+    /// What pausing task `id` does, while it can be paused.
+    func pausing(_ id: Int) -> Pausing? { pausing[id] }
+
+    // MARK: - Pausing (plan 40)
+
+    /// Pauses task `id` for `initiator`, with why: its owner stops it where
+    /// it is. Nil when it is paused; otherwise why not, in words.
+    func pause(_ id: Int, by initiator: Initiator, why: String? = nil) -> String? {
+        switch pausable(id) {
+        case .refused(let reason): return reason
+        case .at(let index):
+            guard !tasks[index].isPaused else { return nil }
+            flushCount(id)
+            mark(index, paused: true, by: initiator, why: why)
+            pausing[id]?.pause(initiator)
+            return nil
+        }
+    }
+
+    /// Resumes task `id` for `initiator`: its owner goes on from where it
+    /// stopped. Nil when it runs; otherwise why not, in words.
+    func resume(_ id: Int, by initiator: Initiator, why: String? = nil) -> String? {
+        switch pausable(id) {
+        case .refused(let reason): return reason
+        case .at(let index):
+            guard tasks[index].isPaused else { return nil }
+            mark(index, paused: false, by: initiator, why: why)
+            pausing[id]?.resume(initiator)
+            return nil
+        }
+    }
+
+    /// A task that can be paused or resumed now, or why not.
+    private enum Pausable { case at(Int), refused(String) }
+
+    private func pausable(_ id: Int) -> Pausable {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else {
+            return .refused("There is no task \(id) on the activity bar; list_activity gives each one's id.")
+        }
+        let task = tasks[index]
+        guard !task.isFinished else { return .refused("\(task.label) has finished (\(task.progress.rawValue)).") }
+        guard task.canPause, pausing[id] != nil else { return .refused("\(task.label) cannot be paused.") }
+        return .at(index)
+    }
+
+    private func mark(_ index: Int, paused: Bool, by initiator: Initiator, why: String?) {
+        var cause = Cause.current
+        if let why { cause.why = Cause.clip(why) }
+        tasks[index].progress = paused ? .paused : .running
+        tasks[index].pause = PauseMark(by: initiator, cause: cause, at: Date(), resumed: !paused)
+        events.notify(tasks[index])
+    }
+
+    // MARK: - Counting (plan 40)
+
+    fileprivate func setCount(_ id: Int, _ done: Int, _ total: Int?) {
+        guard tasks.contains(where: { $0.id == id && !$0.isFinished }) else { return }
+        if let last = counted[id], Date().timeIntervalSince(last) < Self.countInterval, done != total {
+            if pendingCount.updateValue((done, total), forKey: id) == nil {
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(Self.countInterval))
+                    self?.flushCount(id)
+                }
+            }
+            return
+        }
+        pendingCount[id] = nil
+        applyCount(id, done, total)
+    }
+
+    private func flushCount(_ id: Int) {
+        guard let pending = pendingCount.removeValue(forKey: id) else { return }
+        applyCount(id, pending.done, pending.total)
+    }
+
+    private func applyCount(_ id: Int, _ done: Int, _ total: Int?) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }), !tasks[index].isFinished else { return }
+        tasks[index].done = done
+        tasks[index].total = total
+        counted[id] = Date()
+    }
 
     /// Forgets what has finished, leaving what is running.
     func clearFinished() {
@@ -96,6 +205,9 @@ final class TaskRegistry {
 
     /// The first outcome wins: a task finished explicitly is not rewritten.
     fileprivate func finish(_ id: Int, _ progress: TaskProgress, _ message: String?) {
+        flushCount(id)
+        pausing[id] = nil
+        counted[id] = nil
         guard let index = tasks.firstIndex(where: { $0.id == id }), !tasks[index].isFinished else { return }
         tasks[index].progress = progress
         tasks[index].message = message
@@ -129,6 +241,13 @@ final class TaskHandle {
 
     /// Where the work has got to.
     func stage(_ stage: String) { registry?.setStage(id, stage) }
+
+    /// How far it has got: `done` of `total`, nil while the total is not
+    /// known (plan 40). The bar shows it at most four times a second.
+    func count(_ done: Int, of total: Int?) { registry?.setCount(id, done, total) }
+
+    /// Whether someone has paused it.
+    var isPaused: Bool { registry?.task(id)?.isPaused ?? false }
 
     /// Runs `work` as this task's: what it records knows its task (plan 23).
     /// `track` does this itself; work begun with `begin` asks.

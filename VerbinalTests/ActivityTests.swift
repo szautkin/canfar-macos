@@ -135,4 +135,116 @@ final class ActivityTests: XCTestCase {
         XCTAssertEqual(object["failed"] as? Int, 1)
         XCTAssertEqual((object["tasks"] as? [[String: Any]])?.first?["kind"] as? String, "compute")
     }
+
+    // MARK: - How far it has got, and pausing (plan 40)
+
+    func testACountShowsAtMostFourTimesASecondAndItsLastAlways() async throws {
+        let registry = TaskRegistry()
+        let sync = registry.begin(.storage, "Syncing with your storage")
+        sync.count(1, of: 10)
+        XCTAssertEqual(registry.tasks[0].done, 1)
+        for done in 2...9 { sync.count(done, of: 10) }
+        XCTAssertEqual(registry.tasks[0].done, 1, "not redrawn for every item")
+        try await Task.sleep(for: .milliseconds(400))
+        XCTAssertEqual(registry.tasks[0].done, 9, "the last count lands")
+        sync.count(10, of: 10)
+        XCTAssertEqual(registry.tasks[0].done, 10, "the end shows at once")
+        XCTAssertEqual(registry.tasks[0].countText, "10 of 10")
+        XCTAssertEqual(registry.tasks[0].fraction, 1)
+    }
+
+    func testAPausedTaskIsNeitherRunningNorFinishedAndItsOwnerIsTold() {
+        let registry = TaskRegistry()
+        var told: [String] = []
+        let sync = registry.begin(.storage, "Syncing with your storage", pausing: .init(
+            pause: { told.append("pause \($0.rawValue)") }, resume: { told.append("resume \($0.rawValue)") }))
+        XCTAssertTrue(registry.tasks[0].canPause)
+        XCTAssertNil(registry.pause(sync.id, by: .assistant, why: "the person is on a slow network"))
+        XCTAssertEqual(registry.tasks[0].progress, .paused)
+        XCTAssertEqual(registry.tasks[0].pause?.by, .assistant)
+        XCTAssertEqual(registry.tasks[0].pause?.cause.why, "the person is on a slow network")
+        XCTAssertEqual(registry.runningCount, 0)
+        XCTAssertEqual(registry.pausedCount, 1)
+        XCTAssertFalse(registry.tasks[0].isFinished)
+        registry.clearFinished()
+        XCTAssertEqual(registry.tasks.count, 1, "Clear Finished leaves what is paused")
+        XCTAssertNil(registry.pause(sync.id, by: .person), "paused already: nothing to do")
+        XCTAssertNil(registry.resume(sync.id, by: .person))
+        XCTAssertEqual(registry.tasks[0].progress, .running)
+        XCTAssertEqual(registry.tasks[0].pause?.resumed, true)
+        XCTAssertEqual(told, ["pause assistant", "resume person"])
+
+        let probe = registry.begin(.discovery, "Inspect x")
+        XCTAssertEqual(registry.pause(probe.id, by: .person), "Inspect x cannot be paused.")
+        XCTAssertNotNil(registry.pause(999, by: .person))
+        sync.succeed()
+        XCTAssertEqual(registry.resume(sync.id, by: .person), "Syncing with your storage has finished (succeeded).")
+        XCTAssertNil(registry.pausing(sync.id), "a finished task forgets how to pause")
+    }
+
+    func testWorkPausedBeforeBeginsPaused() {
+        let registry = TaskRegistry()
+        let mark = PauseMark(by: .person, cause: Cause(), at: Date(), resumed: false)
+        _ = registry.begin(.storage, "Syncing with your storage", pausing: .init(pause: { _ in }, resume: { _ in }), pausedBy: mark)
+        XCTAssertEqual(registry.tasks[0].progress, .paused)
+        XCTAssertEqual(ActivitySummary.line(registry.tasks), "Syncing with your storage — paused")
+    }
+
+    func testTheWordsSayTheCountAndWhoPaused() {
+        var sync = task("Syncing with your storage", stage: "Image package lists")
+        sync.done = 120
+        sync.total = 288
+        XCTAssertEqual(ActivitySummary.line([sync]), "Syncing with your storage — Image package lists, 120 of 288")
+        sync.progress = .paused
+        sync.pause = PauseMark(by: .assistant, cause: Cause(), at: Date(), resumed: false)
+        XCTAssertEqual(ActivitySummary.line([sync]), "Syncing with your storage — paused", "never Idle while something is paused")
+        XCTAssertEqual(ActivitySummary.line([task("Inspect x"), sync]), "Inspect x · 1 paused")
+        XCTAssertEqual(ActivitySummary.describe(sync).detail, "Paused by your assistant · Image package lists, 120 of 288")
+        XCTAssertEqual(ActivitySummary.describe(sync).fraction, 120.0 / 288)
+    }
+
+    func testAnAssistantPausesAndResumesWithTheTools() async throws {
+        let registry = TaskRegistry()
+        var told: [Initiator] = []
+        let sync = registry.begin(.storage, "Syncing with your storage", pausing: .init(
+            pause: { told.append($0) }, resume: { told.append($0) }))
+        let ctx = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 9))
+        func call(_ tool: PauseActivityTool, _ args: String) async throws -> [String: Any] {
+            let result = await Initiator.$current.withValue(.assistant) { await tool.invoke(arguments: Data(args.utf8), context: ctx) }
+            guard case .data(let data) = result else { throw ToolFailureReason.invalidArgument("\(result)") }
+            return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        }
+        let paused = try await call(.pause(registry: registry), #"{"id": \#(sync.id), "reason": "the person asked to stop syncing for now"}"#)
+        let task = try XCTUnwrap(paused["task"] as? [String: Any])
+        XCTAssertEqual(task["status"] as? String, "paused")
+        XCTAssertEqual(task["pausedBy"] as? String, "assistant")
+        XCTAssertEqual(task["pausedWhy"] as? String, "the person asked to stop syncing for now")
+        _ = try await call(.resume(registry: registry), #"{"id": \#(sync.id)}"#)
+        XCTAssertEqual(registry.tasks[0].progress, .running)
+        XCTAssertEqual(told, [.assistant, .assistant])
+
+        let unknown = await PauseActivityTool.pause(registry: registry).invoke(arguments: Data(#"{"id": 999}"#.utf8), context: ctx)
+        guard case .failed(.unknownTarget) = unknown else { return XCTFail("\(unknown)") }
+        let listed = await ListActivityTool(tasks: { await registry.tasks }).invoke(arguments: Data("{}".utf8), context: ctx)
+        guard case .data(let data) = listed else { return XCTFail() }
+        let entry = try XCTUnwrap(((try JSONSerialization.jsonObject(with: data) as? [String: Any])?["tasks"] as? [[String: Any]])?.first)
+        XCTAssertEqual(entry["id"] as? Int, sync.id)
+        XCTAssertEqual(entry["pausable"] as? Bool, true)
+    }
+
+    /// The session log says who paused and resumed, and why (plan 40).
+    func testTheSessionLogSaysWhoPausedAndResumed() {
+        let session = UUID()
+        var sync = task("Syncing with your storage")
+        sync.done = 120
+        sync.total = 288
+        sync.progress = .paused
+        sync.pause = PauseMark(by: .assistant, cause: Cause(why: "slow network", session: session), at: Date(), resumed: false)
+        let seen = SessionViewpoint(session: session)
+        XCTAssertEqual(SessionLogLine.task(sync, seen: seen).line,
+                       "Paused: Syncing with your storage at 120 of 288 — by the assistant, because: slow network.")
+        sync.progress = .running
+        sync.pause = PauseMark(by: .person, cause: Cause(), at: Date(), resumed: true)
+        XCTAssertEqual(SessionLogLine.task(sync, seen: seen).line, "Resumed: Syncing with your storage — by the person.")
+    }
 }

@@ -20,6 +20,8 @@ struct ActivityBar: View {
             HStack(spacing: 8) {
                 if registry.runningCount > 0 {
                     ProgressView().controlSize(.mini)
+                } else if registry.pausedCount > 0 {
+                    Image(systemName: "pause.circle").foregroundStyle(.secondary)
                 } else {
                     Image(systemName: "checkmark.circle").foregroundStyle(.secondary)
                 }
@@ -49,7 +51,7 @@ struct ActivityBar: View {
 }
 
 /// The tasks in full, newest first.
-private struct ActivityList: View {
+struct ActivityList: View {
     var registry: TaskRegistry
 
     var body: some View {
@@ -93,21 +95,43 @@ private struct ActivityList: View {
                     Spacer(minLength: 8)
                     Text(line.startedBy).font(.caption2).foregroundStyle(.secondary)
                 }
+                if let fraction = line.fraction, !line.progress.isOver {
+                    ProgressView(value: fraction)
+                        .controlSize(.small)
+                        .accessibilityLabel(Text(line.title))
+                }
                 // A failure's reason can be a paragraph — the one thing the
                 // list was opened for, so it is never cut.
                 Text(line.detail)
                     .font(.caption)
-                    .foregroundStyle(line.progress == .running ? .secondary : Self.color(line.progress))
+                    .foregroundStyle(line.progress.isOver ? Self.color(line.progress) : .secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
+                    // Selectable text keeps its first words for assistive
+                    // reading; a new identity when they change keeps what
+                    // list_ui_targets reads the same as what is shown.
+                    .id(line.detail)
+            }
+            if line.canPause {
+                // The person pauses and resumes it here; an assistant, with
+                // pause_activity and resume_activity (plan 40).
+                if line.progress == .paused {
+                    Button("Resume") { _ = registry.resume(line.id, by: .person) }
+                        .controlSize(.small)
+                        .help("Go on from where it stopped")
+                } else {
+                    Button("Pause") { _ = registry.pause(line.id, by: .person) }
+                        .controlSize(.small)
+                        .help("Stop it where it is, until you resume it")
+                }
             }
         }
-        .accessibilityElement(children: .combine)
     }
 
     private static func icon(_ progress: TaskProgress) -> String {
         switch progress {
         case .running: return "stopwatch"
+        case .paused: return "pause.circle"
         case .succeeded: return "checkmark.circle.fill"
         case .failed: return "exclamationmark.octagon.fill"
         case .cancelled: return "xmark.circle"
@@ -116,10 +140,15 @@ private struct ActivityList: View {
 
     private static func color(_ progress: TaskProgress) -> Color {
         switch progress {
-        case .running: return .secondary
+        case .running, .paused: return .secondary
         case .succeeded: return .green
         case .failed: return .red
         case .cancelled: return .orange
         }
     }
+}
+
+private extension TaskProgress {
+    /// It ended, one way or another.
+    var isOver: Bool { self != .running && self != .paused }
 }

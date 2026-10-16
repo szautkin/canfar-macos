@@ -42,7 +42,8 @@ extension AppState {
             tasksRunning: running.map { task in
                 .init(task: task.id, label: task.label, stage: task.stage.isEmpty ? nil : task.stage,
                       seconds: task.elapsed(), startedBy: task.startedBy.rawValue,
-                      waitingOn: waiting.last { $0.cause.task == task.id }?.waitingSentence())
+                      waitingOn: waiting.last { $0.cause.task == task.id }?.waitingSentence(),
+                      done: task.done, total: task.total, pausedBy: task.isPaused ? task.pause?.by.rawValue : nil)
             },
             proposalsWaiting: proposals.map {
                 .init(proposal: $0.proposal.id.uuidString, summary: $0.proposal.summary, why: $0.proposal.why, waits: $0.waits)

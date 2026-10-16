@@ -89,6 +89,8 @@ enum AIGuideCatalog {
         "get_auth_state": "foundational",
         "get_current_view": "foundational",
         "list_activity": "foundational",
+        "pause_activity": "foundational",
+        "resume_activity": "foundational",
         "get_service_health": "foundational",
         // Search & Archive
         "search_observations": "search",
