@@ -128,22 +128,7 @@ extension AppState {
 
     func makeGetPlatformLoadTool() -> GetPlatformLoadTool {
         let service = platformService
-        return GetPlatformLoadTool(fetch: {
-            let stats = try await service.getStats()
-            return GetPlatformLoadTool.Output(
-                instances: stats.instances.map {
-                    .init(session: $0.session, desktopApp: $0.desktopApp,
-                          headless: $0.headless, total: $0.total)
-                },
-                cores: stats.cores.map {
-                    .init(requested: $0.requestedCPUCores, available: $0.cpuCoresAvailable)
-                },
-                ram: stats.ram.map {
-                    .init(requestedGB: $0.requestedRAM.map { PlatformLoadModel.parseRamGB($0) },
-                          availableGB: $0.ramAvailable.map { PlatformLoadModel.parseRamGB($0) })
-                }
-            )
-        })
+        return GetPlatformLoadTool(fetch: { GetPlatformLoadTool.Output(stats: try await service.getStats()) })
     }
 
     // MARK: - The launch form

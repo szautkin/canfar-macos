@@ -169,6 +169,16 @@
         }
       }
     },
+    "cores free" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cœurs libres"
+          }
+        }
+      }
+    },
     "Could not get the file: %@" : {
       "localizations" : {
         "fr" : {
@@ -219,6 +229,26 @@
         }
       }
     },
+    "CPU" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU"
+          }
+        }
+      }
+    },
+    "CPU load" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charge CPU"
+          }
+        }
+      }
+    },
     "Delete failed: %@" : {
       "localizations" : {
         "fr" : {
@@ -259,6 +289,16 @@
         }
       }
     },
+    "GB free" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go libres"
+          }
+        }
+      }
+    },
     "Get %@ from your storage" : {
       "localizations" : {
         "fr" : {
@@ -295,6 +335,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reprendre là où cela s’est arrêté"
+          }
+        }
+      }
+    },
+    "GPU load" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charge GPU"
+          }
+        }
+      }
+    },
+    "GPUs free" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPU libres"
           }
         }
       }
@@ -355,6 +415,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "il a été écrit par un Verbinal plus récent (format %lld)"
+          }
+        }
+      }
+    },
+    "Loading the platform's statistics" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chargement des statistiques de la plate-forme"
           }
         }
       }
@@ -519,6 +589,16 @@
         }
       }
     },
+    "Not reported" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non communiqué"
+          }
+        }
+      }
+    },
     "Nothing left to move" : {
       "localizations" : {
         "fr" : {
@@ -615,6 +695,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mis en pause par votre assistant"
+          }
+        }
+      }
+    },
+    "RAM load" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charge mémoire"
           }
         }
       }
@@ -989,12 +1079,42 @@
         }
       }
     },
+    "The platform's statistics have no CPU numbers" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les statistiques de la plate-forme n’ont pas de chiffres CPU"
+          }
+        }
+      }
+    },
+    "The platform's statistics have no RAM numbers" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les statistiques de la plate-forme n’ont pas de chiffres de mémoire"
+          }
+        }
+      }
+    },
     "The record has no file %@." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "La fiche n’a pas de fichier %@."
+          }
+        }
+      }
+    },
+    "This platform does not report GPUs yet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette plate-forme ne communique pas encore ses GPU"
           }
         }
       }
@@ -1573,6 +1693,12 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ of %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sur %2$@"
           }
         }
       }

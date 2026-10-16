@@ -7,6 +7,24 @@
 import Foundation
 import Observation
 
+/// One resource's load: how much is in use, of how much (plan 41). There is
+/// none unless the platform reported a total.
+struct ResourceLoad: Equatable, Sendable {
+    let used: Double
+    let total: Double
+
+    init?(used: Double, total: Double) {
+        guard total > 0, used >= 0 else { return nil }
+        self.used = min(used, total)
+        self.total = total
+    }
+
+    var free: Double { total - used }
+
+    /// The share in use, 0 to 100.
+    var percent: Double { used / total * 100 }
+}
+
 @Observable
 @MainActor
 final class PlatformLoadModel: PhaseOwner {
@@ -15,15 +33,13 @@ final class PlatformLoadModel: PhaseOwner {
     /// Loading, loaded (when), or why not (plan 38); what loaded last stays.
     private(set) var load: Phase<Date> = .idle
 
-    // CPU — "available" = free cores, "total" = requested + available
-    var cpuAvailable: Double = 0
-    var cpuTotal: Double = 0
-    var cpuPercent: Double = 0
-
-    // RAM
-    var ramAvailableGB: Double = 0
-    var ramTotalGB: Double = 0
-    var ramPercent: Double = 0
+    /// Each refresh decides them again: a resource the stats leave out has
+    /// none, and GPUs light up at the first refresh that has them (plan 41).
+    private(set) var cpu: ResourceLoad?
+    private(set) var ram: ResourceLoad?
+    private(set) var gpu: ResourceLoad?
+    /// GPU fields the stats carried that were not read; for the tool.
+    private(set) var gpuFieldsNotRead: [String] = []
 
     // Instances
     var totalInstances: Int = 0
@@ -44,24 +60,16 @@ final class PlatformLoadModel: PhaseOwner {
     func loadStats() async {
         await run(\.load) {
             let stats = try await platformService.getStats()
-
-            if let cores = stats.cores {
-                // cpuCoresAvailable = total cluster capacity
-                // requestedCPUCores = currently in use
-                cpuTotal = cores.cpuCoresAvailable
-                cpuAvailable = cores.cpuCoresAvailable - cores.requestedCPUCores
-                cpuPercent = cpuTotal > 0 ? (cores.requestedCPUCores / cpuTotal) * 100 : 0
+            // cpuCoresAvailable and ramAvailable are the cluster's capacity;
+            // requested… is what is in use.
+            cpu = stats.cores.flatMap { ResourceLoad(used: $0.requestedCPUCores, total: $0.cpuCoresAvailable) }
+            ram = stats.ram.flatMap { ram in
+                ram.ramAvailable.flatMap {
+                    ResourceLoad(used: Self.parseRamGB(ram.requestedRAM ?? "0"), total: Self.parseRamGB($0))
+                }
             }
-
-            if let ram = stats.ram {
-                // ramAvailable = total cluster capacity
-                // requestedRAM = currently in use
-                let totalGB = Self.parseRamGB(ram.ramAvailable ?? "0")
-                let requestedGB = Self.parseRamGB(ram.requestedRAM ?? "0")
-                ramTotalGB = totalGB
-                ramAvailableGB = totalGB - requestedGB
-                ramPercent = ramTotalGB > 0 ? (requestedGB / ramTotalGB) * 100 : 0
-            }
+            gpu = stats.gpu.flatMap { ResourceLoad(used: $0.used, total: $0.total) }
+            gpuFieldsNotRead = stats.gpuFieldsNotRead
 
             if let instances = stats.instances {
                 totalInstances = instances.total ?? 0
