@@ -118,6 +118,30 @@ struct GetImageManifestTool: JSONReadTool {
         let pythonCount: Int
         let rCount: Int
         let condaEnvNames: [String]
+        /// An older Verbinal's probe made it: packages it did not look for
+        /// are missing, and discover_image_packages probes it again (plan 40).
+        var outdated: Bool? = nil
+        var note: String? = nil
+    }
+
+    /// The summary of a kept list, saying when an older probe made it.
+    static func output(for manifest: ImageManifest) -> Output {
+        let current = ImageDiscoveryCoordinator.isCurrent(manifest)
+        return Output(
+            imageID: manifest.imageID,
+            capturedAtISO: ISO8601DateFormatter().string(from: manifest.capturedAt),
+            contentHash: manifest.contentHash,
+            osFamily: manifest.osFamily,
+            osVersion: manifest.osVersion,
+            kernel: manifest.kernel,
+            dpkgCount: manifest.dpkgPackages.count,
+            rpmCount: manifest.rpmPackages.count,
+            apkCount: manifest.apkPackages.count,
+            pythonCount: manifest.pythonPackages.count,
+            rCount: manifest.rPackages.count,
+            condaEnvNames: manifest.condaEnvs.map(\.name),
+            outdated: current ? nil : true,
+            note: current ? nil : ImageManifest.olderProbeNote)
     }
 
     let definition = AIToolDefinition.withStaticSchema(

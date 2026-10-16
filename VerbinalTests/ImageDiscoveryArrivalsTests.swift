@@ -32,9 +32,9 @@ final class ImageDiscoveryArrivalsTests: XCTestCase {
                                   vospace: ImageDiscoveryCoordinatorTests.MockVOSpace(), username: "me")
     }
 
-    private nonisolated func list(_ imageID: String, packages: [String]) -> Data {
+    private nonisolated func list(_ imageID: String, packages: [String], schema: Int = ProbeScript.schemaVersion) -> Data {
         let body: [String: Any] = [
-            "schemaVersion": ProbeScript.schemaVersion, "imageID": imageID, "contentHash": "sha256:test",
+            "schemaVersion": schema, "imageID": imageID, "contentHash": "sha256:test",
             "capturedAt": "2026-10-15T12:00:00Z", "osFamily": "ubuntu", "osVersion": "24.04", "kernel": "Linux",
             "dpkgPackages": [], "rpmPackages": [], "apkPackages": [], "rPackages": [], "condaEnvs": [],
             "pythonPackages": packages.map { ["name": $0, "version": "1.0", "source": "pip", "env": ""] },
@@ -126,5 +126,30 @@ final class ImageDiscoveryArrivalsTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(1800))
         shown = try await header()
         XCTAssertEqual(shown, ["Discovered 1 of 2 images"])
+    }
+
+    /// On screen (plan 40 step 5): a row whose list an older probe made says
+    /// so — another device's, from before its probe looked for everything.
+    func testARowFromAnOlderProbeSaysSo() async throws {
+        try await AXReadable.require()
+        let coordinator = coordinator()
+        let model = ImageDiscoveryModel(coordinator: coordinator)
+        let ids = ["images.canfar.net/skaha/astroml:24.07"]
+        let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 900, height: 600), styleMask: [.titled],
+                              backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: ImageDiscoverySheet(model: model, onPick: { _ in }, catalogue: images(ids))
+            .uiWindowPlace(.main))
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        let source = AXElementSource(screenName: { _, _, _ in "discovery" })
+        await source.ready()
+        try await Task.sleep(for: .milliseconds(800))
+        _ = await coordinator.importManifest(list(ids[0], packages: ["astropy"], schema: 3))
+        try await Task.sleep(for: .milliseconds(1800))
+        let snapshot = source.snapshot()
+        let ref = try XCTUnwrap(snapshot.windows.first { $0.number == window.windowNumber })
+        let names = snapshot.elements(in: ref.index).compactMap(\.name)
+        XCTAssertTrue(names.contains("From an older probe: Re-run for the full package list"), "\(names)")
     }
 }

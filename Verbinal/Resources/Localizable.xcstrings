@@ -249,6 +249,16 @@
         }
       }
     },
+    "From an older probe: Re-run for the full package list" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "D’une sonde plus ancienne : relancez la découverte pour la liste complète des paquets"
+          }
+        }
+      }
+    },
     "Get %@ from your storage" : {
       "localizations" : {
         "fr" : {

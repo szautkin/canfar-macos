@@ -126,6 +126,15 @@ struct MatchingImagesPane: View {
                 .foregroundStyle(.orange)
                 .help(label)
         }
+        // A list an older Verbinal's probe made — another device's, brought
+        // by the storage sync — misses packages it did not look for, and
+        // Discover probes it again (plan 40).
+        if case .discovered(let manifest) = state, !ImageDiscoveryCoordinator.isCurrent(manifest) {
+            Image(systemName: "exclamationmark.arrow.circlepath")
+                .foregroundStyle(.orange)
+                .help("From an older probe: Re-run for the full package list")
+                .accessibilityLabel(Text("From an older probe: Re-run for the full package list"))
+        }
     }
 
     /// User-driven Discover/Re-run button. With auto-discovery

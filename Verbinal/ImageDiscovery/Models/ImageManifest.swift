@@ -301,3 +301,8 @@ extension ImageManifest {
         )
     }
 }
+
+extension ImageManifest {
+    /// Said of a list an older Verbinal's probe made (plan 40).
+    static let olderProbeNote = "From an older probe: packages it did not look for are missing. discover_image_packages probes it again for the full list."
+}

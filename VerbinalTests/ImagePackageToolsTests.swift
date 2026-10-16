@@ -34,6 +34,22 @@ final class ImagePackageToolsTests: XCTestCase {
         XCTAssertEqual(sections[3].packages.map(\.name), ["libc6", "zlib1g"])
     }
 
+    // MARK: - A list from an older probe (plan 40)
+
+    func testAListFromAnOlderProbeSaysSoAndACurrentOneDoesNot() {
+        let older = manifest()   // schema 3: an older Verbinal's probe
+        XCTAssertFalse(ImageDiscoveryCoordinator.isCurrent(older))
+        XCTAssertEqual(DescribeImageTool.describe(older, filter: "").outdated, true)
+        XCTAssertEqual(DescribeImageTool.describe(older, filter: "").note, ImageManifest.olderProbeNote)
+        XCTAssertEqual(GetImageManifestTool.output(for: older).outdated, true)
+        XCTAssertEqual(GetImageManifestTool.output(for: older).note, ImageManifest.olderProbeNote)
+        let current = ImageManifest(schemaVersion: ProbeScript.schemaVersion, imageID: "images.canfar.net/skaha/astroml:25.01",
+                                    contentHash: "h", capturedAt: Date(), osFamily: "ubuntu", osVersion: "24.04", kernel: "Linux")
+        XCTAssertNil(DescribeImageTool.describe(current, filter: "").outdated)
+        XCTAssertNil(GetImageManifestTool.output(for: current).outdated)
+        XCTAssertNil(GetImageManifestTool.output(for: current).note)
+    }
+
     // MARK: - describe_image
 
     func testDescribingAnImageGivesWhatIsKnownAndWhatMatches() {

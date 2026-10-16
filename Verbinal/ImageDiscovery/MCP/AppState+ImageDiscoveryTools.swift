@@ -101,21 +101,7 @@ extension AppState {
 
     func makeGetImageManifestTool() -> GetImageManifestTool {
         GetImageManifestTool(lookup: { [weak self] image in
-            guard let manifest = await self?.probedManifest(image) else { return nil }
-            let iso = ISO8601DateFormatter()
-            return GetImageManifestTool.Output(
-                imageID: manifest.imageID,
-                capturedAtISO: iso.string(from: manifest.capturedAt),
-                contentHash: manifest.contentHash,
-                osFamily: manifest.osFamily,
-                osVersion: manifest.osVersion,
-                kernel: manifest.kernel,
-                dpkgCount: manifest.dpkgPackages.count,
-                rpmCount: manifest.rpmPackages.count,
-                apkCount: manifest.apkPackages.count,
-                pythonCount: manifest.pythonPackages.count,
-                rCount: manifest.rPackages.count,
-                condaEnvNames: manifest.condaEnvs.map(\.name))
+            await self?.probedManifest(image).map(GetImageManifestTool.output(for:))
         })
     }
 }

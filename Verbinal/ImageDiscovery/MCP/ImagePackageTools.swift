@@ -110,6 +110,9 @@ struct DescribeImageTool: JSONReadTool {
         let sections: [Section]
         let probeNotes: String?
         let capturedAt: String
+        /// An older Verbinal's probe made it (plan 40): see `note`.
+        var outdated: Bool? = nil
+        var note: String? = nil
         let message: String?
 
         struct Section: Encodable, Sendable, Equatable {
@@ -163,7 +166,7 @@ struct DescribeImageTool: JSONReadTool {
                                   packages: kept.prefix(maxPerSection).map { Output.Package(name: $0.name, version: $0.version) })
         }
         func known(_ text: String) -> String? { text.isEmpty || text == "unknown" ? nil : text }
-        return Output(
+        var output = Output(
             imageID: manifest.imageID,
             os: [manifest.osFamily, manifest.osVersion].compactMap(known).joined(separator: " "),
             kernel: known(manifest.kernel),
@@ -173,5 +176,10 @@ struct DescribeImageTool: JSONReadTool {
             probeNotes: manifest.probeNotes.flatMap { $0.isEmpty ? nil : $0 },
             capturedAt: ISO8601DateFormatter().string(from: manifest.capturedAt),
             message: !filter.isEmpty && sections.isEmpty ? "nothing in this image matches '\(filter)'" : nil)
+        if !ImageDiscoveryCoordinator.isCurrent(manifest) {
+            output.outdated = true
+            output.note = ImageManifest.olderProbeNote
+        }
+        return output
     }
 }
