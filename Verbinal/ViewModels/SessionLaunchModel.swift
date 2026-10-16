@@ -93,7 +93,13 @@ final class SessionLaunchModel {
     var images: [ParsedImage] = []
     var coreOptions: [Int] = []
     var ramOptions: [Int] = []
-    var gpuOptions: [Int] = []
+    /// What the platform offers in GPUs (plan 41): its context's, followed
+    /// as it refreshes. With none, a tick from before is cleared.
+    var gpuOffer: GPUOffer = .none {
+        didSet { if !gpuOffer.offersAny, gpus != 0 { gpus = 0 } }
+    }
+    /// The batch tab's, until it reads the offer itself.
+    var gpuOptions: [Int] { gpuOffer.counts }
     var repositories: [String] = []
     var defaultCores = 2
     var defaultRam = 8
@@ -229,7 +235,7 @@ final class SessionLaunchModel {
         if let context = cache.context {
             coreOptions = context.cores.options
             ramOptions = context.memoryGB.options
-            gpuOptions = context.gpus?.options ?? []
+            gpuOffer = context.gpuOffer
             defaultCores = context.cores.default
             defaultRam = context.memoryGB.default
             cores = defaultCores
@@ -271,7 +277,7 @@ final class SessionLaunchModel {
             if type == "fixed" {
                 if let c = settings.defaultCores, coreOptions.contains(c) { cores = c }
                 if let r = settings.defaultRam, ramOptions.contains(r) { ram = r }
-                if let g = settings.defaultGpus, gpuOptions.contains(g) { gpus = g }
+                if let g = settings.defaultGpus { gpus = gpuOffer.offersAny ? min(g, 1) : 0 }
             }
         }
     }
@@ -453,7 +459,7 @@ final class SessionLaunchModel {
         if resourceType == "fixed" {
             params.cores = cores
             params.ram = ram
-            params.gpus = gpus
+            params.gpus = gpuOffer.offersAny ? min(gpus, 1) : 0
         } else {
             params.cores = 0
             params.ram = 0
@@ -506,16 +512,18 @@ final class SessionLaunchModel {
             image: launch.image
         )
 
+        let gpus = relaunchGPUs(launch)
         if launch.resourceType == "fixed" {
             params.cores = launch.cores
             params.ram = launch.ram
-            params.gpus = launch.gpus
+            params.gpus = gpus.count
         }
 
         do {
             let session = try await launches.launch(params)
             launchPhase.finish(attempt, with: .success(session.id))
-            launchStatus = String(localized: "Session relaunched!")
+            launchStatus = gpus.dropped ? String(localized: "Relaunched without a GPU: this platform offers none")
+                                        : String(localized: "Session relaunched!")
 
             var updated = launch
             updated.launchedAt = Date()

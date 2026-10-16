@@ -559,6 +559,16 @@
         }
       }
     },
+    "New sessions start with one GPU" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les nouvelles sessions démarrent avec un GPU"
+          }
+        }
+      }
+    },
     "No coordinates found" : {
       "localizations" : {
         "fr" : {
@@ -659,6 +669,16 @@
         }
       }
     },
+    "One GPU for this session; the resources become Fixed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un GPU pour cette session ; les ressources passent à Fixe"
+          }
+        }
+      }
+    },
     "Paused" : {
       "localizations" : {
         "fr" : {
@@ -705,6 +725,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Charge mémoire"
+          }
+        }
+      }
+    },
+    "Relaunched without a GPU: this platform offers none" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session relancée sans GPU : cette plate-forme n’en offre pas"
           }
         }
       }
@@ -1115,6 +1145,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cette plate-forme ne communique pas encore ses GPU"
+          }
+        }
+      }
+    },
+    "This platform offers no GPUs" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette plate-forme n’offre pas de GPU"
+          }
+        }
+      }
+    },
+    "Use a GPU" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser un GPU"
+          }
+        }
+      }
+    },
+    "Use a GPU by default" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser un GPU par défaut"
           }
         }
       }

@@ -79,7 +79,6 @@ final class CodeQualityGuardrailTests: XCTestCase {
         "Verbinal/ImageDiscovery/Services/ImageDiscoveryCoordinator.swift": 1194,
         "Verbinal/ViewModels/AppState.swift": 827,
         "Verbinal/Search/MCP/SearchControlTools.swift": 805,
-        "Verbinal/Views/SettingsView.swift": 782,
         "shared/VerbinalKit/Sources/VerbinalKit/Networking/NetworkClient.swift": 733,
         "Verbinal/Services/AgentsService.swift": 695,
         "Verbinal/Views/ContentView.swift": 703,

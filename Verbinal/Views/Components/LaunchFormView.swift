@@ -101,6 +101,10 @@ struct LaunchFormView: View {
         }) {
             LaunchProgressSheet(model: model) { showLaunchProgress = false }
         }
+        // The GPU offer as the cache has it now: Settings' Refresh Now
+        // reaches an open form (plan 41).
+        .onAppear { model.followOffer() }
+        .onChange(of: model.cacheService?.cache?.fetchedAt) { _, _ in model.followOffer() }
         .uiPresented("Recent Launch Conflict", .alert, isPresented: $model.showRecentLaunchConflict)
         .alert(
             "Replace Recent Launch?",
@@ -299,10 +303,9 @@ struct LaunchFormView: View {
                 resourceType: $model.resourceType,
                 cores: $model.cores,
                 ram: $model.ram,
-                gpus: $model.gpus,
                 coreOptions: model.coreOptions,
                 ramOptions: model.ramOptions,
-                gpuOptions: model.gpuOptions,
+                gpus: .oneOrNone($model.usesAGPU, offered: model.gpuOffer.offersAny),
                 isDefault: model.isSelectedResourcesDefault,
                 onToggleDefault: { model.toggleDefaultResources() }
             )
@@ -435,10 +438,9 @@ struct LaunchFormView: View {
                 resourceType: $model.resourceType,
                 cores: $model.cores,
                 ram: $model.ram,
-                gpus: $model.gpus,
                 coreOptions: model.coreOptions,
                 ramOptions: model.ramOptions,
-                gpuOptions: model.gpuOptions,
+                gpus: .oneOrNone($model.usesAGPU, offered: model.gpuOffer.offersAny),
                 isDefault: model.isSelectedResourcesDefault,
                 onToggleDefault: { model.toggleDefaultResources() }
             )

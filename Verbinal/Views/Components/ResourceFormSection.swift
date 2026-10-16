@@ -20,10 +20,9 @@ struct ResourceFormSection: View {
     @Binding var resourceType: String        // "flexible" | "fixed"
     @Binding var cores: Int
     @Binding var ram: Int
-    @Binding var gpus: Int
     let coreOptions: [Int]
     let ramOptions: [Int]
-    let gpuOptions: [Int]
+    let gpus: GPUChoice
 
     var isDefault: Bool? = nil
     var onToggleDefault: (() -> Void)? = nil
@@ -54,16 +53,57 @@ struct ResourceFormSection: View {
                 }
             }
 
+            if case .oneOrNone(let uses, let offered) = gpus {
+                GPUCheckbox(isOn: uses, offered: offered)
+            }
+
             if resourceType == "fixed" {
                 ResourceSelectorView(
                     cores: $cores,
                     ram: $ram,
-                    gpus: $gpus,
+                    gpus: gpus.count,
                     coreOptions: coreOptions,
                     ramOptions: ramOptions,
-                    gpuOptions: gpuOptions
+                    gpuOptions: gpus.stepperOptions
                 )
             }
         }
+    }
+}
+
+/// How a form chooses GPUs (plan 41): an interactive session one or none,
+/// with a checkbox; a batch job as many as the platform offers.
+enum GPUChoice {
+    case oneOrNone(Binding<Bool>, offered: Bool)
+    case upTo(Binding<Int>, GPUOffer)
+
+    /// The stepper's count: the batch job's; none for the checkbox's.
+    var count: Binding<Int> {
+        if case .upTo(let count, _) = self { return count }
+        return .constant(0)
+    }
+
+    /// The stepper's counts: none for the checkbox, which has no stepper.
+    var stepperOptions: [Int] {
+        if case .upTo(_, let offer) = self { return offer.counts }
+        return []
+    }
+}
+
+/// Use a GPU (plan 41): one GPU for an interactive session, or none —
+/// disabled while the platform offers none. Ticking it makes the resources
+/// Fixed (`SessionLaunchModel.usesAGPU`).
+struct GPUCheckbox: View {
+    @Binding var isOn: Bool
+    let offered: Bool
+
+    var body: some View {
+        Toggle("Use a GPU", isOn: $isOn)
+            #if os(macOS)
+            .toggleStyle(.checkbox)
+            #endif
+            .disabled(!offered)
+            .help(offered ? Text("One GPU for this session; the resources become Fixed") : Text("This platform offers no GPUs"))
+            .pointable("portal.launch.gpu")
     }
 }

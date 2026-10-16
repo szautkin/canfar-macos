@@ -179,7 +179,9 @@ extension AppState {
         tools.append(OpenVOSpaceFileTool())
 
         // Write tools — Sessions + archive maintenance
-        tools.append(LaunchSessionTool())
+        tools.append(LaunchSessionTool(offer: { [weak self] in
+            await MainActor.run { self?.portalImageCacheService.cache?.context?.gpuOffer }
+        }))
         tools.append(DeleteSessionTool())
         tools.append(DeleteSessionsBulkTool())
         tools.append(ClearResearchArchiveTool())

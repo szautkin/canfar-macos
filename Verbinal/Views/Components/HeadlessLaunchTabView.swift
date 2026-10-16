@@ -98,10 +98,9 @@ struct HeadlessLaunchTabView: View {
                 resourceType: $model.resourceType,
                 cores: $model.cores,
                 ram: $model.ram,
-                gpus: $model.gpus,
                 coreOptions: coreOptions,
                 ramOptions: ramOptions,
-                gpuOptions: gpuOptions
+                gpus: .upTo($model.gpus, GPUOffer(options: gpuOptions))
             )
 
         }

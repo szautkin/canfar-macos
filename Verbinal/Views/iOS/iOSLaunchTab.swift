@@ -85,14 +85,16 @@ private struct iOSLaunchFormView: View {
                     }
                     .pickerStyle(.segmented)
 
+                    GPUCheckbox(isOn: $model.usesAGPU, offered: model.gpuOffer.offersAny)
+
                     if model.resourceType == "fixed" {
                         ResourceSelectorView(
                             cores: $model.cores,
                             ram: $model.ram,
-                            gpus: $model.gpus,
+                            gpus: .constant(0),
                             coreOptions: model.coreOptions,
                             ramOptions: model.ramOptions,
-                            gpuOptions: model.gpuOptions
+                            gpuOptions: []
                         )
                     }
                 }

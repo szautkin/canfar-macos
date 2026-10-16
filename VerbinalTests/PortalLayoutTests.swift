@@ -97,7 +97,7 @@ final class PortalLayoutTests: XCTestCase {
                                        recentLaunchStore: RecentLaunchStore())
         model.coreOptions = [1, 2, 4]
         model.ramOptions = [4, 8, 16]
-        model.gpuOptions = [0, 1]
+        model.gpuOffer = GPUOffer(options: [0, 1])
         state.sessionLaunchModelForTools = model
 
         for refused in [#"{"cores":3}"#, #"{"ram":32}"#, #"{"gpus":2}"#, #"{"resources":"flexible","cores":2}"#] {
