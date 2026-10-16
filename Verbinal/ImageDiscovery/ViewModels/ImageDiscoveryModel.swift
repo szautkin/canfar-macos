@@ -161,6 +161,27 @@ final class ImageDiscoveryModel {
     /// touched from a nonisolated deinit).
     private let inFlightSubscription = InFlightSubscription()
 
+    // MARK: Lists arriving while the sheet is open (plan 40)
+
+    /// Hears the lists kept while the sheet is open; nothing while closed.
+    private let arrivals = InFlightSubscription()
+    /// Images whose list came since the rows last changed.
+    @ObservationIgnored private var arrived: Set<String> = []
+    @ObservationIgnored private var rowsDue: Task<Void, Never>?
+    @ObservationIgnored private var settling: Task<Void, Never>?
+    /// The filters' names, merged as each list comes, out of sight: the
+    /// filter pane is a `List` of thousands of rows, redrawn whole by any
+    /// change, so `allPackages` changes once the lists stop coming.
+    @ObservationIgnored private var packagesComing: AllPackages?
+    /// How often a stream of lists changed the rows, and the filters: at
+    /// most once a second, and once (tests read them).
+    @ObservationIgnored private(set) var rowUpdates = 0
+    @ObservationIgnored private(set) var filterUpdates = 0
+    /// The rows change at most this often while lists come; the filters
+    /// once they have stopped coming for `settleAfter`.
+    nonisolated static let rowsEvery: Duration = .seconds(1)
+    nonisolated static let settleAfter: Duration = .seconds(2)
+
     init(coordinator: ImageDiscoveryCoordinator) {
         self.coordinator = coordinator
         // Bind `inFlightProbeCount` to the coordinator's stream
@@ -201,6 +222,7 @@ final class ImageDiscoveryModel {
     /// across the catalogue cluster up faster than the user can
     /// triage.
     func onAppear(catalogue images: [ParsedImage]) async {
+        listenForArrivals()
         let attempt = catalogue.begin()
         allKnownImages = images
         await refreshFromCache()
@@ -275,6 +297,74 @@ final class ImageDiscoveryModel {
     func onDisappear() {
         // Cancellation of the discovery stream happens automatically
         // when the wrapping Task is cancelled (caller in the View).
+        arrivals.task?.cancel()
+        arrivals.task = nil
+    }
+
+    /// While the sheet is open, the lists another device's probes made —
+    /// a new device's first sync brings about three hundred — turn their
+    /// rows to discovered as they come (plan 40).
+    private func listenForArrivals() {
+        guard arrivals.task == nil else { return }
+        let stream = coordinator.manifestChanges()
+        arrivals.task = Task(priority: .utility) { [weak self] in
+            for await imageID in stream {
+                guard let self else { return }
+                self.arrivedList(imageID)
+            }
+        }
+    }
+
+    private func arrivedList(_ imageID: String) {
+        arrived.insert(imageID)
+        if rowsDue == nil {
+            rowsDue = Task { [weak self] in
+                try? await Task.sleep(for: Self.rowsEvery)
+                await self?.showArrivedRows()
+            }
+        }
+        settling?.cancel()
+        settling = Task { [weak self] in
+            try? await Task.sleep(for: Self.settleAfter)
+            guard !Task.isCancelled else { return }
+            await self?.showArrivedPackages()
+        }
+    }
+
+    /// One change to the rows for every list that came since the last.
+    private func showArrivedRows() async {
+        rowsDue = nil
+        let ids = arrived
+        arrived = []
+        var rows = rowStates
+        var packages = packagesComing ?? allPackages
+        // A row for an image the sheet lists; every list's names for the
+        // filters, as the cache gives them on opening.
+        let listed = Set(allKnownImages.map(\.id))
+        for id in ids {
+            guard case .success(let manifest) = await coordinator.outcome(for: id) else { continue }
+            if listed.contains(id) {
+                rows[id] = .discovered(manifest)
+                failureCategories.removeValue(forKey: id)
+            }
+            Self.merge(manifest, into: &packages)
+        }
+        packagesComing = packages
+        if rows != rowStates {
+            rowStates = rows
+            rowUpdates += 1
+        }
+    }
+
+    /// The filters, once the lists have stopped coming — when they gained names.
+    private func showArrivedPackages() async {
+        if !arrived.isEmpty { await showArrivedRows() }
+        guard let packages = packagesComing else { return }
+        packagesComing = nil
+        if packages != allPackages {
+            allPackages = packages
+            filterUpdates += 1
+        }
     }
 
     // MARK: - Cache reload
@@ -354,17 +444,22 @@ final class ImageDiscoveryModel {
     }
 
     private func mergeIntoAllPackages(_ m: ImageManifest) {
+        Self.merge(m, into: &allPackages)
+    }
+
+    /// A list's names among the filters'.
+    static func merge(_ m: ImageManifest, into packages: inout AllPackages) {
         if m.osFamily != "unknown" {
-            allPackages.osFamilies.insert(m.osFamily)
+            packages.osFamilies.insert(m.osFamily)
             if m.osVersion != "unknown" {
-                allPackages.osVersionsByFamily[m.osFamily, default: []].insert(m.osVersion)
+                packages.osVersionsByFamily[m.osFamily, default: []].insert(m.osVersion)
             }
         }
-        for p in m.dpkgPackages   { allPackages.dpkg.insert(p.name) }
-        for p in m.rpmPackages    { allPackages.rpm.insert(p.name) }
-        for p in m.apkPackages    { allPackages.apk.insert(p.name) }
-        for p in m.pythonPackages { allPackages.python.insert(p.name) }
-        for p in m.rPackages      { allPackages.r.insert(p.name) }
+        for p in m.dpkgPackages   { packages.dpkg.insert(p.name) }
+        for p in m.rpmPackages    { packages.rpm.insert(p.name) }
+        for p in m.apkPackages    { packages.apk.insert(p.name) }
+        for p in m.pythonPackages { packages.python.insert(p.name) }
+        for p in m.rPackages      { packages.r.insert(p.name) }
     }
 
     // MARK: - Per-image actions
@@ -461,102 +556,6 @@ final class ImageDiscoveryModel {
     /// when a job sat in Pending forever or hit an ImagePullBackOff.
     func fetchEvents(jobID: String) async throws -> String {
         try await coordinator.fetchEvents(jobID: jobID)
-    }
-
-    // MARK: - Filtering
-
-    /// Image ids that satisfy the current query *and* the search
-    /// text (which scopes by image label / id substring on the
-    /// right pane).
-    var filteredImageIDs: [String] {
-        let cached = allKnownImages.compactMap { img -> String? in
-            // Only successful manifests can satisfy a non-empty
-            // query — failures and pending have no manifest to match.
-            if case .discovered(let m) = rowStates[img.id] {
-                return query.isEmpty || query.matches(m) ? img.id : nil
-            }
-            // For empty query, include everything we know about
-            // (running / failed / never-discovered all show up so
-            // the user can see progress).
-            return query.isEmpty ? img.id : nil
-        }
-        // Apply image-scoped search on top.
-        let searched: [String]
-        if imageSearchText.isEmpty {
-            searched = cached
-        } else {
-            let needle = imageSearchText.lowercased()
-            searched = cached.filter { id in
-                id.lowercased().contains(needle) ||
-                allKnownImages.first(where: { $0.id == id })?.label.lowercased().contains(needle) == true
-            }
-        }
-        // Session-type filter. Unknown-type (cache-only) images are never
-        // hidden — they bucket under "All" so a Skaha-catalogue outage
-        // doesn't make them vanish when a specific type is selected.
-        guard let type = typeFilter else { return searched }
-        return searched.filter { id in
-            guard let img = allKnownImages.first(where: { $0.id == id }) else { return false }
-            return img.types.isEmpty || img.types.contains(type)
-        }
-    }
-
-    /// Session types present across the catalogue, in canonical UI order
-    /// (then any extras alphabetically). Drives the type filter control.
-    var availableTypes: [String] {
-        let present = Set(allKnownImages.flatMap { $0.types })
-        let canonical = ["notebook", "desktop", "carta", "headless", "contributed", "firefly", "desktop-app"]
-        let ordered = canonical.filter { present.contains($0) }
-        let extras = present.subtracting(canonical).sorted()
-        return ordered + extras
-    }
-
-    /// Every successfully-discovered manifest in row state. Used by
-    /// `availableValues(for:)` and the chips/filter logic that
-    /// needs to look at actual package contents, not just the
-    /// catalogue's all-known values.
-    var allDiscoveredManifests: [ImageManifest] {
-        rowStates.values.compactMap {
-            if case .discovered(let m) = $0 { return m } else { return nil }
-        }
-    }
-
-    /// Set of values for `category` that, if added to the query,
-    /// would still yield at least one matching manifest given the
-    /// CURRENT settings of every OTHER category. The left pane
-    /// uses this to disable checkboxes whose values are guaranteed
-    /// to make the result empty — e.g. once `OS = centos` is
-    /// ticked, `Python = numpy` should grey out unless at least
-    /// one centos manifest has numpy.
-    func availableValues(for category: PackageQuery.Category) -> Set<String> {
-        let scoped = query.dropping(category)
-        var available: Set<String> = []
-        for m in allDiscoveredManifests where scoped.matches(m) {
-            switch category {
-            case .osFamily:
-                if m.osFamily != "unknown" { available.insert(m.osFamily) }
-            case .osVersion:
-                if m.osVersion != "unknown" { available.insert(m.osVersion) }
-            case .python:       available.formUnion(m.pythonPackages.map(\.name))
-            case .r:            available.formUnion(m.rPackages.map(\.name))
-            case .dpkg:         available.formUnion(m.dpkgPackages.map(\.name))
-            case .rpm:          available.formUnion(m.rpmPackages.map(\.name))
-            case .apk:          available.formUnion(m.apkPackages.map(\.name))
-            case .capabilities: available.formUnion(m.capabilities)
-            }
-        }
-        return available
-    }
-
-    /// Project-grouped view of `filteredImageIDs` for the right pane
-    /// `Section` headers.
-    var filteredImagesByProject: [(project: String, images: [ParsedImage])] {
-        let allowed = Set(filteredImageIDs)
-        let group = Dictionary(grouping: allKnownImages.filter { allowed.contains($0.id) },
-                               by: { $0.project })
-        return group
-            .map { (project: $0.key, images: $0.value.sorted { $0.label < $1.label }) }
-            .sorted { $0.project < $1.project }
     }
 
     // MARK: - Row state from outcome

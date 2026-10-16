@@ -28,6 +28,11 @@ struct ImageDiscoverySheet: View {
     var catalogue: [ParsedImage]
 
     @Environment(\.dismiss) private var dismiss
+    #if os(macOS)
+    /// For the lists still coming from storage (plan 40); absent in a
+    /// preview or a test that gives none.
+    @Environment(AppState.self) private var appState: AppState?
+    #endif
     @State private var didLoad = false
 
     var body: some View {
@@ -102,6 +107,13 @@ struct ImageDiscoverySheet: View {
                 Text(headerSubtitle)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                #if os(macOS)
+                if let coming = appState?.storageSync.packageListsLine {
+                    Text(coming)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                #endif
             }
             Spacer()
             if model.failedCount > 0 {

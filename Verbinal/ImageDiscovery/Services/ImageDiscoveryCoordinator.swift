@@ -156,6 +156,8 @@ actor ImageDiscoveryCoordinator {
     /// only on actual change, not on every mutation that ended at
     /// the same value (cheap dedupe via `lastBroadcastCount`).
     private var inFlightContinuations: [UUID: AsyncStream<Int>.Continuation] = [:]
+    /// Who hears each image whose list is kept (plan 40).
+    private var manifestContinuations: [UUID: AsyncStream<String>.Continuation] = [:]
     private var lastBroadcastCount: Int = 0
 
     /// Whether we've uploaded `probe-<scriptHash>.sh` to the user's
@@ -461,7 +463,7 @@ actor ImageDiscoveryCoordinator {
         // strategy-agnostic, so the recovery just works for both.
         // One an older probe left there is not recovered (plan 19 K1).
         if !force, let manifest = try? await fetchManifestIfPresent(for: imageID), Self.isCurrent(manifest) {
-            try await store.setManifest(manifest)
+            try await keep(manifest)
             return manifest
         }
 
@@ -503,7 +505,7 @@ actor ImageDiscoveryCoordinator {
             // user from re-running a probe that already produced
             // its output.
             if let manifest = try? await fetchManifestIfPresent(for: imageID) {
-                try await store.setManifest(manifest)
+                try await keep(manifest)
                 return manifest
             }
             let err: ImageDiscoveryError
@@ -559,7 +561,7 @@ actor ImageDiscoveryCoordinator {
             throw err
         }
 
-        try await store.setManifest(manifest)
+        try await keep(manifest)
         await recordProbe(jobID: jobID, imageID: imageID, failure: nil)
         return manifest
     }
@@ -604,28 +606,6 @@ actor ImageDiscoveryCoordinator {
         return manifest
     }
 
-    /// A "stub" manifest is one a failed probe wrote as a
-    /// placeholder: no packages of any kind, and a `probeNotes`
-    /// field describing the failure. Real successful probes always
-    /// have *something* (even Alpine's minimal image returns a
-    /// dozen apk entries) and don't set `probeNotes`. Used by
-    /// `fetchManifestIfPresent` to refuse to cache failure
-    /// placeholders, and intended to be cheap (no I/O) so the
-    /// recovery path stays a single-VOSpace-read in the happy case.
-    static func isStubManifest(_ m: ImageManifest) -> Bool {
-        let hasPackages = !(m.dpkgPackages.isEmpty
-                            && m.rpmPackages.isEmpty
-                            && m.apkPackages.isEmpty
-                            && m.pythonPackages.isEmpty
-                            && m.rPackages.isEmpty
-                            && m.condaEnvs.isEmpty)
-        if hasPackages { return false }
-        // Empty-everything is the stub shape; require a probeNotes
-        // tag too so a hypothetical legitimate "scratch" image with
-        // truly zero packages doesn't get mistaken for a stub.
-        return (m.probeNotes ?? "").isEmpty == false
-    }
-
     /// Fetch the container stdout/stderr for a probe's Skaha session.
     /// Used by the discovery sheet's "View logs" action on a failed
     /// row so the user can read the underlying error.
@@ -638,46 +618,6 @@ actor ImageDiscoveryCoordinator {
     /// for a job stuck in Pending or one that ImagePullBackOff'd.
     func fetchEvents(jobID: String) async throws -> String {
         try await headless.getEvents(id: jobID)
-    }
-
-    /// Build a Skaha session-name that's safe for K8s DNS-1123
-    /// label rules (≤63 chars, lowercase alphanumerics + hyphens,
-    /// no leading/trailing hyphen, no consecutive hyphens).
-    ///
-    /// Old builder produced names like
-    /// `verbinal-inspect-images-canfar-net-cadc-carta-psrecord-5--abcd1234`
-    /// (66 chars, double hyphen mid-name) — the length tripped K8s
-    /// admission webhooks (label-value cap is 63), and the
-    /// trailing chop landed inside `5.1.0` leaving a stray `5-` that
-    /// Skaha's Java regex parser is known to choke on. Both fits
-    /// the "K8s race after submit" pattern we kept seeing.
-    ///
-    /// The new builder reserves the prefix + UUID up front, slices
-    /// the image-derived middle to whatever's left, then collapses
-    /// `_`/`.`/space → `-`, drops consecutive hyphens, and trims
-    /// edge hyphens. Worst case: `vp-<54chars>-<8uuid>` = 64 — but
-    /// the slice already caps the middle at 52, so we're at most 63.
-    static func makeJobName(prefix: String, imageID: String) -> String {
-        let uuid = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(8)).lowercased()
-        // K8s label cap (63) minus prefix, separators, uuid.
-        let budget = 63 - prefix.count - 1 - uuid.count - 1   // "<prefix>-<middle>-<uuid>"
-        let safe = ImageManifest.sanitize(imageID: imageID).lowercased()
-        var middle = String(safe.prefix(max(0, budget)))
-        // Replace any non-DNS-1123 char with hyphen, then collapse
-        // runs of hyphens, then trim leading/trailing hyphens.
-        middle = middle.map { ch -> Character in
-            if ch.isLetter || ch.isNumber || ch == "-" { return ch }
-            return "-"
-        }.reduce(into: "") { acc, ch in
-            if ch == "-" && acc.last == "-" { return }
-            acc.append(ch)
-        }
-        while middle.hasPrefix("-") { middle.removeFirst() }
-        while middle.hasSuffix("-") { middle.removeLast() }
-        // If trimming somehow emptied the middle (degenerate input),
-        // fall back to the uuid alone so we still produce a valid name.
-        if middle.isEmpty { return "\(prefix)-\(uuid)" }
-        return "\(prefix)-\(middle)-\(uuid)"
     }
 
     /// Pure decision: which strategy applies to this image's types.
@@ -1095,7 +1035,7 @@ actor ImageDiscoveryCoordinator {
                 try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                 guard let self else { return }
                 if let manifest = try? await self.fetchManifestIfPresent(for: imageID) {
-                    try? await self.store.setManifest(manifest)
+                    try? await self.keep(manifest)
                     await self.logGraceRecovery(imageID: imageID)
                     return
                 }
@@ -1124,7 +1064,7 @@ actor ImageDiscoveryCoordinator {
             return false
         }
         do {
-            try await store.setManifest(manifest)
+            try await keep(manifest)
             return true
         } catch {
             return false
@@ -1135,7 +1075,7 @@ actor ImageDiscoveryCoordinator {
         guard let manifest = try? await fetchManifestIfPresent(for: imageID) else {
             return nil
         }
-        try? await store.setManifest(manifest)
+        try? await keep(manifest)
         return manifest
     }
 
@@ -1172,6 +1112,33 @@ actor ImageDiscoveryCoordinator {
     /// this stream gives the user continuous awareness from outside
     /// the sheet — they don't need to reopen to know whether a
     /// probe is still in progress.
+    /// Keeps a list, and says so to who listens: imported, recovered or
+    /// probed alike (plan 40).
+    private func keep(_ manifest: ImageManifest) async throws {
+        try await store.setManifest(manifest)
+        for continuation in manifestContinuations.values { continuation.yield(manifest.imageID) }
+    }
+
+    /// Each image whose list is kept from now on — the discovery sheet,
+    /// while it is open, hears a new device's import as it comes (plan 40).
+    nonisolated func manifestChanges() -> AsyncStream<String> {
+        AsyncStream { continuation in
+            let id = UUID()
+            Task { [weak self] in await self?.listen(id, continuation) }
+            continuation.onTermination = { [weak self] _ in
+                Task { await self?.stopListening(id) }
+            }
+        }
+    }
+
+    private func listen(_ id: UUID, _ continuation: AsyncStream<String>.Continuation) {
+        manifestContinuations[id] = continuation
+    }
+
+    private func stopListening(_ id: UUID) {
+        manifestContinuations.removeValue(forKey: id)?.finish()
+    }
+
     nonisolated func inFlightCountChanges() -> AsyncStream<Int> {
         AsyncStream { continuation in
             let id = UUID()

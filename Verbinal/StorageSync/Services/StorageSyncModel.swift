@@ -219,6 +219,18 @@ final class StorageSyncModel {
         }
     }
 
+    /// The package lists on their way from storage, or paused, for the
+    /// discovery sheet's header (plan 40); nil when none are coming.
+    var packageListsLine: String? {
+        if let paused = status?.paused, paused.kind == "imagePackages" {
+            return StorageSettingsTab.pausedLine(paused)
+        }
+        if let count = current, count.kind == "imagePackages", count.done < count.total {
+            return String(localized: "Bringing package lists from your storage — \(count.done) of \(count.total)")
+        }
+        return nil
+    }
+
     /// Whether package lists are still coming from the person's storage, in
     /// words, for the image tools (plan 40); nil when they are not.
     var packageListsNote: String? {

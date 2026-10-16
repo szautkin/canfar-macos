@@ -129,6 +129,16 @@
         }
       }
     },
+    "Bringing package lists from your storage — %lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listes de paquets en provenance de votre stockage — %1$lld sur %2$lld"
+          }
+        }
+      }
+    },
     "CADC refused it: you may not have access." : {
       "localizations" : {
         "fr" : {
