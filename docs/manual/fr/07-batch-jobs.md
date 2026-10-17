@@ -19,7 +19,9 @@ CANFAR.
 5. **Arguments** : facultatifs, séparés par des espaces, passés en une seule chaîne que CANFAR découpe.
 6. **Répliques** : combien de copies tournent en parallèle. Chaque copie reçoit `REPLICA_ID` et
    `REPLICA_COUNT` dans son environnement, pour se partager le travail.
-7. **Ressources** : **Flexible** ou **Fixe**, comme pour une session.
+7. **Ressources** : **Flexible** ou **Fixe**, comme pour une session. Avec **Fixe**, une tâche peut aussi
+   demander des **GPU** : 0, ou l’un des nombres que CANFAR propose. Le sélecteur est grisé tant que
+   CANFAR n’en propose pas.
 8. Cliquez sur **Lancer la tâche** (ou **Lancer** … **répliques**).
 
 Votre dossier VOSpace se trouve dans `/arc/home/<votre nom d’utilisateur>` à l’intérieur du conteneur :

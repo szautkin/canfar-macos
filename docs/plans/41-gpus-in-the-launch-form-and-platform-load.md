@@ -273,3 +273,31 @@ recommendation, and each can be changed later:
    RAM pickers appear at the context's defaults. Unticking leaves Fixed as it is. The same rule applies
    to an assistant: `show_launch_form` with `gpus` already makes the form Fixed.
 4. **Branch:** `dev_1_4_1`, where the work is. Which release ships it stays the person's choice.
+
+## Where it ended (2026-10-16)
+
+| Step | Commit | What |
+|---|---|---|
+| Plan | `f85eecdb` | This plan, and what was decided without the person's answers. |
+| 1 | `8a418530` | The context read defensively. `gpus` missing, null or in an unknown shape means no GPUs; cores and memory are read as before. `GPUOffer` is the one rule for what is offered. |
+| 2 | `cd22245a` | The platform load as three rings, with the percentage inside and "N of M … free" below. The GPU ring is grey until the stats carry GPUs, in Skaha's shape or the Science Portal's. `get_platform_load` gives `gpu`, or `gpu: null` and a `gpuNote` that names any GPU fields it could not read. |
+| 3 | `f7cf5da4` | **Use a GPU** for an interactive session. Ticked, it makes the form Fixed and sends `gpus=1`. One GPU at most everywhere: saved defaults, relaunches, `show_launch_form`, `launch_session`. Settings ▸ Portal's default is a checkbox, which fixes B. Settings ▸ Portal moved to a file of its own. |
+| 4 | `57cc020a` | Batch jobs step through 0 and the counts offered, greyed when none is. `launch_headless_job` refuses a count outside the offer and names the range. |
+| 5 | (this commit) | Manual, English and French: the Portal's platform load and launch form, batch jobs, and Settings ▸ Portal. Handout 37 gains section O. |
+
+**Where it differs from the plan, and why:**
+- **Step 2: a ring with no numbers before the first load** shows "—", not "Not reported". Nothing has been read yet, so "not reported" would be untrue.
+- **Step 3: an open form follows the cache.** The form reads the context when it loads, and refreshes a cache older than a day in the background. It now also takes the offer when it appears and whenever the cache changes, so Settings' **Refresh Now** reaches an open form. It takes only the offer, and resets none of the person's choices.
+- **Step 3: before the context is known, nothing is judged.** A relaunch keeps its one GPU, and `show_launch_form` does not refuse one. Both tools judge only against a context the app has; without one, Skaha judges.
+- **Step 4: `show_launch_form` keeps its resources for the interactive form.** It applied them to that form even with the Headless tab shown, before this plan too. Its `gpus` is therefore 0 or 1, and a batch job's count is `launch_headless_job`'s.
+- **Step 4: the GPU row is greyed as a whole.** A disabled stepper alone looked the same as an enabled one in the window capture: its label and count kept their colour.
+
+**Verified:** the full gates after every step, ending at 2,255 tests, the package tests and the iOS build. The accessibility tests ran with the screen unlocked. Each fix's test was seen to fail with the old behaviour put back: the GPU reader stubbed in step 2, five lines in step 3, three in step 4. Window captures, looked at:
+- the rings at 240, 323, 420 and 1,000 points, light and dark, with GPUs and without;
+- the launch form's checkbox enabled, greyed, and ticked with the fixed sizes;
+- the batch tab's stepper enabled and greyed.
+
+**Still to verify:**
+- **On the live app,** after the person runs a build from `57cc020a` or later: handout 37 section O. On production now (O1, O2), and on staging-src (O3–O7). The running app was `745d4bf1`, built before this plan.
+- **Skaha's GPU fields,** once production publishes them next week. If the GPU ring stays grey while CANFAR reports GPUs, `get_platform_load`'s `gpuNote` names the fields to read, and `GPUStats.read` takes them in one line.
+- **The manual's Portal picture** (`docs/images/*/06-portal-sessions/portal.png`) still shows the bars. It is retaken with the other pictures.

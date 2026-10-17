@@ -6,7 +6,7 @@ your batch jobs. It needs you to be signed in. Open it from its Home tile, or **
 
 ![Portal](../images/en/06-portal-sessions/portal.png)
 
-1. **Platform Load**: the CPU cores and memory free on CANFAR now.
+1. **Platform Load**: how loaded CANFAR's CPUs, memory and GPUs are now.
 2. **Launch Session**: the launch form.
 3. **Open**: a running session, in your browser.
 4. **Renew**: extends a session's lifetime.
@@ -17,8 +17,11 @@ your batch jobs. It needs you to be signed in. Open it from its Home tile, or **
 
 ## The cards at the top
 
-- **Platform Load**: **Available CPU Cores** and **Available RAM** across CANFAR, how many instances
-  run, and when it was updated. Its button refreshes it.
+- **Platform Load**: three rings, **CPU**, **RAM** and **GPU**, each with how much of it is in use
+  inside, such as **39%**, and below how much is free, such as **1,836 of 3,000 cores free**. A ring
+  turns orange above 70% and red above 90%. **GPU** stays grey, with **Not reported**, until CANFAR
+  reports its GPUs; it fills in by itself at the next refresh once CANFAR does. Below the rings, how
+  many instances run, and when it was updated. Its button refreshes it.
 - **Storage**: how much of your VOSpace quota you use (**Used**, **Usage**, **Quota**). It warns
   **Storage nearly full**. See [Storage](09-storage.md).
 - **Batch Jobs**: how many of your jobs are running, pending, completed or failed, refreshed every
@@ -59,7 +62,8 @@ Verbinal sends a notification when a session you launched is ready, or fails to 
    narrow it.
 4. **Session Name**: Verbinal suggests one; the button beside it suggests another.
 5. **Resources**: **Flexible**, where CANFAR gives the session what it can, or **Fixed**, where you
-   choose the **CPU Cores**, the **RAM (GB)** and, when CANFAR offers them, the **GPUs**.
+   choose the **CPU Cores** and the **RAM (GB)**. **Use a GPU** asks for one GPU for the session, and
+   makes the resources **Fixed**; it is greyed while CANFAR offers no GPUs.
 6. Click **Launch Session**.
 
 A progress window follows the launch and closes by itself when the session is running; the session

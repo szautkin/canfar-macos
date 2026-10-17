@@ -27,7 +27,7 @@ pour votre compte sur ce Mac.
 | **Valeurs par défaut** ▸ **Projet** | Le projet d’images sur lequel s’ouvre le formulaire, ou **Aucune valeur par défaut**. |
 | **Valeurs par défaut** ▸ **Image du conteneur** | L’image que le formulaire sélectionne, ou **Aucune valeur par défaut**. |
 | **Effacer toutes les valeurs par défaut** | Oublie les valeurs ci-dessus pour ce compte. |
-| **Valeurs par défaut des ressources** ▸ **Préréglage** | **Aucun**, **Flexible** ou **Fixe**. Avec **Fixe**, choisissez **Cœurs** et **RAM (Go)**, et **GPU** quand CANFAR en propose. Les tailles proposées viennent de CANFAR. |
+| **Valeurs par défaut des ressources** ▸ **Préréglage** | **Aucun**, **Flexible** ou **Fixe**. Avec **Fixe**, choisissez **Cœurs** et **RAM (Go)**, et **Utiliser un GPU par défaut**, grisé tant que CANFAR n’offre pas de GPU. Les tailles proposées viennent de CANFAR. |
 | **Cache des images** | Quand la liste des images a été récupérée (**En cache :** …). **Actualiser maintenant** récupère à nouveau le catalogue d’images ; **Vider le cache** le supprime, et il est récupéré à la prochaine ouverture de Portail. |
 
 ## Agent IA

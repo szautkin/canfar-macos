@@ -26,7 +26,7 @@ change them; they are kept for your account on this Mac.
 | **Defaults** ▸ **Project** | The image project the form opens on, or **No default**. |
 | **Defaults** ▸ **Container Image** | The image the form selects, or **No default**. |
 | **Clear All Defaults** | Forgets the defaults above for this account. |
-| **Resource Defaults** ▸ **Preset** | **None**, **Flexible** or **Fixed**. With **Fixed**, choose **Cores** and **RAM (GB)**, and **GPUs** when CANFAR offers them. The sizes offered come from CANFAR. |
+| **Resource Defaults** ▸ **Preset** | **None**, **Flexible** or **Fixed**. With **Fixed**, choose **Cores** and **RAM (GB)**, and **Use a GPU by default**, greyed while CANFAR offers no GPUs. The sizes offered come from CANFAR. |
 | **Image Cache** | When the list of images was fetched (**Cached** …). **Refresh Now** fetches the image catalogue again; **Clear Cache** deletes it, and the next time Portal opens it is fetched again. |
 
 ## AI Agent

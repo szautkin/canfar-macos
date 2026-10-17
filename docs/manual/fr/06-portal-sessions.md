@@ -7,7 +7,7 @@ l’accueil, ou par **Aller ▸ Portail** (⌘5).
 
 ![Portail](../images/fr/06-portal-sessions/portal.png)
 
-1. **Charge de la plate-forme** : les cœurs de processeur et la mémoire libres sur CANFAR en ce moment.
+1. **Charge de la plate-forme** : la charge des processeurs, de la mémoire et des GPU de CANFAR en ce moment.
 2. **Lancer la session** : le formulaire de lancement.
 3. **Ouvrir** : une session en cours, dans votre navigateur.
 4. **Renouveler** : prolonge la durée de vie d’une session.
@@ -18,8 +18,12 @@ l’accueil, ou par **Aller ▸ Portail** (⌘5).
 
 ## Les cartes du haut
 
-- **Charge de la plate-forme** : **Cœurs CPU disponibles** et **RAM disponible** sur CANFAR, combien
-  d’instances tournent, et quand c’était mis à jour. Son bouton l’actualise.
+- **Charge de la plate-forme** : trois anneaux, **CPU**, **Mémoire** et **GPU**, chacun avec la part
+  utilisée au centre, comme **39 %**, et en dessous ce qui est libre, comme **1 836 sur 3 000 cœurs
+  libres**. Un anneau passe à l’orange au-delà de 70 % et au rouge au-delà de 90 %. **GPU** reste gris,
+  avec **Non communiqué**, tant que CANFAR ne communique pas ses GPU ; il se remplit tout seul à
+  l’actualisation suivante dès que CANFAR le fait. Sous les anneaux, combien d’instances tournent, et
+  quand c’était mis à jour. Son bouton l’actualise.
 - **Stockage** : la part de votre quota VOSpace utilisée (**Utilisé**, **Utilisation**, **Quota**). Il
   avertit **Stockage presque plein**. Voir [Stockage](09-storage.md).
 - **Tâches en lot** : combien de vos tâches sont en cours, en attente, terminées ou en échec, actualisé
@@ -64,7 +68,8 @@ démarrer.
    **Rechercher** pour la restreindre.
 4. **Nom de la session** : Verbinal en propose un ; le bouton à côté en propose un autre.
 5. **Ressources** : **Flexible**, où CANFAR donne à la session ce qu’il peut, ou **Fixe**, où vous
-   choisissez les **Cœurs CPU**, la **Mémoire (Go)** et, quand CANFAR en propose, les **GPU**.
+   choisissez les **Cœurs CPU** et la **Mémoire (Go)**. **Utiliser un GPU** demande un GPU pour la
+   session et passe les ressources à **Fixe** ; il est grisé tant que CANFAR n’offre pas de GPU.
 6. Cliquez sur **Lancer la session**.
 
 Une fenêtre de progression suit le lancement et se ferme d’elle-même quand la session tourne ; la

@@ -17,7 +17,8 @@ CANFAR allocation.
 5. **Arguments**: optional, separated by spaces, passed as one string that CANFAR splits.
 6. **Replicas**: how many copies run in parallel. Each copy gets `REPLICA_ID` and `REPLICA_COUNT` in its
    environment, to share the work.
-7. **Resources**: **Flexible** or **Fixed**, as for a session.
+7. **Resources**: **Flexible** or **Fixed**, as for a session. With **Fixed**, a job can also ask for
+   **GPUs**: 0, or one of the counts CANFAR offers. The stepper is greyed while CANFAR offers none.
 8. Click **Launch Job** (or **Launch** … **Replicas**).
 
 Your VOSpace home is at `/arc/home/<your username>` inside the container: read your data and write
