@@ -98,15 +98,17 @@ or for R a different `rev`.
 ## Conflicts, shown
 
 - **Store.** Each one is the item, the field, this Mac's value and storage's, which device and when,
-  kept on this Mac (`StorageSync/conflicts.json`).
+  kept on this Mac with the sync's state (`StorageSyncState.conflicts`).
 - **Settings ▸ Storage ▸ Conflicts:** one row each, with **Keep This Mac's** (written as a new
-  revision) and **Keep the Other** (nothing to write: storage's is already shared). A removal notice has
+  revision) and **Keep the Other's** (nothing to write: storage's is already shared). A removal notice has
   **OK** and **Remove It**.
 - **The bar.** A sync that left conflicts ends "N to choose in Settings ▸ Storage".
 - **Assistants:**
   - `list_sync_conflicts` (read);
-  - `resolve_sync_conflict`, a proposal of the kind of the collection's own changes (Research notes:
-    "Notes and saved things on this Mac").
+  - `resolve_sync_conflict`, a proposal of the kind of what it does: "Notes and saved things on this
+    Mac", "Remove notes and saved things on this Mac" for the choice that removes, and "What every
+    assistant is told" for a guide, which always waits. Applied only while the conflict still waits and
+    the choice still does what it did when asked.
 - **`list_storage_kinds`** counts each kind's conflicts.
 
 ## Steps (each one commit, tests failing first)
@@ -116,6 +118,6 @@ or for R a different `rev`.
 | F1 | `SyncMerge`: the three-way JSON merge, pure | Disjoint fields merge; the same change; conflicting fields keep R; nested objects; lists whole; added and removed keys; empty base. |
 | F2 | Revision metadata in the envelope; `DeviceIdentity`; `SyncBases` (base and parent on this Mac); the decision table in `CollectionKind`, replacing `changedAt` and `replaced` | Every row of the table, on the fake VOSpace, with two and three devices; **wrong clocks change nothing** (B's clock an hour ahead); a new device takes everything; plan 44's files (no `rev`) read as revision 0. |
 | F3 | Checked writes: re-read, read back, siblings | A write overtaken before and after its read-back; two devices writing the same `rev`; no change lost without a conflict. |
-| F4 | `SyncConflicts`: the store, Settings ▸ Storage, the bar, the two tools, `list_storage_kinds` | On screen (AX): the section and its buttons; resolving both ways; the tools; French. |
+| F4 | `SyncConflicts`: the store, Settings ▸ Storage, the bar, the two tools, `list_storage_kinds` | On screen (AX): the section and its buttons; resolving both ways; the tools; French. **Done:** `SyncConflictsTests` (8), `StorageSettingsOnScreenTests.testConflictsAreShownWithTheirChoices`, each failing first with the feature off. |
 | F5 | The manual (03, 12, 14, 16, in English and French), AGENTS.md, the parity table; handout section | Words checked against the screen. |
 | F6 | Live: plan 44's B4–B8 again with the metadata; part C on a second macOS account | Plan 44's tables. |

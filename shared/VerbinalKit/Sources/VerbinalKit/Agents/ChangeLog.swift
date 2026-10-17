@@ -167,7 +167,7 @@ public enum ChangeVerb {
         "correct": "corrected", "create": "created", "delete": "deleted", "discover": "inspected",
         "download": "downloaded", "export": "exported", "get": "got", "launch": "launched", "make": "made",
         "mkdir": "made", "move": "moved", "open": "opened", "remove": "removed", "rename": "renamed",
-        "renew": "renewed", "request": "requested", "run": "ran", "save": "saved", "send": "sent", "set": "set",
+        "renew": "renewed", "request": "requested", "resolve": "resolved", "run": "ran", "save": "saved", "send": "sent", "set": "set",
         "start": "started", "stop": "stopped", "update": "updated", "upload": "uploaded", "use": "used",
     ]
 

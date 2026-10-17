@@ -4,6 +4,7 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
+import MCPCore
 import SwiftUI
 import VerbinalKit
 
@@ -31,6 +32,7 @@ struct StorageSettingsTab: View {
                         .foregroundStyle(.secondary)
                 }
             } else {
+                if !sync.conflicts.isEmpty { conflictsSection }
                 workSection
                 kindsSection
             }
@@ -125,6 +127,23 @@ struct StorageSettingsTab: View {
         }
     }
 
+    /// What the person decides (plan 45): each change two devices made
+    /// differently, storage's kept meanwhile, and each removal one made of
+    /// what the other changed, the change kept meanwhile.
+    private var conflictsSection: some View {
+        Section {
+            ForEach(sync.conflicts) { conflict in
+                SyncConflictRow(conflict: conflict) { sync.resolve(conflict.id, choosing: $0) }
+            }
+        } header: {
+            Text("Conflicts")
+        } footer: {
+            Text("Two devices changed the same thing differently, or one removed what the other changed. Until you choose, the version in your storage is kept, and a change is kept over a removal. What you choose goes to every device.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     /// The person's collections, or the rest of what Verbinal keeps there.
     private func kinds(work: Bool) -> [StorageSync.KindStatus] {
         (sync.status?.kinds ?? []).filter { StorageKindCatalog.work.contains($0.id) == work }
@@ -187,4 +206,99 @@ struct StorageSettingsTab: View {
         default: id
         }
     }
+}
+
+
+/// One conflict, as the person decides it: what it is, each side's value,
+/// and the two choices.
+struct SyncConflictRow: View {
+    let conflict: SyncConflict
+    let choose: (SyncConflict.Choice) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(Self.heading(conflict))
+            Text(Self.reasonLine(conflict))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ForEach(conflict.fields, id: \.path) { field in
+                Text(Self.fieldLine(field, other: Self.other(conflict)))
+                    .font(.caption)
+                    .lineLimit(3)
+            }
+            HStack {
+                Spacer()
+                switch conflict.reason {
+                case .bothChanged:
+                    Button("Keep the Other's") { choose(.theirs) }
+                        .help("The version in your storage stays, as every device has it")
+                        .pointable("settings.storage.conflict.\(conflict.id).theirs")
+                    Button("Keep This Mac's") { choose(.mine) }
+                        .help("This Mac's goes to your storage, and to every device")
+                        .pointable("settings.storage.conflict.\(conflict.id).mine")
+                case .removedThere, .removedHere:
+                    Button("Remove It", role: .destructive) { choose(conflict.removing) }
+                        .help("Removed on every device, as it was on one")
+                        .pointable("settings.storage.conflict.\(conflict.id).\(conflict.removing.rawValue)")
+                    Button("OK") { choose(conflict.keeping) }
+                        .help("It stays, with its change, on every device")
+                        .pointable("settings.storage.conflict.\(conflict.id).\(conflict.keeping.rawValue)")
+                }
+            }
+            .font(.caption)
+        }
+        .padding(.vertical, 2)
+    }
+
+    /// The other device, by its name.
+    static func other(_ conflict: SyncConflict) -> String {
+        conflict.otherDevice.flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "another device")
+    }
+
+    /// "Saved queries: the query "M31 deep"".
+    static func heading(_ conflict: SyncConflict) -> String {
+        "\(StorageSettingsTab.title(conflict.kind)): \(conflict.title)"
+    }
+
+    static func reasonLine(_ conflict: SyncConflict) -> String {
+        let other = other(conflict)
+        return switch conflict.reason {
+        case .bothChanged:
+            String(localized: "Changed differently on \(other) and on this Mac. The version in your storage is kept; this Mac's waits for you.")
+        case .removedThere:
+            String(localized: "Removed on \(other), but changed on this Mac: it stays, with this Mac's change.")
+        case .removedHere:
+            String(localized: "Removed on this Mac, but changed on \(other): it is back, with that change.")
+        }
+    }
+
+    /// "note.text — this Mac: seeing 0.6 · MacBook: seeing 0.8".
+    static func fieldLine(_ field: SyncMerge.Conflict, other: String) -> String {
+        let path = field.path.joined(separator: ".")
+        let mine = value(field.mine), theirs = value(field.theirs)
+        return String(localized: "\(path) — this Mac: \(mine) · \(other): \(theirs)")
+    }
+
+    /// A value as the person reads it; nil: removed.
+    static func value(_ value: JSONValue?) -> String {
+        switch value {
+        case nil: String(localized: "removed")
+        case .null?: "—"
+        case .string(let text)?: text
+        case .bool(let yes)?: yes ? String(localized: "yes") : String(localized: "no")
+        case .int(let number)?: "\(number)"
+        case .double(let number)?: number.formatted()
+        case .array(let items)?: items.map { Self.value($0) }.joined(separator: ", ")
+        case .object?:
+            (try? JSONEncoder.sortedCompact.encode(value)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+        }
+    }
+}
+
+private extension JSONEncoder {
+    static let sortedCompact: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        return encoder
+    }()
 }

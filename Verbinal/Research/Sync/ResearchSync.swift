@@ -135,7 +135,11 @@ final class ResearchSyncAdapter: SyncCollection {
 
     func remove(key: String) async {
         guard let record = store.observations.first(where: { $0.recordKey == key }) else { return }
-        Cause.$current.withValue(Cause(why: "removed from Research on another device; its files stay on this Mac")) {
+        // Who removed it, and why, as the sync says — another device's
+        // removal, or the choice on a conflict (plan 45) — and its files stay.
+        var cause = Cause.current
+        cause.why = [cause.why ?? "removed from Research", "its files stay on this Mac"].joined(separator: "; ")
+        Cause.$current.withValue(cause) {
             store.remove(record)
         }
     }

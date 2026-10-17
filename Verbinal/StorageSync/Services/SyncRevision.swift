@@ -147,3 +147,24 @@ struct SyncConflict: Codable, Equatable, Sendable, Identifiable {
 
     var id: String { "\(kind)/\(fileName)" }
 }
+
+extension SyncConflict {
+    /// Whether choosing `choice` changes this Mac's copy, which the next
+    /// sync sends: this Mac's values over storage's, or a removal after all.
+    func changes(choosing choice: Choice) -> Bool {
+        switch (reason, choice) {
+        case (.bothChanged, .mine), (.removedThere, .theirs), (.removedHere, .mine): true
+        case (.bothChanged, .theirs), (.removedThere, .mine), (.removedHere, .theirs): false
+        }
+    }
+
+    /// Whether it removes the item, here and then on every device.
+    func removes(choosing choice: Choice) -> Bool {
+        reason != .bothChanged && changes(choosing: choice)
+    }
+
+    /// For a removal notice: the choice that removes it (Remove It), and
+    /// the one that keeps it as it is now (OK).
+    var removing: Choice { reason == .removedThere ? .theirs : .mine }
+    var keeping: Choice { removing == .mine ? .theirs : .mine }
+}

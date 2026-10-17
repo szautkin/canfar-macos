@@ -210,6 +210,8 @@ extension AppState {
             guard let self else { throw ToolFailureReason.backendError("app state gone") }
             return try await self.storageSyncStatus(syncing: true)
         }))
+        tools.append(ListSyncConflictsTool(conflicts: syncConflicts()))
+        tools.append(ResolveSyncConflictTool(conflicts: syncConflicts()))
         // Explicit lifecycle on top of the lazy `run_code`: pre-warm /
         // size the instance (`start_compute`) and tear it down
         // (`stop_compute`). Resources are an instance property set on

@@ -250,7 +250,7 @@ final class StorageSyncModel {
             if task == nil, count.total >= Self.showFrom { task = beginTask(pausedBy: nil) }
             task?.stage(StorageSettingsTab.title(count.kind))
             task?.count(count.done, of: count.total)
-        case .ended(let imported, let sent, let failure, let paused):
+        case .ended(let imported, let sent, let failure, let paused, let found, let toChoose):
             current = nil
             slow?.cancel()
             slow = nil
@@ -275,7 +275,14 @@ final class StorageSyncModel {
                 retry = nil
                 failedTask.map(tasks.withdrawRetry)
                 failedTask = nil
-                task?.succeed(Self.moved(imported: imported, sent: sent))
+                let moved = Self.moved(imported: imported, sent: sent)
+                if found > 0 {
+                    // Something for the person to choose: on the bar, whatever
+                    // it moved (plan 45).
+                    (task ?? beginTask(pausedBy: nil)).succeed(moved + " · " + Self.toChoose(toChoose))
+                } else {
+                    task?.succeed(moved)
+                }
                 task = nil
             }
         }
@@ -337,6 +344,32 @@ final class StorageSyncModel {
         case (_, 0): String(localized: "\(imported) brought to this Mac")
         case (0, _): String(localized: "\(sent) sent to your storage")
         default: String(localized: "\(imported) brought to this Mac, \(sent) sent")
+        }
+    }
+
+    /// What waits for the person, in words: "2 to choose in Settings ▸ Storage".
+    static func toChoose(_ count: Int) -> String {
+        String(localized: "\(count) to choose in Settings ▸ Storage")
+    }
+
+    // MARK: - Conflicts (plan 45)
+
+    /// What the person decides: each change two devices made differently,
+    /// and each removal one made of what the other changed.
+    var conflicts: [SyncConflict] { status?.conflicts ?? [] }
+
+    /// The person's choice on conflict `id` — Settings ▸ Storage's buttons,
+    /// or an assistant's resolve_sync_conflict. What it changes on this Mac
+    /// goes to storage at once, as a new revision.
+    @discardableResult
+    func resolve(_ id: String, choosing choice: SyncConflict.Choice) -> Task<Void, Never>? {
+        guard let sync, let conflict = conflicts.first(where: { $0.id == id }) else { return nil }
+        let mine = generation
+        return Task { [weak self] in
+            await sync.resolve(id, choosing: choice)
+            self?.update(await sync.status(), from: mine)
+            if conflict.changes(choosing: choice) { await sync.sync(.asked, only: conflict.kind) }
+            self?.update(await sync.status(), from: mine)
         }
     }
 

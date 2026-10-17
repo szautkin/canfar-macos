@@ -91,8 +91,9 @@ actor StorageSync {
         /// A kind's count.
         case progress(Progress)
         /// The run is over: what moved, and why it failed, if it did; or it
-        /// was paused, and goes on when resumed.
-        case ended(imported: Int, sent: Int, failure: String?, paused: Bool)
+        /// was paused, and goes on when resumed. `found`: the conflicts it
+        /// found; `toChoose`: all that wait for the person (plan 45).
+        case ended(imported: Int, sent: Int, failure: String?, paused: Bool, found: Int = 0, toChoose: Int = 0)
     }
 
     /// Why a sync runs.
@@ -115,6 +116,8 @@ actor StorageSync {
     private var syncing: String?
     /// What changed while a sync ran: it goes when that sync ends (nil: every kind).
     private var queued: Set<String>? = []
+    /// The conflicts this run found (plan 45).
+    private var foundThisRun = 0
     /// The person's last choice of what to keep, still being written.
     private var declaring: Task<Void, Error>?
     /// Whether the account has CANFAR storage, once a sync looked: without
@@ -219,6 +222,7 @@ actor StorageSync {
     private func run(_ reason: Reason, only kindIDs: Set<String>?) async {
         Self.logger.info("sync (\(reason.rawValue, privacy: .public)) begins")
         await watcher?(.began)
+        foundThisRun = 0
         var imported = 0, sent = 0
         var failure: String?
         do {
@@ -249,7 +253,8 @@ actor StorageSync {
         syncing = nil
         progress = nil
         state.save(to: stateFile)
-        await watcher?(.ended(imported: imported, sent: sent, failure: failure, paused: state.paused != nil))
+        await watcher?(.ended(imported: imported, sent: sent, failure: failure, paused: state.paused != nil,
+                              found: foundThisRun, toChoose: state.conflicts.count))
     }
 
     /// A kind's count, for its watcher and its status.
@@ -348,6 +353,7 @@ actor StorageSync {
             let found = Set(outcome.conflicts.map(\.id))
             state.conflicts.removeAll { found.contains($0.id) }
             state.conflicts += outcome.conflicts
+            foundThisRun += outcome.conflicts.count
         } catch {
             if Task.isCancelled { return }
             kindState = state.kinds[kind.id] ?? kindState

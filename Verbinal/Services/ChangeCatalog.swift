@@ -17,7 +17,7 @@ enum ChangeCatalog {
         put(.notesAndSaved, ["update_observation_note", "bulk_update_observation_notes", "save_query",
                              "update_saved_query", "rename_recent_search", "save_workflow", "update_workflow",
                              "use_workflow", "set_workflow_step", "save_fits_bookmark",
-                             "save_observation_to_research", "add_registry_image"])
+                             "save_observation_to_research", "add_registry_image", "resolve_sync_conflict"])
         put(.filesOnMac, ["download_observation", "download_observations_bulk", "download_cutout",
                           "download_vospace_file", "download_from_vospace", "open_vospace_file", "export_search_results",
                           "export_fits_figure", "export_cube_figure", "export_research_bundle",
@@ -44,10 +44,26 @@ enum ChangeCatalog {
     /// The tool's kind; nil for a tool that changes nothing.
     static func kind(ofTool name: String) -> ChangeKind? { kindByTool[name] }
 
-    /// This proposal's kind: its tool's. A change the catalogue does not
-    /// know asks, as the most careful kind there is to ask about.
+    /// This proposal's kind: its tool's — a choice on a sync conflict by
+    /// what it does, and to which collection (plan 45). A change the
+    /// catalogue does not know asks, as the most careful kind there is to ask about.
     static func kind(of proposal: PendingProposal) -> ChangeKind {
-        kind(ofTool: proposal.toolName) ?? .everythingAtOnce
+        if proposal.toolName == "resolve_sync_conflict" {
+            return syncConflictKind(of: proposal.payload) ?? .everythingAtOnce
+        }
+        return kind(ofTool: proposal.toolName) ?? .everythingAtOnce
+    }
+
+    /// A choice on a sync conflict: a guide is what every assistant is
+    /// told; the choice that removes the item removes; any other keeps.
+    private static func syncConflictKind(of payload: Data) -> ChangeKind? {
+        struct Choice: Decodable {
+            let collection: String
+            let removes: Bool
+        }
+        guard let choice = try? JSONDecoder().decode(Choice.self, from: payload) else { return nil }
+        if choice.collection == "guides" { return .standingInstruction }
+        return choice.removes ? .removeNotesAndSaved : .notesAndSaved
     }
 
     /// Whether it applies at once under `permissions`, and the rule that says so.

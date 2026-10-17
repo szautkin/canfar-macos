@@ -31,4 +31,31 @@ extension AppState {
         status.activityTask = storageSync.taskID
         return status
     }
+
+    /// The sync's conflicts, as Settings ▸ Storage shows them (plan 45).
+    func syncConflicts() -> @Sendable () async throws -> [SyncConflict] {
+        { [weak self] in
+            guard let self else { throw ToolFailureReason.backendError("app state gone") }
+            return try await self.storageSyncStatus(syncing: false).conflicts
+        }
+    }
+
+    /// Applies a choice the person approved, if it still means what it did
+    /// when asked: a conflict found again since may do something else.
+    func makeResolveSyncConflictApplier(activity: AgentActivityStore) -> ResolveSyncConflictApplier {
+        ResolveSyncConflictApplier(resolve: { [weak self] payload in
+            guard let self else { throw ProposalApplyError.backendError("app state gone") }
+            try await MainActor.run { try self.requireSignInFor("Storage") }
+            let task = try await MainActor.run { () throws -> Task<Void, Never>? in
+                guard let conflict = self.storageSync.conflicts.first(where: { $0.id == payload.id }) else {
+                    throw ProposalApplyError.backendError("the conflict \(payload.id) no longer waits: it was resolved, or found again — list_sync_conflicts")
+                }
+                guard conflict.removes(choosing: payload.choice) == payload.removes else {
+                    throw ProposalApplyError.backendError("the conflict \(payload.id) changed since it was asked: list_sync_conflicts, and ask again")
+                }
+                return self.storageSync.resolve(payload.id, choosing: payload.choice)
+            }
+            await task?.value
+        }, activity: activity)
+    }
 }

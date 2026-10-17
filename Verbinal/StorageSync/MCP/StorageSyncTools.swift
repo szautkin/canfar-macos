@@ -24,6 +24,8 @@ struct StorageKindsOut: Encodable, Sendable {
         let failure: String?
         /// `off`, `waiting`, `syncing`, `synced` or `failed` (plan 38).
         let state: String
+        /// Its conflicts waiting for the person (plan 45).
+        let conflicts: Int
     }
 
     let manifest: String
@@ -41,6 +43,8 @@ struct StorageKindsOut: Encodable, Sendable {
     /// Its task on the activity bar: what pause_activity and resume_activity take.
     let activityTask: Int?
     let kinds: [Kind]
+    /// Every conflict waiting for the person: list_sync_conflicts lists them.
+    let conflicts: Int
     let note: String
 
     struct Paused: Encodable, Sendable {
@@ -71,11 +75,13 @@ struct StorageKindsOut: Encodable, Sendable {
         lastSyncISO = status.lastSync.map { iso.string(from: $0) }
         lastFailure = status.lastFailure
         running = status.running
-        kinds = status.kinds.map {
-            Kind(id: $0.id, title: StorageSettingsTab.title($0.id), declared: $0.declared, folder: $0.folder,
-                 items: $0.items, bytes: $0.bytes, lastSyncISO: $0.lastSync.map { iso.string(from: $0) },
-                 imported: $0.imported, sent: $0.sent, note: $0.note, failure: $0.failure, state: $0.state.name)
+        kinds = status.kinds.map { kind in
+            Kind(id: kind.id, title: StorageSettingsTab.title(kind.id), declared: kind.declared, folder: kind.folder,
+                 items: kind.items, bytes: kind.bytes, lastSyncISO: kind.lastSync.map { iso.string(from: $0) },
+                 imported: kind.imported, sent: kind.sent, note: kind.note, failure: kind.failure, state: kind.state.name,
+                 conflicts: status.conflicts.count { $0.kind == kind.id })
         }
+        conflicts = status.conflicts.count
         note = "Which of their work the person keeps in VOSpace is their choice, one collection at a time, in Settings ▸ Storage (`declared`); files there are read and changed with the storage tools."
     }
 }
@@ -87,7 +93,7 @@ struct ListStorageKindsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_storage_kinds",
-        description: "List the kinds of Verbinal's data the person keeps in their VOSpace, as the manifest .verbinal/manifest.json declares them: the collections of their work they chose to keep there, each by itself (Research, workflows, saved queries, recent searches, guides for assistants, Remote Compute history, batch job history, added images, recent launches, Portal launch defaults), and what Verbinal keeps there anyway (the CANFAR images' package lists, Remote Compute results, batch job scripts, exports). Each with its folder, how many items and bytes, and what the last sync brought to this Mac or sent. While a sync runs, `syncing` says which kind and how far (`done` of `total`); `paused` says who paused it, why and where it had got to; `activityTask` is its task on the activity bar, for pause_activity and resume_activity. `hasStorage: false`: the account has no CANFAR storage, and nothing is synced. Verbinal syncs by itself after sign-in; sync_storage syncs now. Requires sign-in.",
+        description: "List the kinds of Verbinal's data the person keeps in their VOSpace, as the manifest .verbinal/manifest.json declares them: the collections of their work they chose to keep there, each by itself (Research, workflows, saved queries, recent searches, guides for assistants, Remote Compute history, batch job history, added images, recent launches, Portal launch defaults), and what Verbinal keeps there anyway (the CANFAR images' package lists, Remote Compute results, batch job scripts, exports). Each with its folder, how many items and bytes, and what the last sync brought to this Mac or sent. While a sync runs, `syncing` says which kind and how far (`done` of `total`); `paused` says who paused it, why and where it had got to; `activityTask` is its task on the activity bar, for pause_activity and resume_activity. `conflicts` counts what waits for the person to choose, each kind's and in all: list_sync_conflicts lists them. `hasStorage: false`: the account has no CANFAR storage, and nothing is synced. Verbinal syncs by itself after sign-in; sync_storage syncs now. Requires sign-in.",
         schema: #"{ "type": "object", "properties": {}, "additionalProperties": false }"#
     )
 

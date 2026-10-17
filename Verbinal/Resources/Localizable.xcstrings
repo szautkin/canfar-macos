@@ -76,6 +76,16 @@
         }
       }
     },
+    "%@ — this Mac: %@ · %@: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — ce Mac : %2$@ · %3$@ : %4$@"
+          }
+        }
+      }
+    },
     "%lld brought to this Mac" : {
       "localizations" : {
         "fr" : {
@@ -126,6 +136,16 @@
         }
       }
     },
+    "%lld to choose in Settings ▸ Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld à choisir dans Réglages ▸ Stockage"
+          }
+        }
+      }
+    },
     "-" : {
       "shouldTranslate" : false
     },
@@ -159,6 +179,16 @@
         }
       }
     },
+    "another device" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "un autre appareil"
+          }
+        }
+      }
+    },
     "Bringing package lists from your storage — %lld of %lld" : {
       "localizations" : {
         "fr" : {
@@ -179,12 +209,32 @@
         }
       }
     },
+    "Changed differently on %@ and on this Mac. The version in your storage is kept; this Mac's waits for you." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifié différemment sur %@ et sur ce Mac. La version de votre stockage est conservée ; celle de ce Mac attend votre choix."
+          }
+        }
+      }
+    },
     "Clear the filter" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Effacer le filtre"
+          }
+        }
+      }
+    },
+    "Conflicts" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conflits"
           }
         }
       }
@@ -459,12 +509,42 @@
         }
       }
     },
+    "It stays, with its change, on every device" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il reste, avec sa modification, sur chaque appareil"
+          }
+        }
+      }
+    },
     "it was written by a newer Verbinal (format %lld)" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "il a été écrit par un Verbinal plus récent (format %lld)"
+          }
+        }
+      }
+    },
+    "Keep the Other's" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder celle de l’autre"
+          }
+        }
+      }
+    },
+    "Keep This Mac's" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder celle de ce Mac"
           }
         }
       }
@@ -625,6 +705,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "prochaine dans %lld s"
+          }
+        }
+      }
+    },
+    "no" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "non"
           }
         }
       }
@@ -915,6 +1005,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Retirer de ce Mac…"
+          }
+        }
+      }
+    },
+    "Remove It" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le retirer"
+          }
+        }
+      }
+    },
+    "removed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "retiré"
+          }
+        }
+      }
+    },
+    "Removed on %@, but changed on this Mac: it stays, with this Mac's change." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retiré sur %@, mais modifié sur ce Mac : il reste, avec la modification de ce Mac."
+          }
+        }
+      }
+    },
+    "Removed on every device, as it was on one" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retiré sur chaque appareil, comme il l’a été sur l’un d’eux"
+          }
+        }
+      }
+    },
+    "Removed on this Mac, but changed on %@: it is back, with that change." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retiré sur ce Mac, mais modifié sur %@ : il est revenu, avec cette modification."
           }
         }
       }
@@ -1259,6 +1399,26 @@
         }
       }
     },
+    "The version in your storage stays, as every device has it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La version de votre stockage reste, telle que chaque appareil l’a"
+          }
+        }
+      }
+    },
+    "This Mac's goes to your storage, and to every device" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Celle de ce Mac va dans votre stockage, et sur chaque appareil"
+          }
+        }
+      }
+    },
     "This platform does not report GPUs yet" : {
       "localizations" : {
         "fr" : {
@@ -1285,6 +1445,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réessayer maintenant"
+          }
+        }
+      }
+    },
+    "Two devices changed the same thing differently, or one removed what the other changed. Until you choose, the version in your storage is kept, and a change is kept over a removal. What you choose goes to every device." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deux appareils ont modifié la même chose différemment, ou l’un a retiré ce que l’autre a modifié. Tant que vous n’avez pas choisi, la version de votre stockage est conservée, et une modification l’emporte sur un retrait. Ce que vous choisissez va sur chaque appareil."
           }
         }
       }
@@ -1385,6 +1555,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Où les fiches de Recherche sont gardées sur ce Mac"
+          }
+        }
+      }
+    },
+    "yes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "oui"
           }
         }
       }
