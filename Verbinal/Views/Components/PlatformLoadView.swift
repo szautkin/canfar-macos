@@ -39,18 +39,21 @@ struct PlatformLoadView: View {
     private var cpu: some View {
         LoadDonutView(title: "CPU", spokenTitle: "CPU load", load: model.cpu,
                       freeUnit: String(localized: "cores free"),
-                      missing: "The platform's statistics have no CPU numbers", id: "portal.load.cpu", known: model.load.value != nil)
+                      missing: "The platform's statistics have no CPU numbers", id: "portal.load.cpu", known: model.load.value != nil,
+                      refreshing: model.load.isWorking)
     }
 
     private var ram: some View {
         LoadDonutView(title: "RAM", spokenTitle: "RAM load", load: model.ram,
                       freeUnit: String(localized: "GB free"),
-                      missing: "The platform's statistics have no RAM numbers", id: "portal.load.ram", known: model.load.value != nil)
+                      missing: "The platform's statistics have no RAM numbers", id: "portal.load.ram", known: model.load.value != nil,
+                      refreshing: model.load.isWorking)
     }
 
     private var gpu: some View {
         LoadDonutView(title: "GPU", spokenTitle: "GPU load", load: model.gpu,
                       freeUnit: String(localized: "GPUs free"),
-                      missing: "This platform does not report GPUs yet", id: "portal.load.gpu", known: model.load.value != nil)
+                      missing: "This platform does not report GPUs yet", id: "portal.load.gpu", known: model.load.value != nil,
+                      refreshing: model.load.isWorking)
     }
 }

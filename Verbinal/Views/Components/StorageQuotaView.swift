@@ -16,6 +16,7 @@ struct StorageQuotaView: View {
                         reload: PortalReload(id: "portal.storage.refresh", name: "Refresh storage",
                                              help: "Fetch your storage quota again", action: { await model.reload() })) {
             quotaReadout
+                .refreshing(model.load.isWorking && model.hasData)
         }
     }
 

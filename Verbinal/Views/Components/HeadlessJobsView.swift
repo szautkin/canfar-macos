@@ -41,6 +41,7 @@ struct HeadlessJobsView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
+            .refreshing(model.load.isWorking && model.load.value != nil)
         }
         .uiPresented("Batch Jobs", .sheet, isPresented: $model.detailPresented)
         .sheet(isPresented: $model.detailPresented) {

@@ -69,6 +69,15 @@ extension PortalCardShell where Accessory == EmptyView {
     }
 }
 
+extension View {
+    /// A card's figures while a reload is under way: still there, dimmed
+    /// alike on every card (plan 42).
+    func refreshing(_ on: Bool) -> some View {
+        opacity(on ? 0.45 : 1)
+            .appAnimation(AppMotion.quick, value: on)
+    }
+}
+
 /// A card's reload: its id, its name ("Refresh storage"), its help, and
 /// what it does.
 struct PortalReload {
