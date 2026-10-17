@@ -49,34 +49,8 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
             guard let data = try? await context.remote.read("\(context.folder)/\(item.name)"),
                   let theirs = try? Item.decode(data), theirs.format <= Item.format else { continue }
             settled.insert(item.name)
-            let mine = local[item.name]
-            let mineChanged = mine.map { $0.content != memory[item.name] } ?? false
-            if let removed = theirs.removedAt {
-                if let mine, mineChanged, mine.changedAt > removed {
-                    try await send(mine, to: context); sent += 1
-                    memory[item.name] = mine.content
-                } else {
-                    if mine != nil { await fromAnotherDevice { await collection.remove(key: theirs.key) }; imported += 1 }
-                    memory[item.name] = theirs.content
-                }
-                continue
-            }
-            guard let mine else {
-                await fromAnotherDevice { await collection.apply(theirs) }; imported += 1
-                memory[item.name] = theirs.content
-                continue
-            }
-            if mine.content == theirs.content {
-                memory[item.name] = theirs.content
-            } else if !mineChanged || theirs.changedAt >= mine.changedAt {
-                if mineChanged { keepReplaced(mine) }
-                await fromAnotherDevice { await collection.apply(theirs) }; imported += 1
-                memory[item.name] = theirs.content
-            } else {
-                keepReplaced(theirs)
-                try await send(mine.keepingUnknown(of: theirs), to: context); sent += 1
-                memory[item.name] = mine.content
-            }
+            let moved = try await settle(theirs, mine: local[item.name], name: item.name, memory: &memory, context)
+            imported += moved.imported; sent += moved.sent
         }
 
         // What changed here.
@@ -85,6 +59,14 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
                 // What is there may hold fields this build does not know: they go back with it.
                 let there = present.contains(name)
                     ? (try? await context.remote.read("\(context.folder)/\(name)")).flatMap { try? Item.decode($0) } : nil
+                // Changed there since this device last saw it, after the
+                // listing (plan 44 A2): settled as any change of theirs, never
+                // written over.
+                if let there, there.format <= Item.format, there.content != memory[name] {
+                    let moved = try await settle(there, mine: mine, name: name, memory: &memory, context)
+                    imported += moved.imported; sent += moved.sent
+                    continue
+                }
                 try await send(there.map { mine.keepingUnknown(of: $0) } ?? mine, to: context); sent += 1
                 memory[name] = mine.content
             }
@@ -107,6 +89,43 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
         }
         for name in await collection.items().map(\.fileName) { memory[CollectionSync.seen + name] = "1" }
         return StorageKindOutcome(imported: imported, sent: sent, memory: memory)
+    }
+
+    /// Their item, changed since this device last saw it, against this
+    /// device's: the newer change wins, the other kept where it lost; a
+    /// removal wins over what did not change after it.
+    private func settle(_ theirs: Item, mine: Item?, name: String, memory: inout [String: String],
+                        _ context: StorageKindContext) async throws -> (imported: Int, sent: Int) {
+        let mineChanged = mine.map { $0.content != memory[name] } ?? false
+        if let removed = theirs.removedAt {
+            if let mine, mineChanged, mine.changedAt > removed {
+                try await send(mine, to: context)
+                memory[name] = mine.content
+                return (0, 1)
+            }
+            if mine != nil { await fromAnotherDevice { await collection.remove(key: theirs.key) } }
+            memory[name] = theirs.content
+            return (mine != nil ? 1 : 0, 0)
+        }
+        guard let mine else {
+            await fromAnotherDevice { await collection.apply(theirs) }
+            memory[name] = theirs.content
+            return (1, 0)
+        }
+        if mine.content == theirs.content {
+            memory[name] = theirs.content
+            return (0, 0)
+        }
+        if !mineChanged || theirs.changedAt >= mine.changedAt {
+            if mineChanged { keepReplaced(mine) }
+            await fromAnotherDevice { await collection.apply(theirs) }
+            memory[name] = theirs.content
+            return (1, 0)
+        }
+        keepReplaced(theirs)
+        try await send(mine.keepingUnknown(of: theirs), to: context)
+        memory[name] = mine.content
+        return (0, 1)
     }
 
     private func send(_ item: Item, to context: StorageKindContext) async throws {

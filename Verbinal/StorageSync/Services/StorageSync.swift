@@ -250,6 +250,24 @@ actor StorageSync {
         await watcher?(.progress(count))
     }
 
+    /// What this device knows of a folder after a sync (plan 44 A2): each
+    /// file as it was listed before the sync, and those the sync wrote as it
+    /// wrote them. A file another device wrote while it ran — there, or over
+    /// one this sync wrote (another size) — is still to come.
+    static func known(listed: [StorageItem], seen: [StorageItem], written: [String: Int64],
+                      in folder: String) -> [String: StorageItem.Stamp] {
+        let before = Dictionary(listed.map { ($0.name, $0.stamp) }, uniquingKeysWith: { first, _ in first })
+        var known: [String: StorageItem.Stamp] = [:]
+        for item in seen {
+            if let size = written["\(folder)/\(item.name)"], item.size == size {
+                known[item.name] = item.stamp
+            } else if let stamp = before[item.name] {
+                known[item.name] = stamp
+            }
+        }
+        return known
+    }
+
     /// An item a kind took: kept at once, the state written now and then.
     private func took(_ item: StorageItem, of kind: String) {
         state.kinds[kind, default: .init()].items[item.name] = item.stamp
@@ -273,8 +291,10 @@ actor StorageSync {
             let items = (try await remote.list(folder) ?? []).filter { !$0.isFolder }
             let changed = items.filter { kindState.items[$0.name] != $0.stamp }
             let id = kind.id
+            let writes = WrittenSizes()
             let outcome = try await kind.sync(StorageKindContext(
-                folder: declared.folder, items: items, changed: changed, memory: kindState.memory, remote: remote,
+                folder: declared.folder, items: items, changed: changed, memory: kindState.memory,
+                remote: WriteRecordingRemote(base: remote, written: writes),
                 progress: { [weak self] done, total in await self?.counted(id, done, total) },
                 took: { [weak self] item in await self?.took(item, of: id) }))
             // Paused or stopped halfway: what it took is kept, item by item;
@@ -283,7 +303,7 @@ actor StorageSync {
             // What it sent changed the folder: look again, so the next sync
             // does not take its own writes for someone else's.
             let seen = outcome.sent > 0 ? (try await remote.list(folder) ?? items).filter { !$0.isFolder } : items
-            kindState.items = Dictionary(seen.map { ($0.name, $0.stamp) }, uniquingKeysWith: { first, _ in first })
+            kindState.items = Self.known(listed: items, seen: seen, written: await writes.sizes, in: folder)
             kindState.bytes = seen.compactMap(\.size).reduce(0, +)
             kindState.lastSync = now()
             kindState.imported = outcome.imported

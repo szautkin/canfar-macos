@@ -191,3 +191,39 @@ Run P1–P8 as written in handout 37, on a small observation of the person's cho
 2. **B1–B11:** an hour, with the person at the switches and Pending.
 3. **B12–B14 and D:** an hour, depending on Research's size.
 4. **C:** when the person has a second Mac or account ready.
+
+## A — Done (2026-10-17)
+
+**Risk 1 was real, and is fixed.** The two A2 tests and a third fail on the code before the fix, each
+with the other device's change missing:
+
+- `testAnotherDevicesChangeDuringASyncComesAtTheNext`: B's change to another record during A's sync
+  never reached A.
+- `testARecordChangedThereBeforeThisDeviceWritesIsNotWrittenOver`: B's change, written after A's
+  listing and before A's write, was written over, with no copy kept.
+- `testAFileWrittenOverRightAfterThisDeviceWroteItComesAtTheNextSync`: B's write over the file A had
+  just written was taken for A's own.
+
+**The fixes:**
+
+- **`StorageSync.known(listed:seen:written:in:)`.** After a sync, this device remembers each file as it
+  was listed before the sync. A file the sync wrote is remembered as written, when the size listed
+  afterwards is the size it wrote. Anything else that changed while the sync ran is still to come.
+  `WriteRecordingRemote` notes the sizes a kind writes.
+- **`CollectionKind.settle`.** There is now one rule for a change of theirs. It is used for what the
+  listing says changed, and for what the read just before a write finds changed since this device last
+  saw it. That change is settled (the newer wins, the other is kept in `replaced`) and never written
+  over.
+- **What is left.** Two Macs that each read before either writes, within the same second, can still
+  both write. Each keeps the other's in `replaced` only when it read it.
+
+**A1, A4, A5, written; each passes on the code as it was:**
+
+- `testAnAddedImageGoesBothWaysAndSoDoesItsRemoval`, with a tag in capitals (`:Oct24`);
+- `testARemoteComputeRunGoesBothWaysAndSoDoesItsRemoval`, with its result arriving and its removal;
+- `testAChangeThatKeepsTheSizeIsFound`;
+- `testACollectionTurnedOffOnOneDeviceStopsOnTheOthersAndItsFilesStay`.
+
+**A3 (clocks)** waits for the person's decision.
+
+Sync tests: 48 pass (StorageSync 24, WorkSync 15, FileIdentity 5, ResultDestination 3, on screen 1).

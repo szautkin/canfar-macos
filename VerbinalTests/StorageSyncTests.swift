@@ -32,6 +32,13 @@ final class StorageSyncTests: XCTestCase {
             var parent = (path as NSString).deletingLastPathComponent
             while !parent.isEmpty { folders.insert(parent); parent = (parent as NSString).deletingLastPathComponent }
         }
+        /// Another device's write, made while this one syncs: after it next
+        /// lists `folder`, or once it has written `path`.
+        private var afterListing: [String: [(path: String, data: Data)]] = [:]
+        private var afterWriting: [String: [(path: String, data: Data)]] = [:]
+        func whenListed(_ folder: String, alsoPut path: String, _ data: Data) { afterListing[folder, default: []].append((path, data)) }
+        func whenWritten(_ written: String, alsoPut path: String, _ data: Data) { afterWriting[written, default: []].append((path, data)) }
+
         func makeFolder(_ path: String) { folders.insert(path) }
         func setPublic(_ folder: String) { publicFolders.insert(folder) }
         func setFailing(_ value: Bool) { failing = value }
@@ -50,6 +57,7 @@ final class StorageSyncTests: XCTestCase {
             for sub in folders where sub.hasPrefix(prefix) && !sub.dropFirst(prefix.count).contains("/") {
                 items.append(StorageItem(name: String(sub.dropFirst(prefix.count)), size: nil, modified: nil, isFolder: true))
             }
+            for other in afterListing.removeValue(forKey: folder) ?? [] { put(other.path, other.data) }
             return items
         }
         func read(_ path: String) async throws -> Data {
@@ -61,6 +69,7 @@ final class StorageSyncTests: XCTestCase {
         func write(_ data: Data, to path: String) async throws {
             if failing { throw URLError(.notConnectedToInternet) }
             put(path, data)
+            for other in afterWriting.removeValue(forKey: path) ?? [] { put(other.path, other.data) }
         }
         func isPublic(_ folder: String) async throws -> Bool { publicFolders.contains(folder) }
         var home = true
@@ -306,6 +315,77 @@ final class StorageSyncTests: XCTestCase {
         let onA = await a.records[key]?.note?.text
         XCTAssertEqual(onA, "from B", "the newer wins")
         XCTAssertEqual(try replaced(on: "a").map { $0.note?.text }, ["from A"], "and the one it replaced is kept")
+    }
+
+    /// Plan 44 A2: what another device writes while this one syncs is not
+    /// taken for this one's own writes. The folder listed again after a send
+    /// once made every file there "seen": B's change to another record never
+    /// came to A.
+    func testAnotherDevicesChangeDuringASyncComesAtTheNext() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["research": ".verbinal/research"]))
+        let mineKey = "ivo://cadc.nrc.ca/CFHT?1525350/1525350p"
+        let theirKey = "ivo://cadc.nrc.ca/CFHT?2388466/2388466p"
+        let a = FakeResearch(), b = FakeResearch()
+        await a.set(item(mineKey, note: "first", at: 100))
+        await a.set(item(theirKey, note: "first", at: 100))
+        let syncA = sync(remote, research: a, device: "a"), syncB = sync(remote, research: b, device: "b")
+        await syncA.sync(.signedIn)
+        await syncB.sync(.signedIn)
+
+        // A sends its change; B's, to the other record, lands as A's write does.
+        await a.set(item(mineKey, note: "from A", at: 200))
+        await remote.whenWritten(".verbinal/research/" + ResearchItem.fileName(for: mineKey),
+                                 alsoPut: ".verbinal/research/" + ResearchItem.fileName(for: theirKey),
+                                 item(theirKey, note: "from B", at: 300).encoded())
+        await syncA.sync(.changed)
+        await syncA.sync(.asked)
+        let onA = await a.records[theirKey]?.note?.text
+        XCTAssertEqual(onA, "from B", "B's change came at A's next sync")
+    }
+
+    /// Plan 44 A2: a record changed there after this device looked, before
+    /// it wrote, is not written over: the newer wins, the other is kept.
+    func testARecordChangedThereBeforeThisDeviceWritesIsNotWrittenOver() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["research": ".verbinal/research"]))
+        let key = "ivo://cadc.nrc.ca/CFHT?1525350/1525350p"
+        let path = ".verbinal/research/" + ResearchItem.fileName(for: key)
+        let a = FakeResearch(), b = FakeResearch()
+        await a.set(item(key, note: "first", at: 100))
+        let syncA = sync(remote, research: a, device: "a"), syncB = sync(remote, research: b, device: "b")
+        await syncA.sync(.signedIn)
+        await syncB.sync(.signedIn)
+
+        await a.set(item(key, note: "from A", at: 200))
+        await remote.whenListed(".verbinal/research", alsoPut: path, item(key, note: "from B", at: 300).encoded())
+        await syncA.sync(.changed)
+        let onA = await a.records[key]?.note?.text
+        XCTAssertEqual(onA, "from B", "the newer wins")
+        let there = try ResearchItem.decode(try await remote.read(path))
+        XCTAssertEqual(there.note?.text, "from B", "B's change is not written over")
+        XCTAssertEqual(try replaced(on: "a").map { $0.note?.text }, ["from A"], "and A's is kept on A")
+    }
+
+    /// Plan 44 A2: another device writing over the file this one has just
+    /// written (another size) is not taken for this one's write.
+    func testAFileWrittenOverRightAfterThisDeviceWroteItComesAtTheNextSync() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["research": ".verbinal/research"]))
+        let key = "ivo://cadc.nrc.ca/CFHT?1525350/1525350p"
+        let path = ".verbinal/research/" + ResearchItem.fileName(for: key)
+        let a = FakeResearch(), b = FakeResearch()
+        await a.set(item(key, note: "first", at: 100))
+        let syncA = sync(remote, research: a, device: "a"), syncB = sync(remote, research: b, device: "b")
+        await syncA.sync(.signedIn)
+        await syncB.sync(.signedIn)
+
+        await a.set(item(key, note: "from A", at: 200))
+        await remote.whenWritten(path, alsoPut: path, item(key, note: "from B, a little later", at: 300).encoded())
+        await syncA.sync(.changed)
+        await syncA.sync(.asked)
+        let onA = await a.records[key]?.note?.text
+        XCTAssertEqual(onA, "from B, a little later")
     }
 
     func testARemovalTravelsAsAMarkAndAMissingItemRemovesNothing() async throws {

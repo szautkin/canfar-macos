@@ -133,6 +133,94 @@ final class WorkSyncTests: XCTestCase {
         XCTAssertEqual(after, [], "an automatic sync does not look again")
     }
 
+    // MARK: - Every collection, both ways (plan 44 A1, A4, A5)
+
+    /// The two collections no test took from one device to another.
+    func testAnAddedImageGoesBothWaysAndSoDoesItsRemoval() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["userImages": ".verbinal/images"]))
+        let a = UserImageStore(persistence: nil), b = UserImageStore(persistence: nil)
+        let id = "images.canfar.net/cirada/askapsoft-1.12.0-openmpi4:Oct24"
+        a.add(RegistryImage(id: id, types: ["headless"]))
+        let syncA = sync(remote, [a.syncCollection().kind], device: "a")
+        let syncB = sync(remote, [b.syncCollection().kind], device: "b")
+        await syncA.sync(.signedIn)
+        await syncB.sync(.signedIn)
+        XCTAssertEqual(b.images.map(\.id), [id], "with its tag as it is")
+
+        XCTAssertTrue(b.remove(id))
+        await syncB.sync(.changed)
+        await syncA.sync(.asked)
+        XCTAssertTrue(a.images.isEmpty, "removed there, removed here")
+    }
+
+    func testARemoteComputeRunGoesBothWaysAndSoDoesItsRemoval() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["computeHistory": ".verbinal/compute-history"]))
+        let a = ComputeRunStore(persistence: nil), b = ComputeRunStore(persistence: nil)
+        var run = ComputeRun(RunCodeContract.Request(id: "AB12-run", language: "python", code: "print(1)", timeout_seconds: 60),
+                             author: .agent, submittedAt: Date(timeIntervalSince1970: 1_800_000_000))
+        a.add(run)
+        let syncA = sync(remote, [a.syncCollection().kind], device: "a")
+        let syncB = sync(remote, [b.syncCollection().kind], device: "b")
+        await syncA.sync(.signedIn)
+        await syncB.sync(.signedIn)
+        XCTAssertEqual(b.runs.map(\.id), ["AB12-run"])
+
+        // Its result came to B: A has it at its next sync.
+        run.status = "ok"
+        run.exitCode = 0
+        run.finishedAt = Date(timeIntervalSince1970: 1_800_000_100)
+        b.keep(run)
+        await syncB.sync(.changed)
+        await syncA.sync(.asked)
+        XCTAssertEqual(a.runs.first?.status, "ok")
+
+        b.remove(id: "AB12-run")
+        await syncB.sync(.changed)
+        await syncA.sync(.asked)
+        XCTAssertTrue(a.runs.isEmpty, "removed there, removed here, its capitals and all")
+    }
+
+    /// A one-letter rename keeps the file's size: its date says it changed.
+    func testAChangeThatKeepsTheSizeIsFound() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["savedQueries": ".verbinal/queries"]))
+        let a = queries(), b = queries()
+        a.save(SavedQuery(name: "M31 a", adql: "SELECT 1"))
+        let syncA = sync(remote, [a.syncCollection().kind], device: "a")
+        let syncB = sync(remote, [b.syncCollection().kind], device: "b")
+        await syncA.sync(.signedIn)
+        await syncB.sync(.signedIn)
+        b.rename(try XCTUnwrap(b.queries.first), to: "M31 b")
+        await syncB.sync(.changed)
+        await syncA.sync(.asked)
+        XCTAssertEqual(a.queries.map(\.name), ["M31 b"])
+    }
+
+    /// Turned off on one device: the others stop sending it, and its files stay.
+    func testACollectionTurnedOffOnOneDeviceStopsOnTheOthersAndItsFilesStay() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["savedQueries": ".verbinal/queries"]))
+        let a = queries(), b = queries()
+        a.save(SavedQuery(name: "from A", adql: "SELECT 1"))
+        b.save(SavedQuery(name: "from B", adql: "SELECT 2"))
+        let syncA = sync(remote, [a.syncCollection().kind], device: "a")
+        let syncB = sync(remote, [b.syncCollection().kind], device: "b")
+        await syncA.sync(.signedIn)
+        await syncB.sync(.signedIn)
+        let kept = await remote.files.keys.filter { $0.hasPrefix(".verbinal/queries/") }.count
+        XCTAssertEqual(kept, 2)
+
+        try await syncA.setDeclared(["savedQueries"], false)
+        b.save(SavedQuery(name: "after", adql: "SELECT 3"))
+        await syncB.sync(.changed)
+        let after = await remote.files.keys.filter { $0.hasPrefix(".verbinal/queries/") }.count
+        XCTAssertEqual(after, 2, "B sends nothing once A turned it off, and nothing is deleted")
+        let onB = await syncB.status().kinds.first { $0.id == "savedQueries" }?.declared
+        XCTAssertEqual(onB, false, "B reads the choice from the manifest")
+    }
+
     // MARK: - Each area's store
 
     func testARecentSearchRunOnTwoDevicesIsOne() {

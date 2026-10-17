@@ -53,6 +53,28 @@ protocol StorageRemote: Sendable {
     func hasHome() async throws -> Bool
 }
 
+/// The sizes a sync wrote, by path (plan 44 A2).
+actor WrittenSizes {
+    private(set) var sizes: [String: Int64] = [:]
+    func wrote(_ size: Int, at path: String) { sizes[path] = Int64(size) }
+}
+
+/// A remote that notes what is written through it, so a sync knows its
+/// own writes from another device's.
+struct WriteRecordingRemote: StorageRemote {
+    let base: any StorageRemote
+    let written: WrittenSizes
+
+    func list(_ folder: String) async throws -> [StorageItem]? { try await base.list(folder) }
+    func read(_ path: String) async throws -> Data { try await base.read(path) }
+    func write(_ data: Data, to path: String) async throws {
+        try await base.write(data, to: path)
+        await written.wrote(data.count, at: path)
+    }
+    func isPublic(_ folder: String) async throws -> Bool { try await base.isPublic(folder) }
+    func hasHome() async throws -> Bool { try await base.hasHome() }
+}
+
 /// The person's VOSpace, through the Storage client.
 struct VOSpaceStorageRemote: StorageRemote {
     let vospace: VOSpaceBrowserService
