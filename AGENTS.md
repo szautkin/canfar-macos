@@ -142,6 +142,9 @@ the server finds it by itself and says its tool list has changed. If the call fa
     that kind. By default only removing what an assistant made is allowed.
   - What every assistant is told (guide tools, tool descriptions) always waits.
   - `list_pending_proposals` shows what is waiting.
+  - The storage sync's conflicts are the person's to choose, in Settings ▸ Storage ▸ Conflicts.
+    `list_sync_conflicts` reads them; `resolve_sync_conflict` proposes a choice, which waits or applies
+    by what it does: removing the item is a removal, and a choice on a guide always waits.
 - **When something is slow or fails, read the log.** Verbinal keeps a log of your session: your calls
   with the CADC and CANFAR requests each made and what their outcomes mean, every change anyone made
   with who and why, and the app's decisions with their rules.

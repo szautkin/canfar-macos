@@ -164,7 +164,9 @@ An assistant gets an answer within 45 seconds. Longer work, such as a big downlo
 on in the activity bar at the bottom of the window, started by **Your assistant**. An assistant reads
 the bar too, with how far each task has got, and can pause work that can wait, such as the storage
 sync, and resume it: the bar then says **Paused by your assistant**. What you paused stays paused until
-you resume it, or ask your assistant to.
+you resume it, or ask your assistant to. An assistant reads the sync's conflicts too, and can propose a
+choice on one: it waits in Pending like any change, by what it does — removing the item is a removal,
+and a choice on a guide for assistants always waits.
 
 What an assistant made carries a small badge, **Created by AI agent**, with the client's name: in
 Research, Workflows, saved queries, recent searches, FITS bookmarks and recent launches.

@@ -61,7 +61,11 @@ mistake is the CADC password in place of the Harbor CLI secret.
 - **Your CANFAR storage is slow.** Each request is asked again twice before a sync fails; a sync that
   waits longer than 10 seconds says **Waiting for your CANFAR storage…** on the bar.
 - **A change made on another device does not show.** Verbinal syncs when you sign in and when you come
-  back to it after a while; **Sync Now** syncs at once.
+  back to it after a while; **Sync Now** syncs at once. If this Mac changed the same thing differently,
+  look under **Conflicts** in **Settings ▸ Storage**: the other device's version is kept until you
+  choose.
+- **Something you removed came back.** Another device changed it before it heard of the removal: the
+  change is kept, and **Conflicts** in **Settings ▸ Storage** has **Remove It**.
 
 ## The viewers
 

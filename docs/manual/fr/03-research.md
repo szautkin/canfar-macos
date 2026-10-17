@@ -137,6 +137,11 @@ Recherche sur chaque Mac où vous vous connectez, et dans Verbinal pour Windows 
 suivent. Les fichiers non : chaque appareil télécharge les siens. Une note écrite ici atteint les autres
 quelques secondes après la fin de votre saisie ; les leurs vous parviennent quand vous vous connectez, et
 quand vous revenez dans Verbinal. Retirer une observation ici la retire là-bas aussi ; ses notes restent.
+Une note modifiée sur deux Mac avant leur synchronisation garde les deux modifications quand elles
+portent sur des parties différentes — son texte sur l’un, ses étiquettes sur l’autre. Quand les deux ont
+modifié la même partie, celle de votre stockage reste et la vôtre attend votre choix dans **Réglages ▸
+Stockage ▸ Conflits** ; une observation retirée sur un Mac mais modifiée sur un autre est gardée, avec sa
+modification, et la question vous y est posée aussi.
 Voir [Réglages ▸ Stockage](14-settings.md#stockage).
 
 ### Où Recherche garde ses fiches sur ce Mac

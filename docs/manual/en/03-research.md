@@ -123,6 +123,10 @@ tags and quality are kept in your CANFAR storage too: the same Research on every
 in Verbinal for Windows and Linux as they follow. Files are not: each device downloads its own. A note
 you write here reaches the others a few seconds after you stop typing; theirs reach you when you sign in,
 and when you come back to Verbinal. Removing an observation here removes it there too; its notes stay.
+A note changed on two Macs before they synced keeps both changes when they are to different parts — its
+text on one, its tags on the other. When both changed the same part, the one in your storage stays and
+yours waits for you in **Settings ▸ Storage ▸ Conflicts**; an observation removed on one Mac but changed
+on another is kept, with its change, and you are asked there too.
 See [Settings ▸ Storage](14-settings.md#storage).
 
 ### Where Research keeps its records on this Mac

@@ -344,3 +344,22 @@ should sync again by itself.
 files and compare the metadata between devices and storage version.... do no cut corners". The clock
 no longer decides anything: revisions, bases and a field-by-field merge do, and conflicts are shown to
 the person. See `45-sync-by-revision.md`.
+
+## F — Sync by revision, live (plan 45 F6)
+
+B4–B8 again, now that revisions decide. "As another device" is an assistant writing the item's file
+with `upload_text_to_vospace` (over a file: the person approves it in Pending), with `rev` one more than
+storage's, `base` storage's `rev`, `device` `"qa-other"` and `deviceName` `"QA other Mac"`. Saved
+queries are on (B2); `qa44 one` is the item.
+
+| Case | Steps | PASS if |
+|---|---|---|
+| F1 | `read_vospace_file` on `qa44 one`'s file. | It has `rev`, `base`, `device`, `deviceName` (this Mac's name) and `hash`. |
+| F2 | As another device, change its `description`; here, before a sync, change its ADQL. **Sync Now**. | Both changes stay, here and in storage; storage's `rev` is one more again, written by this Mac. No conflict. |
+| F3 | As another device, rename it `qa44 other`; here, before a sync, rename it `qa44 here`. **Sync Now**. | Here it is `qa44 other`. **Settings ▸ Storage ▸ Conflicts** lists it: `name — this Mac: qa44 here · QA other Mac: qa44 other`. The bar ends "1 to choose in Settings ▸ Storage". `list_sync_conflicts` lists it; `list_storage_kinds` counts 1 for `savedQueries`. |
+| F4 | The person clicks **Keep This Mac's** on F3's. | It is `qa44 here`, here and in storage, one `rev` more, by this Mac. The conflict is gone. |
+| F5 | F3 again; then the assistant proposes `resolve_sync_conflict` with `theirs`; the person approves it in Pending. | Pending showed it as "Notes and saved things on this Mac". Nothing was written (`rev` the same); the conflict is gone. |
+| F6 | As another device, write the file with `removedAt`; here, before a sync, change the query. **Sync Now**. Then **Remove It**. | After the sync the query is still here, with this Mac's change, and **Conflicts** says "Removed on QA other Mac, but changed on this Mac". After **Remove It**: gone here; storage's file has `removedAt`, written by this Mac. |
+| F7 | As another device, write a change with `changedAt` a day in the past (`rev` and `base` right). **Sync Now**. | It arrives: the clock decides nothing. |
+| F8 | Write a file with no `rev` (plan 44's form) as another device. **Sync Now**, then change the query here. | It is read as revision 0; this Mac's write makes it `rev` 1. |
+| F9 | Part C with two devices: F3 for real. | As F3 and F4, on both. |

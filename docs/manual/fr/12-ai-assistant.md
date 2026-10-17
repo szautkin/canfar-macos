@@ -174,7 +174,10 @@ téléchargement ou une tâche, continue dans la barre d’activité au bas de l
 **Votre assistant**. Un assistant lit aussi la barre, avec où en est chaque tâche, et peut mettre en
 pause un travail qui peut attendre, comme la synchronisation du stockage, puis le reprendre : la barre
 dit alors **Mis en pause par votre assistant**. Ce que vous avez mis en pause le reste jusqu’à ce que
-vous le repreniez, ou le demandiez à votre assistant.
+vous le repreniez, ou le demandiez à votre assistant. Un assistant lit aussi les conflits de la
+synchronisation, et peut proposer un choix sur l’un d’eux : il attend dans En attente comme toute
+modification, selon ce qu’il fait — retirer l’élément est un retrait, et un choix sur un guide pour les
+assistants attend toujours.
 
 Ce qu’un assistant a créé porte une petite pastille, **Créé par l'agent IA**, avec le nom du client :
 dans Recherche, Flux de travail, les requêtes enregistrées, les recherches récentes, les signets FITS

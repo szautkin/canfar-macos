@@ -92,12 +92,21 @@ account that has none, this section says so, and your work stays on this Mac.
 
 | Setting | What it does |
 |---|---|
+| **Conflicts** | Shown only when something waits for you to choose. Each names the item, why, and each field with this Mac's value and the other device's. When two devices changed the same thing differently: **Keep This Mac's** sends this Mac's version to your storage and to every device; **Keep the Other's** keeps the one in your storage, which every device already has. When one device removed what another changed: **OK** keeps it, with its change; **Remove It** removes it on every device. A sync that finds one says so on the activity bar: **1 to choose in Settings ▸ Storage**. |
 | **Your Work in VOSpace** | One switch for each part of your work, each off until you turn it on: **Research** (your observations' details, notes, tags and quality, not their files), **Marks on images** and **Sky bookmarks** (those of files from Research or your storage), **Workflows**, **Saved queries**, **Recent searches** (the last 100), **Guides for assistants** (your guides, your tool descriptions and your default session instructions), **Remote Compute history**, **Batch job history**, **Your added images**, **Recent launches**, **Portal launch defaults**, and **Results: downloads, cutouts, search exports and figures**: each result Verbinal keeps on this Mac goes to `Verbinal-Results` in your storage too, in the background, and waits there to go while your storage cannot be reached. What you turn on is kept in your storage, in `.verbinal`, and is the same on every device you sign in on. A choice made here is made for every device; turned off, the files stay in your storage. Each part says when it is waiting for its first sync, syncing, or why it could not sync. Nothing moves while your `.verbinal` folder can be read by anyone: this says so until you make it private in [Storage](09-storage.md#files-that-should-not-be-public). Sign-ins, what assistants may do, session logs and the files on this Mac never leave it. |
 | **Verbinal's Data in Your Storage** | What Verbinal keeps there anyway: **Image package lists**, **Remote Compute runs**, **Batch job scripts**, **Exports**. For each, its folder, how many items and how big, and what the last sync brought to this Mac; **Not kept in your storage** when the manifest does not declare it. **Show in Storage** opens its folder. |
 | **Sync Now**, **Pause**, **Resume** | **Sync Now** syncs at once. Beside it, when the last sync was, or, while one runs, which part and how far: **Syncing… Image package lists, 120 of 288**. **Pause** stops the sync where it is, keeping what it brought: nothing syncs, even after Verbinal quits, until you click **Resume**, and it then goes on from where it stopped. The activity bar has the same. When your CANFAR storage is slow or out of service for a moment, each request is asked again twice, a few seconds apart. A sync that still fails is on the activity bar, with why and when Verbinal tries again — after 1, 2, 4 … up to 30 minutes, and at once when the network comes back — and **Retry**. A sync that waits longer than 10 seconds is on the bar too: **Waiting for your CANFAR storage…**. |
 
-When two devices changed the same thing before they synced, the newer change wins, and the one it
-replaced is kept on the Mac where it was made.
+When two devices changed the same thing before they synced, Verbinal compares the item's history, never
+the clocks of your devices: each copy in your storage says which revision it is, which one it was made
+from, and which device wrote it.
+
+- Changes to different fields of the same item, such as a note's text on one Mac and its tags on
+  another, are both kept.
+- When both changed the same field differently, the version in your storage stays, and this Mac's waits
+  for you under **Conflicts**.
+- When one device removed an item and another changed it, the change is kept, and **Conflicts** tells
+  you, with **Remove It** if you still want it gone.
 
 ## MCP Clients
 

@@ -75,6 +75,11 @@ passe CADC à la place du secret CLI Harbor.
   CANFAR…** sur la barre.
 - **Une modification faite sur un autre appareil n’apparaît pas.** Verbinal synchronise quand vous vous
   connectez et quand vous y revenez après un moment ; **Synchroniser maintenant** synchronise aussitôt.
+  Si ce Mac a modifié la même chose différemment, regardez sous **Conflits** dans **Réglages ▸
+  Stockage** : la version de l’autre appareil est gardée jusqu’à votre choix.
+- **Quelque chose que vous aviez retiré est revenu.** Un autre appareil l’a modifié avant d’apprendre le
+  retrait : la modification est gardée, et **Conflits** dans **Réglages ▸ Stockage** propose **Le
+  retirer**.
 
 ## Les visionneuses
 
