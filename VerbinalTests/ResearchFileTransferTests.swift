@@ -229,6 +229,50 @@ final class ResearchFileTransferTests: XCTestCase {
         XCTAssertEqual(FilePlaces(onMac: false, inStorage: false).word, "none")
     }
 
+    /// Live, 2026-10-17 (plan 44 D): removing the copy on this Mac of a file
+    /// only on this Mac went to Pending as "it stays in your storage", and
+    /// would have failed once the person applied it. What cannot be done is
+    /// refused when it is asked, saying why; what can is proposed.
+    func testWhatATransferCannotDoIsRefusedWhenAsked() async throws {
+        let app = AppState()
+        let tools = app.makeAgentTools()
+        let send = try XCTUnwrap(tools.compactMap { $0 as? SendResearchFileToStorageTool }.first)
+        let get = try XCTUnwrap(tools.compactMap { $0 as? GetResearchFileFromStorageTool }.first)
+        let fromMac = try XCTUnwrap(tools.compactMap { $0 as? RemoveResearchFileFromMacTool }.first)
+        let fromStorage = try XCTUnwrap(tools.compactMap { $0 as? RemoveResearchFileFromStorageTool }.first)
+        let store = app.researchModel.observationStore
+        func kept(_ name: String, onMac: Bool, inStorage: Bool) -> DownloadedObservation {
+            var record = DownloadedObservation(publisherID: "ivo://cadc.nrc.ca/TEST?qa44-\(UUID().uuidString)/\(name)",
+                                               collection: "TEST", observationID: name, targetName: "M31", instrument: "",
+                                               filter: "", ra: "", dec: "", startDate: "", calLevel: "2",
+                                               localPath: onMac ? folder.appendingPathComponent("\(name).fits").path : "")
+            record.storagePath = inStorage ? "\(ResearchFileTransfer.folder)/\(name).fits" : nil
+            return store.save(record)
+        }
+        let here = kept("here", onMac: true, inStorage: false)
+        let there = kept("there", onMac: false, inStorage: true)
+        let both = kept("both", onMac: true, inStorage: true)
+        defer { [here, there, both].forEach(store.remove) }
+        let context = AIToolContext(origin: .external(clientID: "test"), proposals: InMemoryProposalStore(),
+                                    budget: ProposalBudget(limit: 9))
+        func refusal(_ plan: () async throws -> ProposalPlan) async -> String? {
+            do { _ = try await plan(); return nil } catch { return "\(error)" }
+        }
+        let losesHere = await refusal { try await fromMac.plan(.init(id: here.id.uuidString), context: context) }
+        XCTAssertTrue(losesHere?.contains("would lose it") == true, "the copy on this Mac is its last: \(losesHere ?? "proposed")")
+        let losesThere = await refusal { try await fromStorage.plan(.init(id: there.id.uuidString), context: context) }
+        XCTAssertTrue(losesThere?.contains("would lose it") == true, "the copy in storage is its last: \(losesThere ?? "proposed")")
+        let notHere = await refusal { try await send.plan(.init(id: there.id.uuidString), context: context) }
+        XCTAssertTrue(notHere?.contains("is not on this Mac") == true, "\(notHere ?? "proposed")")
+        let notThere = await refusal { try await get.plan(.init(id: here.id.uuidString), context: context) }
+        XCTAssertTrue(notThere?.contains("is not in your storage") == true, "\(notThere ?? "proposed")")
+        let unknown = await refusal { try await fromMac.plan(.init(id: UUID().uuidString), context: context) }
+        XCTAssertTrue(unknown?.contains("in Research") == true, "\(unknown ?? "proposed")")
+
+        let fine = await refusal { try await fromMac.plan(.init(id: both.id.uuidString), context: context) }
+        XCTAssertNil(fine, "a file in both places: its copy here may go")
+    }
+
     func testEachToolIsTheKindOfChangeItMakes() {
         XCTAssertEqual(ChangeCatalog.kind(ofTool: "send_research_file_to_storage"), .addToStorage)
         XCTAssertEqual(ChangeCatalog.kind(ofTool: "get_research_file_from_storage"), .filesOnMac)

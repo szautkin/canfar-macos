@@ -108,18 +108,57 @@ extension AppState {
         }
     }
 
-    private func transferResearchFile(_ kind: String, _ args: ResearchFileTransferTools.Args) async throws -> AutoAppliedAck.Extra {
+    /// The record and the file an assistant names, or why there is none.
+    private func researchFile(_ args: ResearchFileTransferTools.Args) -> Result<(DownloadedObservation, String, KeptFile), ResearchFileMiss> {
         let store = researchModel.observationStore
         guard let record = store.record(identifiedBy: args.id) else {
             let hint = store.likelyID(for: args.id).map { " — did you mean \($0.uuidString)?" } ?? ""
-            throw ProposalApplyError.backendError("no observation \"\(args.id)\" in Research\(hint) — list_downloaded_observations gives the ids")
+            return .failure(.init(why: "no observation \"\(args.id)\" in Research\(hint) — list_downloaded_observations gives the ids"))
         }
         guard let name = args.file ?? record.mainKeptFile?.name else {
-            throw ProposalApplyError.backendError("\(args.id) has no file, on this Mac or in your storage — download_observation fetches it")
+            return .failure(.init(why: "\(args.id) has no file, on this Mac or in your storage — download_observation fetches it"))
         }
-        guard record.anyFile(named: name) != nil else {
+        guard let file = record.anyFile(named: name) else {
             let names = record.allFiles.map(\.name)
-            throw ProposalApplyError.backendError("\(args.id) has no file \(name)\(names.isEmpty ? "" : "; it has \(names.joined(separator: ", "))")")
+            return .failure(.init(why: "\(args.id) has no file \(name)\(names.isEmpty ? "" : "; it has \(names.joined(separator: ", "))")"))
+        }
+        return .success((record, name, file))
+    }
+
+    /// Judges a transfer when an assistant asks for it (plan 44 D): what
+    /// cannot be done is refused then, in the transfer's own words.
+    func researchFileCheck() -> ResearchFileTransferTools.Check {
+        { [weak self] kind, args in
+            guard let self else { return }
+            if let why = await MainActor.run(body: { self.researchFileRefusal(kind, args) }) {
+                throw ToolFailureReason.invalidArgument(why)
+            }
+        }
+    }
+
+    /// Why `kind` cannot be done to the file `args` names; nil when it can.
+    private func researchFileRefusal(_ kind: String, _ args: ResearchFileTransferTools.Args) -> String? {
+        let name: String, file: KeptFile
+        switch researchFile(args) {
+        case .failure(let miss): return miss.why
+        case .success(let found): (_, name, file) = found
+        }
+        typealias Failure = ResearchFileTransfer.Failure
+        let places = file.places
+        let refusal: Failure? = switch kind {
+        case "send_research_file_to_storage": places.onMac ? nil : .notOnMac(name)
+        case "get_research_file_from_storage": places.inStorage ? nil : .notInStorage(name)
+        case "remove_research_file_from_mac": !places.onMac ? .notOnMac(name) : !places.inStorage ? .onlyCopy(name) : nil
+        default: !places.inStorage ? .notInStorage(name) : !(places.onMac && file.local.exists) ? .onlyCopy(name) : nil
+        }
+        return refusal?.errorDescription
+    }
+
+    private func transferResearchFile(_ kind: String, _ args: ResearchFileTransferTools.Args) async throws -> AutoAppliedAck.Extra {
+        let record: DownloadedObservation, name: String
+        switch researchFile(args) {
+        case .failure(let miss): throw ProposalApplyError.backendError(miss.why)
+        case .success(let found): (record, name, _) = found
         }
         let transfer = researchModel.transfer
         let updated: DownloadedObservation
@@ -211,4 +250,9 @@ extension ToolFailureReason {
         guard let likely else { return .observationNotFound(id: raw, localPath: nil) }
         return .invalidArgument("no Research record '\(raw)' — did you mean \(likely.uuidString)? list_downloaded_observations gives the ids")
     }
+}
+
+/// Why the file an assistant named is not there.
+struct ResearchFileMiss: Error {
+    let why: String
 }
