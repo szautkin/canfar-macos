@@ -253,3 +253,45 @@ automatic time turned off.
 
 **Recommendation:** Option 1 for 1.4.1. The case needs a Mac with automatic time off, and option 2
 adds a moving part to the sync just fixed. Option 2 can come later if a person ever reports it.
+
+## Live pass, 2026-10-17 (an assistant over MCP, builds f5ef7ce7, then the working tree, production)
+
+| Case | Result | Notes |
+|---|---|---|
+| B1 | PASS | All off at first. The person's work at the start: 17 saved queries, 31 recent searches, 17 workflows. |
+| B2 | PASS | Saved queries on: the manifest declares it, and 17 files went in 17 s, about one a second. Each file is `{changedAt, format, key, record}`. |
+| B3 | PASS | A saved query (`qa44 one`) and a workflow (`qa44`) reached storage by themselves, within 10 s. |
+| **Switches** | **FAIL, fixed 46446e2c** | "I cannot turn on/off any of them." Three faults: (1) a switch moved only when the collection's first sync ended, and that sync waited behind any sync running, so it snapped back and each further click wrote the opposite choice; (2) a collection turned on during a sync never had its first sync ("Waiting for its first sync"); (3) two choices made at once lost one in the manifest. After the fix, each click was written once, in order, about 3 s apart, and the switches moved at once. |
+| B4 | PASS | A newer change written as another device (step One ticked) arrived at Sync Now: "Updated the workflow … because: a change from another device". |
+| B5 | PASS | An older change from another device against a newer one here: this Mac's version won and went to storage, and the older was kept ("kept the newer of two changes … StorageSync/replaced"). |
+| B6 | PASS | A removal mark from another device: the workflow went from this Mac; its file stays in storage with the mark. |
+| B7 | PASS | `"qa44Future": 1` written by another device survived two changes made here. |
+| B8 | PASS | A newer edit of exactly the same size (318 bytes, "One" became "Une") arrived. |
+| B10 | PASS | Saved queries and Recent searches turned off: their 18 and 31 files stay in storage, and nothing more is sent. |
+| B11 | PASS | Workflows, Guides, Batch job history, Marks, Sky bookmarks and added images synced on being turned on. |
+| B12 | PASS | Research turned on (by the person's clicks during the switch fault): 52 records, about one a second. |
+| Sync Now | PASS | 30 s for everything; nothing moved when nothing had changed. The slowest part is listing Remote Compute runs (482 files, 12–13 s). |
+| P2 | PASS | A 43 KB cutout to storage: same bytes, `places: both`. A 60 MB image in 2.8 s, the same size. |
+| P6 | PASS | A file of another size at the path: refused, "A different file is in your storage at … already: nothing was written over it." |
+| **P8** | **FAIL, fixed 939e84f3** | Removing the copy on this Mac of a file only on this Mac went to Pending as "(it stays in your storage)", and would only have failed once applied. Each of the four tools now refuses at the call, in the transfer's own words. Both proposals were withdrawn before anyone applied them. |
+| D1 | N/A | A single file's transfer is not pausable: only the storage sync is. A 60 MB send took 2.8 s. |
+
+Small finding: when a change from another device is brought in, the store change starts a second sync of that collection, which reports `imported: 0` over the first run's count. Harmless, but Sync Now's answer understates what came.
+
+## E — When VOSpace is slow or out of service (the person, 2026-10-17)
+
+"do we consider that vo space might be very slow and sometimes out of order, we might need to re try in a while? we need to take it into account and make manual retries and let user know about it in the bottom system status"
+
+**Today:**
+- No request is retried.
+- After a failure, the next sync comes only with sign-in, coming back to Verbinal after 15 minutes, a change in a collection, or Sync Now. There is no timer, so a change that failed to go can wait for hours.
+- A failed sync is on the activity bar only when it moved 5 or more items; otherwise only Settings ▸ Storage says why. The bar has no Retry.
+- The manual says "the next one is tried later", which is true only with a trigger.
+
+| Step | What | Test, fail-first |
+|---|---|---|
+| E1 | A failed sync of any size goes on the activity bar: "Couldn't reach your CANFAR storage: <why>. Next try in N min", with **Retry now** (the bar, and `list_activity`). | The model with a failing fake VOSpace: a 1-item sync that fails leaves a failed task with its reason and next try. |
+| E2 | A timed retry after a failure: 1, 2, 4 … up to 30 minutes while signed in, and at once when the network comes back (`NetworkPathMonitor`). A success clears it. | A fake clock: after a failure, a sync runs at 1 minute, then 2; a success stops them. |
+| E3 | Inside a request: one retry after 2 s, then another after 5 s, for a timeout, a 5xx, or a dropped connection. Never for 4xx. Reads, listings and whole-file writes repeat safely. | A fake transport that fails twice, then answers: the sync succeeds; a 403 is not retried. |
+| E4 | **Retry** on the bar for a failed Research-file transfer or Results upload. | A failed send leaves a task whose retry sends again. |
+| E5 | A sync waiting longer than 10 s goes on the bar ("Waiting for your CANFAR storage…"), whatever its size. | A held listing: the task appears after 10 s. |
