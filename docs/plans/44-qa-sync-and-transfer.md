@@ -337,3 +337,10 @@ should sync again by itself.
 | **Endpoints** | **FAIL, fixed 891218a7** | The person: "I cannot update the storage, it does not pick it up, we do not have save button there". Only Return kept a typed address, and nothing said so. It is now kept on leaving the field or the tab, saying "Not saved yet …" until then. |
 
 `retry_activity` was not tried live: this client's list of tools was made before the tool existed (`man` has it).
+
+## A3 — replaced by plan 45 (the person, 2026-10-17)
+
+"i do not think that time should be the case ... if we have a conflict we need to have metadata on such
+files and compare the metadata between devices and storage version.... do no cut corners". The clock
+no longer decides anything: revisions, bases and a field-by-field merge do, and conflicts are shown to
+the person. See `45-sync-by-revision.md`.
