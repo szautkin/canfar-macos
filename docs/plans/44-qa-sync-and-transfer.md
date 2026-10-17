@@ -275,6 +275,8 @@ adds a moving part to the sync just fixed. Option 2 can come later if a person e
 | P6 | PASS | A file of another size at the path: refused, "A different file is in your storage at … already: nothing was written over it." |
 | **P8** | **FAIL, fixed 939e84f3** | Removing the copy on this Mac of a file only on this Mac went to Pending as "(it stays in your storage)", and would only have failed once applied. Each of the four tools now refuses at the call, in the transfer's own words. Both proposals were withdrawn before anyone applied them. |
 | D1 | N/A | A single file's transfer is not pausable: only the storage sync is. A 60 MB send took 2.8 s. |
+| P3 | PASS | Removing the copy on this Mac (applied by the person): `places: storage`, no file in Downloads. |
+| P4 | PASS | Brought back from storage: the same name in Downloads, 43,200 bytes, `places: both`. |
 
 Small finding: when a change from another device is brought in, the store change starts a second sync of that collection, which reports `imported: 0` over the first run's count. Harmless, but Sync Now's answer understates what came.
 
@@ -295,3 +297,27 @@ Small finding: when a change from another device is brought in, the store change
 | E3 | Inside a request: one retry after 2 s, then another after 5 s, for a timeout, a 5xx, or a dropped connection. Never for 4xx. Reads, listings and whole-file writes repeat safely. | A fake transport that fails twice, then answers: the sync succeeds; a 403 is not retried. |
 | E4 | **Retry** on the bar for a failed Research-file transfer or Results upload. | A failed send leaves a task whose retry sends again. |
 | E5 | A sync waiting longer than 10 s goes on the bar ("Waiting for your CANFAR storage…"), whatever its size. | A held listing: the task appears after 10 s. |
+
+## E — Done (2026-10-17, 2960327b)
+
+All five steps are built. Each has its tests, and E1's failed first: a one-item sync that failed left
+nothing on the bar.
+
+- **E1.** A failed sync of any size is a failed task on the bar, with the reason, "Verbinal tries
+  again in N min." and **Retry**. `list_activity` says `retryable`, and `retry_activity` is the
+  assistant's Retry, for a sync only.
+- **E2.** `StorageSyncModel` tries again after 1, 2, 4 … 30 minutes (`retryWait`), and at once when
+  `NetworkPathMonitor` sees the network come back. A success clears it, and so does signing out.
+- **E3.** `RetryingStorageRemote` wraps the sync's VOSpace. It retries a timeout, a dropped
+  connection, an unreachable host or a 5xx twice (2 s, 5 s), and never a 4xx.
+- **E4.** A failed Research-file transfer offers Retry, which is the person's to press; an assistant
+  calls the tool again. Results that could not go now fail the sync (`ResultsKind.ResultsWait`), so
+  they are on the bar and retried.
+- **E5.** A sync waiting more than 10 s is on the bar: "Waiting for your CANFAR storage…".
+
+The manual (01, 14 and 16, in English and French) and the parity table are updated. 2,304 tests pass.
+
+**To see it live:** on a build from 2960327b, Sync Now takes about 30 s, mostly listing Remote Compute
+runs, so the bar should show "Waiting for your CANFAR storage…" after 10 s. Turning Wi-Fi off and
+clicking Sync Now should leave a failed task with Retry and the next try. Turning Wi-Fi back on
+should sync again by itself.
