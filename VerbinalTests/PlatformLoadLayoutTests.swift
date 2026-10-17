@@ -24,7 +24,7 @@ final class PlatformLoadLayoutTests: XCTestCase {
     private let withGPUs = #"""
     {"cores": {"requestedCPUCores": 1164.4, "cpuCoresAvailable": 3000},
      "ram": {"requestedRAM": "11847.667G", "ramAvailable": "15032.386G"},
-     "gpus": {"requestedGPUs": 20, "gpusAvailable": 112}}
+     "gpu": {"requestedGPU": 20, "gpuAvailable": 112, "maxGPU": 7}}
     """#
     private let withoutGPUs = #"""
     {"cores": {"requestedCPUCores": 1164.4, "cpuCoresAvailable": 3000},

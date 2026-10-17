@@ -299,5 +299,5 @@ recommendation, and each can be changed later:
 
 **Still to verify:**
 - **On the live app,** after the person runs a build from `57cc020a` or later: handout 37 section O. On production now (O1, O2), and on staging-src (O3–O7). The running app was `745d4bf1`, built before this plan.
-- **Skaha's GPU fields,** once production publishes them next week. If the GPU ring stays grey while CANFAR reports GPUs, `get_platform_load`'s `gpuNote` names the fields to read, and `GPUStats.read` takes them in one line.
+- ~~**Skaha's GPU fields**~~ — known since plan 42 step 1: `gpu: {requestedGPU, gpuAvailable, maxGPU}` on `view=stats`, from science-portal 2026.3's server code. The reader takes those names, and the guessed shapes are gone.
 - **The manual's Portal picture** (`docs/images/*/06-portal-sessions/portal.png`) still shows the bars. It is retaken with the other pictures.

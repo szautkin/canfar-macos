@@ -13,8 +13,7 @@ struct SkahaStatsResponse: Decodable {
     /// GPUs, when the stats carry them in a shape it reads (plan 41).
     let gpu: GPUStats?
     /// GPU fields the stats carry that it could not read, for
-    /// get_platform_load to name: Skaha publishes its GPUs after this was
-    /// written, and the reader is pinned to them once they are seen.
+    /// get_platform_load to name: a shape Skaha may change to.
     let gpuFieldsNotRead: [String]
 
     private enum CodingKeys: String, CodingKey { case instances, cores, ram }
@@ -66,58 +65,44 @@ struct RamStats: Codable {
     let ramAvailable: String?
 }
 
-/// How many GPUs are in use, of how many (plan 41). Read from the stats in
-/// one of two shapes, under `gpus` or `gpu`:
-/// - Skaha's own, as for CPU and RAM: a count named `requested…` in use,
-///   and a total named `…Available`;
-/// - the Science Portal's: `used` and `free`, with `maxValues.gpu`.
-/// Numbers or numeric strings. Anything else, or numbers that make no
-/// sense, is no GPU data.
+/// How many GPUs are in use, of how many, and the most for one session —
+/// Skaha's `gpu` block on `view=stats` (plan 42): `requestedGPU` in use,
+/// `gpuAvailable` the cluster's total (as `cpuCoresAvailable` is for CPU),
+/// `maxGPU` the most one session may ask for. Numbers or numeric strings.
+/// Absent or null when the cluster does not report GPUs; numbers that make
+/// no sense are no GPU data.
 struct GPUStats: Equatable, Sendable {
     let used: Double
     let total: Double
+    var perSession: Double? = nil
+
+    private static let block = StatsKey("gpu")
+    private static let requested = StatsKey("requestedGPU")
+    private static let available = StatsKey("gpuAvailable")
+    private static let most = StatsKey("maxGPU")
 
     /// The GPUs read, or the GPU fields that were there but not read.
     static func read(_ top: KeyedDecodingContainer<StatsKey>) -> (GPUStats?, [String]) {
-        let maxGPU = (try? top.nestedContainer(keyedBy: StatsKey.self, forKey: StatsKey("maxValues")))
-            .flatMap { number($0, StatsKey("gpu")) }
-        for name in ["gpus", "gpu"] {
-            guard let inner = try? top.nestedContainer(keyedBy: StatsKey.self, forKey: StatsKey(name)) else { continue }
-            if let read = skahas(inner) ?? portals(inner, total: maxGPU) { return (read, []) }
+        if let inner = try? top.nestedContainer(keyedBy: StatsKey.self, forKey: block),
+           let used = number(inner, requested), let total = number(inner, available),
+           total > 0, used >= 0, used <= total {
+            return (GPUStats(used: used, total: total, perSession: number(inner, most)), [])
         }
-        return (nil, fieldsNamed(top, hasNumbers: maxGPU != nil))
+        return (nil, fieldsNamed(top))
     }
 
-    private static func skahas(_ inner: KeyedDecodingContainer<StatsKey>) -> GPUStats? {
-        let requested = inner.allKeys.first { $0.stringValue.lowercased().hasPrefix("requested") }
-        let available = inner.allKeys.first { $0.stringValue.lowercased().hasSuffix("available") }
-        guard let requested, let available,
-              let used = number(inner, requested), let total = number(inner, available) else { return nil }
-        return sensible(used: used, total: total)
-    }
-
-    private static func portals(_ inner: KeyedDecodingContainer<StatsKey>, total: Double?) -> GPUStats? {
-        guard let used = number(inner, StatsKey("used")) else { return nil }
-        guard let total = total ?? number(inner, StatsKey("free")).map({ used + $0 }) else { return nil }
-        return sensible(used: used, total: total)
-    }
-
-    private static func sensible(used: Double, total: Double) -> GPUStats? {
-        guard total > 0, used >= 0, used <= total else { return nil }
-        return GPUStats(used: used, total: total)
-    }
-
-    /// Every field whose name says GPU, with what is inside it.
-    private static func fieldsNamed(_ top: KeyedDecodingContainer<StatsKey>, hasNumbers maxGPU: Bool) -> [String] {
+    /// Every field whose name says GPU, with what is inside it; a null
+    /// block is the cluster saying it has none, and names nothing.
+    private static func fieldsNamed(_ top: KeyedDecodingContainer<StatsKey>) -> [String] {
         var names: [String] = []
         for key in top.allKeys where key.stringValue.lowercased().contains("gpu") {
+            if (try? top.decodeNil(forKey: key)) == true { continue }
             if let inner = try? top.nestedContainer(keyedBy: StatsKey.self, forKey: key), !inner.allKeys.isEmpty {
                 names += inner.allKeys.map { "\(key.stringValue).\($0.stringValue)" }
             } else {
                 names.append(key.stringValue)
             }
         }
-        if maxGPU { names.append("maxValues.gpu") }
         return names.sorted()
     }
 

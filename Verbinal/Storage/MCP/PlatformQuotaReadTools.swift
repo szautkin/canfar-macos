@@ -57,6 +57,8 @@ struct GetPlatformLoadTool: JSONReadTool {
             let total: Double
             /// The share in use, to one decimal.
             let percent: Double
+            /// The most one session may ask for (Skaha's maxGPU), when given.
+            var perSession: Int? = nil
         }
 
         struct Instances: Encodable, Sendable {
@@ -79,7 +81,7 @@ struct GetPlatformLoadTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_platform_load",
-        description: "CANFAR platform load — CPU cores and RAM requested vs available; GPUs (`gpu`: used, free, total, percent) when the platform reports them, else `gpu: null` and `gpuNote` says why; and running instance counts (session / desktopApp / headless / total) when the platform reports them; it currently often does not, and `note` then says so. Use this to judge whether the platform has room before launching sessions or headless jobs.",
+        description: "CANFAR platform load — CPU cores and RAM requested vs available; GPUs (`gpu`: used, free, total, percent, and `perSession`, the most one session may ask for) when the platform reports them, else `gpu: null` and `gpuNote` says why; and running instance counts (session / desktopApp / headless / total) when the platform reports them; it currently often does not, and `note` then says so. Use this to judge whether the platform has room before launching sessions or headless jobs.",
         schema: #"""
         {
           "type": "object",
@@ -108,8 +110,11 @@ extension GetPlatformLoadTool.Output {
                 .init(requestedGB: $0.requestedRAM.map { PlatformLoadModel.parseRamGB($0) },
                       availableGB: $0.ramAvailable.map { PlatformLoadModel.parseRamGB($0) })
             },
-            gpu: stats.gpu.flatMap { ResourceLoad(used: $0.used, total: $0.total) }.map {
-                .init(used: $0.used, free: $0.free, total: $0.total, percent: ($0.percent * 10).rounded() / 10)
+            gpu: stats.gpu.flatMap { gpu in
+                ResourceLoad(used: gpu.used, total: gpu.total).map {
+                    .init(used: $0.used, free: $0.free, total: $0.total, percent: ($0.percent * 10).rounded() / 10,
+                          perSession: gpu.perSession.map { Int($0) })
+                }
             },
             gpuFieldsNotRead: stats.gpuFieldsNotRead)
     }
