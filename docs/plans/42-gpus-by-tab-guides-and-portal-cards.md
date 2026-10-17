@@ -297,3 +297,38 @@ three dim alike.
 The person's answers:
 1. **`launch_session` takes the options** for any image and type, as Advanced does ("ok").
 2. **Release:** "current branch 1_4_1". Plan 42 goes in 1.4.1, with plan 41.
+
+## Where it ended (2026-10-16)
+
+| Step | Commit | What |
+|---|---|---|
+| Plan | `b62a9099` | This plan, and the person's answers. |
+| 1 | `4b578319` | Skaha's GPU block read by its names: `gpu.requestedGPU`, `gpuAvailable`, `maxGPU`. Plan 41's guessed shapes are gone, and `get_platform_load`'s `gpu` has `perSession`. |
+| 2 | `7df5518b` | GPUs by tab. Standard keeps **Use a GPU**. Advanced has the counts the context offers, on the Mac and iOS, as Headless does, and `launch_session` takes them too. `show_launch_form` judges by its tab. A relaunch keeps an offered count. Fixed on the way: after **Launch (Custom Image)**, the Standard tab launched Advanced's image. |
+| 3 | `403de96f` | The MCP guides. `describe_app`'s brief has a **GPUs** section, and its line saying an omitted batch size takes Skaha's 2/8/0 is fixed. `show_launch_form`'s words cover GPUs. The two batch workflows note where GPUs are read. The parity doc and the manual's assistant chapter are updated. |
+| 4 | `cda2ebab` | `PortalCardShell` for Platform Load, Storage and Batch Jobs. One reload button in a fixed slot; the body kept while reloading; "Updated …" at the foot, with Batch Jobs' countdown. Storage can be refreshed. Each card is its full height before its first load. |
+| 5 | `deb0e06a` | Refreshing, seen. The rings spin a quarter arc with a small spinner inside, still with Reduce Motion, and the other cards' figures dim alike. |
+| 6 | (this commit) | The manual, English and French: the cards and refreshing. Handout 37 section O changed (O5, O6) and gained O8 and O9, and section P is new. |
+
+**Where it differs from the plan, and why:**
+- **Step 2: iOS.** The iOS launch tab shows one Resources section for both tabs. It now shows the checkbox on Standard and the stepper on Advanced, and launches with its tab. It had the same Advanced-image bug.
+- **Step 4: the footer before the first load** says "Loading…", or "—" when idle, not a blank line. A blank line has no accessibility element, and an assistant could not tell the card is loading.
+- **Step 4: Platform Load's rings without numbers** have two caption lines, as with numbers. One line had made the card 13 points shorter before its first load.
+- **Step 4: the instances line** still appears with the first stats that carry instance counts. That is a once-only change, never on a refresh, and the platform seldom sends them.
+
+**Verified:**
+- The full gates after every step, ending at 2,276 tests, the package tests and the iOS build. The accessibility tests ran with the screen unlocked.
+- Each step's tests failed before its change, or with the old behaviour put back:
+  - step 1: the old reader;
+  - step 2: five lines, including the image bug;
+  - step 3: the guides as they were;
+  - step 4: today's cards, where Platform Load moved 8 points, Storage collapsed, and Batch Jobs' button shifted;
+  - step 5: the rings not told they were refreshing.
+- Window captures, looked at:
+  - the three cards, loaded and refreshing, light and dark, at 323 and 1,000 points;
+  - the Advanced tab's stepper, enabled and greyed.
+
+**Still to verify,** on the live app, which was `131a0f27` (plan 41's end) at the time:
+- handout 37 sections O and P with a build from this commit;
+- on staging-src, the GPU ring with staging's numbers and `perSession`, and Advanced's stepper through 1–7;
+- the manual's pictures of the Portal (`portal.png`) and of the Advanced tab still show the old cards and form. They are retaken with the other pictures.

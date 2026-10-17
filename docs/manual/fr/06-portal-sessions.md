@@ -18,17 +18,22 @@ l’accueil, ou par **Aller ▸ Portail** (⌘5).
 
 ## Les cartes du haut
 
+Chaque carte a le même bouton d’actualisation en haut à droite. Il devient une petite roue pendant que
+la carte se recharge, et le pied de la carte dit quand elle a été mise à jour, comme **Mis à jour à
+16:04:05**. Pendant qu’une carte se recharge, ses chiffres restent, estompés, et rien n’y bouge.
+
 - **Charge de la plate-forme** : trois anneaux, **CPU**, **Mémoire** et **GPU**, chacun avec la part
   utilisée au centre, comme **39 %**, et en dessous ce qui est libre, comme **1 836 sur 3 000 cœurs
   libres**. Un anneau passe à l’orange au-delà de 70 % et au rouge au-delà de 90 %. **GPU** reste gris,
   avec **Non communiqué**, tant que CANFAR ne communique pas ses GPU ; il se remplit tout seul à
-  l’actualisation suivante dès que CANFAR le fait. Sous les anneaux, combien d’instances tournent, et
-  quand c’était mis à jour. Son bouton l’actualise.
+  l’actualisation suivante dès que CANFAR le fait. Pendant l’actualisation, chaque anneau tourne, avec
+  une petite roue à la place de son pourcentage. Sous les anneaux, combien d’instances tournent.
 - **Stockage** : la part de votre quota VOSpace utilisée (**Utilisé**, **Utilisation**, **Quota**). Il
-  avertit **Stockage presque plein**. Voir [Stockage](09-storage.md).
+  avertit **Stockage presque plein**. Son bouton d’actualisation relit le quota, après un envoi ou une
+  suppression. Voir [Stockage](09-storage.md).
 - **Tâches en lot** : combien de vos tâches sont en cours, en attente, terminées ou en échec, actualisé
-  toutes les 45 secondes. **Tâches et historique…** les ouvre : voir
-  [Tâches en lot](07-batch-jobs.md).
+  toutes les 45 secondes ; le pied de la carte dit quand vient la prochaine (**· prochaine dans
+  32 s**). **Tâches et historique…** les ouvre : voir [Tâches en lot](07-batch-jobs.md).
 
 Quand une carte ne peut pas se charger, elle dit pourquoi, avec **Réessayer** et un bouton qui copie le
 message ; ce qu’elle montrait reste.
