@@ -1,0 +1,249 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (C) 2025-2026 Serhii Zautkin
+
+import AppKit
+import ApplicationServices
+import SwiftUI
+import XCTest
+import VerbinalKit
+@testable import Verbinal
+
+/// Plan 42 step 4, on screen: the Portal's three cards share one reload
+/// button and one footer, and nothing in a card moves while it reloads, or
+/// between its first load and the next.
+@MainActor
+final class PortalCardsLayoutTests: XCTestCase {
+
+    // MARK: - A network the test holds
+
+    /// Answers each card's request, after `hold` seconds; counts them.
+    private final class Network: @unchecked Sendable {
+        private let lock = NSLock()
+        private var held: TimeInterval = 0
+        private var counts: [String: Int] = [:]
+        var hold: TimeInterval {
+            get { lock.withLock { held } }
+            set { lock.withLock { held = newValue } }
+        }
+        func count(_ what: String) -> Int { lock.withLock { counts[what, default: 0] } }
+        func asked(_ what: String) { lock.withLock { counts[what, default: 0] += 1 } }
+    }
+
+    private static let stats = #"""
+    {"cores": {"requestedCPUCores": 1164.4, "cpuCoresAvailable": 3000},
+     "ram": {"requestedRAM": "11847.667G", "ramAvailable": "15032.386G"},
+     "gpu": {"requestedGPU": 20, "gpuAvailable": 112, "maxGPU": 7}}
+    """#
+    private static let quota = """
+    <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0" uri="vos://cadc.nrc.ca~arc/home/me"><vos:properties>
+    <vos:property uri="ivo://ivoa.net/vospace/core#quota">1000000000000</vos:property>
+    <vos:property uri="ivo://ivoa.net/vospace/core#length">250000000000</vos:property>
+    </vos:properties></vos:node>
+    """
+
+    private func network() -> (Network, NetworkClient) {
+        let network = Network()
+        MockURLProtocol.requestHandler = { request in
+            let url = request.url!.absoluteString
+            let (what, body): (String, String) = url.contains("view=stats") ? ("stats", Self.stats)
+                : url.contains("/v1/session") ? ("jobs", "[]") : ("quota", Self.quota)
+            network.asked(what)
+            let hold = network.hold
+            if hold > 0 { Thread.sleep(forTimeInterval: hold) }
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        return (network, NetworkClient(session: MockURLProtocol.mockSession()))
+    }
+
+    override func tearDown() {
+        MockURLProtocol.requestHandler = nil
+        super.tearDown()
+    }
+
+    /// A card, its model and what reloads it.
+    private struct Card {
+        let name: String
+        let view: AnyView
+        let reloadID: String
+        let reload: @MainActor () async -> Void
+    }
+
+    private func cards(_ client: NetworkClient) async -> [Card] {
+        let load = PlatformLoadModel(platformService: PlatformService(network: client))
+        let storage = StorageModel(storageService: StorageService(network: client))
+        let jobs = HeadlessMonitorModel(headlessService: HeadlessService(network: client))
+        await load.loadStats()
+        await storage.loadQuota(username: "me")
+        await jobs.loadJobs()
+        return [
+            Card(name: "Platform Load", view: AnyView(PlatformLoadView(model: load)), reloadID: "portal.load.refresh",
+                 reload: { await load.loadStats() }),
+            Card(name: "Storage", view: AnyView(StorageQuotaView(model: storage)), reloadID: "portal.storage.refresh",
+                 reload: { await storage.reload() }),
+            Card(name: "Batch Jobs", view: AnyView(HeadlessJobsView(model: jobs)), reloadID: "portal.batchJobs.refresh",
+                 reload: { await jobs.loadJobs() }),
+        ]
+    }
+
+    // MARK: - Reading a card on screen
+
+    private struct Seen {
+        let byID: [String: UIElement]
+        /// Each named element's frame, by its name.
+        let frames: [String: CGRect]
+        /// What the card's elements cover.
+        let bounds: CGRect
+    }
+
+    private func onScreen(_ view: AnyView, width: CGFloat = 323, capture: String? = nil,
+                          _ body: (_ source: AXElementSource, _ look: () async throws -> Seen) async throws -> Void) async throws {
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: width, height: 320), styleMask: [.titled],
+                              backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: view.groupBoxStyle(PortalCardStyle()).padding(8)
+            .frame(width: width, alignment: .top).uiWindowPlace(.main))
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        let source = AXElementSource(screenName: { _, _, _ in "portal" })
+        await source.ready()
+        try await Task.sleep(for: .milliseconds(700))
+        try await body(source) {
+            if let capture, let folder = ProcessInfo.processInfo.environment["VERBINAL_TEST_CAPTURES"],
+               let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming]),
+               let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) {
+                try? png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("\(capture).png"))
+            }
+            let snapshot = source.snapshot()
+            let ref = try XCTUnwrap(snapshot.windows.first { $0.number == window.windowNumber })
+            let elements = snapshot.elements(in: ref.index)
+            var frames: [String: CGRect] = [:]
+            for element in elements { if let name = element.name { frames[name] = element.frame } }
+            return Seen(byID: Dictionary(elements.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }),
+                        frames: frames, bounds: elements.map(\.frame).reduce(CGRect.null) { $0.union($1) })
+        }
+    }
+
+    private func same(_ a: CGRect, _ b: CGRect, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+        for (x, y, edge) in [(a.minX, b.minX, "left"), (a.maxX, b.maxX, "right"), (a.minY, b.minY, "top"), (a.maxY, b.maxY, "bottom")] {
+            XCTAssertEqual(x, y, accuracy: 0.5, "\(what): its \(edge) moved, \(a) → \(b)", file: file, line: line)
+        }
+    }
+
+    // MARK: - The tests
+
+    func testEachCardHasTheSameReloadButton() async throws {
+        try await AXReadable.require()
+        let (_, client) = network()
+        let names = ["portal.load.refresh": "Refresh platform stats", "portal.storage.refresh": "Refresh storage",
+                     "portal.batchJobs.refresh": "Refresh batch jobs"]
+        for card in await cards(client) {
+            try await onScreen(card.view) { _, look in
+                let seen = try await look()
+                let button = try XCTUnwrap(seen.byID[card.reloadID], card.name)
+                XCTAssertEqual(button.name, names[card.reloadID], card.name)
+                XCTAssertEqual(button.kind, .button, card.name)
+                XCTAssertTrue(button.enabled, card.name)
+                XCTAssertEqual(button.frame.width, PortalReloadButton.slot, accuracy: 6, "one slot, every card")
+            }
+        }
+    }
+
+    /// Loaded, then reloading (the network held), then loaded again: the
+    /// reload button stays where it is, every element that keeps its words
+    /// keeps its frame, and the card covers the same space.
+    func testNothingMovesWhileACardReloads() async throws {
+        try await AXReadable.require()
+        let (network, client) = network()
+        for card in await cards(client) {
+            try await onScreen(card.view, capture: "card-\(card.reloadID)") { _, look in
+                let before = try await look()
+                network.hold = 1.5
+                let reloading = Task { await card.reload() }
+                try await Task.sleep(for: .milliseconds(500))
+                let during = try await look()
+                network.hold = 0
+                await reloading.value
+                try await Task.sleep(for: .milliseconds(400))
+                let after = try await look()
+
+                let button = { (seen: Seen) in seen.byID[card.reloadID]?.frame ?? .null }
+                same(button(before), button(during), "\(card.name)'s reload button, reloading")
+                XCTAssertFalse(during.byID[card.reloadID]?.enabled ?? true, "\(card.name): disabled while it reloads")
+                same(button(before), button(after), "\(card.name)'s reload button, after")
+                for (name, frame) in before.frames {
+                    if let still = during.frames[name] { same(frame, still, "\(card.name): \(name), reloading") }
+                }
+                same(before.bounds, during.bounds, "\(card.name), reloading")
+                same(before.bounds, after.bounds, "\(card.name), after")
+            }
+        }
+    }
+
+    /// The first load, held: the card is already as tall as it will be.
+    func testACardIsAsTallBeforeItsFirstLoad() async throws {
+        try await AXReadable.require()
+        let (network, client) = network()
+        let views: [(String, AnyView, @MainActor () async -> Void)] = {
+            let load = PlatformLoadModel(platformService: PlatformService(network: client))
+            let storage = StorageModel(storageService: StorageService(network: client))
+            let jobs = HeadlessMonitorModel(headlessService: HeadlessService(network: client))
+            return [("Platform Load", AnyView(PlatformLoadView(model: load)), { await load.loadStats() }),
+                    ("Storage", AnyView(StorageQuotaView(model: storage)), { await storage.loadQuota(username: "me") }),
+                    ("Batch Jobs", AnyView(HeadlessJobsView(model: jobs)), { await jobs.loadJobs() })]
+        }()
+        for (name, view, load) in views {
+            try await onScreen(view, capture: "first-\(name)") { _, look in
+                network.hold = 1.5
+                let loading = Task { await load() }
+                try await Task.sleep(for: .milliseconds(500))
+                let first = try await look()
+                network.hold = 0
+                await loading.value
+                try await Task.sleep(for: .milliseconds(400))
+                let loaded = try await look()
+                XCTAssertEqual(first.bounds.height, loaded.bounds.height, accuracy: 0.5, "\(name): as tall before its first load")
+            }
+        }
+    }
+
+    /// Storage's new reload button asks for the quota again, and its
+    /// footer moves on.
+    func testStorageReloads() async throws {
+        try await AXReadable.require()
+        let (network, client) = network()
+        let storage = StorageModel(storageService: StorageService(network: client))
+        await storage.loadQuota(username: "me")
+        let first = try XCTUnwrap(storage.load.value)
+        try await onScreen(AnyView(StorageQuotaView(model: storage))) { source, look in
+            let seen = try await look()
+            let button = try XCTUnwrap(seen.byID["portal.storage.refresh"])
+            let target = try XCTUnwrap(source.element(button.handle))
+            try await Task.sleep(for: .milliseconds(1100))   // a second on, for "Updated" to move
+            XCTAssertEqual(AXUIElementPerformAction(target, kAXPressAction as CFString), .success)
+            try await Task.sleep(for: .milliseconds(600))
+            XCTAssertEqual(network.count("quota"), 2)
+            XCTAssertGreaterThan(try XCTUnwrap(storage.load.value), first)
+        }
+    }
+
+    func testTheFooterSaysWhen() async throws {
+        try await AXReadable.require()
+        let (_, client) = network()
+        let jobs = HeadlessMonitorModel(headlessService: HeadlessService(network: client))
+        await jobs.loadJobs()
+        jobs.isPolling = true
+        jobs.pollCountdown = 32
+        for card in await cards(client).dropLast() + [Card(name: "Batch Jobs", view: AnyView(HeadlessJobsView(model: jobs)),
+                                                            reloadID: "portal.batchJobs.refresh", reload: {})] {
+            try await onScreen(card.view) { _, look in
+                let seen = try await look()
+                let footer = seen.frames.keys.first { $0.hasPrefix("Updated ") }
+                let text = try XCTUnwrap(footer, "\(card.name): no \"Updated …\"")
+                if card.name == "Batch Jobs" { XCTAssertTrue(text.hasSuffix(" · next in 32 s"), text) }
+            }
+        }
+    }
+}

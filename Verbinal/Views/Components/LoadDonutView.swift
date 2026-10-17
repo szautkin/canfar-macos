@@ -57,9 +57,13 @@ struct LoadDonutView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             } else {
-                (known ? Text("Not reported") : Text(verbatim: "—"))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                // Two lines, as with numbers: the card keeps its height.
+                VStack(spacing: 0) {
+                    (known ? Text("Not reported") : Text(verbatim: "—"))
+                    Text(verbatim: " ")
+                }
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
             }
         }
         .multilineTextAlignment(.center)

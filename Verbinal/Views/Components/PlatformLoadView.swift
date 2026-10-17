@@ -10,28 +10,10 @@ struct PlatformLoadView: View {
     @Bindable var model: PlatformLoadModel
 
     var body: some View {
-        GroupBox {
+        PortalCardShell(title: "Platform Load", systemImage: "gauge.with.dots.needle.33percent", phase: model.load,
+                        reload: PortalReload(id: "portal.load.refresh", name: "Refresh platform stats",
+                                             help: "Refresh cluster load statistics", action: { await model.loadStats() })) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Label("Platform Load", systemImage: "gauge.with.dots.needle.33percent")
-                        .font(.headline)
-                    Spacer()
-
-                    if model.load.isWorking {
-                        ProgressView()
-                            .scaleEffect(0.6)
-                    }
-
-                    Button {
-                        Task { await model.loadStats() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Refresh cluster load statistics")
-                    .accessibilityLabel("Refresh platform stats")
-                }
-
                 // Three rings in a row; a card too narrow for that puts the
                 // GPU's under the other two (plan 41).
                 ViewThatFits(in: .horizontal) {
@@ -49,16 +31,6 @@ struct PlatformLoadView: View {
                     Text("Instances: \(model.totalInstances) total (\(model.sessionInstances) sessions, \(model.desktopAppInstances) desktop, \(model.headlessInstances) headless)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                }
-
-                if !model.lastUpdate.isEmpty {
-                    Text("Last updated: \(model.lastUpdate)")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-
-                if model.load.problem != nil {
-                    ProblemView(problem: model.load.problem, retry: { Task { await model.loadStats() } }, compact: true)
                 }
             }
         }

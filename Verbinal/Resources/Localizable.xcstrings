@@ -279,6 +279,16 @@
         }
       }
     },
+    "Fetch your storage quota again" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relire votre quota de stockage"
+          }
+        }
+      }
+    },
     "From an older probe: Re-run for the full package list" : {
       "localizations" : {
         "fr" : {
@@ -579,6 +589,16 @@
         }
       }
     },
+    "next in %lld s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "prochaine dans %lld s"
+          }
+        }
+      }
+    },
     "No coordinates found" : {
       "localizations" : {
         "fr" : {
@@ -735,6 +755,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Charge mémoire"
+          }
+        }
+      }
+    },
+    "Refresh storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiser le stockage"
+          }
+        }
+      }
+    },
+    "Refreshing" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualisation en cours"
           }
         }
       }
@@ -1185,6 +1225,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cette plate-forme n’offre pas de GPU"
+          }
+        }
+      }
+    },
+    "Updated %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mis à jour à %@"
           }
         }
       }

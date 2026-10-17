@@ -10,86 +10,35 @@ struct HeadlessJobsView: View {
     @Bindable var model: HeadlessMonitorModel
 
 
-    /// Boundary discriminator for the cross-fade. Maps the model's load/empty
-    /// flags onto `DataState`; `.error` is unused here because the error
-    /// `Label` renders separately below the container.
-    private var jobsState: DataState {
-        if model.load.isWorking && model.jobs.isEmpty { return .loading }
-        if model.jobs.isEmpty { return .empty }
-        return .content
-    }
-
     var body: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 10) {
-                // Header
-                HStack {
-                    Label("Batch Jobs", systemImage: "gearshape.2")
-                        .font(.headline)
-                    Spacer()
-                    if model.isPolling {
-                        Text("\(model.pollCountdown)s")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .monospacedDigit()
-                    }
-                    // 2026-05-21 add: manual refresh — useful right
-                    // after the user deletes / launches a job and
-                    // doesn't want to wait 45s for the next auto-
-                    // poll. Spinner replaces the icon during the
-                    // in-flight refresh so the user can't
-                    // double-fire.
-                    Button {
-                        Task { await model.loadJobs() }
-                    } label: {
-                        if model.load.isWorking {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.caption)
-                        }
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(model.load.isWorking)
-                    .help("Refresh batch jobs now (or wait \(model.pollCountdown)s for the next auto-refresh)")
-                    .accessibilityLabel("Refresh batch jobs")
-                    // What opens the sheet, in sight: the summary opens it too,
-                    // but nothing says so.
-                    Button("Jobs & History…") { model.detailPresented = true }
-                        .controlSize(.small)
-                        .help("Show the batch jobs, and the history of those that ended")
-                        .pointable("portal.batchJobs", opens: "Batch Jobs")
-                }
-
-                // Cross-fade only on the loading/empty/content BOUNDARY —
-                // the 45 s auto-poll keeps the state at `.content` and
-                // mutates the summary counts instantly underneath, no churn.
-                DataStateContainer(state: jobsState) {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                    .padding(.vertical, 8)
-                } empty: {
-                    summaryButton {
-                        Label("No batch jobs", systemImage: "tray")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                } error: {
-                    EmptyView()
-                } content: {
-                    summaryButton {
-                        Text("\(model.jobs.count) total")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-
-                if model.load.problem != nil {
-                    ProblemView(problem: model.load.problem, retry: { Task { await model.loadJobs() } }, compact: true)
+        PortalCardShell(title: "Batch Jobs", systemImage: "gearshape.2", phase: model.load,
+                        reload: PortalReload(id: "portal.batchJobs.refresh", name: "Refresh batch jobs",
+                                             help: "Refresh batch jobs now (or wait \(model.pollCountdown)s for the next auto-refresh)",
+                                             action: { await model.loadJobs() }),
+                        next: model.isPolling ? String(localized: "next in \(model.pollCountdown) s") : nil) {
+            // What opens the sheet, in sight: the summary opens it too,
+            // but nothing says so.
+            Button("Jobs & History…") { model.detailPresented = true }
+                .controlSize(.small)
+                .help("Show the batch jobs, and the history of those that ended")
+                .pointable("portal.batchJobs", opens: "Batch Jobs")
+        } content: {
+            // The 45 s poll keeps the summary and changes its counts
+            // underneath; before the first load, the same summary, its line
+            // a dash (plan 42).
+            summaryButton {
+                if model.load.value == nil {
+                    Text(verbatim: "—")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                } else if model.jobs.isEmpty {
+                    Label("No batch jobs", systemImage: "tray")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                } else {
+                    Text("\(model.jobs.count) total")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
             }
         }

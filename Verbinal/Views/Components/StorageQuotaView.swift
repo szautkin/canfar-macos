@@ -9,48 +9,18 @@ import SwiftUI
 struct StorageQuotaView: View {
     @Bindable var model: StorageModel
 
-    /// Boundary discriminator: spinner while loading, the quota readout once
-    /// data lands. A poll refresh keeps the state at `.content` (the bar eases
-    /// to its new value instead — see `.appAnimation` below).
-    private var quotaState: DataState {
-        if model.load.isWorking { return .loading }
-        if model.hasData { return .content }
-        return .empty
-    }
-
     var body: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Storage", systemImage: "internaldrive")
-                    .font(.headline)
-
-                DataStateContainer(state: quotaState) {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                    .padding(.vertical, 8)
-                } empty: {
-                    // Not loading, no error, no data — say so instead of
-                    // rendering a silent dead panel under the header.
-                    Text("No storage data yet")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } error: {
-                    EmptyView()
-                } content: {
-                    quotaReadout
-                }
-
-                if model.load.problem != nil {
-                    ProblemView(problem: model.load.problem, retry: { Task { await model.reload() } }, compact: true)
-                }
-            }
+        // A reload keeps the figures; before the first load they are dashes,
+        // the same height (plan 42).
+        PortalCardShell(title: "Storage", systemImage: "internaldrive", phase: model.load,
+                        reload: PortalReload(id: "portal.storage.refresh", name: "Refresh storage",
+                                             help: "Fetch your storage quota again", action: { await model.reload() })) {
+            quotaReadout
         }
     }
 
-    /// The usage bar + Used/Usage/Quota figures, shown once `hasData`.
+    /// The usage bar and the Used, Usage and Quota figures; dashes until the
+    /// first load.
     @ViewBuilder
     private var quotaReadout: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -64,7 +34,7 @@ struct StorageQuotaView: View {
                     Text("Used")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                    Text("\(model.usedGB.formatted(.number.precision(.fractionLength(2)))) GB")
+                    (model.hasData ? Text("\(model.usedGB.formatted(.number.precision(.fractionLength(2)))) GB") : Text(verbatim: "—"))
                         .font(.caption)
                         .fontWeight(.medium)
                 }
@@ -75,7 +45,7 @@ struct StorageQuotaView: View {
                     Text("Usage")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                    Text((model.usagePercent / 100).formatted(.percent.precision(.fractionLength(1))))
+                    Text(verbatim: model.hasData ? (model.usagePercent / 100).formatted(.percent.precision(.fractionLength(1))) : "—")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(model.isWarning ? .red : .primary)
@@ -87,7 +57,7 @@ struct StorageQuotaView: View {
                     Text("Quota")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                    Text("\(model.quotaGB.formatted(.number.precision(.fractionLength(2)))) GB")
+                    (model.hasData ? Text("\(model.quotaGB.formatted(.number.precision(.fractionLength(2)))) GB") : Text(verbatim: "—"))
                         .font(.caption)
                         .fontWeight(.medium)
                 }
