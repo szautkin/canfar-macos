@@ -19,7 +19,8 @@ your batch jobs. It needs you to be signed in. Open it from its Home tile, or **
 
 Each card has the same reload button at its top right. It turns into a small spinner while the card
 reloads, and its foot says when the card was last updated, such as **Updated 16:04:05**. While a card
-reloads, its figures stay, dimmed, and nothing on it moves.
+reloads, its figures stay, dimmed, and nothing on it moves. With **Reduce motion** on (System Settings
+▸ Accessibility ▸ Display), nothing spins or runs.
 
 - **Platform Load**: three rings, **CPU**, **RAM** and **GPU**, each with how much of it is in use
   inside, such as **39%**, and below how much is free, such as **1,836 of 3,000 cores free**. A ring
@@ -27,8 +28,9 @@ reloads, its figures stay, dimmed, and nothing on it moves.
   reports its GPUs; it fills in by itself at the next refresh once CANFAR does. While it refreshes,
   each ring spins, with a small spinner in place of its percentage. Below the rings, how many instances
   run.
-- **Storage**: how much of your VOSpace quota you use (**Used**, **Usage**, **Quota**). It warns
-  **Storage nearly full**. Its reload button reads the quota again, after an upload or a delete. See
+- **Storage**: how much of your VOSpace quota you use, as a bar and as **Used**, **Usage** and
+  **Quota**. It warns **Storage nearly full**. Its reload button reads the quota again, after an upload
+  or a delete: the bar runs back to the start, then fills to your usage when the answer comes. See
   [Storage](09-storage.md).
 - **Batch Jobs**: how many of your jobs are running, pending, completed or failed, refreshed every
   45 seconds; its foot says when the next one is (**· next in 32 s**). **Jobs & History…** opens them:

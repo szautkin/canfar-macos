@@ -33,7 +33,12 @@ struct PortalCardShell<Accessory: View, Content: View>: View {
                     accessory()
                     PortalReloadButton(working: phase.isWorking, reload: reload)
                 }
+                // One height, whatever the accessory: the titles and buttons
+                // of the row stand on one line.
+                .frame(height: Self.headerHeight)
                 content()
+                // The footer at the card's foot: the row's on one line.
+                Spacer(minLength: 0)
                 footer
                 if phase.problem != nil {
                     ProblemView(problem: phase.problem, retry: { Task { await reload.action() } }, compact: true)
@@ -41,6 +46,9 @@ struct PortalCardShell<Accessory: View, Content: View>: View {
             }
         }
     }
+
+    /// A header's height: Batch Jobs' Jobs & History… fits it.
+    static var headerHeight: CGFloat { 22 }
 
     /// "Updated 16:04:05 · next in 32 s"; before the first load "Loading…",
     /// or a dash: a line there from the first moment.
@@ -52,11 +60,18 @@ struct PortalCardShell<Accessory: View, Content: View>: View {
     }
 
     private var footerText: String {
-        guard let updated = phase.value else {
-            return next ?? (phase.isWorking ? String(localized: "Loading…") : "—")
+        PortalCardFooter.line(updated: phase.value, working: phase.isWorking, next: next)
+    }
+}
+
+/// A card's footer line: "Updated 16:04:05 · next in 32 s"; before the first
+/// load, "Loading…" or a dash.
+enum PortalCardFooter {
+    static func line(updated: Date?, working: Bool, next: String?) -> String {
+        guard let updated else {
+            return next ?? (working ? String(localized: "Loading…") : "—")
         }
-        let time = updated.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).second(.twoDigits))
-        let line = String(localized: "Updated \(time)")
+        let line = String(localized: "Updated \(SharedFormatters.clockTime.string(from: updated))")
         return next.map { "\(line) · \($0)" } ?? line
     }
 }

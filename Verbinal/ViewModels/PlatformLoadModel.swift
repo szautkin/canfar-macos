@@ -48,11 +48,6 @@ final class PlatformLoadModel: PhaseOwner {
     var headlessInstances: Int = 0
     var hasInstanceData = false
 
-    /// When it last loaded, as the card says it.
-    var lastUpdate: String {
-        load.value.map { $0.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).second(.twoDigits)) } ?? ""
-    }
-
     init(platformService: PlatformService) {
         self.platformService = platformService
     }

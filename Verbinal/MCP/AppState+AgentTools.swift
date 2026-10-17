@@ -104,7 +104,6 @@ extension AppState {
         }))
 
         // Sessions domain
-        let recentLaunchStore = RecentLaunchStore()
         tools.append(makeListSessionsTool())
         tools.append(makeGetSessionTool())
         tools.append(ListSessionTypesTool())

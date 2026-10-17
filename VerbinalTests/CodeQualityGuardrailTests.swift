@@ -227,4 +227,26 @@ final class CodeQualityGuardrailTests: XCTestCase {
         XCTAssertEqual(listed.subtracting(found).sorted(), [], "gone: take it off its list")
         XCTAssertEqual(lists.map(\.count).reduce(0, +), listed.count, "a store is in one list only")
     }
+
+    // MARK: - One store over each file
+
+    /// Each store is made once in the app and handed round. Two over one
+    /// file each keep a copy, and the last to write drops the other's:
+    /// list_recent_launches had its own Recent Launches, read once, and an
+    /// assistant's launches went to a third (the live check of plan 42).
+    func testEachStoreIsMadeOnce() {
+        let regex = try! NSRegularExpression(pattern: #"\b([A-Z][A-Za-z]*Store)\(\)"#)
+        var made: [String: [String]] = [:]
+        for (path, text) in Self.sources(in: ["Verbinal"]) {
+            for match in regex.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+                guard let range = Range(match.range(at: 1), in: text) else { continue }
+                let type = String(text[range])
+                // These read UserDefaults on every call: they keep no copy.
+                if type.hasPrefix("UserDefaults") { continue }
+                made[type, default: []].append(path)
+            }
+        }
+        XCTAssertGreaterThan(made.count, 10, "the scan finds the stores")
+        XCTAssertEqual(made.filter { $0.value.count > 1 }.mapValues { $0.sorted() }, [:], "make it once and pass it")
+    }
 }

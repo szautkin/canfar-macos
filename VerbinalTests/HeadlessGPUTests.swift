@@ -133,4 +133,34 @@ final class HeadlessGPUTests: XCTestCase {
         let why = await refusal(1, offer: GPUOffer.none)
         XCTAssertEqual(why, "This platform offers no GPUs.")
     }
+
+    // MARK: - show_launch_form on the Headless tab
+
+    private struct NoLaunch: SessionLaunching {
+        func launchSession(_ params: SessionLaunchParams) async throws -> String? { nil }
+    }
+
+    /// show_launch_form sizes the tab it shows. On the Headless tab it had
+    /// sized the session form behind it, and left the batch one Flexible
+    /// (the live check of plan 42, 2026-10-16).
+    func testShowLaunchFormSizesTheTabItShows() {
+        let (batch, _) = model()
+        let session = SessionLaunchModel(sessionService: NoLaunch(), imageService: ImageService(network: NetworkClient(session: .shared)),
+                                         recentLaunchStore: RecentLaunchStore())
+        session.gpuOffer = staging
+        batch.gpuOffer = staging
+
+        DashboardView.size(LaunchResources(cores: 1, gpus: 4), on: .headless, session: session, batch: batch)
+        XCTAssertEqual(batch.resourceType, "fixed")
+        XCTAssertEqual(batch.cores, 1)
+        XCTAssertEqual(batch.gpus, 4)
+        XCTAssertEqual(session.gpus, 0, "the session form is not the one shown")
+
+        DashboardView.size(LaunchResources(type: "flexible"), on: .headless, session: session, batch: batch)
+        XCTAssertEqual(batch.resourceType, "flexible")
+
+        DashboardView.size(LaunchResources(gpus: 2), on: .advanced, session: session, batch: batch)
+        XCTAssertEqual(session.gpus, 2)
+        XCTAssertEqual(batch.gpus, 4)
+    }
 }

@@ -141,15 +141,9 @@ struct RecentLaunchesView: View {
                     .lineLimit(1)
 
                 HStack {
-                    if launch.resourceType == "fixed" {
-                        Text("CPU: \(launch.cores) · RAM: \(launch.ram) GB")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    } else {
-                        Text("Flexible")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
+                    Text(verbatim: Self.resources(of: launch))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
 
                     Spacer()
 
@@ -207,5 +201,13 @@ struct RecentLaunchesView: View {
     private func formatDate(_ date: Date) -> String {
         // Locale-aware; a hardcoded dateFormat ignores region ordering.
         date.formatted(date: .abbreviated, time: .omitted)
+    }
+
+    /// What a launch asked for: "CPU: 1 · RAM: 4 GB", with " · GPU: 1" when
+    /// it asked for GPUs, as its session's card says them; or "Flexible".
+    static func resources(of launch: RecentLaunch) -> String {
+        guard launch.resourceType == "fixed" else { return String(localized: "Flexible") }
+        guard launch.gpus > 0 else { return String(localized: "CPU: \(launch.cores) · RAM: \(launch.ram) GB") }
+        return String(localized: "CPU: \(launch.cores) · RAM: \(launch.ram) GB · GPU: \(launch.gpus)")
     }
 }

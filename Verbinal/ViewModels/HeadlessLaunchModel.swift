@@ -73,6 +73,15 @@ final class HeadlessLaunchModel {
         selectedImage = image
     }
 
+    /// Sets the form's resources as its Flexible / Fixed and steppers would:
+    /// show_launch_form on the Headless tab.
+    func apply(_ asked: LaunchResources) {
+        if let type = asked.resolvedType { resourceType = type }
+        if let cores = asked.cores { self.cores = cores }
+        if let ram = asked.ram { self.ram = ram }
+        if let gpus = asked.gpus { self.gpus = gpus }
+    }
+
     // MARK: - Validation
 
     var canLaunch: Bool {

@@ -117,7 +117,7 @@ final class LaunchFormGPULayoutTests: XCTestCase {
                 XCTAssertEqual(spilled, [])
                 let stepper = try XCTUnwrap(byID.values.first { $0.name == "GPUs" && $0.kind == .stepper }, "\(byID.values.compactMap(\.name))")
                 XCTAssertEqual(stepper.enabled, offer.offersAny)
-                XCTAssertEqual(stepper.help, offer.offersAny ? "GPUs for this job: 0, or one the platform offers" : "This platform offers no GPUs")
+                XCTAssertEqual(stepper.help, offer.offersAny ? "0, or one of the counts the platform offers" : "This platform offers no GPUs")
                 XCTAssertNil(byID["portal.launch.gpu"], "no checkbox on the batch tab")
             }
         }
@@ -135,6 +135,29 @@ final class LaunchFormGPULayoutTests: XCTestCase {
                 let stepper = try XCTUnwrap(byID.values.first { $0.name == "GPUs" && $0.kind == .stepper }, "\(byID.values.compactMap(\.name))")
                 XCTAssertEqual(stepper.enabled, offer.offersAny)
                 XCTAssertNil(byID["portal.launch.gpu"], "no checkbox on the Advanced tab")
+            }
+        }
+    }
+
+    /// The GPU stepper stands in the cores' and RAM's column, on the Advanced
+    /// tab and the batch one — it had stood at the row's far end — and says
+    /// what it takes without calling a session a job (live check, 2026-10-16).
+    func testTheGPUStepperStandsWithTheOthers() async throws {
+        try await AXReadable.require()
+        let offer = GPUOffer(options: Array(1...7))
+        let session = model(offer: offer)
+        session.resourceType = "fixed"
+        let batch = HeadlessLaunchModel(headlessService: HeadlessService(network: NetworkClient(session: .shared)),
+                                        recentLaunchStore: RecentLaunchStore())
+        batch.resourceType = "fixed"
+        let tabs: [(AppState.LaunchFormTab, HeadlessLaunchModel?)] = [(.advanced, nil), (.headless, batch)]
+        for (tab, batch) in tabs {
+            try await form(session, batch: batch, tab: tab, capture: "gpu-column-\(tab)") { byID, _, _ in
+                let steppers = byID.values.filter { $0.kind == .stepper }
+                let cores = try XCTUnwrap(steppers.first { $0.name == "CPU Cores" }, "\(tab)")
+                let gpus = try XCTUnwrap(steppers.first { $0.name == "GPUs" }, "\(tab)")
+                XCTAssertEqual(gpus.frame.minX, cores.frame.minX, accuracy: 1, "\(tab): \(gpus.frame) under \(cores.frame)")
+                XCTAssertEqual(gpus.help, "0, or one of the counts the platform offers", "\(tab)")
             }
         }
     }

@@ -194,8 +194,15 @@ struct DashboardView: View {
             }
         }
         if let tab = request.tab { appState.launchFormTab = tab }
-        sessionLaunchModel.apply(request.resources)
+        Self.size(request.resources, on: appState.launchFormTab, session: sessionLaunchModel, batch: headlessLaunchModel)
         appState.launchFormPresented = true
+    }
+
+    /// The resources an agent asked for, on the form of the tab it shows:
+    /// the Headless tab's own, or the sessions'.
+    static func size(_ asked: LaunchResources, on tab: AppState.LaunchFormTab, session: SessionLaunchModel,
+                     batch: HeadlessLaunchModel?) {
+        if tab == .headless, let batch { batch.apply(asked) } else { session.apply(asked) }
     }
 
     /// Routes a `ParsedImage` to whichever launch model fits its

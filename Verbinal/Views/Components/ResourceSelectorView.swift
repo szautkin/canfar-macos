@@ -111,10 +111,12 @@ struct ResourceSelectorView: View {
                         gpus = gpuOffer.step(from: gpus, up: false)
                     }
                     .disabled(!gpuOffer.offersAny)
-                    .help(gpuOffer.offersAny ? Text("GPUs for this job: 0, or one the platform offers")
+                    .help(gpuOffer.offersAny ? Text("0, or one of the counts the platform offers")
                                              : Text("This platform offers no GPUs"))
                     .named("GPUs", value: gpus)
-                    Spacer()
+                    // The sliders' room, unseen: the stepper stands in the
+                    // cores' and RAM's column.
+                    Slider(value: .constant(0)).hidden().accessibilityHidden(true)
                 }
                 // Greyed as a whole, label and count too, while none is offered.
                 .foregroundStyle(gpuOffer.offersAny ? .primary : .tertiary)

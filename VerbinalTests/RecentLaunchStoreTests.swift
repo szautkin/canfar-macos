@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import XCTest
+import VerbinalKit
 @testable import Verbinal
 
 @MainActor
@@ -88,5 +89,34 @@ final class RecentLaunchStoreTests: XCTestCase {
         store.clear()
 
         XCTAssertTrue(store.launches.isEmpty)
+    }
+
+    // MARK: - One list (the live check of plan 42, 2026-10-16)
+
+    /// list_recent_launches had a list of its own, read once when the tools
+    /// were made: it missed the session the person had just launched, which
+    /// the Recent Launches card showed.
+    func testListRecentLaunchesHasWhatTheFormJustSaved() async throws {
+        let app = AppState()
+        let tool = try XCTUnwrap(app.makeAgentTools().compactMap { $0 as? ListRecentLaunchesTool }.first)
+        let name = "one-list-\(UUID().uuidString.prefix(8))"
+        app.recentLaunchStore.save(makeLaunch(name: name))
+        defer { app.recentLaunchStore.launches.filter { $0.name == name }.forEach { app.recentLaunchStore.remove($0) } }
+        let context = AIToolContext(origin: .external(clientID: "test"), proposals: InMemoryProposalStore(), budget: ProposalBudget(limit: 9))
+        let listed = try await tool.handle(EmptyArgs(), context: context)
+        XCTAssertEqual(listed.entries.first?.name, name)
+    }
+
+    /// A row says the GPUs its launch asked for, as its session's card does.
+    func testARowSaysItsGPUs() {
+        var launch = makeLaunch(name: "nb")
+        launch.resourceType = "fixed"
+        launch.cores = 1
+        launch.ram = 4
+        XCTAssertEqual(RecentLaunchesView.resources(of: launch), "CPU: 1 · RAM: 4 GB")
+        launch.gpus = 1
+        XCTAssertEqual(RecentLaunchesView.resources(of: launch), "CPU: 1 · RAM: 4 GB · GPU: 1")
+        launch.resourceType = "flexible"
+        XCTAssertEqual(RecentLaunchesView.resources(of: launch), "Flexible")
     }
 }

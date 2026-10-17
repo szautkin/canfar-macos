@@ -26,7 +26,6 @@ extension AppState {
             await self?.researchRecord(describing: described, caom2: caom2) ?? described
         }
         let activity = agentsService.activityStore
-        let recentLaunchStore = RecentLaunchStore()
         var appliers: [any ProposalApplier] = [
             SaveQueryApplier(store: savedQueryStore, activity: activity),
             UpdateSavedQueryApplier(store: savedQueryStore, activity: activity),

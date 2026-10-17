@@ -93,6 +93,16 @@ enum SharedFormatters {
         return f
     }()
 
+    /// `HH:mm:ss` in the local zone, POSIX locale: a clock time in 24 hours,
+    /// as the session cards and the session log show it. A twelve-hour
+    /// locale's own pattern without its AM/PM read 19:18 as "07:18".
+    static let clockTime: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
     /// Compact `MMM d, HH:mm` (e.g., "Apr 27, 10:30"). Used by the search side
     /// panels (recent searches / saved queries) for per-row timestamps. POSIX
     /// locale keeps the literal month-abbreviation pattern stable.

@@ -264,7 +264,7 @@ three dim alike.
 **The manual,** English and French: the Portal's cards, with the reload button on each and
 "Updated …"; Platform Load while refreshing.
 
-**The handout:** handout 37 gains section P, the cards. Section O changes:
+**The handout:** handout 37 gains section T, the cards. Section O changes:
 - Advanced's stepper (O5);
 - `launch_session` with `gpus: 4` taken and `show_launch_form` by tab (O6);
 - a relaunch of a 4-GPU launch where 4 is no longer offered (O8).
@@ -308,7 +308,7 @@ The person's answers:
 | 3 | `403de96f` | The MCP guides. `describe_app`'s brief has a **GPUs** section, and its line saying an omitted batch size takes Skaha's 2/8/0 is fixed. `show_launch_form`'s words cover GPUs. The two batch workflows note where GPUs are read. The parity doc and the manual's assistant chapter are updated. |
 | 4 | `cda2ebab` | `PortalCardShell` for Platform Load, Storage and Batch Jobs. One reload button in a fixed slot; the body kept while reloading; "Updated …" at the foot, with Batch Jobs' countdown. Storage can be refreshed. Each card is its full height before its first load. |
 | 5 | `deb0e06a` | Refreshing, seen. The rings spin a quarter arc with a small spinner inside, still with Reduce Motion, and the other cards' figures dim alike. |
-| 6 | (this commit) | The manual, English and French: the cards and refreshing. Handout 37 section O changed (O5, O6) and gained O8 and O9, and section P is new. |
+| 6 | (this commit) | The manual, English and French: the cards and refreshing. Handout 37 section O changed (O5, O6) and gained O8 and O9, and section T is new (first named P, a letter already taken: renamed at the live check). |
 
 **Where it differs from the plan, and why:**
 - **Step 2: iOS.** The iOS launch tab shows one Resources section for both tabs. It now shows the checkbox on Standard and the stepper on Advanced, and launches with its tab. It had the same Advanced-image bug.
@@ -329,6 +329,48 @@ The person's answers:
   - the Advanced tab's stepper, enabled and greyed.
 
 **Still to verify,** on the live app, which was `131a0f27` (plan 41's end) at the time:
-- handout 37 sections O and P with a build from this commit;
+- handout 37 sections O and T with a build from this commit;
 - on staging-src, the GPU ring with staging's numbers and `perSession`, and Advanced's stepper through 1–7;
 - the manual's pictures of the Portal (`portal.png`) and of the Advanced tab still show the old cards and form. They are retaken with the other pictures.
+
+## The live check (2026-10-16, build 327db45d)
+
+An assistant over MCP, on production. Production's context now offers 1–7 GPUs; its platform load
+does not report them yet.
+
+**As planned:**
+- The GPU ring: grey, **Not reported**; `get_platform_load` has `gpu: null` and its `gpuNote`.
+- **Use a GPU** enabled on Standard, now that production offers GPUs. The person's notebook2 was
+  launched with it and runs with one GPU.
+- Advanced takes 7, and refuses 99 and 8, naming 1–7. Standard refuses 2, naming both tabs' rules.
+  `launch_session` refuses 8. `describe_app` has its **GPUs** section. `man` gives the tools' new
+  words: the client had cached the old ones.
+- The three reload buttons are listed with their ids, and `point_at_ui portal.storage.refresh` rings
+  Storage's.
+
+**Found, and fixed in this commit** (each test failed first):
+- **The footers' time was a twelve-hour clock with no AM or PM.** At 19:18 they said "07:18:36". They
+  now give the time in 24 hours, as the session cards and the session log do. Platform Load had had it
+  since before plan 42; plan 42 gave it to all three cards.
+- **`list_recent_launches` missed notebook2,** which the Recent Launches card showed. The tool had its
+  own copy of Recent Launches, read once when the tools were made, and an assistant's launches were
+  saved to a third copy. Two copies over one file drop each other's launches when they write. There
+  is now one, AppState's, and a guardrail says each store is made once.
+- **`show_launch_form` on the Headless tab** sized the session form behind it, and left the batch
+  form Flexible. It now sizes the tab it shows.
+- **The GPU stepper** stood at its row's far end on Advanced and Headless. It now stands under the
+  cores' and RAM's. Its help said "for this job" on Advanced too: now "0, or one of the counts the
+  platform offers".
+- **The row's lines:** Batch Jobs' title and button stood a point lower than the others', beside its
+  taller button, and the three footers stood at three heights. The header now has one height, and the
+  footer sits at the card's foot.
+- **Recent Launches** now says a launch's GPUs ("CPU: 1 · RAM: 4 GB · GPU: 1"), as its session's card
+  does.
+- **Handout 37 had two sections P.** Plan 42's is now T.
+
+**The person's ask, at the live check:** on a reload, Storage's bar runs back to the start, and fills
+to the usage when the answer comes. With Reduce Motion it stays where it is. VoiceOver reads
+"Refreshing" meanwhile, not 0%.
+
+**Still for the person:** staging-src (O3–O8 there), the refreshing cards by eye (T2–T5), and the
+manual's pictures.

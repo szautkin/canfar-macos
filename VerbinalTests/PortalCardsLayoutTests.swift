@@ -91,6 +91,7 @@ final class PortalCardsLayoutTests: XCTestCase {
     // MARK: - Reading a card on screen
 
     private struct Seen {
+        let all: [UIElement]
         let byID: [String: UIElement]
         /// Each named element's frame, by its name.
         let frames: [String: CGRect]
@@ -126,7 +127,7 @@ final class PortalCardsLayoutTests: XCTestCase {
             let elements = snapshot.elements(in: ref.index)
             var frames: [String: CGRect] = [:]
             for element in elements { if let name = element.name { frames[name] = element.frame } }
-            return Seen(byID: Dictionary(elements.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }),
+            return Seen(all: elements, byID: Dictionary(elements.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }),
                         frames: frames, bounds: elements.map(\.frame).reduce(CGRect.null) { $0.union($1) })
         }, shot)
     }
@@ -248,6 +249,90 @@ final class PortalCardsLayoutTests: XCTestCase {
                 let footer = seen.frames.keys.first { $0.hasPrefix("Updated ") }
                 let text = try XCTUnwrap(footer, "\(card.name): no \"Updated …\"")
                 if card.name == "Batch Jobs" { XCTAssertTrue(text.hasSuffix(" · next in 32 s"), text) }
+            }
+        }
+    }
+
+    // MARK: - The live check (2026-10-16)
+
+    /// The footer's time is the clock's, in 24 hours as the rest of the
+    /// Portal: where the locale counts in twelve, it had read "07:18:36" at
+    /// 19:18:36, with no AM or PM.
+    func testTheFooterTellsTheTimeIn24Hours() throws {
+        let evening = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 16,
+                                                                                  hour: 19, minute: 18, second: 36)))
+        XCTAssertEqual(PortalCardFooter.line(updated: evening, working: false, next: nil), "Updated 19:18:36")
+        XCTAssertEqual(PortalCardFooter.line(updated: evening, working: true, next: "next in 8 s"), "Updated 19:18:36 · next in 8 s")
+        XCTAssertEqual(PortalCardFooter.line(updated: nil, working: true, next: nil), "Loading…")
+        XCTAssertEqual(PortalCardFooter.line(updated: nil, working: false, next: nil), "—")
+        XCTAssertEqual(PortalCardFooter.line(updated: nil, working: false, next: "next in 8 s"), "next in 8 s")
+    }
+
+    /// The three cards side by side, as the Portal's top row has them: their
+    /// titles and reload buttons on one line, and their footers on another,
+    /// at each card's foot whatever its body holds. Batch Jobs' title stood
+    /// a point lower, beside its taller button, and the footers at three
+    /// heights.
+    func testTheRowLinesUp() async throws {
+        try await AXReadable.require()
+        let (_, client) = network()
+        let cards = await cards(client)
+        let row = AnyView(Grid(alignment: .topLeading, horizontalSpacing: 16) {
+            GridRow(alignment: .top) {
+                ForEach(cards.indices, id: \.self) { index in
+                    cards[index].view.frame(width: 323).frame(maxHeight: .infinity, alignment: .top)
+                }
+            }
+        })
+        try await onScreen(row, width: 1001, capture: "cards-row") { _, look, _ in
+            let seen = try await look()
+            func line(_ frames: [CGRect], _ what: String, _ edge: (CGRect) -> CGFloat) {
+                XCTAssertEqual(frames.count, 3, "\(what): \(frames)")
+                for frame in frames.dropFirst() { XCTAssertEqual(edge(frame), edge(frames[0]), accuracy: 0.5, "\(what): \(frames)") }
+            }
+            line(["Platform Load", "Storage", "Batch Jobs"].compactMap { name in seen.all.first { $0.name == name }?.frame },
+                 "the titles", \.midY)
+            line(cards.compactMap { seen.byID[$0.reloadID]?.frame }, "the reload buttons", \.minY)
+            line(seen.all.filter { $0.name?.hasPrefix("Updated ") == true }.map(\.frame), "the footers", \.minY)
+        }
+    }
+
+    // MARK: - Storage's bar, on a reload (the person's ask, 2026-10-16)
+
+    /// On a reload the bar runs back to the start, and fills to the usage
+    /// when it comes; with Reduce Motion it stands still, at the usage.
+    func testStoragesBarRunsBackWhileItReloads() {
+        XCTAssertEqual(StorageQuotaView.bar(usage: 79, refreshing: true, reduceMotion: false), 0)
+        XCTAssertEqual(StorageQuotaView.bar(usage: 79, refreshing: false, reduceMotion: false), 79)
+        XCTAssertEqual(StorageQuotaView.bar(usage: 79, refreshing: true, reduceMotion: true), 79)
+        XCTAssertEqual(StorageQuotaView.bar(usage: 104, refreshing: false, reduceMotion: false), 100, "never past full")
+    }
+
+    /// Pictures of the bar on a reload, to look at: running back, at the
+    /// start while it waits, filling, and full again — light and dark.
+    func testStoragesBarOnScreen() async throws {
+        try await AXReadable.require()
+        let (network, client) = network()
+        let storage = StorageModel(storageService: StorageService(network: client))
+        await storage.loadQuota(username: "me")
+        for dark in [false, true] {
+            try await onScreen(AnyView(StorageQuotaView(model: storage)), dark: dark) { _, look, shot in
+                let suffix = dark ? "-dark" : ""
+                let before = try await look()
+                network.hold = 1.2
+                let reloading = Task { await storage.reload() }
+                try await Task.sleep(for: .milliseconds(120))
+                shot("storage-bar-1-running-back\(suffix)")
+                try await Task.sleep(for: .milliseconds(600))
+                shot("storage-bar-2-waiting\(suffix)")
+                network.hold = 0
+                await reloading.value
+                try await Task.sleep(for: .milliseconds(250))
+                shot("storage-bar-3-filling\(suffix)")
+                try await Task.sleep(for: .milliseconds(1200))
+                shot("storage-bar-4-full\(suffix)")
+                let after = try await look()
+                same(before.bounds, after.bounds, "Storage, after its bar ran")
             }
         }
     }

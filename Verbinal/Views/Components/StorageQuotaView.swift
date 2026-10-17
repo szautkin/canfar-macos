@@ -8,6 +8,11 @@ import SwiftUI
 
 struct StorageQuotaView: View {
     @Bindable var model: StorageModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// A reload under way, the figures kept.
+    private var refreshing: Bool { model.load.isWorking && model.hasData }
+    private var barValue: Double { Self.bar(usage: model.usagePercent, refreshing: refreshing, reduceMotion: reduceMotion) }
 
     var body: some View {
         // A reload keeps the figures; before the first load they are dashes,
@@ -16,7 +21,7 @@ struct StorageQuotaView: View {
                         reload: PortalReload(id: "portal.storage.refresh", name: "Refresh storage",
                                              help: "Fetch your storage quota again", action: { await model.reload() })) {
             quotaReadout
-                .refreshing(model.load.isWorking && model.hasData)
+                .refreshing(refreshing)
         }
     }
 
@@ -25,10 +30,13 @@ struct StorageQuotaView: View {
     @ViewBuilder
     private var quotaReadout: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ProgressView(value: min(model.usagePercent, 100), total: 100)
+            ProgressView(value: barValue, total: 100)
                 .tint(model.isWarning ? .red : .accentColor)
-                // Ease the bar from old→new on each poll instead of jumping.
-                .appAnimation(AppMotion.quick, value: model.usagePercent)
+                // A reload runs the bar back to the start, quickly; the
+                // answer fills it to the usage, slower.
+                .appAnimation(refreshing ? .easeIn(duration: 0.3) : .easeOut(duration: 0.8), value: barValue)
+                .accessibilityValue(refreshing ? Text("Refreshing")
+                                               : Text(verbatim: (model.usagePercent / 100).formatted(.percent.precision(.fractionLength(1)))))
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -70,5 +78,12 @@ struct StorageQuotaView: View {
                     .foregroundStyle(.red)
             }
         }
+    }
+
+    /// Where the bar stands, of 100: at the start while a reload is under
+    /// way, then at the usage (the person's ask, 2026-10-16). With Reduce
+    /// Motion it stays at the usage: no running back.
+    static func bar(usage: Double, refreshing: Bool, reduceMotion: Bool) -> Double {
+        refreshing && !reduceMotion ? 0 : min(usage, 100)
     }
 }

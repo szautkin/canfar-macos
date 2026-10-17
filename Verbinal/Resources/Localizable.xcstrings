@@ -119,6 +119,16 @@
         }
       }
     },
+    "0, or one of the counts the platform offers" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "0, ou l’un des nombres que la plate-forme propose"
+          }
+        }
+      }
+    },
     "A different file is in your storage at %@ already: nothing was written over it." : {
       "localizations" : {
         "fr" : {
@@ -249,6 +259,16 @@
         }
       }
     },
+    "CPU: %lld · RAM: %lld GB · GPU: %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU : %lld · RAM : %lld Go · GPU : %lld"
+          }
+        }
+      }
+    },
     "Delete failed: %@" : {
       "localizations" : {
         "fr" : {
@@ -355,16 +375,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Charge GPU"
-          }
-        }
-      }
-    },
-    "GPUs for this job: 0, or one the platform offers" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "GPU pour cette tâche : 0, ou l’un des nombres que la plate-forme propose"
           }
         }
       }
