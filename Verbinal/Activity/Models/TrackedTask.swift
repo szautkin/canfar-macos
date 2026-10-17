@@ -65,6 +65,8 @@ struct TrackedTask: Identifiable, Equatable, Sendable {
     var total: Int?
     /// Its owner can pause it and resume it.
     var canPause = false
+    /// It failed, and its owner can try it again (plan 44 E).
+    var canRetry = false
     /// Who last paused or resumed it, why and when.
     var pause: PauseMark?
 

@@ -74,6 +74,7 @@ final class ResultDestination {
     /// no longer on the Mac is let go.
     func sendWaiting() async -> Int {
         guard keeping, let send else { return 0 }
+        stuck = nil
         var sent = 0
         for entry in waiting {
             guard FileManager.default.fileExists(atPath: entry.path) else { letGo(entry); continue }
@@ -84,11 +85,16 @@ final class ResultDestination {
                 self.sent?(url, path)
                 sent += 1
             } catch {
+                stuck = error.localizedDescription
                 break
             }
         }
         return sent
     }
+
+    /// Why the last results that waited could not go; nil when all went
+    /// (plan 44 E4): the sync then fails, saying so, and is tried again.
+    private(set) var stuck: String?
 
     private func letGo(_ entry: Waiting) {
         waiting.removeAll { $0 == entry }

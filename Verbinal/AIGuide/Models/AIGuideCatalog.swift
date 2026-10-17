@@ -91,6 +91,7 @@ enum AIGuideCatalog {
         "list_activity": "foundational",
         "pause_activity": "foundational",
         "resume_activity": "foundational",
+        "retry_activity": "foundational",
         "get_service_health": "foundational",
         // Search & Archive
         "search_observations": "search",

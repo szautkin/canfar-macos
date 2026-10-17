@@ -18,7 +18,12 @@ final class ResearchFileTransferTests: XCTestCase {
         private(set) var files: [String: Data] = [:]
         private(set) var removed: [String] = []
 
+        /// The next send fails, as CANFAR storage out of service would.
+        var failNextSend = false
+        func failNext() { failNextSend = true }
+
         func send(_ file: URL, toFolder folder: String) async throws -> String {
+            if failNextSend { failNextSend = false; throw URLError(.cannotConnectToHost) }
             let path = "\(folder)/\(file.lastPathComponent)"
             let data = try Data(contentsOf: file)
             if let there = files[path] {
@@ -271,6 +276,25 @@ final class ResearchFileTransferTests: XCTestCase {
 
         let fine = await refusal { try await fromMac.plan(.init(id: both.id.uuidString), context: context) }
         XCTAssertNil(fine, "a file in both places: its copy here may go")
+    }
+
+    /// Plan 44 E4: a transfer that failed — storage out of service — is on
+    /// the bar with Retry, the person's; it goes when tried again.
+    func testAFailedTransferIsTriedAgainFromTheBar() async throws {
+        let record = try onMac()
+        let registry = TaskRegistry()
+        transfer.tasks = registry
+        await storage.failNext()
+        do { try await transfer.send(fitsName, of: record.id); XCTFail("storage out of service") } catch {}
+        let failed = try XCTUnwrap(registry.tasks.last)
+        XCTAssertEqual(failed.progress, .failed)
+        XCTAssertTrue(failed.canRetry)
+        XCTAssertNotNil(registry.retry(failed.id, by: .assistant), "an assistant calls the tool again instead")
+        XCTAssertNil(registry.retry(failed.id, by: .person))
+        try await Task.sleep(for: .milliseconds(300))
+        let sent = await storage.files[inStorage]
+        XCTAssertEqual(sent, bytes, "it went when tried again")
+        XCTAssertEqual(store.record(identifiedBy: record.id.uuidString)?.mainKeptFile?.places.word, "both")
     }
 
     func testEachToolIsTheKindOfChangeItMakes() {

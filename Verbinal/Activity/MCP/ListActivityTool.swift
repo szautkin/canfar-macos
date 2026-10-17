@@ -43,6 +43,8 @@ struct ListActivityTool: JSONReadTool {
         var total: Int?
         /// It can be paused and resumed (pause_activity, resume_activity).
         var pausable: Bool?
+        /// It failed, and retry_activity (or the person's Retry) tries it again.
+        var retryable: Bool?
         /// Who paused it — person, assistant or app — and why, while it is paused.
         var pausedBy: String?
         var pausedWhy: String?
@@ -77,6 +79,7 @@ struct ListActivityTool: JSONReadTool {
             done = task.done
             total = task.total
             pausable = task.canPause && !task.isFinished ? true : nil
+            retryable = task.canRetry && task.progress == .failed ? true : nil
             if task.isPaused, let pause = task.pause {
                 pausedBy = pause.by.rawValue
                 pausedWhy = pause.cause.why
@@ -96,7 +99,7 @@ struct ListActivityTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "list_activity",
-        description: "What the app is doing — the activity bar at the bottom of the window: its slow work (image probes, launches, session actions, Storage transfers, downloads, remote-compute runs), newest first, each with who started it (`startedBy`: the person, an assistant — you or another — or the app itself), its `id`, its stage while running (\"Waiting for job …\") and, when it counts, how far it has got (`done` of `total`), how long it has taken, and a failure's reason. A task that can wait is `pausable`; a paused one says who paused it and why (`pausedBy`, `pausedWhy`) — pause_activity and resume_activity take its `id`; a running task's `waitingOn` names the request to CADC or CANFAR it waits on and how long of its timeout, and `requests` says what its requests came to. Finished work stays until the person clears it, so a failure from a sheet closed long ago can still be read. For everything that happened while you are connected, with why, read get_session_log. Read-only.",
+        description: "What the app is doing — the activity bar at the bottom of the window: its slow work (image probes, launches, session actions, Storage transfers, downloads, remote-compute runs), newest first, each with who started it (`startedBy`: the person, an assistant — you or another — or the app itself), its `id`, its stage while running (\"Waiting for job …\") and, when it counts, how far it has got (`done` of `total`), how long it has taken, and a failure's reason. A task that can wait is `pausable`; a paused one says who paused it and why (`pausedBy`, `pausedWhy`) — pause_activity and resume_activity take its `id`; a failed one that can be tried again is `retryable` — Retry on the bar, or retry_activity for a sync; a running task's `waitingOn` names the request to CADC or CANFAR it waits on and how long of its timeout, and `requests` says what its requests came to. Finished work stays until the person clears it, so a failure from a sheet closed long ago can still be read. For everything that happened while you are connected, with why, read get_session_log. Read-only.",
         schema: #"""
         {
           "type": "object",

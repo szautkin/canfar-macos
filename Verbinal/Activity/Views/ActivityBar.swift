@@ -125,6 +125,13 @@ struct ActivityList: View {
                         .help("Stop it where it is, until you resume it")
                 }
             }
+            if line.canRetry {
+                // The person tries it again here; an assistant, a sync, with
+                // retry_activity (plan 44 E).
+                Button("Retry") { _ = registry.retry(line.id, by: .person) }
+                    .controlSize(.small)
+                    .help("Try it again now")
+            }
         }
     }
 

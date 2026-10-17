@@ -103,6 +103,10 @@ votre assistant**). Il reste en pause, même après que Verbinal a quitté, jusq
 sur **Reprendre**, puis continue là où il s’était arrêté. Tant que quelque chose est en pause, la ligne
 le dit. **Effacer les terminées** retire de la liste celles qui sont finies ; ce qui est en pause reste.
 
+Une tâche qui a échoué, et qui peut être tentée à nouveau, a **Réessayer** : une synchronisation avec
+votre stockage quand votre stockage CANFAR était lent ou hors service, ou un fichier qui n’est pas allé
+dans votre stockage ou n’en est pas revenu.
+
 ### Le navigateur de fichiers
 
 ![Le navigateur de fichiers à côté de l’accueil](../images/fr/01-getting-started/file-browser.png)

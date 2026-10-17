@@ -66,9 +66,13 @@ passe CADC à la place du secret CLI Harbor.
   `.verbinal` privé dans Stockage (voir
   [Les fichiers qui ne devraient pas être publics](09-storage.md#les-fichiers-qui-ne-devraient-pas-être-publics)) ;
   la synchronisation suivante reprend.
-- **Une synchronisation a échoué.** **Réglages ▸ Stockage** dit pourquoi. Verbinal réessaie plus tard,
-  en attendant plus longtemps à chaque fois tant que le stockage échoue ; **Synchroniser maintenant**
-  réessaie aussitôt.
+- **Une synchronisation a échoué.** La barre d’activité dit pourquoi et quand Verbinal réessaie : après
+  1, 2, 4 … jusqu’à 30 minutes tant que le stockage échoue, et aussitôt quand le réseau revient.
+  **Réessayer** sur la barre, ou **Synchroniser maintenant** dans **Réglages ▸ Stockage**, réessaie
+  aussitôt. Les résultats qui n’ont pas pu aller attendent, et vont avec elle.
+- **Votre stockage CANFAR est lent.** Chaque requête est reposée deux fois avant qu’une synchronisation
+  échoue ; une synchronisation qui attend plus de 10 secondes dit **En attente de votre stockage
+  CANFAR…** sur la barre.
 - **Une modification faite sur un autre appareil n’apparaît pas.** Verbinal synchronise quand vous vous
   connectez et quand vous y revenez après un moment ; **Synchroniser maintenant** synchronise aussitôt.
 

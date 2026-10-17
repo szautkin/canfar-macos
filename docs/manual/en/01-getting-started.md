@@ -98,6 +98,9 @@ Verbinal quits, until you click **Resume**, and then goes on from where it stopp
 paused, the line says so. **Clear Finished** empties the finished ones from the list; what is paused
 stays.
 
+A task that failed, and can be tried again, has **Retry**: a storage sync when your CANFAR storage was
+slow or out of service, or a file that did not go to or come from your storage.
+
 ### The file browser
 
 ![The file browser beside Home](../images/en/01-getting-started/file-browser.png)

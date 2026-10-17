@@ -75,6 +75,42 @@ struct WriteRecordingRemote: StorageRemote {
     func hasHome() async throws -> Bool { try await base.hasHome() }
 }
 
+/// VOSpace asked again when it is slow or out of service for a moment
+/// (plan 44 E3): a timeout, a dropped connection or a server error is tried
+/// again after 2 s, then 5 s; a refusal (4xx) or no network at all is not.
+/// Listing, reading and writing a whole file are safe to repeat.
+struct RetryingStorageRemote: StorageRemote {
+    let base: any StorageRemote
+    var waits: [Duration] = [.seconds(2), .seconds(5)]
+    var sleep: @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+
+    func list(_ folder: String) async throws -> [StorageItem]? { try await again { try await base.list(folder) } }
+    func read(_ path: String) async throws -> Data { try await again { try await base.read(path) } }
+    func write(_ data: Data, to path: String) async throws { try await again { try await base.write(data, to: path) } }
+    func isPublic(_ folder: String) async throws -> Bool { try await again { try await base.isPublic(folder) } }
+    func hasHome() async throws -> Bool { try await again { try await base.hasHome() } }
+
+    private func again<T>(_ call: () async throws -> T) async throws -> T {
+        for wait in waits {
+            do {
+                return try await call()
+            } catch where Self.isPassing(error) {
+                try await sleep(wait)
+            }
+        }
+        return try await call()
+    }
+
+    /// Worth asking again: slow, or out of service for a moment.
+    static func isPassing(_ error: Error) -> Bool {
+        if let url = error as? URLError {
+            return [.timedOut, .networkConnectionLost, .cannotConnectToHost, .dnsLookupFailed, .cannotFindHost].contains(url.code)
+        }
+        if case .httpError(let code, _)? = error as? NetworkError { return (500...599).contains(code) }
+        return false
+    }
+}
+
 /// The person's VOSpace, through the Storage client.
 struct VOSpaceStorageRemote: StorageRemote {
     let vospace: VOSpaceBrowserService

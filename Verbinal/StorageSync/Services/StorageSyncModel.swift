@@ -69,6 +69,23 @@ final class StorageSyncModel {
     private static let comeBackAfter: TimeInterval = 15 * 60
     private static let changeSettles: Duration = .seconds(5)
 
+    // MARK: When VOSpace is slow or out of service (plan 44 E)
+
+    /// After a failure, the wait before the next try: 1, 2, 4 … 30 minutes.
+    /// A test shortens it.
+    var retryWait: (_ failuresInARow: Int) -> TimeInterval = { failures in
+        min(30 * 60, 60 * pow(2, Double(max(0, failures - 1))))
+    }
+    /// A sync waiting longer than this is on the bar, whatever it moves.
+    var slowAfter: Duration = .seconds(10)
+    /// Failed syncs in a row, since the last that went.
+    private var failuresInARow = 0
+    /// When the next try is, while one waits after a failure.
+    private(set) var nextTry: Date?
+    private var retry: Task<Void, Never>?
+    private var slow: Task<Void, Never>?
+    private var watchingNetwork = false
+
     /// Whether the person keeps collection `id` in VOSpace — their choice,
     /// one collection at a time (plan 36 3.2), declared in the manifest so
     /// every device makes the same.
@@ -100,7 +117,8 @@ final class StorageSyncModel {
         signedOut()
         generation += 1
         let mine = generation
-        let sync = StorageSync(remote: VOSpaceStorageRemote(vospace: deps.vospace, username: username),
+        let remote = RetryingStorageRemote(base: VOSpaceStorageRemote(vospace: deps.vospace, username: username))
+        let sync = StorageSync(remote: remote,
                                catalog: Self.catalog(deps), stateFile: StorageSyncState.file(for: username),
                                watcher: { [weak self] event in await self?.heard(event, from: mine) })
         self.sync = sync
@@ -125,6 +143,12 @@ final class StorageSyncModel {
     func signedOut() {
         generation += 1
         chosen = [:]
+        retry?.cancel()
+        retry = nil
+        slow?.cancel()
+        slow = nil
+        failuresInARow = 0
+        nextTry = nil
         changed.values.forEach { $0.cancel() }
         changed = [:]
         if let activation { NotificationCenter.default.removeObserver(activation) }
@@ -209,6 +233,16 @@ final class StorageSyncModel {
     func heard(_ event: StorageSync.Event, from sync: Int? = nil) {
         guard sync.map({ $0 == generation }) ?? true else { return }
         switch event {
+        case .began:
+            // Slow, whatever it moves: on the bar after a while (plan 44 E5).
+            slow?.cancel()
+            let after = slowAfter
+            slow = Task { [weak self] in
+                try? await Task.sleep(for: after)
+                guard !Task.isCancelled, let self, self.task == nil else { return }
+                self.task = self.beginTask(pausedBy: nil)
+                self.task?.stage(String(localized: "Waiting for your CANFAR storage…"))
+            }
         case .progress(let count):
             current = count
             if task == nil, count.total >= Self.showFrom { task = beginTask(pausedBy: nil) }
@@ -216,9 +250,77 @@ final class StorageSyncModel {
             task?.count(count.done, of: count.total)
         case .ended(let imported, let sent, let failure, let paused):
             current = nil
-            guard let task, !paused else { return }
-            if let failure { task.fail(failure) } else { task.succeed(Self.moved(imported: imported, sent: sent)) }
-            self.task = nil
+            slow?.cancel()
+            slow = nil
+            guard !paused else { return }
+            if let failure {
+                // On the bar whatever it moved, with Retry and the next try
+                // (plan 44 E1, E2): it was told only in Settings.
+                failuresInARow += 1
+                let wait = retryWait(failuresInARow)
+                nextTry = Date().addingTimeInterval(wait)
+                let failed = task ?? beginTask(pausedBy: nil)
+                failed.offerRetry(byAssistant: true) { [weak self] _ in self?.retryNow() }
+                failed.fail(Self.failed(failure, retryingIn: wait))
+                task = nil
+                scheduleRetry(after: wait)
+            } else {
+                failuresInARow = 0
+                nextTry = nil
+                retry?.cancel()
+                retry = nil
+                task?.succeed(Self.moved(imported: imported, sent: sent))
+                task = nil
+            }
+        }
+    }
+
+    /// A failure, and when Verbinal tries again.
+    static func failed(_ why: String, retryingIn wait: TimeInterval) -> String {
+        let minutes = max(1, Int((wait / 60).rounded()))
+        return String(localized: "\(why) Verbinal tries again in \(minutes) min.")
+    }
+
+    private func scheduleRetry(after wait: TimeInterval) {
+        retry?.cancel()
+        let mine = generation
+        retry = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(wait))
+            guard !Task.isCancelled, let self, self.generation == mine else { return }
+            self.retryNow()
+        }
+    }
+
+    /// Tries again now: the bar's Retry, its time come, or the network back.
+    func retryNow() {
+        retry?.cancel()
+        retry = nil
+        nextTry = nil
+        run(.retry)
+    }
+
+    /// The network came back: a sync that failed is tried again at once.
+    func networkCameBack() {
+        guard nextTry != nil else { return }
+        retryNow()
+    }
+
+    /// Hears the network come back, once for the app's life.
+    func watchNetwork(_ monitor: NetworkPathMonitor) {
+        guard !watchingNetwork else { return }
+        watchingNetwork = true
+        observe(monitor)
+    }
+
+    private func observe(_ monitor: NetworkPathMonitor) {
+        withObservationTracking {
+            _ = monitor.connectivity
+        } onChange: { [weak self, weak monitor] in
+            Task { @MainActor in
+                guard let self, let monitor else { return }
+                if monitor.connectivity == .satisfied { self.networkCameBack() }
+                self.observe(monitor)
+            }
         }
     }
 

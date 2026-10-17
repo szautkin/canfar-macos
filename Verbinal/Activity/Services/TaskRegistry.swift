@@ -45,6 +45,16 @@ final class TaskRegistry {
     }
     private var pausing: [Int: Pausing] = [:]
 
+    /// What trying a failed task again does, given by its owner (plan 44 E):
+    /// the bar's Retry. `byAssistant`: retry_activity may too — a sync, which
+    /// moves only what the person chose; a transfer is the person's again,
+    /// or its tool's.
+    struct Retrying {
+        let byAssistant: Bool
+        let retry: @MainActor (Initiator) -> Void
+    }
+    private var retrying: [Int: Retrying] = [:]
+
     /// A count changes the bar at most this often: work that counts fast
     /// must not redraw it for every item.
     nonisolated static let countInterval: TimeInterval = 0.25
@@ -77,7 +87,7 @@ final class TaskRegistry {
         // The oldest FINISHED go first: running work is what a reader most
         // needs to see, and is never dropped to make room.
         while tasks.count > Self.maxTasks, let finished = tasks.firstIndex(where: \.isFinished) {
-            tasks.remove(at: finished)
+            retrying[tasks.remove(at: finished).id] = nil
         }
         return TaskHandle(id: nextID, registry: self)
     }
@@ -141,6 +151,31 @@ final class TaskRegistry {
             pausing[id]?.resume(initiator)
             return nil
         }
+    }
+
+    // MARK: - Retrying (plan 44 E)
+
+    fileprivate func offerRetry(_ id: Int, _ offer: Retrying) {
+        retrying[id] = offer
+    }
+
+    /// Tries failed task `id` again for `initiator`, as its owner says: the
+    /// bar's Retry, or retry_activity. Nil when it went; otherwise why not.
+    func retry(_ id: Int, by initiator: Initiator) -> String? {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else {
+            return "There is no task \(id) on the activity bar; list_activity gives each one's id."
+        }
+        let task = tasks[index]
+        guard task.progress == .failed, let offer = retrying[id] else {
+            return "\(task.label) cannot be tried again from the bar."
+        }
+        guard initiator == .person || offer.byAssistant else {
+            return "\(task.label) is the person's to try again (Retry on the activity bar), or its tool's: call it again."
+        }
+        retrying[id] = nil
+        tasks[index].canRetry = false
+        offer.retry(initiator)
+        return nil
     }
 
     /// A task that can be paused or resumed now, or why not.
@@ -211,6 +246,8 @@ final class TaskRegistry {
         guard let index = tasks.firstIndex(where: { $0.id == id }), !tasks[index].isFinished else { return }
         tasks[index].progress = progress
         tasks[index].message = message
+        // Only a failure is tried again.
+        if progress == .failed { tasks[index].canRetry = retrying[id] != nil } else { retrying[id] = nil }
         // Where it had got to is over; how it ended is the message (QA L10).
         tasks[index].stage = ""
         tasks[index].finished = Date()
@@ -248,6 +285,12 @@ final class TaskHandle {
 
     /// Whether someone has paused it.
     var isPaused: Bool { registry?.task(id)?.isPaused ?? false }
+
+    /// Should it fail, what trying it again does: the bar offers Retry
+    /// (plan 44 E). `byAssistant`: retry_activity may too.
+    func offerRetry(byAssistant: Bool = false, _ retry: @escaping @MainActor (Initiator) -> Void) {
+        registry?.offerRetry(id, .init(byAssistant: byAssistant, retry: retry))
+    }
 
     /// Runs `work` as this task's: what it records knows its task (plan 23).
     /// `track` does this itself; work begun with `begin` asks.

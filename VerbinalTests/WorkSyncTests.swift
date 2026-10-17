@@ -286,6 +286,114 @@ final class WorkSyncTests: XCTestCase {
         XCTAssertTrue(files.contains { $0.hasPrefix(".verbinal/recent-searches/") })
     }
 
+    // MARK: - VOSpace slow or out of service (plan 44 E, the person: "let user know about it in the bottom system status")
+
+    /// The model, hearing its own sync, as the app has it.
+    private func model(_ remote: FakeVOSpace, _ kinds: [any StorageKind], registry: TaskRegistry) -> StorageSyncModel {
+        let model = StorageSyncModel(tasks: registry)
+        model.attach(StorageSync(remote: remote, catalog: StorageKindCatalog(kinds: kinds),
+                                 stateFile: directory.appendingPathComponent("state-model.json"),
+                                 watcher: { [weak model] event in await model?.heard(event) }))
+        return model
+    }
+
+    /// A sync that failed was on the bar only when it moved five or more:
+    /// a failure of one saved query was told nowhere but Settings.
+    func testAFailedSyncIsOnTheBarWhateverItMoved() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["savedQueries": ".verbinal/queries"]))
+        let saved = queries()
+        saved.save(SavedQuery(name: "one", adql: "SELECT 1"))
+        let registry = TaskRegistry()
+        let model = model(remote, [saved.syncCollection().kind], registry: registry)
+        await remote.setFailing(true)
+        await model.run(.asked)?.value
+        let task = try XCTUnwrap(registry.tasks.last, "a failure is on the bar, though it moved one item")
+        XCTAssertEqual(task.progress, .failed)
+        XCTAssertTrue(task.canRetry, "with Retry")
+        XCTAssertTrue(task.message?.contains("tries again in 1 min") == true, task.message ?? "")
+        XCTAssertNotNil(model.nextTry)
+    }
+
+    /// It was tried again only at the next sign-in, return after 15 minutes,
+    /// or change: hours, perhaps. Now on its own, after a wait.
+    func testAFailedSyncIsTriedAgainByItself() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["savedQueries": ".verbinal/queries"]))
+        let saved = queries()
+        saved.save(SavedQuery(name: "one", adql: "SELECT 1"))
+        let registry = TaskRegistry()
+        let model = model(remote, [saved.syncCollection().kind], registry: registry)
+        model.retryWait = { _ in 0.2 }
+        await remote.setFailing(true)
+        await model.run(.asked)?.value
+        await remote.setFailing(false)
+        try await Task.sleep(for: .seconds(1))
+        let files = await remote.files.keys
+        XCTAssertTrue(files.contains { $0.hasPrefix(".verbinal/queries/") }, "it went on the next try")
+        XCTAssertNil(model.nextTry, "and nothing more waits")
+    }
+
+    /// The bar's Retry, and the network coming back, try at once.
+    func testRetryAndTheNetworkComingBackTryAtOnce() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["savedQueries": ".verbinal/queries"]))
+        let saved = queries()
+        saved.save(SavedQuery(name: "one", adql: "SELECT 1"))
+        let registry = TaskRegistry()
+        let model = model(remote, [saved.syncCollection().kind], registry: registry)
+        model.retryWait = { _ in 3600 }
+        await remote.setFailing(true)
+        await model.run(.asked)?.value
+        let failed = try XCTUnwrap(registry.tasks.last)
+        XCTAssertNil(registry.retry(failed.id, by: .assistant), "an assistant may retry a sync too")
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(registry.tasks.filter { $0.progress == .failed }.count, 2, "still failing: tried again, failed again")
+
+        await remote.setFailing(false)
+        model.networkCameBack()
+        try await Task.sleep(for: .milliseconds(500))
+        let files = await remote.files.keys
+        XCTAssertTrue(files.contains { $0.hasPrefix(".verbinal/queries/") }, "the network back: it went")
+        XCTAssertNil(model.nextTry)
+    }
+
+    /// Slow, whatever it moves: on the bar while it waits.
+    func testASlowSyncIsOnTheBarWhileItWaits() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["savedQueries": ".verbinal/queries"]))
+        let saved = queries()
+        saved.save(SavedQuery(name: "one", adql: "SELECT 1"))
+        let registry = TaskRegistry()
+        let model = model(remote, [saved.syncCollection().kind], registry: registry)
+        model.slowAfter = .milliseconds(100)
+        await remote.hold(".verbinal/queries")
+        let running = model.run(.asked)
+        await remote.whenHeld(".verbinal/queries")
+        try await Task.sleep(for: .milliseconds(400))
+        let waiting = try XCTUnwrap(registry.tasks.last, "a slow sync of one item is on the bar")
+        XCTAssertEqual(waiting.progress, .running)
+        XCTAssertEqual(waiting.stage, "Waiting for your CANFAR storage…")
+        await remote.release(".verbinal/queries")
+        await running?.value
+        XCTAssertEqual(registry.tasks.last?.progress, .succeeded)
+    }
+
+    /// Results that could not go fail the sync, saying why, so it is on the
+    /// bar and tried again: they waited, unseen, for the next sync.
+    func testResultsThatCannotGoFailTheSync() async throws {
+        let kind = ResultsKind(send: { 1 }, stuck: { "CANFAR storage answered 503" })
+        let context = StorageKindContext(folder: "Verbinal-Results", items: [], changed: [], memory: [:], remote: FakeVOSpace())
+        do {
+            _ = try await kind.sync(context)
+            XCTFail("what could not go is a failure")
+        } catch {
+            XCTAssertEqual(error.localizedDescription, "1 results went to your storage; the rest wait: CANFAR storage answered 503")
+        }
+        let fine = try await ResultsKind(send: { 2 }).sync(context)
+        XCTAssertEqual(fine.sent, 2)
+    }
+
     // MARK: - Each area's store
 
     func testARecentSearchRunOnTwoDevicesIsOne() {

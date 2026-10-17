@@ -55,6 +55,7 @@ extension AppState {
         tools.append(ListActivityTool(tasks: { [weak self] in await self?.tasks.tasks ?? [] }))
         tools.append(PauseActivityTool.pause(registry: tasks))
         tools.append(PauseActivityTool.resume(registry: tasks))
+        tools.append(RetryActivityTool(registry: tasks))
         tools.append(ListJobHistoryTool(jobs: { [weak self] in await self?.jobHistory.jobs ?? [] }))
 
         // Search domain. The recent/saved stores are the LIVE instances

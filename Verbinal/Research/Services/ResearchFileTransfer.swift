@@ -84,7 +84,8 @@ final class ResearchFileTransfer {
         guard file.places.onMac, let url = file.local.bookmarked()?.url ?? file.local.readableURL else { throw Failure.notOnMac(name) }
         if file.places.inStorage { return record }
         guard let storage else { throw Failure.signedOut }
-        let path = try await working(name, recordID, String(localized: "Send \(name) to your storage")) {
+        let path = try await working(name, recordID, String(localized: "Send \(name) to your storage"),
+                                     again: { [weak self] in Task { try? await self?.send(name, of: recordID) } }) {
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             return try await storage.send(url, toFolder: Self.folder)
@@ -102,7 +103,8 @@ final class ResearchFileTransfer {
         if file.places.onMac, file.local.exists { return record }
         guard let path = file.storagePath else { throw Failure.notInStorage(name) }
         guard let storage else { throw Failure.signedOut }
-        let placed = try await working(name, recordID, String(localized: "Get \(name) from your storage")) {
+        let placed = try await working(name, recordID, String(localized: "Get \(name) from your storage"),
+                                       again: { [weak self] in Task { try? await self?.fetch(name, of: recordID) } }) {
             let temp = try await storage.fetch(path)
             // From storage, so not sent back to it as a new result.
             return try await DownloadPlacement.place(temp, named: name, downloads: self.downloads, asResult: false)
@@ -140,7 +142,8 @@ final class ResearchFileTransfer {
         guard let path = file.storagePath else { return record }
         guard file.places.onMac, file.local.exists else { throw Failure.onlyCopy(name) }
         guard let storage else { throw Failure.signedOut }
-        try await working(name, recordID, String(localized: "Remove \(name) from your storage")) {
+        try await working(name, recordID, String(localized: "Remove \(name) from your storage"),
+                          again: { [weak self] in Task { try? await self?.removeFromStorage(name, of: recordID) } }) {
             try await storage.remove(path)
         }
         let updated = setStoragePath(nil, of: file, in: try current(recordID))
@@ -191,7 +194,10 @@ final class ResearchFileTransfer {
     }
 
     /// Runs `work` as the file's, on the activity bar.
+    /// Runs a transfer as a task on the bar; should it fail, the bar's Retry
+    /// does `again` (plan 44 E4), the person's to press.
     private func working<T>(_ name: String, _ recordID: UUID, _ label: String,
+                            again: @escaping @MainActor () -> Void,
                             _ work: () async throws -> T) async throws -> T {
         let key = Self.key(recordID, name)
         busy.insert(key)
@@ -202,6 +208,7 @@ final class ResearchFileTransfer {
             task.succeed()
             return value
         } catch {
+            task.offerRetry { _ in again() }
             task.fail(error.localizedDescription)
             throw error
         }

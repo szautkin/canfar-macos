@@ -60,9 +60,24 @@ struct ResultsKind: StorageKind {
     let declaredWhenFound = false
     /// Sends what waits; how many went.
     let send: @Sendable () async -> Int
+    /// Why what waits could not go, when it could not (plan 44 E4).
+    var stuck: @Sendable () async -> String? = { nil }
 
     func sync(_ context: StorageKindContext) async throws -> StorageKindOutcome {
-        StorageKindOutcome(sent: await send())
+        let sent = await send()
+        // What could not go fails the sync: on the bar, and tried again.
+        if let why = await stuck() { throw ResultsWait(why: why, sent: sent) }
+        return StorageKindOutcome(sent: sent)
+    }
+
+    /// Results that could not go yet, and why.
+    struct ResultsWait: LocalizedError {
+        let why: String
+        let sent: Int
+        var errorDescription: String? {
+            sent > 0 ? String(localized: "\(sent) results went to your storage; the rest wait: \(why)")
+                     : String(localized: "Results wait to go to your storage: \(why)")
+        }
     }
 }
 

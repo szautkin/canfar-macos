@@ -301,6 +301,56 @@ final class StorageSyncTests: XCTestCase {
         XCTAssertEqual(files.count, 3, "nothing deleted")
     }
 
+    // MARK: - VOSpace slow or out of service for a moment (plan 44 E3)
+
+    /// Fails `failing` times with `error`, then answers.
+    actor Flaky: StorageRemote {
+        private(set) var calls = 0
+        var failing: Int
+        let error: Error
+        init(failing: Int, error: Error) { self.failing = failing; self.error = error }
+        private func attempt() throws {
+            calls += 1
+            if failing > 0 { failing -= 1; throw error }
+        }
+        func list(_ folder: String) async throws -> [StorageItem]? { try attempt(); return [] }
+        func read(_ path: String) async throws -> Data { try attempt(); return Data("ok".utf8) }
+        func write(_ data: Data, to path: String) async throws { try attempt() }
+        func isPublic(_ folder: String) async throws -> Bool { try attempt(); return false }
+        func hasHome() async throws -> Bool { try attempt(); return true }
+    }
+
+    private func retrying(_ base: Flaky) -> RetryingStorageRemote {
+        RetryingStorageRemote(base: base, waits: [.zero, .zero], sleep: { _ in })
+    }
+
+    func testARequestThatTimesOutOrMeetsAServerErrorIsAskedAgain() async throws {
+        let slow = Flaky(failing: 2, error: URLError(.timedOut))
+        let data = try await retrying(slow).read("x")
+        XCTAssertEqual(data, Data("ok".utf8))
+        let calls = await slow.calls
+        XCTAssertEqual(calls, 3, "twice more, then it answered")
+
+        let busy = Flaky(failing: 1, error: NetworkError.httpError(503, "Service Unavailable"))
+        try await retrying(busy).write(Data(), to: "x")
+        let busyCalls = await busy.calls
+        XCTAssertEqual(busyCalls, 2)
+    }
+
+    func testARefusalOrAnOutageThatLastsIsNotHiddenByRetries() async throws {
+        let refused = Flaky(failing: 1, error: NetworkError.httpError(403, "Forbidden"))
+        do { _ = try await retrying(refused).list("x"); XCTFail("a refusal is not asked again") } catch {}
+        let refusedCalls = await refused.calls
+        XCTAssertEqual(refusedCalls, 1)
+
+        let down = Flaky(failing: 5, error: URLError(.cannotConnectToHost))
+        do { _ = try await retrying(down).hasHome(); XCTFail("three tries, then it fails, saying why") } catch {
+            XCTAssertEqual((error as? URLError)?.code, .cannotConnectToHost)
+        }
+        let downCalls = await down.calls
+        XCTAssertEqual(downCalls, 3)
+    }
+
     // MARK: - Research
 
     func testANoteMadeOnOneDeviceAppearsOnTheOther() async throws {

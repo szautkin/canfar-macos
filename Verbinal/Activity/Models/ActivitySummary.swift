@@ -21,6 +21,8 @@ enum ActivitySummary {
         /// The task, for its Pause and Resume.
         var id = 0
         var canPause = false
+        /// It failed, and Retry tries it again (plan 44 E).
+        var canRetry = false
         /// How much is done, 0 to 1, when it counts.
         var fraction: Double?
     }
@@ -108,7 +110,8 @@ enum ActivitySummary {
         }
         let title = task.isAgain ? String(localized: "\(task.label), again") : task.label
         return Line(title: title, detail: detail, progress: task.progress, startedBy: who(task.startedBy),
-                    id: task.id, canPause: task.canPause && !task.isFinished, fraction: task.fraction)
+                    id: task.id, canPause: task.canPause && !task.isFinished,
+                    canRetry: task.canRetry && task.progress == .failed, fraction: task.fraction)
     }
 
     /// At the precision a person reads: under a second is "just now".

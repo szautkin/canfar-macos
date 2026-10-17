@@ -55,8 +55,11 @@ mistake is the CADC password in place of the Harbor CLI secret.
 - **Research is not synced while your .verbinal folder is readable by anyone.** Make `.verbinal` private
   in Storage (see [Files that should not be public](09-storage.md#files-that-should-not-be-public)); the
   next sync goes on.
-- **A sync failed.** **Settings ▸ Storage** says why. Verbinal tries again later, waiting longer each
-  time while storage fails; **Sync Now** tries at once.
+- **A sync failed.** The activity bar says why and when Verbinal tries again: after 1, 2, 4 … up to 30
+  minutes while storage fails, and at once when the network comes back. **Retry** on the bar, or
+  **Sync Now** in **Settings ▸ Storage**, tries at once. Results that could not go wait, and go with it.
+- **Your CANFAR storage is slow.** Each request is asked again twice before a sync fails; a sync that
+  waits longer than 10 seconds says **Waiting for your CANFAR storage…** on the bar.
 - **A change made on another device does not show.** Verbinal syncs when you sign in and when you come
   back to it after a while; **Sync Now** syncs at once.
 

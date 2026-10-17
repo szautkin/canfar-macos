@@ -84,6 +84,8 @@ actor StorageSync {
 
     /// What a sync tells its watcher as it goes (plan 40).
     enum Event: Equatable, Sendable {
+        /// A run begins: slow work shows on the bar (plan 44 E5).
+        case began
         /// A kind's count.
         case progress(Progress)
         /// The run is over: what moved, and why it failed, if it did; or it
@@ -94,8 +96,11 @@ actor StorageSync {
     /// Why a sync runs.
     enum Reason: String, Sendable {
         case signedIn, cameBack, changed, asked
-        /// An automatic sync waits after failures; one asked for does not.
-        var isAutomatic: Bool { self != .asked }
+        /// Tried again after a failure, its wait over (plan 44 E2).
+        case retry
+        /// An automatic sync waits after failures; one asked for, or tried
+        /// again once its wait is over, does not.
+        var isAutomatic: Bool { self != .asked && self != .retry }
     }
 
     private let remote: any StorageRemote
@@ -211,6 +216,7 @@ actor StorageSync {
 
     private func run(_ reason: Reason, only kindIDs: Set<String>?) async {
         Self.logger.info("sync (\(reason.rawValue, privacy: .public)) begins")
+        await watcher?(.began)
         var imported = 0, sent = 0
         var failure: String?
         do {

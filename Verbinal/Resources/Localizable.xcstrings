@@ -56,6 +56,16 @@
         }
       }
     },
+    "%@ Verbinal tries again in %lld min." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Verbinal réessaie dans %lld min."
+          }
+        }
+      }
+    },
     "%@ — paused" : {
       "localizations" : {
         "fr" : {
@@ -92,6 +102,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld en pause"
+          }
+        }
+      }
+    },
+    "%lld results went to your storage; the rest wait: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld résultats sont allés dans votre stockage ; les autres attendent : %@"
           }
         }
       }
@@ -979,6 +999,16 @@
         }
       }
     },
+    "Results wait to go to your storage: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Des résultats attendent d’aller dans votre stockage : %@"
+          }
+        }
+      }
+    },
     "Scroll or drag to pan, ⌘-scroll or pinch to zoom, click to place the crosshair, ⌘-drag to select an area" : {
       "localizations" : {
         "fr" : {
@@ -1239,6 +1269,16 @@
         }
       }
     },
+    "Try it again now" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer maintenant"
+          }
+        }
+      }
+    },
     "Updated %@" : {
       "localizations" : {
         "fr" : {
@@ -1305,6 +1345,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En attente de sa première synchronisation"
+          }
+        }
+      }
+    },
+    "Waiting for your CANFAR storage…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente de votre stockage CANFAR…"
           }
         }
       }

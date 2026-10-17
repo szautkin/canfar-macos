@@ -21,6 +21,7 @@ extension AppState {
                 return await coordinator.importManifest(data)
             },
             resumeRuns: { await remoteCompute.resumeWatching() }))
+        storageSync.watchNetwork(networkPath)
     }
 
     /// The person's work, each collection from its area (plan 36 3.1–3.6),
@@ -40,7 +41,8 @@ extension AppState {
             recentLaunchStore.syncCollection(),
             portalSettingsService.syncCollection(username: username),
             // Not a collection: the results kept on the Mac, sent when chosen (plan 36 4.1).
-            WorkCollection(kind: ResultsKind(send: { await ResultDestination.shared.sendWaiting() }),
+            WorkCollection(kind: ResultsKind(send: { await ResultDestination.shared.sendWaiting() },
+                                             stuck: { await ResultDestination.shared.stuck }),
                            watch: { _ = ResultDestination.shared.waiting }),
         ]
     }

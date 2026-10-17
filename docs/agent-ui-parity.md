@@ -207,6 +207,7 @@ every later agent is told; **read** = pure data.
 | Current view incl. Search sub-tab + result counts | `get_current_view` (enriched) | read |
 | Activity bar: what is running, who started it, its stage, what failed and why | `list_activity` | read |
 | Activity bar: how far a task has got ("120 of 288"), Pause and Resume on one that can wait (plan 40) | `list_activity` (`done`, `total`, `pausable`, `pausedBy`), `pause_activity`, `resume_activity` | live |
+| Activity bar: Retry on a failed task (plan 44 E) | `list_activity` (`retryable`), `retry_activity` (a sync); a failed transfer: its tool again | live |
 | Local file-browser panel: browse | `list_local_folder` | read |
 | Local file-browser panel: open file | `open_local_file` (optional `viewer` skips Open as…) | live |
 | Settings ▸ Endpoints (effective URLs) | `get_endpoints` | read |

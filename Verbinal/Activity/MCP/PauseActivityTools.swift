@@ -78,3 +78,45 @@ struct PauseActivityTool: JSONReadTool {
         }
     }
 }
+
+/// `retry_activity` (plan 44 E): an assistant tries a failed sync again, as
+/// the person does with the bar's Retry. A transfer that failed is tried
+/// again by the person, or by calling its tool again — it is a change.
+struct RetryActivityTool: JSONReadTool {
+    static var verbClass: VerbClass { .viewState }
+
+    struct Args: Decodable, Sendable {
+        /// The task's id, from list_activity.
+        let id: Int
+    }
+
+    struct Output: Encodable, Sendable {
+        /// The task tried again, as it stands now: its new attempt is a task of its own.
+        let task: ListActivityTool.Entry
+    }
+
+    let definition = AIToolDefinition.withStaticSchema(
+        name: "retry_activity",
+        description: "Try a failed task on the activity bar again now — `retryable` in list_activity, such as the storage sync after CANFAR storage was slow or out of service — as the person's Retry on the bar does. The new attempt is a task of its own; list_activity shows it. A failed transfer is the person's to retry, or call its tool again. Live: no proposal.",
+        schema: #"""
+        {
+          "type": "object",
+          "properties": { "id": { "type": "integer", "description": "The task's id, from list_activity." } },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+        """#)
+    let registry: TaskRegistry
+
+    func handle(_ args: Args, context: AIToolContext) async throws -> Output {
+        let initiator = Initiator.current
+        return try await MainActor.run {
+            if let refusal = registry.retry(args.id, by: initiator) {
+                throw registry.task(args.id) == nil ? ToolFailureReason.unknownTarget(refusal)
+                                                    : ToolFailureReason.invalidArgument(refusal)
+            }
+            guard let task = registry.task(args.id) else { throw ToolFailureReason.unknownTarget("No task \(args.id).") }
+            return Output(task: ListActivityTool.Entry(task, now: Date()))
+        }
+    }
+}
