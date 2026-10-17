@@ -94,9 +94,12 @@ final class SessionLaunchModel {
     var coreOptions: [Int] = []
     var ramOptions: [Int] = []
     /// What the platform offers in GPUs (plan 41): its context's, followed
-    /// as it refreshes. With none, a tick from before is cleared.
+    /// as it refreshes. With none, a tick from before is cleared; a count
+    /// the Advanced tab chose that is no longer offered, too (plan 42).
     var gpuOffer: GPUOffer = .none {
-        didSet { if !gpuOffer.offersAny, gpus != 0 { gpus = 0 } }
+        didSet {
+            if !gpuOffer.offersAny || (gpus > 1 && !gpuOffer.allows(gpus)) { gpus = 0 }
+        }
     }
     var repositories: [String] = []
     var defaultCores = 2
@@ -414,7 +417,12 @@ final class SessionLaunchModel {
         launchPhase.fail(Problem(.refused, message, retry: false))
     }
 
-    func launch() async {
+    /// Launches what `tab` shows: the Standard tab its catalogue image and
+    /// one GPU at most, the Advanced tab its own image and the count chosen
+    /// (plan 42). The tab, not what was last launched, says which image: the
+    /// Standard tab had launched the Advanced tab's image after it.
+    func launch(from tab: FormTab) async {
+        useCustomImage = tab == .advanced
         guard !sessionName.isEmpty else {
             refuse(String(localized: "Session name is required"))
             return
@@ -457,7 +465,7 @@ final class SessionLaunchModel {
         if resourceType == "fixed" {
             params.cores = cores
             params.ram = ram
-            params.gpus = gpuOffer.offersAny ? min(gpus, 1) : 0
+            params.gpus = gpusToSend(from: tab)
         } else {
             params.cores = 0
             params.ram = 0
@@ -520,8 +528,7 @@ final class SessionLaunchModel {
         do {
             let session = try await launches.launch(params)
             launchPhase.finish(attempt, with: .success(session.id))
-            launchStatus = gpus.dropped ? String(localized: "Relaunched without a GPU: this platform offers none")
-                                        : String(localized: "Session relaunched!")
+            launchStatus = gpus.note ?? String(localized: "Session relaunched!")
 
             var updated = launch
             updated.launchedAt = Date()

@@ -33,10 +33,12 @@ final class LaunchFormGPULayoutTests: XCTestCase {
     /// The form in a window as wide as its sheet at its narrowest (620);
     /// `body` reads its elements by id and by name, and the controls that
     /// spill out of the window.
-    private func form(_ model: SessionLaunchModel, batch: HeadlessLaunchModel? = nil, capture: String,
+    private func form(_ model: SessionLaunchModel, batch: HeadlessLaunchModel? = nil, tab: AppState.LaunchFormTab? = nil,
+                      capture: String,
                       _ body: (_ byID: [String: UIElement], _ names: [String], _ spilled: [String]) throws -> Void) async throws {
         let state = AppState(marks: MarkStore(persistence: nil))
         if batch != nil { state.launchFormTab = .headless }
+        if let tab { state.launchFormTab = tab }
         let window = NSWindow(contentRect: NSRect(x: 120, y: 80, width: 620, height: 640), styleMask: [.titled],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -117,6 +119,22 @@ final class LaunchFormGPULayoutTests: XCTestCase {
                 XCTAssertEqual(stepper.enabled, offer.offersAny)
                 XCTAssertEqual(stepper.help, offer.offersAny ? "GPUs for this job: 0, or one the platform offers" : "This platform offers no GPUs")
                 XCTAssertNil(byID["portal.launch.gpu"], "no checkbox on the batch tab")
+            }
+        }
+    }
+
+    /// Plan 42: the Advanced tab, Fixed, has the GPU stepper through what is
+    /// offered — greyed where nothing is — and no checkbox.
+    func testTheAdvancedTabHasTheStepper() async throws {
+        try await AXReadable.require()
+        for offer in [GPUOffer(options: Array(1...7)), .none] {
+            let model = model(offer: offer)
+            model.resourceType = "fixed"
+            try await form(model, tab: .advanced, capture: offer.offersAny ? "advanced-gpus" : "advanced-no-gpus") { byID, _, spilled in
+                XCTAssertEqual(spilled, [])
+                let stepper = try XCTUnwrap(byID.values.first { $0.name == "GPUs" && $0.kind == .stepper }, "\(byID.values.compactMap(\.name))")
+                XCTAssertEqual(stepper.enabled, offer.offersAny)
+                XCTAssertNil(byID["portal.launch.gpu"], "no checkbox on the Advanced tab")
             }
         }
     }

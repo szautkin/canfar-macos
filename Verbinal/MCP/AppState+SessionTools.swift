@@ -149,7 +149,9 @@ extension AppState {
                 let tab = args.tab.flatMap { ShowLaunchFormTool.tabs[$0.lowercased()] }
                 let inCatalogue = image.map { id in self.canfarImagesModel?.allImages.contains { $0.id == id } ?? false }
                 let resources = LaunchResources(type: args.resources?.lowercased(), cores: args.cores, ram: args.ram, gpus: args.gpus)
-                if let refusal = self.sessionLaunchModelForTools?.refusal(resources) {
+                // The tab it shows judges the GPUs: Standard one, Advanced the options (plan 42).
+                let shows = tab ?? (inCatalogue == false ? .advanced : self.launchFormTab)
+                if let refusal = self.sessionLaunchModelForTools?.refusal(resources, tab: shows == .standard ? .standard : .advanced) {
                     throw ToolFailureReason.invalidArgument(refusal)
                 }
                 self.navigateTo(.portal)

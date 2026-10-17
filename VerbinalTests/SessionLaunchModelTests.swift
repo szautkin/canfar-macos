@@ -34,7 +34,7 @@ final class SessionLaunchModelTests: XCTestCase {
 
     func testLaunchFailsWhenNoSessionID() async {
         let model = makeModel(returning: nil)
-        await model.launch()
+        await model.launch(from: .standard)
         XCTAssertFalse(model.launchSuccess, "a no-ID launch must not report success")
         XCTAssertNotNil(model.launchPhase.problem)
         XCTAssertNil(model.pendingRecentLaunch, "no RecentLaunch should be queued for a no-ID launch")
@@ -42,7 +42,7 @@ final class SessionLaunchModelTests: XCTestCase {
 
     func testLaunchSucceedsWithSessionID() async {
         let model = makeModel(returning: "sess-abc123")
-        await model.launch()
+        await model.launch(from: .standard)
         XCTAssertTrue(model.launchSuccess)
         XCTAssertTrue(model.launchStatus.contains("sess-abc123"), "status should carry the real id")
         XCTAssertEqual(model.pendingRecentLaunch?.name, "test-session")

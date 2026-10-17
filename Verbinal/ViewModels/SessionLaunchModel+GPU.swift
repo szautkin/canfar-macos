@@ -6,11 +6,18 @@
 
 import Foundation
 
-/// An interactive session's GPU (plan 41): one or none, and none where the
-/// platform offers none.
+/// A session's GPUs (plans 41, 42): the Standard tab one or none, the
+/// Advanced tab and a relaunch the counts the context offers; none where
+/// the platform offers none.
 extension SessionLaunchModel {
-    /// Use a GPU. Ticked, the resources become Fixed: one GPU with a fixed
-    /// size is what Skaha is known to take. Unticked, Fixed stays as it is.
+    /// The tab a launch is from.
+    enum FormTab: Sendable {
+        case standard, advanced
+    }
+
+    /// Use a GPU, the Standard tab's. Ticked, the resources become Fixed:
+    /// one GPU with a fixed size is what Skaha is known to take. Unticked,
+    /// Fixed stays as it is.
     var usesAGPU: Bool {
         get { gpus > 0 }
         set {
@@ -33,19 +40,45 @@ extension SessionLaunchModel {
     /// The context has loaded: before then, nothing is judged against it.
     var knowsTheOffer: Bool { !coreOptions.isEmpty }
 
-    /// Why the form cannot take `gpus` for an interactive session, or nil.
-    func gpuRefusal(_ gpus: Int?) -> String? {
-        guard let gpus else { return nil }
-        if gpus > 1 { return "an interactive session takes at most one GPU (gpus 0 or 1); batch jobs take more" }
-        if gpus == 1, knowsTheOffer, !gpuOffer.offersAny { return "this platform offers no GPUs" }
-        return nil
+    /// What a launch from `tab` asks for: Standard one at most, Advanced
+    /// the count chosen — none where it is not offered.
+    func gpusToSend(from tab: FormTab) -> Int {
+        guard gpuOffer.offersAny, gpus > 0 else { return 0 }
+        switch tab {
+        case .standard: return 1
+        case .advanced: return gpuOffer.allows(gpus) ? gpus : 0
+        }
     }
 
-    /// A recorded launch's GPUs, relaunched: one at most; none where the
-    /// platform offers none, once its context is known — and then said.
-    func relaunchGPUs(_ launch: RecentLaunch) -> (count: Int, dropped: Bool) {
-        guard launch.resourceType == "fixed", launch.gpus > 0 else { return (0, false) }
-        if knowsTheOffer, !gpuOffer.offersAny { return (0, true) }
-        return (1, false)
+    /// Why `tab` cannot take `gpus`, or nil.
+    func gpuRefusal(_ gpus: Int?, tab: FormTab) -> String? {
+        guard let gpus, gpus > 0, knowsTheOffer else { return nil }
+        guard gpuOffer.offersAny else { return "this platform offers no GPUs" }
+        switch tab {
+        case .standard where gpus > 1:
+            return "the Standard tab takes one GPU or none (gpus 0 or 1); the Advanced tab takes 0, or one of \(gpuOffer.described)"
+        case .advanced where !gpuOffer.allows(gpus):
+            return "gpus \(gpus) is not offered: 0, or one of \(gpuOffer.described)"
+        default:
+            return nil
+        }
+    }
+
+    /// A recorded launch's GPUs, relaunched (plan 42): the count recorded,
+    /// while it is offered; else the largest offered below it, or none, and
+    /// the status says which. Before the context is known, as recorded. One
+    /// is what the Standard tab asks for, offered wherever any is.
+    func relaunchGPUs(_ launch: RecentLaunch) -> (count: Int, note: String?) {
+        guard launch.resourceType == "fixed", launch.gpus > 0, knowsTheOffer else {
+            return (launch.resourceType == "fixed" ? launch.gpus : 0, nil)
+        }
+        guard gpuOffer.offersAny else {
+            return (0, String(localized: "Relaunched without a GPU: this platform offers none"))
+        }
+        if launch.gpus == 1 || gpuOffer.allows(launch.gpus) { return (launch.gpus, nil) }
+        let below = gpuOffer.counts.last { $0 < launch.gpus } ?? 1
+        return (below, below == 1
+            ? String(localized: "Relaunched with one GPU: this platform offers \(gpuOffer.described)")
+            : String(localized: "Relaunched with \(below) GPUs: this platform offers \(gpuOffer.described)"))
     }
 }

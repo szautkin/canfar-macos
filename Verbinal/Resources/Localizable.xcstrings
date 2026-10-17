@@ -739,6 +739,26 @@
         }
       }
     },
+    "Relaunched with %lld GPUs: this platform offers %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session relancée avec %1$lld GPU : cette plate-forme propose %2$@"
+          }
+        }
+      }
+    },
+    "Relaunched with one GPU: this platform offers %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session relancée avec un GPU : cette plate-forme propose %@"
+          }
+        }
+      }
+    },
     "Relaunched without a GPU: this platform offers none" : {
       "localizations" : {
         "fr" : {

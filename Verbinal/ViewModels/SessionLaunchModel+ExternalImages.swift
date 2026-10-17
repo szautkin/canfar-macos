@@ -11,13 +11,14 @@ import Observation
 extension SessionLaunchModel {
     // MARK: - External resources
 
-    /// Why the form cannot show `asked`: a size with Flexible, or a size it
-    /// does not offer. Nil when it can, or when it has no sizes yet to check.
-    func refusal(_ asked: LaunchResources) -> String? {
+    /// Why the form cannot show `asked` on `tab`: a size with Flexible, or a
+    /// size it does not offer there. Nil when it can, or when it has no sizes
+    /// yet to check.
+    func refusal(_ asked: LaunchResources, tab: FormTab) -> String? {
         if asked.type == "flexible", asked.asksForASize {
             return "cores, ram and gpus are a fixed size: resources \"flexible\" takes none"
         }
-        if let refusal = gpuRefusal(asked.gpus) { return refusal }
+        if let refusal = gpuRefusal(asked.gpus, tab: tab) { return refusal }
         for (name, value, offered) in [("cores", asked.cores, coreOptions), ("ram", asked.ram, ramOptions)] {
             if let value, !offered.isEmpty, !offered.contains(value) {
                 return "\(name) \(value) is not one the form offers: \(offered.map(String.init).joined(separator: ", "))"
@@ -31,7 +32,7 @@ extension SessionLaunchModel {
         if let type = asked.resolvedType { resourceType = type }
         if let cores = asked.cores { self.cores = cores }
         if let ram = asked.ram { self.ram = ram }
-        if let gpus = asked.gpus { self.gpus = min(gpus, 1) }
+        if let gpus = asked.gpus { self.gpus = gpus }
     }
 
     // MARK: - External image selection

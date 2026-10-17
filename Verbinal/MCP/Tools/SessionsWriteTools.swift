@@ -41,7 +41,7 @@ struct LaunchSessionTool: JSONWriteTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "launch_session",
-        description: "Launch a new Skaha science-platform session. Type ∈ {notebook, desktop, firefly, carta, contributed}. The `image` MUST be a value returned by `list_session_images` for this user — hand-typed strings (e.g. 'images.canfar.net/skaha/notebook:latest') WILL fail with HTTP 400 'unknown or private image'. BEFORE picking an image when the user has tooling needs, call `find_images_with_packages(...)` — most catalogue images have a cached package manifest, and choosing the right pre-baked image up-front beats `pip install --user`-ing inside the running session. SCHEDULING: cores/ram/gpus default to 2/8/0 if omitted, which can sit in Pending for many minutes under cluster load; pass `cores: 1, ram: 1` for fastest start (typically <60s on a warm node) when you're iterating or smoke-testing. Pass cores=0 (or rely on default after rejection retry) to request the shared/flexible resource pool. GPUS: an interactive session takes at most one — `gpus` 0 or 1, and 1 only where the platform offers GPUs (get_platform_load); batch jobs take more (launch_headless_job).",
+        description: "Launch a new Skaha science-platform session. Type ∈ {notebook, desktop, firefly, carta, contributed}. The `image` MUST be a value returned by `list_session_images` for this user — hand-typed strings (e.g. 'images.canfar.net/skaha/notebook:latest') WILL fail with HTTP 400 'unknown or private image'. BEFORE picking an image when the user has tooling needs, call `find_images_with_packages(...)` — most catalogue images have a cached package manifest, and choosing the right pre-baked image up-front beats `pip install --user`-ing inside the running session. SCHEDULING: cores/ram/gpus default to 2/8/0 if omitted, which can sit in Pending for many minutes under cluster load; pass `cores: 1, ram: 1` for fastest start (typically <60s on a warm node) when you're iterating or smoke-testing. Pass cores=0 (or rely on default after rejection retry) to request the shared/flexible resource pool. GPUS: `gpus` is 0, or one of the counts the platform offers (its context's options; get_platform_load's `gpu` says how many are free and the most per session), as on the launch form's Advanced tab.",
         schema: #"""
         {
           "type": "object",
@@ -52,7 +52,7 @@ struct LaunchSessionTool: JSONWriteTool {
             "image": { "type": "string", "minLength": 1 },
             "cores": { "type": "integer", "minimum": 1 },
             "ram":   { "type": "integer", "minimum": 1 },
-            "gpus":  { "type": "integer", "minimum": 0, "description": "0 or 1: an interactive session takes at most one GPU." },
+            "gpus":  { "type": "integer", "minimum": 0, "description": "0, or one of the counts the platform offers." },
             "cmd":   { "type": "string" }
           },
           "additionalProperties": false
@@ -64,14 +64,15 @@ struct LaunchSessionTool: JSONWriteTool {
         let cores = args.cores ?? 2
         let ram = args.ram ?? 8
         let gpus = args.gpus ?? 0
-        if gpus > 1 {
-            throw ToolFailureReason.invalidArgument("An interactive session takes at most one GPU; batch jobs take more (launch_headless_job).")
-        }
-        if gpus == 1, let offer = await offer(), !offer.offersAny {
-            throw ToolFailureReason.invalidArgument("This platform offers no GPUs.")
+        // 0, or one of the counts the context offers, as on the Advanced tab (plan 42).
+        if gpus > 0, let offer = await offer() {
+            guard offer.offersAny else { throw ToolFailureReason.invalidArgument("This platform offers no GPUs.") }
+            guard offer.allows(gpus) else {
+                throw ToolFailureReason.invalidArgument("gpus \(gpus) is not offered: 0, or one of \(offer.described).")
+            }
         }
         let summary = "Launch \(args.type) '\(args.name)' (\(cores) cores, \(ram) GB" +
-                      (gpus > 0 ? ", 1 GPU" : "") +
+                      (gpus == 1 ? ", 1 GPU" : gpus > 1 ? ", \(gpus) GPUs" : "") +
                       ") — image: \(args.image)"
         return try ProposalPlan.encoding(
             kind: "launch_session",

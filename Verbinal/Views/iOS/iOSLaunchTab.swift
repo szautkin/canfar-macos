@@ -85,16 +85,19 @@ private struct iOSLaunchFormView: View {
                     }
                     .pickerStyle(.segmented)
 
-                    GPUCheckbox(isOn: $model.usesAGPU, offered: model.gpuOffer.offersAny)
+                    // Standard: one GPU or none; Advanced: the counts offered (plan 42).
+                    if selectedTab == 0 {
+                        GPUCheckbox(isOn: $model.usesAGPU, offered: model.gpuOffer.offersAny)
+                    }
 
                     if model.resourceType == "fixed" {
                         ResourceSelectorView(
                             cores: $model.cores,
                             ram: $model.ram,
-                            gpus: .constant(0),
+                            gpus: $model.gpus,
                             coreOptions: model.coreOptions,
                             ramOptions: model.ramOptions,
-                            gpuOptions: nil
+                            gpuOptions: selectedTab == 0 ? nil : model.gpuOffer.counts
                         )
                     }
                 }
@@ -102,9 +105,8 @@ private struct iOSLaunchFormView: View {
                 // Launch button
                 Section {
                     Button {
-                        if selectedTab == 1 { model.useCustomImage = true }
                         showLaunchProgress = true
-                        Task { await model.launch() }
+                        Task { await model.launch(from: selectedTab == 1 ? .advanced : .standard) }
                     } label: {
                         HStack {
                             Spacer()

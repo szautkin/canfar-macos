@@ -321,7 +321,7 @@ struct LaunchFormView: View {
             Spacer()
             Button {
                 showLaunchProgress = true
-                Task { await model.launch() }
+                Task { await model.launch(from: .standard) }
             } label: {
                 HStack {
                     Image(systemName: "play.fill")
@@ -440,7 +440,7 @@ struct LaunchFormView: View {
                 ram: $model.ram,
                 coreOptions: model.coreOptions,
                 ramOptions: model.ramOptions,
-                gpus: .oneOrNone($model.usesAGPU, offered: model.gpuOffer.offersAny),
+                gpus: .upTo($model.gpus, model.gpuOffer),
                 isDefault: model.isSelectedResourcesDefault,
                 onToggleDefault: { model.toggleDefaultResources() }
             )
@@ -455,9 +455,8 @@ struct LaunchFormView: View {
         HStack {
             Spacer()
             Button {
-                model.useCustomImage = true
                 showLaunchProgress = true
-                Task { await model.launch() }
+                Task { await model.launch(from: .advanced) }
             } label: {
                 HStack {
                     Image(systemName: "play.fill")

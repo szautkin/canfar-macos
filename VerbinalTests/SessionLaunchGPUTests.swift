@@ -8,9 +8,10 @@ import XCTest
 import VerbinalKit
 @testable import Verbinal
 
-/// Plan 41 step 3: an interactive session takes one GPU or none — the
-/// launch form's Use a GPU, Settings' default, a relaunch and the tools —
-/// and none at all when the platform offers none.
+/// Plan 41 step 3, plan 42 step 2: the Standard tab takes one GPU or none —
+/// its Use a GPU, Settings' default; the Advanced tab, a relaunch and
+/// launch_session take the counts the context offers; none at all when the
+/// platform offers none.
 @MainActor
 final class SessionLaunchGPUTests: XCTestCase {
 
@@ -91,7 +92,7 @@ final class SessionLaunchGPUTests: XCTestCase {
         model.usesAGPU = true
         XCTAssertEqual(model.resourceType, "fixed", "ticking it makes the resources Fixed")
         XCTAssertEqual(model.gpus, 1)
-        await model.launch()
+        await model.launch(from: .standard)
         let sent = try XCTUnwrap(posted.last)
         XCTAssertEqual(sent["gpus"], "1")
         XCTAssertEqual(sent["resourceType"], "custom")
@@ -100,12 +101,12 @@ final class SessionLaunchGPUTests: XCTestCase {
     func testNoTickSendsNoGPUs() async throws {
         let (model, posted) = form(offer: staging)
         model.resourceType = "fixed"
-        await model.launch()
+        await model.launch(from: .standard)
         XCTAssertNil(try XCTUnwrap(posted.last)["gpus"])
         model.usesAGPU = true
         model.usesAGPU = false
         XCTAssertEqual(model.resourceType, "fixed", "unticking leaves Fixed as it is")
-        await model.launch()
+        await model.launch(from: .standard)
         XCTAssertNil(try XCTUnwrap(posted.last)["gpus"])
     }
 
@@ -116,7 +117,7 @@ final class SessionLaunchGPUTests: XCTestCase {
         XCTAssertFalse(model.usesAGPU, "a tick from before is cleared")
         model.usesAGPU = true
         XCTAssertFalse(model.usesAGPU, "it cannot be ticked")
-        await model.launch()
+        await model.launch(from: .standard)
         XCTAssertNil(try XCTUnwrap(posted.last)["gpus"])
     }
 
@@ -135,14 +136,62 @@ final class SessionLaunchGPUTests: XCTestCase {
         XCTAssertTrue(model.usesAGPU)
     }
 
-    /// Saved defaults of more than one GPU (a Settings picker had offered 7)
-    /// start the form with one.
+    /// A count of more than one — a saved default from a picker that had
+    /// offered 7, or Advanced's — launched from Standard is one.
     func testASavedDefaultOfSeveralGPUsGivesOne() async throws {
         let (model, posted) = form(offer: staging)
         model.apply(LaunchResources(type: "fixed", cores: 2, ram: 8, gpus: nil))
         model.gpus = 7
-        await model.launch()
+        await model.launch(from: .standard)
         XCTAssertEqual(try XCTUnwrap(posted.last)["gpus"], "1", "an interactive session takes at most one")
+    }
+
+    // MARK: - Advanced
+
+    private func advanced(_ model: SessionLaunchModel) {
+        model.customImageUrl = "images.canfar.net/me/llm-server:1.0"
+        model.resourceType = "fixed"
+    }
+
+    func testAdvancedSendsTheCountChosen() async throws {
+        let (model, posted) = form(offer: staging)
+        advanced(model)
+        model.gpus = 4
+        await model.launch(from: .advanced)
+        let sent = try XCTUnwrap(posted.last)
+        XCTAssertEqual(sent["gpus"], "4")
+        XCTAssertEqual(sent["image"], "images.canfar.net/me/llm-server:1.0")
+    }
+
+    func testStandardSendsOneAfterAdvancedChoseFour() async throws {
+        let (model, posted) = form(offer: staging)
+        advanced(model)
+        model.gpus = 4
+        XCTAssertTrue(model.usesAGPU, "Standard's checkbox shows it ticked")
+        await model.launch(from: .standard)
+        XCTAssertEqual(try XCTUnwrap(posted.last)["gpus"], "1")
+    }
+
+    /// "Launch (Custom Image)" had left the model on the custom image: the
+    /// Standard tab's Launch Session then launched it, not the image chosen.
+    func testAStandardLaunchAfterAnAdvancedOneLaunchesTheCatalogueImage() async throws {
+        let (model, posted) = form(offer: staging)
+        advanced(model)
+        await model.launch(from: .advanced)
+        XCTAssertEqual(try XCTUnwrap(posted.last)["image"], "images.canfar.net/me/llm-server:1.0")
+        await model.launch(from: .standard)
+        XCTAssertEqual(try XCTUnwrap(posted.last)["image"], "images.canfar.net/skaha/notebook:1.0")
+    }
+
+    func testAdvancedStepsThroughTheOptions() async throws {
+        let (model, posted) = form(offer: GPUOffer(options: [1, 2, 4]))
+        advanced(model)
+        model.gpus = model.gpuOffer.step(from: 2, up: true)
+        XCTAssertEqual(model.gpus, 4)
+        await model.launch(from: .advanced)
+        XCTAssertEqual(try XCTUnwrap(posted.last)["gpus"], "4")
+        model.gpuOffer = GPUOffer(options: [1, 2])
+        XCTAssertEqual(model.gpus, 0, "a count no longer offered is cleared")
     }
 
     // MARK: - A relaunch
@@ -152,11 +201,19 @@ final class SessionLaunchGPUTests: XCTestCase {
                      resourceType: "fixed", cores: 2, ram: 8, gpus: gpus)
     }
 
-    func testARecordedLaunchWithSeveralGPUsRelaunchesWithOne() async throws {
+    func testARelaunchKeepsAnOfferedCount() async throws {
         let (model, posted) = form(offer: staging)
         let launched = await model.relaunch(recorded(gpus: 4))
         XCTAssertTrue(launched)
-        XCTAssertEqual(try XCTUnwrap(posted.last)["gpus"], "1")
+        XCTAssertEqual(try XCTUnwrap(posted.last)["gpus"], "4")
+        XCTAssertEqual(model.launchStatus, "Session relaunched!")
+    }
+
+    func testARelaunchTakesTheLargestOfferedBelow() async throws {
+        let (model, posted) = form(offer: GPUOffer(options: [1, 2, 4]))
+        _ = await model.relaunch(recorded(gpus: 3))
+        XCTAssertEqual(try XCTUnwrap(posted.last)["gpus"], "2")
+        XCTAssertEqual(model.launchStatus, "Relaunched with 2 GPUs: this platform offers 1, 2, 4")
     }
 
     func testARecordedLaunchRelaunchesWithoutAGPUWhenNoneIsOffered() async throws {
@@ -176,19 +233,22 @@ final class SessionLaunchGPUTests: XCTestCase {
 
     // MARK: - show_launch_form's sizes
 
-    func testTheFormRefusesMoreThanOneGPU() {
+    func testShowLaunchFormChecksByTab() {
         let (model, _) = form(offer: staging)
-        XCTAssertEqual(model.refusal(LaunchResources(gpus: 2)),
-                       "an interactive session takes at most one GPU (gpus 0 or 1); batch jobs take more")
-        XCTAssertNil(model.refusal(LaunchResources(gpus: 1)))
-        XCTAssertNil(model.refusal(LaunchResources(gpus: 0)))
+        XCTAssertEqual(model.refusal(LaunchResources(gpus: 2), tab: .standard),
+                       "the Standard tab takes one GPU or none (gpus 0 or 1); the Advanced tab takes 0, or one of 1–7")
+        XCTAssertNil(model.refusal(LaunchResources(gpus: 1), tab: .standard))
+        XCTAssertNil(model.refusal(LaunchResources(gpus: 2), tab: .advanced))
+        XCTAssertNil(model.refusal(LaunchResources(gpus: 7), tab: .advanced))
+        XCTAssertEqual(model.refusal(LaunchResources(gpus: 8), tab: .advanced), "gpus 8 is not offered: 0, or one of 1–7")
     }
 
     func testTheFormRefusesAGPUWhenNoneIsOffered() {
         let (model, _) = form(offer: .none)
-        XCTAssertEqual(model.refusal(LaunchResources(gpus: 1)), "this platform offers no GPUs")
+        XCTAssertEqual(model.refusal(LaunchResources(gpus: 1), tab: .standard), "this platform offers no GPUs")
+        XCTAssertEqual(model.refusal(LaunchResources(gpus: 2), tab: .advanced), "this platform offers no GPUs")
         let (unloaded, _) = form(offer: .none, loaded: false)
-        XCTAssertNil(unloaded.refusal(LaunchResources(gpus: 1)), "not loaded yet: not judged")
+        XCTAssertNil(unloaded.refusal(LaunchResources(gpus: 1), tab: .standard), "not loaded yet: not judged")
     }
 
     // MARK: - launch_session
@@ -202,13 +262,15 @@ final class SessionLaunchGPUTests: XCTestCase {
         return try JSONDecoder().decode(LaunchSessionTool.Payload.self, from: plan.payload)
     }
 
-    func testLaunchSessionRefusesTwoGPUs() async {
+    func testLaunchSessionTakesTheOptions() async throws {
+        let four = try await plan(4, offer: staging)
+        XCTAssertEqual(four.gpus, 4)
         do {
-            _ = try await plan(2, offer: staging)
-            XCTFail("two GPUs for an interactive session")
+            _ = try await plan(8, offer: staging)
+            XCTFail("8 is not offered")
         } catch let failure as ToolFailureReason {
             guard case .invalidArgument(let why) = failure else { return XCTFail("\(failure)") }
-            XCTAssertEqual(why, "An interactive session takes at most one GPU; batch jobs take more (launch_headless_job).")
+            XCTAssertEqual(why, "gpus 8 is not offered: 0, or one of 1–7.")
         } catch { XCTFail("\(error)") }
     }
 
