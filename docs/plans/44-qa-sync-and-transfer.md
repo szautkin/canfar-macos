@@ -162,12 +162,12 @@ their work has ever been synced on the real service.**
 |---|---|---|
 | C1 | On Mac B, sign in to the same account. | B shows the same switches on as A, with no choice made on B. Then B's own items of each kept collection go to storage. |
 | C2 | A saved query, a workflow step ticked, a note on a Research record, a recent launch: each made on A, then **Sync Now** on B. | Each shows on B. Recent launches and Portal defaults too, if kept. |
-| C3 | The same note edited on A and on B, neither synced; then sync A, then B. | The newer wins on both. The other is kept on its Mac in `StorageSync/replaced/research/`. |
+| C3 | The same note edited on A and on B, neither synced; then sync A, then B. | Plan 45: different parts of the note both stay; the same part keeps the one A sent, and B's waits in **Settings ▸ Storage ▸ Conflicts** on B (F3, F9). |
 | C4 | **During a sync (risk 1),** after A2's fix. While A's Research first sync runs (B12), change a note on B and sync B. Also edit the same saved query on both, and click **Sync Now** on both within a second. | B's note reaches A at A's next sync. Of the saved query, the newer wins on both, and the older is kept in `replaced`. |
 | C5 | Remove a saved query on A; sync both. Then, on a third sign-in that never had it (or after a fresh install of B), sync. | It goes from B. A device that never had it marks nothing. |
 | C6 | Marks on a file opened from storage on both Macs; marks on a file of A alone. | The first reach B; the second stay on A. |
 | C7 | Turn a collection off on B. | A stops syncing it at its next sync; the files stay. |
-| C8 | Clocks (A3, if the person wants it checked live): B's clock set 5 minutes fast, the same note edited on A after B. | As A3 decided. |
+| C8 | Clocks: B's clock set 5 minutes fast, the same note edited on A after B. | Plan 45: the clock decides nothing — as C3 (F7). |
 
 ### D — Research files (handout 37 P, run for the first time)
 
@@ -363,3 +363,16 @@ queries are on (B2); `qa44 one` is the item.
 | F7 | As another device, write a change with `changedAt` a day in the past (`rev` and `base` right). **Sync Now**. | It arrives: the clock decides nothing. |
 | F8 | Write a file with no `rev` (plan 44's form) as another device. **Sync Now**, then change the query here. | It is read as revision 0; this Mac's write makes it `rev` 1. |
 | F9 | Part C with two devices: F3 for real. | As F3 and F4, on both. |
+
+## Still open (2026-10-17, after plan 45 F5, 10d89b99)
+
+| Case | Waits for |
+|---|---|
+| F1–F8 (plan 45 F6) | A build at 10d89b99 or later running, and `/mcp` reconnected so `list_sync_conflicts` and `resolve_sync_conflict` appear (the running build is 73fab42e). The person approves the writes "as another device" and clicks the conflicts' buttons. |
+| F9, C1–C8 | A second Mac or a second macOS account, signed in to the same CANFAR account. |
+| B13, D3 | The person turns on **Results** in Settings ▸ Storage (their choice). |
+| B14, P7 | The person signs out during a sync. |
+| D2, E4 | Wi-Fi off, or Storage pointed at a dead address in Settings ▸ Endpoints, by the person (Wi-Fi could not be turned off here). |
+| `retry_activity` live | `/mcp` reconnected (E1's Retry was checked on the bar and with `list_activity`). |
+| B9 | Waived by the person: "it is private by default do not worry". |
+| A3 | Replaced by plan 45 (the person's decision). |
