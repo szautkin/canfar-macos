@@ -73,6 +73,8 @@ actor StorageSync {
         var progress: Progress? = nil
         /// Its task on the activity bar, when it is there (the app's to say).
         var activityTask: Int? = nil
+        /// What the person decides (plan 45).
+        var conflicts: [SyncConflict] = []
     }
 
     /// How far a kind has got (plan 40).
@@ -281,6 +283,24 @@ actor StorageSync {
         return known
     }
 
+    /// This installation, for the items' history: made once, and kept.
+    private func device() -> SyncDevice {
+        if let device = state.device { return device }
+        let device = SyncDevice.new()
+        state.device = device
+        state.save(to: stateFile)
+        return device
+    }
+
+    /// The person's choice on conflict `id`: the kind applies it — a change
+    /// here, which the next sync sends — and it is no longer asked (plan 45).
+    func resolve(_ id: String, choosing choice: SyncConflict.Choice) async {
+        guard let conflict = state.conflicts.first(where: { $0.id == id }) else { return }
+        await catalog.kind(conflict.kind)?.resolve(conflict, choosing: choice)
+        state.conflicts.removeAll { $0.id == id }
+        state.save(to: stateFile)
+    }
+
     /// An item a kind took: kept at once, the state written now and then.
     private func took(_ item: StorageItem, of kind: String) {
         state.kinds[kind, default: .init()].items[item.name] = item.stamp
@@ -307,7 +327,7 @@ actor StorageSync {
             let writes = WrittenSizes()
             let outcome = try await kind.sync(StorageKindContext(
                 folder: declared.folder, items: items, changed: changed, memory: kindState.memory,
-                remote: WriteRecordingRemote(base: remote, written: writes),
+                remote: WriteRecordingRemote(base: remote, written: writes), device: device(),
                 progress: { [weak self] done, total in await self?.counted(id, done, total) },
                 took: { [weak self] item in await self?.took(item, of: id) }))
             // Paused or stopped halfway: what it took is kept, item by item;
@@ -324,6 +344,10 @@ actor StorageSync {
             kindState.note = outcome.note
             kindState.failure = nil
             if let memory = outcome.memory { kindState.memory = memory }
+            // An item's conflict found again replaces the one before.
+            let found = Set(outcome.conflicts.map(\.id))
+            state.conflicts.removeAll { found.contains($0.id) }
+            state.conflicts += outcome.conflicts
         } catch {
             if Task.isCancelled { return }
             kindState = state.kinds[kind.id] ?? kindState
@@ -474,6 +498,7 @@ actor StorageSync {
                                          failure: kept?.failure, lastSync: kept?.lastSync))
         }
         return Status(hasStorage: hasStorage, hasManifest: manifest != nil, kinds: kinds, lastSync: state.lastSync,
-                      lastFailure: state.lastFailure, running: running != nil, paused: state.paused, progress: progress)
+                      lastFailure: state.lastFailure, running: running != nil, paused: state.paused, progress: progress,
+                      conflicts: state.conflicts)
     }
 }

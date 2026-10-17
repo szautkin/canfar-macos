@@ -24,6 +24,8 @@ protocol StorageKind: Sendable {
     /// Brings this device in line with the kind's items: `changed` are the
     /// ones whose date or size differ from what this device last saw.
     func sync(_ context: StorageKindContext) async throws -> StorageKindOutcome
+    /// The person's choice on a conflict the kind reported (plan 45).
+    func resolve(_ conflict: SyncConflict, choosing choice: SyncConflict.Choice) async
 }
 
 extension StorageKind {
@@ -35,6 +37,8 @@ extension StorageKind {
     func itemsFolder(in folder: String) -> String {
         itemsSubfolder.map { "\(folder)/\($0)" } ?? folder
     }
+
+    func resolve(_ conflict: SyncConflict, choosing choice: SyncConflict.Choice) async {}
 }
 
 /// What a kind's sync is given.
@@ -48,6 +52,8 @@ struct StorageKindContext: Sendable {
     /// What this device kept of the kind, between syncs.
     let memory: [String: String]
     let remote: any StorageRemote
+    /// This installation, for an item's history (plan 45).
+    var device = SyncDevice.unknown
     /// Says how far the kind has got: `done` of `total` items (plan 40).
     var progress: @Sendable (_ done: Int, _ total: Int) async -> Void = { _, _ in }
     /// Keeps an item as taken, at once, so a pause, a quit or a failure goes
@@ -66,6 +72,8 @@ struct StorageKindOutcome: Equatable, Sendable {
     var memory: [String: String]? = nil
     /// A word for the person, when the sync did not do all it could.
     var note: String? = nil
+    /// What the person decides (plan 45).
+    var conflicts: [SyncConflict] = []
 }
 
 /// The one place that lists the kinds this build knows (plan 34 V). Adding

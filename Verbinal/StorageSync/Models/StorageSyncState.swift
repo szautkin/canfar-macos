@@ -23,6 +23,11 @@ struct StorageSyncState: Codable, Equatable, Sendable {
     /// Paused by someone, until they resume it — kept, so a relaunch does
     /// not resume it (plan 40).
     var paused: Paused?
+    /// This installation, for the items' history (plan 45): made once, kept.
+    var device: SyncDevice?
+    /// What the person decides: fields two devices changed differently, items
+    /// one removed and the other changed (plan 45).
+    var conflicts: [SyncConflict] = []
 
     struct Paused: Codable, Equatable, Sendable {
         /// person, assistant or app.

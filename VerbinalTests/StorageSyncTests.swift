@@ -107,11 +107,9 @@ final class StorageSyncTests: XCTestCase {
         func drop(_ key: String) { records.removeValue(forKey: key) }
     }
 
-    /// What a newer change replaced on `device`, as kept on that Mac.
-    private func replaced(on device: String) throws -> [ResearchItem] {
-        let folder = directory.appendingPathComponent("replaced-\(device)/research")
-        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
-        return try files.map { try ResearchItem.decode(Data(contentsOf: $0)) }
+    /// The values `sync`'s device keeps waiting for the person, field by field.
+    private func waiting(_ sync: StorageSync) async -> [String] {
+        await sync.status().conflicts.flatMap(\.fields).compactMap { if case .string(let text)? = $0.mine { text } else { nil } }
     }
 
     private final class Imports: @unchecked Sendable {
@@ -137,8 +135,7 @@ final class StorageSyncTests: XCTestCase {
                       device: String = "mac", importing: (@Sendable (Data) async -> Bool)? = nil,
                       watcher: (@Sendable (StorageSync.Event) async -> Void)? = nil) -> StorageSync {
         let catalog = StorageKindCatalog(kinds: [
-            CollectionKind(id: "research", defaultFolder: ".verbinal/research", collection: research,
-                           replacedFolder: directory.appendingPathComponent("replaced-\(device)")),
+            CollectionKind(id: "research", defaultFolder: ".verbinal/research", collection: research),
             ImagePackagesKind(importManifest: importing ?? { imports.add($0); return true }),
             ComputeRunsKind(resume: {}),
             CountedKind.stagedScripts,
@@ -366,7 +363,9 @@ final class StorageSyncTests: XCTestCase {
         XCTAssertFalse(stored.contains("localPath") || stored.contains("bookmark"), "nothing of this Mac")
     }
 
-    func testTheNewerOfTwoChangesWinsAndTheOtherIsKept() async throws {
+    /// Plan 45, decided 1: both changed the same note — the one in storage
+    /// first stays, whatever each Mac's clock said, and this Mac's waits.
+    func testBothChangedTheSameFieldStoragesStaysAndThisMacsWaits() async throws {
         let remote = FakeVOSpace()
         await remote.put(StorageManifest.path, manifest(["research": ".verbinal/research"]))
         let key = "ivo://cadc.nrc.ca/CFHT?1525350/1525350p"
@@ -375,14 +374,17 @@ final class StorageSyncTests: XCTestCase {
         let syncA = sync(remote, research: a, device: "a"), syncB = sync(remote, research: b, device: "b")
         await syncA.sync(.signedIn)
         await syncB.sync(.signedIn)
-        // Both change it; B's is newer.
-        await a.set(item(key, note: "from A", at: 200))
+        // Both change it; A's clock says its change is much the newer.
+        await a.set(item(key, note: "from A", at: 4_000_000_000))
         await b.set(item(key, note: "from B", at: 300))
         await syncB.sync(.changed)
         await syncA.sync(.changed)
         let onA = await a.records[key]?.note?.text
-        XCTAssertEqual(onA, "from B", "the newer wins")
-        XCTAssertEqual(try replaced(on: "a").map { $0.note?.text }, ["from A"], "and the one it replaced is kept")
+        XCTAssertEqual(onA, "from B", "storage's, first there, stays: no clock decides")
+        let waitingOnA = await waiting(syncA)
+        XCTAssertEqual(waitingOnA, ["from A"], "and A's waits for the person")
+        let onB = await b.records[key]?.note?.text
+        XCTAssertEqual(onB, "from B")
     }
 
     /// Plan 44 A2: what another device writes while this one syncs is not
@@ -432,7 +434,8 @@ final class StorageSyncTests: XCTestCase {
         XCTAssertEqual(onA, "from B", "the newer wins")
         let there = try ResearchItem.decode(try await remote.read(path))
         XCTAssertEqual(there.note?.text, "from B", "B's change is not written over")
-        XCTAssertEqual(try replaced(on: "a").map { $0.note?.text }, ["from A"], "and A's is kept on A")
+        let waitingOnA = await waiting(syncA)
+        XCTAssertEqual(waitingOnA, ["from A"], "and A's waits for the person")
     }
 
     /// Plan 44 A2: another device writing over the file this one has just
