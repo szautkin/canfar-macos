@@ -227,3 +227,29 @@ with the other device's change missing:
 **A3 (clocks)** waits for the person's decision.
 
 Sync tests: 48 pass (StorageSync 24, WorkSync 15, FileIdentity 5, ResultDestination 3, on screen 1).
+
+## A3 — Clocks: the choice, prepared for the person
+
+**Today.** "Newer" compares each Mac's own clock. Every item's `changedAt` is the time its device
+stamped it: a Research note's `modifiedAt`, a saved query's `changedAt` or `savedAt`. So a Mac whose
+clock is 5 minutes fast wins every conflict with an edit made up to 5 minutes later. macOS sets its clock
+from the network, so on a normal Mac the error is under a second. It matters only for a Mac with
+automatic time turned off.
+
+**Option 1: accept it, and say so.**
+- The manual, 14-settings ▸ Storage, says: "Keep each Mac's date and time set automatically (System
+  Settings ▸ General ▸ Date & Time): the newer change wins by each Mac's clock."
+- A test names today's behaviour.
+- Cost: an hour.
+
+**Option 2: measure each Mac's clock against storage's.**
+- After a write, the sync lists the folder again anyway. The file it wrote has storage's date for that
+  moment, which gives this Mac's offset from storage.
+- A sync keeps the offset, adds it to each `changedAt` it sends (the envelope only, never the record),
+  and compares its own items with it added.
+- Every device's dates then compare on storage's clock.
+- Cost: about a day, with tests (a fake VOSpace whose clock is ahead of the device's). VOSpace's dates
+  must be trustworthy to the second, which needs a check of their own.
+
+**Recommendation:** Option 1 for 1.4.1. The case needs a Mac with automatic time off, and option 2
+adds a moving part to the sync just fixed. Option 2 can come later if a person ever reports it.
