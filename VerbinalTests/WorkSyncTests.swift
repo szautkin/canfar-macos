@@ -221,6 +221,71 @@ final class WorkSyncTests: XCTestCase {
         XCTAssertEqual(onB, false, "B reads the choice from the manifest")
     }
 
+    // MARK: - The switches (plan 44, live: "I cannot turn on/off any of them")
+
+    /// Two choices made at once: each read the manifest before the other
+    /// wrote, and the second wrote over the first.
+    func testTwoCollectionsTurnedOnAtOnceAreBothKept() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["exports": "Verbinal-Exports"]))
+        let saved = queries(), recent = RecentSearchStore(fileName: "test-sync-recent-\(UUID().uuidString).json")
+        let storage = sync(remote, [saved.syncCollection().kind, recent.syncCollection().kind, CountedKind.exports], device: "mac")
+        async let one: Void = storage.setDeclared(["savedQueries"], true)
+        async let two: Void = storage.setDeclared(["recentSearches"], true)
+        _ = try await (one, two)
+        let kept = try StorageManifest.decode(try await remote.read(StorageManifest.path))
+        XCTAssertTrue(kept.declares("savedQueries"))
+        XCTAssertTrue(kept.declares("recentSearches"))
+        XCTAssertTrue(kept.declares("exports"), "and what was there stays")
+    }
+
+    /// Turned on while another sync runs, a collection had no first sync:
+    /// "Waiting for its first sync" until something else started one.
+    func testACollectionTurnedOnWhileASyncRunsHasItsFirstSyncAfterIt() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["savedQueries": ".verbinal/queries"]))
+        let saved = queries(), recent = RecentSearchStore(fileName: "test-sync-recent-\(UUID().uuidString).json")
+        saved.save(SavedQuery(name: "kept", adql: "SELECT 1"))
+        recent.save(RecentSearch(name: "M31", formSnapshot: SearchFormSnapshot()))
+        let storage = sync(remote, [saved.syncCollection().kind, recent.syncCollection().kind], device: "mac")
+        await remote.hold(".verbinal/queries")
+        let running = Task { await storage.sync(.signedIn) }
+        await remote.whenHeld(".verbinal/queries")
+
+        try await storage.setDeclared(["recentSearches"], true)
+        let asked = Task { await storage.sync(.asked, only: "recentSearches") }
+        try await Task.sleep(for: .milliseconds(300))
+        await remote.release(".verbinal/queries")
+        await running.value
+        await asked.value
+        let files = await remote.files.keys
+        XCTAssertTrue(files.contains { $0.hasPrefix(".verbinal/recent-searches/") }, "its first sync came after the running one")
+    }
+
+    /// The switch shows the person's choice at once, not when the first
+    /// sync ends; and that first sync comes after one already running.
+    func testASwitchShowsTheChoiceAtOnce() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["savedQueries": ".verbinal/queries"]))
+        let saved = queries(), recent = RecentSearchStore(fileName: "test-sync-recent-\(UUID().uuidString).json")
+        saved.save(SavedQuery(name: "kept", adql: "SELECT 1"))
+        recent.save(RecentSearch(name: "M31", formSnapshot: SearchFormSnapshot()))
+        let model = StorageSyncModel(tasks: TaskRegistry())
+        model.attach(sync(remote, [saved.syncCollection().kind, recent.syncCollection().kind], device: "mac"))
+        await remote.hold(".verbinal/queries")
+        let running = model.run(.signedIn)
+        await remote.whenHeld(".verbinal/queries")
+
+        let choosing = model.setKeeps("recentSearches", true)
+        XCTAssertTrue(model.keeps("recentSearches"), "on as soon as it is clicked")
+        await remote.release(".verbinal/queries")
+        await choosing?.value
+        await running?.value
+        XCTAssertTrue(model.keeps("recentSearches"))
+        let files = await remote.files.keys
+        XCTAssertTrue(files.contains { $0.hasPrefix(".verbinal/recent-searches/") })
+    }
+
     // MARK: - Each area's store
 
     func testARecentSearchRunOnTwoDevicesIsOne() {

@@ -73,8 +73,15 @@ final class StorageSyncModel {
     /// one collection at a time (plan 36 3.2), declared in the manifest so
     /// every device makes the same.
     func keeps(_ id: String) -> Bool {
-        status?.kinds.first { $0.id == id }?.declared ?? false
+        chosen[id]?.keep ?? status?.kinds.first { $0.id == id }?.declared ?? false
     }
+
+    /// What the person just chose, while it is written (plan 44): the switch
+    /// shows it at once — it waited for the collection's first sync, and
+    /// snapped back meanwhile. Numbered, so an earlier choice's end does not
+    /// take back a later one.
+    private var chosen: [String: (keep: Bool, number: Int)] = [:]
+    private var choices = 0
 
     /// False for an account without CANFAR storage: nothing is synced.
     var hasStorage: Bool? { status?.hasStorage }
@@ -110,8 +117,14 @@ final class StorageSyncModel {
         }
     }
 
+    /// A sync of a test's own, for the switches.
+    func attach(_ sync: StorageSync) {
+        self.sync = sync
+    }
+
     func signedOut() {
         generation += 1
+        chosen = [:]
         changed.values.forEach { $0.cancel() }
         changed = [:]
         if let activation { NotificationCenter.default.removeObserver(activation) }
@@ -275,19 +288,34 @@ final class StorageSyncModel {
     /// manifest, or taken out, so every device does the same. A collection
     /// is kept only when the person chooses it; its files stay when they
     /// stop.
-    func setKeeps(_ id: String, _ keep: Bool) {
-        guard let sync else { return }
+    @discardableResult
+    func setKeeps(_ id: String, _ keep: Bool) -> Task<Void, Never>? {
+        guard let sync else { return nil }
         problem = nil
         let mine = generation
-        Task { [weak self] in
+        choices += 1
+        let number = choices
+        chosen[id] = (keep, number)
+        return Task { [weak self] in
             do {
                 try await sync.setDeclared([id], keep)
+                // Written: the status says it now, before the first sync, which
+                // comes after any sync under way.
+                self?.update(await sync.status(), from: mine)
+                self?.chose(id, number)
                 if keep { await sync.sync(.asked, only: id) }
             } catch {
                 self?.problem = error.localizedDescription
+                self?.chose(id, number)
             }
             self?.update(await sync.status(), from: mine)
         }
+    }
+
+    /// A choice written, or failed: the switch shows the manifest again,
+    /// unless the person has chosen since.
+    private func chose(_ id: String, _ number: Int) {
+        if chosen[id]?.number == number { chosen[id] = nil }
     }
 
     /// A collection changed here: once it settles, its items go, while the

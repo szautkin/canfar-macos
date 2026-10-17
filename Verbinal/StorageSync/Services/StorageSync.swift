@@ -108,6 +108,8 @@ actor StorageSync {
     private var syncing: String?
     /// What changed while a sync ran: it goes when that sync ends (nil: every kind).
     private var queued: Set<String>? = []
+    /// The person's last choice of what to keep, still being written.
+    private var declaring: Task<Void, Error>?
     /// Whether the account has CANFAR storage, once a sync looked: without
     /// it nothing is read or written, and only a sync asked for looks again.
     private var hasStorage: Bool?
@@ -167,14 +169,19 @@ actor StorageSync {
 
     // MARK: - Syncing
 
-    /// Syncs every declared kind, or only `kind`. A sync already under way
-    /// is waited for, and a change made meanwhile goes when it ends; an
-    /// automatic sync waits longer after each failure.
+    /// Syncs every declared kind, or only `kind`. While a sync is under way,
+    /// a kind — changed, or just turned on — goes when it ends (plan 44: a
+    /// collection turned on then had no first sync), and a whole sync asked
+    /// for waits for it; an automatic sync waits longer after each failure.
     func sync(_ reason: Reason, only kind: String? = nil) async {
         guard !stopped, state.paused == nil else { return }
         if let running {
+            if let kind {
+                queued?.insert(kind)
+                return
+            }
             guard reason == .changed else { return await running.value }
-            if let kind { queued?.insert(kind) } else { queued = nil }
+            queued = nil
             return
         }
         if reason.isAutomatic, hasStorage == false { return }
@@ -401,6 +408,18 @@ actor StorageSync {
     /// VOSpace — or, with `declared` false, takes them out; their files
     /// stay. One write, whatever the number.
     func setDeclared(_ kindIDs: [String], _ declared: Bool) async throws {
+        // One at a time (plan 44): two choices made at once each read the
+        // manifest before the other wrote, and the second wrote over the first.
+        let before = declaring
+        let mine = Task { [before] in
+            _ = await before?.result
+            try await self.declare(kindIDs, declared)
+        }
+        declaring = mine
+        try await mine.value
+    }
+
+    private func declare(_ kindIDs: [String], _ declared: Bool) async throws {
         if hasStorage != true { hasStorage = try await remote.hasHome() }
         guard hasStorage == true else { throw NoStorage() }
         var manifest = try await latestManifest() ?? StorageManifest()

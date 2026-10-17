@@ -39,6 +39,18 @@ final class StorageSyncTests: XCTestCase {
         func whenListed(_ folder: String, alsoPut path: String, _ data: Data) { afterListing[folder, default: []].append((path, data)) }
         func whenWritten(_ written: String, alsoPut path: String, _ data: Data) { afterWriting[written, default: []].append((path, data)) }
 
+        /// A listing of `folder` held open, so a sync is caught under way.
+        private var holding: Set<String> = []
+        private var held: [String: CheckedContinuation<Void, Never>] = [:]
+        private var heldWaiters: [String: CheckedContinuation<Void, Never>] = [:]
+        func hold(_ folder: String) { holding.insert(folder) }
+        func release(_ folder: String) { holding.remove(folder); held.removeValue(forKey: folder)?.resume() }
+        /// Returns once a sync is held at `folder`.
+        func whenHeld(_ folder: String) async {
+            guard held[folder] == nil else { return }
+            await withCheckedContinuation { heldWaiters[folder] = $0 }
+        }
+
         func makeFolder(_ path: String) { folders.insert(path) }
         func setPublic(_ folder: String) { publicFolders.insert(folder) }
         func setFailing(_ value: Bool) { failing = value }
@@ -46,6 +58,12 @@ final class StorageSyncTests: XCTestCase {
 
         func list(_ folder: String) async throws -> [StorageItem]? {
             if failing { throw URLError(.notConnectedToInternet) }
+            if holding.contains(folder) {
+                await withCheckedContinuation { gate in
+                    held[folder] = gate
+                    heldWaiters.removeValue(forKey: folder)?.resume()
+                }
+            }
             lists.append(folder)
             guard folders.contains(folder) else { return nil }
             let prefix = folder + "/"
