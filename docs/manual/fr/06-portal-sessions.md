@@ -91,7 +91,9 @@ session apparaît alors dans **Sessions actives**. En cas d’échec, la fenêtr
 
 L’onglet **Avancé** lance une image par son nom complet : l’**URL de l'image du conteneur**, et, pour
 une image privée, son **Authentification du registre (facultatif)** (**Nom d'utilisateur** et
-**Secret**). Puis **Lancer (image personnalisée)**.
+**Secret**). Ses ressources sont celles de l’onglet Standard, sauf les GPU : avec **Fixe**, son nombre de
+**GPU** parcourt les nombres que CANFAR propose, comme pour une tâche en lot, là où Standard a **Utiliser
+un GPU**. Il est grisé tant que CANFAR n’en propose pas. Puis **Lancer (image personnalisée)**.
 
 L’onglet **Headless** lance des tâches en lot : voir [Tâches en lot](07-batch-jobs.md).
 

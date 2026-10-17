@@ -148,6 +148,7 @@ every later agent is told; **read** = pure data.
 |---|---|---|
 | List/launch/renew/delete, images, platform load | pre-existing batch | mixed |
 | Launch Session (opens the launch form sheet), its tabs, "Use this image" | `show_launch_form` (`tab`, `image`, `close`) | live |
+| The launch form's GPUs: Standard's **Use a GPU**; Advanced's and Headless' GPU stepper, through the counts offered (plans 41, 42) | `show_launch_form` `gpus` (by tab); `launch_session` / `launch_headless_job` `gpus`; `get_platform_load` `gpu` | live / write |
 | Images card: type chips, project row (the same view) | `list_session_images` `type`, `project` | read |
 | Session Events sheet | `get_session_events` | read |
 | Session log view | `get_session_logs` | read |

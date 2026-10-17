@@ -130,6 +130,11 @@ Under **What removes, replaces or stops**:
 What an assistant made is told apart by the session log; what you made never is. **Restore Defaults**
 puts every kind back as above. Changes to **What every assistant is told** always wait for you.
 
+**GPUs.** An assistant asks for GPUs as the launch form's **Advanced** and **Headless** tabs do: none, or
+one of the counts CANFAR offers, for a session or a batch job. It reads how many are free in the
+platform load first. A launch that uses GPUs is a launch like any other, under **Use your CANFAR
+allocation**.
+
 ## Pending: changes waiting for you
 
 ![A change waiting in Pending, with its reason](../images/en/12-ai-assistant/pending.png)

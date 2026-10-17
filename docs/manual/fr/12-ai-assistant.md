@@ -138,6 +138,11 @@ Ce qu’un assistant a créé se reconnaît au journal de session ; ce que vous 
 **Rétablir les valeurs par défaut** remet chaque type comme ci-dessus. Les modifications des
 **Les consignes données à chaque assistant** vous attendent toujours.
 
+**GPU.** Un assistant demande des GPU comme les onglets **Avancé** et **Headless** du formulaire
+de lancement : aucun, ou l’un des nombres que CANFAR propose, pour une session ou une tâche par lots. Il
+lit d’abord combien sont libres dans la charge de la plate-forme. Un lancement avec des GPU est un
+lancement comme un autre, sous **Utiliser votre allocation CANFAR**.
+
 ## En attente : les modifications qui vous attendent
 
 ![Une modification en attente, avec sa raison](../images/fr/12-ai-assistant/pending.png)

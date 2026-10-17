@@ -39,6 +39,7 @@ Time: ~1 day (mostly waiting)
       shape that runs; to resume, launch it again.
       Tool: launch_headless_job
       View: portal
+      Note: GPUs only if the script uses them: read get_platform_load's gpu (free, perSession), and ask for a count the platform offers.
 - [ ] **Watch the jobs** — States, logs and events; a replica that fails is investigated, not
       skipped.
       Tool: list_headless_jobs, get_headless_job_logs, get_headless_job_events, list_job_history

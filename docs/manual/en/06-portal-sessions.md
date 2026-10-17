@@ -82,8 +82,10 @@ then appears in **Active Sessions**. If it fails, the window says why.
 ![The Advanced tab](../images/en/06-portal-sessions/launch-form-advanced.png)
 
 The **Advanced** tab launches an image by its full name: the **Container Image URL**, and, for a
-private image, its **Registry Authentication (optional)** (**Username** and **Secret**). Then
-**Launch (Custom Image)**.
+private image, its **Registry Authentication (optional)** (**Username** and **Secret**). Its resources
+are those of the Standard tab, but for GPUs: with **Fixed**, its **GPUs** count runs through the counts
+CANFAR offers, as for a batch job, where Standard has **Use a GPU**. It is greyed while CANFAR offers
+none. Then **Launch (Custom Image)**.
 
 The **Headless** tab launches batch jobs: see [Batch jobs](07-batch-jobs.md).
 

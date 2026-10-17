@@ -380,13 +380,11 @@ struct DescribeAppTool: JSONReadTool {
         a silent drop). `REPLICA_ID` / `REPLICA_COUNT` auto-injected
         per replica. Returns the launched job id(s); ≥ 2 replicas
         spawn parallel containers suffixed `-1, -2, …`. SCHEDULING:
-        omitting `cores`/`ram`/`gpus` inherits Skaha's 2/8/0
-        default, which often sits Pending 15+ min. For fastest
-        start (<60s typical), pass `cores: 1, ram: 1, gpus: 0`
-        explicitly — that's the smallest schedulable shape on the
-        CANFAR cluster and almost always fits spare capacity.
-        Scale up only for production runs you're willing to leave
-        queued for hours.
+        omitting `cores`/`ram`/`gpus` gives 1/1/0 — the smallest
+        schedulable shape on the CANFAR cluster, which almost always
+        starts in under a minute; Skaha's own 2/8/0 often sits
+        Pending 15+ min. Scale up only for production runs you're
+        willing to leave queued for hours; the proposal says so.
       * `list_headless_jobs` — read. The current jobs, newest first,
         200 a page, with status / phase / image / resources; `counts`
         by phase cover all of them; `phase` / `contains` narrow it.
@@ -407,6 +405,25 @@ struct DescribeAppTool: JSONReadTool {
     Polling pattern: 2–5 s while `state` is `"pending"`, slower once
     the pod exists. Don't poll `get_headless_job_logs` in a tight
     loop; fetch when status changes or the user asks.
+
+    ## GPUs
+
+    The platform offers GPUs when its context does — counts such as
+    1–7, which the launch form and the tools follow as they change.
+
+      * `get_platform_load` — `gpu`: `used`, `free`, `total`,
+        `percent`, and `perSession`, the most one session may ask
+        for; or `gpu: null` with `gpuNote` saying why (none reported,
+        or fields it cannot read).
+      * Asking: `launch_session` and `launch_headless_job` take `gpus`
+        0, or one of the counts offered; another count is refused,
+        naming the range, and any GPU where none is offered. In the
+        launch form, the Standard tab asks for one GPU or none (Use a
+        GPU); the Advanced and Headless tabs take the counts offered —
+        `show_launch_form` judges `gpus` by the tab it shows.
+      * GPUs are scarce: read `gpu.free` first, ask only for work that
+        uses them on an image that has their drivers, and expect a wait
+        when few are free.
 
     ## Image content discovery
 

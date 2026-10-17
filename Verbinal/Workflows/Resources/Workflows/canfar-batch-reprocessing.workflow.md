@@ -28,6 +28,7 @@ Time: ~half a day (mostly waiting)
       (up to 50 per launch; chunk the list if larger).
       Tool: launch_headless_job
       View: portal
+      Note: For GPU work, read get_platform_load's gpu (free, perSession) first, and ask for a count the platform offers.
 - [ ] **Monitor to completion** — Watch job states; investigate any replica that fails rather
       than silently accepting partial output.
       Tool: list_headless_jobs, get_headless_job_logs
