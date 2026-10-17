@@ -232,7 +232,16 @@ enum UIElementRules {
                                 area: area, item: item, frame: node.frame, visible: shows ? visible : .null, handle: node.handle,
                                 clips: clips, inSight: shows))
         }
-        guard walksInside(kind) else { return }
+        guard walksInside(kind) else {
+            // A popover hangs from the control that opened it — the activity
+            // bar's list from the bar's button: read all the same (plan 44,
+            // live: its tasks and their Retry were never listed).
+            for child in node.children where child.role == "AXPopover" {
+                walk(child, clip: clip, clips: clips, area: area, item: item, holderName: holderName, window: window,
+                     shown: shown, drafts: &drafts, texts: &texts, seen: &seen, duplicates: &duplicates)
+            }
+            return
+        }
         let inner = kind == .area ? tagged?.id ?? area : area
         // An item or a row lends its name to the controls in it.
         let innerItem = kind?.holds == true ? clean(node.label) ?? rowWords(node, kind: .row) ?? item : item

@@ -349,6 +349,7 @@ final class WorkSyncTests: XCTestCase {
         XCTAssertNil(registry.retry(failed.id, by: .assistant), "an assistant may retry a sync too")
         try await Task.sleep(for: .milliseconds(300))
         XCTAssertEqual(registry.tasks.filter { $0.progress == .failed }.count, 2, "still failing: tried again, failed again")
+        XCTAssertEqual(registry.tasks.filter(\.canRetry).count, 1, "only the last failure offers Retry")
 
         await remote.setFailing(false)
         model.networkCameBack()
@@ -356,6 +357,7 @@ final class WorkSyncTests: XCTestCase {
         let files = await remote.files.keys
         XCTAssertTrue(files.contains { $0.hasPrefix(".verbinal/queries/") }, "the network back: it went")
         XCTAssertNil(model.nextTry)
+        XCTAssertFalse(registry.tasks.contains(where: \.canRetry), "it went: nothing to try again")
     }
 
     /// Slow, whatever it moves: on the bar while it waits.

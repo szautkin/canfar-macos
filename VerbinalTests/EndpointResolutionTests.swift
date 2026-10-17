@@ -106,4 +106,13 @@ final class EndpointResolutionTests: XCTestCase {
         XCTAssertNil(EndpointField.registryBaseURL.resourceID)
         XCTAssertNil(EndpointField.acBaseURL.resourceID)
     }
+
+    /// Plan 44, live: "I cannot update the storage, it does not pick it up,
+    /// we do not have save button there". What is typed and not kept says so.
+    func testWhatIsTypedAndNotKeptIsUnsaved() {
+        XCTAssertFalse(EndpointsSettingsTab.isUnsaved("", saved: nil), "nothing typed, nothing kept")
+        XCTAssertFalse(EndpointsSettingsTab.isUnsaved("https://a.org/x/", saved: "https://a.org/x"), "kept, as normalised")
+        XCTAssertTrue(EndpointsSettingsTab.isUnsaved("https://127.0.0.1:9/arc/nodes/home", saved: nil))
+        XCTAssertTrue(EndpointsSettingsTab.isUnsaved("", saved: "https://a.org/x"), "cleared, not kept yet")
+    }
 }

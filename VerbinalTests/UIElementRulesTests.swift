@@ -43,6 +43,18 @@ final class UIElementRulesTests: XCTestCase {
         XCTAssertEqual(result.elements[0].frame, CGRect(x: 10, y: 10, width: 80, height: 24), "in window points")
     }
 
+    /// Plan 44, live: the activity bar's list hangs from the bar's button,
+    /// and a button is not looked inside — its tasks and their Retry were
+    /// never listed. A popover is read wherever it hangs.
+    func testAPopoverHangingFromAButtonIsRead() {
+        let list = node("AXPopover", rect(150, 300, 440, 120), children: [
+            node("AXStaticText", rect(160, 310, 300, 16), text: "Syncing with your storage"),
+            node("AXButton", rect(520, 310, 60, 20), label: "Retry"),
+        ])
+        let result = elements([node("AXButton", rect(0, 570, 800, 22), label: "Idle", children: [list])])
+        XCTAssertEqual(result.elements.map(\.name), ["Syncing with your storage", "Retry", "Idle"], "top to bottom")
+    }
+
     func testNamesComeInTheOrderAScreenReaderTakesThem() {
         var titled = node("AXPopUpButton", rect(100, 10))
         titled.titleText = "Resolver"

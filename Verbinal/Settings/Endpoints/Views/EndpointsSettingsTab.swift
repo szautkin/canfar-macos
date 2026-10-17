@@ -13,8 +13,8 @@ import VerbinalKit
 /// (user override > registry resolution > CANFAR default), plus the
 /// registry-refresh status and controls.
 ///
-/// Edits use local buffers committed on submit (never bound raw to the
-/// service), and take effect on relaunch — services capture their
+/// Edits use local buffers committed on Return, on leaving the field, or on
+/// leaving the tab (never bound raw to the service), and take effect on relaunch — services capture their
 /// endpoints at launch, so the restart banner mirrors the General tab's
 /// language pattern.
 struct EndpointsSettingsTab: View {
@@ -24,6 +24,10 @@ struct EndpointsSettingsTab: View {
     /// from the stored overrides on appear.
     @State private var buffers: [EndpointField: String] = [:]
     @State private var invalidFields: Set<EndpointField> = []
+    /// The field being typed in: leaving it keeps what was typed (plan 44,
+    /// live: "I cannot update the storage, it does not pick it up, we do not
+    /// have save button there" — only Return kept it, and nothing said so).
+    @FocusState private var editing: EndpointField?
     @State private var resetConfirmShown = false
 
     /// Self-test state: true while probes are in flight, plus the last
@@ -60,6 +64,12 @@ struct EndpointsSettingsTab: View {
         }
         .formStyle(.grouped)
         .onAppear(perform: seedBuffers)
+        .onChange(of: editing) { left, _ in
+            if let left { commit(left) }
+        }
+        .onDisappear {
+            for field in EndpointField.allCases where isUnsaved(field) { commit(field) }
+        }
     }
 
     // MARK: - Registry status + its own endpoint
@@ -146,6 +156,7 @@ struct EndpointsSettingsTab: View {
                 )
                 .textFieldStyle(.roundedBorder)
                 .autocorrectionDisabled()
+                .focused($editing, equals: field)
                 .onSubmit { commit(field) }
 
                 if settings.overrides[field] != nil {
@@ -177,6 +188,10 @@ struct EndpointsSettingsTab: View {
                 Text("Enter a full http(s) URL, e.g. \(field.defaultValue)")
                     .font(.caption2)
                     .foregroundStyle(.red)
+            } else if isUnsaved(field) {
+                Text("Not saved yet: press Return, or leave the field.")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
             }
         }
         .padding(.vertical, 2)
@@ -364,6 +379,16 @@ struct EndpointsSettingsTab: View {
             get: { buffers[field] ?? "" },
             set: { buffers[field] = $0 }
         )
+    }
+
+    /// What is typed in `field` and not kept yet.
+    private func isUnsaved(_ field: EndpointField) -> Bool {
+        Self.isUnsaved(buffers[field] ?? "", saved: settings.overrides[field])
+    }
+
+    /// Typed, and not what is kept: blank is no override.
+    static func isUnsaved(_ typed: String, saved: String?) -> Bool {
+        EndpointOverrides.normalize(typed) != saved
     }
 
     private func commit(_ field: EndpointField) {

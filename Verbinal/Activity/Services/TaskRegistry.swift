@@ -159,6 +159,12 @@ final class TaskRegistry {
         retrying[id] = offer
     }
 
+    /// Task `id` is not to be tried again: a later attempt took its place.
+    func withdrawRetry(_ id: Int) {
+        retrying[id] = nil
+        if let index = tasks.firstIndex(where: { $0.id == id }) { tasks[index].canRetry = false }
+    }
+
     /// Tries failed task `id` again for `initiator`, as its owner says: the
     /// bar's Retry, or retry_activity. Nil when it went; otherwise why not.
     func retry(_ id: Int, by initiator: Initiator) -> String? {

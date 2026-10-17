@@ -669,6 +669,16 @@
         }
       }
     },
+    "Not saved yet: press Return, or leave the field." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore enregistré : appuyez sur Retour, ou quittez le champ."
+          }
+        }
+      }
+    },
     "Nothing left to move" : {
       "localizations" : {
         "fr" : {

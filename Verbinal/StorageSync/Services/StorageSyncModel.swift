@@ -84,6 +84,8 @@ final class StorageSyncModel {
     private(set) var nextTry: Date?
     private var retry: Task<Void, Never>?
     private var slow: Task<Void, Never>?
+    /// The last failed sync on the bar: only it offers Retry.
+    private var failedTask: Int?
     private var watchingNetwork = false
 
     /// Whether the person keeps collection `id` in VOSpace — their choice,
@@ -262,6 +264,8 @@ final class StorageSyncModel {
                 let failed = task ?? beginTask(pausedBy: nil)
                 failed.offerRetry(byAssistant: true) { [weak self] _ in self?.retryNow() }
                 failed.fail(Self.failed(failure, retryingIn: wait))
+                failedTask.map(tasks.withdrawRetry)
+                failedTask = failed.id
                 task = nil
                 scheduleRetry(after: wait)
             } else {
@@ -269,6 +273,8 @@ final class StorageSyncModel {
                 nextTry = nil
                 retry?.cancel()
                 retry = nil
+                failedTask.map(tasks.withdrawRetry)
+                failedTask = nil
                 task?.succeed(Self.moved(imported: imported, sent: sent))
                 task = nil
             }
