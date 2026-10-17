@@ -321,3 +321,19 @@ The manual (01, 14 and 16, in English and French) and the parity table are updat
 runs, so the bar should show "Waiting for your CANFAR storage…" after 10 s. Turning Wi-Fi off and
 clicking Sync Now should leave a failed task with Retry and the next try. Turning Wi-Fi back on
 should sync again by itself.
+
+## E, live (2026-10-17, build 0699a685, Storage pointed at a dead address by the person)
+
+| Case | Result | Notes |
+|---|---|---|
+| P5 | PASS | Moved back to this Mac: the copy in storage removed (applied by the person); `places: mac`, and nothing of it left in `Verbinal-Results/research/`. |
+| P1 | PASS | Each Research row shows a laptop and a cloud, the laptop lit for a file on this Mac; a record without a file keeps its arrow. |
+| E5 | PASS | A Sync Now that moved nothing, but took 18 s, was on the bar from about 10 s: "Syncing with your storage … Nothing left to move". |
+| E3 | PASS | Storage at `https://127.0.0.1:9`: "CANFAR storage is failing: 3 failures in a row" for one request; the sync failed about 7 s after the launch (2 s + 5 s). |
+| E1 | PASS | The bar: "Idle · 2 failed", in red; the task says "Could not connect to the server. Verbinal tries again in 1 min.", `retryable`. The person's **Retry** tried at once (20:46:12, before the timer) and failed with "… in 4 min". |
+| E2 | PASS | Unasked, a sync at 20:44:08 (one minute on), its retries at 2 s and 5 s, then "… in 2 min"; then "… in 4 min". |
+| **Activity list** | **FAIL, fixed 891218a7** | The person: "we need connect mcp tools to show this items and read them". The list hangs from the bar's button, and a button is not looked inside: `list_ui_targets` never saw its tasks or Retry. Popovers are now read wherever they hang. |
+| **Retry, twice** | **fixed 891218a7** | An earlier failed sync kept offering Retry after a later attempt; only the last does now. |
+| **Endpoints** | **FAIL, fixed 891218a7** | The person: "I cannot update the storage, it does not pick it up, we do not have save button there". Only Return kept a typed address, and nothing said so. It is now kept on leaving the field or the tab, saying "Not saved yet …" until then. |
+
+`retry_activity` was not tried live: this client's list of tools was made before the tool existed (`man` has it).
