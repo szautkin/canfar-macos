@@ -457,3 +457,8 @@ badge is now drawn as one picture, named "Where <file> is: <places>", and dimmed
 individual observation file into the vo space?" — the badge is the menu (Send a Copy to Storage, Move to
 Storage…), and did not look like one.
 
+**Live, build 21a7fd90 (2026-10-18):** F-6, F-7 PASS — the Files badge shows the laptop and the cloud lit,
+and the tools read "Where 745234p.cutout-b635f540.fits is: On this Mac and in your storage" (`menuButton`,
+with its help). The search export made while storage was down reached `Verbinal-Results/searches/` at
+01:52:35, sixteen minutes after the last failure (01:36:28): the wait F-9 removes.
+
