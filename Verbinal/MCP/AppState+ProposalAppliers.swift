@@ -251,6 +251,7 @@ extension AppState {
         appliers.append(contentsOf: makeResearchRecordAppliers(describe: describe, activity: activity))
         appliers.append(contentsOf: makeResearchFileTransferAppliers(activity: activity))
         appliers.append(makeResolveSyncConflictApplier(activity: activity))
+        appliers.append(makeMoveResearchFilesApplier(activity: activity))
         appliers.append(contentsOf: makeCutoutAppliers(activity: activity))
         appliers.append(contentsOf: makeSessionLogAppliers(activity: activity))
 

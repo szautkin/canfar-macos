@@ -23,7 +23,8 @@ enum ChangeCatalog {
                           "export_fits_figure", "export_cube_figure", "export_research_bundle",
                           "export_session_log", "get_research_file_from_storage"])
         put(.addToStorage, ["create_vospace_folder", "vospace_mkdir", "upload_text_to_vospace",
-                            "upload_file_to_vospace", "upload_to_vospace", "send_research_file_to_storage"])
+                            "upload_file_to_vospace", "upload_to_vospace", "send_research_file_to_storage",
+                            "move_research_files"])
         put(.allocationSessions, ["launch_session", "renew_session", "start_compute", "run_code"])
         put(.allocationBatch, ["launch_headless_job", "discover_image_packages"])
         put(.sharing, ["set_vospace_acl"])
@@ -51,7 +52,26 @@ enum ChangeCatalog {
         if proposal.toolName == "resolve_sync_conflict" {
             return syncConflictKind(of: proposal.payload) ?? .everythingAtOnce
         }
+        if proposal.toolName == "move_research_files" {
+            return moveKind(of: proposal.payload) ?? .everythingAtOnce
+        }
         return kind(ofTool: proposal.toolName) ?? .everythingAtOnce
+    }
+
+    /// Research's Move To (plan 46): by the copy it removes, or where it copies.
+    private static func moveKind(of payload: Data) -> ChangeKind? {
+        struct Move: Decodable {
+            let to: String
+            let removes: String?
+        }
+        guard let move = try? JSONDecoder().decode(Move.self, from: payload) else { return nil }
+        switch (move.removes, move.to) {
+        case ("storage"?, _): return .removeFromStorage
+        case ("mac"?, _): return .removeFilesOnMac
+        case (nil, "storage"): return .addToStorage
+        case (nil, "mac"): return .filesOnMac
+        default: return nil
+        }
     }
 
     /// A choice on a sync conflict: a guide is what every assistant is

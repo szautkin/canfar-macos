@@ -211,6 +211,8 @@ extension AppState {
             return try await self.storageSyncStatus(syncing: true)
         }))
         tools.append(ListSyncConflictsTool(conflicts: syncConflicts()))
+        // Research's Move To (plan 46): read, opened for the person, proposed.
+        tools.append(contentsOf: makeMoveToTools())
         tools.append(ResolveSyncConflictTool(conflicts: syncConflicts()))
         // Explicit lifecycle on top of the lazy `run_code`: pre-warm /
         // size the instance (`start_compute`) and tear it down
