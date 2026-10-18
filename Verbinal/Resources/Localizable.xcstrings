@@ -1569,6 +1569,16 @@
         }
       }
     },
+    "Your storage could not be asked whether its copy of %@ is there, so this one stays: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre stockage n’a pas pu dire si sa copie de %1$@ s’y trouve ; celle-ci reste donc : %2$@"
+          }
+        }
+      }
+    },
     "—" : {
       "shouldTranslate" : false
     },

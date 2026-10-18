@@ -702,6 +702,26 @@ final class StorageSyncTests: XCTestCase {
         XCTAssertNil(status.lastFailure, "one asked for runs")
     }
 
+    /// Live, plan 44 F-9: storage was pointed at a dead address, failed five
+    /// times, and was set back with a relaunch. The relaunch's sign-in sync
+    /// waited out the failures — 16 minutes, unseen — and a result made
+    /// meanwhile waited with it. A sign-in syncs whatever failed before.
+    func testASignInSyncsThoughSyncsFailedBefore() async throws {
+        let remote = FakeVOSpace()
+        await remote.put(StorageManifest.path, manifest(["exports": "Verbinal-Exports"]))
+        await remote.setFailing(true)
+        await sync(remote).sync(.signedIn)
+        await remote.setFailing(false)
+        await remote.forgetCounts()
+        // Relaunched: a new sync, the same state on this Mac.
+        let relaunched = sync(remote)
+        await relaunched.sync(.signedIn)
+        let lists = await remote.lists
+        XCTAssertFalse(lists.isEmpty, "the sign-in sync ran")
+        let status = await relaunched.status()
+        XCTAssertNil(status.lastFailure)
+    }
+
     func testNothingRunsAfterSignOut() async throws {
         let remote = FakeVOSpace()
         let storage = sync(remote)

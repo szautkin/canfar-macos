@@ -424,3 +424,28 @@ by `FileIdentity` alone. It now compares where each is in the person's Downloads
 (`ObservationStore.place`). `ResearchRecordsTests.testTheSandboxsPathAndThePersonsAreOnePlace` failed
 first; B13 is checked again on the next build.
 
+## B13 again, B14, P7, D2, E4, retry_activity, live (2026-10-17, build 5bcd12fd)
+
+| Case | Result | What was seen |
+|---|---|---|
+| B13 | PASS | A new cutout reached `Verbinal-Results/research/` and its record said `places: both` with its `storagePath` (F-5 fixed). |
+| B14 | PASS | The person signed out during a Sync Now: no request after, nothing waiting. Signed in again: a sync began by itself and ended "Nothing left to move". |
+| P7 | PARTLY | Signed out: the list's badges still showed laptop and cloud; the Files place menu was off. But its badge drew only the laptop (F-6), and the tools could not read the menu while off (F-7). |
+| D2 | PASS | Storage at a dead address (relaunched to take it): Get from Storage failed "A server with the specified hostname could not be found", `retry: later`; nothing half-written in Downloads or the app's temp. With storage back, the same Get brought it, `places: both`. |
+| E4 | PASS | The person's Retry on the failed Get made a new attempt each time (tasks 5–8), each failing honestly and offering Retry again. |
+| `retry_activity` | PASS | On the failed sync: a new attempt (task 4) "tries again in 4 min", the old ones no longer offering Retry. On the failed transfer: refused, "the person's to try again (Retry on the activity bar), or its tool's". |
+
+**Found, F-8: Remove from This Mac trusted the record.** With storage unreachable, the copy on this Mac was
+removed on the record's word that storage had one. Fixed: storage is asked first; a copy gone since keeps
+this one (and the record forgets storage's), and storage out of reach keeps it, saying why.
+`ResearchFileTransferTests` (2) failed first. Manual 03, English and French.
+
+**Found, F-9: after a relaunch the sign-in sync waited out earlier failures, unseen.** Five failures against
+the dead address made the relaunch's sign-in sync wait 16 minutes, with nothing on the bar and nothing
+scheduled, and a search export made while storage was down waited with it. Fixed: a sign-in (each launch)
+syncs whatever failed before; a sync after a change or on coming back still waits.
+`StorageSyncTests.testASignInSyncsThoughSyncsFailedBefore` failed first.
+
+**Noted:** endpoint changes take effect on relaunch, as the Endpoints tab's "Restart required" says;
+`get_endpoints` answered the old address until then.
+

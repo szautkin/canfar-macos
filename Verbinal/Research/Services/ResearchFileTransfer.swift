@@ -18,6 +18,8 @@ protocol ResearchStorage: Sendable {
     func fetch(_ path: String) async throws -> URL
     /// Removes the file at `path`.
     func remove(_ path: String) async throws
+    /// The size of the file at `path`; nil when there is none.
+    func size(_ path: String) async throws -> Int64?
 }
 
 /// A Research file between this Mac and the person's CANFAR storage (the
@@ -38,6 +40,8 @@ final class ResearchFileTransfer {
         case onlyCopy(String)
         case notOnMac(String)
         case notInStorage(String)
+        /// Storage could not say whether the other copy is there.
+        case cannotCheck(String, String)
 
         var errorDescription: String? {
             switch self {
@@ -47,6 +51,8 @@ final class ResearchFileTransfer {
             case .onlyCopy(let name): String(localized: "\(name) has no other copy: removing this one would lose it.")
             case .notOnMac(let name): String(localized: "\(name) is not on this Mac.")
             case .notInStorage(let name): String(localized: "\(name) is not in your storage.")
+            case .cannotCheck(let name, let why):
+                String(localized: "Your storage could not be asked whether its copy of \(name) is there, so this one stays: \(why)")
             }
         }
     }
@@ -130,7 +136,21 @@ final class ResearchFileTransfer {
     func removeFromMac(_ name: String, of recordID: UUID) async throws -> DownloadedObservation {
         let (record, file) = try find(name, recordID)
         guard file.places.onMac else { return record }
-        guard file.places.inStorage else { throw Failure.onlyCopy(name) }
+        guard let path = file.storagePath else { throw Failure.onlyCopy(name) }
+        // The copy in storage is looked at, not taken on the record's word: one
+        // removed since, from another device or Storage, would leave this the
+        // last (plan 44 F-8).
+        guard let storage else { throw Failure.signedOut }
+        let there: Int64?
+        do {
+            there = try await storage.size(path)
+        } catch {
+            throw Failure.cannotCheck(name, error.localizedDescription)
+        }
+        guard let there, file.size.map({ $0 == there }) ?? true else {
+            if there == nil { _ = setStoragePath(nil, of: file, in: try current(recordID)) }
+            throw Failure.onlyCopy(name)
+        }
         guard let kept = try await files.remove(fileNamed: file.name, of: recordID) else { throw Failure.noFile(name) }
         return kept
     }

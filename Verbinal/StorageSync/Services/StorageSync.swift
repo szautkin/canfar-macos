@@ -101,9 +101,14 @@ actor StorageSync {
         case signedIn, cameBack, changed, asked
         /// Tried again after a failure, its wait over (plan 44 E2).
         case retry
-        /// An automatic sync waits after failures; one asked for, or tried
-        /// again once its wait is over, does not.
+        /// An automatic sync does not look again for storage the account has
+        /// not got; one asked for, or tried again, does.
         var isAutomatic: Bool { self != .asked && self != .retry }
+        /// Waits out failures in a row: a sync after a change, or on coming
+        /// back. A sign-in — each launch — tries once whatever failed before
+        /// (plan 44 F-9): storage set back and Verbinal relaunched waited
+        /// unseen for up to an hour, its results with it.
+        var waitsOutFailures: Bool { self == .changed || self == .cameBack }
     }
 
     private let remote: any StorageRemote
@@ -195,7 +200,7 @@ actor StorageSync {
             return
         }
         if reason.isAutomatic, hasStorage == false { return }
-        if reason.isAutomatic, let wait = backOff(), now().timeIntervalSince(state.lastSync ?? .distantPast) < wait {
+        if reason.waitsOutFailures, let wait = backOff(), now().timeIntervalSince(state.lastSync ?? .distantPast) < wait {
             return
         }
         var only: Set<String>? = kind.map { [$0] }

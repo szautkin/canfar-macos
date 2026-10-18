@@ -38,4 +38,9 @@ struct VOSpaceResearchStorage: ResearchStorage {
     func remove(_ path: String) async throws {
         _ = try await vospace.deleteNode(username: username, path: path)
     }
+
+    func size(_ path: String) async throws -> Int64? {
+        guard let node = try await vospace.node(username: username, path: path) else { return nil }
+        return node.sizeBytes ?? 0
+    }
 }

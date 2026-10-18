@@ -47,6 +47,17 @@ final class ResearchFileTransferTests: XCTestCase {
         }
 
         func put(_ path: String, _ data: Data) { files[path] = data }
+
+        /// Removed elsewhere — another device, or the Storage screen.
+        func drop(_ path: String) { files[path] = nil }
+        /// Storage out of reach for the next question about a file.
+        var unreachable = false
+        func setUnreachable(_ value: Bool) { unreachable = value }
+
+        func size(_ path: String) async throws -> Int64? {
+            if unreachable { throw URLError(.cannotFindHost) }
+            return files[path].map { Int64($0.count) }
+        }
     }
 
     private var fileName = ""
@@ -135,6 +146,38 @@ final class ResearchFileTransferTests: XCTestCase {
         XCTAssertTrue(back.fileExists)
         XCTAssertEqual(back.mainKeptFile?.places, FilePlaces(onMac: true, inStorage: true))
         XCTAssertEqual(try Data(contentsOf: XCTUnwrap(back.localURL)), bytes)
+    }
+
+    /// Live, plan 44 F-8: the copy on this Mac was removed while storage
+    /// could not be reached, on the record's word that a copy was there.
+    func testACopyGoneFromStorageSinceKeepsThisOne() async throws {
+        let record = try onMac()
+        try await transfer.send(fitsName, of: record.id)
+        await storage.drop(inStorage)
+        do {
+            try await transfer.removeFromMac(fitsName, of: record.id)
+            XCTFail("the copy in storage is gone: this is the last")
+        } catch let failure as ResearchFileTransfer.Failure {
+            XCTAssertEqual(failure, .onlyCopy(fitsName))
+        }
+        let kept = try XCTUnwrap(store.observation(id: record.id))
+        XCTAssertTrue(kept.fileExists, "it stays")
+        XCTAssertNil(kept.storagePath, "and the record no longer says storage has it")
+    }
+
+    func testStorageOutOfReachKeepsThisOne() async throws {
+        let record = try onMac()
+        try await transfer.send(fitsName, of: record.id)
+        await storage.setUnreachable(true)
+        do {
+            try await transfer.removeFromMac(fitsName, of: record.id)
+            XCTFail("storage could not say its copy is there")
+        } catch let failure as ResearchFileTransfer.Failure {
+            guard case .cannotCheck(let name, _) = failure else { return XCTFail("\(failure)") }
+            XCTAssertEqual(name, fitsName)
+        }
+        XCTAssertTrue(store.observation(id: record.id)?.fileExists == true, "it stays")
+        XCTAssertEqual(store.observation(id: record.id)?.storagePath, inStorage, "storage's copy is not given up on")
     }
 
     func testTheLastCopyIsNeverRemoved() async throws {

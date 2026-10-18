@@ -102,7 +102,7 @@ Cliquez dessus pour ce que vous pouvez faire de ce fichier. Il faut être connec
 | **Déplacer vers le stockage…** | Le copie dans votre stockage, puis le supprime de ce Mac une fois qu’il y est. |
 | **Récupérer une copie du stockage** | Recopie le fichier dans votre dossier de téléchargement. Il reste dans votre stockage. |
 | **Déplacer vers ce Mac…** | Le copie sur ce Mac, puis le supprime de votre stockage une fois qu’il y est. |
-| **Retirer de ce Mac…** | Supprime la copie sur ce Mac ; celle de votre stockage reste. |
+| **Retirer de ce Mac…** | Supprime la copie sur ce Mac ; celle de votre stockage reste. Verbinal vérifie d’abord qu’elle y est toujours : si elle n’y est plus, ou si votre stockage ne répond pas, la copie sur ce Mac reste. |
 | **Retirer du stockage…** | Supprime la copie de votre stockage ; celle sur ce Mac reste. |
 
 Un déplacement copie toujours d’abord, et ne supprime l’autre copie qu’une fois la nouvelle en place :

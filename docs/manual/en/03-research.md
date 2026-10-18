@@ -92,7 +92,7 @@ Click them for what you can do with that file. You need to be signed in to CANFA
 | **Move to Storage…** | Copies it to your storage, then deletes it from this Mac once it is there. |
 | **Get a Copy from Storage** | Copies the file back to your download folder. It stays in your storage. |
 | **Move to This Mac…** | Copies it to this Mac, then deletes it from your storage once it is here. |
-| **Remove from This Mac…** | Deletes the copy on this Mac; the one in your storage stays. |
+| **Remove from This Mac…** | Deletes the copy on this Mac; the one in your storage stays. Verbinal first looks that it is still there: when it is gone, or your storage cannot be reached, the copy on this Mac stays. |
 | **Remove from Storage…** | Deletes the copy in your storage; the one on this Mac stays. |
 
 A move always copies first, and deletes the other copy only when the new one is in place, so a failure
