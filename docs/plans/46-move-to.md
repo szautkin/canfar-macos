@@ -123,11 +123,14 @@ it, `list_ui_targets` reads its direction, files, choices and button, `select_ui
 
 ## Steps (each one commit, tests failing first)
 
+The sheet comes before the badge loses its menu, so no commit leaves the moves without a way in.
+**M1 done:** `MoveToPlan` (Research/MoveTo), `MoveToPlanTests` (12; all fail against a plan that moves by default and leaves the old copy).
+
 | Step | What | Tests |
 |---|---|---|
 | M1 | `MoveToPlan`: from the active record, the direction, the files and copy or move → each file now and after, refusals, the button's words, the summary. Pure. | Every row of the active-item table; a cutout and its original apart; keep-only; a name taken; a storage copy gone; the file gone from this Mac; signed out. |
-| M2 | The Files section as state: the badge not a menu; the row buttons gone; Reveal in Finder and Remove File… over all the record's files | On screen (AX): the badge read with its places, no menu; the row buttons gone; Remove File…'s list. |
-| M3 | Move To… and the sheet, run through `ResearchFileTransfer` | On screen (AX): the button's place; the sheet's direction, files now and after, copy or move, button words; off when signed out; Escape; a refusal keeps it open. |
+| M2 | Move To… and the sheet, run through `ResearchFileTransfer` | On screen (AX): the button's place; the sheet's direction, files now and after, copy or move, button words; off when signed out; Escape; a refusal keeps it open. |
+| M3 | The Files section as state: the badge not a menu; the row buttons gone; Reveal in Finder and Remove File… over all the record's files | On screen (AX): the badge read with its places, no menu; the row buttons gone; Remove File…'s list. |
 | M4 | Free space in the summary | Space short stops the button. |
 | M5 | `show_move_to`, `get_move_to_view`, `move_research_files`; kinds; parity rows | Each tool against the sheet; the kind by effect; a refusal when asked. |
 | M6 | Words in English and French; manual 03 (en, fr); handout cases | Words checked against the screen. |
