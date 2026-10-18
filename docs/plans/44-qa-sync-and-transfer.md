@@ -364,18 +364,20 @@ queries are on (B2); `qa44 one` is the item.
 | F8 | Write a file with no `rev` (plan 44's form) as another device. **Sync Now**, then change the query here. | It is read as revision 0; this Mac's write makes it `rev` 1. |
 | F9 | Part C with two devices: F3 for real. | As F3 and F4, on both. |
 
-## Still open (2026-10-17, after plan 45 F5, 10d89b99)
+## Closed (2026-10-18)
 
-| Case | Waits for |
+Every case has run live, or been waived by the person.
+
+| Case | How it closed |
 |---|---|
-| F1–F8 (plan 45 F6) | A build at 10d89b99 or later running, and `/mcp` reconnected so `list_sync_conflicts` and `resolve_sync_conflict` appear (the running build is 73fab42e). The person approves the writes "as another device" and clicks the conflicts' buttons. |
-| F9, C1–C8 | A second Mac or a second macOS account, signed in to the same CANFAR account. |
-| B13, D3 | The person turns on **Results** in Settings ▸ Storage (their choice). |
-| B14, P7 | The person signs out during a sync. |
-| D2, E4 | Wi-Fi off, or Storage pointed at a dead address in Settings ▸ Endpoints, by the person (Wi-Fi could not be turned off here). |
-| `retry_activity` live | `/mcp` reconnected (E1's Retry was checked on the bar and with `list_activity`). |
+| F1–F8 (plan 45 F6) | PASS live, 3033594a…c614f227 (part F, below). |
+| B13, D3 | PASS live, 5bcd12fd (B13 after F-5). |
+| B14, P7 | B14 PASS; P7 PASS after F-6, F-7 (21a7fd90). |
+| D2, E4 | PASS live with Storage at a dead address (relaunched to take it). |
+| `retry_activity` | PASS live. |
 | B9 | Waived by the person: "it is private by default do not worry". |
 | A3 | Replaced by plan 45 (the person's decision). |
+| F9, C1–C8 | **Waived by the person (2026-10-18)**, for 1.4.1: the rules part C checks ran with another device's writes into storage (F2–F7) and with two devices in one process (`SyncByRevisionTests`, `SyncConflictsTests`); a real second Verbinal has not run them. |
 
 ## F, live (2026-10-17, build 3033594a, production)
 
