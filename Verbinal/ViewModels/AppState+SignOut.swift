@@ -62,6 +62,8 @@ extension AppState {
         remoteCompute.stopWatching()
         storageSync.signedOut()
         researchModel.transfer.storage = nil
+        researchModel.storageFree = nil
+        researchModel.moveTo = nil
         #endif
     }
 

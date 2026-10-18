@@ -98,9 +98,13 @@ So the action row acts on all of the active record's files:
 - **The button** names what happens: Copy to Storage, Move to Storage, Copy to This Mac, Move to This Mac,
   Remove from Storage, Remove from This Mac — with the count when more than one file. Return presses it;
   Escape cancels; Tab goes through direction, files, copy or move, the buttons.
-- **On the button** the sheet closes; each file moves as its own task on the activity bar (progress, a
-  failure with why, Retry — plan 44 E4), and the badge follows. What is refused is refused before
-  anything moves, and the sheet stays open with the reason.
+- **On the button** each file moves as its own task on the activity bar (progress, a failure with why,
+  Retry — plan 44 E4), and its row shows it moving, then done. The sheet closes itself once every file
+  has gone; Cancel becomes Close meanwhile, and the moves carry on. What storage refuses — a different
+  file of that name there, the storage copy gone — is only known when tried: the run stops there, the
+  reason stays under that file, and the sheet stays open.
+- **Keep one copy** is decided as the sheet opens, and stays: a copy just made does not turn the sheet
+  into a removal.
 
 ## Assistants
 
@@ -125,6 +129,7 @@ it, `list_ui_targets` reads its direction, files, choices and button, `select_ui
 
 The sheet comes before the badge loses its menu, so no commit leaves the moves without a way in.
 **M1 done:** `MoveToPlan` (Research/MoveTo), `MoveToPlanTests` (12; all fail against a plan that moves by default and leaves the old copy).
+**M2 done:** `MoveToModel` (on `ResearchModel.moveTo`), `MoveToSheet`, the button; free space from the quota. `MoveToOnScreenTests` (the button failed first: not there), `ResearchFileTransferTests` Move To (5; a copy flipping the sheet into a removal failed first).
 
 | Step | What | Tests |
 |---|---|---|

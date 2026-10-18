@@ -45,6 +45,8 @@ final class MoveToPlanTests: XCTestCase {
         XCTAssertEqual(plan.buttonTitle, "Move to Storage")
         XCTAssertTrue(plan.removes)
         XCTAssertTrue(plan.summary.contains("The copy on this Mac is removed once the one in your storage is there."), "\(plan.summary)")
+        XCTAssertEqual(plan.warnings, ["The copy on this Mac is removed once the one in your storage is there."],
+                       "what moves is said quietly; what is removed, as a warning")
     }
 
     /// Every file in both places: which copy to keep — storage, by default.

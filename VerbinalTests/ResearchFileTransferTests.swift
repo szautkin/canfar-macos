@@ -348,4 +348,62 @@ final class ResearchFileTransferTests: XCTestCase {
         XCTAssertEqual(RemoveResearchFileFromMacTool.verbClass, .destructive)
         XCTAssertEqual(RemoveResearchFileFromStorageTool.verbClass, .destructive)
     }
+
+    // MARK: - Move To (plan 46 M2): the sheet's button, through the same transfers
+
+    func testMoveToCopiesAndTheRecordSaysSo() async throws {
+        let record = try onMac()
+        let sheet = MoveToModel(record: record, transfer: transfer, store: store)
+        XCTAssertEqual(sheet.plan.buttonTitle, "Copy to Storage")
+        let went = await sheet.run()
+        XCTAssertTrue(went)
+        let now = try XCTUnwrap(store.observation(id: record.id))
+        XCTAssertEqual(now.mainKeptFile?.places, FilePlaces(onMac: true, inStorage: true))
+        XCTAssertEqual(sheet.plan.rows.first?.held, .alreadyThere, "the sheet shows it done")
+        XCTAssertEqual(sheet.moving[fitsName], .moved)
+    }
+
+    func testMoveToMovesAndLeavesStorageOnly() async throws {
+        let record = try onMac()
+        let sheet = MoveToModel(record: record, transfer: transfer, store: store, keepCopy: false)
+        XCTAssertEqual(sheet.plan.buttonTitle, "Move to Storage")
+        let went = await sheet.run()
+        XCTAssertTrue(went)
+        XCTAssertEqual(store.observation(id: record.id)?.mainKeptFile?.places, FilePlaces(onMac: false, inStorage: true))
+    }
+
+    /// A different file of that name in storage: refused when tried, kept
+    /// under its file, and the sheet stays open.
+    func testMoveToRefusalStaysOnItsFile() async throws {
+        let record = try onMac()
+        await storage.put(inStorage, Data("another file".utf8))
+        let sheet = MoveToModel(record: record, transfer: transfer, store: store)
+        let went = await sheet.run()
+        XCTAssertFalse(went)
+        guard case .refused? = sheet.plan.rows.first?.held else { return XCTFail("\(sheet.plan.rows)") }
+        XCTAssertFalse(sheet.plan.canRun)
+        XCTAssertEqual(store.observation(id: record.id)?.mainKeptFile?.places, FilePlaces(onMac: true, inStorage: false))
+    }
+
+    func testMoveToKeepsOneCopyOfAFileInBothPlaces() async throws {
+        let record = try onMac()
+        try await transfer.send(fitsName, of: record.id)
+        let both = try XCTUnwrap(store.observation(id: record.id))
+        let sheet = MoveToModel(record: both, transfer: transfer, store: store)
+        XCTAssertTrue(sheet.plan.isKeepOnly)
+        XCTAssertEqual(sheet.plan.buttonTitle, "Remove from This Mac")
+        let went = await sheet.run()
+        XCTAssertTrue(went)
+        XCTAssertEqual(store.observation(id: record.id)?.mainKeptFile?.places, FilePlaces(onMac: false, inStorage: true))
+    }
+
+    func testMoveToSignedOutRunsNothing() async throws {
+        let record = try onMac()
+        transfer.storage = nil
+        let sheet = MoveToModel(record: record, transfer: transfer, store: store)
+        let went = await sheet.run()
+        XCTAssertFalse(went)
+        let kept = await storage.files
+        XCTAssertTrue(kept.isEmpty)
+    }
 }

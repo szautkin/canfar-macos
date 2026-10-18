@@ -116,6 +116,16 @@
         }
       }
     },
+    "%@?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ?"
+          }
+        }
+      }
+    },
     "%lld brought to this Mac" : {
       "localizations" : {
         "fr" : {
@@ -205,6 +215,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un autre fichier se trouve déjà dans votre stockage à %@ : rien n’a été écrit par-dessus."
+          }
+        }
+      }
+    },
+    "After" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Après"
+          }
+        }
+      }
+    },
+    "Already there" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déjà là"
           }
         }
       }
@@ -299,6 +329,26 @@
         }
       }
     },
+    "Copy or move" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier ou déplacer"
+          }
+        }
+      }
+    },
+    "Copy or move this record's files between this Mac and your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier ou déplacer les fichiers de cette observation entre ce Mac et votre stockage"
+          }
+        }
+      }
+    },
     "Copy the file from your storage to this Mac; it stays in your storage" : {
       "localizations" : {
         "fr" : {
@@ -325,6 +375,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier vers ce Mac"
+          }
+        }
+      }
+    },
+    "Copy — keep it in your storage too" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier — le garder aussi dans votre stockage"
+          }
+        }
+      }
+    },
+    "Copy — keep it on this Mac too" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier — le garder aussi sur ce Mac"
           }
         }
       }
@@ -609,6 +679,36 @@
         }
       }
     },
+    "Keep" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder"
+          }
+        }
+      }
+    },
+    "Keep in Your Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder dans votre stockage"
+          }
+        }
+      }
+    },
+    "Keep on This Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder sur ce Mac"
+          }
+        }
+      }
+    },
     "Keep the Other's" : {
       "localizations" : {
         "fr" : {
@@ -739,6 +839,16 @@
         }
       }
     },
+    "Move To" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer vers"
+          }
+        }
+      }
+    },
     "Move to Storage" : {
       "localizations" : {
         "fr" : {
@@ -779,6 +889,36 @@
         }
       }
     },
+    "Move To…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer vers…"
+          }
+        }
+      }
+    },
+    "Move — remove it from this Mac once it is in your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer — le retirer de ce Mac une fois dans votre stockage"
+          }
+        }
+      }
+    },
+    "Move — remove it from your storage once it is on this Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer — le retirer de votre stockage une fois sur ce Mac"
+          }
+        }
+      }
+    },
     "Moved %lld records back into their file." : {
       "localizations" : {
         "fr" : {
@@ -805,6 +945,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld fiches déplacées dans la base de données. La sauvegarde du fichier est %@, à côté de lui."
+          }
+        }
+      }
+    },
+    "Moving — see the activity bar" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacement en cours — voir la barre d’activité"
           }
         }
       }
@@ -865,6 +1015,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Introuvable."
+          }
+        }
+      }
+    },
+    "Not on this Mac any more" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "N’est plus sur ce Mac"
           }
         }
       }
@@ -1629,6 +1789,16 @@
         }
       }
     },
+    "This Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce Mac"
+          }
+        }
+      }
+    },
     "This Mac's goes to your storage, and to every device" : {
       "localizations" : {
         "fr" : {
@@ -1655,6 +1825,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cette plate-forme n’offre pas de GPU"
+          }
+        }
+      }
+    },
+    "To" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vers"
+          }
+        }
+      }
+    },
+    "To This Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vers ce Mac"
+          }
+        }
+      }
+    },
+    "To Your Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vers votre stockage"
           }
         }
       }
@@ -1785,6 +1985,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "oui"
+          }
+        }
+      }
+    },
+    "Your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre stockage"
           }
         }
       }

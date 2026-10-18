@@ -30,6 +30,11 @@ final class ResearchModel {
 
     var activeDownloads: [UUID: DownloadProgress] = [:]
     var selectedObservation: DownloadedObservation?
+    /// The Move To sheet, while it is open (plan 46): here, so assistants
+    /// open and read it as the person sees it.
+    var moveTo: MoveToModel?
+    /// Free space in the person's storage, while they are signed in.
+    @ObservationIgnored var storageFree: (@Sendable () async -> Int64?)?
     var filterText = "" {
         didSet { if oldValue != filterText { scheduleNoteSearch() } }
     }
@@ -43,6 +48,19 @@ final class ResearchModel {
     private(set) var lastDownload: Phase<String> = .idle
     var lastSuccess: String? { if case .ready(let message) = lastDownload { message } else { nil } }
     var downloadProblem: Problem? { lastDownload.problem }
+
+    /// Opens Move To for `record`, the active one (plan 46).
+    @discardableResult
+    func openMoveTo(_ record: DownloadedObservation, to: MoveToPlan.Place? = nil, keepCopy: Bool = true) -> MoveToModel {
+        let sheet = MoveToModel(record: record, transfer: transfer, store: observationStore, to: to, keepCopy: keepCopy)
+        sheet.onChange = { [weak self] updated in
+            if self?.selectedObservation?.id == updated.id { self?.selectedObservation = updated }
+        }
+        moveTo = sheet
+        let free = storageFree
+        Task { await sheet.load(free: free) }
+        return sheet
+    }
 
     /// The person put the download's problem away.
     func dismissDownloadProblem() { lastDownload.dismiss() }

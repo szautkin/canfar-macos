@@ -189,6 +189,12 @@ struct ObservationDetailView: View {
 
                     Spacer()
 
+                    #if os(macOS)
+                    if !observation.allFiles.isEmpty {
+                        moveToButton
+                    }
+                    #endif
+
                     if observation.isDownloaded {
                         Button {
                             showRemoveFileConfirm = true
@@ -309,7 +315,39 @@ struct ObservationDetailView: View {
                 Task { await model.downloadCutout(of: editor.details, spec) }
             }
         }
+        #if os(macOS)
+        .uiPresented("Move To", .sheet, item: moveToBinding)
+        .sheet(item: moveToBinding) { sheet in
+            MoveToSheet(model: sheet) { model.moveTo = nil }
+        }
+        #endif
     }
+
+    #if os(macOS)
+    /// Move To… (plan 46): this record's files to the person's storage, or
+    /// back to this Mac — this record only: a cutout is not its original.
+    private var moveToButton: some View {
+        let signedIn = model.transfer.storage != nil
+        let busy = observation.allFiles.contains { model.transfer.isBusy($0.name, of: observation.id) }
+        return Button {
+            model.openMoveTo(observation)
+        } label: {
+            Label("Move To…", systemImage: "arrow.left.arrow.right")
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .disabled(!signedIn || busy)
+        .help(!signedIn ? Text("Sign in to CANFAR to move files to and from your storage")
+              : busy ? Text("Moving — see the activity bar")
+              : Text("Copy or move this record's files between this Mac and your storage"))
+        .pointable("research.moveTo", opens: "Move To")
+    }
+
+    private var moveToBinding: Binding<MoveToModel?> {
+        Binding(get: { model.moveTo.flatMap { $0.recordID == observation.id ? $0 : nil } },
+                set: { model.moveTo = $0 })
+    }
+    #endif
 
     private var imagePlaceholder: some View {
         VStack {

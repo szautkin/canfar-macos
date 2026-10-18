@@ -12,6 +12,11 @@ extension AppState {
         // Research's files to and from the person's storage, while signed in.
         researchModel.transfer.storage = VOSpaceResearchStorage(
             vospace: VOSpaceBrowserService(network: network, endpoints: endpoints), username: username)
+        let quotas = storageService, user = username
+        researchModel.storageFree = {
+            guard let quota = try? await quotas.getQuota(username: user), quota.quotaBytes > 0 else { return nil }
+            return max(0, quota.quotaBytes - quota.usedBytes)
+        }
         let remoteCompute = remoteCompute
         storageSync.signedIn(username: username, .init(
             vospace: VOSpaceBrowserService(network: network, endpoints: endpoints),

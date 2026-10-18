@@ -93,9 +93,11 @@ struct MoveToPlan: Equatable, Sendable {
     var refused: [String: String]
 
     /// The sheet as it opens: toward where the files are not — or, every
-    /// file in both places, keeping them in storage — copying.
+    /// file in both places, keeping them in storage — copying. Whether it
+    /// keeps one copy is decided as it opens, and stays: a copy just made
+    /// does not turn the sheet into a removal.
     init(files: [File], signedIn: Bool, to: Place? = nil, keepCopy: Bool = true, unchecked: Set<String> = [],
-         free: Int64? = nil, refused: [String: String] = [:]) {
+         free: Int64? = nil, refused: [String: String] = [:], keepOnly: Bool? = nil) {
         self.files = files
         self.signedIn = signedIn
         self.keepCopy = keepCopy
@@ -103,6 +105,7 @@ struct MoveToPlan: Equatable, Sendable {
         self.free = free
         self.refused = refused
         self.to = to ?? Self.defaultPlace(for: files)
+        isKeepOnly = keepOnly ?? (!files.isEmpty && files.allSatisfy { $0.places.onMac && $0.places.inStorage })
     }
 
     static func defaultPlace(for files: [File]) -> Place {
@@ -111,8 +114,8 @@ struct MoveToPlan: Equatable, Sendable {
         return .storage
     }
 
-    /// Every file is in both places: the choice is which copy to keep.
-    var isKeepOnly: Bool { !files.isEmpty && files.allSatisfy { $0.places.onMac && $0.places.inStorage } }
+    /// Every file was in both places as it opened: the choice is which copy to keep.
+    let isKeepOnly: Bool
 
     var rows: [Row] {
         files.map { file in
@@ -191,20 +194,33 @@ struct MoveToPlan: Equatable, Sendable {
         }
     }
 
-    /// What it moves, and what it removes, in a line or two.
+    /// What it moves and removes, in a line or two: what moves said quietly,
+    /// then the warnings.
     var summary: [String] {
         guard signedIn else { return [String(localized: "Sign in to CANFAR to move files to and from your storage")] }
         guard !active.isEmpty else {
             return [isKeepOnly ? String(localized: "Choose which copy to keep.") : String(localized: "Nothing to move.")]
         }
+        return moves + warnings
+    }
+
+    /// Where the bytes go.
+    private var moves: [String] {
         var lines: [String] = []
         if toStorage > 0 {
             let room = free.map { String(localized: " · \(SharedFormatters.bytes($0)) free") } ?? ""
             lines.append(String(localized: "\(SharedFormatters.bytes(toStorage)) to your storage") + room)
         }
         if toMac > 0 { lines.append(String(localized: "\(SharedFormatters.bytes(toMac)) to this Mac")) }
+        return lines
+    }
+
+    /// What the person is warned of: storage short of room, a copy removed —
+    /// by a move once the other is there; keeping one copy, at once.
+    var warnings: [String] {
+        guard signedIn, !active.isEmpty else { return [] }
+        var lines: [String] = []
         if !fits { lines.append(String(localized: "There is not enough room in your storage for it.")) }
-        // A move removes a copy once the other is there; keeping one copy, at once.
         let moving = active.contains { if case .move = $0.step { true } else { false } }
         switch (active.compactMap({ $0.step?.removes }).first, moving) {
         case (.mac?, true): lines.append(String(localized: "The copy on this Mac is removed once the one in your storage is there."))
