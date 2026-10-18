@@ -132,6 +132,7 @@ The sheet comes before the badge loses its menu, so no commit leaves the moves w
 **M2 done:** `MoveToModel` (on `ResearchModel.moveTo`), `MoveToSheet`, the button; free space from the quota. `MoveToOnScreenTests` (the button failed first: not there), `ResearchFileTransferTests` Move To (5; a copy flipping the sheet into a removal failed first).
 **M3 done:** the Files rows are state — the badge an image named "Where <file> is: …", the rows' Open, Show and Remove gone, the place menu deleted; Reveal in Finder selects every file on this Mac; Remove Files… asks which, a file's only copy unchecked. `ResearchFilesOnScreenTests` failed first (a menu, and the three buttons there); `MoveToOnScreenTests` (reveal, Remove Files).
 **M4 done:** storage's room was built in M1 (the plan) and M2 (the quota asked as the sheet opens); `testOpeningMoveToAsksStorageForItsRoom` shows it on screen — the room, the warning, the button off — and fails without the asking.
+**M5 done:** `get_move_to_view`, `show_move_to` (selects the record, opens the sheet with the choice; the person presses), `move_research_files` (judged when asked; its kind by the copy it removes, else where it copies; applied only while the files are where they were). Parity rows, guide categories. `MoveToToolsTests` (4); without the kind rule a move is filed as an add to storage — which applies at once — and the test fails.
 
 | Step | What | Tests |
 |---|---|---|
@@ -141,3 +142,18 @@ The sheet comes before the badge loses its menu, so no commit leaves the moves w
 | M4 | Free space in the summary | Space short stops the button. |
 | M5 | `show_move_to`, `get_move_to_view`, `move_research_files`; kinds; parity rows | Each tool against the sheet; the kind by effect; a refusal when asked. |
 | M6 | Words in English and French; manual 03 (en, fr); handout cases | Words checked against the screen. |
+
+## Live cases (M6)
+
+On a build with M1–M5, signed in to CANFAR, on test records only (a cutout made for the test).
+
+| Case | Steps | PASS if |
+|---|---|---|
+| L1 | Open a record whose file is only on this Mac. | **Move To…** sits left of **Remove File…**; the Files row has no buttons, only its badge (read as "Where … is: On this Mac only"). |
+| L2 | Move To… → Copy to Storage. | The row ticks; the sheet closes; the badge and `list_downloaded_observations` say `both`; one task on the bar. |
+| L3 | Move To… again (now both places). | It offers **Keep on This Mac / Keep in Your Storage**; the button is red and asks once more; Keep in Your Storage leaves `storage`. |
+| L4 | Move To… on that record (storage only) → To This Mac, Move. | It comes back, and storage's copy goes once it is here: `mac`. |
+| L5 | Signed out. | Move To… is off, its help says to sign in. |
+| L6 | A cutout with its weight map (two files). | Both rows; Reveal in Finder selects both; **Remove Files…** lists both, the only copy unchecked. |
+| L7 | An assistant: `show_move_to` with `keepCopy: false`, then `get_move_to_view`. | The sheet opens on the record with Move chosen, as the view says; nothing moves until the person presses. |
+| L8 | An assistant: `move_research_files` that moves. | It waits in Pending as "Remove files on this Mac" (unless allowed); applied, the files are where it said. |

@@ -52,22 +52,22 @@ Select a row to see the observation: its preview, target, collection and observa
   For an observation kept without its file, **File** says **Not downloaded**.
 - **Files**: the observation's files: its main file, then those downloaded one by one from the
   **Files** tab or by an assistant. Each shows where it is on this Mac and in your storage, its size,
-  the laptop and cloud of where it is, and buttons to open it, show it in the Finder, and remove it.
-  The trash asks first; the observation and its notes stay.
+  and the laptop and cloud of where it is. The buttons below act on its files.
 
 Its buttons:
 
 | Button | What it does |
 |---|---|
 | **Open in FITS Viewer** | Opens the file in the [FITS Viewer](04-fits-viewer.md). For a cube it reads **Open in Cube Viewer**; for a file that is not FITS, **Open File** opens it in its usual app. |
-| **Reveal in Finder** | Shows the file in the Finder. |
+| **Reveal in Finder** | Shows its files on this Mac in the Finder, selected together. |
 | **View on CADC** | The observation's page on CADC's website. |
 | **Cut Out…** | The [cutout editor](02-search.md#cutouts). |
 | **Copy Details** | Copies the observation's ID, position, instrument and date as text. |
 | **Download** | For an observation kept without its file: fetches it into this same record, with its notes. |
 | **Get from Storage** | For an observation whose file is only in your storage: copies it back to this Mac. It stays in your storage too. |
 | **Download Again** | When the file is missing, cannot be opened, or is empty: fetches it again. |
-| **Remove File…** | Deletes the file from this Mac; the observation, its details and notes stay, and **Download** fetches it again. When the file is in your storage too, that copy stays. |
+| **Move To…** | Copies or moves its files between this Mac and your storage (below). |
+| **Remove File…** | Deletes the file from this Mac; the observation, its details and notes stay, and **Download** fetches it again. When the file is in your storage too, that copy stays. With several files on this Mac it reads **Remove Files…** and asks which: each says whether a copy stays in your storage, and a file whose only copy is here starts unchecked. |
 | **Delete** | Removes the observation from Research, and its files from your disk. This cannot be undone. Your notes are kept: if you keep the observation again, they come back. |
 
 ### Cutouts
@@ -84,16 +84,26 @@ in the list and in **Files**: a laptop for this Mac and a cloud for your storage
 is. Hold the pointer over them to read it: **On this Mac only**, **In your storage only**, **On this Mac
 and in your storage**.
 
-Click them for what you can do with that file. You need to be signed in to CANFAR.
+They only say where it is. To copy or move the observation's files, click **Move To…** — for this
+observation only: a cutout is its own record, not the observation it was cut from. You need to be signed
+in to CANFAR.
 
-| Choice | What it does |
-|---|---|
-| **Send a Copy to Storage** | Copies the file to `Verbinal-Results/research/` in your storage. It stays on this Mac. |
-| **Move to Storage…** | Copies it to your storage, then deletes it from this Mac once it is there. |
-| **Get a Copy from Storage** | Copies the file back to your download folder. It stays in your storage. |
-| **Move to This Mac…** | Copies it to this Mac, then deletes it from your storage once it is here. |
-| **Remove from This Mac…** | Deletes the copy on this Mac; the one in your storage stays. Verbinal first looks that it is still there: when it is gone, or your storage cannot be reached, the copy on this Mac stays. |
-| **Remove from Storage…** | Deletes the copy in your storage; the one on this Mac stays. |
+- **This Mac** and **Your storage** are side by side, with where files go in each, and the way between
+  them: **To Your Storage** or **To This Mac**. It starts toward where the files are not.
+- **Files**: each of its files, **Now** and **After**, the place that changes lit. Those that can go are
+  checked; one already there, or no longer on this Mac, says so.
+- **Copy** (chosen first) keeps the files where they are too; **Move** removes that copy once the new
+  one is in place, and says so in orange.
+- When every file is in both places, the choice is which copy to keep: **Keep on This Mac** or **Keep in
+  Your Storage**; the button is red, and asks once more.
+- Below, how much goes, your storage's free space, and what is removed. The button says what happens:
+  **Copy to Storage**, **Move 2 Files to This Mac**, **Remove from Storage** …
+
+Each file moves as a task on the activity bar, its row turning to a tick; the sheet closes once all have
+gone. Your storage copies to `Verbinal-Results/research/`. What storage refuses — a different file of
+that name there, a copy in storage gone — stays under that file, and nothing else moves. Removing the copy
+on this Mac first looks that the one in your storage is still there. The list's right-click menu keeps
+**Send a Copy to Storage** and **Get a Copy from Storage** for one file.
 
 A move always copies first, and deletes the other copy only when the new one is in place, so a failure
 halfway leaves the file where it was. Verbinal never removes the last copy of a file: a file only on this
@@ -164,7 +174,8 @@ storage. A notification tells you when an export finishes.
 It can list and read your observations and notes, finding them as the filter does (a word of a note, or
 a tag), write notes, tags and ratings (up to 50 at once),
 open files in the viewers, download what you kept without a file or one file of an observation, cut
-out, and export. It can see where each file is, send a copy to your storage and get one back. Removing a
+out, and export. It can see where each file is, send a copy to your storage and get one back, and read
+**Move To…**, open it on an observation with its choice for you to press, or propose the same moves. Removing a
 file, from this Mac or from your storage, or an observation waits for you unless you allowed that kind of
 change. It never removes a file's last copy, and it cannot move Research's records between their file and
 the database: that is yours.

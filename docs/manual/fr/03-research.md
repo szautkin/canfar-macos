@@ -60,23 +60,23 @@ d’observation, puis :
   est **Présent**. Pour une observation gardée sans son fichier, **Fichier** indique **Non téléchargé**.
 - **Fichiers** : les fichiers de l’observation : son fichier principal, puis ceux téléchargés un par un
   depuis l’onglet **Fichiers** ou par un assistant. Chacun montre où il est sur ce Mac et dans votre
-  stockage, sa taille, le portable et le nuage de son emplacement, et des boutons pour l’ouvrir,
-  l’afficher dans le Finder et le supprimer. La corbeille demande d’abord ; l’observation et ses notes
-  restent.
+  stockage, sa taille, et le portable et le nuage de son emplacement. Les boutons ci-dessous agissent
+  sur ses fichiers.
 
 Ses boutons :
 
 | Bouton | Ce qu’il fait |
 |---|---|
 | **Ouvrir dans la Visionneuse FITS** | Ouvre le fichier dans la [Visionneuse FITS](04-fits-viewer.md). Pour un cube, il devient **Ouvrir dans la visionneuse de cubes** ; pour un fichier qui n’est pas FITS, **Ouvrir le fichier** l’ouvre dans son app habituelle. |
-| **Afficher dans le Finder** | Montre le fichier dans le Finder. |
+| **Afficher dans le Finder** | Montre ses fichiers sur ce Mac dans le Finder, sélectionnés ensemble. |
 | **Voir sur le CADC** | La page de l’observation sur le site du CADC. |
 | **Découper…** | L’[éditeur de découpe](02-search.md#découpes). |
 | **Copier les détails** | Copie l’ID, la position, l’instrument et la date de l’observation en texte. |
 | **Télécharger** | Pour une observation gardée sans son fichier : le récupère dans cette même fiche, avec ses notes. |
 | **Récupérer du stockage** | Pour une observation dont le fichier n’est que dans votre stockage : le recopie sur ce Mac. Il reste aussi dans votre stockage. |
 | **Télécharger de nouveau** | Quand le fichier est absent, ne peut pas être ouvert, ou est vide : le récupère à nouveau. |
-| **Supprimer le fichier…** | Supprime le fichier de ce Mac ; l’observation, ses détails et ses notes restent, et **Télécharger** le récupère de nouveau. Quand le fichier est aussi dans votre stockage, cette copie reste. |
+| **Déplacer vers…** | Copie ou déplace ses fichiers entre ce Mac et votre stockage (ci-dessous). |
+| **Supprimer le fichier…** | Supprime le fichier de ce Mac ; l’observation, ses détails et ses notes restent, et **Télécharger** le récupère de nouveau. Quand le fichier est aussi dans votre stockage, cette copie reste. Avec plusieurs fichiers sur ce Mac, il devient **Supprimer des fichiers…** et demande lesquels : chacun dit si une copie reste dans votre stockage, et un fichier dont la seule copie est ici commence décoché. |
 | **Supprimer** | Retire l’observation de Recherche, et ses fichiers de votre disque. C’est irréversible. Vos notes sont gardées : si vous gardez de nouveau l’observation, elles reviennent. |
 
 ### Découpes
@@ -94,16 +94,28 @@ emplacement s’affiche à côté de lui, dans la liste et dans **Fichiers** : u
 nuage pour votre stockage, chacun allumé là où est le fichier. Laissez le pointeur dessus pour le lire :
 **Sur ce Mac seulement**, **Dans votre stockage seulement**, **Sur ce Mac et dans votre stockage**.
 
-Cliquez dessus pour ce que vous pouvez faire de ce fichier. Il faut être connecté à CANFAR.
+Ils disent seulement où il est. Pour copier ou déplacer les fichiers de l’observation, cliquez sur
+**Déplacer vers…** — pour cette observation seulement : une découpe est sa propre fiche, pas
+l’observation dont elle vient. Il faut être connecté à CANFAR.
 
-| Choix | Ce qu’il fait |
-|---|---|
-| **Envoyer une copie au stockage** | Copie le fichier dans `Verbinal-Results/research/` de votre stockage. Il reste sur ce Mac. |
-| **Déplacer vers le stockage…** | Le copie dans votre stockage, puis le supprime de ce Mac une fois qu’il y est. |
-| **Récupérer une copie du stockage** | Recopie le fichier dans votre dossier de téléchargement. Il reste dans votre stockage. |
-| **Déplacer vers ce Mac…** | Le copie sur ce Mac, puis le supprime de votre stockage une fois qu’il y est. |
-| **Retirer de ce Mac…** | Supprime la copie sur ce Mac ; celle de votre stockage reste. Verbinal vérifie d’abord qu’elle y est toujours : si elle n’y est plus, ou si votre stockage ne répond pas, la copie sur ce Mac reste. |
-| **Retirer du stockage…** | Supprime la copie de votre stockage ; celle sur ce Mac reste. |
+- **Ce Mac** et **Votre stockage** sont côte à côte, avec l’endroit où vont les fichiers dans chacun, et
+  le sens entre eux : **Vers votre stockage** ou **Vers ce Mac**. Il part vers là où les fichiers ne sont
+  pas.
+- **Fichiers** : chacun de ses fichiers, **Maintenant** et **Après**, l’endroit qui change allumé. Ceux
+  qui peuvent partir sont cochés ; un fichier déjà là, ou qui n’est plus sur ce Mac, le dit.
+- **Copier** (choisi d’abord) garde aussi les fichiers où ils sont ; **Déplacer** retire cette copie une
+  fois la nouvelle en place, et le dit en orange.
+- Quand chaque fichier est aux deux endroits, le choix est la copie à garder : **Garder sur ce Mac** ou
+  **Garder dans votre stockage** ; le bouton est rouge, et demande encore une fois.
+- Dessous, ce qui part, l’espace libre de votre stockage, et ce qui est retiré. Le bouton dit ce qui se
+  passe : **Copier vers le stockage**, **Déplacer 2 fichiers vers ce Mac**, **Retirer du stockage** …
+
+Chaque fichier part comme une tâche de la barre d’activité, sa ligne passant à une coche ; la feuille se
+ferme une fois tous partis. Votre stockage les reçoit dans `Verbinal-Results/research/`. Ce que le
+stockage refuse — un autre fichier de ce nom déjà là, une copie du stockage disparue — reste sous ce
+fichier, et rien d’autre ne part. Retirer la copie sur ce Mac vérifie d’abord que celle de votre stockage
+y est toujours. Le menu du clic droit de la liste garde **Envoyer une copie au stockage** et **Récupérer
+une copie du stockage** pour un fichier.
 
 Un déplacement copie toujours d’abord, et ne supprime l’autre copie qu’une fois la nouvelle en place :
 un échec en cours de route laisse le fichier où il était. Verbinal ne retire jamais la dernière copie
@@ -183,7 +195,8 @@ Il peut lister et lire vos observations et vos notes, en les trouvant comme le f
 ou une étiquette), écrire des notes, des étiquettes et des notes de
 qualité (jusqu’à 50 à la fois), ouvrir des fichiers dans les visionneuses, télécharger ce que vous avez
 gardé sans fichier ou un fichier d’une observation, découper et exporter. Il peut voir où est chaque
-fichier, en envoyer une copie à votre stockage et la récupérer. Supprimer un fichier, de ce Mac ou de
+fichier, en envoyer une copie à votre stockage et la récupérer, et lire **Déplacer vers…**, l’ouvrir sur
+une observation avec son choix pour que vous appuyiez, ou proposer les mêmes déplacements. Supprimer un fichier, de ce Mac ou de
 votre stockage, ou une observation vous attend, sauf si vous avez autorisé ce type de modification. Il
 ne retire jamais la dernière copie d’un fichier, et il ne peut pas déplacer les fiches de Recherche
 entre leur fichier et la base de données : cela vous revient.
