@@ -133,4 +133,26 @@ final class MoveToOnScreenTests: XCTestCase {
         }
         // "Remove File", one: its only copy starts unchecked.
     }
+
+    // MARK: - M4: storage's room
+
+    func testOpeningMoveToAsksStorageForItsRoom() async throws {
+        try await AXReadable.require()
+        let state = AppState()
+        let research = state.researchModel
+        research.transfer.storage = ResearchFileTransferTests.FakeStorage()
+        research.storageFree = { 3 }
+        let sheet = research.openMoveTo(record())
+        for _ in 0..<50 where sheet.plan.free == nil { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(sheet.plan.free, 3, "asked when it opens")
+        XCTAssertFalse(sheet.plan.canRun, "6 bytes do not fit in 3")
+
+        let window = show(MoveToSheet(model: sheet) {}, width: 600, height: 520)
+        defer { window.close() }
+        let all = try await elements(of: window)
+        let names = all.compactMap(\.name)
+        XCTAssertTrue(names.contains("There is not enough room in your storage for it."), "\(names)")
+        XCTAssertTrue(names.contains { $0.contains(" free") }, "the room it has: \(names)")
+        XCTAssertEqual(all.first { $0.id == "research.moveTo.run" }?.enabled, false, "the button is off")
+    }
 }

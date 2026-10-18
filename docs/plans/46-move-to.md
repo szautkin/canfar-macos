@@ -131,6 +131,7 @@ The sheet comes before the badge loses its menu, so no commit leaves the moves w
 **M1 done:** `MoveToPlan` (Research/MoveTo), `MoveToPlanTests` (12; all fail against a plan that moves by default and leaves the old copy).
 **M2 done:** `MoveToModel` (on `ResearchModel.moveTo`), `MoveToSheet`, the button; free space from the quota. `MoveToOnScreenTests` (the button failed first: not there), `ResearchFileTransferTests` Move To (5; a copy flipping the sheet into a removal failed first).
 **M3 done:** the Files rows are state — the badge an image named "Where <file> is: …", the rows' Open, Show and Remove gone, the place menu deleted; Reveal in Finder selects every file on this Mac; Remove Files… asks which, a file's only copy unchecked. `ResearchFilesOnScreenTests` failed first (a menu, and the three buttons there); `MoveToOnScreenTests` (reveal, Remove Files).
+**M4 done:** storage's room was built in M1 (the plan) and M2 (the quota asked as the sheet opens); `testOpeningMoveToAsksStorageForItsRoom` shows it on screen — the room, the warning, the button off — and fails without the asking.
 
 | Step | What | Tests |
 |---|---|---|
