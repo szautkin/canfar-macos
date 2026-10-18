@@ -108,10 +108,11 @@ final class LocalFolderAccessStore {
 
     /// Path to show agents / the UI: prefer the user-facing Downloads
     /// form when the file actually lives under either Downloads root.
-    nonisolated static func userFacingPath(for url: URL) -> String {
+    nonisolated static func userFacingPath(for url: URL, container: URL = downloadsRoot,
+                                           user: URL = userFacingDownloadsRoot) -> String {
         let target = url.standardizedFileURL.path
-        let user = userFacingDownloadsRoot.standardizedFileURL.path
-        let container = downloadsRoot.standardizedFileURL.path
+        let user = user.standardizedFileURL.path
+        let container = container.standardizedFileURL.path
         if user != container, target == container || target.hasPrefix(container.hasSuffix("/") ? container : container + "/") {
             let rest = String(target.dropFirst(container.count))
             return user + rest

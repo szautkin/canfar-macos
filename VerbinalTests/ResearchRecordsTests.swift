@@ -135,4 +135,31 @@ final class ResearchRecordsTests: XCTestCase {
         store.noteInStorage(file, at: "Verbinal-Results/research/1525350p.fits.fz")
         XCTAssertEqual(store.observations.first?.storagePath, "Verbinal-Results/research/1525350p.fits.fz")
     }
+
+    /// Live, plan 44 B13: a cutout went to storage, but its record still said
+    /// "mac". The record keeps the person's path to Downloads; the result was
+    /// sent by the sandbox's path to the same file.
+    /// The same, wherever the tests run: the sandbox's name for a file in
+    /// Downloads and the person's are one place.
+    func testTheSandboxsPathAndThePersonsAreOnePlace() {
+        let container = URL(fileURLWithPath: "/Users/qa/Library/Containers/com.codebg.Verbinal/Data/Downloads")
+        let user = URL(fileURLWithPath: "/Users/qa/Downloads")
+        let name = "745234p.cutout-4d1837db.fits"
+        XCTAssertEqual(ObservationStore.place(container.appendingPathComponent(name), container: container, user: user),
+                       ObservationStore.place(user.appendingPathComponent(name), container: container, user: user))
+        XCTAssertNotEqual(ObservationStore.place(container.appendingPathComponent(name), container: container, user: user),
+                          ObservationStore.place(user.appendingPathComponent("other.fits"), container: container, user: user))
+    }
+
+    func testAResultSentByTheSandboxsPathFindsItsRecord() throws {
+        let container = LocalFolderAccessStore.downloadsRoot, user = LocalFolderAccessStore.userFacingDownloadsRoot
+        try XCTSkipIf(container.standardizedFileURL.path == user.standardizedFileURL.path, "not sandboxed: one path")
+        let name = "qa44-b13-\(UUID().uuidString).fits"
+        let store = ObservationStore(fileName: fileName, spotlight: nil, database: try AppDatabase.makeInMemory())
+        var cutout = record("745234")
+        cutout.localPath = user.appendingPathComponent(name).path
+        store.save(cutout)
+        store.noteInStorage(container.appendingPathComponent(name), at: "Verbinal-Results/research/\(name)")
+        XCTAssertEqual(store.observations.first?.storagePath, "Verbinal-Results/research/\(name)")
+    }
 }

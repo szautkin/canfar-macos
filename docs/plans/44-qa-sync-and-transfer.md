@@ -409,3 +409,18 @@ important the original, I think, at least for now". No change.
 **Found and fixed, F-3:** a conflict was named by this Mac's edit ("qa44 here") while the list showed
 storage's ("qa44 other"); it is named as it reads here now. **F-4:** a field read `record.name`; it
 reads `name`. `SyncConflictsTests.testAConflictIsNamedAsItReadsHereNow` failed first.
+
+## B13, D3, live (2026-10-17, build c614f227)
+
+| Case | Result | What was seen |
+|---|---|---|
+| B13 | PARTLY | Results on. A search export reached `Verbinal-Results/searches/` 7 s after it was saved; a local cutout reached `Verbinal-Results/research/` 13 s after. **But its Research record still said `places: mac`, with no `storagePath`** (F-5). |
+| D3 | PASS | Send a Copy to Storage on that cutout: taken as the same file (same name and size, not rewritten); `places: both`; no second copy, no refusal. |
+
+**Found, F-5: a result sent by Results did not mark its record.** The record keeps the person's path
+(`/Users/…/Downloads/…`, `LocalFolderAccessStore.userFacingPath`); the result was queued by the
+sandbox's path to the same file (`…/Containers/…/Data/Downloads/…`), and `noteInStorage` compared them
+by `FileIdentity` alone. It now compares where each is in the person's Downloads
+(`ObservationStore.place`). `ResearchRecordsTests.testTheSandboxsPathAndThePersonsAreOnePlace` failed
+first; B13 is checked again on the next build.
+

@@ -336,9 +336,9 @@ extension ObservationStore {
     /// The file at `url`, one of a record's, was sent to the person's
     /// storage at `path`: the record says so (plan 36 5.1).
     func noteInStorage(_ url: URL, at path: String) {
-        let wanted = FileIdentity.key(url), name = url.lastPathComponent
+        let wanted = Self.place(url), name = url.lastPathComponent
         func same(_ local: String) -> Bool {
-            !local.isEmpty && (local as NSString).lastPathComponent == name && FileIdentity.key(URL(fileURLWithPath: local)) == wanted
+            !local.isEmpty && (local as NSString).lastPathComponent == name && Self.place(URL(fileURLWithPath: local)) == wanted
         }
         for record in observations {
             var updated = record
@@ -353,4 +353,16 @@ extension ObservationStore {
             return
         }
     }
+
+    /// Where a file is, as a record keeps it: in the person's own Downloads,
+    /// not the sandbox's name for it (plan 44 B13 — a result sent from the
+    /// container's path never found its record, kept by the person's path).
+    #if os(macOS)
+    static func place(_ url: URL, container: URL = LocalFolderAccessStore.downloadsRoot,
+                      user: URL = LocalFolderAccessStore.userFacingDownloadsRoot) -> String {
+        FileIdentity.key(URL(fileURLWithPath: LocalFolderAccessStore.userFacingPath(for: url, container: container, user: user)))
+    }
+    #else
+    static func place(_ url: URL) -> String { FileIdentity.key(url) }
+    #endif
 }
