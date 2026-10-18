@@ -61,6 +61,9 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
     private enum Decided {
         case done
         case overtaken(Item?)
+        /// Sent, but storage still shows what was there before: not sent
+        /// again now. The next sync finds it standing, or sends it again.
+        case unseen
     }
 
     func sync(_ context: StorageKindContext) async throws -> StorageKindOutcome {
@@ -109,7 +112,7 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
         // Three tries: a write another device overtakes is decided again with what it wrote.
         for _ in 0..<3 {
             switch try await decide(name, mine: mine, there: there, &pass) {
-            case .done: return
+            case .done, .unseen: return
             case .overtaken(let item): there = item.map(There.item) ?? .absent
             }
         }
@@ -260,7 +263,15 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
                                     baseHash: current.map(\.content), device: context.device.id,
                                     deviceName: context.device.name, hash: item.content)
         try await send(CollectionSync.encoded(item, with: revision), to: "\(context.folder)/\(name)", context)
-        guard let back = await read(name, context) else { return .overtaken(nil) }
+        let back = await read(name, context)
+        // What was there before, still: the write is not to be read yet
+        // (plan 44 F — it was a cached copy). Not another device's: its base
+        // stays, and the next sync settles it.
+        if back.map(SyncRevision.init(of:)) == current.map(SyncRevision.init(of:)) {
+            pass.sent += 1
+            return .unseen
+        }
+        guard let back else { return .overtaken(nil) }
         let written = SyncRevision(of: back)
         guard written.device == context.device.id, written.rev == revision.rev, written.hash == revision.hash else {
             return .overtaken(back)

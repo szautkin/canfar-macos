@@ -64,7 +64,10 @@ actor VOSpaceBrowserService {
         // without it ARC returns bare nodes and the Modified/Size columns
         // stay empty because `#date` / `#length` properties are omitted.
         let urlString = "\(nodesBase)/\(basePath)?detail=max&limit=\(limit)"
-        let (data, _) = try await network.get(urlString, accept: "text/xml")
+        // Storage as it is now, never a copy kept from before (plan 44 F):
+        // a listing or a file read again after a write was answered from
+        // the URL cache, and the sync took its own write for lost.
+        let (data, _) = try await network.get(urlString, accept: "text/xml", fresh: true)
         guard let xml = String(data: data, encoding: .utf8) else {
             throw VOSpaceError.invalidResponse
         }
@@ -77,7 +80,7 @@ actor VOSpaceBrowserService {
         let relative = try relativePath(path, username: username)
         let basePath = relative.isEmpty ? Self.encodeSegment(username) : "\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
         do {
-            let (data, _) = try await network.get("\(nodesBase)/\(basePath)?detail=max&limit=0", accept: "text/xml")
+            let (data, _) = try await network.get("\(nodesBase)/\(basePath)?detail=max&limit=0", accept: "text/xml", fresh: true)
             guard let xml = String(data: data, encoding: .utf8) else { throw VOSpaceError.invalidResponse }
             return VOSpaceXMLParser.parseNode(xml)
         } catch NetworkError.httpError(404, _) {
@@ -121,7 +124,8 @@ actor VOSpaceBrowserService {
                 urlString,
                 timeout: RequestTimeout.transfer,
                 expectedTotal: expectedTotal,
-                onProgress: onProgress
+                onProgress: onProgress,
+                fresh: true
             )
             // URLSession's download location is ephemeral — move it under a
             // stable name in our temp directory before the system reaps it.
@@ -182,7 +186,7 @@ actor VOSpaceBrowserService {
         let rangeEnd = offset + maxBytes - 1
         let headers = ["Range": "bytes=\(offset)-\(rangeEnd)"]
         do {
-            let (data, response) = try await network.get(urlString, additionalHeaders: headers)
+            let (data, response) = try await network.get(urlString, additionalHeaders: headers, fresh: true)
             return Self.slice(data, of: response, offset: offset, maxBytes: maxBytes)
         } catch NetworkError.httpError(416, _) {
             // Range Not Satisfiable: the offset is at or past the end.
@@ -367,7 +371,7 @@ actor VOSpaceBrowserService {
         let fullPath = relative.isEmpty ? username : "\(username)/\(relative)"
         let urlString = "\(nodesBase)/\(Self.encodePath(fullPath))"
 
-        let (data, _) = try await network.get("\(urlString)?detail=min", accept: "text/xml")
+        let (data, _) = try await network.get("\(urlString)?detail=min", accept: "text/xml", fresh: true)
         guard let currentXML = String(data: data, encoding: .utf8) else {
             throw VOSpaceError.invalidResponse
         }

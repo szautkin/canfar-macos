@@ -139,14 +139,18 @@ public actor NetworkClient {
     /// very requests, so letting them re-enter it on 401 recurses without
     /// bound — the launch-time symptom is an app stuck on "Checking
     /// authentication…" hammering /whoami forever.
+    /// `fresh: true` never answers from the local URL cache: for what can
+    /// change under the same URL, such as the person's storage.
     public func get(
         _ urlString: String,
         accept: String? = nil,
         additionalHeaders: [String: String]? = nil,
         timeout: TimeInterval = RequestTimeout.standard,
-        allowAuthRetry: Bool = true
+        allowAuthRetry: Bool = true,
+        fresh: Bool = false
     ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(urlString, method: "GET", timeout: timeout)
+        if fresh { request.cachePolicy = .reloadIgnoringLocalCacheData }
         if let accept {
             request.setValue(accept, forHTTPHeaderField: "Accept")
         }
@@ -337,14 +341,17 @@ public actor NetworkClient {
     /// `download(for:delegate:)` suppresses those callbacks (and KVO on
     /// `task.progress` often only jumps at completion).
     /// `expectedTotal` seeds the bar when `Content-Length` is missing
-    /// (e.g. VOSpace `#length` from the listing).
+    /// (e.g. VOSpace `#length` from the listing). `fresh: true` never
+    /// answers from the local URL cache, as `get`'s.
     public func downloadFile(
         _ urlString: String,
         timeout: TimeInterval = RequestTimeout.transfer,
         expectedTotal: Int64 = 0,
-        onProgress: TransferProgressHandler? = nil
+        onProgress: TransferProgressHandler? = nil,
+        fresh: Bool = false
     ) async throws -> (tempURL: URL, response: HTTPURLResponse) {
-        let request = try makeRequest(urlString, method: "GET", timeout: timeout)
+        var request = try makeRequest(urlString, method: "GET", timeout: timeout)
+        if fresh { request.cachePolicy = .reloadIgnoringLocalCacheData }
         return try await retryUnauthorized(original: request) {
             try await self.downloadFileOnce(
                 request: $0,
@@ -707,27 +714,6 @@ private final class ProgressDownloadController: NSObject, URLSessionDownloadDele
             cont?.resume(returning: value)
         case .failure(let error):
             cont?.resume(throwing: error)
-        }
-    }
-}
-
-public enum NetworkError: LocalizedError, Sendable {
-    case invalidURL(String)
-    case invalidResponse
-    case unauthorized
-    case httpError(Int, String)
-
-    public var isUnauthorized: Bool {
-        if case .unauthorized = self { return true }
-        return false
-    }
-
-    public var errorDescription: String? {
-        switch self {
-        case .invalidURL(let url): return "Invalid URL: \(url)"
-        case .invalidResponse: return "Invalid server response"
-        case .unauthorized: return "Authentication required"
-        case .httpError(let code, let body): return "HTTP \(code): \(body)"
         }
     }
 }

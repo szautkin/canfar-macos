@@ -376,3 +376,18 @@ queries are on (B2); `qa44 one` is the item.
 | `retry_activity` live | `/mcp` reconnected (E1's Retry was checked on the bar and with `list_activity`). |
 | B9 | Waived by the person: "it is private by default do not worry". |
 | A3 | Replaced by plan 45 (the person's decision). |
+
+## F, live (2026-10-17, build 3033594a, production)
+
+| Case | Result | What was seen |
+|---|---|---|
+| F1 | PASS | `qa44 one`, changed here, was written with `rev` 1, `base` 0, `baseHash`, `device`, `deviceName` "Serhii’s MacBook Pro" and `hash`. |
+| F8 | PASS | Its file had no `rev` (plan 44's form): read as revision 0; this Mac's write made it `rev` 1. |
+
+**Found, F-1: each change was written three times, at every sync.** The session log showed six uploads
+of the one changed file, three in the change's sync and three in Sync Now, each read before and after in
+0.0 s. Storage's listings and files were answered from the URL cache (`URLSession.shared`), so the
+read-back never saw the write, took it for overtaken, and wrote again. Fixed: every read of the person's
+storage skips the local cache (`fresh`), and a write storage does not show yet is not written again in
+that sync — the next one settles it. `StorageFreshReadTests` failed first with 3 writes, the live
+symptom. The same cache could hand the Storage screen a stale file after a change; that is fixed too.
