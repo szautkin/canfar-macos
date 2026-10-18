@@ -274,9 +274,8 @@ struct SyncConflictRow: View {
 
     /// "note.text — this Mac: seeing 0.6 · MacBook: seeing 0.8".
     static func fieldLine(_ field: SyncMerge.Conflict, other: String) -> String {
-        let path = field.path.joined(separator: ".")
         let mine = value(field.mine), theirs = value(field.theirs)
-        return String(localized: "\(path) — this Mac: \(mine) · \(other): \(theirs)")
+        return String(localized: "\(field.field) — this Mac: \(mine) · \(other): \(theirs)")
     }
 
     /// A value as the person reads it; nil: removed.

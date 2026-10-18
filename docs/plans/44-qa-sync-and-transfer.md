@@ -383,6 +383,13 @@ queries are on (B2); `qa44 one` is the item.
 |---|---|---|
 | F1 | PASS | `qa44 one`, changed here, was written with `rev` 1, `base` 0, `baseHash`, `device`, `deviceName` "Serhii’s MacBook Pro" and `hash`. |
 | F8 | PASS | Its file had no `rev` (plan 44's form): read as revision 0; this Mac's write made it `rev` 1. |
+| F2 | PASS (c614f227) | Another device changed the description (rev 2 from 1), this Mac the ADQL: storage `rev` 3 from 2, by this Mac, with both; no conflict; "1 brought, 1 sent", written once. |
+| F3 | PASS | Both renamed it: here it read storage's "qa44 other"; Conflicts listed `name — this Mac: qa44 here · QA other Mac: qa44 other` with both buttons (on screen, stable ids); the bar ended "1 to choose in Settings ▸ Storage"; `list_sync_conflicts` and `list_storage_kinds` (1) agreed. |
+| F4 | PASS | The person's **Keep This Mac's**: storage `rev` 6, by this Mac, named "qa44 here"; the conflict gone. |
+| F5 | PASS | `resolve_sync_conflict` `theirs`: judged "Notes and saved things on this Mac" (allowed, so at once); storage stayed at `rev` 8; the conflict gone; the log said "Resolved Keep the Other's: …". |
+| F6 | PASS | Removed on another device (rev 9), changed here: kept, written back as `rev` 10; Conflicts: "Removed on QA other Mac, but changed on this Mac: it stays, with this Mac's change." The person's **Remove It**: `rev` 11 by this Mac with `removedAt`; gone here. |
+| F7 | PASS | Another device's next revision dated a day in the past brought the removed query back: it arrived. No clock decided. |
+| F9 | — | Needs a second Mac or macOS account (part C). |
 
 **Found, F-1: each change was written three times, at every sync.** The session log showed six uploads
 of the one changed file, three in the change's sync and three in Sync Now, each read before and after in
@@ -391,3 +398,14 @@ read-back never saw the write, took it for overtaken, and wrote again. Fixed: ev
 storage skips the local cache (`fresh`), and a write storage does not show yet is not written again in
 that sync — the next one settles it. `StorageFreshReadTests` failed first with 3 writes, the live
 symptom. The same cache could hand the Storage screen a stale file after a change; that is fixed too.
+
+**Found, F-2 (for the person): overwriting an "assistant-made" file applied at once.** The writes "as
+another device" from F3 on did not wait in Pending: the file was first uploaded by an assistant (F2), so
+writing over it was "Remove what an assistant made", allowed by default — though the app's sync had
+since written the person's own saved query into it. The mark stays on a VOSpace path after someone else
+writes there. **Decided by the person (2026-10-17): the original maker counts**, at least for now — "nope,
+important the original, I think, at least for now". No change.
+
+**Found and fixed, F-3:** a conflict was named by this Mac's edit ("qa44 here") while the list showed
+storage's ("qa44 other"); it is named as it reads here now. **F-4:** a field read `record.name`; it
+reads `name`. `SyncConflictsTests.testAConflictIsNamedAsItReadsHereNow` failed first.

@@ -221,9 +221,11 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
         let theirContent = CollectionSync.content(of: theirs)
         let result = SyncMerge.merge(base: base?.content, mine: CollectionSync.content(of: mine), theirs: theirContent)
         let told = result.conflicts.filter { !CollectionSync.isBookkeeping($0.path) }
+        let merged = CollectionSync.item(Item.self, from: theirs, content: result.merged, changedAt: now())
         if !told.isEmpty {
-            pass.conflicts.append(conflict(.bothChanged, name: name, item: mine, revision: revision, theirs: theirs,
-                                           fields: told))
+            // Named as it reads here now: storage's value where the two differ.
+            pass.conflicts.append(conflict(.bothChanged, name: name, item: merged ?? theirs, revision: revision,
+                                           theirs: theirs, fields: told))
         }
         if result.merged == theirContent {
             // All of this device's changes are there already, or wait for the person.
@@ -232,9 +234,7 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
             pass.bases[name] = CollectionSync.base(of: theirs)
             return .done
         }
-        guard let merged = CollectionSync.item(Item.self, from: theirs, content: result.merged, changedAt: now()) else {
-            return .done
-        }
+        guard let merged else { return .done }
         await fromAnotherDevice { await collection.apply(merged) }
         pass.imported += 1
         return try await write(merged, name: name, after: revision.rev, &pass)

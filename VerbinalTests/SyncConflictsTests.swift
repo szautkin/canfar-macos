@@ -35,9 +35,9 @@ final class SyncConflictsTests: XCTestCase {
         StorageKindCatalog(kinds: [CollectionKind(id: "research", defaultFolder: ".verbinal/research", collection: research)])
     }
 
-    private func item(note: String = "first") -> ResearchItem {
+    private func item(note: String = "first", target: String = "M31") -> ResearchItem {
         ResearchItem(recordKey: key, changedAt: Date(timeIntervalSince1970: 100),
-                     details: .init(publisherID: key, collection: "CFHT", observationID: "1525350", targetName: "M31",
+                     details: .init(publisherID: key, collection: "CFHT", observationID: "1525350", targetName: target,
                                     instrument: "MegaPrime", filter: "r", ra: "", dec: "", startDate: "", calLevel: "2"),
                      note: .init(text: note, rating: 3, tags: ["usable"]))
     }
@@ -85,6 +85,21 @@ final class SyncConflictsTests: XCTestCase {
                                  "a sync that moved one item is on the bar when it leaves something to choose")
         XCTAssertEqual(task.progress, .succeeded)
         XCTAssertTrue(task.message?.contains("1 to choose in Settings ▸ Storage") == true, task.message ?? "")
+    }
+
+    /// Live, F3: the conflict named the saved query by this Mac's name,
+    /// "qa44 here", while the list showed storage's, "qa44 other".
+    func testAConflictIsNamedAsItReadsHereNow() async throws {
+        let (_, _, model, a, b, syncB) = await devices()
+        await b.set(item(target: "M31 from B"))
+        await syncB.sync(.changed)
+        await a.set(item(target: "M31 from A"))
+        await model.run(.changed)?.value
+        let conflict = try XCTUnwrap(model.conflicts.first)
+        XCTAssertEqual(conflict.title, "M31 from B", "storage's name, as it reads here now")
+        XCTAssertEqual(conflict.fields.map(\.field), ["details.targetName"])
+        let here = await a.records[key]?.details.targetName
+        XCTAssertEqual(here, "M31 from B")
     }
 
     // MARK: - Chosen either way

@@ -45,7 +45,7 @@ struct SyncConflictsOut: Encodable, Sendable {
         self.conflicts = conflicts.map { conflict in
             Conflict(id: conflict.id, collection: conflict.kind, collectionTitle: StorageSettingsTab.title(conflict.kind),
                      item: conflict.title, reason: conflict.reason.rawValue, says: SyncConflictRow.reasonLine(conflict),
-                     fields: conflict.fields.map { Field(field: $0.path.joined(separator: "."), thisMac: $0.mine, storage: $0.theirs) },
+                     fields: conflict.fields.map { Field(field: $0.field, thisMac: $0.mine, storage: $0.theirs) },
                      otherDevice: conflict.otherDevice, otherChangedAtISO: conflict.otherChangedAt.map { iso.string(from: $0) },
                      foundAtISO: iso.string(from: conflict.at),
                      mine: Self.does(conflict, .mine), theirs: Self.does(conflict, .theirs))

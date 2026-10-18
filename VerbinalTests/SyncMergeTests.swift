@@ -67,6 +67,13 @@ final class SyncMergeTests: XCTestCase {
         XCTAssertEqual(result.conflicts.map(\.path), [["name"]])
     }
 
+    /// Live, F3: the field read "record.name" — the file's wrapper, not the person's word.
+    func testAFieldIsNamedAsThePersonReadsIt() {
+        XCTAssertEqual(SyncMerge.Conflict(path: ["record", "name"], mine: nil, theirs: nil).field, "name")
+        XCTAssertEqual(SyncMerge.Conflict(path: ["note", "text"], mine: nil, theirs: nil).field, "note.text")
+        XCTAssertEqual(SyncMerge.Conflict(path: ["record"], mine: nil, theirs: nil).field, "record")
+    }
+
     func testAnObjectReplacedByAValueIsOneField() {
         let result = SyncMerge.merge(base: ["cutout": .object(["r": .int(1)])], mine: ["cutout": .null],
                                      theirs: ["cutout": .object(["r": .int(2)])])

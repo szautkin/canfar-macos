@@ -21,6 +21,12 @@ enum SyncMerge {
         let path: [String]
         let mine: JSONValue?
         let theirs: JSONValue?
+
+        /// The field as the person reads it: "name", not the file's
+        /// "record.name" — a record's fields are its own.
+        var field: String {
+            (path.first == "record" && path.count > 1 ? path.dropFirst() : path[...]).joined(separator: ".")
+        }
     }
 
     struct Result: Equatable, Sendable {
