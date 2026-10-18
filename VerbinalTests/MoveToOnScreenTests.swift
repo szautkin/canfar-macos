@@ -97,4 +97,40 @@ final class MoveToOnScreenTests: XCTestCase {
         XCTAssertTrue(names.contains("Move to Storage"), "\(names)")
         XCTAssertTrue(names.contains("The copy on this Mac is removed once the one in your storage is there."), "\(names)")
     }
+
+    // MARK: - M3: the record's buttons over all of its files
+
+    /// A cutout with its weight map, one kept in storage too.
+    private func twoFiles() -> DownloadedObservation {
+        let weight = folder.appendingPathComponent("745234p.cutout-qa46.weight.fits")
+        FileManager.default.createFile(atPath: weight.path, contents: Data("SIMPLE".utf8))
+        var main = record(cutout: true)
+        main.storagePath = "Verbinal-Results/research/745234p.cutout-qa46.fits"
+        return main.keeping(KeptFile(name: weight.lastPathComponent, localPath: weight.path, size: 6, downloadedAt: Date()))
+    }
+
+    func testRevealInFinderShowsEveryFileOnThisMac() {
+        let urls = AppState().researchModel.revealURLs(twoFiles())
+        XCTAssertEqual(urls.map(\.lastPathComponent), ["745234p.cutout-qa46.fits", "745234p.cutout-qa46.weight.fits"])
+    }
+
+    func testRemoveFilesAsksWhichAndSaysWhatIsLost() async throws {
+        try await AXReadable.require()
+        let state = AppState()
+        let record = twoFiles()
+        let detail = show(ObservationDetailView(observation: record, model: state.researchModel), width: 1000, height: 700)
+        let names = try await elements(of: detail).compactMap(\.name)
+        detail.close()
+        XCTAssertTrue(names.contains("Remove Files…"), "several files: \(names)")
+
+        let window = show(RemoveFilesSheet(observation: record, model: state.researchModel) {}, width: 520, height: 300)
+        defer { window.close() }
+        let all = try await elements(of: window)
+        let read = all.compactMap(\.name)
+        for name in ["Remove Files from This Mac", "745234p.cutout-qa46.fits, A copy stays in your storage",
+                     "745234p.cutout-qa46.weight.fits, Its only copy: removing it loses it", "Remove File"] {
+            XCTAssertTrue(read.contains(name), "\(name): \(read)")
+        }
+        // "Remove File", one: its only copy starts unchecked.
+    }
 }

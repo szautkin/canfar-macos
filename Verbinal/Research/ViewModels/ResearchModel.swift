@@ -374,12 +374,22 @@ final class ResearchModel {
         NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
     }
 
+    /// Shows all of the record's files on this Mac in the Finder, selected
+    /// together: its rows no longer have their own (plan 46).
     func revealInFinder(_ observation: DownloadedObservation) {
-        guard observation.isDownloaded else { return }
-        let url = resolvedURL(for: observation) ?? URL(fileURLWithPath: observation.localPath)
+        let urls = revealURLs(observation)
+        guard !urls.isEmpty else { return }
         // NSWorkspace runs in Finder's process and has its own grant — no
         // start/stopAccessingSecurityScopedResource needed here.
-        NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
+        NSWorkspace.shared.activateFileViewerSelecting(urls)
+    }
+
+    /// The record's files on this Mac, the main one first.
+    func revealURLs(_ observation: DownloadedObservation) -> [URL] {
+        observation.allFiles.filter { $0.places.onMac }.map { file in
+            file.isMain ? resolvedURL(for: observation) ?? URL(fileURLWithPath: observation.localPath)
+                : file.local.bookmarked()?.url ?? file.local.readableURL ?? URL(fileURLWithPath: file.localPath)
+        }
     }
 
     func openFile(_ observation: DownloadedObservation) {

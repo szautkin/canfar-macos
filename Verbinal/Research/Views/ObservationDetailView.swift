@@ -13,6 +13,8 @@ struct ObservationDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var showDeleteConfirm = false
     @State private var showRemoveFileConfirm = false
+    /// Remove Files… for a record with several files on this Mac (plan 46).
+    @State private var removingFiles = false
     /// The cutout editor, open on this observation.
     @State private var cutoutEditor: CutoutEditorModel?
     /// Why removing the file failed.
@@ -195,7 +197,22 @@ struct ObservationDetailView: View {
                     }
                     #endif
 
-                    if observation.isDownloaded {
+                    // Every file of this record on this Mac: the Files rows no
+                    // longer have their own Remove (plan 46).
+                    #if os(macOS)
+                    if localFiles.count > 1 {
+                        Button {
+                            removingFiles = true
+                        } label: {
+                            Label("Remove Files…", systemImage: "doc.badge.minus")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("Choose which of this record's files to delete from this computer; the observation and its notes stay")
+                        .pointable("research.removeFiles", opens: "Remove Files")
+                    }
+                    #endif
+                    if let only = localFiles.first, !severalOnMac {
                         Button {
                             showRemoveFileConfirm = true
                         } label: {
@@ -208,13 +225,13 @@ struct ObservationDetailView: View {
                         .confirmationDialog("Remove the file of \"\(title)\"?", isPresented: $showRemoveFileConfirm) {
                             Button("Remove File", role: .destructive) {
                                 Task {
-                                    do { try await model.removeFile(observation) } catch {
+                                    do { try await model.removeFile(named: only.name, of: observation) } catch {
                                         removeFileError = String(localized: "Could not remove the file: \(error.localizedDescription)")
                                     }
                                 }
                             }
                         } message: {
-                            if observation.isInStorage {
+                            if only.places.inStorage {
                                 Text("The copy on this Mac is deleted. The one in your storage stays, and you can get it back.")
                             } else {
                                 Text("The file is deleted from this computer. The observation, its details and notes stay in Research, and Download fetches the file again.")
@@ -316,10 +333,26 @@ struct ObservationDetailView: View {
             }
         }
         #if os(macOS)
+        .uiPresented("Remove Files", .sheet, isPresented: $removingFiles)
+        .sheet(isPresented: $removingFiles) {
+            RemoveFilesSheet(observation: observation, model: model) { removingFiles = false }
+        }
         .uiPresented("Move To", .sheet, item: moveToBinding)
         .sheet(item: moveToBinding) { sheet in
             MoveToSheet(model: sheet) { model.moveTo = nil }
         }
+        #endif
+    }
+
+    /// This record's files on this Mac.
+    private var localFiles: [KeptFile] { observation.allFiles.filter { $0.places.onMac } }
+
+    /// Several of them: Remove Files… asks which (macOS; one at a time elsewhere).
+    private var severalOnMac: Bool {
+        #if os(macOS)
+        localFiles.count > 1
+        #else
+        false
         #endif
     }
 

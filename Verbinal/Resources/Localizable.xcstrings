@@ -209,6 +209,16 @@
         }
       }
     },
+    "A copy stays in your storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une copie reste dans votre stockage"
+          }
+        }
+      }
+    },
     "A different file is in your storage at %@ already: nothing was written over it." : {
       "localizations" : {
         "fr" : {
@@ -285,6 +295,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisissez la copie à garder."
+          }
+        }
+      }
+    },
+    "Choose which of this record's files to delete from this computer; the observation and its notes stay" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez lesquels des fichiers de cette observation supprimer de cet ordinateur ; l’observation et ses notes restent"
           }
         }
       }
@@ -675,6 +695,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "il a été écrit par un Verbinal plus récent (format %lld)"
+          }
+        }
+      }
+    },
+    "Its only copy: removing it loses it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sa seule copie : la supprimer la perd"
           }
         }
       }
@@ -1279,6 +1309,16 @@
         }
       }
     },
+    "Remove %lld Files" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer %lld fichiers"
+          }
+        }
+      }
+    },
     "Remove %lld Files from Storage" : {
       "localizations" : {
         "fr" : {
@@ -1295,6 +1335,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Retirer %lld fichiers de ce Mac"
+          }
+        }
+      }
+    },
+    "Remove Files from This Mac" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer des fichiers de ce Mac"
+          }
+        }
+      }
+    },
+    "Remove Files…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer des fichiers…"
           }
         }
       }
@@ -1735,6 +1795,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "le fichier n’a pas pu être écrit"
+          }
+        }
+      }
+    },
+    "The observation stays in Research, with its notes." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’observation reste dans Recherche, avec ses notes."
           }
         }
       }

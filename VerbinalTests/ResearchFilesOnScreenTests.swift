@@ -9,12 +9,13 @@ import SwiftUI
 import XCTest
 @testable import Verbinal
 
-/// Plan 44 P7, live (F-7): a Research file's place menu — where it is, and
-/// the moves between this Mac and storage — was not read by the tools at
-/// all, signed in or out, so an assistant could not see it or point at it.
+/// Plan 44 P7, live (F-7): a file's place was read as "Laptop computer".
+/// Plan 46 M3: the Files rows are state — the badge says where each file is
+/// and is not a control, and the rows' own Open, Show and Remove are gone:
+/// the record's buttons and Move To… act on its files.
 @MainActor
 final class ResearchFilesOnScreenTests: XCTestCase {
-    func testAFilesPlaceMenuIsRead() async throws {
+    func testAFilesPlaceIsReadAsStateNotAControl() async throws {
         try await AXReadable.require()
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("files-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -41,8 +42,12 @@ final class ResearchFilesOnScreenTests: XCTestCase {
         let snapshot = source.snapshot()
         let ref = try XCTUnwrap(snapshot.windows.first { $0.number == window.windowNumber })
         let elements = snapshot.elements(in: ref.index)
-        let menu = elements.first { $0.name?.contains("Where qa44-p7.fits is") == true }
-        XCTAssertNotNil(menu, "the place menu: \(elements.map { "\($0.kind):\($0.name ?? "-")" })")
-        XCTAssertEqual(menu?.name, "Where qa44-p7.fits is: On this Mac and in your storage")
+        let read = elements.map { "\($0.kind):\($0.name ?? "-")" }
+        let badge = elements.first { $0.name?.contains("Where qa44-p7.fits is") == true }
+        XCTAssertEqual(badge?.name, "Where qa44-p7.fits is: On this Mac and in your storage", "\(read)")
+        XCTAssertEqual(badge?.kind, .image, "where it is, not a menu: \(read)")
+        for gone in ["Open qa44-p7.fits", "Show qa44-p7.fits in Finder", "Remove qa44-p7.fits"] {
+            XCTAssertFalse(elements.contains { $0.name == gone }, "\(gone): the record's buttons do it")
+        }
     }
 }
