@@ -449,3 +449,11 @@ syncs whatever failed before; a sync after a change or on coming back still wait
 **Noted:** endpoint changes take effect on relaunch, as the Endpoints tab's "Restart required" says;
 `get_endpoints` answered the old address until then.
 
+**F-6, F-7 fixed (the person chose "same badge, one picture").** A Research file's place menu drew its
+label's first image only when off — the laptop, never the cloud — and was read by the tools, on or off,
+as "Laptop computer": a menu on macOS is named by its label, not by its own accessibility label. The
+badge is now drawn as one picture, named "Where <file> is: <places>", and dimmed while signed out.
+`ResearchFilesOnScreenTests` failed first ("menuButton:Laptop computer"). The person, live: "can I copy
+individual observation file into the vo space?" — the badge is the menu (Send a Copy to Storage, Move to
+Storage…), and did not look like one.
+

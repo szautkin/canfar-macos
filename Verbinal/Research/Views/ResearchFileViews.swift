@@ -46,6 +46,27 @@ struct FilePlacesMenu: View {
     private var transfer: ResearchFileTransfer { model.transfer }
     private var places: FilePlaces { file.places }
     private var signedIn: Bool { transfer.storage != nil }
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.displayScale) private var displayScale
+
+    /// The badge as one picture (plan 44 F-6, F-7): a menu's label on macOS
+    /// draws only its first image — the cloud was never seen — and is what
+    /// the menu is read by: "Laptop computer", not where the file is.
+    @ViewBuilder private var badge: some View {
+        #if os(macOS)
+        let renderer = ImageRenderer(content: FilePlacesBadge(places: places).environment(\.colorScheme, colorScheme))
+        let _ = (renderer.scale = displayScale)
+        if let image = renderer.nsImage {
+            Image(nsImage: image)
+                .opacity(signedIn ? 1 : 0.45)
+                .accessibilityLabel(Text("Where \(file.name) is: \(places.title)"))
+        } else {
+            FilePlacesBadge(places: places)
+        }
+        #else
+        FilePlacesBadge(places: places)
+        #endif
+    }
 
     var body: some View {
         Group {
@@ -71,7 +92,7 @@ struct FilePlacesMenu: View {
                         Section("In your storage at") { Text(path) }
                     }
                 } label: {
-                    FilePlacesBadge(places: places)
+                    badge
                 }
                 .menuStyle(.button)
                 .buttonStyle(.borderless)
