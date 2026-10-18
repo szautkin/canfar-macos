@@ -1,94 +1,133 @@
-# Plan 46 — Move To…: a Research file to your storage, or back to this Mac
+# Plan 46 — Move To…: the active record's files to your storage, or back to this Mac
 
 The person (2026-10-18), after asking "can I copy individual observation file into the vo space?" while
 looking at a record: "we have a remove file button, delete button, so, on the left of the remove button
 "Move To" button that opens a modal to store it in the cloud or locally if it is in the cloud already,
-plan this ui wise".
+plan this ui wise". Then, deciding:
 
-The moves exist already — the place badge in the Files section is a menu (Send a Copy to Storage, Move
-to Storage…, Get a Copy from Storage, Move to This Mac…, Remove from …) — but nothing says the badge is a
-menu, and the record's own buttons do not offer them. This completes that feature for 1.4.1; it adds no
-new storage capability, and uses `ResearchFileTransfer` as it is (copy first, the other copy removed only
-once the copy is there and storage shows it — plan 44 F-8).
+1. "those badges are redundant as buttons, badges only highlite some state/info, keep them laptop and
+   cloud as badges not buttons, and threee other onthe right remove, we have buttons for that; improve
+   dialog for file transfers from that small dropdown that badge buttons had."
+2. "Copy by default, but it shoul use proper ui / ux to let user see and navigate their choice, wire mcp
+   tools that that view and functionality too."
+3. "we have cutouts and original record, with or without files, so we need to support every case but
+   only to the active item, if user opens a cutout we consider the cutout not the original record etc."
 
-## Where it goes
+This completes the existing transfers for 1.4.1 — every move already exists in `ResearchFileTransfer`
+(copy first; the other copy removed only once the new one is there and storage shows it, plan 44 F-8).
+Nothing new is stored or sent.
 
-The record's action row, right group, left of **Remove File…**:
+## The active item
+
+Move To… acts on the record open in Research and on nothing else: a cutout is its own record, with its
+own files (the cutout and its companions, such as a weight map); its original observation is another
+record. Every case of the active record:
+
+| The record's files | Move To… | The sheet's default |
+|---|---|---|
+| none anywhere | not shown (Download is) | — |
+| on this Mac only | shown | Copy to your storage |
+| in your storage only | shown | Copy to this Mac |
+| in both places | shown | Keep one copy (see below) |
+| several, mixed | shown | each file as its own row says |
+| on this Mac by the record, but the file is gone | shown | that file refused: "not on this Mac any more" |
+
+## The Files section: state, not buttons
+
+Each file row: its name, its path on this Mac, its path in storage, its size, and the **badge** — the
+laptop and the cloud, lit where it is. The badge is not a control: no menu, no click; its help and
+accessibility name say where the file is ("On this Mac and in your storage"), so the tools read it.
+The row's three buttons — Open, Show in Finder, Remove — go: the action row has them.
+
+So the action row acts on all of the active record's files:
+
+- **Open in FITS Viewer** opens the main file, as now.
+- **Reveal in Finder** shows all of its files on this Mac, selected together.
+- **Remove File…** asks which of its files on this Mac to remove (each checked, each saying whether
+  storage has a copy), as one confirmation; a record with one file reads as today.
+
+## The action row
 
 ```
 [Open in FITS Viewer] [Reveal in Finder] [View on CADC] [Copy Details]      [Move To…] [Remove File…] [Delete]
 ```
 
-- Shown when the record has a file anywhere: on this Mac, in storage, or both.
-- Signed out: shown, off, with the help "Sign in to CANFAR to move files to and from your storage" (the
-  badge's words).
-- While one of its files is moving: off, with the help "Moving … — see the activity bar".
+**Move To…** (`arrow.left.arrow.right`) is left of Remove File…. Signed out: shown, off, with the help
+"Sign in to CANFAR to move files to and from your storage". While one of its files moves: off, "Moving …
+— see the activity bar".
 
-## The sheet: "Move To"
+## The sheet
 
 ```
-┌ Move "D2 — 745234" ────────────────────────────────────────────┐
-│ Files                                                           │
-│  [x] 745234p.cutout-b635f540.fits   124 KB   💻 ☁   On this Mac │
-│  [ ] 745234p.weight.fits            124 KB   💻 ☁   Both        │
-│                                                                 │
-│ To   ( ) Your storage   Verbinal-Results/research/              │
-│      ( ) This Mac       ~/Downloads                             │
-│                                                                 │
-│ [x] Keep the copy where it is now                               │
-│                                                                 │
-│ 124 KB to your storage · 1.2 TB free                            │
-│                                                   [Cancel] [Copy]│
-└─────────────────────────────────────────────────────────────────┘
+┌ Move To ─────────────────────────────────────────────────────────────────────┐
+│ Cutout of 745234p.fits.fz · D2                                                │
+│                                                                               │
+│ Where                 ┌ This Mac ─────────┐   ┌ Your storage ──────────────┐  │
+│                       │ ~/Downloads       │ → │ Verbinal-Results/research/ │  │
+│                       └───────────────────┘   └────────────────────────────┘  │
+│                         [ To your storage ▸ ]   [ ◂ To this Mac ]              │
+│                                                                               │
+│ Files                       now        after                                  │
+│  [x] 745234p.cutout-….fits   💻 ·   →   💻 ☁    124 KB                         │
+│  [x] 745234p.weight-….fits   💻 ·   →   💻 ☁    124 KB                         │
+│                                                                               │
+│ (•) Copy — keep it on this Mac too                                            │
+│ ( ) Move — remove it from this Mac once it is in your storage                 │
+│                                                                               │
+│ 248 KB to your storage · 1.2 TB free                                          │
+│                                          [Cancel]  [Copy 2 Files to Storage]  │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Files.** Each of the record's files — the main one, then the others (companions, other files) —
-  with its size and places. Checked by default: those not yet at the chosen destination. A file
-  already there is shown, unchecked and off ("Already in your storage").
-- **To.** Your storage, or this Mac. The default is the place the files are not: a file only on this
-  Mac → storage; only in storage → this Mac. Both places: storage, and nothing is checked until the
-  person asks to keep a single copy (below).
-- **Keep the copy where it is now.** On: a copy (both places after). Off: a move (the copy where it was
-  is removed once the new one is there and storage shows it). The default is on: nothing is removed
-  unless the person turns it off; the button then says Move, and the sheet says which copy goes.
-- **Summary line.** What goes where and how much; for storage, its free space (`get_storage_quota`'s
-  source), and a warning when it would not fit.
-- **The button** names what happens: **Copy to Storage**, **Move to Storage**, **Copy to This Mac**,
-  **Move to This Mac**. Return presses it; Escape cancels.
-- **On click** the sheet closes at once. Each file moves as its own task on the activity bar (as today:
-  progress, failure with why, Retry — plan 44 E4); the badge shows it busy. A file that cannot go is
-  refused before anything moves, saying why (another file of that name there, not in storage, the
-  storage copy gone — F-8), and the sheet stays open with the reason under the file.
-- **Remove instead.** Removing a copy without moving is Remove File… and the badge menu, as now.
-
-## The badge menu
-
-Kept as it is: the badge says where each file is, and its menu stays a quick way for one file. Open
-question 1 below asks whether it should become a plain indicator instead.
+- **Direction, seen.** The two places side by side, This Mac and Your storage, each with where files go
+  there, and the direction as a segmented choice between them (To your storage ▸ / ◂ To this Mac). The
+  default is where the files are not; a direction nothing can go in is off, saying why ("Already in
+  your storage").
+- **Each file, now and after.** Its badge as it is, and as it will be — the place that changes is lit.
+  Checked by default: those not yet at the destination; one already there is shown off ("Already
+  there"); one that cannot go says why under it (a different file of that name is there; the copy in
+  storage is gone; not on this Mac any more) and is unchecked.
+- **Copy or move.** Two choices, Copy first and chosen (the person's default); Move says which copy goes
+  and when. Choosing Move turns its line orange, and the button says Move.
+- **In both places already.** The direction becomes **Keep only**: on this Mac, or in your storage. It
+  removes the other copy once storage shows its own — what the badge menu's Remove from This Mac… and
+  Remove from Storage… did. The button is red (Remove from Storage / Remove from This Mac) and asks once
+  more.
+- **The summary** says what goes where and how much; for storage, its free space, and stops the button
+  when it would not fit.
+- **The button** names what happens: Copy to Storage, Move to Storage, Copy to This Mac, Move to This Mac,
+  Remove from Storage, Remove from This Mac — with the count when more than one file. Return presses it;
+  Escape cancels; Tab goes through direction, files, copy or move, the buttons.
+- **On the button** the sheet closes; each file moves as its own task on the activity bar (progress, a
+  failure with why, Retry — plan 44 E4), and the badge follows. What is refused is refused before
+  anything moves, and the sheet stays open with the reason.
 
 ## Assistants
 
-No new tool: the four transfer tools are the sheet's moves, file by file (`send_research_file_to_storage`,
-`get_research_file_from_storage`, then `remove_research_file_from_mac` / `_from_storage` for a move).
-For parity of sight:
+The sheet is a presentation (`uiPresented("Move To", .sheet)`): `open_ui` and `close_ui` open and close
+it, `list_ui_targets` reads its direction, files, choices and button, `select_ui` picks a segment. And:
 
-- the sheet is a presentation (`uiPresented("Move To", .sheet)`): `open_ui` opens it, `list_ui_targets`
-  reads its files, destination and button, `select_ui` picks the destination segment; nothing in it is
-  pressed by an assistant;
-- `docs/agent-ui-parity.md` gets a row.
+- **`show_move_to`** (live, view state): selects the record (by id) if it is not the active one, opens
+  the sheet, and sets its direction, files and copy or move, so the person sees the assistant's choice
+  and presses the button themselves. Answers what the sheet then shows.
+- **`get_move_to_view`** (read): what the sheet shows now — the record, each file now and after, what is
+  refused and why, the direction, copy or move, the summary and the button's words; closed when it is.
+- **`move_research_files`** (proposal): what the button does, for a record — `files` (default: those not
+  at the destination), `to` (`storage` | `mac`), `keepCopy` (default true), or `keepOnly` for a file in
+  both places. Its kind is by what it does, as `resolve_sync_conflict`'s: a copy to storage is "Add to
+  your CANFAR storage"; a copy to this Mac "Files saved on this Mac"; a move or keep-only removes, and is
+  "Remove files on this Mac" or "Remove or replace in your CANFAR storage" by which copy goes. Refused
+  when asked for what the sheet would refuse.
+- The four one-file tools stay. `docs/agent-ui-parity.md` gets the rows; `AIGuideCatalog` the
+  categories; `ChangeCatalog` the kind rule.
 
 ## Steps (each one commit, tests failing first)
 
 | Step | What | Tests |
 |---|---|---|
-| M1 | `MoveToPlan`: from a record, its files, the destination and keep-a-copy → what each file does, the button's words, the summary, what is refused and why. Pure. | Every case: only here, only there, both; several files; one already there; keep on and off; a name taken; signed out. |
-| M2 | The button and the sheet; runs the plan through `ResearchFileTransfer` | On screen (AX): the button left of Remove File…; the sheet's files, destination, toggle and button words; off when signed out; Escape. |
-| M3 | Free space in the summary; refusal shown in the sheet | Space short; a refusal keeps the sheet open with its reason. |
-| M4 | Words: English and French; manual 03 (en, fr); the parity table; handout cases | Words checked against the screen. |
-
-## Open questions for the person
-
-1. **The badge menu:** keep it as a second way (as planned), or make the badge only say where the file
-   is, so Move To… is the one place moves start?
-2. **Copy or move by default:** keep a copy (planned: nothing removed unless asked), or move?
-3. **Several files:** one sheet for all the record's files (planned), or one file at a time?
+| M1 | `MoveToPlan`: from the active record, the direction, the files and copy or move → each file now and after, refusals, the button's words, the summary. Pure. | Every row of the active-item table; a cutout and its original apart; keep-only; a name taken; a storage copy gone; the file gone from this Mac; signed out. |
+| M2 | The Files section as state: the badge not a menu; the row buttons gone; Reveal in Finder and Remove File… over all the record's files | On screen (AX): the badge read with its places, no menu; the row buttons gone; Remove File…'s list. |
+| M3 | Move To… and the sheet, run through `ResearchFileTransfer` | On screen (AX): the button's place; the sheet's direction, files now and after, copy or move, button words; off when signed out; Escape; a refusal keeps it open. |
+| M4 | Free space in the summary | Space short stops the button. |
+| M5 | `show_move_to`, `get_move_to_view`, `move_research_files`; kinds; parity rows | Each tool against the sheet; the kind by effect; a refusal when asked. |
+| M6 | Words in English and French; manual 03 (en, fr); handout cases | Words checked against the screen. |
