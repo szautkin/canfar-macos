@@ -1339,6 +1339,16 @@
         }
       }
     },
+    "Remove Files" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer des fichiers"
+          }
+        }
+      }
+    },
     "Remove Files from This Mac" : {
       "localizations" : {
         "fr" : {

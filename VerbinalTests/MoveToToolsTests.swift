@@ -100,4 +100,15 @@ final class MoveToToolsTests: XCTestCase {
             XCTAssertTrue("\(error)".contains("not where they were"), "\(error)")
         }
     }
+
+    /// Live, plan 46 L8: the tool told an assistant a move "applies at once"
+    /// — its tool's kind — while the move waited as a removal.
+    func testItsDescriptionSaysItsKindIsWhatEachCallDoes() {
+        for tool in ["move_research_files", "resolve_sync_conflict"] {
+            let rule = state.agentsService.toolRule(tool) ?? ""
+            XCTAssertTrue(rule.contains("what each call does"), "\(tool): \(rule)")
+            XCTAssertFalse(rule.contains("allows it without asking"), "not one kind for every call: \(tool): \(rule)")
+        }
+        XCTAssertTrue(state.agentsService.toolRule("save_query")?.contains("Notes and saved things") == true, "others keep theirs")
+    }
 }

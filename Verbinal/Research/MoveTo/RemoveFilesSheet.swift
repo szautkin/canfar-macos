@@ -67,7 +67,9 @@ struct RemoveFilesSheet: View {
                 Spacer()
                 Button("Cancel", action: close)
                     .keyboardShortcut(.cancelAction)
-                Button(chosen.count == 1 ? String(localized: "Remove File") : String(localized: "Remove \(chosen.count) Files"),
+                // Live, plan 46 L6: "Remove 0 Files" while nothing is chosen.
+                Button(chosen.count > 1 ? String(localized: "Remove \(chosen.count) Files")
+                       : chosen.isEmpty ? String(localized: "Remove Files") : String(localized: "Remove File"),
                        role: .destructive) {
                     Task { await remove() }
                 }

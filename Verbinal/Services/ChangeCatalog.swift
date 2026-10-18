@@ -45,6 +45,21 @@ enum ChangeCatalog {
     /// The tool's kind; nil for a tool that changes nothing.
     static func kind(ofTool name: String) -> ChangeKind? { kindByTool[name] }
 
+    /// Tools whose kind is what each call does, not one of the tool's: a
+    /// choice on a sync conflict (plan 45), Move To's moves (plan 46).
+    static let kindByCall: Set<String> = ["resolve_sync_conflict", "move_research_files"]
+
+    /// The closing sentence of a proposing tool's description: its kind, and
+    /// what the person's setting does with it now. Live, plan 46 L8:
+    /// move_research_files said it "applies at once", its tool's kind, while
+    /// the move it made waited as a removal.
+    static func toolRule(_ tool: String, permissions: ChangePermissions) -> String? {
+        if kindByCall.contains(tool) {
+            return "Its kind is what each call does, as said above; whether that applies at once or waits in Pending is the person's setting for that kind. `get_current_view.permissions` gives every kind."
+        }
+        return kind(ofTool: tool).map { AutoApplyPolicy.toolSentence(forChange: $0, permissions: permissions) }
+    }
+
     /// This proposal's kind: its tool's — a choice on a sync conflict by
     /// what it does, and to which collection (plan 45). A change the
     /// catalogue does not know asks, as the most careful kind there is to ask about.

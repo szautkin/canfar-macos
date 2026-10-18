@@ -120,7 +120,7 @@ final class AgentsService {
     /// The closing sentence of a proposing tool's description: its kind, and
     /// what the person's setting does with it now.
     func toolRule(_ tool: String) -> String? {
-        ChangeCatalog.kind(ofTool: tool).map { AutoApplyPolicy.toolSentence(forChange: $0, permissions: permissions) }
+        ChangeCatalog.toolRule(tool, permissions: permissions)
     }
 
     /// When `true`, after an auto-applied write the app navigates the

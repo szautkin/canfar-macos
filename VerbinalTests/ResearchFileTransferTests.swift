@@ -406,4 +406,19 @@ final class ResearchFileTransferTests: XCTestCase {
         let kept = await storage.files
         XCTAssertTrue(kept.isEmpty)
     }
+
+    /// Live, plan 46 L4: Move to This Mac brought the file back, closed the
+    /// sheet as done — and left storage's copy, the move half undone.
+    func testMoveToThisMacLeavesThisMacOnly() async throws {
+        let record = await onlyInStorage()
+        let sheet = MoveToModel(record: record, transfer: transfer, store: store, keepCopy: false)
+        XCTAssertEqual(sheet.plan.rows.first?.step, .move(to: .mac))
+        XCTAssertEqual(sheet.plan.buttonTitle, "Move to This Mac")
+        let went = await sheet.run()
+        XCTAssertTrue(went)
+        XCTAssertEqual(store.observation(id: record.id)?.mainKeptFile?.places, FilePlaces(onMac: true, inStorage: false),
+                       "\(String(describing: store.observation(id: record.id)))")
+        let left = await storage.files
+        XCTAssertTrue(left.isEmpty, "storage's copy removed once this Mac has it")
+    }
 }

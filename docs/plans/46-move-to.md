@@ -157,3 +157,22 @@ On a build with M1–M5, signed in to CANFAR, on test records only (a cutout mad
 | L6 | A cutout with its weight map (two files). | Both rows; Reveal in Finder selects both; **Remove Files…** lists both, the only copy unchecked. |
 | L7 | An assistant: `show_move_to` with `keepCopy: false`, then `get_move_to_view`. | The sheet opens on the record with Move chosen, as the view says; nothing moves until the person presses. |
 | L8 | An assistant: `move_research_files` that moves. | It waits in Pending as "Remove files on this Mac" (unless allowed); applied, the files are where it said. |
+
+## Live, build 1f0c75b0 (2026-10-18, production, a test cutout)
+
+| Case | Result | What was seen |
+|---|---|---|
+| L1 | PASS | Move To… (x 1121) left of Remove File… (x 1228), on, marked as opening Move To; the Files row only its badge, an image read "Where 745234p.cutout-a3ec9b8d.fits is: On this Mac and in your storage"; no row buttons. |
+| L3 | PASS | In both places: Keep on This Mac / Keep in Your Storage; each file now → after; "The copy on this Mac is removed; the one in your storage stays."; the button red (the person), asking once more; `storage` after. |
+| L4 | PASS on the redo | Move to This Mac: got from storage, then storage's copy deleted; `mac`. The first try ran only a copy — the button pressed still said Copy; set again and read before the press, it moved. |
+| L2 | PASS | "101 KB to your storage · 42.04 GB free" (M4 live); Copy to Storage: one task, "Send … to your storage"; `both`. |
+| L5 | PASS | Signed out: Move To… off, its help "Sign in to CANFAR to move files to and from your storage". |
+| L6 | PASS | A QA record given a second file (a 9 KB thumbnail, removed after): both rows with badges; Reveal in Finder selected both (the person); Remove Files… listed both, each "Its only copy", unchecked, the button off. |
+| L7 | PASS | `show_move_to` (to mac, move): the sheet opened on the cutout with Move chosen, as `get_move_to_view` read it; nothing moved. |
+| L8 | PASS | `move_research_files` (keep in storage) waited in Pending as "Remove files on this Mac"; applied by the person: `storage`. |
+
+**Found and fixed:** the tools' descriptions of `move_research_files` and `resolve_sync_conflict` ended with
+their catalogue kind — "Add to your CANFAR storage … applies at once" — while a call's kind is what it
+does: the move in L8 waited as a removal. They now say their kind is what each call does
+(`ChangeCatalog.kindByCall`); the test failed first. **Polish:** "Remove 0 Files" now reads "Remove Files"
+(off); the sheet's two spacer texts are no longer read by the tools.

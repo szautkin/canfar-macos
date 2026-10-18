@@ -95,9 +95,10 @@ struct MoveToSheet: View {
                 Text("Files").font(.headline)
                 Spacer()
                 Text("Now").font(.caption).foregroundStyle(.secondary).frame(width: 44)
-                Text(" ").frame(width: 14)
+                // Room for the arrow and the size: nothing for the tools to read.
+                Color.clear.frame(width: 14, height: 1)
                 Text("After").font(.caption).foregroundStyle(.secondary).frame(width: 44)
-                Text(" ").frame(width: 64)
+                Color.clear.frame(width: 64, height: 1)
             }
             ForEach(plan.rows) { row in
                 fileRow(row)
