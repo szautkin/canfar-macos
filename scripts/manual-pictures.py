@@ -215,6 +215,12 @@ def shoot(session, shot, lang, labels, private):
     proposals = []
     for tool, arguments in shot.get('steps', []):
         answer = text_of(session.call(tool, localized(arguments, labels)))
+        if tool == 'open_ui' and isinstance(answer, dict) and answer.get('candidates') and not answer.get('done'):
+            # Several controls open it (a card's Events, one per session): the first on screen.
+            first = min(answer['candidates'], key=lambda c: (c['at'][1], c['at'][0]) if c.get('at') else (1e9, 1e9))
+            answer = text_of(session.call(tool, {**localized(arguments, labels), 'target': first['id']}))
+        if isinstance(answer, dict) and answer.get('done') is False:
+            print(f'  {shot["name"]}: {tool}: {answer.get("message")}')
         if isinstance(answer, dict) and answer.get('missing'):
             missing = [m.get('target', m) if isinstance(m, dict) else m for m in answer['missing']]
             print(f'  {shot["name"]}: {tool} found nothing for {missing}')
