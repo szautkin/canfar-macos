@@ -83,6 +83,10 @@ The 3D **Cube Viewer** (new in 1.3) — explore FITS spectral cubes as an intera
 |------|---------------------|
 | ![Verbinal — home](assets/screenshot-home.png) | ![Verbinal — CADC archive search](assets/screenshot-search.png) |
 
+| Portal (1.4.1) — CPU, RAM and GPU load | Research (1.4.1) — each file on this Mac and in your storage |
+|----------------------------------------|---------------------------------------------------------------|
+| ![Verbinal — Portal](assets/screenshot-portal.png) | ![Verbinal — Research](assets/screenshot-research.png) |
+
 | FITS viewer | AI assistant (MCP) driving Verbinal |
 |-------------|-------------------------------------|
 | ![Verbinal — FITS viewer](assets/screenshot-fits.png) | ![Verbinal — AI assistant via MCP](assets/screenshot-ai.png) |
