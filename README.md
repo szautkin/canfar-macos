@@ -22,9 +22,9 @@ screen, setting and shortcut of Verbinal 1.4.
 - **Sessions** — launch and manage Notebook, Desktop, CARTA, Contributed, and
   Firefly sessions on the CANFAR Skaha platform, no browser required. Auto-refreshing
   status, live platform load, CPU and RAM (and GPU, when there is one) on every session
-  card, one-click re-launch from history, in-place event and container logs, and
-  headless batch jobs that keep up with thousands of jobs — with a history kept after
-  the platform drops them.
+  card, a GPU for a session or a batch job when CANFAR offers them, one-click re-launch
+  from history, in-place event and container logs, and headless batch jobs that keep up
+  with thousands of jobs — with a history kept after the platform drops them.
 - **Remote Compute** (new in 1.4) — run Python or Bash on a session on your own CANFAR
   account, from the app or through your AI assistant. Every run and its output are kept,
   and a run survives signing out and quitting the app.
@@ -34,10 +34,15 @@ screen, setting and shortcut of Verbinal 1.4.
   observation detail — with an ADQL editor that checks your query as you type.
 - **Research assistant** — a workspace that tracks your observations, with or without
   their files: download whole observations, choose individual files, or cut out just the
-  region you need. Full-text search over notes and tags, and bundle export.
+  region you need. Keep each file on this Mac, in your CANFAR storage, or both, and move
+  it with **Move To…**. Full-text search over notes and tags, and bundle export.
 - **VOSpace storage** — a native file browser to browse, upload, organise, share and
   manage your VOSpace files, with quota and usage at a glance and a warning when a
   sensitive file is public.
+- **Your work on every device** (new in 1.4.1) — choose, part by part, what Verbinal keeps
+  in your CANFAR storage: Research, marks on images, workflows, saved queries, guides for
+  assistants and more, the same on every Mac you sign in on. Changes are kept by
+  revision, never by a clock, and a conflict waits for you to choose.
 - **FITS viewer** — hardware-accelerated, Metal-based rendering with pan/zoom, scaling
   modes, WCS-aware pixel readout, and full zenithal projections (TAN/SIN/STG/ZEA).
   Marks on your images kept with the file and exported to DS9, plotted spectra (such as

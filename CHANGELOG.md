@@ -6,11 +6,13 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.4.1] - 2026-10-08
+## [1.4.1] - 2026-10-20
 
 One session per assistant, a sign-in that renews itself, an observation's
-files in Research, and Verbinal's data in your storage on every device
-(see `docs/plans/34-dev-1-4-1.md`).
+files in Research and **Move To…**, your work in your storage on every
+device, kept by revision with the conflicts yours to choose, and GPUs in
+the launch form (see `docs/plans/34-dev-1-4-1.md` to
+`docs/plans/46-move-to.md`).
 
 ### Added
 - **An observation's files download into Research.** The download button
@@ -32,35 +34,96 @@ files in Research, and Verbinal's data in your storage on every device
   Discovery, and a Remote Compute result that came while Verbinal was not
   watching reaches its run. **Settings ▸ Storage** shows each kind, its
   folder and what the last sync did, with **Sync Now**.
-- **Research on every device, if you want it.** **Keep Research in
-  VOSpace** keeps your observations' details, notes, tags and quality (not
-  their files) in your storage, the same on every device. The newer change
-  wins; the one it replaced stays on the Mac where it was made. Only while
-  your `.verbinal` folder is private.
+- **Your work on every device, part by part, if you want it.** **Settings
+  ▸ Storage ▸ Your Work in VOSpace** has a switch for each part of your
+  work, each off until you turn it on: Research (your observations'
+  details, notes, tags and quality, not their files), marks on images, sky
+  bookmarks, workflows, saved queries, recent searches (the last 100),
+  guides for assistants, Remote Compute history, batch job history, your
+  added images, recent launches and Portal launch defaults. A choice made
+  here is made for every device you sign in on. Only accounts with CANFAR
+  storage sync, and only while your `.verbinal` folder is private;
+  sign-ins, what assistants may do, session logs and the files on this Mac
+  never leave it. A guide an assistant proposes reaches your other devices
+  once you apply it.
+- **Changes kept by revision, and the conflicts yours to choose.** Each
+  copy in your storage says which revision it is, which one it was made
+  from and which device wrote it; no device's clock decides. Changes to
+  different fields of an item, such as a note's text on one Mac and its
+  tags on another, are both kept. When two devices changed the same field
+  differently, the version in your storage stays and this Mac's waits in
+  **Settings ▸ Storage ▸ Conflicts**, with **Keep This Mac's** and **Keep
+  the Other's**. When one device removed what another changed, the change
+  is kept and you are told, with **Remove It**. Assistants read them with
+  `list_sync_conflicts` and propose a choice with `resolve_sync_conflict`.
+- **Results in your storage too, if you want them.** With **Results**
+  turned on in **Settings ▸ Storage**, each download, cutout, search export
+  and figure Verbinal keeps on this Mac goes to `Verbinal-Results` in your
+  storage as well, in the background, and waits while your storage cannot
+  be reached. A search's **Export** has **To Storage**, which puts the file
+  in `Verbinal-Exports` (assistants: `export_search_results` with
+  `uploadToVOSpace`).
+- **Marks follow their file.** Marks and sky bookmarks are kept with the
+  file they are on, an archive file or a file in your storage, however it
+  was opened, so every device that syncs them shows them on that file.
+- **Research files on this Mac and in your storage.** A laptop and a cloud
+  beside each of Research's files say where it is: on this Mac, in your
+  storage, or both. **Move To…** copies or moves an observation's files
+  between this Mac and your CANFAR storage (`Verbinal-Results/research/`):
+  both places side by side, each file now and after, **Copy** or **Move**,
+  your storage's free space, and a button that says what happens. A move
+  copies first and removes the other copy only once the new one is there;
+  a file's last copy is never removed, and a file of the same name in your
+  storage is never written over. **Remove Files…** asks which files to
+  remove from this Mac, and says which have a copy in your storage.
+  Assistants: `show_move_to`, `get_move_to_view` and `move_research_files`;
+  for one file, `send_research_file_to_storage`,
+  `get_research_file_from_storage`, `remove_research_file_from_mac` and
+  `remove_research_file_from_storage`; each file's `places` in
+  `list_downloaded_observations`.
+- **Image package lists on a new device.** On a new Mac, the package lists
+  your probes made elsewhere come from your storage once you sign in, and
+  Image Discovery's rows turn to discovered as they arrive. **Discover
+  packages** on an image probed elsewhere reads its list from storage, with
+  no job; a list from an older probe is marked, with **Re-run discovery**.
+- **How far, and Pause, on the activity bar.** A task that counts says how
+  far it has got, such as **120 of 288**. Work that can wait, such as the
+  storage sync, has **Pause** and **Resume**, says who paused it, and stays
+  paused after Verbinal quits. Assistants: `pause_activity`,
+  `resume_activity`, and the counts in `list_activity`.
+- **When your storage is slow or out of service.** Each request is asked
+  again twice; a sync that still fails is on the activity bar with why and
+  when Verbinal tries again (after 1, 2, 4 … up to 30 minutes, and at once
+  when the network comes back), with **Retry** (assistants:
+  `retry_activity`). A sync that waits longer than 10 seconds says
+  **Waiting for your CANFAR storage…**.
+- **GPUs.** Platform Load has three rings, CPU, RAM and GPU, the last
+  *Not reported* until CANFAR reports its GPUs. The launch form's Standard
+  tab has **Use a GPU**; Advanced, Headless and batch jobs have a **GPUs**
+  count through the counts CANFAR offers, greyed while it offers none; and
+  **Settings ▸ Portal** has **Use a GPU by default**. Recent Launches shows
+  a launch's GPUs. Assistants: `get_platform_load` gives `gpu`,
+  `launch_session` and `launch_headless_job` take GPUs and refuse counts
+  CANFAR does not offer, and `describe_app` explains how.
 - **An assistant's session lasts.** An assistant you allowed keeps its
   session when Verbinal restarts: no new window, the same log. A second
   `start_session` answers `alreadyStarted: true`. A session ends after an
   hour without a call (**Settings ▸ AI Agent ▸ Sessions**, from 15 minutes
   to a day), with **End Session** in Session Logs, or when you turn
   external AI agents off; the assistant is told why.
-- **Research files on this Mac and in your storage.** A laptop and a cloud
-  beside each of Research's files say where it is. Click them to send a
-  copy to your CANFAR storage (`Verbinal-Results/research/`), get one back,
-  move the file either way, or remove one of its copies. A move copies
-  first and removes the other copy only once the new one is there, and a
-  file's last copy is never removed. Assistants:
-  `send_research_file_to_storage`, `get_research_file_from_storage`,
-  `remove_research_file_from_mac`, `remove_research_file_from_storage`,
-  and each file's `places` in `list_downloaded_observations`.
 - **Select Area in the FITS Viewer.** Turn on **Select Area**, beside
   **Export Figure…**, or hold ⌘, and drag a box on the image: **Export
   Figure** opens on that area. Assistants can turn it on for you
   (`set_fits_view` `selectArea`).
+- **Two workflow templates:** *A survey on CANFAR: from a query to
+  candidates*, and *Set up the assistant for discovery work*.
 - **Tools:** `list_storage_kinds` and `sync_storage`;
   `download_observation` with `file` keeps that file among the record's
   `files`; `remove_downloaded_file` takes `file`;
   `get_downloaded_observation` lists `files`; `describe_app` says how long
-  an idle session lasts.
+  an idle session lasts; `read_vospace_file` gives an image (PNG, JPEG or
+  GIF up to 1 MB) as an image, so an assistant sees the plots its jobs
+  write; `show_compute_run` names the image a run ran on.
 
 ### Changed
 - **Download asks no more where to save.** An observation's **Download**
@@ -68,8 +131,46 @@ files in Research, and Verbinal's data in your storage on every device
   downloads always did.
 - **Deleting an observation deletes all its files**, its main file and the
   ones downloaded one by one.
+- **The Portal's cards refresh in place.** Each card has a reload button,
+  Storage's too, keeps what it shows while it refreshes, and has a footer
+  that says when it was updated, in 24-hour time. On reload, Storage's bar
+  runs from empty to your usage; with Reduce Motion it stays still.
 
 ### Fixed
+- **Your assistant finds Verbinal while it is running.** The relay an
+  assistant's client starts finds the running app even when the address it
+  was given is stale, and says whether Verbinal is not running or has
+  gone. Verbinal keeps that address up to date, and a test run no longer
+  overwrites it.
+- **A change from another device during a sync is no longer lost.** The
+  sync used to take it as seen and never bring it in. A change made while
+  a sync runs goes when it ends; storage is read as it is now, not from a
+  cache, so each change is written once; and the switches in **Settings ▸
+  Storage** show your choice at once, two quick choices no longer undoing
+  each other.
+- **The launch form's Standard tab launches its own image.** After a
+  launch with a custom image on Advanced, Standard launched that image.
+- **Recent Launches is the same list everywhere.** Three copies of it,
+  over one file, could disagree.
+- **Side panels fit their narrowest pane**, and stay in it after another
+  screen and back.
+- **Workflows and Research keep to Verbinal's toolbar**, with none of
+  their own over the screen.
+- **Remote Compute makes its folders in your storage once, after
+  asking**, with no failed writes in the log.
+- **What assistants are answered.** `search_observations` gives the ADQL
+  that ran, with its `TOP`; a write that waits answers `pending: true` and
+  what it waits for; a failed auto-apply names its proposal;
+  `get_headless_job` finds a finished job in the job history, and the job
+  tools say which id each takes; `update_guide_tool` and
+  `delete_guide_tool` take the guide's name; columns answer to
+  `ra(j2000)` and `dec(j2000)`; `resolve_target` reads `service` in any
+  case; VizieR's errors give the reason first; `list_downloaded_observations`
+  finds records as the screen's filter does; `get_search_results` says its
+  `state`; `open_ui` no longer opens a sheet over another; the ADQL check
+  finds a bare column no table has. The guides say that what waits is
+  chosen kind by kind, and that a session goes on while the client keeps
+  its `Verbinal mcp` process.
 - **Research's records move into the database only when you choose.** The
   menu beside Research's count says where they are kept, and **Move into
   the Database…** backs the file up, checks every record, and undoes it
