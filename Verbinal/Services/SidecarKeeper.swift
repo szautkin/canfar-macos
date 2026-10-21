@@ -37,7 +37,7 @@ final class SidecarKeeper {
         #if os(macOS)
         activation = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
                                                             object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.check() }
+            MainActor.assumeIsolated { _ = self?.check() }
         }
         #endif
         watching = Task { [weak self, interval] in
