@@ -11,7 +11,7 @@ jobs:
     name: Build and Test
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Manual coverage
         run: python3 scripts/manual-coverage.py
