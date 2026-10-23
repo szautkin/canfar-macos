@@ -168,10 +168,12 @@ struct VerbinalApp: App {
                 .environment(\.locale, appState.locale)
         }
         #else
+        // No notification request at launch: nothing on iOS posts one yet
+        // that iOS would show, and the request came over the Terms gate. It
+        // is asked when the person turns reminders on (plan 47 1.4).
         WindowGroup {
             ContentView()
                 .environment(appState)
-                .task { NotificationService.requestPermissionIfNeeded() }
         }
         #endif
     }

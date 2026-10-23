@@ -45,6 +45,16 @@ private enum iPadSection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// The sidebar's label, localized (the raw value is the id, in English).
+    var title: LocalizedStringKey {
+        switch self {
+        case .sessions: return "Sessions"
+        case .launch: return "Launch Session"
+        case .monitor: return "Monitor"
+        case .account: return "Account"
+        }
+    }
+
     var icon: String {
         switch self {
         case .sessions: return "rectangle.stack"
@@ -155,7 +165,7 @@ private struct iPadSplitView: View {
     @ViewBuilder
     private func sidebarRow(_ section: iPadSection) -> some View {
         HStack {
-            Label(section.rawValue, systemImage: section.icon)
+            Label(section.title, systemImage: section.icon)
             Spacer()
             switch section {
             case .sessions:
@@ -495,7 +505,7 @@ private struct iOSEventsSheetWrapper: View {
                     Spacer()
                 } else {
                     ScrollView {
-                        Text(currentContent.isEmpty ? "No data available" : currentContent)
+                        Text(currentContent.isEmpty ? String(localized: "No data available") : currentContent)
                             .font(.system(.caption, design: .monospaced))
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)

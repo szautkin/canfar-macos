@@ -759,6 +759,16 @@
         }
       }
     },
+    "Launch" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancement"
+          }
+        }
+      }
+    },
     "Loading the platform's statistics" : {
       "localizations" : {
         "fr" : {
@@ -785,6 +795,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recherche de sa liste dans votre stockage"
+          }
+        }
+      }
+    },
+    "Monitor" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suivi"
           }
         }
       }
@@ -1029,6 +1049,16 @@
         }
       }
     },
+    "No data available" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune donnée disponible"
+          }
+        }
+      }
+    },
     "no table here has a column \"%@\"" : {
       "localizations" : {
         "fr" : {
@@ -1195,6 +1225,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mis en pause par votre assistant"
+          }
+        }
+      }
+    },
+    "Profile" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Profil"
           }
         }
       }
@@ -1605,6 +1645,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Envoyer une copie au stockage"
+          }
+        }
+      }
+    },
+    "Session Configuration" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuration de la session"
+          }
+        }
+      }
+    },
+    "Sessions (%lld)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessions (%lld)"
           }
         }
       }

@@ -58,27 +58,6 @@ enum PlatformClipboard {
     }
 }
 
-// MARK: - App Lifecycle (iOS-only soft-close)
-
-#if os(iOS)
-enum AppLifecycle {
-    /// Send the app to background — same end-state as the user swiping
-    /// up to the home screen, but driven from a button.
-    ///
-    /// Calls UIApplication's private `-suspend` method via the
-    /// Objective-C runtime. We look up the Selector through
-    /// `NSXPCConnection.suspend` (a public method with the same name)
-    /// to avoid raw `Selector("suspend")` warnings. App Store reviewers
-    /// occasionally flag selector-from-string patterns, but this is
-    /// strictly safer than `exit(0)` which directly violates HIG 2.5.1
-    /// ("apps should never gracefully exit").
-    @MainActor
-    static func suspend() {
-        UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
-    }
-}
-#endif
-
 // MARK: - App Badge
 
 enum PlatformBadge {

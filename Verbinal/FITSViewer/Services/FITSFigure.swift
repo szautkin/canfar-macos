@@ -35,8 +35,10 @@ enum FITSFigureRegion: Codable, Hashable, Sendable {
     }
 }
 
+#if os(macOS)
 /// What an agent's `export_fits_figure` asks for. Style fields left out
-/// are what the person last chose in the Export Figure sheet.
+/// are what the person last chose in the Export Figure sheet. Mac only, like
+/// the MCP tool and `FigureFile`, its file writer.
 struct FITSFigureRequest: Codable, Sendable, Equatable {
     var scale: Double = 2
     var format: FigureFile.Format = .png
@@ -66,6 +68,7 @@ struct FITSFigureRequest: Codable, Sendable, Equatable {
         dark = try c.decodeIfPresent(Bool.self, forKey: .dark)
     }
 }
+#endif
 
 /// Why a figure could not be made.
 struct FITSFigureProblem: LocalizedError, Equatable {

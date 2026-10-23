@@ -55,11 +55,11 @@ extension AppState {
     func tearDownAuthenticatedSessionResources() {
         headlessMonitor?.stopMonitoring()
         headlessMonitor = nil
+        remoteCompute.stopWatching()
+        #if os(macOS)
         imageDiscoveryCoordinator = nil
         imageDiscoveryModel = nil
         canfarImagesModel = nil
-        #if os(macOS)
-        remoteCompute.stopWatching()
         storageSync.signedOut()
         researchModel.transfer.storage = nil
         researchModel.storageFree = nil

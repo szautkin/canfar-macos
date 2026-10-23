@@ -43,3 +43,39 @@ jobs:
       - name: Test VerbinalKit
         working-directory: shared/VerbinalKit
         run: swift test
+
+      # The iOS app (plan 47): its build, and the tests of the shared core it
+      # runs on (FITS, cubes, coordinates, XML, keychain, networking, stores),
+      # on an iPhone simulator. Not the Mac-only parts: MCP, agents, proposals,
+      # hints, addons, cutouts.
+      - name: Build iOS
+        run: |
+          xcodebuild build \
+            -project Verbinal.xcodeproj \
+            -scheme VerbinalIOS \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath .derivedData \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Test VerbinalKit on iOS Simulator
+        working-directory: shared/VerbinalKit
+        run: |
+          udid=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          print(next(d["udid"] for runtime, ds in devices.items() if "iOS" in runtime
+                     for d in ds if d["name"].startswith("iPhone")))')
+          only=""
+          for t in FITSAutoCutTests RiceUnfoldTests BitReaderTests FITSDisplayLimitsTests \
+                   FITSSpectrumTests LinearCutTests RiceFixtureTests TileCompressionHeaderTests \
+                   SIPDistortionTests ColormapTests CubeAccuracyTests CubeModelTests \
+                   SexagesimalTests SimpleXMLParserTests KeychainStorageGenericTests \
+                   RequestLedgerTests DiskPersistenceTests ChangeLogTests; do
+            only="$only -only-testing:VerbinalKitTests/$t"
+          done
+          xcodebuild test \
+            -scheme VerbinalKit-Package \
+            -destination "platform=iOS Simulator,id=$udid" \
+            -derivedDataPath ../../.derivedData-kit-ios \
+            $only \
+            CODE_SIGNING_ALLOWED=NO

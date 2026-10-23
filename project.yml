@@ -68,6 +68,8 @@ targets:
           - "**/README.md"
           # Bundled as a folder resource below so Bundle looks under Workflows/.
           - "Workflows/Resources/**"
+          # What only the iOS app bundles (its privacy manifest).
+          - "iOS/**"
       - path: Verbinal/Workflows/Resources/Workflows
         type: folder
         buildPhase: resources
@@ -116,22 +118,24 @@ targets:
           # INFOPLIST_FILE, producing "Multiple commands produce Info.plist".
           - "Info.plist"
           - "Verbinal.entitlements"
+          # The Mac's privacy manifest; the iOS one is iOS/PrivacyInfo.xcprivacy.
           - "PrivacyInfo.xcprivacy"
           # macOS-only feature modules — excluded from the iOS bundle entirely.
-          # Storage browser, FITS viewer, FileBrowser panel, Export dialog, and
-          # the MCP integration all depend on AppKit / Metal / a CLI helper
-          # that has no iOS equivalent. ContentView already guards the call
-          # sites behind #if os(macOS), so excluding the sources keeps the
-          # iOS link clean instead of forcing #if guards inside every file.
+          # FileBrowser panel, Export dialog, and the MCP integration depend on
+          # AppKit or a stdio process with no iOS equivalent. ContentView guards
+          # the call sites behind #if os(macOS).
           - "Export/**"
           - "FileBrowser/**"
-          - "FITSViewer/**"
-          - "CubeViewer/**"
-          - "Storage/**"
+          # iOS is Portal, FITS, Cube and Compute (plan 47). The viewers, Remote
+          # Compute and Storage (the files Compute reads and writes) come in for
+          # their models and services; their Mac screens stay out, and iOS gets
+          # its own as each place is built.
+          - "FITSViewer/Views/**"
+          - "CubeViewer/Views/**"
+          - "Storage/Views/**"
+          - "RemoteCompute/Views/**"
           # Verbinal's data in VOSpace (plan 34 V): over the Storage client.
           - "StorageSync/**"
-          - "RemoteCompute/**"
-          - "RecentFiles/**"
           - "MCP/**"
           # Each area's tools for assistants (plan 36 tier 6): the MCP server is macOS only.
           - "**/MCP/**"
@@ -139,17 +143,28 @@ targets:
           - "**/Sync/**"
           # The assistant's session log: macOS only, like the MCP server (plan 23).
           - "AgentSession/**"
-          # Bundled as a folder resource below so Bundle looks under Workflows/.
-          - "Workflows/Resources/**"
-          # Service-layer files that exist outside the macOS-only feature
-          # dirs but depend on types defined inside them. Keeping them in
-          # the iOS target breaks the link.
-          - "Research/Services/ResearchExporter.swift"
-          - "Search/Services/SearchExporter.swift"
-          - "ImageDiscovery/Services/ServiceConformances.swift"
-      - path: Verbinal/Workflows/Resources/Workflows
-        type: folder
-        buildPhase: resources
+          # Not one of the iOS app's four places (plan 47 0.9): the archive
+          # search, Research, Image Discovery, and what shapes an assistant's
+          # tools (AI Guide, Workflows). They stay Mac only.
+          - "Search/**"
+          - "Research/**"
+          - "ImageDiscovery/**"
+          - "AIGuide/**"
+          - "Workflows/**"
+          # What only those use: cutouts (of Research's records), the image
+          # catalogue (over Image Discovery), its Settings tab (its service
+          # stays: AI Compute tests a registry login with it), and the facts
+          # of a search result.
+          - "Cutouts/**"
+          - "CanfarImages/**"
+          - "Settings/ImageDiscovery/Views/**"
+          - "Models/ObservationFacts.swift"
+          - "Storage/Services/VOSpaceResearchStorage.swift"
+          # The Mac's landing, Portal dashboard and launch form; iOS has its
+          # own (Views/iOS).
+          - "Views/LandingView.swift"
+          - "Views/DashboardView.swift"
+          - "Views/Components/LaunchFormView.swift"
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit

@@ -86,9 +86,9 @@ final class AppState {
     /// keyspace/Keychain. Surfaced in Settings ▸ AI Compute.
     let aiComputeSettings = AIComputeSettingsService()
 
-    #if os(macOS)
     /// Code run on the person's compute session — by them on the Remote
-    /// Compute screen or by an assistant — and the runs remembered.
+    /// Compute screen or by an assistant — and the runs remembered. On iOS
+    /// too: Compute is one of its four places (plan 47).
     /// The Remote Compute screen, kept while the app runs so an agent's
     /// `show_compute_run` or `set_compute_snippet` lands where the person looks.
     @ObservationIgnored private(set) lazy var remoteComputeModel = RemoteComputeModel(service: remoteCompute)
@@ -104,16 +104,17 @@ final class AppState {
                 cores: settings?.cores ?? RunCodeContract.defaultCores, ram: settings?.ram ?? RunCodeContract.defaultRam)
         },
         registryAuth: { [weak self] in self?.aiComputeSettings.registryCredentials() })
-    #endif
 
+    #if os(macOS)
     /// AI Guide — per-tool description overrides + user-authored instruction
     /// tools. The overrides re-tune what the MCP server advertises in
     /// `tools/list`; the guide tools are exposed as read-only callable tools.
-    /// GRDB-backed (v2 schema). Cross-platform store; the MCP wiring that
-    /// consumes its snapshot is macOS-only.
+    /// GRDB-backed (v2 schema). Mac only, like the MCP server it shapes
+    /// (plan 47 0.9).
     let aiGuideService = AIGuideService()
     /// Shared by the Workflows screen and the MCP workflow tools.
     let workflowStore = WorkflowStore()
+    #endif
 
     /// Live network connectivity monitor. UI subscribes via `@Bindable` to
     /// surface "network changed; retrying…" hints when in-flight CADC
@@ -148,8 +149,9 @@ final class AppState {
     // Headless job monitor (created on auth, destroyed on logout)
     var headlessMonitor: HeadlessMonitorModel?
 
-    /// Image content discovery — manifest cache + probe orchestrator.
-    /// Created on auth so it has a username to drive VOSpace I/O;
+    #if os(macOS)
+    /// Image content discovery — manifest cache + probe orchestrator (Mac
+    /// only, plan 47 0.9). Created on auth so it has a username to drive VOSpace I/O;
     /// destroyed on logout because both the cache file and the probe
     /// jobs are user-scoped.
     var imageDiscoveryCoordinator: ImageDiscoveryCoordinator?
@@ -171,6 +173,7 @@ final class AppState {
     /// row. The sheet honors this via its existing
     /// `selectedImageID` binding.
     var preselectedDiscoveryImageID: String?
+    #endif
 
     /// Which tab inside `LaunchFormView` is currently visible.
     /// Lifted out of the view's `@State` so widgets that drive
@@ -314,10 +317,10 @@ final class AppState {
         self.endpointRegistry = registry
         self.network = network
         self.endpoints = endpoints
+        #if os(macOS)
         // Search/Research read endpoints through the TAPConfig static —
         // configure it before any of their models exist.
         TAPConfig.configure(endpoints)
-        #if os(macOS)
         GetServiceHealthTool.nameServicesInLedger()
         #endif
         let authService = AuthService(network: network, endpoints: endpoints)
@@ -335,9 +338,13 @@ final class AppState {
         self.auth = auth
 
         // Route Keychain through the shared addon-family access group so every
-        // first-party addon can read the CADC token without re-authing. Default
-        // is unset when the entitlement isn't granted — the call is a no-op.
+        // first-party addon can read the CADC token without re-authing. The
+        // addons are Mac only, and only the Mac entitlements carry the group:
+        // on iOS every item naming it fails (errSecMissingEntitlement), so the
+        // sign-in was never kept (plan 47 0.2). iOS stays in its app-ID group.
+        #if os(macOS)
         KeychainStorage.configure(accessGroup: "A4ABW5VD88.codebg.verbinal.family")
+        #endif
         // Under unit tests the app keeps its own keychain items: a test never
         // reads the person's CADC token — macOS would stop the test run to
         // ask them — and never saves or clears it, signing them out.
@@ -361,8 +368,10 @@ final class AppState {
             self.preferredLocaleIdentifier = stored
         }
 
+        #if os(macOS)
         // Records added to Research get their details from the archive.
         researchModel.archive = caom2
+        #endif
 
         // Wire controller callbacks now that `self` is fully initialised.
         auth.onAuthenticated = { [weak self] in
@@ -573,12 +582,14 @@ final class AppState {
     // pendingSearchCoordinate and pendingSearchLoad read it.
     var handOff: HandOff?
 
-    /// Hoisted search model — same rationale as the viewer models below:
+    #if os(macOS)
+    /// Hoisted search model (Mac only, plan 47 0.9) — same rationale as the viewer models below:
     /// app-owned so it survives mode switches and gives the search-control
     /// agent tools a live target (form fields, data train, results table,
     /// ADQL editor) instead of the pending-handoff bridges alone. Cheap at
     /// init: no network until a search or data-train load runs.
     let searchModel = SearchFormModel()
+    #endif
     /// What the app is doing — the activity bar's tasks.
     let tasks = TaskRegistry.shared
     /// Finished batch jobs, kept after the platform forgets them.
@@ -643,10 +654,12 @@ final class AppState {
         if let section { settingsSection = section }
         settingsRequest = SettingsRequest(action: action, serial: (settingsRequest?.serial ?? 0) + 1)
     }
-    /// Hoisted research archive — same rationale as `searchModel`: MCP
+    #if os(macOS)
+    /// Hoisted research archive (Mac only, plan 47 0.9) — same rationale as `searchModel`: MCP
     /// FITS tools and the Research UI must share one store so ids
     /// survive relaunch and in-session downloads are visible both ways.
     let researchModel = ResearchModel()
+    #endif
     /// Where downloads go: the person's choice (plan 34 F).
     let downloadFolder = DownloadFolderSetting()
     /// Launching batch jobs for an assistant, by the Batch Jobs form's rule (plan 19 T1).
@@ -655,6 +668,7 @@ final class AppState {
     @ObservationIgnored private(set) lazy var sessionLaunches = SessionLaunches(service: sessionService, listing: sessionService)
     /// Deleting and renewing sessions for an assistant, by the Portal's rule (plan 17 A1).
     @ObservationIgnored private(set) lazy var sessionActions = SessionActions(service: sessionService)
+    #if os(macOS)
     /// The one archive client for Research, its answers kept in the app's
     /// database (plan 19 R1): records added, an assistant's downloads, and
     /// the check of older records all ask it.
@@ -662,8 +676,8 @@ final class AppState {
     /// Brings Research's records up to the archive after each sign-in (plan 17 G3, plan 19 R1).
     @ObservationIgnored private(set) lazy var researchRecordRepair = ResearchRecordRepair(
         store: researchModel.observationStore, notes: researchModel.noteStore, archive: caom2)
+    #endif
 
-    #if os(macOS)
     /// Hoisted viewer state. Previously each viewer root view owned its
     /// model as `@State`, so navigating away tore the whole viewer down —
     /// open tabs, stretch, crosshair, the loaded cube — and the agent
@@ -675,6 +689,7 @@ final class AppState {
     let cubeTabHost = CubeTabHostModel()
     /// Compatibility façade for existing controls; always the active cube tab.
     var cubeViewer: CubeViewerModel { cubeTabHost.activeTab }
+    #if os(macOS)
     /// Shared bookmark store: the panel and the agent bookmark tools must
     /// mutate the same live instance (it persists to disk, but two
     /// instances would not see each other's in-memory writes).
@@ -684,49 +699,6 @@ final class AppState {
     /// same sandbox-approved folders (Pictures/Documents/etc.).
     let localFolderAccess = LocalFolderAccessStore()
     #endif
-
-    /// Pending sky coordinates from FITS viewer crosshair → Search tab.
-    /// Includes a unique `id` so `.task(id:)` always re-fires, even if the
-    /// same sky position is searched twice in a row.
-    struct PendingCoordinate: Equatable {
-        let id = UUID()
-        let ra: Double
-        let dec: Double
-    }
-
-    /// Pending saved-query / recent-search load → Search module (the
-    /// `load_saved_search` agent tool's bridge, mirroring
-    /// `pendingSearchCoordinate`): a recent search restores its full form
-    /// snapshot; a saved query lands its ADQL in the editor tab. The `id`
-    /// keeps `.task(id:)` re-firing on repeat loads of the same target.
-    struct PendingSearchLoad: Equatable {
-        let id = UUID()
-        enum Kind: Equatable {
-            case snapshot(SearchFormSnapshot)
-            case adql(String)
-        }
-        let kind: Kind
-    }
-
-    enum AppAction {
-        case openFITS(url: URL)
-        case openCube(url: URL)
-        case searchCoordinates(ra: Double, dec: Double)
-    }
-
-    func dispatch(_ action: AppAction) {
-        switch action {
-        case .openFITS(let url):
-            pendingFITSURL = url
-            navigateTo(.fitsViewer)
-        case .openCube(let url):
-            pendingCubeURL = url
-            navigateTo(.cubeViewer)
-        case .searchCoordinates(let ra, let dec):
-            pendingSearchCoordinate = PendingCoordinate(ra: ra, dec: dec)
-            navigateTo(.search)
-        }
-    }
 
     /// Pending NAXIS≥3 file awaiting the user's 2D vs 3D viewer choice
     /// (Windows 1.3.1 parity). Presented as a sheet from ContentView.
@@ -797,9 +769,11 @@ final class AppState {
         }
     }
     var activeSheet: ActiveSheet?
+    #if os(macOS)
     /// The cutout editor an agent opened (show_cutout_editor); the Search
     /// and Research details open their own.
     var cutoutEditor: CutoutEditorModel?
+    #endif
 
     /// True if the login sheet should be shown. Convenience for call sites that
     /// only need to know about the login sheet specifically.

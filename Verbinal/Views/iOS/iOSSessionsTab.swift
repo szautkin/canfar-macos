@@ -250,7 +250,7 @@ private struct iOSEventsSheet: View {
                     Spacer()
                 } else {
                     ScrollView {
-                        Text(currentContent.isEmpty ? "No data available" : currentContent)
+                        Text(currentContent.isEmpty ? String(localized: "No data available") : currentContent)
                             .font(.system(.caption, design: .monospaced))
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)

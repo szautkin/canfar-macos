@@ -30,6 +30,14 @@ extension AppState {
     /// Drives the offline hint + manual retry on the landing screen.
     var authAwaitingConnectivity: Bool { auth.awaitingConnectivity }
 
+    /// The launch check has not answered yet, or the session is being
+    /// checked or renewed. Every outcome of the check leaves a status
+    /// message, so signed out with none means it is still to come. The iOS
+    /// landing shows "Validating session…" then, not "Login Required" (plan 47 0.4).
+    var isCheckingSignIn: Bool {
+        auth.activity != .idle || (!auth.isAuthenticated && auth.statusMessage.isEmpty)
+    }
+
     /// Called by the view layer on every network-path change. Resumes a
     /// connectivity-deferred sign-in once the path is satisfied; no-op
     /// otherwise (guards live in the controller).
@@ -59,12 +67,12 @@ extension AppState {
             pendingModeAfterLogin = nil
         }
 
+        // Code runs still out when watching stopped — a sign-out, a quit — are looked at again (plan 30 K).
+        Task { await remoteCompute.resumeWatching() }
+        #if os(macOS)
         // Records kept before their details came from the archive are
         // brought up to it once, in the background (plan 17 G3).
         Task { await researchRecordRepair.run() }
-        #if os(macOS)
-        // Code runs still out when watching stopped — a sign-out, a quit — are looked at again (plan 30 K).
-        Task { await remoteCompute.resumeWatching() }
         // Verbinal's data in VOSpace: at once, in the background (plan 34 V).
         startStorageSync()
         #endif
@@ -85,8 +93,9 @@ extension AppState {
         headlessMonitor = monitor
         monitor.startMonitoring()
 
-        // Image discovery — manifest cache + probe orchestration.
-        // Created lazily here because the coordinator needs a real
+        #if os(macOS)
+        // Image discovery — manifest cache + probe orchestration (Mac only,
+        // plan 47 0.9). Created lazily here because the coordinator needs a real
         // username for VOSpace IO. Same lifetime as the headless
         // monitor (set up here, torn down on logout).
         let cacheDir = JSONManifestStore.defaultDirectory()
@@ -120,13 +129,6 @@ extension AppState {
             return await MainActor.run { self.imageDiscoverySettings.settings.inspectorImage }
         }
 
-        // ImageDiscoveryCoordinator's `vospace` parameter takes any
-        // `VOSpaceFileTransfer`; the only concrete conformance ships in
-        // `Storage/Services/VOSpaceBrowserService.swift` which is iOS-
-        // excluded (the browser leans on AppKit's NSWorkspace + sandbox
-        // file APIs). Image discovery / Canfar images stay disabled on
-        // iOS until a UIKit-friendly transfer is written.
-        #if os(macOS)
         let coord = ImageDiscoveryCoordinator(
             store: store,
             headless: headlessService,

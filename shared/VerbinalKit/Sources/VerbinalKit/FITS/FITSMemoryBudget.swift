@@ -56,8 +56,12 @@ public enum FITSMemoryBudget {
     /// purgeable pages on the Mac; what the system allows this process on iOS.
     public static func availableBytes() -> Int64 {
         #if os(iOS)
-        return Int64(os_proc_available_memory())
-        #elseif canImport(Darwin)
+        // 0 where the system sets this process no limit — the Simulator,
+        // which runs on the Mac's memory: then the host's free pages, below.
+        let allowed = Int64(os_proc_available_memory())
+        if allowed > 0 { return allowed }
+        #endif
+        #if canImport(Darwin)
         var stats = vm_statistics64()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.stride / MemoryLayout<integer_t>.stride)
         let result = withUnsafeMutablePointer(to: &stats) {

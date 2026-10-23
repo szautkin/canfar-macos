@@ -12,8 +12,12 @@ extension AppState {
     /// The main window's place: the mode, and Search's tab when it is not
     /// the form (`search.results`, `search.adql`).
     var screenName: String {
+        #if os(macOS)
         guard currentMode == .search, searchModel.selectedTab != .search else { return currentMode.key }
         return "\(currentMode.key).\(searchModel.selectedTab.rawValue)"
+        #else
+        return currentMode.key
+        #endif
     }
 
     /// A window's place, by its kind; for a sheet, by the window it is on.

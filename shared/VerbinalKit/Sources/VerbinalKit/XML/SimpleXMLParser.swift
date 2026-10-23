@@ -156,16 +156,18 @@ public enum SimpleXML {
     private final class NestedSAXDelegate: NSObject, XMLParserDelegate {
         let parentLocalName: String
         let childLocalName: String
-        /// When non-nil, parent elements only count while inside this
-        /// wrapper. This also fixes root-wrapped documents on the SAX
-        /// path: without it, a root element sharing the parent's local
-        /// name swallowed the whole document into one entry.
+        /// When non-nil, only parents that are direct children of this
+        /// wrapper count — the macOS path's `//wrapper/parent`. A VOSpace
+        /// container GET's root `<node>` is then not one of its own children.
         let wrapperLocalName: String?
+        /// Every parent, in document order, as the macOS path gives them: a
+        /// parent inside another is an entry of its own, and each parent
+        /// holds every child below it.
         var results: [(parentAttributes: [String: String], children: [(attributes: [String: String], text: String)])] = []
-        private var parentDepth = 0
-        private var wrapperDepth = 0
-        private var currentParentAttrs: [String: String] = [:]
-        private var currentChildren: [(attributes: [String: String], text: String)] = []
+        /// The local names of the elements open now, outermost first.
+        private var openElements: [String] = []
+        /// Each parent open now: its entry in `results`, and its depth.
+        private var openParents: [(index: Int, depth: Int)] = []
         private var inChild = false
         private var currentChildAttrs: [String: String] = [:]
         private var currentChildText = ""
@@ -176,28 +178,19 @@ public enum SimpleXML {
             self.wrapperLocalName = wrapperLocalName
         }
 
-        private var insideWrapper: Bool {
-            wrapperLocalName == nil || wrapperDepth > 0
-        }
-
         func parser(_ parser: XMLParser, didStartElement elementName: String,
                      namespaceURI: String?, qualifiedName: String?,
                      attributes: [String: String]) {
             let local = elementName.split(separator: ":").last.map(String.init) ?? elementName
-            if local == wrapperLocalName {
-                wrapperDepth += 1
-            }
-            if local == parentLocalName && (insideWrapper || parentDepth > 0) {
-                if parentDepth == 0 {
-                    currentParentAttrs = attributes
-                    currentChildren = []
-                }
-                parentDepth += 1
-            } else if parentDepth > 0 && local == childLocalName && !inChild {
+            if local == parentLocalName && (wrapperLocalName == nil || openElements.last == wrapperLocalName) {
+                results.append((parentAttributes: attributes, children: []))
+                openParents.append((index: results.count - 1, depth: openElements.count))
+            } else if !openParents.isEmpty && local == childLocalName && !inChild {
                 inChild = true
                 currentChildAttrs = attributes
                 currentChildText = ""
             }
+            openElements.append(local)
         }
 
         func parser(_ parser: XMLParser, foundCharacters string: String) {
@@ -207,21 +200,17 @@ public enum SimpleXML {
         func parser(_ parser: XMLParser, didEndElement elementName: String,
                      namespaceURI: String?, qualifiedName: String?) {
             let local = elementName.split(separator: ":").last.map(String.init) ?? elementName
+            if !openElements.isEmpty { openElements.removeLast() }
             // `else if` matters: when callers misuse the API by passing the
             // same name for parent and child, this prevents a single closing
             // tag from being consumed as a child end *and* a parent end.
             if local == childLocalName && inChild {
-                currentChildren.append((attributes: currentChildAttrs,
-                                        text: currentChildText.trimmingCharacters(in: .whitespacesAndNewlines)))
+                let child = (attributes: currentChildAttrs,
+                             text: currentChildText.trimmingCharacters(in: .whitespacesAndNewlines))
+                for parent in openParents { results[parent.index].children.append(child) }
                 inChild = false
-            } else if local == parentLocalName && parentDepth > 0 {
-                parentDepth -= 1
-                if parentDepth == 0 {
-                    results.append((parentAttributes: currentParentAttrs, children: currentChildren))
-                }
-            }
-            if local == wrapperLocalName && wrapperDepth > 0 {
-                wrapperDepth -= 1
+            } else if local == parentLocalName, let open = openParents.last, open.depth == openElements.count {
+                openParents.removeLast()
             }
         }
     }

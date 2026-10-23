@@ -10,11 +10,58 @@ import Foundation
 /// at a position, load a search — one at a time, taken by the screen it is
 /// for. Each screen still reads its own name for it.
 extension AppState {
+    /// Pending sky coordinates from FITS viewer crosshair → Search tab.
+    /// Includes a unique `id` so `.task(id:)` always re-fires, even if the
+    /// same sky position is searched twice in a row.
+    struct PendingCoordinate: Equatable {
+        let id = UUID()
+        let ra: Double
+        let dec: Double
+    }
+
+    #if os(macOS)
+    /// Pending saved-query / recent-search load → Search module (the
+    /// `load_saved_search` agent tool's bridge, mirroring
+    /// `pendingSearchCoordinate`): a recent search restores its full form
+    /// snapshot; a saved query lands its ADQL in the editor tab. The `id`
+    /// keeps `.task(id:)` re-firing on repeat loads of the same target.
+    struct PendingSearchLoad: Equatable {
+        let id = UUID()
+        enum Kind: Equatable {
+            case snapshot(SearchFormSnapshot)
+            case adql(String)
+        }
+        let kind: Kind
+    }
+    #endif
+
+    enum AppAction {
+        case openFITS(url: URL)
+        case openCube(url: URL)
+        case searchCoordinates(ra: Double, dec: Double)
+    }
+
+    func dispatch(_ action: AppAction) {
+        switch action {
+        case .openFITS(let url):
+            pendingFITSURL = url
+            navigateTo(.fitsViewer)
+        case .openCube(let url):
+            pendingCubeURL = url
+            navigateTo(.cubeViewer)
+        case .searchCoordinates(let ra, let dec):
+            pendingSearchCoordinate = PendingCoordinate(ra: ra, dec: dec)
+            navigateTo(.search)
+        }
+    }
+
     enum HandOff: Equatable {
         case openFITS(URL)
         case openCube(URL)
         case searchAt(PendingCoordinate)
+        #if os(macOS)
         case loadSearch(PendingSearchLoad)
+        #endif
     }
 
     /// A FITS file for the FITS Viewer.
@@ -35,11 +82,13 @@ extension AppState {
         set { take(newValue.map(HandOff.searchAt), replacing: { if case .searchAt = $0 { true } else { false } }) }
     }
 
+    #if os(macOS)
     /// A saved query or recent search to load into Search.
     var pendingSearchLoad: PendingSearchLoad? {
         get { if case .loadSearch(let load) = handOff { load } else { nil } }
         set { take(newValue.map(HandOff.loadSearch), replacing: { if case .loadSearch = $0 { true } else { false } }) }
     }
+    #endif
 
     /// A new hand-off replaces whatever waits; taking one (nil) clears it
     /// only when it is still that kind — a newer one of another kind stays.

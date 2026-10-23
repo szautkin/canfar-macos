@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+Privacy manifest for Verbinal on iPhone and iPad (plan 47 0.1). The Mac app has its own,
+Verbinal/PrivacyInfo.xcprivacy; this folder is left out of the Mac target and bundled at the root
+of the iOS app, where App Store Connect looks for it.
+
+Contents verified against the code compiled into VerbinalIOS (its SwiftFileList), 2026-10-22.
+
+Required-reason APIs used:
+
+  NSPrivacyAccessedAPICategoryUserDefaults
+    Sources: settings and stores across the app (@AppStorage, UserDefaults.standard)
+    Reason:
+      CA92.1 — access info from the same app
+
+  NSPrivacyAccessedAPICategoryFileTimestamp
+    Sources:
+      Storage/Services/VOSpaceBrowserService.swift   — fileSizeKey / .size of a file to upload
+      Storage/ViewModels/StorageBrowserModel.swift   — the same, before an upload
+      VerbinalKit Networking/NetworkClient.swift     — fileSizeKey / .size of a file to upload
+      VerbinalKit Storage/AppSupport.swift           — contentModificationDate of the app's own folders
+    Reasons:
+      C617.1 — files inside the app's container (caches, downloads, stores)
+      3B52.1 — files the person chose (document picker, "Open in Verbinal")
+
+APIs NOT used (grep of the iOS file list, 2026-10-22):
+  NSPrivacyAccessedAPICategorySystemBootTime  — no systemUptime / mach_absolute_time
+  NSPrivacyAccessedAPICategoryDiskSpace       — no volumeAvailableCapacity / volumeTotalCapacity
+  NSPrivacyAccessedAPICategoryActiveKeyboard  — no activeInputModes
+
+Data collection: as the Mac app. The person's CADC username and password go to CADC, over TLS, to
+sign in to their own account; linked to that identity, for the app's function, never for tracking.
+No tracking, analytics or ad frameworks.
+-->
+<plist version="1.0">
+<dict>
+    <key>NSPrivacyTracking</key>
+    <false/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeUserID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeCredentials</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+    </array>
+
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>C617.1</string>
+                <string>3B52.1</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

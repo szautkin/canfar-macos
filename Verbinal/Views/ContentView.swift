@@ -27,15 +27,14 @@ struct ContentView: View {
     /// Shown only AFTER the Terms gate dismisses — it never alters the
     /// gate's blocking contract, it just appears once the gate is gone.
     @AppStorage(WelcomePreferences.seenVersionKey) private var welcomeSeenVersion = 0
-    #endif
     /// App-owned (hoisted onto `AppState` so the search-control agent
-    /// tools steer the same live instance the UI renders).
+    /// tools steer the same live instance the UI renders). Mac only, like
+    /// Search and Research (plan 47 0.9).
     private var searchModel: SearchFormModel { appState.searchModel }
     private var researchModel: ResearchModel { appState.researchModel }
-    #if os(macOS)
-    // StorageBrowserModel, FileBrowserModel, and FileBrowserPanel live in
-    // feature dirs excluded from the iOS target. The shell that hosts the
-    // browser column is macOS-only — iOS routes Storage to a placeholder.
+    // The Storage browser and the file browser panel are Mac screens (their
+    // views stay out of the iOS target). The shell that hosts the browser
+    // column is macOS-only — iOS routes Storage to a placeholder.
     @State private var storageBrowserModel: StorageBrowserModel?
     @State private var fileBrowserModel = FileBrowserModel()
 
@@ -54,7 +53,6 @@ struct ContentView: View {
             }
         )
     }
-    #endif
 
     private func initResearchModel() {
         researchModel.onOpenFile = { [weak appState] url in
@@ -63,12 +61,11 @@ struct ContentView: View {
             if FileHelper.isFITS(ext) {
                 appState.openAstronomyFITS(url: url)
             } else {
-                #if os(macOS)
                 NSWorkspace.shared.open(url)
-                #endif
             }
         }
     }
+    #endif
 
     var body: some View {
         ZStack {
@@ -177,7 +174,9 @@ struct ContentView: View {
         }
         #endif
         .task {
+            #if os(macOS)
             initResearchModel()
+            #endif
             await appState.initialize()
         }
         #if os(macOS)
@@ -190,6 +189,7 @@ struct ContentView: View {
             await storageBrowserModel?.show(request.path)
         }
         #endif
+        #if os(macOS)
         .task(id: appState.pendingSearchCoordinate) {
             guard let coord = appState.pendingSearchCoordinate else { return }
             appState.pendingSearchCoordinate = nil
@@ -210,6 +210,7 @@ struct ContentView: View {
                 searchModel.selectedTab = .adql
             }
         }
+        #endif
         // Bridge local `showAbout` binding (used by toolbars) to the unified
         // activeSheet on AppState. When toolbars set `showAbout = true`, we
         // route it to `activeSheet = .about` and reset the local flag.
@@ -349,46 +350,54 @@ struct ContentView: View {
             case .landing:
                 landingBody
             case .search:
+                #if os(macOS)
                 searchBody
+                #else
+                iOSMacOnlyPlaceholder(feature: "Search")
+                #endif
             case .portal:
                 portalBody
             case .research:
+                #if os(macOS)
                 researchBody
+                #else
+                iOSMacOnlyPlaceholder(feature: "Research")
+                #endif
             case .storage:
                 #if os(macOS)
                 storageBody
                 #else
-                macOSOnlyPlaceholder("Storage")
+                iOSMacOnlyPlaceholder(feature: "Storage")
                 #endif
             case .fitsViewer:
                 #if os(macOS)
                 fitsViewerBody
                 #else
-                macOSOnlyPlaceholder("FITS Viewer")
+                iOSMacOnlyPlaceholder(feature: "FITS Viewer")
                 #endif
             case .cubeViewer:
                 #if os(macOS)
                 cubeViewerBody
                 #else
-                macOSOnlyPlaceholder("Cube Viewer")
+                iOSMacOnlyPlaceholder(feature: "Cube Viewer")
                 #endif
             case .aiGuide:
                 #if os(macOS)
                 aiGuideBody
                 #else
-                macOSOnlyPlaceholder("AI Guide")
+                iOSMacOnlyPlaceholder(feature: "AI Guide")
                 #endif
             case .workflows:
                 #if os(macOS)
                 WorkflowsView()
                 #else
-                macOSOnlyPlaceholder("Workflows")
+                iOSMacOnlyPlaceholder(feature: "Workflows")
                 #endif
             case .remoteCompute:
                 #if os(macOS)
                 remoteComputeBody
                 #else
-                macOSOnlyPlaceholder("Remote Compute")
+                iOSMacOnlyPlaceholder(feature: "Remote Compute")
                 #endif
             }
         }
@@ -490,55 +499,30 @@ struct ContentView: View {
         // iOS doesn't use the mode-card Mac landing. The app's home is the
         // tab bar (iPhone) / split view (iPad), so once authenticated we
         // jump straight to AuthenticatedRootView, which already chooses
-        // AdaptiveLayout on iOS. Signed-out users get the same
-        // login-required prompt the other modes use.
+        // AdaptiveLayout on iOS. While the stored session is still being
+        // checked it says so, as the Mac's toolbar does; signed out, the
+        // same login-required prompt the other modes use.
         if appState.isAuthenticated {
             AuthenticatedRootView()
+        } else if appState.isCheckingSignIn {
+            iOSSignInCheckView()
         } else {
             loginRequiredView(for: .landing)
         }
         #endif
     }
 
-    // MARK: - Search
+    // MARK: - Search and Research (Mac only, plan 47 0.9)
 
-    @ViewBuilder
+    #if os(macOS)
     private var searchBody: some View {
-        #if os(macOS)
         SearchRootView(searchModel: searchModel, researchModel: researchModel)
-        #else
-        NavigationStack {
-            SearchRootView(searchModel: searchModel, researchModel: researchModel)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button { appState.navigateBack() } label: {
-                            Label("Back", systemImage: "chevron.left")
-                        }
-                    }
-                }
-        }
-        #endif
     }
 
-    // MARK: - Research
-
-    @ViewBuilder
     private var researchBody: some View {
-        #if os(macOS)
         ResearchRootView(researchModel: researchModel, searchModel: searchModel)
-        #else
-        NavigationStack {
-            ResearchRootView(researchModel: researchModel, searchModel: searchModel)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button { appState.navigateBack() } label: {
-                            Label("Back", systemImage: "chevron.left")
-                        }
-                    }
-                }
-        }
-        #endif
     }
+    #endif
 
     // MARK: - FITS Viewer & Storage (macOS-only — types live in excluded dirs)
 
@@ -617,14 +601,26 @@ struct ContentView: View {
                 .font(.title2)
             Text("Sign in to continue.")
                 .foregroundStyle(.secondary)
+            #if os(iOS)
+            // Offline at launch with a stored session: why, and the retry
+            // (the Mac's landing banner). The sign-in resumes by itself when
+            // the network returns.
+            if appState.authAwaitingConnectivity {
+                Label(appState.statusMessage, systemImage: "wifi.slash")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                Button("Try Again") {
+                    Task { await appState.initialize() }
+                }
+                .buttonStyle(.bordered)
+            }
+            #endif
             HStack(spacing: 12) {
-                #if os(iOS)
-                // iOS landing is a dead-end when signed out — there's no
-                // previous screen to go back to. Repurpose the leading
-                // button as a soft-close instead.
-                Button("Close") { AppLifecycle.suspend() }
-                    .buttonStyle(.bordered)
-                #else
+                // iOS: the signed-out landing is the first screen, with no
+                // screen to go back to, and an iOS app never offers to quit.
+                #if os(macOS)
                 Button("Back") { appState.navigateBack() }
                     .buttonStyle(.bordered)
                 #endif
@@ -650,25 +646,6 @@ struct ContentView: View {
             #endif
         }
     }
-
-    // MARK: - iOS Placeholder
-
-    #if os(iOS)
-    private func macOSOnlyPlaceholder(_ feature: String) -> some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "desktopcomputer")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("\(feature) is available on macOS")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            Button("Go Back") { appState.navigateBack() }
-                .buttonStyle(.bordered)
-            Spacer()
-        }
-    }
-    #endif
 
     // MARK: - Helpers
 

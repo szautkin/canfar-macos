@@ -47,6 +47,11 @@ struct LoginSheet: View {
                 TextField("Username", text: $username)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.username)
+                    // A CADC username as typed: iOS would capitalize its first letter.
+                    .autocorrectionDisabled()
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
                     .focused($focusedField, equals: .username)
 
                 PasswordField("Password", text: $password, focus: $focusedField, field: .password) {

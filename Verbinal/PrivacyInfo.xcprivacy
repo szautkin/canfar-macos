@@ -15,8 +15,8 @@ Required-reason APIs used by the app:
       Research/Services/DownloadService.swift           — FileManager.attributesOfItem, for .size of saved downloads
       FITSViewer/ViewModels/FITSViewerModel.swift       — fileSizeKey pre-mmap size guard
     Reasons:
-      3B52.1 — display to user (FileBrowser rows)
-      DDA9.1 — user-granted via NSOpenPanel / NSSavePanel (downloads, FITS)
+      DDA9.1 — display to user (FileBrowser rows)
+      3B52.1 — user-granted via NSOpenPanel / NSSavePanel (downloads, FITS)
 
   NSPrivacyAccessedAPICategoryUserDefaults
     Sources:
