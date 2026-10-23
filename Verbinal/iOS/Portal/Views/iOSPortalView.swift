@@ -30,19 +30,21 @@ struct iOSPortalView: View {
     @State private var showLaunch = false
     /// Moves on every minute, so "expires in" stays true while the person looks.
     @State private var now = Date()
-    /// The rings at the top of the list are in sight.
-    @State private var ringsInSight = true
-    /// The pinned rings, shown while scrolled down: half size until tapped.
-    @State private var pinnedLarge = false
-    /// Where the list stood when the pinned rings were opened: a scroll from
-    /// there makes them half size again.
-    @State private var openedAt: CGFloat?
-    /// The last scroll position seen (iOS 18 and later).
-    @State private var lastOffset: CGFloat = 0
+    /// The list is scrolled down from its top: the rings are half size.
+    @State private var scrolledDown = false
+    /// Tapped while scrolled down: the rings large again, until the next scroll.
+    @State private var ringsOpened = false
+    /// The rings' height when large: the list starts below it.
+    @State private var ringsLargeHeight: CGFloat = 150
+    /// Where the list stands, and stood when the rings were opened: kept out
+    /// of the view's state, since it moves on every frame of a scroll.
+    @State private var scroll = ScrollMemo()
+
+    /// One widget, never two: large at the top, half size scrolled down.
+    private var ringsCompact: Bool { scrolledDown && !ringsOpened }
 
     var body: some View {
         List {
-            ringsSection
             attentionSection
             sessionsSection
             jobsSection
@@ -50,7 +52,9 @@ struct iOSPortalView: View {
         }
         .listStyle(.insetGrouped)
         .refreshable { await refreshAll() }
-        .overlay(alignment: .top) { pinnedRings }
+        // The list starts below the rings, large; scrolled, it passes under them.
+        .contentMargins(.top, ringsLargeHeight, for: .scrollContent)
+        .overlay(alignment: .top) { rings }
         .modifier(ScrollOffsetObserver { offset in scrolled(to: offset) })
         .navigationTitle("Portal")
         .toolbar {
@@ -322,45 +326,43 @@ struct iOSPortalView: View {
 
     // MARK: - The platform and storage
 
-    /// First in the list: the rings, large, with their numbers.
-    private var ringsSection: some View {
-        Section {
-            iOSPlatformDonuts(platformLoad: platformLoad, storage: storage, compact: false)
-                .padding(.vertical, 4)
-                .onAppear { ringsInSight = true }
-                .onDisappear {
-                    ringsInSight = false
-                    pinnedLarge = false
-                }
-        }
+    /// The platform's load and the person's storage, pinned above the list
+    /// (the person, 2026-10-22): large at the top, with their numbers; half
+    /// size once the list is scrolled down; a tap shows them large again, and
+    /// the next scroll half size.
+    private var rings: some View {
+        iOSPlatformDonuts(platformLoad: platformLoad, storage: storage, compact: ringsCompact)
+            .padding(.horizontal, 16)
+            .padding(.vertical, ringsCompact ? 6 : 12)
+            .background(.bar)
+            .overlay(alignment: .bottom) { Divider().opacity(scrolledDown ? 1 : 0) }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard scrolledDown else { return }
+                withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) { ringsOpened.toggle() }
+                scroll.openedAt = ringsOpened ? scroll.offset : nil
+            }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                if !ringsCompact { ringsLargeHeight = height }
+            }
+            .accessibilityAddTraits(scrolledDown ? .isButton : [])
+            .accessibilityHint(scrolledDown ? (ringsOpened ? Text("Shows them smaller") : Text("Shows the numbers")) : Text(verbatim: ""))
     }
 
-    /// Scrolled down, the rings stay at the top at half size; a tap shows
-    /// them large, with their numbers, and a scroll makes them half size again.
-    @ViewBuilder
-    private var pinnedRings: some View {
-        if !ringsInSight {
-            iOSPlatformDonuts(platformLoad: platformLoad, storage: storage, compact: !pinnedLarge)
-                .padding(.horizontal, 16)
-                .padding(.vertical, pinnedLarge ? 12 : 6)
-                .background(.bar)
-                .overlay(alignment: .bottom) { Divider() }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) { pinnedLarge.toggle() }
-                    openedAt = pinnedLarge ? lastOffset : nil
-                }
-                .accessibilityAddTraits(.isButton)
-                .accessibilityHint(pinnedLarge ? Text("Shows them smaller") : Text("Shows the numbers"))
-                .transition(.move(edge: .top).combined(with: .opacity))
-        }
-    }
-
+    /// Changes the view only when the rings should change size, not on every
+    /// frame of a scroll.
     private func scrolled(to offset: CGFloat) {
-        lastOffset = offset
-        guard pinnedLarge, let openedAt, abs(offset - openedAt) > 24 else { return }
-        withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) { pinnedLarge = false }
-        self.openedAt = nil
+        scroll.offset = offset
+        let down = offset > 40
+        if down != scrolledDown {
+            withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) {
+                scrolledDown = down
+                if !down { ringsOpened = false }
+            }
+        }
+        guard ringsOpened, let openedAt = scroll.openedAt, abs(offset - openedAt) > 24 else { return }
+        withAppAnimation(AppMotion.quick, reduceMotion: reduceMotion) { ringsOpened = false }
+        scroll.openedAt = nil
     }
 
     // MARK: - Actions
@@ -460,8 +462,14 @@ extension Session {
     }
 }
 
-/// Hands on where the list stands as it scrolls (iOS 18 and later; earlier,
-/// nothing: the pinned rings then change size only when tapped).
+/// Where the list stands, outside the view's observed state.
+private final class ScrollMemo {
+    var offset: CGFloat = 0
+    var openedAt: CGFloat?
+}
+
+/// Hands on where the list stands as it scrolls: 0 at its top (iOS 18 and
+/// later; earlier, nothing, and the rings stay large).
 private struct ScrollOffsetObserver: ViewModifier {
     let onChange: (CGFloat) -> Void
 

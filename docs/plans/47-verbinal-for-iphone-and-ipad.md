@@ -348,8 +348,16 @@ All ten steps are in.
   - Sessions (`iOSSessionRow`: "Expires in 38 min · 14:02", Open, Renew, Logs, ⋯ ▸ Delete…; swipe to
     Renew or Delete);
   - Batch Jobs (counts; opens the Mac's jobs sheet);
-  - Remote Compute (its state; opens Compute);
-  - Platform (CPU, RAM and GPU in use; storage used of quota).
+  - Remote Compute (its state; opens Compute).
+- **The rings, first** (the person, 2026-10-22, after a look in the Simulator): CPU, RAM, GPU and
+  Storage as donuts (`iOSPlatformDonuts`, the Mac's ring colours and numbers): one widget pinned above
+  the list, never two. At the top it is large, each ring with its percentage and numbers inside, and the
+  list starts below it (`contentMargins`). Scrolled down 40 pt, it goes to half size and the list passes
+  under it; a tap shows it large, the next scroll half size again. The scroll position comes from
+  `onScrollGeometryChange` (iOS 18); on iOS 17 the widget stays large. Two earlier tries failed in the
+  Simulator: a List row's `onDisappear` never fired, and a second, pinned copy showed beside the first.
+- **Buttons** on the session rows and under Needs attention: large icons, no text; VoiceOver reads
+  their names.
 - **Actions:** Delete asks first, in the Mac's words. Renew and Delete say their result in a capsule, with
   a haptic. One logs sheet replaces the two copies.
 - **1.3:** `PortalSeenStore`. Opening Batch Jobs, or swiping Seen, makes failed jobs seen; only jobs
