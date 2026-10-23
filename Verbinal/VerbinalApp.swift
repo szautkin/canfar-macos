@@ -5,12 +5,22 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import SwiftUI
+#if os(iOS)
+import UserNotifications
+#endif
 
 // Entry point lives in `VerbinalMain` so we can branch to the headless MCP
 // stdio bridge before SwiftUI initializes. This is a plain `App`, driven by
 // `VerbinalApp.main()` for the normal GUI launch path.
 struct VerbinalApp: App {
     @State private var appState = AppState()
+
+    #if os(iOS)
+    init() {
+        // Verbinal's notifications show while it is in front too (plan 47 1.4).
+        UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
+    }
+    #endif
 
     var body: some Scene {
         #if os(macOS)

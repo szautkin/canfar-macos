@@ -334,6 +334,41 @@ All ten steps are in.
 | 1.4 | **Expiry reminders:** a local notification 30 minutes before a session expires, scheduled from its `expiresTime` and moved on every load or renew. They need no background running. The permission is asked when the person first turns them on. |
 | 1.5 | Launch as a sheet: Relaunch, and the Standard form (D3 for Advanced). |
 
+#### Phase 1, as built (2026-10-22, uncommitted)
+
+- **The shell** (`Verbinal/iOS/Shell/iOSShell.swift`): Portal · FITS · Cube · Compute, as a TabView on
+  iPhone and a sidebar on iPad, over `AppState.iOSDashboardTab` (now `portal, fits, cube, compute`). The
+  Account button, with the person's initials, opens `iOSAccountSheet`: profile, the reminders, About,
+  Terms, Sign Out. FITS, Cube and Compute are empty states until their phases.
+- **The Portal** (`iOS/Portal/Views/iOSPortalView.swift`), from top to bottom:
+  - a load problem, with Try Again;
+  - **Needs attention** (`PortalAttention`): sign-in; failed sessions; sessions ending within the hour,
+    soonest first, with Renew; sessions Pending over 10 minutes; failed batch jobs not yet seen; Remote
+    Compute's problem; storage 90 % full or more;
+  - Sessions (`iOSSessionRow`: "Expires in 38 min · 14:02", Open, Renew, Logs, ⋯ ▸ Delete…; swipe to
+    Renew or Delete);
+  - Batch Jobs (counts; opens the Mac's jobs sheet);
+  - Remote Compute (its state; opens Compute);
+  - Platform (CPU, RAM and GPU in use; storage used of quota).
+- **Actions:** Delete asks first, in the Mac's words. Renew and Delete say their result in a capsule, with
+  a haptic. One logs sheet replaces the two copies.
+- **1.3:** `PortalSeenStore`. Opening Batch Jobs, or swiping Seen, makes failed jobs seen; only jobs
+  still failed are kept.
+- **1.4:** `ExpiryReminderPlan` and `ExpiryReminderScheduler`: off until turned on in Account, which is
+  when iOS asks. One reminder per running session, 30 minutes before it ends, rescheduled whenever the
+  sessions change. `NotificationPresenter` shows them while Verbinal is in front too.
+- **1.5:** `iOSLaunchSheet`: Recent Launches with Relaunch, and the Standard form; Advanced stays on the
+  Mac (D3).
+- `ComputeState.title` moved from the Mac's Remote Compute view to `ComputeState.swift`, for both
+  platforms.
+- **Tests:** `VerbinalIOSTests`, a hostless iOS bundle compiled from the Portal's model sources: 14
+  tests of the attention rules, the reminder schedule, session times and the seen store, in the
+  VerbinalIOS scheme and CI.
+- **French:** 34 new keys.
+
+**Still open:** the person's look in the Simulator; the Mac compiled with the shared edits
+(`AppState`'s enum, `AuthenticatedRootView`, `VerbinalApp`, `ComputeState`).
+
 ### Phase 2 — Compute
 
 | # | Step |
@@ -344,6 +379,35 @@ All ten steps are in.
 | 2.4 | Run Code: language, timeout, editor; the result polled as the Mac does. |
 | 2.5 | Setup when nothing is running: AI Compute in the Account sheet, prefilled from the last session seen. |
 | 2.6 | Browse output, once Phase 3's picker exists. |
+
+#### Phase 2, as built (2026-10-22, uncommitted)
+
+- **`iOS/Compute/Views/iOSComputeView.swift`**, over `RemoteComputeModel` as on the Mac:
+  - the state, size and image;
+  - Start, and Stop (confirmed, in the Mac's words);
+  - the problem, message, not-ready and drift banners (Restart with New Settings, confirmed);
+  - a 10-second tick while something changes;
+  - pull to refresh;
+  - Run Code in the toolbar;
+  - Set up remote compute when nothing is configured and no session runs.
+- **2.2:** `ComputeRunHistory` lists `.verbinal/exec/out`, `done` and `inbox`, then reads the newest 25
+  runs' requests and results, 6 at a time. `ComputeRunItems` pairs the files by id (a `.partial` result is
+  not whole yet), and merges this device's local runs: marked "this device", and added while not yet on
+  /arc. The files do not say who sent a run, so the rest read "Another device or an assistant".
+- **2.3:** `iOSComputeRunView` shows status, exit code, duration, when, where from, the code (Copy),
+  stdout, stderr, and "cut short". A run still out is read every 5 s until its result is there. Run Again
+  sends its code as the person's (`setSnippet` + `runSnippet`).
+- **2.4:** `iOSRunCodeSheet`: language, timeout, and `CodeEditor`, a `UITextView` with smart quotes,
+  dashes and autocorrection off (SwiftUI's `TextEditor` cannot turn them off, and a curly quote breaks
+  Python and Bash).
+- **2.5:** `iOSAIComputeSettingsView`, in Account ▸ AI Compute and from the setup. The image (with "Use
+  the Running Session's Image" when the settings have none), cores, RAM, the registry login and secret,
+  over `AIComputeSettingsService`. The model's rule stays: code runs once an image is set; the running
+  session's image is a tap away, not taken silently.
+- **2.6:** Browse output waits for Phase 3's picker.
+- **Tests:** `ComputeRunItemsTests`, 4 tests. The test bundle also compiles `RunCodeContract.swift` and
+  `ComputeRun.swift`.
+- **French:** 30 new keys.
 
 ### Phase 3 — Open
 

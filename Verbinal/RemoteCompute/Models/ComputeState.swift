@@ -103,3 +103,18 @@ enum ComputeMachine: StateMachine {
         }
     }
 }
+
+extension ComputeState {
+    /// As the screen's status says it.
+    var title: String {
+        switch self {
+        case .notSetUp: return String(localized: "Not set up")
+        case .stopped: return String(localized: "Stopped")
+        case .starting: return String(localized: "Starting")
+        case .notReady: return String(localized: "Not ready")
+        case .running: return String(localized: "Running")
+        case .stopping: return String(localized: "Stopping")
+        case .failed: return String(localized: "Failed")
+        }
+    }
+}

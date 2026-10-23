@@ -4,7 +4,6 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
-#if os(iOS)
 import SwiftUI
 
 /// The stored session being checked (or renewed) at launch: what the
@@ -43,4 +42,3 @@ struct iOSMacOnlyPlaceholder: View {
         }
     }
 }
-#endif

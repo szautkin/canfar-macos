@@ -514,11 +514,12 @@ final class AppState {
     /// agent / deep-link navigation can target a tab programmatically and let
     /// the NATIVE TabView / NavigationSplitView transition animate it (we do
     /// not override that animation). macOS does not use this.
+    /// The iOS app's four places (plan 47): its tab bar, or its iPad sidebar.
     enum iOSDashboardTab: String, CaseIterable, Identifiable {
-        case sessions, launch, monitor, account
+        case portal, fits, cube, compute
         var id: String { rawValue }
     }
-    var iOSDashboardTab: iOSDashboardTab = .sessions
+    var iOSDashboardTab: iOSDashboardTab = .portal
 
     /// Mirror of `@Environment(\.accessibilityReduceMotion)`, pushed in by
     /// `ContentView` (the only place that can read the environment) and kept

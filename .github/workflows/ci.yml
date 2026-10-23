@@ -44,10 +44,10 @@ jobs:
         working-directory: shared/VerbinalKit
         run: swift test
 
-      # The iOS app (plan 47): its build, and the tests of the shared core it
-      # runs on (FITS, cubes, coordinates, XML, keychain, networking, stores),
-      # on an iPhone simulator. Not the Mac-only parts: MCP, agents, proposals,
-      # hints, addons, cutouts.
+      # The iOS app (plan 47): its build; its own tests (no host app); and the
+      # tests of the shared core it runs on (FITS, cubes, coordinates, XML,
+      # keychain, networking, stores), on an iPhone simulator. Not the
+      # Mac-only parts: MCP, agents, proposals, hints, addons, cutouts.
       - name: Build iOS
         run: |
           xcodebuild build \
@@ -57,14 +57,28 @@ jobs:
             -derivedDataPath .derivedData \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Test VerbinalKit on iOS Simulator
-        working-directory: shared/VerbinalKit
+      - name: Pick an iPhone simulator
         run: |
           udid=$(xcrun simctl list devices available --json | python3 -c '
           import json, sys
           devices = json.load(sys.stdin)["devices"]
           print(next(d["udid"] for runtime, ds in devices.items() if "iOS" in runtime
                      for d in ds if d["name"].startswith("iPhone")))')
+          echo "IPHONE_SIMULATOR=$udid" >> "$GITHUB_ENV"
+
+      - name: Test iOS
+        run: |
+          xcodebuild test \
+            -project Verbinal.xcodeproj \
+            -scheme VerbinalIOS \
+            -destination "platform=iOS Simulator,id=$IPHONE_SIMULATOR" \
+            -derivedDataPath .derivedData \
+            -only-testing:VerbinalIOSTests \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Test VerbinalKit on iOS Simulator
+        working-directory: shared/VerbinalKit
+        run: |
           only=""
           for t in FITSAutoCutTests RiceUnfoldTests BitReaderTests FITSDisplayLimitsTests \
                    FITSSpectrumTests LinearCutTests RiceFixtureTests TileCompressionHeaderTests \
@@ -75,7 +89,7 @@ jobs:
           done
           xcodebuild test \
             -scheme VerbinalKit-Package \
-            -destination "platform=iOS Simulator,id=$udid" \
+            -destination "platform=iOS Simulator,id=$IPHONE_SIMULATOR" \
             -derivedDataPath ../../.derivedData-kit-ios \
             $only \
             CODE_SIGNING_ALLOWED=NO

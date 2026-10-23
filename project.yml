@@ -203,6 +203,25 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.codebg.VerbinalTests
         PRODUCT_NAME: VerbinalTests
         PRODUCT_MODULE_NAME: VerbinalTests
+  # The iOS app's own logic (plan 47): the Portal's rules and reminders,
+  # compiled here from their sources. No host app, so a test run never
+  # launches Verbinal in the Simulator.
+  VerbinalIOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - VerbinalIOSTests
+      - Verbinal/iOS/Portal/Models
+      - Verbinal/iOS/Portal/Services/PortalSeenStore.swift
+      - Verbinal/iOS/Compute/Models
+      - Verbinal/RemoteCompute/Models/ComputeRun.swift
+      - Verbinal/RemoteCompute/Models/RunCodeContract.swift
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.codebg.VerbinalIOSTests
+        PRODUCT_NAME: VerbinalIOSTests
+        PRODUCT_MODULE_NAME: VerbinalIOSTests
 # Explicitly declare schemes as shared so they appear in the aggregate
 # canfar-mac.xcworkspace scheme picker. Without this, xcodegen emits
 # per-user schemes only and the workspace displays just the Pi scheme.
@@ -219,3 +238,7 @@ schemes:
     build:
       targets:
         VerbinalIOS: all
+        VerbinalIOSTests: [test]
+    test:
+      targets:
+        - VerbinalIOSTests

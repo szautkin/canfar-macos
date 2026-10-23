@@ -32,7 +32,7 @@ struct AuthenticatedRootView: View {
                     storageModel: sm
                 )
                 #else
-                AdaptiveLayout(
+                iOSShell(
                     sessionListModel: slm,
                     sessionLaunchModel: launch,
                     platformLoadModel: plm,
