@@ -1845,6 +1845,17 @@
         }
       }
     },
+    "99.5 %" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "99,5 %"
+          }
+        }
+      }
+    },
     "99.9%" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2049,6 +2060,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un spectre se trace en entier — region est pour les images ; omettez-le"
+          }
+        }
+      }
+    },
+    "A tile-compressed image's checksums are on its table." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les sommes de contrôle d'une image compressée en tuiles sont sur sa table."
           }
         }
       }
@@ -2278,6 +2300,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Extensions"
+          }
+        }
+      }
+    },
+    "Adjust" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuster"
           }
         }
       }
@@ -2974,6 +3007,17 @@
         }
       }
     },
+    "At SATURATE or above" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À SATURATE ou au-delà"
+          }
+        }
+      }
+    },
     "Authenticating…" : {
       "localizations" : {
         "fr" : {
@@ -3296,6 +3340,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Noir"
+          }
+        }
+      }
+    },
+    "Blank (NaN)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vides (NaN)"
           }
         }
       }
@@ -3707,6 +3762,17 @@
         }
       }
     },
+    "Centre" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Centre"
+          }
+        }
+      }
+    },
     "Centre on Mark" : {
       "localizations" : {
         "fr" : {
@@ -3776,6 +3842,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "vérification en arrière-plan"
+          }
+        }
+      }
+    },
+    "Checking…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérification…"
+          }
+        }
+      }
+    },
+    "CHECKSUM does not match the HDU." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CHECKSUM ne correspond pas au HDU."
           }
         }
       }
@@ -4388,6 +4475,17 @@
         }
       }
     },
+    "Close This File" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer ce fichier"
+          }
+        }
+      }
+    },
     "Cockpit dark" : {
       "localizations" : {
         "fr" : {
@@ -4571,6 +4669,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La commande est obligatoire"
+          }
+        }
+      }
+    },
+    "Compare" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparer"
+          }
+        }
+      }
+    },
+    "Compass" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Boussole"
           }
         }
       }
@@ -4987,6 +5105,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copie les fichiers FITS et calepins dans le paquet. Sa taille sera bien plus grande."
+          }
+        }
+      }
+    },
+    "Copies the coordinates" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copie les coordonnées"
           }
         }
       }
@@ -5992,6 +6120,17 @@
         }
       }
     },
+    "DATASUM is %@, the data sum to %@." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DATASUM vaut %1$@, les données somment à %2$@."
+          }
+        }
+      }
+    },
     "Date" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6847,6 +6986,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tout télécharger"
+          }
+        }
+      }
+    },
+    "Download and View the Image" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger et voir l'image"
           }
         }
       }
@@ -8418,6 +8568,16 @@
         }
       }
     },
+    "Field" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Champ"
+          }
+        }
+      }
+    },
     "Field of view" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8455,6 +8615,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Infos du fichier"
+          }
+        }
+      }
+    },
+    "File Page" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page du fichier"
           }
         }
       }
@@ -9491,6 +9662,16 @@
         }
       }
     },
+    "Histogram" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Histogramme"
+          }
+        }
+      }
+    },
     "History" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9519,6 +9700,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Historique (%lld)"
+          }
+        }
+      }
+    },
+    "Hold to see the other open image" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenez pour voir l'autre image ouverte"
           }
         }
       }
@@ -10001,6 +10192,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Instruments"
+          }
+        }
+      }
+    },
+    "Intact: DATASUM and CHECKSUM match" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intact : DATASUM et CHECKSUM concordent"
           }
         }
       }
@@ -11370,6 +11572,27 @@
         }
       }
     },
+    "Mean" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moyenne"
+          }
+        }
+      }
+    },
+    "Measuring…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesure…"
+          }
+        }
+      }
+    },
     "Median" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11377,6 +11600,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Médiane"
+          }
+        }
+      }
+    },
+    "Median (sampled)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Médiane (échantillon)"
           }
         }
       }
@@ -11429,6 +11663,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Longueur d'onde min"
+          }
+        }
+      }
+    },
+    "Min–Max" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Min–Max"
           }
         }
       }
@@ -12147,6 +12392,17 @@
         }
       }
     },
+    "No checksum in this HDU" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune somme de contrôle dans ce HDU"
+          }
+        }
+      }
+    },
     "No completed jobs" : {
       "localizations" : {
         "fr" : {
@@ -12832,6 +13088,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune pour l'instant — les images ajoutées apparaissent ici, dans la carte des images et dans le formulaire de lancement."
+          }
+        }
+      }
+    },
+    "North from up" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nord par rapport au haut"
           }
         }
       }
@@ -14336,6 +14603,17 @@
         }
       }
     },
+    "Pixel" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pixel"
+          }
+        }
+      }
+    },
     "Pixel (%@, %@) · %@ channels" : {
       "localizations" : {
         "en" : {
@@ -14798,6 +15076,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Projet"
+          }
+        }
+      }
+    },
+    "Projection" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projection"
           }
         }
       }
@@ -18245,6 +18534,17 @@
         }
       }
     },
+    "Share" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partager"
+          }
+        }
+      }
+    },
     "Share the File" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -18826,6 +19126,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ignorer"
+          }
+        }
+      }
+    },
+    "Sky" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciel"
           }
         }
       }
@@ -20132,6 +20443,17 @@
         }
       }
     },
+    "The file could not be read." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier n'a pas pu être lu."
+          }
+        }
+      }
+    },
     "the file could not be written" : {
       "localizations" : {
         "fr" : {
@@ -20182,12 +20504,34 @@
         }
       }
     },
+    "The file is not on this device." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier n'est pas sur cet appareil."
+          }
+        }
+      }
+    },
     "The file is not on this Mac any more." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le fichier n'est plus sur ce Mac."
+          }
+        }
+      }
+    },
+    "The file is shorter than its headers say." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier est plus court que ne l'indiquent ses en-têtes."
           }
         }
       }
@@ -21688,6 +22032,17 @@
         }
       }
     },
+    "Values" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valeurs"
+          }
+        }
+      }
+    },
     "Verbinal" : {
       "comment" : "App name — do NOT translate",
       "localizations" : {
@@ -22047,6 +22402,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Voir les journaux de la sonde"
+          }
+        }
+      }
+    },
+    "View the Image" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voir l'image"
           }
         }
       }
@@ -22879,6 +23245,17 @@
         }
       }
     },
+    "Whole" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intégrité"
+          }
+        }
+      }
+    },
     "Whole Header (%lld cards)" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -23319,6 +23696,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajuster à la fenêtre"
+          }
+        }
+      }
+    },
+    "σ" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "σ"
           }
         }
       }

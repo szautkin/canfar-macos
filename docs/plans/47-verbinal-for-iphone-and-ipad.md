@@ -477,6 +477,55 @@ All ten steps are in.
 | 4.5 | Share a picture of the view, with its readout. |
 | 4.6 | **Measure** the render on the floor device. If a stretch change misses its budget, the Metal display path (stretch, cuts and colormap in a shader; the vDSP engine stays as the reference). |
 
+#### Phase 4, as built (2026-10-22, uncommitted)
+
+- **4.1:** `iOS/FITS/Views/iOSFITSCanvas.swift`, over `FITSViewerModel` and the app's `fitsTabHost`, draws
+  as the Mac's `FITSImageView` does (one viewport, one mapping). On touch:
+  - pinch zooms about the fingers (the image point under them stays);
+  - drag pans;
+  - two fingers turn it, snapping to North Up within 5°;
+  - a double tap goes between Fit and 1:1 about the tap;
+  - a tap hides the chrome (bars, tab bar, status bar);
+  - **the loupe:** long press, then move. Pixels ×8 beyond the view, value, RA/Dec, a selection haptic
+    per pixel; lifting the finger leaves the crosshair;
+  - pointer and Apple Pencil hover read the pixel.
+  
+  Overlays:
+  - a compass rose: N and E from the WCS, by mapping a small step on the sky, so it is right however the
+    view is turned or flipped;
+  - a scale bar: a round number of ″, ′ or °, 60–160 pt;
+  - the crosshair.
+- **4.2:** `iOSFITSControls` in a sheet (0.45 / large, background interaction on):
+  - **Display:** Auto (`FITSParser.autoCut`), 99.5 % and Min–Max presets; a histogram (log counts, the
+    values without their extreme 0.1 %, widened to the cuts) whose black and white points move under the
+    finger; stretch; a colormap carousel drawn by the image's own renderer;
+  - **Verify;**
+  - **Header** (searchable);
+  - **HDUs.**
+- **4.3:** `FITSVerify`, pure and tested:
+  - DATASUM (the data's ones' complement sum) and CHECKSUM (the whole HDU sums to all ones), from the file's
+    bytes; header starts derived, since the header-only parser does not record them; a tile-compressed
+    HDU says its checksums are on its table;
+  - statistics: min, max, mean, σ, blank count, count at SATURATE; the median from an even sample of at most
+    1 M values, labelled so;
+  - the Verify tab adds the WCS summary (centre, pixel, field, north angle, projection) and the
+    observation cards.
+- **4.4:** hold Compare (two files open): the Mac's blink, `startBlink` + `showBlinkB` while held,
+  `stopBlink` on release (which restores the framing); VoiceOver toggles it.
+- **4.5:** Share: `iOSFITSPicture`, a `Transferable` PNG made when shared (`ImageRenderer`, 2×): the view as
+  on screen, the crosshair, and a caption line (file, RA/Dec, value, stretch · colormap).
+- **Opening:** a file already on the device opens straight into the viewer; from storage its page comes
+  first, with "Download and View the Image". Files ▸ switches between open images, opens, shows the file
+  page, or closes.
+- **Touches:** on UIKit's recognizers (`iOSCanvasTouchLayer`): pinch and rotate as one manipulation
+  about the fingers, one-finger and scroll pan, double tap, tap (it waits for the double), long press,
+  and hover. The first version composed SwiftUI gestures (a long press "exclusively before" a drag,
+  beside a magnify), and the person found that zoom did nothing in the Simulator (2026-10-23).
+- **4.6 not done:** the render's speed on a device. The vDSP render is debounced as on the Mac; measure on
+  the floor device before deciding on Metal.
+- **Tests:** `FITSVerifyTests`, 4 tests (an intact file, a changed byte caught, values, percentiles and
+  histogram); the iOS test bundle now links VerbinalKit. **French:** 36 new keys.
+
 ### Phase 5 — Cube
 
 | # | Step |

@@ -216,6 +216,10 @@ targets:
       - Verbinal/iOS/Compute/Models
       - Verbinal/RemoteCompute/Models/ComputeRun.swift
       - Verbinal/RemoteCompute/Models/RunCodeContract.swift
+      - Verbinal/iOS/FITS/Models
+    dependencies:
+      - package: VerbinalKit
+        product: VerbinalKit
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

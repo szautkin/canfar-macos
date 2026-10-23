@@ -31,6 +31,8 @@ struct iOSShell: View {
     @State private var openedCube: FileInspection?
     /// Which place's Open sheet is up.
     @State private var openingFor: AppState.iOSDashboardTab?
+    /// FITS shows its viewer (an image is open), not the file's page.
+    @State private var fitsViewerShown = false
 
     private var sessionFacts: [PortalAttention.SessionFacts] {
         sessionListModel.sessions.map(\.attentionFacts)
@@ -64,6 +66,7 @@ struct iOSShell: View {
             recents.add(file)
             open(file, in: .fits)
         })
+        .environment(\.iOSViewImage, { url in viewImage(url) })
         // A reminder per running session, moved whenever the sessions change.
         .onChange(of: sessionListModel.sessions) { _, _ in rescheduleReminders() }
         .onAppear {
@@ -82,6 +85,24 @@ struct iOSShell: View {
             username: appState.username)
         if place == .cube { openedCube = inspection } else { openedFITS = inspection }
         appState.iOSDashboardTab = place == .cube ? .cube : .fits
+        // On this device already: straight to the image; from storage, its page first.
+        if place == .fits, let local = inspection.local.value {
+            viewImage(local)
+        } else if place == .fits {
+            fitsViewerShown = false
+        }
+    }
+
+    /// Shows a local FITS file in the viewer: its own tab, or the one it has.
+    private func viewImage(_ url: URL) {
+        let host = appState.fitsTabHost
+        appState.iOSDashboardTab = .fits
+        fitsViewerShown = true
+        if let index = host.tabs.firstIndex(where: { $0.fileURL == url }) {
+            host.activeTabIndex = index
+        } else {
+            Task { _ = await host.openNewTab(url: url) }
+        }
     }
 
     private func rescheduleReminders() {
@@ -152,8 +173,14 @@ struct iOSShell: View {
                 onRescheduleReminders: rescheduleReminders,
                 onOpenCompute: { appState.iOSDashboardTab = .compute })
         case .fits:
-            opened(openedFITS, place: .fits, empty: "No Image Open", icon: "photo",
-                   description: "The FITS images you open to review appear here.")
+            if fitsViewerShown, !appState.fitsTabHost.tabs.isEmpty {
+                iOSFITSViewer(host: appState.fitsTabHost,
+                              onOpen: { openingFor = .fits },
+                              onShowFile: { fitsViewerShown = false })
+            } else {
+                opened(openedFITS, place: .fits, empty: "No Image Open", icon: "photo",
+                       description: "The FITS images you open to review appear here.")
+            }
         case .cube:
             opened(openedCube, place: .cube, empty: "No Cube Open", icon: "cube",
                    description: "The data cubes you open to review appear here.")
@@ -203,10 +230,20 @@ private struct iOSOpenFileKey: EnvironmentKey {
     static let defaultValue: @MainActor (FileRef) -> Void = { _ in }
 }
 
+/// Shows a local FITS file in the viewer, from a file's page.
+private struct iOSViewImageKey: EnvironmentKey {
+    static let defaultValue: @MainActor (URL) -> Void = { _ in }
+}
+
 extension EnvironmentValues {
     var iOSOpenFile: @MainActor (FileRef) -> Void {
         get { self[iOSOpenFileKey.self] }
         set { self[iOSOpenFileKey.self] = newValue }
+    }
+
+    var iOSViewImage: @MainActor (URL) -> Void {
+        get { self[iOSViewImageKey.self] }
+        set { self[iOSViewImageKey.self] = newValue }
     }
 }
 

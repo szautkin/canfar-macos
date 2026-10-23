@@ -12,7 +12,10 @@ import VerbinalKit
 /// pixels move. From storage, the file itself comes down when the person asks.
 struct iOSFileView: View {
     @Bindable var inspection: FileInspection
+    @Environment(\.iOSViewImage) private var viewImage
     @State private var selectedHDU = 0
+    /// The person asked to see the image: it shows once the download is done.
+    @State private var wantsToView = false
 
     /// The cards that say what a file holds and whether it is whole, when present.
     static let keyCards = ["OBJECT", "TELESCOP", "INSTRUME", "DATE-OBS", "EXPTIME", "FILTER", "BUNIT",
@@ -25,6 +28,7 @@ struct iOSFileView: View {
     var body: some View {
         List {
             summarySection
+            viewSection
             if let problem = inspection.structure.problem {
                 Section {
                     Label(problem.message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
@@ -40,6 +44,33 @@ struct iOSFileView: View {
         .overlay { if inspection.structure.isLoadingFirst { ProgressView("Reading the headers…") } }
         .task { if inspection.structure.value == nil { await inspection.inspect() } }
         .refreshable { await inspection.inspect() }
+        .onChange(of: inspection.local.value) { _, url in
+            guard wantsToView, let url else { return }
+            wantsToView = false
+            viewImage(url)
+        }
+    }
+
+    /// See the image: at once when the file is here; else after its download.
+    @ViewBuilder
+    private var viewSection: some View {
+        if hdus.contains(where: \.isImage) || hdus.isEmpty {
+            Section {
+                Button {
+                    if let url = inspection.local.value {
+                        viewImage(url)
+                    } else {
+                        wantsToView = true
+                        inspection.download()
+                    }
+                } label: {
+                    Label(inspection.local.value == nil ? "Download and View the Image" : "View the Image",
+                          systemImage: "photo")
+                        .font(.headline)
+                }
+                .disabled(inspection.local.isWorking)
+            }
+        }
     }
 
     // MARK: - What it is
