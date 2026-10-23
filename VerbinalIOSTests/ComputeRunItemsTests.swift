@@ -70,3 +70,21 @@ final class ComputeRunItemsTests: XCTestCase {
         XCTAssertFalse(merged.first?.isFinished ?? true)
     }
 }
+
+/// The FITS files a run's output names in the person's home (plan 47 2.6).
+final class ComputeRunOutputFilesTests: XCTestCase {
+    func testHomePathsOnceEachInOrder() {
+        let out = """
+        wrote /arc/home/szautkin/out/m31.fits (4096x4096)
+        and ~/cubes/ngc2403.fits.fz, then /arc/home/szautkin/out/m31.fits again
+        not /arc/home/someoneelse/x.fits, nor /arc/projects/p/y.fits, nor ../../etc.fits
+        'quoted': /arc/home/szautkin/a b/notes.txt
+        """
+        XCTAssertEqual(ComputeRunItems.homeFITSPaths(in: out, username: "szautkin"),
+                       ["out/m31.fits", "cubes/ngc2403.fits.fz"])
+    }
+
+    func testNoneWithoutAUser() {
+        XCTAssertEqual(ComputeRunItems.homeFITSPaths(in: "~/a.fits", username: ""), [])
+    }
+}

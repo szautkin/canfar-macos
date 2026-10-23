@@ -184,6 +184,8 @@ struct VerbinalApp: App {
         WindowGroup {
             ContentView()
                 .environment(appState)
+                // A FITS file another app sent: the shell opens it in FITS.
+                .onOpenURL { url in appState.pendingFITSURL = url }
         }
         #endif
     }

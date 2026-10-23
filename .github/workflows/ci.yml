@@ -84,7 +84,7 @@ jobs:
                    FITSSpectrumTests LinearCutTests RiceFixtureTests TileCompressionHeaderTests \
                    SIPDistortionTests ColormapTests CubeAccuracyTests CubeModelTests \
                    SexagesimalTests SimpleXMLParserTests KeychainStorageGenericTests \
-                   RequestLedgerTests DiskPersistenceTests ChangeLogTests; do
+                   RequestLedgerTests DiskPersistenceTests ChangeLogTests RangeReadTests; do
             only="$only -only-testing:VerbinalKitTests/$t"
           done
           xcodebuild test \

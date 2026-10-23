@@ -20,6 +20,8 @@ Required-reason APIs used:
       Storage/ViewModels/StorageBrowserModel.swift   — the same, before an upload
       VerbinalKit Networking/NetworkClient.swift     — fileSizeKey / .size of a file to upload
       VerbinalKit Storage/AppSupport.swift           — contentModificationDate of the app's own folders
+      iOS/Open/Services/RemoteFileCache.swift        — size and date of files cached in Caches (least recent go first)
+      iOS/Open/Models/FileRef.swift                  — the size of a file the person picked in Files
     Reasons:
       C617.1 — files inside the app's container (caches, downloads, stores)
       3B52.1 — files the person chose (document picker, "Open in Verbinal")

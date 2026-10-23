@@ -133,6 +133,23 @@ enum ComputeRunItems {
         return items.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
     }
 
+    /// The FITS files a run's output names in the person's home, relative to
+    /// it, once each, in order: `/arc/home/<user>/out/m31.fits` and
+    /// `~/out/m31.fits` are `out/m31.fits` (plan 47 2.6: review what it made).
+    static func homeFITSPaths(in text: String, username: String) -> [String] {
+        guard !username.isEmpty else { return [] }
+        let home = NSRegularExpression.escapedPattern(for: "/arc/home/\(username)/")
+        let pattern = "(?:\(home)|~/)([^\\s'\"`]+?\\.(?:fits|fit|fts)(?:\\.fz)?)(?![\\w.])"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
+        var seen: [String] = []
+        for match in regex.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+            guard let range = Range(match.range(at: 1), in: text) else { continue }
+            let path = String(text[range])
+            if !path.contains(".."), !seen.contains(path) { seen.append(path) }
+        }
+        return seen
+    }
+
     private static func parseDate(_ iso: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

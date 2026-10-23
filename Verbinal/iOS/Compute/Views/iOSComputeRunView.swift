@@ -10,6 +10,7 @@ import SwiftUI
 /// run still out is read again until its result is there.
 struct iOSComputeRunView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.iOSOpenFile) private var openFile
     @State var run: ComputeRunItem
     var onRanAgain: () -> Void
 
@@ -57,6 +58,22 @@ struct iOSComputeRunView: View {
                 }
                 if let err = run.stderr, !err.isEmpty {
                     Section("Errors") { monospaced(err).foregroundStyle(.red) }
+                }
+                let named = ComputeRunItems.homeFITSPaths(in: run.stdout ?? "", username: appState.username)
+                if !named.isEmpty {
+                    Section {
+                        ForEach(named, id: \.self) { path in
+                            Button {
+                                openFile(FileRef(place: .storage(path: path), name: (path as NSString).lastPathComponent))
+                            } label: {
+                                Label(path, systemImage: "doc.viewfinder")
+                            }
+                        }
+                    } header: {
+                        Text("Files it names")
+                    } footer: {
+                        Text("FITS files in your storage that the output names: open one to review it.")
+                    }
                 }
             } else {
                 Section {

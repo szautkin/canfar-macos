@@ -24,6 +24,13 @@ struct iOSShell: View {
     @State private var reminders = ExpiryReminderScheduler()
     /// Compute's runs, read back from /arc; made once the app's network is at hand.
     @State private var computeHistory: ComputeRunHistory?
+    /// The files opened lately on this device.
+    @State private var recents = iOSRecentFiles()
+    /// The file open in FITS, and in Cube (plan 47 phase 3: header first).
+    @State private var openedFITS: FileInspection?
+    @State private var openedCube: FileInspection?
+    /// Which place's Open sheet is up.
+    @State private var openingFor: AppState.iOSDashboardTab?
 
     private var sessionFacts: [PortalAttention.SessionFacts] {
         sessionListModel.sessions.map(\.attentionFacts)
@@ -40,6 +47,23 @@ struct iOSShell: View {
         .sheet(isPresented: $showAccount) {
             iOSAccountSheet(reminders: reminders, sessions: sessionFacts)
         }
+        .sheet(item: $openingFor) { place in
+            iOSOpenSheet(recents: recents) { file in open(file, in: place) }
+        }
+        // A file another app sent ("Open in Verbinal"): it opens in FITS.
+        .onChange(of: appState.pendingFITSURL, initial: true) { _, url in
+            guard let url else { return }
+            appState.pendingFITSURL = nil
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            guard let file = FileRef.device(url) else { return }
+            recents.add(file)
+            open(file, in: .fits)
+        }
+        .environment(\.iOSOpenFile, { file in
+            recents.add(file)
+            open(file, in: .fits)
+        })
         // A reminder per running session, moved whenever the sessions change.
         .onChange(of: sessionListModel.sessions) { _, _ in rescheduleReminders() }
         .onAppear {
@@ -49,6 +73,15 @@ struct iOSShell: View {
                 files: VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints),
                 username: { [weak appState] in appState?.username ?? "" })
         }
+    }
+
+    /// Opens `file` in a place, header first, and shows that place.
+    private func open(_ file: FileRef, in place: AppState.iOSDashboardTab) {
+        let inspection = FileInspection(
+            file: file, storage: VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints),
+            username: appState.username)
+        if place == .cube { openedCube = inspection } else { openedFITS = inspection }
+        appState.iOSDashboardTab = place == .cube ? .cube : .fits
     }
 
     private func rescheduleReminders() {
@@ -119,13 +152,11 @@ struct iOSShell: View {
                 onRescheduleReminders: rescheduleReminders,
                 onOpenCompute: { appState.iOSDashboardTab = .compute })
         case .fits:
-            ContentUnavailableView("No Image Open", systemImage: "photo",
-                                   description: Text("The FITS images you open to review appear here."))
-                .navigationTitle("FITS")
+            opened(openedFITS, place: .fits, empty: "No Image Open", icon: "photo",
+                   description: "The FITS images you open to review appear here.")
         case .cube:
-            ContentUnavailableView("No Cube Open", systemImage: "cube",
-                                   description: Text("The data cubes you open to review appear here."))
-                .navigationTitle("Cube")
+            opened(openedCube, place: .cube, empty: "No Cube Open", icon: "cube",
+                   description: "The data cubes you open to review appear here.")
         case .compute:
             if let computeHistory {
                 iOSComputeView(model: appState.remoteComputeModel, history: computeHistory)
@@ -133,6 +164,49 @@ struct iOSShell: View {
                 ProgressView()
             }
         }
+    }
+}
+
+extension iOSShell {
+    /// A place's opened file, header first, or how to open one.
+    @ViewBuilder
+    func opened(_ inspection: FileInspection?, place: AppState.iOSDashboardTab, empty: LocalizedStringKey,
+                icon: String, description: LocalizedStringKey) -> some View {
+        Group {
+            if let inspection {
+                iOSFileView(inspection: inspection)
+                    .id(inspection.id)
+            } else {
+                ContentUnavailableView {
+                    Label(empty, systemImage: icon)
+                } description: {
+                    Text(description)
+                } actions: {
+                    Button("Open…") { openingFor = place }
+                        .buttonStyle(.borderedProminent)
+                }
+                .navigationTitle(place.title)
+            }
+        }
+        .toolbar {
+            if inspection != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { openingFor = place } label: { Label("Open…", systemImage: "folder") }
+                }
+            }
+        }
+    }
+}
+
+/// Opens a file in FITS from anywhere below the shell — a Compute run's output.
+private struct iOSOpenFileKey: EnvironmentKey {
+    static let defaultValue: @MainActor (FileRef) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    var iOSOpenFile: @MainActor (FileRef) -> Void {
+        get { self[iOSOpenFileKey.self] }
+        set { self[iOSOpenFileKey.self] = newValue }
     }
 }
 

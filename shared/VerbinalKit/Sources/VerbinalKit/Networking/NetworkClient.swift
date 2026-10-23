@@ -7,9 +7,9 @@
 import Foundation
 
 public actor NetworkClient {
-    private let session: URLSession
+    let session: URLSession
     /// Where every request it sends is recorded (plan 23).
-    private let ledger: RequestLedger
+    let ledger: RequestLedger
     public private(set) var token: String?
     /// Hosts the bearer token may be attached to. Token is *not* sent to any
     /// other host — important defense against forwarding the user's CADC
@@ -420,7 +420,7 @@ public actor NetworkClient {
         }
     }
 
-    private func mapTransferCancellation(_ error: Error) -> Error {
+    func mapTransferCancellation(_ error: Error) -> Error {
         if error is CancellationError { return CancellationError() }
         if let urlError = error as? URLError, urlError.code == .cancelled {
             return CancellationError()
@@ -446,7 +446,7 @@ public actor NetworkClient {
     /// once after the host's `onUnauthorized` handler refreshes credentials.
     /// Streaming PUT/GET bypass `execute`, so they share this helper instead
     /// of duplicating the 401 interceptor.
-    private func retryUnauthorized<T>(
+    func retryUnauthorized<T>(
         original request: URLRequest,
         allowAuthRetry: Bool = true,
         operation: (URLRequest) async throws -> T
@@ -482,7 +482,7 @@ public actor NetworkClient {
 
     // MARK: - Private
 
-    private func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = RequestTimeout.standard) throws -> URLRequest {
+    func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = RequestTimeout.standard) throws -> URLRequest {
         guard let url = URL(string: urlString) else {
             throw NetworkError.invalidURL(urlString)
         }

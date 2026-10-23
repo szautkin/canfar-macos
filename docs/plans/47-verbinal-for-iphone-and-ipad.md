@@ -428,6 +428,44 @@ All ten steps are in.
 | 3.5 | Files: `.fileImporter`, document types for FITS, open in place (security-scoped). |
 | 3.6 | Recents, and the routing to FITS or Cube. |
 
+#### Phase 3, as built (2026-10-22, uncommitted)
+
+- **3.1:** `NetworkClient.getRange` (VerbinalKit, `NetworkClient+Range.swift`) streams with
+  `bytes(for:)` and stops at the length asked.
+  - A 200 (the whole file) is read only to that length at offset 0, and gives no bytes at a later offset;
+    `honoredRange` says which. A 416 gives none.
+  - `NetworkClient.swift` sits at its guardrail ceiling, so the extension is a file of its own; five members
+    went from `private` to module-internal for it.
+  - `VOSpaceBrowserService.readRange` builds on it. The Mac's `fetchBytes` is unchanged.
+  - `RangeReadTests`: 6 tests, on an iPhone simulator, added to CI's iOS list.
+- **3.2:** `RemoteCubeDataSource` (VerbinalKit) reads ahead in aligned 256 KB chunks and keeps 16, so the
+  parser's 2880-byte header reads cost one request per header; a read larger than a chunk goes as it is.
+  `FileInspection` reads the HDUs with `FITSCube.parseStructure` over it (or over the local file), and
+  says `RangeNotSupported` when ARC sends only whole files. The same source serves 5.1's remote cubes.
+- **3.3:** `iOSOpenSheet` lists Recent, Your Storage ▸ Home and On This Device ▸ Files…. Its
+  `iOSStorageFolderView` shows folders first, then files newest first, with size and date; FITS only
+  unless the person asks for all; pull to refresh. **Home only:** the storage client knows
+  `/arc/home/<user>`, not `/arc/projects` — that is a later change to the client.
+- **3.4:** `RemoteFileCache`: `Caches/Verbinal/Remote`, one folder per file and version (a file changed
+  in storage is a new entry), capped at 2 GB, the least recently opened going first. A download has
+  progress and Cancel.
+- **3.5:**
+  - `.fileImporter`;
+  - Info-iOS.plist declares FITS (`gov.nasa.gsfc.fits`: `.fits .fit .fts .fz`) as a document type, with
+    `LSSupportsOpeningDocumentsInPlace` and `UIFileSharingEnabled`;
+  - `onOpenURL` hands the file to FITS through `pendingFITSURL`;
+  - opened local files are kept as security-scoped bookmarks.
+- **3.6:** `iOSRecentFiles` (20, on the device). Until the viewers (Phases 4 and 5), FITS and Cube show the
+  opened file's page, `iOSFileView`:
+  - where it is, its size, its HDUs (`#1 SCI · IMAGE · 4096 × 4096 · BITPIX -32`);
+  - the cards that say what it holds (OBJECT … CHECKSUM, DATASUM), and the whole header, searchable;
+  - Download, then Share.
+  
+  A cube is labelled "it opens in Cube"; routing comes with Phase 5.
+- **2.6, done here:** a Compute run's page lists the FITS files its output names in the person's home
+  (`/arc/home/<user>/…` or `~/…`); a tap opens one in FITS, header first (`homeFITSPaths`, 2 tests).
+- **French:** 27 new keys. iOS unit tests: 20, passing.
+
 ### Phase 4 — FITS
 
 | # | Step |

@@ -194,6 +194,14 @@ actor VOSpaceBrowserService {
         }
     }
 
+    /// Part of a file, streamed: no more than `length` bytes are ever held,
+    /// whatever ARC answers (plan 47 3.1; `NetworkClient.getRange`).
+    func readRange(username: String, path: String, offset: Int, length: Int) async throws -> RangeRead {
+        let relative = try relativePath(path, username: username)
+        let urlString = "\(filesBase)/\(Self.encodeSegment(username))/\(Self.encodePath(relative))"
+        return try await network.getRange(urlString, offset: offset, length: length)
+    }
+
     /// The slice a ranged GET asked for. A 206 is that slice. A 200 is the
     /// whole file — ARC answers some paths so, whatever `Range` said — and
     /// is sliced here at `offset`; keeping its first bytes instead handed a

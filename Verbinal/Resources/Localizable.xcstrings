@@ -637,6 +637,17 @@
         }
       }
     },
+    "%@ is not a FITS file." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n'est pas un fichier FITS."
+          }
+        }
+      }
+    },
     "%@ is not available: downloads go to Downloads until it is back." : {
       "localizations" : {
         "fr" : {
@@ -1480,6 +1491,17 @@
         }
       }
     },
+    "%lld rows" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld lignes"
+          }
+        }
+      }
+    },
     "%lld running" : {
       "localizations" : {
         "fr" : {
@@ -1994,6 +2016,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un polygone doit avoir au moins trois sommets."
+          }
+        }
+      }
+    },
+    "A spectral cube: it opens in Cube." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un cube spectral : il s'ouvre dans Cube."
           }
         }
       }
@@ -6776,6 +6809,17 @@
         }
       }
     },
+    "Download (%@)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger (%@)"
+          }
+        }
+      }
+    },
     "Download %@" : {
       "localizations" : {
         "fr" : {
@@ -6995,6 +7039,17 @@
         }
       }
     },
+    "Downloaded to this device" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargé sur cet appareil"
+          }
+        }
+      }
+    },
     "Downloading" : {
       "localizations" : {
         "fr" : {
@@ -7097,6 +7152,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Téléchargements"
+          }
+        }
+      }
+    },
+    "Downloads go to this device's cache, which iOS may empty when it needs space." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les téléchargements vont dans le cache de cet appareil, qu'iOS peut vider s'il a besoin d'espace."
           }
         }
       }
@@ -8405,6 +8470,16 @@
         }
       }
     },
+    "Files it names" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichiers qu'elle nomme"
+          }
+        }
+      }
+    },
     "Files saved on this Mac" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8412,6 +8487,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fichiers enregistrés sur ce Mac"
+          }
+        }
+      }
+    },
+    "Files…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichiers…"
           }
         }
       }
@@ -8590,6 +8676,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "FITS"
+          }
+        }
+      }
+    },
+    "FITS files in your storage that the output names: open one to review it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les fichiers FITS de votre stockage que la sortie nomme : ouvrez-en un pour l'examiner."
+          }
+        }
+      }
+    },
+    "FITS Files Only" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichiers FITS seulement"
           }
         }
       }
@@ -10019,6 +10126,16 @@
         }
       }
     },
+    "It carries a CHECKSUM and DATASUM, to check that the file is whole." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il porte un CHECKSUM et un DATASUM, pour vérifier que le fichier est complet."
+          }
+        }
+      }
+    },
     "It has no wavelength and flux columns. Its columns: %@" : {
       "localizations" : {
         "fr" : {
@@ -10355,6 +10472,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Clés"
+          }
+        }
+      }
+    },
+    "Keyword, value or comment" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mot-clé, valeur ou commentaire"
           }
         }
       }
@@ -12062,6 +12189,17 @@
         }
       }
     },
+    "no data" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucune donnée"
+          }
+        }
+      }
+    },
     "No data available" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -12175,6 +12313,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun fichier FITS ouvert"
+          }
+        }
+      }
+    },
+    "No FITS files here." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun fichier FITS ici."
           }
         }
       }
@@ -12947,6 +13096,17 @@
         }
       }
     },
+    "Nothing here." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien ici."
+          }
+        }
+      }
+    },
     "Nothing in the registry matched that." : {
       "localizations" : {
         "fr" : {
@@ -13259,6 +13419,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sur la plateforme"
+          }
+        }
+      }
+    },
+    "On this device" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur cet appareil"
+          }
+        }
+      }
+    },
+    "On This Device" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur cet appareil"
           }
         }
       }
@@ -13606,6 +13788,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ouvrir cette session dans votre navigateur"
+          }
+        }
+      }
+    },
+    "Open…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir…"
           }
         }
       }
@@ -15053,6 +15246,16 @@
         }
       }
     },
+    "Read where it is: its headers first, the file itself only when you ask." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lu là où il se trouve : ses en-têtes d'abord, le fichier lui-même seulement si vous le demandez."
+          }
+        }
+      }
+    },
     "Reading %@ pixels" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -15071,6 +15274,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lecture de l'en-tête"
+          }
+        }
+      }
+    },
+    "Reading the headers…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lecture des en-têtes…"
           }
         }
       }
@@ -18031,6 +18245,17 @@
         }
       }
     },
+    "Share the File" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partager le fichier"
+          }
+        }
+      }
+    },
     "Share…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -18483,6 +18708,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connectez-vous pour continuer."
+          }
+        }
+      }
+    },
+    "Sign in to open files from your storage." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous pour ouvrir les fichiers de votre stockage."
           }
         }
       }
@@ -19866,6 +20102,7 @@
       }
     },
     "The data cubes you open to review appear here." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -19976,6 +20213,7 @@
       }
     },
     "The FITS images you open to review appear here." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -20160,6 +20398,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le serveur a accepté le lancement mais n'a renvoyé aucun ID de session."
+          }
+        }
+      }
+    },
+    "The server sends this file only whole, so it cannot be read where it is. Download it to look at it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le serveur n'envoie ce fichier qu'en entier : il ne peut pas être lu là où il se trouve. Téléchargez-le pour le consulter."
           }
         }
       }
@@ -22548,6 +22797,17 @@
         }
       }
     },
+    "Where" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emplacement"
+          }
+        }
+      }
+    },
     "Where %@ is: %@" : {
       "localizations" : {
         "fr" : {
@@ -22615,6 +22875,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Qui peut lire ou écrire vos fichiers et dossiers VOSpace."
+          }
+        }
+      }
+    },
+    "Whole Header (%lld cards)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En-tête complet (%lld cartes)"
           }
         }
       }
@@ -22937,6 +23208,16 @@
         }
       }
     },
+    "Your Storage" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre stockage"
+          }
+        }
+      }
+    },
     "Your storage could not be asked whether its copy of %@ is there, so this one stays: %@" : {
       "localizations" : {
         "fr" : {
@@ -22954,6 +23235,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Votre stockage est plein à %@"
+          }
+        }
+      }
+    },
+    "Your storage: %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre stockage : %@"
           }
         }
       }
