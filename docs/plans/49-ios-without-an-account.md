@@ -235,6 +235,15 @@ L0 to L2 are built, the samples (D4) included.
       and the three buttons leave. Fewer buttons alone did not help.
     - **Locked menu rows** were drawn in the tint's light blue (`.secondary` inside a button). They now
       use the grey colour, and so do Open's lock and the samples' credit lines.
-  - **Not seen:** signing in and out, and an expired session. They need the person's account, and
-    Claude never asks for a password.
+  - **Signed in, then Sign Out (2026-10-24).** The person signed in on their own iPhone 17 simulator, and
+    the tour went on there:
+    - signed in: Portal and Compute open, and the menu shows the profile, Your Storage at 80 % and the
+      settings unlocked, with Sign Out last;
+    - Sign Out asks: plain **Sign Out**, or **Sign Out and Delete Downloads (10.3 MB)**. The tour took the
+      plain one, so the downloads stayed.
+    - After it: the app is on FITS, the menu button is a person symbol, and Portal and Compute are locked
+      again.
+  - **Not seen: an expired session**, which cannot be forced. In code it is the same path as Sign Out:
+    the renewal clears `isAuthenticated`, the shell drops the account's models, and Portal and Compute
+    lock. Apart from the sign-in sheet it brings, the place stays where it was.
 
