@@ -117,7 +117,8 @@ final class PresentationsTests: XCTestCase {
         let sources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Verbinal")
         let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" && !$0.path.contains("/Views/iOS/") } ?? []
+            // iOS has no MCP server: its views (Verbinal/iOS, plan 47) are no assistant's to close.
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" && !$0.path.contains("/Verbinal/iOS/") } ?? []
         XCTAssertGreaterThan(files.count, 100, "the app's sources are found")
         return try files.map { ($0, try String(contentsOf: $0, encoding: .utf8)) }
     }

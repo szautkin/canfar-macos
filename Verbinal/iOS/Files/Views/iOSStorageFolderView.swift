@@ -28,15 +28,16 @@ struct iOSStorageFolderView: View {
         var id: String { node.path }
     }
 
-    @State private var nodes: [VOSpaceNode] = []
-    @State private var isLoading = false
-    @State private var problem: String?
+    /// The folder's listing: loading, listed, or why not (plan 38).
+    @State private var listing: Phase<[VOSpaceNode]> = .idle
     @State private var deleting: PendingDelete?
     @State private var naming = false
     @State private var newName = ""
     @State private var picking = false
     @State private var replacing: URL?
     @AppStorage("ios.open.fitsOnly") private var fitsOnly = true
+
+    private var nodes: [VOSpaceNode] { listing.value ?? [] }
 
     private var folders: [VOSpaceNode] {
         nodes.filter(\.isContainer).sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
@@ -50,7 +51,7 @@ struct iOSStorageFolderView: View {
     var body: some View {
         List {
             if let quota { quotaSection(quota) }
-            if let problem = manage?.problem ?? problem {
+            if let problem = manage?.problem ?? listing.problem?.message {
                 Label(problem, systemImage: "exclamationmark.triangle").foregroundStyle(.secondary)
             }
             uploadsSection
@@ -75,11 +76,11 @@ struct iOSStorageFolderView: View {
                     row
                 }
             }
-            if !isLoading && problem == nil && folders.isEmpty && files.isEmpty {
+            if case .ready = listing, folders.isEmpty, files.isEmpty {
                 Text(fitsOnly ? "No FITS files here." : "Nothing here.").foregroundStyle(.secondary)
             }
         }
-        .overlay { if isLoading && nodes.isEmpty { ProgressView() } }
+        .overlay { if listing.isLoadingFirst { ProgressView() } }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
@@ -90,7 +91,7 @@ struct iOSStorageFolderView: View {
             Button(pending.node.isContainer ? "Delete Folder" : "Delete File", role: .destructive) {
                 Task {
                     guard await manage?.delete(pending.node) == true else { return }
-                    nodes.removeAll { $0.path == pending.node.path }
+                    await load()
                 }
             }
         } message: { pending in
@@ -229,14 +230,12 @@ struct iOSStorageFolderView: View {
     // MARK: - Work
 
     private func load() async {
-        isLoading = true
-        defer { isLoading = false }
+        let attempt = listing.begin()
+        let storage = manage?.storage ?? VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints)
         do {
-            let storage = manage?.storage ?? VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints)
-            nodes = try await storage.listNodes(username: appState.username, path: path)
-            problem = nil
+            listing.finish(attempt, with: .success(try await storage.listNodes(username: appState.username, path: path)))
         } catch {
-            problem = error.localizedDescription
+            listing.finish(attempt, with: .failure(error))
         }
     }
 

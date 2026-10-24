@@ -77,7 +77,7 @@ final class CodeQualityGuardrailTests: XCTestCase {
     /// shrink, never grow. Shrink only.
     static let overBudget: [String: Int] = [
         "Verbinal/ImageDiscovery/Services/ImageDiscoveryCoordinator.swift": 1194,
-        "Verbinal/ViewModels/AppState.swift": 795,
+        "Verbinal/ViewModels/AppState.swift": 793,
         "Verbinal/Search/MCP/SearchControlTools.swift": 805,
         "shared/VerbinalKit/Sources/VerbinalKit/Networking/NetworkClient.swift": 719,
         "Verbinal/Services/AgentsService.swift": 695,
@@ -120,6 +120,8 @@ final class CodeQualityGuardrailTests: XCTestCase {
         "Verbinal/Storage/ViewModels/StorageBrowserModel.swift statusMessage": "the status line: progress and outcomes in words",
         "Verbinal/Storage/ViewModels/StorageBrowserModel.swift isBusy": "a read of three regions — the listing, a transfer, a delete",
         "Verbinal/CubeViewer/Render/CubeVolumeRenderer.swift lastError": "the Metal renderer's own report, which the cube's volume path takes in",
+        "Verbinal/iOS/Portal/Views/iOSSessionLogsSheet.swift isLoading": "computed: the events or the logs are not read yet",
+        "Verbinal/iOS/Portal/Views/iOSSessionRow.swift isBusy": "given by the Portal: an action on this session is under way",
     ]
 
     func testLooseStateFlagsAreGoneOrKeptForAReason() throws {

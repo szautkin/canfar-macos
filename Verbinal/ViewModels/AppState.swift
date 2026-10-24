@@ -508,13 +508,10 @@ final class AppState {
     enum NavDirection { case forward, back }
     private(set) var navDirection: NavDirection = .forward
 
-    /// iOS dashboard tab selection (Sessions / Launch / Monitor / Account).
-    /// These tabs live *inside* `AuthenticatedRootView` and are NOT `AppMode`
-    /// values, so they need their own selection. Lifted onto AppState so
-    /// agent / deep-link navigation can target a tab programmatically and let
-    /// the NATIVE TabView / NavigationSplitView transition animate it (we do
-    /// not override that animation). macOS does not use this.
     /// The iOS app's four places (plan 47): its tab bar, or its iPad sidebar.
+    /// Not `AppMode` values, so they have their own selection, here so that
+    /// navigation can target one and the native transition animates it.
+    /// macOS does not use this.
     enum iOSDashboardTab: String, CaseIterable, Identifiable {
         case portal, fits, cube, compute
         var id: String { rawValue }
