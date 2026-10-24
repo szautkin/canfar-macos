@@ -20,14 +20,14 @@ struct ContentView: View {
     @State var showAbout = false
     /// First-launch Terms-of-Use acceptance gate; blocks the app until accepted.
     @State private var legal = LegalAgreementService()
-    #if os(macOS)
-    /// One-shot first-run Welcome card (B2). Mirrors the legal one-shot
-    /// (`LegalAgreementService.acceptedVersion`): the stored value is the
-    /// Welcome version last seen; the card shows once when it trails
-    /// `WelcomePreferences.currentVersion`, and we stamp it on dismiss.
+    /// One-shot first-run Welcome card (B2; on iOS too, plan 50). Mirrors the
+    /// legal one-shot (`LegalAgreementService.acceptedVersion`): the stored
+    /// value is the Welcome version last seen; the card shows once when it
+    /// trails `WelcomePreferences.currentVersion`, and the card stamps it.
     /// Shown only AFTER the Terms gate dismisses — it never alters the
     /// gate's blocking contract, it just appears once the gate is gone.
     @AppStorage(WelcomePreferences.seenVersionKey) private var welcomeSeenVersion = 0
+    #if os(macOS)
     /// App-owned (hoisted onto `AppState` so the search-control agent
     /// tools steer the same live instance the UI renders). Mac only, like
     /// Search and Research (plan 47 0.9).
@@ -150,7 +150,7 @@ struct ContentView: View {
                 WelcomeSheet()
                     .environment(appState)
                 #else
-                EmptyView()
+                iOSWelcomeSheet()
                 #endif
             case .mcpSetupWizard:
                 #if os(macOS)
@@ -242,7 +242,6 @@ struct ContentView: View {
         .onChange(of: reduceMotion) { _, newValue in
             appState.reduceMotion = newValue
         }
-        #if os(macOS)
         // B2 — first-run Welcome card. Present once the Terms gate has been
         // accepted (so it never competes with or weakens the blocking gate)
         // and the current Welcome version hasn't been seen. Fired both at
@@ -252,21 +251,16 @@ struct ContentView: View {
         .onChange(of: legal.hasAcceptedCurrent) { _, accepted in
             if accepted { maybeShowWelcome() }
         }
-        #endif
     }
 
-    #if os(macOS)
-    /// Present the first-run Welcome card iff Terms are accepted, the card
-    /// hasn't been seen for the current version, and no other sheet is up
+    /// Present the first-run Welcome card by `WelcomePreferences.shouldShow`:
+    /// the Terms accepted, the current version not seen, no other sheet up
     /// (the single-sheet host can show only one — don't stomp login/export).
     private func maybeShowWelcome() {
-        guard legal.hasAcceptedCurrent,
-              welcomeSeenVersion < WelcomePreferences.currentVersion,
-              appState.activeSheet == nil
-        else { return }
+        guard WelcomePreferences.shouldShow(seenVersion: welcomeSeenVersion, termsAccepted: legal.hasAcceptedCurrent,
+                                            sheetUp: appState.activeSheet != nil) else { return }
         appState.activeSheet = .welcome
     }
-    #endif
 
     @ViewBuilder
     private var mainContent: some View {

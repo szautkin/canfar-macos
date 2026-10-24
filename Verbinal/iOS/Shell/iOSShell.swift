@@ -20,8 +20,9 @@ struct iOSShell: View {
     @State private var account: DashboardModels?
     /// Where the app opens is decided once, when the sign-in check answers.
     @State private var startChosen = false
-    /// Sign In was asked for from a sheet: the sign-in sheet follows it.
-    @State private var signInAfterSheet = false
+    /// What a sheet asked for (Sign In, the welcome): it shows once that
+    /// sheet has gone, since one sheet at a time can be up.
+    @State private var nextSheet: AppState.ActiveSheet?
     @State private var showMenu = false
     /// The files Verbinal holds on this device (plan 48).
     @State private var library = DeviceLibrary()
@@ -59,7 +60,7 @@ struct iOSShell: View {
                 tabView
             }
         }
-        .sheet(isPresented: $showMenu, onDismiss: signInIfAsked) {
+        .sheet(isPresented: $showMenu, onDismiss: presentNextSheet) {
             iOSMenuSheet(reminders: reminders, sessions: sessionFacts, library: library, storage: account?.storage,
                          onOpen: { file in
                              showMenu = false
@@ -67,12 +68,13 @@ struct iOSShell: View {
                              open(file, in: .fits)
                          },
                          onClose: closeFiles,
-                         onSignIn: { signInAfterSheet = true; showMenu = false },
+                         onSignIn: { nextSheet = .login; showMenu = false },
+                         onShowWelcome: { nextSheet = .welcome; showMenu = false },
                          onSignOut: signOut)
         }
-        .sheet(item: $openingFor, onDismiss: signInIfAsked) { place in
+        .sheet(item: $openingFor, onDismiss: presentNextSheet) { place in
             iOSOpenSheet(recents: recents, files: library.store,
-                         onSignIn: { signInAfterSheet = true; openingFor = nil }) { file in open(file, in: place) }
+                         onSignIn: { nextSheet = .login; openingFor = nil }) { file in open(file, in: place) }
         }
         // A file another app sent ("Open in Verbinal"): it opens in FITS.
         .onChange(of: appState.pendingFITSURL, initial: true) { _, url in
@@ -344,11 +346,11 @@ extension iOSShell {
         if access(appState.iOSDashboardTab) == .locked { appState.iOSDashboardTab = .fits }
     }
 
-    /// Sign In asked for from a sheet: the sign-in sheet once that one has gone.
-    func signInIfAsked() {
-        guard signInAfterSheet else { return }
-        signInAfterSheet = false
-        appState.showLoginSheet = true
+    /// What a sheet asked for, once that sheet has gone.
+    func presentNextSheet() {
+        guard let next = nextSheet else { return }
+        nextSheet = nil
+        appState.activeSheet = next
     }
 
     /// Sign Out, from the menu: the app stays, on FITS when the place shown

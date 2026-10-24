@@ -39,7 +39,7 @@ struct iOSRunCodeSheet: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if !model.isConfigured {
-                    Label("Set an image in Account ▸ AI Compute first.", systemImage: "exclamationmark.triangle")
+                    Label("Set an image in the menu's AI Compute first.", systemImage: "exclamationmark.triangle")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }

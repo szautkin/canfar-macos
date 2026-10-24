@@ -11,8 +11,8 @@ import Foundation
 /// 49). A new entry is a case and a place here.
 enum iOSMenuEntry: String, CaseIterable, Identifiable, Sendable {
     case onThisDevice, yourStorage
-    case reminders, downloadsCap, aiCompute
-    case help, about, terms
+    case reminders, downloadsCap, language, aiCompute
+    case help, welcome, about, terms
     case signIn, signOut
 
     var id: String { rawValue }
@@ -27,8 +27,8 @@ enum iOSMenuEntry: String, CaseIterable, Identifiable, Sendable {
     static func layout(signedIn: Bool) -> [(section: Section, entries: [iOSMenuEntry])] {
         let places: [(section: Section, entries: [iOSMenuEntry])] = [
             (.files, [.onThisDevice, .yourStorage]),
-            (.settings, [.reminders, .downloadsCap, .aiCompute]),
-            (.help, [.help, .about, .terms]),
+            (.settings, [.reminders, .downloadsCap, .language, .aiCompute]),
+            (.help, [.help, .welcome, .about, .terms]),
         ]
         return signedIn ? places + [(.account, [.signOut])] : [(.account, [.signIn])] + places
     }
@@ -37,7 +37,7 @@ enum iOSMenuEntry: String, CaseIterable, Identifiable, Sendable {
     var needsAccount: Bool {
         switch self {
         case .yourStorage, .reminders, .aiCompute, .signOut: return true
-        case .onThisDevice, .downloadsCap, .help, .about, .terms, .signIn: return false
+        case .onThisDevice, .downloadsCap, .language, .help, .welcome, .about, .terms, .signIn: return false
         }
     }
 

@@ -15,6 +15,7 @@ struct iOSMenuSheet: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    @Environment(\.openURL) private var openURL
 
     var reminders: ExpiryReminderScheduler
     var sessions: [PortalAttention.SessionFacts]
@@ -27,6 +28,8 @@ struct iOSMenuSheet: View {
     var onClose: ([URL]) -> Void
     /// The shell closes the menu, then shows the sign-in sheet.
     var onSignIn: () -> Void
+    /// The shell closes the menu, then shows the welcome again (plan 50).
+    var onShowWelcome: () -> Void
     /// Signs out; `true` deletes Downloads too (D3).
     var onSignOut: (_ deleteDownloads: Bool) -> Void
 
@@ -137,6 +140,23 @@ struct iOSMenuSheet: View {
             } label: {
                 label(entry)
             }
+        case .language:
+            // iOS keeps an app's language in Settings (per-app language); the
+            // row says which is in use and opens Verbinal's page there.
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            } label: {
+                LabeledContent {
+                    HStack(spacing: 4) {
+                        Text(verbatim: Self.languageName)
+                        Image(systemName: "arrow.up.forward").font(.caption)
+                    }
+                    .foregroundStyle(Color.secondary)
+                } label: {
+                    label(entry)
+                }
+            }
+            .accessibilityHint(Text("Opens Verbinal's page in Settings, where its language is chosen"))
         case .aiCompute:
             NavigationLink {
                 iOSAIComputeSettingsView(settings: appState.aiComputeSettings, model: appState.remoteComputeModel)
@@ -146,6 +166,8 @@ struct iOSMenuSheet: View {
         case .help:
             Link(destination: iOSMenuEntry.helpURL) { label(entry) }
                 .accessibilityHint(Text("Opens the user manual in Safari"))
+        case .welcome:
+            Button { onShowWelcome() } label: { label(entry) }
         case .about:
             Button { showAbout = true } label: { label(entry) }
         case .terms:
@@ -181,8 +203,10 @@ struct iOSMenuSheet: View {
         case .yourStorage: Label("Your Storage", systemImage: "externaldrive")
         case .reminders: Label("Session Reminders", systemImage: "bell")
         case .downloadsCap: Label("Downloads Kept Up To", systemImage: "arrow.down.circle")
+        case .language: Label("Language", systemImage: "globe")
         case .aiCompute: Label("AI Compute", systemImage: "cpu")
         case .help: Label("Verbinal Help", systemImage: "questionmark.circle")
+        case .welcome: Label("Welcome to Verbinal", systemImage: "hand.wave")
         case .about: Label("About Verbinal", systemImage: "info.circle")
         case .terms: Label(LegalText.document(for: locale).termsLink, systemImage: "doc.text")
         case .signIn: Label("Sign In", systemImage: "person.crop.circle")
@@ -214,6 +238,12 @@ struct iOSMenuSheet: View {
         default:
             EmptyView()
         }
+    }
+
+    /// The language the app is shown in, in itself: "English", "Français".
+    static var languageName: String {
+        let code = Bundle.main.preferredLocalizations.first ?? "en"
+        return Locale(identifier: code).localizedString(forLanguageCode: code)?.localizedCapitalized ?? code
     }
 
     private var remindersOn: Binding<Bool> {

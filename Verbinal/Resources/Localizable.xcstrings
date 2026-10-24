@@ -49,16 +49,6 @@
         }
       }
     },
-    "The open files, Open, and the file's page" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les fichiers ouverts, Ouvrir et la page du fichier"
-          }
-        }
-      }
-    },
     "—" : {
       "shouldTranslate" : false
     },
@@ -8384,6 +8374,17 @@
         }
       }
     },
+    "Explore spectral cubes" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explorer des cubes spectraux"
+          }
+        }
+      }
+    },
     "Explore the CADC archive" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9622,6 +9623,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Récupérer du stockage"
+          }
+        }
+      }
+    },
+    "Get Started" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commencer"
           }
         }
       }
@@ -11894,6 +11905,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Plus longue (nm)"
+          }
+        }
+      }
+    },
+    "Look at astronomical data, no account needed." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regardez des données astronomiques, sans compte."
           }
         }
       }
@@ -14728,6 +14749,17 @@
         }
       }
     },
+    "Open them from Files, Mail or AirDrop; keep them and share them." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrez-les depuis Fichiers, Mail ou AirDrop ; conservez-les et partagez-les."
+          }
+        }
+      }
+    },
     "Open this session in your browser" : {
       "localizations" : {
         "fr" : {
@@ -14806,6 +14838,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ouvre cette catégorie pour modifier les descriptions de ses outils"
+          }
+        }
+      }
+    },
+    "Opens Verbinal's page in Settings, where its language is chosen" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre la page de Verbinal dans Réglages, où se choisit sa langue"
           }
         }
       }
@@ -15549,6 +15591,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Portail"
+          }
+        }
+      }
+    },
+    "Portal and Compute" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portail et Calcul"
           }
         }
       }
@@ -19190,13 +19243,13 @@
         }
       }
     },
-    "Set an image in Account ▸ AI Compute first." : {
+    "Set an image in the menu's AI Compute first." : {
       "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Indiquez d'abord une image dans Compte ▸ Calcul IA."
+            "value" : "Indiquez d’abord une image dans Calcul IA, dans le menu."
           }
         }
       }
@@ -19729,6 +19782,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connectez-vous au CADC pour utiliser Portail, Stockage et les autres services authentifiés"
+          }
+        }
+      }
+    },
+    "Sign In to CANFAR" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se connecter à CANFAR"
           }
         }
       }
@@ -20411,6 +20475,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Étape %lld sur %lld : %@"
+          }
+        }
+      }
+    },
+    "Step through the channels, read a spectrum, see a moment map." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parcourez les canaux, lisez un spectre, voyez une carte de moment."
           }
         }
       }
@@ -21566,6 +21641,16 @@
         }
       }
     },
+    "The open files, Open, and the file's page" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les fichiers ouverts, Ouvrir et la page du fichier"
+          }
+        }
+      }
+    },
     "The output was cut short." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -22372,6 +22457,17 @@
         }
       }
     },
+    "Try it now" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Essayez maintenant"
+          }
+        }
+      }
+    },
     "Try removing some constraints." : {
       "localizations" : {
         "fr" : {
@@ -22421,6 +22517,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deux appareils ont modifié la même chose différemment, ou l’un a retiré ce que l’autre a modifié. Tant que vous n’avez pas choisi, la version de votre stockage est conservée, et une modification l’emporte sur un retrait. Ce que vous choisissez va sur chaque appareil."
+          }
+        }
+      }
+    },
+    "Two samples under Open: M31 from Hubble, GN-z11 from Webb." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deux exemples dans Ouvrir : M31 vu par Hubble, GN-z11 vu par Webb."
           }
         }
       }
@@ -23296,6 +23403,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Affichage"
+          }
+        }
+      }
+    },
+    "View and verify FITS" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voir et vérifier des FITS"
           }
         }
       }
@@ -24361,6 +24479,16 @@
         }
       }
     },
+    "With a CANFAR account" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avec un compte CANFAR"
+          }
+        }
+      }
+    },
     "With auto-apply on, your assistant's code runs without asking first. Turn auto-apply off in Settings ▸ AI Agent to approve each run." : {
       "localizations" : {
         "fr" : {
@@ -24546,6 +24674,17 @@
         }
       }
     },
+    "Your CANFAR sessions, your code and your storage, once you sign in." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos sessions CANFAR, votre code et votre stockage, une fois connecté."
+          }
+        }
+      }
+    },
     "Your Compute Session" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -24583,6 +24722,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vos observations téléchargées et vos notes, au même endroit et consultables."
+          }
+        }
+      }
+    },
+    "Your files, on this device" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos fichiers, sur cet appareil"
           }
         }
       }
@@ -24750,6 +24900,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajuster à la fenêtre"
+          }
+        }
+      }
+    },
+    "Zoom, sky coordinates and checksums; share a picture or the file." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom, coordonnées célestes et sommes de contrôle ; partagez une image ou le fichier."
           }
         }
       }

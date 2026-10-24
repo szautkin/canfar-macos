@@ -226,6 +226,8 @@ targets:
       - Verbinal/iOS/Open/Models/iOSSample.swift
       - Verbinal/iOS/Shell/iOSMenuEntry.swift
       - Verbinal/iOS/Shell/iOSPlaceAccess.swift
+      - Verbinal/iOS/Shell/iOSWelcomeItem.swift
+      - Verbinal/Views/Sheets/WelcomePreferences.swift
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit

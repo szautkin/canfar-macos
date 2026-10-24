@@ -7,17 +7,6 @@
 #if os(macOS)
 import SwiftUI
 
-/// One-shot bookkeeping for the first-run Welcome card. Mirrors
-/// `LegalAgreementService`'s versioned-acceptance pattern: store the Welcome
-/// version the user last saw; bump `currentVersion` to re-surface the card
-/// (e.g. after a major feature wave). `ContentView` reads/writes the key via
-/// `@AppStorage`, so there is no service object to own here.
-enum WelcomePreferences {
-    /// Bump to re-show the Welcome card to everyone on the next launch.
-    static let currentVersion = 1
-    static let seenVersionKey = "verbinal.welcome.seenVersion"
-}
-
 /// B2 — first-run Welcome card. ONE dismissible card (explicitly NOT a
 /// multi-step tour): a few pillar rows naming the breadth of the app, with a
 /// prominent path into the AI-assistant wizard and a low-key "explore on my
