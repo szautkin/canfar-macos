@@ -537,6 +537,42 @@ All ten steps are in.
 | 5.5 | Moment 0, plane by plane (D4 for big remote cubes). |
 | 5.6 | Volume: the Metal view on iOS, adaptive quality; where D5 says. |
 
+#### Phase 5, as built (2026-10-23, uncommitted)
+
+- **Routing (3.6 finished):**
+  - a local file is checked for NAXIS ≥ 3 (`AppState.fitsIsCube`) and opens in Cube or FITS, from either
+    tab;
+  - a file page says "View the Cube" or "View the Image";
+  - the cube tab host's first empty tab is reused.
+- **5.1 deferred (remote cubes read where they are):** `CubeModel.ingest` builds the WCS and the
+  statistics by reading every plane, and `CubeViewerModel.swift` is 3 lines under its ceiling. Remote
+  cubes are downloaded first ("Download and View the Cube"), from the header-first page that already
+  shows their size. A quick look over `RemoteCubeDataSource` needs a split of the model and a
+  `CubeModel` path without the full ingest: later.
+- **5.2:**
+  - `iOSCubeSliceCanvas` over `CubeSliceFrame`, on the same UIKit touches as FITS: pinch about the fingers,
+    pan, double tap back to the whole slice, tap hides the chrome; a long press reads the spaxel, and
+    lifting opens its spectrum.
+  - `iOSChannelScrubber`: the cube's mean spectrum behind a wide scrubber, a selection haptic per channel
+    and a medium impact on a peak; the `SpectralWCS` readout; Play/Pause; adjustable for VoiceOver.
+- **5.3:** the Spectrum tab, in Swift Charts: a step line of the spaxel's spectrum, a rule at the
+  channel; drag along it to move the channel. A streamed cube says why it has none.
+- **5.4:** the Verify tab:
+  - the cube's size and cards;
+  - the spectral axis (CTYPE3, CUNIT3, first and last values, CDELT3, RESTFRQ);
+  - values (min, max, median — sampled for a streamed cube — blank %), and blank channels.
+- **5.5:** Moment 0 (`CubeMoment0`, pure, 2 tests): summed a plane at a time (finite values only, times
+  |CDELT3|), with progress, then drawn with the cube's colormap and a first-look cut, as a third mode.
+- **5.6:** the Mac's `CubeVolumeRenderer` and `Cube.metal`, now `#if canImport(MetalKit)`, in an
+  `MTKView` on iOS (`iOSCubeVolumeView`): one finger orbits, a pinch zooms, a tap picks the channel.
+  - Steps follow `thermalState` and Low Power Mode (×0.75 fair, ×0.5 serious or saving).
+  - The volume texture is 256 per side on iOS (`CubeViewerModel.volumeEdge`; 512 on the Mac), set
+    through a one-line change to the model.
+  - Shown on iPad, and on iPhones with 6 GB or more (D5).
+- **Share:** a picture of the slice or moment map, with its channel readout.
+- **Not done:** MetalFX upscaling — not needed until the volume is measured on a device.
+- **Tests:** iOS unit tests 26, passing. **French:** 20 new keys.
+
 ### Phase 6 — Beyond the app (small, optional)
 
 | # | Step |

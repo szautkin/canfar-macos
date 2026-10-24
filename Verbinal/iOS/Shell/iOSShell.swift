@@ -33,6 +33,8 @@ struct iOSShell: View {
     @State private var openingFor: AppState.iOSDashboardTab?
     /// FITS shows its viewer (an image is open), not the file's page.
     @State private var fitsViewerShown = false
+    /// Cube shows its viewer (a cube is open), not the file's page.
+    @State private var cubeViewerShown = false
 
     private var sessionFacts: [PortalAttention.SessionFacts] {
         sessionListModel.sessions.map(\.attentionFacts)
@@ -67,6 +69,7 @@ struct iOSShell: View {
             open(file, in: .fits)
         })
         .environment(\.iOSViewImage, { url in viewImage(url) })
+        .environment(\.iOSViewCube, { url in viewCube(url) })
         // A reminder per running session, moved whenever the sessions change.
         .onChange(of: sessionListModel.sessions) { _, _ in rescheduleReminders() }
         .onAppear {
@@ -85,11 +88,38 @@ struct iOSShell: View {
             username: appState.username)
         if place == .cube { openedCube = inspection } else { openedFITS = inspection }
         appState.iOSDashboardTab = place == .cube ? .cube : .fits
-        // On this device already: straight to the image; from storage, its page first.
-        if place == .fits, let local = inspection.local.value {
-            viewImage(local)
-        } else if place == .fits {
+        // On this device already: straight to the image or the cube, whichever
+        // it is; from storage, its page first.
+        if let local = inspection.local.value {
+            Task {
+                if await AppState.fitsIsCube(local) {
+                    openedCube = inspection
+                    viewCube(local)
+                } else {
+                    openedFITS = inspection
+                    viewImage(local)
+                }
+            }
+        } else if place == .cube {
+            cubeViewerShown = false
+        } else {
             fitsViewerShown = false
+        }
+    }
+
+    /// Shows a local cube in the cube viewer: the tab that has it, the empty
+    /// first tab, or a new one.
+    private func viewCube(_ url: URL) {
+        let host = appState.cubeTabHost
+        appState.iOSDashboardTab = .cube
+        cubeViewerShown = true
+        if let index = host.tabs.firstIndex(where: { $0.fileURL == url }) {
+            host.activeTabIndex = index
+        } else if let index = host.tabs.firstIndex(where: { !$0.hasData && !$0.document.state.isOpening }) {
+            host.activeTabIndex = index
+            Task { await host.tabs[index].open(url: url) }
+        } else {
+            Task { _ = await host.openNewTab(url: url) }
         }
     }
 
@@ -182,8 +212,14 @@ struct iOSShell: View {
                        description: "The FITS images you open to review appear here.")
             }
         case .cube:
-            opened(openedCube, place: .cube, empty: "No Cube Open", icon: "cube",
-                   description: "The data cubes you open to review appear here.")
+            if cubeViewerShown, appState.cubeTabHost.tabs.contains(where: { $0.hasData || $0.document.state.isOpening }) {
+                iOSCubeViewer(host: appState.cubeTabHost,
+                              onOpen: { openingFor = .cube },
+                              onShowFile: { cubeViewerShown = false })
+            } else {
+                opened(openedCube, place: .cube, empty: "No Cube Open", icon: "cube",
+                       description: "The data cubes you open to review appear here.")
+            }
         case .compute:
             if let computeHistory {
                 iOSComputeView(model: appState.remoteComputeModel, history: computeHistory)
@@ -235,6 +271,11 @@ private struct iOSViewImageKey: EnvironmentKey {
     static let defaultValue: @MainActor (URL) -> Void = { _ in }
 }
 
+/// Shows a local cube in the cube viewer, from a file's page.
+private struct iOSViewCubeKey: EnvironmentKey {
+    static let defaultValue: @MainActor (URL) -> Void = { _ in }
+}
+
 extension EnvironmentValues {
     var iOSOpenFile: @MainActor (FileRef) -> Void {
         get { self[iOSOpenFileKey.self] }
@@ -244,6 +285,11 @@ extension EnvironmentValues {
     var iOSViewImage: @MainActor (URL) -> Void {
         get { self[iOSViewImageKey.self] }
         set { self[iOSViewImageKey.self] = newValue }
+    }
+
+    var iOSViewCube: @MainActor (URL) -> Void {
+        get { self[iOSViewCubeKey.self] }
+        set { self[iOSViewCubeKey.self] = newValue }
     }
 }
 

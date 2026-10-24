@@ -136,7 +136,7 @@ final class CubeViewerModel: Identifiable, PhaseOwner {
 
     /// GPU 3D-texture edge cap. Metal's max `type3D` dimension is 2048; 512
     /// balances spectral/spatial detail against the volume's memory budget.
-    private let max3D = 512
+    private let max3D = CubeViewerModel.volumeEdge
 
     // MARK: - Opening
 

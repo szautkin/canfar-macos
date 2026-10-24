@@ -217,6 +217,7 @@ targets:
       - Verbinal/RemoteCompute/Models/ComputeRun.swift
       - Verbinal/RemoteCompute/Models/RunCodeContract.swift
       - Verbinal/iOS/FITS/Models
+      - Verbinal/iOS/Cube/Models
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit

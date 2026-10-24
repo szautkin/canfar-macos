@@ -4,7 +4,7 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
-#if os(macOS)
+#if canImport(MetalKit)
 import Metal
 import MetalKit
 import simd

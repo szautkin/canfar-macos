@@ -3355,6 +3355,17 @@
         }
       }
     },
+    "Blank Channels" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Canaux vides"
+          }
+        }
+      }
+    },
     "Blink" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3435,6 +3446,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rectangle"
+          }
+        }
+      }
+    },
+    "Brightest Along the Ray (MIP)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le plus brillant le long du rayon (MIP)"
           }
         }
       }
@@ -3810,6 +3832,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modifications"
+          }
+        }
+      }
+    },
+    "Channel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Canal"
+          }
+        }
+      }
+    },
+    "Channel %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Canal %lld"
           }
         }
       }
@@ -6990,6 +7033,17 @@
         }
       }
     },
+    "Download and View the Cube" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger et voir le cube"
+          }
+        }
+      }
+    },
     "Download and View the Image" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8819,6 +8873,17 @@
         }
       }
     },
+    "First" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premier"
+          }
+        }
+      }
+    },
     "Fit" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9700,6 +9765,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Historique (%lld)"
+          }
+        }
+      }
+    },
+    "Hold a spaxel on the slice, then lift your finger: its spectrum shows here." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenez un spaxel sur la coupe, puis levez le doigt : son spectre s'affiche ici."
           }
         }
       }
@@ -10762,6 +10837,17 @@
         }
       }
     },
+    "Last" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernier"
+          }
+        }
+      }
+    },
     "Last attempt %@" : {
       "localizations" : {
         "fr" : {
@@ -11716,6 +11802,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modules"
+          }
+        }
+      }
+    },
+    "Moment 0" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moment 0"
           }
         }
       }
@@ -12959,6 +13056,17 @@
         }
       }
     },
+    "No Spectrum" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun spectre"
+          }
+        }
+      }
+    },
     "No spectrum in this table" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -12966,6 +13074,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun spectre dans cette table"
+          }
+        }
+      }
+    },
+    "No Spectrum Yet" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore de spectre"
           }
         }
       }
@@ -18801,6 +18920,17 @@
         }
       }
     },
+    "Show the Channel's Plane" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Montrer le plan du canal"
+          }
+        }
+      }
+    },
     "Show the complete observation this was cut from" : {
       "localizations" : {
         "fr" : {
@@ -19151,6 +19281,16 @@
         }
       }
     },
+    "Slice" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coupe"
+          }
+        }
+      }
+    },
     "Slice = quantitative: true voxel values with WCS + spectral readouts." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -19246,12 +19386,44 @@
         }
       }
     },
+    "Spaxel (%@, %@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Spaxel (%1$@, %2$@)"
+          }
+        }
+      }
+    },
+    "Spaxel (%lld, %lld)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spaxel (%1$lld, %2$lld)"
+          }
+        }
+      }
+    },
     "Spectral" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Spectral"
+          }
+        }
+      }
+    },
+    "Spectral Axis" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Axe spectral"
           }
         }
       }
@@ -19490,6 +19662,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "État :"
+          }
+        }
+      }
+    },
+    "Step (CDELT3)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas (CDELT3)"
           }
         }
       }
@@ -19821,6 +20004,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Résumé"
+          }
+        }
+      }
+    },
+    "Summing the channels…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Somme des canaux…"
           }
         }
       }
@@ -21353,6 +21546,17 @@
         }
       }
     },
+    "Too large to hold: its slices are read from the file as needed." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trop grand pour être gardé en mémoire : ses coupes sont lues dans le fichier au besoin."
+          }
+        }
+      }
+    },
     "Took" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -22022,6 +22226,17 @@
         }
       }
     },
+    "Value" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valeur"
+          }
+        }
+      }
+    },
     "Value:" : {
       "localizations" : {
         "fr" : {
@@ -22402,6 +22617,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Voir les journaux de la sonde"
+          }
+        }
+      }
+    },
+    "View the Cube" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voir le cube"
           }
         }
       }

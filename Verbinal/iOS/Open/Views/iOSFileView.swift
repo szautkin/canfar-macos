@@ -13,6 +13,7 @@ import VerbinalKit
 struct iOSFileView: View {
     @Bindable var inspection: FileInspection
     @Environment(\.iOSViewImage) private var viewImage
+    @Environment(\.iOSViewCube) private var viewCube
     @State private var selectedHDU = 0
     /// The person asked to see the image: it shows once the download is done.
     @State private var wantsToView = false
@@ -47,7 +48,7 @@ struct iOSFileView: View {
         .onChange(of: inspection.local.value) { _, url in
             guard wantsToView, let url else { return }
             wantsToView = false
-            viewImage(url)
+            view(url)
         }
     }
 
@@ -58,14 +59,13 @@ struct iOSFileView: View {
             Section {
                 Button {
                     if let url = inspection.local.value {
-                        viewImage(url)
+                        view(url)
                     } else {
                         wantsToView = true
                         inspection.download()
                     }
                 } label: {
-                    Label(inspection.local.value == nil ? "Download and View the Image" : "View the Image",
-                          systemImage: "photo")
+                    Label(viewTitle, systemImage: inspection.isCube ? "cube" : "photo")
                         .font(.headline)
                 }
                 .disabled(inspection.local.isWorking)
@@ -197,6 +197,20 @@ struct iOSFileView: View {
             if inspection.file.isRemote, case .idle = inspection.local {
                 Text("Downloads go to this device's cache, which iOS may empty when it needs space.")
             }
+        }
+    }
+
+    /// A cube opens in Cube; an image in FITS.
+    private func view(_ url: URL) {
+        if inspection.isCube { viewCube(url) } else { viewImage(url) }
+    }
+
+    private var viewTitle: LocalizedStringKey {
+        switch (inspection.isCube, inspection.local.value == nil) {
+        case (true, true): return "Download and View the Cube"
+        case (true, false): return "View the Cube"
+        case (false, true): return "Download and View the Image"
+        case (false, false): return "View the Image"
         }
     }
 
