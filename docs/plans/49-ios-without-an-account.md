@@ -278,9 +278,16 @@ L0 to L2 are built, the samples (D4) included.
       Earlier runs were misleading. Without the path, the test may have launched another copy of
       Verbinal. And within 30 s of each launch's own sign-in (this Mac's stored token has expired, so
       every launch signs in with the stored password), the renewal returned `renewed` without checking.
-    - **Not produced on demand:** a real CADC expiry. Every on-screen expiry here came from a temporary
-      hook. A real one needs the person's token to run out while they are signed in without Remember
-      me.
+    - **A real CADC expiry, seen on the Mac** (2026-10-24). This Mac's stored token had really expired:
+      each test launch had found CADC refusing it, then signed in again with the stored password.
+      - A temporary hook set the stored password aside, held in memory only. That is the case of a
+        person signed in without Remember me. It then let the normal launch check run.
+      - CADC judged the real token expired. The app ended the session and asked at once: "Log In to
+        CANFAR · Your CADC session ended. Sign in to continue."
+      - The marker: `signedIn=false reason=true activeSheet=login`, status "Session expired. Please log
+        in again." The token and password were put back as they were.
+
+      This is the person's Mac report, seen fixed with a real expired token.
     The person
     (2026-10-24): "i was seeing in the macos version that the expiration does not automatically prompts
     user to login again... check the code logic instead thoroughly".
