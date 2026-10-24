@@ -258,19 +258,26 @@ L0 to L2 are built, the samples (D4) included.
       did not cover the menu, but the menu turned to its signed-out form at once (Sign In first, locked
       rows). When it closed, the sign-in sheet appeared with its reason. On iOS the prompt is delayed,
       not lost.
-    - **On the Mac: inconclusive** (2026-10-24). Three throwaway macOS UI tests, kept out of the
-      repository and signed locally (unsigned, Gatekeeper called the runner "damaged"), checked test
-      builds with a temporary hook meant to open the Cube Viewer's guide and then end the session.
-      They read the window from the accessibility tree, since screenshots need a permission the runner
-      lacks.
-      - The first run reported a sheet, and the sign-in sheet after it closed.
-      - The next two showed no sign-in sheet.
-      - A diagnostic run's log lines never appeared, so it cannot be shown that the hook ran in these
-        builds. The first sheet may not have been the guide (a first-run sheet on fresh preferences),
-        and the sign-in sheet may have had another cause.
+    - **On the Mac, with a child sheet up: seen** (2026-10-24). A throwaway macOS UI test, kept out of
+      the repository, was signed locally (unsigned, Gatekeeper called its runner "damaged") and
+      launched the test build by its path, since three apps on this Mac share the bundle identifier.
+      Its temporary hook wrote a marker file to prove that it ran:
+      1. It opened the Cube Viewer's guide sheet, which the Cube screen presents (a Portal sheet
+         presents the same way).
+      2. More than 30 s after launch, outside the "just signed in" window, it ended the session
+         through the controller (`renew(from: .expiredToken)` with no stored sign-in). The test build
+         reads this Mac's keychain, so the person's sign-in was held in memory only and put back at
+         once.
+      3. The marker: `outcome=ended reason=true activeSheet=login`, with the guide still up and the
+         keychain restored.
 
-      The Mac's case is not verified. It shares the iOS mechanism (ContentView's single
-      `activeSheet`), which on iOS was seen to wait for the open sheet and then show.
+      Read from the accessibility tree:
+      - while the guide was up, one sheet and no sign-in sheet;
+      - once it closed, "Log In to CANFAR" with "Your CADC session ended. Sign in to continue."
+
+      Earlier runs were misleading. Without the path, the test may have launched another copy of
+      Verbinal. And within 30 s of each launch's own sign-in (this Mac's stored token has expired, so
+      every launch signs in with the stored password), the renewal returned `renewed` without checking.
     - **Not produced on demand:** a real CADC expiry. Every on-screen expiry here came from a temporary
       hook. A real one needs the person's token to run out while they are signed in without Remember
       me.
@@ -311,6 +318,7 @@ L0 to L2 are built, the samples (D4) included.
          `recheckIfStale()`. A sign-in CADC has not confirmed for 15 minutes is checked again, and one
          that ended asks at once. (`testComingBackAfterAWhileChecksTheSignIn`,
          `testComingBackWithASignInStillGoodChangesNothing`.)
-    - **The other-sheet risk:** the sign-in sheet is `activeSheet`, ContentView's single sheet. On iOS,
-      seen: it waits for the open sheet to close, then shows. On the Mac, not verified (above).
+    - **The other-sheet risk, settled on both:** the sign-in sheet is `activeSheet`, ContentView's single
+      sheet. On iOS and on the Mac, seen: it waits for the open sheet to close, then shows with its
+      reason.
 
