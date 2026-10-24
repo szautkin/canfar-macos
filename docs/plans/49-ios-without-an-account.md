@@ -135,7 +135,7 @@ the rest as recommended.
 | D5 | A link on the lock screens | **canfar.net**, the platform's page (the person) | a "Request an account" link to CADC's request page |
 | D6 | Order | **now** ("proceed") | after the Simulator check of plan 48 |
 
-## As built (2026-10-23, branch `1_4_1_ios`, uncommitted)
+## As built (2026-10-24, branch `1_4_1_ios`, committed as de162466)
 
 L0 to L2 are built, the samples (D4) included.
 
@@ -217,6 +217,6 @@ L0 to L2 are built, the samples (D4) included.
 
   The iOS bundle: 51 tests, passing.
 - **French:** 23 new keys; 2 keys only the removed code used are gone.
-- **Not seen on screen yet:** the person tries it in the Simulator: signed out, sign in, sign out,
-  expiry.
+- **Not seen on screen yet:** the person chose to commit first and try it in the Simulator themselves
+  (2026-10-24): signed out, Samples, Share ▸ The File, sign in, sign out, expiry.
 
