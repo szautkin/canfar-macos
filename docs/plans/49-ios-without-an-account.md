@@ -243,7 +243,12 @@ L0 to L2 are built, the samples (D4) included.
       plain one, so the downloads stayed.
     - After it: the app is on FITS, the menu button is a person symbol, and Portal and Compute are locked
       again.
-  - **An expired session: checked in the code, not on screen** (it cannot be forced). The person
+  - **An expired session: checked in the code, and the launch case on screen.** On screen (2026-10-24):
+    a temporary, uncommitted debug hook stored a bogus token with no password on the test simulator.
+    At launch the app asked at once ("Log In to CANFAR · Your CADC session ended. Sign in to continue."),
+    and after Cancel Portal and Compute were locked, with FITS and Cube open. The hook and the tour target
+    were removed afterwards. Mid-session expiry was not seen: it takes the same `settle(.ended)` path.
+    The person
     (2026-10-24): "i was seeing in the macos version that the expiration does not automatically prompts
     user to login again... check the code logic instead thoroughly".
     - **The path, read end to end:**
