@@ -8,6 +8,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) var appState
+    @Environment(\.scenePhase) private var scenePhase
     /// Read once here — the only place that can — and mirrored into
     /// `AppState.reduceMotion` so the navigation methods (which can fire
     /// from non-view contexts) honour the guard. Also selects the
@@ -226,6 +227,8 @@ struct ContentView: View {
         .onChange(of: appState.networkPath.changeCount) { _, _ in
             appState.networkPathDidChange()
         }
+        // Back in front: a sign-in that ended meanwhile asks at once.
+        .onChange(of: scenePhase) { _, phase in if phase == .active { appState.appDidBecomeActive() } }
         // Mirror the environment Reduce-Motion flag into AppState so the
         // navigation methods can consult it from non-view contexts.
         .onAppear {

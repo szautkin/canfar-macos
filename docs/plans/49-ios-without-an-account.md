@@ -243,7 +243,45 @@ L0 to L2 are built, the samples (D4) included.
       plain one, so the downloads stayed.
     - After it: the app is on FITS, the menu button is a person symbol, and Portal and Compute are locked
       again.
-  - **Not seen: an expired session**, which cannot be forced. In code it is the same path as Sign Out:
-    the renewal clears `isAuthenticated`, the shell drops the account's models, and Portal and Compute
-    lock. Apart from the sign-in sheet it brings, the place stays where it was.
+  - **An expired session: checked in the code, not on screen** (it cannot be forced). The person
+    (2026-10-24): "i was seeing in the macos version that the expiration does not automatically prompts
+    user to login again... check the code logic instead thoroughly".
+    - **The path, read end to end:**
+      1. Every authenticated request goes through `NetworkClient`. A 401 calls
+         `AuthLifecycleController.handleNetworkUnauthorized`, and one shared renewal runs.
+      2. The renewal checks the token at `/whoami`, which counts an empty answer, a 401 or a 403 as
+         expired.
+      3. With a stored password it signs in again quietly. Without one it clears the token and ends.
+      4. `settle(.ended)` sets the reason and calls `onSessionExpired`: AppState tears the session
+         down, leaves the gated screens, and shows the sign-in sheet.
+      5. On iOS the shell then drops the account's models and locks Portal and Compute. FITS and Cube
+         stay.
+
+      The archive search, CAOM-2, Research downloads and cutouts send their own requests, but
+      anonymously: they carry no token, so they play no part.
+    - **Three gaps, fixed (`AuthLifecycleController`), each with a test that fails without its fix:**
+      1. **At launch, an ended session never asked.** A stored token found expired, with no stored
+         password, ended the session quietly: the sheet was asked only when this run had been signed in
+         (`wasAuthenticated`). The likely Mac report: the token expired while Verbinal was closed or
+         the Mac slept, and the next launch said "Session expired" in the toolbar and nothing more. Now
+         a renewal that starts from an expired stored token (`.expiredToken`, at launch or when the
+         network returns) counts as the person's session, and asks.
+         (`testAStoredSignInThatEndedAtLaunchAsksToSignIn`; with no stored sign-in, nothing:
+         `testNoStoredSignInAtLaunchAsksNothing`.)
+      2. **What a renewal's sign-in started never asked for a renewal again.** `apply` called
+         `onAuthenticated` inside the renewal, where `Renewing.now` is true. `afterAuthenticated`
+         starts its watchers in `Task {}` (Remote Compute; on the Mac, Research repair and the storage
+         sync), and unstructured tasks inherit task-locals. So after a launch that renewed with the
+         stored password, their 401s skipped the renewal for the rest of the run. Now the hook runs
+         with `Renewing.now` false. (`testWhatASignInStartsStillAsksForRenewals`.)
+      3. **Nothing looked until a request failed.** A session that ended while Verbinal sat in the
+         background showed nothing until something authenticated failed. Now ContentView, through
+         `scenePhase` (the Mac and iOS alike), calls `AppState.appDidBecomeActive` →
+         `recheckIfStale()`. A sign-in CADC has not confirmed for 15 minutes is checked again, and one
+         that ended asks at once. (`testComingBackAfterAWhileChecksTheSignIn`,
+         `testComingBackWithASignInStillGoodChangesNothing`.)
+    - **A risk left, not changed:** the sign-in sheet is `activeSheet`, ContentView's single sheet. If
+      another sheet is up when a session ends (a Portal sheet on the Mac, the menu on iOS), SwiftUI
+      may not show it. `activeSheet` then stays `.login`, so a later end would not show it either.
+      Check that on screen when a session next ends.
 

@@ -46,6 +46,12 @@ extension AppState {
         Task { await auth.retryValidationIfConnectivityRestored() }
     }
 
+    /// The app came back to the front: a sign-in not confirmed for a while
+    /// is checked, so a session that ended meanwhile asks to sign in now.
+    func appDidBecomeActive() {
+        Task { await auth.recheckIfStale() }
+    }
+
     /// Pass-through used by `LoginSheet` after a successful login. Forwards
     /// to the controller, which fires `onAuthenticated` to wire up
     /// navigation / headless monitor / portal-cache prewarm here.

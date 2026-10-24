@@ -57,6 +57,10 @@ final class AuthLifecycleController {
     /// old token, and is retried as it is rather than signing in again.
     private var signedInAt: Date?
     private static let signedInRecently: TimeInterval = 30
+    /// When CADC last confirmed the sign-in: coming back to the app after
+    /// longer than `recheckAfter` checks it again.
+    private var confirmedAt: Date?
+    static let recheckAfter: TimeInterval = 15 * 60
     /// The clock, for tests.
     var now: () -> Date = Date.init
 
@@ -193,8 +197,13 @@ final class AuthLifecycleController {
             .compactMap { $0 }
             .joined(separator: " ")
         self.statusMessage = String(localized: "Welcome, \(displayName.isEmpty ? username : displayName)")
+        confirmedAt = now()
         if !wasAuthenticated {
-            onAuthenticated?()
+            // Outside the renewal, when a renewal signs in: what the hook
+            // starts (watchers, monitors, sync) runs in tasks that inherit
+            // task-locals, and with `Renewing.now` its 401s would never ask
+            // for a renewal again.
+            Renewing.$now.withValue(false) { onAuthenticated?() }
             events.notify(.signedIn(username))
         }
     }
@@ -205,6 +214,16 @@ final class AuthLifecycleController {
     func handleTokenExpired() {
         guard isAuthenticated else { return }
         Task { await renew() }
+    }
+
+    /// The app came back to the front: a sign-in CADC has not confirmed for
+    /// `recheckAfter` is checked now, so a session that ended while Verbinal
+    /// was away asks to sign in at once, not at the next failing request.
+    func recheckIfStale() async {
+        guard isAuthenticated, activity == .idle, renewal == nil,
+              connectivityProvider() != .unsatisfied else { return }
+        if let confirmedAt, now().timeIntervalSince(confirmedAt) < Self.recheckAfter { return }
+        await renew()
     }
 
     /// `NetworkClient` 401-interceptor entry point: whether the request is
@@ -239,7 +258,10 @@ final class AuthLifecycleController {
     func renew(from start: RenewalStart = .storedToken) async -> Renewal {
         if let renewal { return await renewal.value }
         if let signedInAt, now().timeIntervalSince(signedInAt) < Self.signedInRecently { return .renewed }
-        let wasAuthenticated = isAuthenticated
+        // Signed in now, or a stored sign-in found expired (at launch, or
+        // when the network came back): either way the person was signed in,
+        // and an end asks them to sign in again.
+        let wasAuthenticated = isAuthenticated || start == .expiredToken
         let task = Task { [weak self] () -> Renewal in
             guard let self else { return .ended }
             let outcome = await Renewing.$now.withValue(true) { await self.silentReauth(from: start) }
@@ -257,6 +279,7 @@ final class AuthLifecycleController {
         switch outcome {
         case .renewed:
             awaitingConnectivity = false
+            confirmedAt = now()
         case .offline:
             // Keep the session live; the connectivity retry soft-validates.
             awaitingConnectivity = true
@@ -379,6 +402,7 @@ final class AuthLifecycleController {
         renewal?.cancel()
         renewal = nil
         signedInAt = nil
+        confirmedAt = nil
         signInReason = nil
         await authService.logout()
         username = ""

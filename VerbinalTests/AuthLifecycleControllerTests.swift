@@ -419,6 +419,8 @@ final class RenewalTests: XCTestCase {
         private let lock = NSLock()
         var accepted = "new-token"
         var serviceAccepts = "new-token"
+        /// The token a sign-in gets.
+        var issued = "new-token"
         var password = "pw"
         var unreachable = false
         private(set) var signIns = 0
@@ -436,7 +438,7 @@ final class RenewalTests: XCTestCase {
                 if path.hasSuffix("/login") {
                     signIns += 1
                     let form = String(decoding: request.httpBody ?? Data(), as: UTF8.self)
-                    return form.contains("password=\(password)") ? reply(200, "new-token") : reply(401)
+                    return form.contains("password=\(password)") ? reply(200, issued) : reply(401)
                 }
                 if path.hasSuffix("/whoami") { return bearer == "Bearer \(accepted)" ? reply(200, "alice") : reply(401) }
                 if path.contains("/users/") { return reply(200, "<user/>") }
@@ -559,6 +561,89 @@ final class RenewalTests: XCTestCase {
         XCTAssertEqual(cadc.signIns, 1)
         XCTAssertEqual(ended, 0)
         XCTAssertTrue(controller.isAuthenticated)
+    }
+
+    // MARK: - A session that ends while Verbinal is away
+    //
+    // The person (2026-10-24): on the Mac, an expiry did not ask to sign in
+    // again. A launch found the stored sign-in expired and stayed silent;
+    // what a launch's renewal started never asked for a renewal again; and
+    // nothing looked until a request failed.
+
+    /// At launch, a stored sign-in that expired and cannot be renewed asks
+    /// to sign in again, saying why: it was the person's session.
+    func testAStoredSignInThatEndedAtLaunchAsksToSignIn() async {
+        KeychainStorage.saveCredentials(token: "old-token", username: "alice", password: nil)
+        await controller.validateStoredToken()
+        XCTAssertFalse(controller.isAuthenticated)
+        XCTAssertEqual(ended, 1)
+        XCTAssertEqual(controller.signInReason, String(localized: "Your CADC session ended. Sign in to continue."))
+    }
+
+    /// With no stored sign-in, a launch asks nothing: there was no session.
+    func testNoStoredSignInAtLaunchAsksNothing() async {
+        await controller.validateStoredToken()
+        XCTAssertEqual(ended, 0)
+        XCTAssertNil(controller.signInReason)
+    }
+
+    /// What a sign-in starts (watchers, sync) asks for a renewal on its own
+    /// 401s, even when the sign-in was a renewal's.
+    func testWhatASignInStartsStillAsksForRenewals() async {
+        KeychainStorage.saveCredentials(token: "old-token", username: "alice", password: "pw")
+        let go = Flag()
+        var started: Task<String?, Never>?
+        controller.onAuthenticated = { [network, data] in
+            started = Task {
+                while !go.isSet { try? await Task.sleep(for: .milliseconds(10)) }
+                return try? await network!.getText(data)
+            }
+        }
+        await controller.validateStoredToken()
+        XCTAssertTrue(controller.isAuthenticated, "the expired token was renewed with the password")
+        XCTAssertEqual(cadc.signIns, 1)
+
+        // That sign-in expires too, a while later.
+        cadc.issued = "token-3"
+        cadc.accepted = "token-3"
+        cadc.serviceAccepts = "token-3"
+        controller.now = { Date().addingTimeInterval(120) }
+        go.set()
+        let answer = await started?.value
+        XCTAssertEqual(answer, "data", "its 401 asked for a renewal")
+        XCTAssertEqual(cadc.signIns, 2)
+    }
+
+    /// Back in front after a while: the sign-in is checked, and one that
+    /// ended asks at once; one confirmed a moment ago is not checked.
+    func testComingBackAfterAWhileChecksTheSignIn() async {
+        await signedIn(rememberMe: false)
+        cadc.accepted = "other"
+        await controller.recheckIfStale()
+        XCTAssertEqual(ended, 0, "confirmed a moment ago: not checked")
+        XCTAssertTrue(controller.isAuthenticated)
+
+        controller.now = { Date().addingTimeInterval(AuthLifecycleController.recheckAfter + 60) }
+        await controller.recheckIfStale()
+        XCTAssertEqual(ended, 1)
+        XCTAssertFalse(controller.isAuthenticated)
+    }
+
+    func testComingBackWithASignInStillGoodChangesNothing() async {
+        await signedIn(rememberMe: false)
+        cadc.accepted = "old-token"
+        controller.now = { Date().addingTimeInterval(AuthLifecycleController.recheckAfter + 60) }
+        await controller.recheckIfStale()
+        XCTAssertEqual(ended, 0)
+        XCTAssertTrue(controller.isAuthenticated)
+        XCTAssertEqual(cadc.signIns, 0)
+    }
+
+    private final class Flag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var on = false
+        var isSet: Bool { lock.withLock { on } }
+        func set() { lock.withLock { on = true } }
     }
 
     /// CADC out of reach: the request fails, nothing is signed in or
