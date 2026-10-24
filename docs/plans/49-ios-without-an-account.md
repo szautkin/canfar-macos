@@ -247,7 +247,17 @@ L0 to L2 are built, the samples (D4) included.
     a temporary, uncommitted debug hook stored a bogus token with no password on the test simulator.
     At launch the app asked at once ("Log In to CANFAR · Your CADC session ended. Sign in to continue."),
     and after Cancel Portal and Compute were locked, with FITS and Cube open. The hook and the tour target
-    were removed afterwards. Mid-session expiry was not seen: it takes the same `settle(.ended)` path.
+    were removed afterwards.
+    - **Mid-use, on screen too** (2026-10-24, on the person's simulator after they signed in). Another
+      temporary hook put a bogus token in place 25 s in. A Portal request met a 401, the renewal ended
+      the session, and the sign-in sheet opened. After Cancel, Portal was locked.
+      - The first 401 came 26 s after the launch had signed in again with the stored password. Inside
+        the renewal's 30 s "just signed in" window, a 401 is retried rather than checked. That is as
+        designed, and why the sheet came with the next 401.
+    - **With the menu open** (test simulator, a hook ending a stored sign-in 20 s in). The sign-in sheet
+      did not cover the menu, but the menu turned to its signed-out form at once (Sign In first, locked
+      rows). When it closed, the sign-in sheet appeared with its reason. On iOS the prompt is delayed,
+      not lost. The Mac's case (a Portal sheet up) was not seen.
     The person
     (2026-10-24): "i was seeing in the macos version that the expiration does not automatically prompts
     user to login again... check the code logic instead thoroughly".
@@ -285,8 +295,7 @@ L0 to L2 are built, the samples (D4) included.
          `recheckIfStale()`. A sign-in CADC has not confirmed for 15 minutes is checked again, and one
          that ended asks at once. (`testComingBackAfterAWhileChecksTheSignIn`,
          `testComingBackWithASignInStillGoodChangesNothing`.)
-    - **A risk left, not changed:** the sign-in sheet is `activeSheet`, ContentView's single sheet. If
-      another sheet is up when a session ends (a Portal sheet on the Mac, the menu on iOS), SwiftUI
-      may not show it. `activeSheet` then stays `.login`, so a later end would not show it either.
-      Check that on screen when a session next ends.
+    - **The other-sheet risk:** the sign-in sheet is `activeSheet`, ContentView's single sheet. On
+      iOS, seen: it waits for the open sheet to close, then shows. On the Mac, with a Portal sheet up,
+      not seen.
 
