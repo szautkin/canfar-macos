@@ -268,6 +268,14 @@ L0 to L2 are built, the samples (D4) included.
 
       As on iOS, the prompt waits for the open sheet and is not lost. The reason line was absent only
       because the hook skipped the controller, which sets it.
+      - A second run went through the controller (`renew(from: .expiredToken)`). It showed no sheet at
+        all, most likely because the test build found a stored sign-in with a password in this Mac's
+        keychain and renewed it quietly, as designed. It was inconclusive for the reason line on the
+        Mac. That line comes from the shared `LoginSheet`, seen on iOS, and `RenewalTests` assert that
+        `signInReason` is set.
+    - **Not produced on demand:** a real CADC expiry. Every on-screen expiry here came from a temporary
+      hook. A real one needs the person's token to run out while they are signed in without Remember
+      me.
     The person
     (2026-10-24): "i was seeing in the macos version that the expiration does not automatically prompts
     user to login again... check the code logic instead thoroughly".
