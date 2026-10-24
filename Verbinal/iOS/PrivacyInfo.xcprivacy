@@ -20,15 +20,22 @@ Required-reason APIs used:
       Storage/ViewModels/StorageBrowserModel.swift   — the same, before an upload
       VerbinalKit Networking/NetworkClient.swift     — fileSizeKey / .size of a file to upload
       VerbinalKit Storage/AppSupport.swift           — contentModificationDate of the app's own folders
-      iOS/Open/Services/RemoteFileCache.swift        — size and date of files cached in Caches (least recent go first)
+      iOS/Files/Services/RemoteFileCache.swift       — size and date of files cached in Caches (least recent go first)
+      iOS/Files/Services/DeviceFiles.swift           — size and date of Verbinal's files on the device (plan 48 Files)
       iOS/Open/Models/FileRef.swift                  — the size of a file the person picked in Files
     Reasons:
       C617.1 — files inside the app's container (caches, downloads, stores)
       3B52.1 — files the person chose (document picker, "Open in Verbinal")
 
-APIs NOT used (grep of the iOS file list, 2026-10-22):
+  NSPrivacyAccessedAPICategoryDiskSpace (plan 48, 2026-10-23)
+    Sources:
+      iOS/Files/Services/DeviceLibrary.swift         — volumeAvailableCapacityForImportantUsage, shown in
+                                                       Menu ▸ On This iPhone beside what Verbinal uses
+    Reason:
+      85F4.1 — free space shown to the person on the device
+
+APIs NOT used (grep of the iOS file list, 2026-10-23):
   NSPrivacyAccessedAPICategorySystemBootTime  — no systemUptime / mach_absolute_time
-  NSPrivacyAccessedAPICategoryDiskSpace       — no volumeAvailableCapacity / volumeTotalCapacity
   NSPrivacyAccessedAPICategoryActiveKeyboard  — no activeInputModes
 
 Data collection: as the Mac app. The person's CADC username and password go to CADC, over TLS, to
@@ -87,6 +94,14 @@ No tracking, analytics or ad frameworks.
             <array>
                 <string>C617.1</string>
                 <string>3B52.1</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>85F4.1</string>
             </array>
         </dict>
     </array>

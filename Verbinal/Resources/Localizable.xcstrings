@@ -558,6 +558,16 @@
         }
       }
     },
+    "%@ free on this device" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ libres sur cet appareil"
+          }
+        }
+      }
+    },
     "%@ GB" : {
       "localizations" : {
         "fr" : {
@@ -788,6 +798,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ outils sur %@ correspondent à « %@ »"
+          }
+        }
+      }
+    },
+    "%@ of %@ used" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ utilisés sur %2$@"
           }
         }
       }
@@ -1420,6 +1440,17 @@
         }
       }
     },
+    "%lld of them are not in your storage, so Verbinal cannot download them again; the rest stay there." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld d’entre eux ne sont pas dans votre stockage : Verbinal ne pourra pas les télécharger de nouveau ; les autres y restent."
+          }
+        }
+      }
+    },
     "%lld orders" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1755,6 +1786,17 @@
         }
       }
     },
+    "1 file" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 fichier"
+          }
+        }
+      }
+    },
     "1 hour" : {
       "localizations" : {
         "fr" : {
@@ -1934,6 +1976,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un doublon de %@, conservé sous un identifiant mal formé — Research conserve l'observation sous l'identifiant corrigé ; cette fiche peut être supprimée."
+          }
+        }
+      }
+    },
+    "A file with this name is already in this folder. This cannot be undone: storage has no trash." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un fichier de ce nom se trouve déjà dans ce dossier. Cette action est irréversible : le stockage n’a pas de corbeille."
           }
         }
       }
@@ -2138,16 +2190,6 @@
         }
       }
     },
-    "Account" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Compte"
-          }
-        }
-      }
-    },
     "Acknowledgements" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2279,6 +2321,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajoutées"
+          }
+        }
+      }
+    },
+    "added %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ajouté %@"
           }
         }
       }
@@ -4262,6 +4315,17 @@
         }
       }
     },
+    "Clear Downloads…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vider les téléchargements…"
+          }
+        }
+      }
+    },
     "Clear every active filter (⌘⌫)" : {
       "localizations" : {
         "fr" : {
@@ -4514,17 +4578,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fermer cette boîte de dialogue. Les sondes en cours continuent en arrière-plan ; rouvrez plus tard pour voir leurs résultats."
-          }
-        }
-      }
-    },
-    "Close This File" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fermer ce fichier"
           }
         }
       }
@@ -5148,6 +5201,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copie les fichiers FITS et calepins dans le paquet. Sa taille sera bien plus grande."
+          }
+        }
+      }
+    },
+    "Copies of files in your storage, up to %lld GB; the least recently opened go first. iOS may also remove them when it needs space." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copies de fichiers de votre stockage, jusqu’à %lld Go ; les moins récemment ouverts partent en premier. iOS peut aussi les supprimer quand il manque d’espace."
           }
         }
       }
@@ -6352,12 +6416,48 @@
         }
       }
     },
+    "Delete “%@”?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer « %@ » ?"
+          }
+        }
+      }
+    },
+    "Delete (%@)" : {
+
+    },
+    "Delete (%lld)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer (%lld)"
+          }
+        }
+      }
+    },
     "Delete %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer %@"
+          }
+        }
+      }
+    },
+    "Delete %@ (%@)?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer %1$@ (%2$@) ?"
           }
         }
       }
@@ -6416,6 +6516,39 @@
         }
       }
     },
+    "Delete All Downloads" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer tous les téléchargements"
+          }
+        }
+      }
+    },
+    "Delete All Downloads (%@)?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer tous les téléchargements (%@) ?"
+          }
+        }
+      }
+    },
+    "Delete All…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout supprimer…"
+          }
+        }
+      }
+    },
     "Delete cancelled" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6433,6 +6566,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La suppression a échoué : %@"
+          }
+        }
+      }
+    },
+    "Delete File" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le fichier"
+          }
+        }
+      }
+    },
+    "Delete Folder" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le dossier"
           }
         }
       }
@@ -6960,6 +7115,17 @@
         }
       }
     },
+    "Don't Keep" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne plus conserver"
+          }
+        }
+      }
+    },
     "done" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7366,6 +7532,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Les téléchargements vont dans le cache de cet appareil, qu'iOS peut vider s'il a besoin d'espace."
+          }
+        }
+      }
+    },
+    "Downloads Kept Up To" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargements conservés jusqu’à"
           }
         }
       }
@@ -8001,6 +8178,20 @@
         }
       }
     },
+    "Every file here was opened in the last %@ days." : {
+
+    },
+    "Every file here was opened in the last %lld days." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque fichier ici a été ouvert au cours des %lld derniers jours."
+          }
+        }
+      }
+    },
     "Every finite pixel in this image has the same value (or all pixels are NaN), so there is no data range to map. The cut controls show a 0…1 fallback." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8008,6 +8199,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chaque pixel fini de cette image a la même valeur (ou tous les pixels sont NaN), il n'y a donc aucune plage de données à représenter. Les commandes de coupure affichent une plage de repli 0…1."
+          }
+        }
+      }
+    },
+    "Everything in it is deleted with it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout son contenu est supprimé avec lui."
           }
         }
       }
@@ -8673,6 +8875,16 @@
         }
       }
     },
+    "File name" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nom du fichier"
+          }
+        }
+      }
+    },
     "File Page" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8685,7 +8897,6 @@
       }
     },
     "Files" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8705,6 +8916,17 @@
         }
       }
     },
+    "Files other apps sent to Verbinal, such as Mail or AirDrop. Deleting one removes Verbinal's copy only." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichiers envoyés à Verbinal par d’autres apps, comme Mail ou AirDrop. En supprimer un ne retire que la copie de Verbinal."
+          }
+        }
+      }
+    },
     "Files saved on this Mac" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8712,6 +8934,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fichiers enregistrés sur ce Mac"
+          }
+        }
+      }
+    },
+    "Files you download from your storage, keep, or receive from other apps appear here." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les fichiers que vous téléchargez de votre stockage, conservez ou recevez d’autres apps apparaissent ici."
+          }
+        }
+      }
+    },
+    "Files, settings, help and your account" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichiers, réglages, aide et votre compte"
           }
         }
       }
@@ -9175,12 +9417,34 @@
         }
       }
     },
+    "from %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "de %@"
+          }
+        }
+      }
+    },
     "From an older probe: Re-run for the full package list" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "D’une sonde plus ancienne : relancez la découverte pour la liste complète des paquets"
+          }
+        }
+      }
+    },
+    "From Other Apps" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reçus d’autres apps"
           }
         }
       }
@@ -9645,7 +9909,6 @@
       }
     },
     "Help" : {
-      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -10037,6 +10300,16 @@
         }
       }
     },
+    "In %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans %@"
+          }
+        }
+      }
+    },
     "In Research" : {
       "localizations" : {
         "fr" : {
@@ -10423,6 +10696,39 @@
         }
       }
     },
+    "It holds %lld items or more, all deleted with it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il contient %lld éléments ou plus, tous supprimés avec lui."
+          }
+        }
+      }
+    },
+    "It holds %lld items, all deleted with it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il contient %lld éléments, tous supprimés avec lui."
+          }
+        }
+      }
+    },
+    "It holds 1 item, deleted with it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il contient 1 élément, supprimé avec lui."
+          }
+        }
+      }
+    },
     "It is copied to this Mac first, and deleted from your storage only once it is here." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -10455,6 +10761,39 @@
         }
       }
     },
+    "It is deleted from your storage." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il est supprimé de votre stockage."
+          }
+        }
+      }
+    },
+    "It is empty." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il est vide."
+          }
+        }
+      }
+    },
+    "It is not in your storage, so Verbinal cannot download it again." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il n’est pas dans votre stockage : Verbinal ne pourra pas le télécharger de nouveau."
+          }
+        }
+      }
+    },
     "It never reached the session — see the message above." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -10472,6 +10811,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Il s'exécute en votre nom, sur votre session — comme run_code exécute le code de votre assistant."
+          }
+        }
+      }
+    },
+    "It stays in your storage; only this device's copy goes." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il reste dans votre stockage ; seule la copie de cet appareil est supprimée."
           }
         }
       }
@@ -10671,6 +11021,17 @@
         }
       }
     },
+    "Keep on This Device" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conserver sur cet appareil"
+          }
+        }
+      }
+    },
     "Keep on This Mac" : {
       "localizations" : {
         "fr" : {
@@ -10732,12 +11093,34 @@
         }
       }
     },
+    "Kept" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conservés"
+          }
+        }
+      }
+    },
     "Kept on this Mac after CANFAR removes the job." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conservé sur ce Mac après le retrait de la tâche par CANFAR."
+          }
+        }
+      }
+    },
+    "Kept until you delete them. They show in the Files app, in Verbinal's folder, and are left out of iCloud backup." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conservés jusqu’à ce que vous les supprimiez. Ils apparaissent dans l’app Fichiers, dans le dossier de Verbinal, et sont exclus de la sauvegarde iCloud."
           }
         }
       }
@@ -10854,6 +11237,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dernière tentative %@"
+          }
+        }
+      }
+    },
+    "Last Opened" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernière ouverture"
           }
         }
       }
@@ -11697,6 +12091,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Médiane (échantillon)"
+          }
+        }
+      }
+    },
+    "Menu" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menu"
           }
         }
       }
@@ -12648,6 +13052,17 @@
         }
       }
     },
+    "No Files on This Device" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun fichier sur cet appareil"
+          }
+        }
+      }
+    },
     "No filters" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13284,6 +13699,34 @@
         }
       }
     },
+    "Not opened in %@ days" : {
+
+    },
+    "Not Opened in %@ Days" : {
+
+    },
+    "Not opened in %lld days" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non ouverts depuis %lld jours"
+          }
+        }
+      }
+    },
+    "Not Opened in %lld Days" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non ouverts depuis %lld jours"
+          }
+        }
+      }
+    },
     "Not ready" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13539,6 +13982,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rien à déplacer."
+          }
+        }
+      }
+    },
+    "Nothing to Review" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien à examiner"
           }
         }
       }
@@ -13827,6 +14281,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sur cet appareil"
+          }
+        }
+      }
+    },
+    "On This iPad" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur cet iPad"
+          }
+        }
+      }
+    },
+    "On This iPhone" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur cet iPhone"
           }
         }
       }
@@ -14189,6 +14665,17 @@
         }
       }
     },
+    "opened %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ouvert %@"
+          }
+        }
+      }
+    },
     "Opens a popover with the job's id, image, resources, and timing." : {
       "localizations" : {
         "fr" : {
@@ -14205,6 +14692,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "L'ouvre de nouveau"
+          }
+        }
+      }
+    },
+    "Opens the user manual in Safari" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre le manuel d’utilisation dans Safari"
           }
         }
       }
@@ -15178,17 +15675,6 @@
         }
       }
     },
-    "Profile" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profil"
-          }
-        }
-      }
-    },
     "Project" : {
       "localizations" : {
         "fr" : {
@@ -16148,17 +16634,6 @@
         }
       }
     },
-    "Remind me before a session expires" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Me prévenir avant qu'une session expire"
-          }
-        }
-      }
-    },
     "Remote Compute" : {
       "localizations" : {
         "fr" : {
@@ -16736,6 +17211,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remplacer"
+          }
+        }
+      }
+    },
+    "Replace “%@”?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remplacer « %@ » ?"
           }
         }
       }
@@ -17337,6 +17823,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Examiner les propositions de l'agent en attente"
+          }
+        }
+      }
+    },
+    "Review them, and delete what you no longer need." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Examinez-les et supprimez ce dont vous n’avez plus besoin."
           }
         }
       }
@@ -18502,6 +18998,27 @@
         }
       }
     },
+    "Session Reminders" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rappels de session"
+          }
+        }
+      }
+    },
+    "Session reminders come thirty minutes before a session ends, even when Verbinal is closed." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les rappels arrivent trente minutes avant la fin d’une session, même quand Verbinal est fermé."
+          }
+        }
+      }
+    },
     "Session type" : {
       "localizations" : {
         "fr" : {
@@ -19320,6 +19837,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Marqueur du plan de tranche"
+          }
+        }
+      }
+    },
+    "Sort" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trier"
+          }
+        }
+      }
+    },
+    "Sort By" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trier par"
           }
         }
       }
@@ -20771,16 +21310,6 @@
         }
       }
     },
-    "The image, size and registry login of your compute session." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "L'image, la taille et l'identifiant de registre de votre session de calcul."
-          }
-        }
-      }
-    },
     "The kept file holds nothing — fetch it again into this record" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -21064,12 +21593,24 @@
         }
       }
     },
-    "Thirty minutes before a session ends, even when Verbinal is closed." : {
+    "They are not in your storage, so Verbinal cannot download them again." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trente minutes avant la fin d'une session, même quand Verbinal est fermé."
+            "value" : "Ils ne sont pas dans votre stockage : Verbinal ne pourra pas les télécharger de nouveau."
+          }
+        }
+      }
+    },
+    "They stay in your storage; only this device's copies go." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ils restent dans votre stockage ; seules les copies de cet appareil sont supprimées."
           }
         }
       }
@@ -21081,6 +21622,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cette action est irréversible."
+          }
+        }
+      }
+    },
+    "This cannot be undone: storage has no trash." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette action est irréversible : le stockage n’a pas de corbeille."
           }
         }
       }
@@ -21952,6 +22504,17 @@
         }
       }
     },
+    "Upload from This Device…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléverser depuis cet appareil…"
+          }
+        }
+      }
+    },
     "Upload to VOSpace" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -21991,6 +22554,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Téléversé dans VOSpace : %@"
+          }
+        }
+      }
+    },
+    "Uploading" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléversement"
           }
         }
       }
@@ -22411,6 +22985,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbinal reste privé tant que vous n'activez pas cette option. L'activer démarre un serveur MCP local auquel Claude se connecte — rien n'est exposé au réseau."
+          }
+        }
+      }
+    },
+    "Verbinal uses %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal utilise %@"
           }
         }
       }
@@ -23838,6 +24422,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Votre stockage est plein à %@"
+          }
+        }
+      }
+    },
+    "Your storage keeps every original. Kept files and files from other apps stay." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre stockage garde tous les originaux. Les fichiers conservés et ceux reçus d’autres apps restent."
           }
         }
       }

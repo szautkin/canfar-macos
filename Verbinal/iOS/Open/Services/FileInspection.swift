@@ -19,25 +19,26 @@ final class FileInspection: PhaseOwner, Identifiable {
 
     /// The HDUs, read from the headers alone.
     private(set) var structure: Phase<[FITSHDUnit]> = .idle
-    /// The file on this device: in the cache, or where the person keeps it.
+    /// The file on this device: kept, in the cache, or where the person has it.
     private(set) var local: Phase<URL> = .idle
     /// How much of a download has arrived, 0 to 1.
     private(set) var progress: Double = 0
 
     private let storage: VOSpaceBrowserService
     private let username: String
-    private let cache: RemoteFileCache
+    private let files: DeviceFiles
     private var downloadTask: Task<Void, Never>?
 
-    init(file: FileRef, storage: VOSpaceBrowserService, username: String, cache: RemoteFileCache = RemoteFileCache()) {
+    init(file: FileRef, storage: VOSpaceBrowserService, username: String, files: DeviceFiles = DeviceFiles()) {
         self.file = file
         self.storage = storage
         self.username = username
-        self.cache = cache
+        self.files = files
         if let device = file.deviceURL() {
+            files.noteOpened(device)
             local = .ready(device)
-        } else if let cached = cache.cached(file) {
-            local = .ready(cached)
+        } else if let copy = files.localCopy(of: file) {
+            local = .ready(copy)
         }
     }
 
@@ -77,21 +78,24 @@ final class FileInspection: PhaseOwner, Identifiable {
 
     /// Downloads the file from storage into the cache, with progress; Cancel stops it.
     func download() {
-        guard case .storage(let path) = file.place, !local.isWorking else { return }
+        guard file.isRemote, !local.isWorking else { return }
         progress = 0
-        let file = file, storage = storage, user = username, cache = cache
+        let file = file, storage = storage, user = username, files = files
         downloadTask = Task {
             await run(\.local) {
-                let (temporary, _) = try await storage.downloadFile(
-                    username: user, path: path, expectedTotal: file.size ?? 0,
-                    onProgress: { done, total in
-                        guard total > 0 else { return }
-                        let fraction = Double(done) / Double(total)
-                        Task { @MainActor in self.progress = fraction }
-                    })
-                return try cache.store(temporary, as: file)
+                try await StorageActions.download(file, storage: storage, username: user, into: files) { fraction in
+                    Task { @MainActor in self.progress = fraction }
+                }
             }
         }
+    }
+
+    /// This device's copy was deleted (plan 48): the file is still in storage.
+    func forgetLocal() {
+        guard file.isRemote else { return }
+        cancelDownload()
+        local = .idle
+        progress = 0
     }
 
     func cancelDownload() {

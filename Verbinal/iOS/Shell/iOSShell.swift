@@ -8,8 +8,8 @@ import SwiftUI
 
 /// Verbinal on iPhone and iPad: four places — Portal, FITS, Cube, Compute
 /// (plan 47). A tab bar on iPhone, a sidebar on iPad; one selection on
-/// `AppState`, so navigation can drive either. The person's Account is the
-/// button with their initials.
+/// `AppState`, so navigation can drive either. Everything else is in the
+/// menu, behind the button with the person's initials (plan 48).
 struct iOSShell: View {
     @Environment(AppState.self) private var appState
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -19,7 +19,9 @@ struct iOSShell: View {
     var platformLoadModel: PlatformLoadModel
     var storageModel: StorageModel
 
-    @State private var showAccount = false
+    @State private var showMenu = false
+    /// The files Verbinal holds on this device (plan 48).
+    @State private var library = DeviceLibrary()
     @State private var seen = PortalSeenStore()
     @State private var reminders = ExpiryReminderScheduler()
     /// Compute's runs, read back from /arc; made once the app's network is at hand.
@@ -48,8 +50,14 @@ struct iOSShell: View {
                 tabView
             }
         }
-        .sheet(isPresented: $showAccount) {
-            iOSAccountSheet(reminders: reminders, sessions: sessionFacts)
+        .sheet(isPresented: $showMenu) {
+            iOSMenuSheet(reminders: reminders, sessions: sessionFacts, library: library, storage: storageModel,
+                         onOpen: { file in
+                             showMenu = false
+                             recents.add(file)
+                             open(file, in: .fits)
+                         },
+                         onClose: closeFiles)
         }
         .sheet(item: $openingFor) { place in
             iOSOpenSheet(recents: recents) { file in open(file, in: place) }
@@ -85,7 +93,7 @@ struct iOSShell: View {
     private func open(_ file: FileRef, in place: AppState.iOSDashboardTab) {
         let inspection = FileInspection(
             file: file, storage: VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints),
-            username: appState.username)
+            username: appState.username, files: library.store)
         if place == .cube { openedCube = inspection } else { openedFITS = inspection }
         appState.iOSDashboardTab = place == .cube ? .cube : .fits
         // On this device already: straight to the image or the cube, whichever
@@ -147,7 +155,7 @@ struct iOSShell: View {
             ForEach(AppState.iOSDashboardTab.allCases) { place in
                 NavigationStack {
                     content(for: place)
-                        .toolbar { accountItem }
+                        .toolbar { menuItem }
                 }
                 .tabItem { Label(place.title, systemImage: place.icon) }
                 .tag(place)
@@ -167,7 +175,7 @@ struct iOSShell: View {
                 }
             }
             .navigationTitle("Verbinal")
-            .toolbar { accountItem }
+            .toolbar { menuItem }
         } detail: {
             NavigationStack {
                 content(for: appState.iOSDashboardTab)
@@ -182,9 +190,9 @@ struct iOSShell: View {
         )
     }
 
-    private var accountItem: some SwiftUI.ToolbarContent {
+    private var menuItem: some SwiftUI.ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            iOSAccountButton { showAccount = true }
+            iOSMenuButton { showMenu = true }
         }
     }
 
@@ -206,7 +214,11 @@ struct iOSShell: View {
             if fitsViewerShown, !appState.fitsTabHost.tabs.isEmpty {
                 iOSFITSViewer(host: appState.fitsTabHost,
                               onOpen: { openingFor = .fits },
-                              onShowFile: { fitsViewerShown = false })
+                              onShowFile: { fitsViewerShown = false },
+                              onClosedAll: {
+                                  fitsViewerShown = false
+                                  openedFITS = nil
+                              })
             } else {
                 opened(openedFITS, place: .fits, empty: "No Image Open", icon: "photo",
                        description: "The FITS images you open to review appear here.")
@@ -215,7 +227,11 @@ struct iOSShell: View {
             if cubeViewerShown, appState.cubeTabHost.tabs.contains(where: { $0.hasData || $0.document.state.isOpening }) {
                 iOSCubeViewer(host: appState.cubeTabHost,
                               onOpen: { openingFor = .cube },
-                              onShowFile: { cubeViewerShown = false })
+                              onShowFile: { cubeViewerShown = false },
+                              onClosedAll: {
+                                  cubeViewerShown = false
+                                  openedCube = nil
+                              })
             } else {
                 opened(openedCube, place: .cube, empty: "No Cube Open", icon: "cube",
                        description: "The data cubes you open to review appear here.")
@@ -256,7 +272,52 @@ extension iOSShell {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { openingFor = place } label: { Label("Open…", systemImage: "folder") }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { closePage(place) } label: { Label("Close", systemImage: "xmark") }
+                }
             }
+        }
+    }
+}
+
+extension iOSShell {
+    /// Closes a file's page; an image or cube it shows stays open in its viewer.
+    func closePage(_ place: AppState.iOSDashboardTab) {
+        if place == .cube { openedCube = nil } else { openedFITS = nil }
+    }
+
+    /// Before files on this device go (plan 48): the viewer tabs showing
+    /// them close, and a page that had one forgets it — a storage file's
+    /// page stays, since storage still has it.
+    func closeFiles(_ urls: [URL]) {
+        let gone = Set(urls.map { $0.resolvingSymlinksInPath().path })
+        let isGone: (URL?) -> Bool = { url in url.map { gone.contains($0.resolvingSymlinksInPath().path) } ?? false }
+
+        let fits = appState.fitsTabHost
+        for index in fits.tabs.indices.reversed() where isGone(fits.tabs[index].fileURL) {
+            fits.closeTab(at: index)
+        }
+        if fits.tabs.isEmpty { fitsViewerShown = false }
+
+        let cubes = appState.cubeTabHost
+        for index in cubes.tabs.indices.reversed() where isGone(cubes.tabs[index].fileURL) {
+            if cubes.tabs.count > 1 {
+                cubes.closeTab(at: index)
+            } else {
+                cubes.tabs = [CubeViewerModel()]
+                cubes.activeTabIndex = 0
+                cubeViewerShown = false
+            }
+        }
+
+        for (inspection, place) in [(openedFITS, AppState.iOSDashboardTab.fits), (openedCube, .cube)] {
+            guard let inspection, isGone(inspection.local.value) else { continue }
+            if inspection.file.isRemote { inspection.forgetLocal() } else { closePage(place) }
+        }
+
+        // A device file that goes leaves Recent too; a storage file stays there.
+        for file in recents.items where isGone(file.deviceURL()) {
+            recents.remove(file)
         }
     }
 }

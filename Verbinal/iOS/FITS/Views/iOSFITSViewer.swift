@@ -18,6 +18,8 @@ struct iOSFITSViewer: View {
     /// Open another file, or show the page of the one open.
     var onOpen: () -> Void
     var onShowFile: () -> Void
+    /// The last open image was closed.
+    var onClosedAll: () -> Void
 
     @State private var chromeHidden = false
     @State private var showControls = false
@@ -37,7 +39,6 @@ struct iOSFITSViewer: View {
                 .navigationTitle(model.displayName)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) { filesMenu(model) }
                     ToolbarItem(placement: .topBarTrailing) {
                         ShareLink(item: iOSFITSPicture(model: model),
                                   preview: SharePreview(model.displayName, image: Image(systemName: "photo"))) {
@@ -48,7 +49,11 @@ struct iOSFITSViewer: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showControls = true } label: { Label("Adjust", systemImage: "slider.horizontal.3") }
                     }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { close() } label: { Label("Close", systemImage: "xmark") }
+                    }
                 }
+                .toolbarTitleMenu { titleMenu }
                 .toolbar(chromeHidden ? .hidden : .automatic, for: .navigationBar)
                 .toolbar(chromeHidden ? .hidden : .automatic, for: .tabBar)
                 .statusBarHidden(chromeHidden)
@@ -97,31 +102,30 @@ struct iOSFITSViewer: View {
 
     // MARK: - Files
 
-    private func filesMenu(_ model: FITSViewerModel) -> some View {
-        Menu {
-            ForEach(Array(host.tabs.enumerated()), id: \.element.id) { index, tab in
-                Button {
-                    host.activeTabIndex = index
-                } label: {
-                    if index == host.activeTabIndex {
-                        Label(tab.displayName, systemImage: "checkmark")
-                    } else {
-                        Text(tab.displayName)
-                    }
+    /// The file name's menu (the title's): the open images, Open…, the file's page.
+    @ViewBuilder
+    private var titleMenu: some View {
+        ForEach(Array(host.tabs.enumerated()), id: \.element.id) { index, tab in
+            Button {
+                host.activeTabIndex = index
+            } label: {
+                if index == host.activeTabIndex {
+                    Label(tab.displayName, systemImage: "checkmark")
+                } else {
+                    Text(tab.displayName)
                 }
             }
-            Divider()
-            Button { onOpen() } label: { Label("Open…", systemImage: "folder") }
-            Button { onShowFile() } label: { Label("File Page", systemImage: "doc.text.magnifyingglass") }
-            Button(role: .destructive) {
-                host.closeActiveTab()
-                if host.tabs.isEmpty { onShowFile() }
-            } label: {
-                Label("Close This File", systemImage: "xmark")
-            }
-        } label: {
-            Label("Files", systemImage: "doc.on.doc")
         }
+        Divider()
+        Button { onOpen() } label: { Label("Open…", systemImage: "folder") }
+        Button { onShowFile() } label: { Label("File Page", systemImage: "doc.text.magnifyingglass") }
+    }
+
+    /// Closes the image shown; the last one brings back Open.
+    private func close() {
+        host.stopBlink()
+        host.closeActiveTab()
+        if host.tabs.isEmpty { onClosedAll() }
     }
 
     // MARK: - Compare

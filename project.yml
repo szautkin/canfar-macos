@@ -218,6 +218,12 @@ targets:
       - Verbinal/RemoteCompute/Models/RunCodeContract.swift
       - Verbinal/iOS/FITS/Models
       - Verbinal/iOS/Cube/Models
+      - Verbinal/iOS/Files/Models
+      - Verbinal/iOS/Files/Services/DeviceFiles.swift
+      - Verbinal/iOS/Files/Services/FileOriginAttribute.swift
+      - Verbinal/iOS/Files/Services/RemoteFileCache.swift
+      - Verbinal/iOS/Open/Models/FileRef.swift
+      - Verbinal/iOS/Shell/iOSMenuEntry.swift
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit

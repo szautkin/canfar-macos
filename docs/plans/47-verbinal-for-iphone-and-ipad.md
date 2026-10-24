@@ -515,8 +515,10 @@ All ten steps are in.
 - **4.5:** Share: `iOSFITSPicture`, a `Transferable` PNG made when shared (`ImageRenderer`, 2×): the view as
   on screen, the crosshair, and a caption line (file, RA/Dec, value, stretch · colormap).
 - **Opening:** a file already on the device opens straight into the viewer; from storage its page comes
-  first, with "Download and View the Image". Files ▸ switches between open images, opens, shows the file
-  page, or closes.
+  first, with "Download and View the Image". The file name (the title's menu) switches between open
+  images, opens another, or shows the file page; **✕ Close** in the bar closes the image, and the last
+  one brings back Open. The first version hid Close in a Files menu, and the person did not find it
+  ("no close", 2026-10-23); Cube and a file's page have the same ✕.
 - **Touches:** on UIKit's recognizers (`iOSCanvasTouchLayer`): pinch and rotate as one manipulation
   about the fingers, one-finger and scroll pan, double tap, tap (it waits for the double), long press,
   and hover. The first version composed SwiftUI gestures (a long press "exclusively before" a drag,

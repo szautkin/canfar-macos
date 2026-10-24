@@ -8,24 +8,26 @@ import CryptoKit
 import Foundation
 
 /// Files from storage, downloaded to look at (plan 47 3.4): in Caches, which
-/// iOS may empty when space runs short, and under a cap — the least recently
-/// opened go first. A file that changed in storage is a new entry.
+/// iOS may empty when space runs short, and under the cap the person chose
+/// (plan 48) — the least recently opened go first. A file that changed in
+/// storage is a new entry. Each notes where it came from.
 struct RemoteFileCache: Sendable {
-    /// What the cache may hold.
-    static let capBytes: Int64 = 2 * 1024 * 1024 * 1024
-
     let directory: URL
+    /// What the cache may hold, read when it trims.
+    let cap: @Sendable () -> Int64
 
     init(directory: URL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Verbinal/Remote", isDirectory: true)) {
+            .appendingPathComponent("Verbinal/Remote", isDirectory: true),
+         cap: @escaping @Sendable () -> Int64 = { FilesRules.capBytes() }) {
         self.directory = directory
+        self.cap = cap
     }
 
     /// The copy of `file` here, if there is one; opening it makes it recent.
     func cached(_ file: FileRef) -> URL? {
         let url = location(of: file)
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: url.path)
+        FileOrigin.markOpened(url)
         return url
     }
 
@@ -37,6 +39,9 @@ struct RemoteFileCache: Sendable {
             try FileManager.default.removeItem(at: destination)
         }
         try FileManager.default.moveItem(at: temporary, to: destination)
+        if case .storage(let path) = file.place {
+            try? FileOrigin(storagePath: path, size: file.size, modified: file.modified, opened: Date()).write(to: destination)
+        }
         trim(keeping: destination)
         return destination
     }
@@ -48,6 +53,14 @@ struct RemoteFileCache: Sendable {
         return directory.appendingPathComponent(digest, isDirectory: true).appendingPathComponent(file.name)
     }
 
+    /// Removes a file and its folder.
+    func remove(_ url: URL) throws {
+        let folder = url.deletingLastPathComponent()
+        let isEntry = folder.deletingLastPathComponent().resolvingSymlinksInPath().path
+            == directory.resolvingSymlinksInPath().path
+        try FileManager.default.removeItem(at: isEntry ? folder : url)
+    }
+
     /// Removes the least recently opened files until the rest fit the cap.
     func trim(keeping kept: URL? = nil) {
         let keys: [URLResourceKey] = [.fileSizeKey, .contentModificationDateKey, .isRegularFileKey]
@@ -55,12 +68,14 @@ struct RemoteFileCache: Sendable {
         var files: [(url: URL, size: Int64, used: Date)] = []
         for case let url as URL in walker {
             guard let values = try? url.resourceValues(forKeys: Set(keys)), values.isRegularFile == true else { continue }
-            files.append((url, Int64(values.fileSize ?? 0), values.contentModificationDate ?? .distantPast))
+            let used = FileOrigin.lastOpened(FileOrigin.read(from: url), modified: values.contentModificationDate)
+            files.append((url, Int64(values.fileSize ?? 0), used))
         }
         var total = files.reduce(0) { $0 + $1.size }
-        for file in files.sorted(by: { $0.used < $1.used }) where total > Self.capBytes {
-            guard file.url != kept else { continue }
-            try? FileManager.default.removeItem(at: file.url.deletingLastPathComponent())
+        let cap = cap()
+        for file in files.sorted(by: { $0.used < $1.used }) where total > cap {
+            guard file.url.resolvingSymlinksInPath() != kept?.resolvingSymlinksInPath() else { continue }
+            try? remove(file.url)
             total -= file.size
         }
     }

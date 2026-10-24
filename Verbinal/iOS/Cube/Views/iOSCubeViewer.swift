@@ -16,6 +16,8 @@ struct iOSCubeViewer: View {
     var host: CubeTabHostModel
     var onOpen: () -> Void
     var onShowFile: () -> Void
+    /// The last open cube was closed.
+    var onClosedAll: () -> Void
 
     enum Mode: String, CaseIterable, Identifiable {
         case slice, moment, volume
@@ -94,7 +96,6 @@ struct iOSCubeViewer: View {
         .navigationTitle(model.fileName.isEmpty ? String(localized: "Cube") : model.fileName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { filesMenu }
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(item: iOSCubePicture(model: model, moment: mode == .moment ? moment?.image : nil),
                           preview: SharePreview(model.fileName, image: Image(systemName: "cube"))) {
@@ -107,7 +108,11 @@ struct iOSCubeViewer: View {
                     Label("Adjust", systemImage: "slider.horizontal.3")
                 }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { close() } label: { Label("Close", systemImage: "xmark") }
+            }
         }
+        .toolbarTitleMenu { titleMenu }
         .toolbar(chromeHidden ? .hidden : .automatic, for: .navigationBar)
         .toolbar(chromeHidden ? .hidden : .automatic, for: .tabBar)
         .statusBarHidden(chromeHidden)
@@ -162,22 +167,37 @@ struct iOSCubeViewer: View {
 
     // MARK: - Files
 
-    private var filesMenu: some View {
-        Menu {
-            ForEach(Array(host.tabs.enumerated()), id: \.element.id) { index, tab in
-                if tab.hasData {
-                    Button {
-                        host.activeTabIndex = index
-                    } label: {
-                        if index == host.activeTabIndex { Label(tab.fileName, systemImage: "checkmark") } else { Text(tab.fileName) }
-                    }
+    /// The file name's menu (the title's): the open cubes, Open…, the file's page.
+    @ViewBuilder
+    private var titleMenu: some View {
+        ForEach(Array(host.tabs.enumerated()), id: \.element.id) { index, tab in
+            if tab.hasData {
+                Button {
+                    host.activeTabIndex = index
+                } label: {
+                    if index == host.activeTabIndex { Label(tab.fileName, systemImage: "checkmark") } else { Text(tab.fileName) }
                 }
             }
-            Divider()
-            Button { onOpen() } label: { Label("Open…", systemImage: "folder") }
-            Button { onShowFile() } label: { Label("File Page", systemImage: "doc.text.magnifyingglass") }
-        } label: {
-            Label("Files", systemImage: "doc.on.doc")
+        }
+        Divider()
+        Button { onOpen() } label: { Label("Open…", systemImage: "folder") }
+        Button { onShowFile() } label: { Label("File Page", systemImage: "doc.text.magnifyingglass") }
+    }
+
+    /// Closes the cube shown: its tab goes, or — the host always keeps one —
+    /// the last one is emptied, and the place shows Open again.
+    private func close() {
+        let model = host.activeTab
+        model.stopPlayback()
+        moment = nil
+        mode = .slice
+        if host.tabs.filter(\.hasData).count > 1, host.tabs.count > 1 {
+            host.closeTab(at: host.activeTabIndex)
+            if let index = host.tabs.firstIndex(where: \.hasData) { host.activeTabIndex = index }
+        } else {
+            host.tabs = [CubeViewerModel()]
+            host.activeTabIndex = 0
+            onClosedAll()
         }
     }
 }
