@@ -257,7 +257,17 @@ L0 to L2 are built, the samples (D4) included.
     - **With the menu open** (test simulator, a hook ending a stored sign-in 20 s in). The sign-in sheet
       did not cover the menu, but the menu turned to its signed-out form at once (Sign In first, locked
       rows). When it closed, the sign-in sheet appeared with its reason. On iOS the prompt is delayed,
-      not lost. The Mac's case (a Portal sheet up) was not seen.
+      not lost.
+    - **On the Mac, with a child sheet up** (2026-10-24). A throwaway macOS UI test, kept out of the
+      repository and signed locally (unsigned, Gatekeeper called its runner "damaged"), checked a test
+      build. Its temporary hook opened the Cube Viewer's guide sheet, which the Cube screen presents
+      (a Portal sheet presents the same way), then called AppState's session-ended reaction. Read from
+      the accessibility tree, since screenshots need a permission the runner lacks:
+      - while the guide was up, one sheet and no sign-in sheet;
+      - once the guide closed, "Log In to CANFAR" showed.
+
+      As on iOS, the prompt waits for the open sheet and is not lost. The reason line was absent only
+      because the hook skipped the controller, which sets it.
     The person
     (2026-10-24): "i was seeing in the macos version that the expiration does not automatically prompts
     user to login again... check the code logic instead thoroughly".
@@ -295,7 +305,6 @@ L0 to L2 are built, the samples (D4) included.
          `recheckIfStale()`. A sign-in CADC has not confirmed for 15 minutes is checked again, and one
          that ended asks at once. (`testComingBackAfterAWhileChecksTheSignIn`,
          `testComingBackWithASignInStillGoodChangesNothing`.)
-    - **The other-sheet risk:** the sign-in sheet is `activeSheet`, ContentView's single sheet. On
-      iOS, seen: it waits for the open sheet to close, then shows. On the Mac, with a Portal sheet up,
-      not seen.
+    - **The other-sheet risk, settled:** the sign-in sheet is `activeSheet`, ContentView's single sheet.
+      On iOS and on the Mac it waits for the open sheet to close, then shows.
 
