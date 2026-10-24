@@ -287,4 +287,11 @@ extension URLSession {
     public func recordedDownload(for request: URLRequest, in ledger: RequestLedger = .shared) async throws -> (URL, URLResponse) {
         try await ledger.send(request) { try await self.download(for: $0) }
     }
+
+    /// `bytes(for:)`, recorded in `ledger` up to the response; the body is
+    /// then streamed by the caller (a ranged read, plan 47 3.1).
+    public func recordedBytes(for request: URLRequest,
+                              in ledger: RequestLedger = .shared) async throws -> (URLSession.AsyncBytes, URLResponse) {
+        try await ledger.send(request) { try await self.bytes(for: $0) }
+    }
 }

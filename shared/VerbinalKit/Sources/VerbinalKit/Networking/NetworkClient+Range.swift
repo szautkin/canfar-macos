@@ -39,10 +39,9 @@ extension NetworkClient {
     }
 
     private func getRangeOnce(_ request: URLRequest, offset: Int, length: Int) async throws -> RangeRead {
-        let session = session
         let (bytes, response): (URLSession.AsyncBytes, URLResponse)
         do {
-            (bytes, response) = try await ledger.send(request) { try await session.bytes(for: $0) }
+            (bytes, response) = try await session.recordedBytes(for: request, in: ledger)
         } catch {
             throw mapTransferCancellation(error)
         }
