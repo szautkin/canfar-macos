@@ -161,6 +161,22 @@ final class DeviceFilesTests: XCTestCase {
         XCTAssertEqual(files.kind(of: inbox), .received)
     }
 
+    /// Plan 49: Open asks whether a storage file is here, signed out, without
+    /// counting it as opened; opening it does count.
+    func testAskingWhetherAFileIsHereDoesNotOpenIt() throws {
+        let files = files()
+        let url = try download("out/m31.fits", into: files)
+        FileOrigin.markOpened(url, at: Date(timeIntervalSince1970: 1))
+
+        XCTAssertTrue(files.has(ref("out/m31.fits", size: 8)))
+        XCTAssertFalse(files.has(ref("out/m31.fits", size: 9)), "another version is not here")
+        XCTAssertFalse(files.has(ref("out/other.fits", size: 8)))
+        XCTAssertEqual(FileOrigin.read(from: url)?.opened, Date(timeIntervalSince1970: 1))
+
+        XCTAssertEqual(files.localCopy(of: ref("out/m31.fits", size: 8))?.lastPathComponent, "m31.fits")
+        XCTAssertNotEqual(FileOrigin.read(from: url)?.opened, Date(timeIntervalSince1970: 1))
+    }
+
     func testAKeptNameThatIsTakenGetsANumber() throws {
         let folder = root.appendingPathComponent("Kept")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

@@ -11,6 +11,7 @@ import VerbinalKit
 /// cards that say what is in it, the whole header to search — all before any
 /// pixels move. From storage, the file itself comes down when the person asks.
 struct iOSFileView: View {
+    @Environment(AppState.self) private var appState
     @Bindable var inspection: FileInspection
     @Environment(\.iOSViewImage) private var viewImage
     @Environment(\.iOSViewCube) private var viewCube
@@ -26,30 +27,50 @@ struct iOSFileView: View {
     private var hdus: [FITSHDUnit] { inspection.structure.value ?? [] }
     private var hdu: FITSHDUnit? { hdus.indices.contains(selectedHDU) ? hdus[selectedHDU] : hdus.first }
 
+    /// In storage, not on this device, and signed out (plan 49): nothing to
+    /// read until the person signs in.
+    private var needsSignIn: Bool {
+        inspection.file.isRemote && inspection.local.value == nil && !appState.isAuthenticated
+    }
+
     var body: some View {
         List {
             summarySection
-            viewSection
-            if let problem = inspection.structure.problem {
+            if needsSignIn {
                 Section {
-                    Label(problem.message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
-                    Button("Try Again") { Task { await inspection.inspect() } }
+                    Label("This file is in your storage. Sign in to read it.", systemImage: "lock")
+                    Button("Sign In") { appState.showLoginSheet = true }
                 }
+            } else {
+                readableSections
             }
-            if hdus.count > 1 { hdusSection }
-            if let hdu { cardsSection(hdu) }
-            fileSection
         }
         .navigationTitle(inspection.file.name)
         .navigationBarTitleDisplayMode(.inline)
         .overlay { if inspection.structure.isLoadingFirst { ProgressView("Reading the headers…") } }
-        .task { if inspection.structure.value == nil { await inspection.inspect() } }
-        .refreshable { await inspection.inspect() }
+        .task(id: appState.isAuthenticated) {
+            if inspection.structure.value == nil && !needsSignIn { await inspection.inspect() }
+        }
+        .refreshable { if !needsSignIn { await inspection.inspect() } }
         .onChange(of: inspection.local.value) { _, url in
             guard wantsToView, let url else { return }
             wantsToView = false
             view(url)
         }
+    }
+
+    @ViewBuilder
+    private var readableSections: some View {
+        viewSection
+        if let problem = inspection.structure.problem {
+            Section {
+                Label(problem.message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                Button("Try Again") { Task { await inspection.inspect() } }
+            }
+        }
+        if hdus.count > 1 { hdusSection }
+        if let hdu { cardsSection(hdu) }
+        fileSection
     }
 
     /// See the image: at once when the file is here; else after its download.
@@ -176,7 +197,9 @@ struct iOSFileView: View {
             switch inspection.local {
             case .ready(let url):
                 Label(inspection.file.isRemote ? "Downloaded to this device" : "On this device", systemImage: "checkmark.circle")
-                ShareLink(item: url) { Label("Share the File", systemImage: "square.and.arrow.up") }
+                ShareLink(item: iOSFileShare(url: url), preview: iOSFileShare.preview(url)) {
+                    Label("Share the File", systemImage: "square.and.arrow.up")
+                }
             case .working:
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: inspection.progress)

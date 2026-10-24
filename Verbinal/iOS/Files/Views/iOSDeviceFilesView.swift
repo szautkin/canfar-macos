@@ -10,6 +10,7 @@ import SwiftUI
 /// shows an app's: what there is, its size, and what can go. A tap opens a
 /// file; a swipe deletes it; Edit deletes several, after one question.
 struct iOSDeviceFilesView: View {
+    @Environment(AppState.self) private var appState
     var library: DeviceLibrary
     /// Opens a file in FITS or Cube, through the shell.
     var onOpen: (FileRef) -> Void
@@ -167,13 +168,15 @@ struct iOSDeviceFilesView: View {
             }
             .contextMenu {
                 Button { open(file) } label: { Label("Open", systemImage: "eye") }
-                ShareLink(item: file.url) { Label("Share", systemImage: "square.and.arrow.up") }
+                ShareLink(item: iOSFileShare(url: file.url), preview: iOSFileShare.preview(file.url)) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
                 if file.kind != .kept {
                     Button { Task { await library.keep(file) } } label: { Label("Keep on This Device", systemImage: "pin") }
                 } else if file.isInStorage {
                     Button { Task { await library.unkeep(file) } } label: { Label("Don't Keep", systemImage: "pin.slash") }
                 }
-                if let path = file.origin?.storagePath {
+                if let path = file.origin?.storagePath, appState.isAuthenticated {
                     Button { storageFolder = (path as NSString).deletingLastPathComponent } label: {
                         Label("Show in Storage", systemImage: "externaldrive")
                     }

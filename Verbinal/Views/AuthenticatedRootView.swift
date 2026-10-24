@@ -6,99 +6,38 @@
 
 import SwiftUI
 
-/// Owns all dashboard models and wires them together.
-/// Passes them to the platform-appropriate layout.
+/// The signed-in dashboard: its models, built and loaded once, and the
+/// platform's layout. On iOS the shell is shown signed in or out, and builds
+/// the models itself (plan 49).
 struct AuthenticatedRootView: View {
+    #if os(macOS)
     @Environment(AppState.self) private var appState
 
-    @State private var sessionListModel: SessionListModel?
-    @State private var sessionLaunchModel: SessionLaunchModel?
-    @State private var headlessLaunchModel: HeadlessLaunchModel?
-    @State private var platformLoadModel: PlatformLoadModel?
-    @State private var storageModel: StorageModel?
+    @State private var models: DashboardModels?
 
     var body: some View {
         Group {
-            if let slm = sessionListModel,
-               let launch = sessionLaunchModel,
-               let plm = platformLoadModel,
-               let sm = storageModel {
-                #if os(macOS)
+            if let models {
                 DashboardView(
-                    sessionListModel: slm,
-                    sessionLaunchModel: launch,
-                    headlessLaunchModel: headlessLaunchModel,
-                    platformLoadModel: plm,
-                    storageModel: sm
+                    sessionListModel: models.sessions,
+                    sessionLaunchModel: models.launch,
+                    headlessLaunchModel: models.headless,
+                    platformLoadModel: models.platformLoad,
+                    storageModel: models.storage
                 )
-                #else
-                iOSShell(
-                    sessionListModel: slm,
-                    sessionLaunchModel: launch,
-                    platformLoadModel: plm,
-                    storageModel: sm
-                )
-                #endif
             } else {
                 ProgressView("Loading...")
             }
         }
-        .task { await loadData() }
-    }
-
-    private func loadData() async {
-        let slm = SessionListModel(sessionService: appState.sessionService)
-        let launch = SessionLaunchModel(
-            sessionService: appState.sessionService,
-            imageService: appState.imageService,
-            recentLaunchStore: appState.recentLaunchStore,
-            cacheService: appState.portalImageCacheService,
-            settingsService: appState.portalSettingsService,
-            userImages: appState.userImages,
-            username: appState.username
-        )
-        let plm = PlatformLoadModel(platformService: appState.platformService)
-        let sm = StorageModel(storageService: appState.storageService)
-        // The sizes it offers, for show_launch_form to check (plan 30 T5).
-        appState.sessionLaunchModelForTools = launch
-
-        // Wire session counter callbacks
-        launch.sessionCounter = { [weak slm] type in
-            slm?.sessionCount(forType: type) ?? 0
-        }
-        launch.totalSessionCounter = { [weak slm] in
-            slm?.sessions.count ?? 0
-        }
-        launch.sessionNamesForType = { [weak slm] type in
-            slm?.sessions
-                .filter { $0.sessionType.lowercased() == type.lowercased() }
-                .map(\.sessionName) ?? []
-        }
-
-        // Wire refresh callback to update launch model limits and suggested name
-        slm.onSessionsRefreshed = { [weak launch] in
-            launch?.updateSessionLimit()
-            launch?.refreshSessionNameIfNeeded()
-        }
-
-        sessionListModel = slm
-        sessionLaunchModel = launch
-        // The headless launch model only needs HeadlessService +
-        // RecentLaunchStore; the image catalogue is borrowed read-only
-        // from `launch` at render time, so no separate fetch.
-        headlessLaunchModel = HeadlessLaunchModel(
-            headlessService: appState.headlessService,
-            recentLaunchStore: appState.recentLaunchStore
-        )
-        platformLoadModel = plm
-        storageModel = sm
-
-        // Load all data concurrently
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { await slm.loadSessions() }
-            group.addTask { await launch.loadImagesAndContext() }
-            group.addTask { await plm.loadStats() }
-            group.addTask { await sm.loadQuota(username: appState.username) }
+        .task {
+            let built = DashboardModels(appState: appState)
+            models = built
+            await built.load(username: appState.username)
         }
     }
+    #else
+    var body: some View {
+        iOSShell()
+    }
+    #endif
 }

@@ -588,6 +588,8 @@ All ten steps are in.
 - TestFlight after each phase: internal, then a few CANFAR astronomers.
 - One App Store release when the agreed scope is done (D6, D7).
 - App Review notes:
+  - FITS, Cube and the files on the device need no account; Portal and Compute need a CADC account,
+    and they are locked until sign-in (plan 49);
   - a demo CADC account;
   - that Compute runs the person's code on their own CANFAR session, never on the device (2.5.2);
   - the purpose strings.

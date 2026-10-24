@@ -6,22 +6,6 @@
 
 import SwiftUI
 
-/// The stored session being checked (or renewed) at launch: what the
-/// Mac's toolbar says, as the whole screen (plan 47 0.4).
-struct iOSSignInCheckView: View {
-    @Environment(AppState.self) private var appState
-
-    var body: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-                .controlSize(.large)
-            Text(appState.statusMessage.isEmpty ? String(localized: "Validating session…") : appState.statusMessage)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
 /// A Mac screen asked for on iOS.
 struct iOSMacOnlyPlaceholder: View {
     let feature: LocalizedStringResource

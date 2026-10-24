@@ -9,12 +9,17 @@ import UniformTypeIdentifiers
 
 /// Where a file to review comes from (plan 47 phase 3): what was opened
 /// lately, the person's CANFAR storage (read where it is), or a file on this
-/// device — the same sheet from FITS and Cube.
+/// device — the same sheet from FITS and Cube. Signed out (plan 49), storage
+/// asks to sign in; files on the device open as ever.
 struct iOSOpenSheet: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
 
     var recents: iOSRecentFiles
+    /// This device's files: a storage file here opens signed out.
+    var files: DeviceFiles
+    /// The shell closes this sheet, then shows the sign-in sheet.
+    var onSignIn: () -> Void
     var onOpen: (FileRef) -> Void
 
     @State private var showImporter = false
@@ -26,10 +31,20 @@ struct iOSOpenSheet: View {
                 if !recents.items.isEmpty {
                     Section("Recent") {
                         ForEach(recents.items.prefix(8)) { file in
-                            Button { open(file) } label: { iOSFileRow(file: file) }
-                                .swipeActions {
-                                    Button("Remove", role: .destructive) { recents.remove(file) }
+                            let locked = file.isRemote && !appState.isAuthenticated && !files.has(file)
+                            Button { locked ? onSignIn() : open(file) } label: {
+                                HStack {
+                                    iOSFileRow(file: file).opacity(locked ? 0.5 : 1)
+                                    if locked {
+                                        Spacer()
+                                        Image(systemName: "lock.fill").font(.footnote).foregroundStyle(.secondary)
+                                    }
                                 }
+                            }
+                            .accessibilityHint(locked ? Text("In your storage: sign in to open it") : Text(verbatim: ""))
+                            .swipeActions {
+                                Button("Remove", role: .destructive) { recents.remove(file) }
+                            }
                         }
                     }
                 }
@@ -42,8 +57,9 @@ struct iOSOpenSheet: View {
                             Label("Home", systemImage: "house")
                         }
                     } else {
-                        Label("Sign in to open files from your storage.", systemImage: "lock")
-                            .foregroundStyle(.secondary)
+                        Button { onSignIn() } label: {
+                            Label("Sign In to Open Files from Your Storage", systemImage: "lock")
+                        }
                     }
                 } header: {
                     Text("Your Storage")
@@ -60,6 +76,26 @@ struct iOSOpenSheet: View {
                     if let importProblem {
                         Text(importProblem).font(.caption).foregroundStyle(.red)
                     }
+                }
+
+                // Two small public files to try the viewers with (plan 49 D4).
+                Section {
+                    ForEach(iOSSample.all) { sample in
+                        Button { openSample(sample) } label: {
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(sample.title)
+                                    Text(verbatim: sample.credit).font(.caption).foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: sample.systemImage)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Samples")
+                } footer: {
+                    Text("Public data, cut down for Verbinal. Each file's header credits the observation.")
                 }
             }
             .navigationTitle("Open")
@@ -90,6 +126,14 @@ struct iOSOpenSheet: View {
 
     private func open(_ file: FileRef) {
         recents.add(file)
+        onOpen(file)
+        dismiss()
+    }
+
+    /// A sample opens from the app's bundle, and stays out of Recent: it is
+    /// always here.
+    private func openSample(_ sample: iOSSample) {
+        guard let url = sample.url, let file = FileRef.device(url) else { return }
         onOpen(file)
         dismiss()
     }

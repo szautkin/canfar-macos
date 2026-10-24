@@ -9,6 +9,8 @@ import SwiftUI
 /// The app's menu, behind the button with the person's initials (plan 48,
 /// D1): who is signed in, then the files — on this device and in storage —
 /// the settings, help, and Sign Out. The four places keep the tab bar.
+/// Signed out (plan 49), Sign In comes first and what needs the account is
+/// locked.
 struct iOSMenuSheet: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
@@ -17,22 +19,32 @@ struct iOSMenuSheet: View {
     var reminders: ExpiryReminderScheduler
     var sessions: [PortalAttention.SessionFacts]
     var library: DeviceLibrary
-    var storage: StorageModel
+    /// The quota's numbers; nil signed out.
+    var storage: StorageModel?
     /// Opens a file in FITS or Cube; the shell closes the menu.
     var onOpen: (FileRef) -> Void
     /// Closes the viewers showing these files.
     var onClose: ([URL]) -> Void
+    /// The shell closes the menu, then shows the sign-in sheet.
+    var onSignIn: () -> Void
+    /// Signs out; `true` deletes Downloads too (D3).
+    var onSignOut: (_ deleteDownloads: Bool) -> Void
 
     @State private var showAbout = false
     @State private var showTerms = false
+    @State private var confirmingSignOut = false
+
+    private var signedIn: Bool { appState.isAuthenticated }
 
     var body: some View {
         NavigationStack {
             List {
-                profile
-                ForEach(iOSMenuEntry.layout, id: \.section) { group in
+                if signedIn { profile }
+                ForEach(iOSMenuEntry.layout(signedIn: signedIn), id: \.section) { group in
                     Section {
-                        ForEach(group.entries) { row($0) }
+                        ForEach(group.entries) { entry in
+                            if entry.needsAccount && !signedIn { locked(entry) } else { row(entry) }
+                        }
                     } header: {
                         header(group.section)
                     } footer: {
@@ -54,6 +66,15 @@ struct iOSMenuSheet: View {
             .sheet(isPresented: $showTerms) {
                 LegalDocumentSheet()
                     .iosSheetChrome()
+            }
+            .confirmationDialog("Sign Out?", isPresented: $confirmingSignOut, titleVisibility: .visible) {
+                Button("Sign Out") { onSignOut(false) }
+                if library.bytes(.downloads) > 0 {
+                    Button("Sign Out and Delete Downloads (\(FilesWording.bytes(library.bytes(.downloads))))",
+                           role: .destructive) { onSignOut(true) }
+                }
+            } message: {
+                Text("FITS, Cube and the files on this device stay. Downloads are copies of files in your storage; kept files stay either way.")
             }
             .task { await library.reload() }
         }
@@ -93,7 +114,7 @@ struct iOSMenuSheet: View {
                 LabeledContent {
                     Text(verbatim: FilesWording.bytes(library.bytes()))
                 } label: {
-                    Label(iOSDeviceFilesView.deviceTitle, systemImage: iOSDeviceFilesView.deviceIcon)
+                    label(entry)
                 }
             }
         case .yourStorage:
@@ -101,43 +122,69 @@ struct iOSMenuSheet: View {
                 iOSYourStorageView(storage: storage, library: library, onOpen: onOpen)
             } label: {
                 LabeledContent {
-                    if storage.hasData {
+                    if let storage, storage.hasData {
                         Text(verbatim: (storage.usagePercent / 100).formatted(.percent.precision(.fractionLength(0))))
                     }
                 } label: {
-                    Label("Your Storage", systemImage: "externaldrive")
+                    label(entry)
                 }
             }
         case .reminders:
-            Toggle(isOn: remindersOn) { Label("Session Reminders", systemImage: "bell") }
+            Toggle(isOn: remindersOn) { label(entry) }
         case .downloadsCap:
             Picker(selection: Bindable(library).capGB) {
                 ForEach(FilesRules.capChoices, id: \.self) { Text(verbatim: "\($0) GB").tag($0) }
             } label: {
-                Label("Downloads Kept Up To", systemImage: "arrow.down.circle")
+                label(entry)
             }
         case .aiCompute:
             NavigationLink {
                 iOSAIComputeSettingsView(settings: appState.aiComputeSettings, model: appState.remoteComputeModel)
             } label: {
-                Label("AI Compute", systemImage: "cpu")
+                label(entry)
             }
         case .help:
-            Link(destination: iOSMenuEntry.helpURL) {
-                Label("Verbinal Help", systemImage: "questionmark.circle")
-            }
-            .accessibilityHint(Text("Opens the user manual in Safari"))
+            Link(destination: iOSMenuEntry.helpURL) { label(entry) }
+                .accessibilityHint(Text("Opens the user manual in Safari"))
         case .about:
-            Button { showAbout = true } label: { Label("About Verbinal", systemImage: "info.circle") }
+            Button { showAbout = true } label: { label(entry) }
         case .terms:
-            Button { showTerms = true } label: {
-                Label(LegalText.document(for: locale).termsLink, systemImage: "doc.text")
-            }
+            Button { showTerms = true } label: { label(entry) }
+        case .signIn:
+            Button { onSignIn() } label: { label(entry).font(.headline) }
         case .signOut:
-            Button("Sign Out", role: .destructive) {
-                dismiss()
-                Task { await appState.logout() }
+            Button("Sign Out", role: .destructive) { confirmingSignOut = true }
+        }
+    }
+
+    /// An entry that needs the account, signed out: grey, a lock, and a tap
+    /// that asks to sign in.
+    private func locked(_ entry: iOSMenuEntry) -> some View {
+        Button { onSignIn() } label: {
+            HStack {
+                label(entry).foregroundStyle(.secondary)
+                Spacer()
+                Image(systemName: "lock.fill").font(.footnote).foregroundStyle(.secondary)
             }
+        }
+        .accessibilityValue(Text("Locked"))
+        .accessibilityHint(Text("Sign in to use it"))
+    }
+
+    /// Each entry's name and symbol, in one place.
+    @ViewBuilder
+    private func label(_ entry: iOSMenuEntry) -> some View {
+        switch entry {
+        case .onThisDevice: Label(iOSDeviceFilesView.deviceTitle, systemImage: iOSDeviceFilesView.deviceIcon)
+        case .yourStorage: Label("Your Storage", systemImage: "externaldrive")
+        case .reminders: Label("Session Reminders", systemImage: "bell")
+        case .downloadsCap: Label("Downloads Kept Up To", systemImage: "arrow.down.circle")
+        case .aiCompute: Label("AI Compute", systemImage: "cpu")
+        case .help: Label("Verbinal Help", systemImage: "questionmark.circle")
+        case .about: Label("About Verbinal", systemImage: "info.circle")
+        case .terms: Label(LegalText.document(for: locale).termsLink, systemImage: "doc.text")
+        case .signIn: Label("Sign In", systemImage: "person.crop.circle")
+        case .signOut: Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
         }
     }
 
@@ -153,12 +200,17 @@ struct iOSMenuSheet: View {
 
     @ViewBuilder
     private func footer(_ section: iOSMenuEntry.Section) -> some View {
-        if section == .settings {
+        switch section {
+        case .account where !signedIn:
+            Text("Sign in with your CADC account for the Portal, Compute and your storage. FITS, Cube and the files on this device need no account.")
+        case .settings where signedIn:
             if reminders.isDenied {
                 Text("Notifications are off for Verbinal. Turn them on in Settings ▸ Notifications.")
             } else {
                 Text("Session reminders come thirty minutes before a session ends, even when Verbinal is closed.")
             }
+        default:
+            EmptyView()
         }
     }
 
@@ -171,7 +223,7 @@ struct iOSMenuSheet: View {
 }
 
 /// The person's initials in a circle: the menu's button, in the same place
-/// on every screen.
+/// on every screen; a person symbol while signed out.
 struct iOSMenuButton: View {
     @Environment(AppState.self) private var appState
     var action: () -> Void
@@ -195,6 +247,7 @@ struct iOSMenuButton: View {
     }
 
     private var initials: String? {
+        guard appState.isAuthenticated else { return nil }
         if let info = appState.userInfo, let first = info.firstName?.first {
             return String(first) + (info.lastName?.first.map(String.init) ?? "")
         }

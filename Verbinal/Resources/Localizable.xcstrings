@@ -2179,6 +2179,17 @@
         }
       }
     },
+    "About CANFAR" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos de CANFAR"
+          }
+        }
+      }
+    },
     "About Verbinal" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3938,6 +3949,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "vérification en arrière-plan"
+          }
+        }
+      }
+    },
+    "Checking your sign-in…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérification de votre connexion…"
           }
         }
       }
@@ -9217,6 +9239,16 @@
         }
       }
     },
+    "FITS, Cube and the files on this device stay. Downloads are copies of files in your storage; kept files stay either way." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FITS, Cube et les fichiers de cet appareil restent. Les téléchargements sont des copies de fichiers de votre stockage ; les fichiers conservés restent dans tous les cas."
+          }
+        }
+      }
+    },
     "Fix the problems listed under the query first" : {
       "localizations" : {
         "fr" : {
@@ -9590,6 +9622,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Obtention des détails d'archive — %1$lld sur %2$lld"
+          }
+        }
+      }
+    },
+    "GN-z11, a Galaxy at Redshift 10.6" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GN-z11, une galaxie à un décalage vers le rouge de 10,6"
           }
         }
       }
@@ -10357,6 +10400,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dans votre stockage seulement"
+          }
+        }
+      }
+    },
+    "In your storage: sign in to open it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans votre stockage : connectez-vous pour l’ouvrir"
           }
         }
       }
@@ -11699,6 +11752,16 @@
         }
       }
     },
+    "Locked: sign in to use it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verrouillé : connectez-vous pour l’utiliser"
+          }
+        }
+      }
+    },
     "Log" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11841,6 +11904,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Faible"
+          }
+        }
+      }
+    },
+    "M31, the Andromeda Galaxy" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "M31, la galaxie d’Andromède"
           }
         }
       }
@@ -14686,6 +14760,16 @@
         }
       }
     },
+    "Opens canfar.net in Safari" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre canfar.net dans Safari"
+          }
+        }
+      }
+    },
     "Opens it again" : {
       "localizations" : {
         "fr" : {
@@ -15205,6 +15289,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisir votre client"
+          }
+        }
+      }
+    },
+    "Picture of the View" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image de la vue"
           }
         }
       }
@@ -15778,6 +15873,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Public — tout le monde peut le lire, et ce genre de fichier contient souvent des secrets"
+          }
+        }
+      }
+    },
+    "Public data, cut down for Verbinal. Each file's header credits the observation." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Données publiques, réduites pour Verbinal. L’en-tête de chaque fichier crédite l’observation."
           }
         }
       }
@@ -18056,6 +18161,16 @@
         }
       }
     },
+    "Samples" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exemples"
+          }
+        }
+      }
+    },
     "Sans" : {
       "localizations" : {
         "fr" : {
@@ -19659,13 +19774,13 @@
         }
       }
     },
-    "Sign in to open files from your storage." : {
+    "Sign In to Open Files from Your Storage" : {
       "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connectez-vous pour ouvrir les fichiers de votre stockage."
+            "value" : "Se connecter pour ouvrir des fichiers de votre stockage"
           }
         }
       }
@@ -19691,6 +19806,48 @@
         }
       }
     },
+    "Sign in to use it" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous pour l’utiliser"
+          }
+        }
+      }
+    },
+    "Sign in with your CADC account for the Portal, Compute and your storage. FITS, Cube and the files on this device need no account." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous avec votre compte CADC pour le Portail, le Calcul et votre stockage. FITS, Cube et les fichiers de cet appareil ne demandent aucun compte."
+          }
+        }
+      }
+    },
+    "Sign in with your CADC account to run code on CANFAR and read its results." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous avec votre compte CADC pour exécuter du code sur CANFAR et en lire les résultats."
+          }
+        }
+      }
+    },
+    "Sign in with your CADC account to see and launch your sessions, follow the platform's load, and check your storage." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous avec votre compte CADC pour voir et lancer vos sessions, suivre la charge de la plateforme et consulter votre stockage."
+          }
+        }
+      }
+    },
     "Sign Out" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -19698,6 +19855,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Se déconnecter"
+          }
+        }
+      }
+    },
+    "Sign Out and Delete Downloads (%@)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se déconnecter et supprimer les téléchargements (%@)"
+          }
+        }
+      }
+    },
+    "Sign Out?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se déconnecter ?"
           }
         }
       }
@@ -21175,6 +21354,17 @@
         }
       }
     },
+    "The File" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier"
+          }
+        }
+      }
+    },
     "The file could not be read." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -21740,6 +21930,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ce fichier n'a pas d'image %@ ; il a %@."
+          }
+        }
+      }
+    },
+    "This file is in your storage. Sign in to read it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier est dans votre stockage. Connectez-vous pour le lire."
           }
         }
       }
@@ -22789,17 +22990,6 @@
         }
       }
     },
-    "Validating session…" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Validation de la session…"
-          }
-        }
-      }
-    },
     "Value" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -23375,6 +23565,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En attente de la tâche %@"
+          }
+        }
+      }
+    },
+    "Waiting for the Network" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente du réseau"
           }
         }
       }
@@ -24320,6 +24521,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Votre session CADC a pris fin. Connectez-vous pour continuer."
+          }
+        }
+      }
+    },
+    "Your CANFAR Sessions" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos sessions CANFAR"
+          }
+        }
+      }
+    },
+    "Your Compute Session" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre session de calcul"
           }
         }
       }

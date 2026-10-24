@@ -97,11 +97,21 @@ struct iOSCubeViewer: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: iOSCubePicture(model: model, moment: mode == .moment ? moment?.image : nil),
-                          preview: SharePreview(model.fileName, image: Image(systemName: "cube"))) {
+                // A picture of the slice or the moment map, or the file as it is (plan 49).
+                Menu {
+                    ShareLink(item: iOSCubePicture(model: model, moment: mode == .moment ? moment?.image : nil),
+                              preview: SharePreview(model.fileName, image: Image(systemName: "cube"))) {
+                        Label("Picture of the View", systemImage: "photo")
+                    }
+                    .disabled(model.sliceImage == nil)
+                    if let url = model.fileURL {
+                        ShareLink(item: iOSFileShare(url: url), preview: iOSFileShare.preview(url)) {
+                            Label("The File", systemImage: "doc")
+                        }
+                    }
+                } label: {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
-                .disabled(model.sliceImage == nil)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { controlsSection = .display; showControls = true } label: {

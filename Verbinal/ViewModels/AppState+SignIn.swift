@@ -33,7 +33,7 @@ extension AppState {
     /// The launch check has not answered yet, or the session is being
     /// checked or renewed. Every outcome of the check leaves a status
     /// message, so signed out with none means it is still to come. The iOS
-    /// landing shows "Validating session…" then, not "Login Required" (plan 47 0.4).
+    /// shell's Portal and Compute say they are checking then, not locked (plan 49).
     var isCheckingSignIn: Bool {
         auth.activity != .idle || (!auth.isAuthenticated && auth.statusMessage.isEmpty)
     }

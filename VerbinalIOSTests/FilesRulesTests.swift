@@ -81,11 +81,31 @@ final class FilesRulesTests: XCTestCase {
     // MARK: - The menu
 
     func testEveryMenuEntryIsInTheMenuOnceInItsSectionsOrder() {
-        let entries = iOSMenuEntry.layout.flatMap(\.entries)
-        XCTAssertEqual(Set(entries), Set(iOSMenuEntry.allCases))
-        XCTAssertEqual(entries.count, iOSMenuEntry.allCases.count, "no entry twice")
-        XCTAssertEqual(iOSMenuEntry.layout.map(\.section), iOSMenuEntry.Section.allCases)
-        XCTAssertEqual(iOSMenuEntry.layout.first?.entries, [.onThisDevice, .yourStorage], "Files first")
-        XCTAssertEqual(iOSMenuEntry.layout.last?.entries, [.signOut], "Sign Out last")
+        let signedIn = iOSMenuEntry.layout(signedIn: true), signedOut = iOSMenuEntry.layout(signedIn: false)
+        for layout in [signedIn, signedOut] {
+            let entries = layout.flatMap(\.entries)
+            XCTAssertEqual(entries.count, Set(entries).count, "no entry twice")
+        }
+        XCTAssertEqual(Set(signedIn.flatMap(\.entries) + signedOut.flatMap(\.entries)), Set(iOSMenuEntry.allCases))
+        XCTAssertEqual(signedIn.map(\.section), iOSMenuEntry.Section.allCases)
+        XCTAssertEqual(signedIn.first?.entries, [.onThisDevice, .yourStorage], "Files first")
+        XCTAssertEqual(signedIn.last?.entries, [.signOut], "Sign Out last")
+    }
+
+    /// Plan 49: signed out, Sign In comes first and the rest is the same menu.
+    func testSignedOutTheMenuStartsWithSignIn() {
+        let signedIn = iOSMenuEntry.layout(signedIn: true), signedOut = iOSMenuEntry.layout(signedIn: false)
+        XCTAssertEqual(signedOut.first?.section, .account)
+        XCTAssertEqual(signedOut.first?.entries, [.signIn])
+        XCTAssertEqual(signedOut.dropFirst().map(\.entries), signedIn.dropLast().map(\.entries))
+    }
+
+    /// Plan 49: what needs the CANFAR account is locked signed out; the files
+    /// on the device, the cap, help and Sign In are not.
+    func testWhatNeedsTheAccount() {
+        let needing = Set(iOSMenuEntry.allCases.filter(\.needsAccount))
+        XCTAssertEqual(needing, [.yourStorage, .reminders, .aiCompute, .signOut])
+        XCTAssertFalse(iOSMenuEntry.signIn.needsAccount)
+        XCTAssertFalse(iOSMenuEntry.onThisDevice.needsAccount)
     }
 }

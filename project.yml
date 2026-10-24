@@ -223,7 +223,9 @@ targets:
       - Verbinal/iOS/Files/Services/FileOriginAttribute.swift
       - Verbinal/iOS/Files/Services/RemoteFileCache.swift
       - Verbinal/iOS/Open/Models/FileRef.swift
+      - Verbinal/iOS/Open/Models/iOSSample.swift
       - Verbinal/iOS/Shell/iOSMenuEntry.swift
+      - Verbinal/iOS/Shell/iOSPlaceAccess.swift
     dependencies:
       - package: VerbinalKit
         product: VerbinalKit

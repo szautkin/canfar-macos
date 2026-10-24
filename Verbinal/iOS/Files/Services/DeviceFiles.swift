@@ -70,15 +70,24 @@ struct DeviceFiles: Sendable {
     /// This device's copy of that version of a storage file — kept, else
     /// downloaded — if there is one; opening it makes it recent.
     func localCopy(of file: FileRef) -> URL? {
+        guard let url = find(file) else { return nil }
+        FileOrigin.markOpened(url)
+        return url
+    }
+
+    /// Whether this device has that version, without counting it as opened.
+    func has(_ file: FileRef) -> Bool {
+        find(file) != nil
+    }
+
+    private func find(_ file: FileRef) -> URL? {
         guard case .storage(let path) = file.place else { return nil }
         let kept = list(.kept).first {
             $0.origin?.storagePath == path && $0.origin?.size == file.size && $0.origin?.modified == file.modified
         }
-        if let kept {
-            FileOrigin.markOpened(kept.url)
-            return kept.url
-        }
-        return cache.cached(file)
+        if let kept { return kept.url }
+        let cached = cache.location(of: file)
+        return FileManager.default.fileExists(atPath: cached.path) ? cached : nil
     }
 
     /// Notes that one of Verbinal's files was opened. The person's files

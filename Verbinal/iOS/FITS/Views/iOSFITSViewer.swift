@@ -40,11 +40,21 @@ struct iOSFITSViewer: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        ShareLink(item: iOSFITSPicture(model: model),
-                                  preview: SharePreview(model.displayName, image: Image(systemName: "photo"))) {
+                        // A picture of the view, or the file as it is (plan 49).
+                        Menu {
+                            ShareLink(item: iOSFITSPicture(model: model),
+                                      preview: SharePreview(model.displayName, image: Image(systemName: "photo"))) {
+                                Label("Picture of the View", systemImage: "photo")
+                            }
+                            .disabled(model.renderedImage == nil)
+                            if let url = model.fileURL {
+                                ShareLink(item: iOSFileShare(url: url), preview: iOSFileShare.preview(url)) {
+                                    Label("The File", systemImage: "doc")
+                                }
+                            }
+                        } label: {
                             Label("Share", systemImage: "square.and.arrow.up")
                         }
-                        .disabled(model.renderedImage == nil)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showControls = true } label: { Label("Adjust", systemImage: "slider.horizontal.3") }

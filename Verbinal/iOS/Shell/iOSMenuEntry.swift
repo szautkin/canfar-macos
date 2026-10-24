@@ -7,12 +7,13 @@
 import Foundation
 
 /// The menu behind the initials button (plan 48), as data: its sections in
-/// order, each with its entries. A new entry is a case and a place here.
+/// order, each with its entries, and which need the person's account (plan
+/// 49). A new entry is a case and a place here.
 enum iOSMenuEntry: String, CaseIterable, Identifiable, Sendable {
     case onThisDevice, yourStorage
     case reminders, downloadsCap, aiCompute
     case help, about, terms
-    case signOut
+    case signIn, signOut
 
     var id: String { rawValue }
 
@@ -21,13 +22,24 @@ enum iOSMenuEntry: String, CaseIterable, Identifiable, Sendable {
         var id: String { rawValue }
     }
 
-    /// The menu, top to bottom.
-    static let layout: [(section: Section, entries: [iOSMenuEntry])] = [
-        (.files, [.onThisDevice, .yourStorage]),
-        (.settings, [.reminders, .downloadsCap, .aiCompute]),
-        (.help, [.help, .about, .terms]),
-        (.account, [.signOut]),
-    ]
+    /// The menu, top to bottom. Signed in, Sign Out comes last; signed out,
+    /// Sign In comes first, as Settings puts "Sign in to your iPhone".
+    static func layout(signedIn: Bool) -> [(section: Section, entries: [iOSMenuEntry])] {
+        let places: [(section: Section, entries: [iOSMenuEntry])] = [
+            (.files, [.onThisDevice, .yourStorage]),
+            (.settings, [.reminders, .downloadsCap, .aiCompute]),
+            (.help, [.help, .about, .terms]),
+        ]
+        return signedIn ? places + [(.account, [.signOut])] : [(.account, [.signIn])] + places
+    }
+
+    /// Locked while signed out: these are the person's CANFAR account.
+    var needsAccount: Bool {
+        switch self {
+        case .yourStorage, .reminders, .aiCompute, .signOut: return true
+        case .onThisDevice, .downloadsCap, .help, .about, .terms, .signIn: return false
+        }
+    }
 
     /// Verbinal's manual, online.
     static let helpURL = URL(string: "https://docs.verbinal.com/")!

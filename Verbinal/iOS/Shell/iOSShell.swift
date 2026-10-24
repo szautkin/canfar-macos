@@ -9,16 +9,19 @@ import SwiftUI
 /// Verbinal on iPhone and iPad: four places — Portal, FITS, Cube, Compute
 /// (plan 47). A tab bar on iPhone, a sidebar on iPad; one selection on
 /// `AppState`, so navigation can drive either. Everything else is in the
-/// menu, behind the button with the person's initials (plan 48).
+/// menu, behind the button with the person's initials (plan 48). Signed in or
+/// out (plan 49): FITS, Cube and the files on the device need no account;
+/// Portal and Compute are locked until the person signs in.
 struct iOSShell: View {
     @Environment(AppState.self) private var appState
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    var sessionListModel: SessionListModel
-    var sessionLaunchModel: SessionLaunchModel
-    var platformLoadModel: PlatformLoadModel
-    var storageModel: StorageModel
-
+    /// The Portal's models: built at sign-in, dropped at sign-out.
+    @State private var account: DashboardModels?
+    /// Where the app opens is decided once, when the sign-in check answers.
+    @State private var startChosen = false
+    /// Sign In was asked for from a sheet: the sign-in sheet follows it.
+    @State private var signInAfterSheet = false
     @State private var showMenu = false
     /// The files Verbinal holds on this device (plan 48).
     @State private var library = DeviceLibrary()
@@ -39,7 +42,13 @@ struct iOSShell: View {
     @State private var cubeViewerShown = false
 
     private var sessionFacts: [PortalAttention.SessionFacts] {
-        sessionListModel.sessions.map(\.attentionFacts)
+        (account?.sessions.sessions ?? []).map(\.attentionFacts)
+    }
+
+    /// What `place` may show now (plan 49).
+    private func access(_ place: AppState.iOSDashboardTab) -> iOSPlaceAccess {
+        .of(needsAccount: place.needsAccount, signedIn: appState.isAuthenticated,
+            checking: appState.isCheckingSignIn, waitingForNetwork: appState.authAwaitingConnectivity)
     }
 
     var body: some View {
@@ -50,17 +59,20 @@ struct iOSShell: View {
                 tabView
             }
         }
-        .sheet(isPresented: $showMenu) {
-            iOSMenuSheet(reminders: reminders, sessions: sessionFacts, library: library, storage: storageModel,
+        .sheet(isPresented: $showMenu, onDismiss: signInIfAsked) {
+            iOSMenuSheet(reminders: reminders, sessions: sessionFacts, library: library, storage: account?.storage,
                          onOpen: { file in
                              showMenu = false
                              recents.add(file)
                              open(file, in: .fits)
                          },
-                         onClose: closeFiles)
+                         onClose: closeFiles,
+                         onSignIn: { signInAfterSheet = true; showMenu = false },
+                         onSignOut: signOut)
         }
-        .sheet(item: $openingFor) { place in
-            iOSOpenSheet(recents: recents) { file in open(file, in: place) }
+        .sheet(item: $openingFor, onDismiss: signInIfAsked) { place in
+            iOSOpenSheet(recents: recents, files: library.store,
+                         onSignIn: { signInAfterSheet = true; openingFor = nil }) { file in open(file, in: place) }
         }
         // A file another app sent ("Open in Verbinal"): it opens in FITS.
         .onChange(of: appState.pendingFITSURL, initial: true) { _, url in
@@ -78,8 +90,11 @@ struct iOSShell: View {
         })
         .environment(\.iOSViewImage, { url in viewImage(url) })
         .environment(\.iOSViewCube, { url in viewCube(url) })
-        // A reminder per running session, moved whenever the sessions change.
-        .onChange(of: sessionListModel.sessions) { _, _ in rescheduleReminders() }
+        // A reminder per running session, moved whenever the sessions change;
+        // signed out, there are none.
+        .onChange(of: account?.sessions.sessions ?? []) { _, _ in rescheduleReminders() }
+        .task(id: appState.isAuthenticated) { await followSignIn() }
+        .onChange(of: appState.isCheckingSignIn, initial: true) { _, _ in chooseStart() }
         .onAppear {
             guard computeHistory == nil else { return }
             let appState = appState
@@ -157,7 +172,7 @@ struct iOSShell: View {
                     content(for: place)
                         .toolbar { menuItem }
                 }
-                .tabItem { Label(place.title, systemImage: place.icon) }
+                .tabItem { placeLabel(place) }
                 .tag(place)
             }
         }
@@ -170,7 +185,8 @@ struct iOSShell: View {
             List(selection: sidebarSelection) {
                 ForEach(AppState.iOSDashboardTab.allCases) { place in
                     NavigationLink(value: place) {
-                        Label(place.title, systemImage: place.icon)
+                        placeLabel(place)
+                            .foregroundStyle(access(place).isLocked ? .secondary : .primary)
                     }
                 }
             }
@@ -190,6 +206,17 @@ struct iOSShell: View {
         )
     }
 
+    /// A place's name and icon; locked, the icon is grey with a lock, and
+    /// VoiceOver says so. A tab item takes a plain label: the spoken words
+    /// ride on its Text, whose accessibilityLabel is a Text too.
+    private func placeLabel(_ place: AppState.iOSDashboardTab) -> some View {
+        let locked = access(place).isLocked
+        let title = locked
+            ? Text(place.title).accessibilityLabel(Text(place.title) + Text(verbatim: ", ") + Text("Locked: sign in to use it"))
+            : Text(place.title)
+        return Label { title } icon: { place.image(locked: locked) }
+    }
+
     private var menuItem: some SwiftUI.ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             iOSMenuButton { showMenu = true }
@@ -200,16 +227,30 @@ struct iOSShell: View {
 
     @ViewBuilder
     private func content(for place: AppState.iOSDashboardTab) -> some View {
+        let access = access(place)
+        if access.isLocked {
+            iOSLockedPlace(place: place, access: access)
+        } else {
+            unlocked(place)
+        }
+    }
+
+    @ViewBuilder
+    private func unlocked(_ place: AppState.iOSDashboardTab) -> some View {
         switch place {
         case .portal:
-            iOSPortalView(
-                sessions: sessionListModel,
-                launchModel: sessionLaunchModel,
-                platformLoad: platformLoadModel,
-                storage: storageModel,
-                seen: seen,
-                onRescheduleReminders: rescheduleReminders,
-                onOpenCompute: { appState.iOSDashboardTab = .compute })
+            if let account {
+                iOSPortalView(
+                    sessions: account.sessions,
+                    launchModel: account.launch,
+                    platformLoad: account.platformLoad,
+                    storage: account.storage,
+                    seen: seen,
+                    onRescheduleReminders: rescheduleReminders,
+                    onOpenCompute: { appState.iOSDashboardTab = .compute })
+            } else {
+                ProgressView()
+            }
         case .fits:
             if fitsViewerShown, !appState.fitsTabHost.tabs.isEmpty {
                 iOSFITSViewer(host: appState.fitsTabHost,
@@ -281,6 +322,46 @@ extension iOSShell {
 }
 
 extension iOSShell {
+    /// The account's models follow the sign-in: built and loaded when the
+    /// person signs in, dropped when they sign out or the session expires —
+    /// FITS and Cube go on either way (plan 49).
+    func followSignIn() async {
+        guard appState.isAuthenticated else {
+            account = nil
+            return
+        }
+        guard account == nil else { return }
+        let models = DashboardModels(appState: appState)
+        account = models
+        await models.load(username: appState.username)
+    }
+
+    /// Where the app opens, once the sign-in check has answered: on Portal
+    /// signed in or waiting for the network to check; signed out, on FITS (D2).
+    func chooseStart() {
+        guard !startChosen, !appState.isCheckingSignIn else { return }
+        startChosen = true
+        if access(appState.iOSDashboardTab) == .locked { appState.iOSDashboardTab = .fits }
+    }
+
+    /// Sign In asked for from a sheet: the sign-in sheet once that one has gone.
+    func signInIfAsked() {
+        guard signInAfterSheet else { return }
+        signInAfterSheet = false
+        appState.showLoginSheet = true
+    }
+
+    /// Sign Out, from the menu: the app stays, on FITS when the place shown
+    /// needs the account; with `deleteDownloads`, the storage copies go too (D3).
+    func signOut(deleteDownloads: Bool) {
+        showMenu = false
+        if appState.iOSDashboardTab.needsAccount { appState.iOSDashboardTab = .fits }
+        Task {
+            if deleteDownloads { await library.clearDownloads(closing: closeFiles) }
+            await appState.logout()
+        }
+    }
+
     /// Closes a file's page; an image or cube it shows stays open in its viewer.
     func closePage(_ place: AppState.iOSDashboardTab) {
         if place == .cube { openedCube = nil } else { openedFITS = nil }

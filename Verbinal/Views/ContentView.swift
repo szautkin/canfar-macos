@@ -496,19 +496,10 @@ struct ContentView: View {
         #if os(macOS)
         LandingView()
         #else
-        // iOS doesn't use the mode-card Mac landing. The app's home is the
-        // tab bar (iPhone) / split view (iPad), so once authenticated we
-        // jump straight to AuthenticatedRootView, which already chooses
-        // AdaptiveLayout on iOS. While the stored session is still being
-        // checked it says so, as the Mac's toolbar does; signed out, the
-        // same login-required prompt the other modes use.
-        if appState.isAuthenticated {
-            AuthenticatedRootView()
-        } else if appState.isCheckingSignIn {
-            iOSSignInCheckView()
-        } else {
-            loginRequiredView(for: .landing)
-        }
+        // iOS doesn't use the mode-card Mac landing: its home is the shell,
+        // signed in or out (plan 49). FITS, Cube and the files on the device
+        // need no account; the shell locks Portal and Compute until sign-in.
+        iOSShell()
         #endif
     }
 
