@@ -37,7 +37,7 @@ struct iOSOpenSheet: View {
                                     iOSFileRow(file: file).opacity(locked ? 0.5 : 1)
                                     if locked {
                                         Spacer()
-                                        Image(systemName: "lock.fill").font(.footnote).foregroundStyle(.secondary)
+                                        Image(systemName: "lock.fill").font(.footnote).foregroundStyle(Color.secondary)
                                     }
                                 }
                             }
@@ -85,7 +85,7 @@ struct iOSOpenSheet: View {
                             Label {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(sample.title)
-                                    Text(verbatim: sample.credit).font(.caption).foregroundStyle(.secondary)
+                                    Text(verbatim: sample.credit).font(.caption).foregroundStyle(Color.secondary)
                                 }
                             } icon: {
                                 Image(systemName: sample.systemImage)

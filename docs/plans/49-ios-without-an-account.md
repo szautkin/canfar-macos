@@ -217,6 +217,24 @@ L0 to L2 are built, the samples (D4) included.
 
   The iOS bundle: 51 tests, passing.
 - **French:** 23 new keys; 2 keys only the removed code used are gone.
-- **Not seen on screen yet:** the person chose to commit first and try it in the Simulator themselves
-  (2026-10-24): signed out, Samples, Share ▸ The File, sign in, sign out, expiry.
+- **Seen on screen (2026-10-24).** The person allowed it once: Claude ran a throwaway UI test, kept out
+  of the repository, on a test iPhone simulator with no stored session.
+  - **As built:**
+    - signed out, the app opens on FITS;
+    - Portal and Compute show grey icons with a lock;
+    - Portal's lock screen has its words, Sign In and About CANFAR;
+    - the menu has Sign In first and its locked entries;
+    - Open ▸ Samples lists both files, with their credit;
+    - M31 opens in FITS, with its compass and a 15″ scale bar (its WCS reads);
+    - GN-z11 opens in Cube at 5.0376 µm, with the line in the mean spectrum;
+    - Share ▸ The File opens the share sheet with the file.
+  - **Fixed from what was seen:**
+    - **The viewers' bar.** With a long file name, iOS folded Share, Adjust and ✕ Close into its "•••"
+      overflow, so the person's "no close" would have come back. The title is now drawn by the viewer
+      (`iOSViewerTitle`, the file name's menu): it truncates in the middle, at the width the menu button
+      and the three buttons leave. Fewer buttons alone did not help.
+    - **Locked menu rows** were drawn in the tint's light blue (`.secondary` inside a button). They now
+      use the grey colour, and so do Open's lock and the samples' credit lines.
+  - **Not seen:** signing in and out, and an expired session. They need the person's account, and
+    Claude never asks for a password.
 

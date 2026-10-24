@@ -25,11 +25,14 @@ struct iOSFITSViewer: View {
     @State private var showControls = false
     @State private var probe: CGPoint?
     @State private var copied = false
+    /// The viewer's width, for the title in the bar.
+    @State private var barWidth: CGFloat = 390
 
     var body: some View {
         if let model = host.activeTab {
             iOSFITSCanvas(model: model, host: host, chromeHidden: $chromeHidden, probe: $probe)
                 .ignoresSafeArea(edges: chromeHidden ? .all : [])
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
                 .overlay(alignment: .bottom) {
                     if !chromeHidden { readout(model) }
                 }
@@ -39,6 +42,9 @@ struct iOSFITSViewer: View {
                 .navigationTitle(model.displayName)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        iOSViewerTitle(name: model.displayName, barWidth: barWidth) { titleMenu }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         // A picture of the view, or the file as it is (plan 49).
                         Menu {
@@ -63,7 +69,6 @@ struct iOSFITSViewer: View {
                         Button { close() } label: { Label("Close", systemImage: "xmark") }
                     }
                 }
-                .toolbarTitleMenu { titleMenu }
                 .toolbar(chromeHidden ? .hidden : .automatic, for: .navigationBar)
                 .toolbar(chromeHidden ? .hidden : .automatic, for: .tabBar)
                 .statusBarHidden(chromeHidden)
@@ -112,7 +117,7 @@ struct iOSFITSViewer: View {
 
     // MARK: - Files
 
-    /// The file name's menu (the title's): the open images, Open…, the file's page.
+    /// The file name's menu (in the bar's title): the open images, Open…, the file's page.
     @ViewBuilder
     private var titleMenu: some View {
         ForEach(Array(host.tabs.enumerated()), id: \.element.id) { index, tab in

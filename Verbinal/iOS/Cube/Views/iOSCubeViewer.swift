@@ -37,6 +37,8 @@ struct iOSCubeViewer: View {
     @State private var controlsSection: iOSCubeControls.Section = .display
     @State private var moment: (cube: UUID, image: CGImage)?
     @State private var momentProgress: Double?
+    /// The viewer's width, for the title in the bar.
+    @State private var barWidth: CGFloat = 390
 
     /// The volume needs memory: an iPad, or an iPhone with 6 GB or more (decision D5).
     static var volumeAllowed: Bool {
@@ -93,9 +95,14 @@ struct iOSCubeViewer: View {
                     .background(.bar)
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
         .navigationTitle(model.fileName.isEmpty ? String(localized: "Cube") : model.fileName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                iOSViewerTitle(name: model.fileName.isEmpty ? String(localized: "Cube") : model.fileName,
+                               barWidth: barWidth) { titleMenu }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 // A picture of the slice or the moment map, or the file as it is (plan 49).
                 Menu {
@@ -122,7 +129,6 @@ struct iOSCubeViewer: View {
                 Button { close() } label: { Label("Close", systemImage: "xmark") }
             }
         }
-        .toolbarTitleMenu { titleMenu }
         .toolbar(chromeHidden ? .hidden : .automatic, for: .navigationBar)
         .toolbar(chromeHidden ? .hidden : .automatic, for: .tabBar)
         .statusBarHidden(chromeHidden)
@@ -177,7 +183,7 @@ struct iOSCubeViewer: View {
 
     // MARK: - Files
 
-    /// The file name's menu (the title's): the open cubes, Open…, the file's page.
+    /// The file name's menu (in the bar's title): the open cubes, Open…, the file's page.
     @ViewBuilder
     private var titleMenu: some View {
         ForEach(Array(host.tabs.enumerated()), id: \.element.id) { index, tab in

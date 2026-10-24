@@ -49,6 +49,16 @@
         }
       }
     },
+    "The open files, Open, and the file's page" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les fichiers ouverts, Ouvrir et la page du fichier"
+          }
+        }
+      }
+    },
     "—" : {
       "shouldTranslate" : false
     },

@@ -158,14 +158,16 @@ struct iOSMenuSheet: View {
     }
 
     /// An entry that needs the account, signed out: grey, a lock, and a tap
-    /// that asks to sign in.
+    /// that asks to sign in. Grey as a colour: in a button, `.secondary`
+    /// would be the tint's lighter shade.
     private func locked(_ entry: iOSMenuEntry) -> some View {
         Button { onSignIn() } label: {
             HStack {
-                label(entry).foregroundStyle(.secondary)
+                label(entry)
                 Spacer()
-                Image(systemName: "lock.fill").font(.footnote).foregroundStyle(.secondary)
+                Image(systemName: "lock.fill").font(.footnote)
             }
+            .foregroundStyle(Color.secondary)
         }
         .accessibilityValue(Text("Locked"))
         .accessibilityHint(Text("Sign in to use it"))
