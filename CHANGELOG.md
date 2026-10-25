@@ -6,6 +6,63 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1 for iPhone and iPad] - 2026-10-24
+
+Verbinal on iPhone and iPad, to check, review and verify away from the Mac:
+the FITS and Cube viewers and the files on the device for everyone, no
+account needed, and the Portal and Compute with a CANFAR account (see
+`docs/plans/47-verbinal-for-iphone-and-ipad.md` to
+`docs/plans/50-ios-welcome.md`). It is not a port of the Mac app: no archive
+search, Research or assistants. Version 1.4.1 (18), as on the Mac; each
+platform counts its builds apart. iOS and iPadOS 17 or newer.
+
+### Added
+- **The FITS viewer.** Pinch to zoom and turn (North Up snaps into place),
+  double-tap for fit or 1:1, and hold for a loupe with the pixel's value and
+  sky position. A compass from the image's WCS, a scale bar, and the
+  crosshair's coordinates, copied with a tap. **Adjust**: automatic, 99.5 %
+  or min–max cuts, a histogram with draggable black and white points, five
+  stretches and the colour maps. **Verify**: DATASUM and CHECKSUM from the
+  file's own bytes, statistics and the WCS; the whole header, searchable;
+  every HDU. Hold **Compare** to blink two images aligned on the sky. Share
+  a picture of the view, or the file.
+- **The Cube viewer.** Step through the channels with the cube's mean
+  spectrum under your thumb, a tick for each channel and a firmer one on a
+  peak. Hold a spaxel to read its spectrum and drag along it to move the
+  channel; moment 0 maps; the 3D volume on iPad and recent iPhones. Verify
+  the spectral axis, the values and the blank channels.
+- **Files, header first.** Open a file from Files, Mail, AirDrop or your
+  storage, and see its HDUs and cards before any pixels move. Keep files on
+  the device, see what Verbinal uses, and clear what you no longer need.
+  Two samples to try at once, M31 from Hubble and GN-z11 from Webb, with
+  their attribution.
+- **No account needed** for the viewers and the files. The Portal and
+  Compute show a lock until you sign in, and the link for an account goes
+  to canfar.net.
+- **The Portal.** The platform's load as rings; your sessions, with renew,
+  events, logs and delete; launch a session or relaunch a recent one; your
+  batch jobs; what needs your attention; and a reminder before a session
+  expires.
+- **Compute.** Run Python or Bash on your own CANFAR session, follow each
+  run, and open the files it writes.
+- **The menu**, behind your initials: your account, your files on the device
+  and in your storage, Settings (reminders, the downloads cap, Language, AI
+  Compute) and Help. The four tabs stay at the bottom.
+- **A welcome after the Terms**: what works without an account first, then
+  what an account adds. **Help ▸ Welcome to Verbinal** shows it again.
+- **Language** in Settings opens Verbinal's page in the iOS Settings app,
+  where iOS keeps each app's language. In English and French, with
+  VoiceOver.
+
+### Fixed
+- **An expired session asks you to sign in again**, on iPhone, iPad and the
+  Mac (the Mac from its next release). It asked nothing when the app opened
+  with an expired session; a renewal's state leaked into the sign-in that
+  followed it; and nothing checked again when the app came back to the
+  front, which now happens when the last check is 15 minutes old. Seen on
+  screen at launch, mid-use, with a sheet open, and with a real CADC expiry
+  on the Mac.
+
 ## [1.4.1] - 2026-10-20
 
 One session per assistant, a sign-in that renews itself, an observation's

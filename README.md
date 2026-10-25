@@ -1,6 +1,7 @@
 # Verbinal for macOS
 
-A native macOS desktop companion for the [CANFAR Science Portal](https://www.canfar.net/), built with SwiftUI and XcodeGen.
+A native macOS desktop companion for the [CANFAR Science Portal](https://www.canfar.net/), built with SwiftUI and XcodeGen
+— and, since 1.4.1, on iPhone and iPad too.
 
 Project home: **[verbinal.com](https://verbinal.com)**
 
@@ -8,10 +9,12 @@ Project home: **[verbinal.com](https://verbinal.com)**
 [![Release](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml/badge.svg)](https://github.com/szautkin/canfar-macos/actions/workflows/release.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue)](LICENSE)
 [![Mac App Store](https://img.shields.io/badge/Mac%20App%20Store-Verbinal-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/ca/app/verbinal/id6761290036)
+[![App Store](https://img.shields.io/badge/App%20Store-iPhone%20%26%20iPad-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/ca/app/verbinal/id6761290036)
 [![Website](https://img.shields.io/badge/web-verbinal.com-2ea44f)](https://verbinal.com)
 
 Available on the **[Mac App Store](https://apps.apple.com/ca/app/verbinal/id6761290036)**,
-and as an unsigned build from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
+and as an unsigned Mac build from [GitHub Releases](https://github.com/szautkin/canfar-macos/releases).
+For iPhone and iPad, it is on the **[App Store](https://apps.apple.com/ca/app/verbinal/id6761290036)**.
 
 **User manual:** [read it online](https://docs.verbinal.com/), or here in the repository:
 [English](docs/manual/en/00-contents.md) · [Français](docs/manual/fr/00-contents.md). It covers every
@@ -19,6 +22,11 @@ screen, setting and shortcut of Verbinal 1.4.
 
 ## Features
 
+- **On iPhone and iPad** (new in 1.4.1) — check, review and verify away from the Mac. The
+  FITS and Cube viewers and the files on the device need no account: open a file from Files,
+  Mail, AirDrop or your storage, header first, check its CHECKSUM, WCS and spectral axis, and
+  share it. With a CANFAR account, the Portal and Compute: your sessions, batch jobs and runs.
+  It is not a port of the Mac app; everything below is the Mac's.
 - **Sessions** — launch and manage Notebook, Desktop, CARTA, Contributed, and
   Firefly sessions on the CANFAR Skaha platform, no browser required. Auto-refreshing
   status, live platform load, CPU and RAM (and GPU, when there is one) on every session
@@ -109,6 +117,10 @@ Verify your download with the `checksums-sha256.txt` file:
 shasum -a 256 -c checksums-sha256.txt
 ```
 
+### iPhone and iPad
+
+Install Verbinal from the [App Store](https://apps.apple.com/ca/app/verbinal/id6761290036).
+
 ### Build from source
 
 See [Building](#building) below.
@@ -116,8 +128,8 @@ See [Building](#building) below.
 ## Requirements
 
 ### Runtime
-- macOS 14 or newer
-- A CANFAR account
+- macOS 14 or newer, or iOS and iPadOS 17 or newer
+- A CANFAR account (on iPhone and iPad, only for the Portal, Compute and your storage)
 
 ### Build
 - Xcode 16 or newer
