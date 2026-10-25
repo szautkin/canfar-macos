@@ -44,6 +44,11 @@ final class UIHintToolsTests: XCTestCase {
     private let context = AIToolContext(origin: .external(clientID: "t"), proposals: InMemoryProposalStore(),
                                          budget: ProposalBudget())
 
+    /// More controls than this is every control, not a hand-picked few. Search's
+    /// form alone has 36; the data train's seven columns join them only once CADC
+    /// answers, which a test cannot wait on (CI counted 38 one day, over 40 another).
+    private let everyControl = 30
+
     private func call<T: AITool>(_ tool: T, _ json: String) async throws -> [String: Any] {
         guard case .data(let data) = await tool.invoke(arguments: Data(json.utf8), context: context) else {
             XCTFail("\(T.self) failed")
@@ -57,7 +62,7 @@ final class UIHintToolsTests: XCTestCase {
         let listed = try await call(state.makeListUITargetsTool(), "{}")
         XCTAssertEqual((listed["window"] as? [String: Any])?["screen"] as? String, "search")
         let targets = try XCTUnwrap(listed["targets"] as? [[String: Any]])
-        XCTAssertGreaterThan(targets.count, 40, "every control, not a hand-picked few")
+        XCTAssertGreaterThan(targets.count, everyControl, "every control, not a hand-picked few")
         let ids = Set(targets.compactMap { $0["id"] as? String })
         XCTAssertTrue(ids.isSuperset(of: ["search.run", "search.reset", "agent.pending"]))
         XCTAssertEqual(listed["unnamed"] as? Int, 0)
@@ -86,7 +91,7 @@ final class UIHintToolsTests: XCTestCase {
         // pass found the bubbles listed as the controls).
         try await Task.sleep(for: .milliseconds(200))
         let listed = try await call(state.makeListUITargetsTool(), "{}")
-        XCTAssertGreaterThan(listed["count"] as? Int ?? 0, 40)
+        XCTAssertGreaterThan(listed["count"] as? Int ?? 0, everyControl)
         let names = Set((listed["targets"] as? [[String: Any]] ?? []).compactMap { $0["name"] as? String })
         XCTAssertFalse(names.contains("Runs the search."), "a bubble is not a control")
 
@@ -110,7 +115,7 @@ final class UIHintToolsTests: XCTestCase {
 
         let map = try await call(state.makeShowUIHintsTool(), #"{"all":{},"mode":"replace"}"#)
         let rings = try XCTUnwrap(map["shown"] as? [[String: Any]])
-        XCTAssertGreaterThan(rings.count, 40)
+        XCTAssertGreaterThan(rings.count, everyControl)
         XCTAssertTrue(rings.allSatisfy { $0["as"] as? String == "ring" })
         XCTAssertTrue(state.uiHints.hints(in: set).isEmpty, "replace cleared the first set")
 
