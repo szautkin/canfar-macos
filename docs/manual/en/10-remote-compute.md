@@ -56,6 +56,13 @@ To size a pool of workers in your code, read the session's cores from its CPU qu
 It runs as you, on your session, the same way `run_code` runs your assistant's code. The run then
 appears at the top of **Runs**.
 
+The box keeps what you type as you type it, with no smart quotes or dashes. Code pasted from a
+document, a chat or a web page can still bring characters that Python and Bash don't read as code:
+curly quotes, long dashes, non-breaking spaces, invisible characters. A note under the box names them,
+and **Fix Characters** makes them plain: straight quotes, `-` and `--`, ordinary spaces, nothing
+invisible. Inside a string such a character may be meant, so it is fixed only when you click, and ⌘Z
+takes the fix back.
+
 ## Runs
 
 Each run in the list says who sent it (**You** or **Assistant**), its language, and how it ended:

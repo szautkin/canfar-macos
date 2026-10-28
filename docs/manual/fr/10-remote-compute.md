@@ -60,6 +60,14 @@ CPU, `/sys/fs/cgroup/cpu.max` (quota ÷ période) : `os.cpu_count()` compte ceux
 Il s’exécute en votre nom, sur votre session, comme `run_code` exécute le code de votre assistant.
 L’exécution apparaît ensuite en tête des **Exécutions**.
 
+La zone garde ce que vous tapez tel que vous le tapez, sans guillemets ni tirets typographiques. Du
+code collé d’un document, d’une discussion ou d’une page web peut tout de même apporter des caractères
+que Python et Bash ne lisent pas comme du code : guillemets typographiques, tirets longs, espaces
+insécables, caractères invisibles. Une note sous la zone les nomme, et **Corriger les caractères** les
+rend ordinaires : guillemets droits, `-` et `--`, espaces simples, rien d’invisible. Dans une chaîne,
+un tel caractère peut être voulu : il n’est donc corrigé que si vous cliquez, et ⌘Z annule la
+correction.
+
 ## Les exécutions
 
 Chaque exécution de la liste dit qui l’a envoyée (**Vous** ou **Assistant**), son langage, et comment

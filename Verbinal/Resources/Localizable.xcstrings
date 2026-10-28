@@ -6072,6 +6072,16 @@
         }
       }
     },
+    "curly quotes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "guillemets typographiques"
+          }
+        }
+      }
+    },
     "Current default — tap to clear" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7955,6 +7965,16 @@
         }
       }
     },
+    "ellipses (…)" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "points de suspension (…)"
+          }
+        }
+      }
+    },
     "EM band" : {
       "localizations" : {
         "fr" : {
@@ -9256,6 +9276,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "FITS, Cube et les fichiers de cet appareil restent. Les téléchargements sont des copies de fichiers de votre stockage ; les fichiers conservés restent dans tous les cas."
+          }
+        }
+      }
+    },
+    "Fix Characters" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Corriger les caractères"
           }
         }
       }
@@ -10739,6 +10769,16 @@
         }
       }
     },
+    "invisible characters" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "caractères invisibles"
+          }
+        }
+      }
+    },
     "it always asks" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11520,6 +11560,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Licence"
+          }
+        }
+      }
+    },
+    "line separators" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "séparateurs de ligne"
           }
         }
       }
@@ -15972,6 +16022,16 @@
         }
       }
     },
+    "Python and Bash don't read these as code: %@. Inside a string, they may be meant." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Python et Bash ne lisent pas ces caractères comme du code : %@. Dans une chaîne, ils peuvent être voulus."
+          }
+        }
+      }
+    },
     "Quality" : {
       "localizations" : {
         "fr" : {
@@ -20199,6 +20259,16 @@
         }
       }
     },
+    "special spaces" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "espaces spéciales"
+          }
+        }
+      }
+    },
     "Spectral" : {
       "localizations" : {
         "fr" : {
@@ -20756,6 +20826,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stocké dans le trousseau macOS. Utilisé pour construire l'en-tête `x-skaha-registry-auth` afin que Skaha puisse tirer depuis des espaces privés. Le secret lui-même n'est jamais relu dans cette boîte de dialogue — définissez-le ou effacez-le, sans le consulter. Cliquez d'abord sur « Tester la connexion » pour vérifier que les identifiants atteignent le registre."
+          }
+        }
+      }
+    },
+    "Straight quotes, plain dashes and spaces, no invisible characters. ⌘Z undoes it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guillemets droits, tirets et espaces simples, sans caractères invisibles. ⌘Z annule."
           }
         }
       }
@@ -22559,6 +22639,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Saisissez le pourcentage de zoom et appuyez sur Entrée"
+          }
+        }
+      }
+    },
+    "typographic dashes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tirets typographiques"
           }
         }
       }

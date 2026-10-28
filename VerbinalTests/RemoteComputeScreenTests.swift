@@ -99,6 +99,16 @@ final class RemoteComputeScreenTests: XCTestCase {
         XCTAssertEqual(view.state, "stopped")
     }
 
+    func testPastedCharactersAreNamedAndFixedOnlyWhenAsked() {
+        let screen = model()
+        screen.code = "print(“Hello world”)\u{00A0}# ok"
+        XCTAssertEqual(screen.pastedCharacters, [.quotes, .spaces])
+        XCTAssertEqual(screen.code, "print(“Hello world”)\u{00A0}# ok", "named, not changed")
+        screen.fixPastedCharacters()
+        XCTAssertEqual(screen.code, #"print("Hello world") # ok"#)
+        XCTAssertEqual(screen.pastedCharacters, [])
+    }
+
     func testTheScreensToolsNeedSomeoneSignedIn() async {
         let state = AppState(marks: MarkStore(persistence: nil), userImages: UserImageStore(persistence: nil))
         guard !state.isAuthenticated else { return }

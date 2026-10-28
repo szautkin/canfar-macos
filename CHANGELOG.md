@@ -6,6 +6,16 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Fix Characters**, under Remote Compute's Run Code box: curly quotes, long dashes, special spaces
+  and invisible characters pasted with code are named, and made plain when you ask. ⌘Z undoes it.
+
+### Fixed
+- Remote Compute's Run Code box turned `"` and `'` into curly quotes (the Mac's smart quotes), which
+  Python and Bash reject.
+
 ## [1.4.1 for iPhone and iPad] - 2026-10-24
 
 Verbinal on iPhone and iPad, to check, review and verify away from the Mac:

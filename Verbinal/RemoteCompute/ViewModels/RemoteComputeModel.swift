@@ -150,6 +150,14 @@ final class RemoteComputeModel {
         await submit(language: language, code: code, timeout: timeoutSeconds)
     }
 
+    /// What in the Run code box Python and Bash would not read as code.
+    var pastedCharacters: [PastedCode.Kind] { PastedCode.kinds(in: code) }
+
+    /// Makes those characters plain — the person's choice, never on its own.
+    func fixPastedCharacters() {
+        code = PastedCode.fixed(code)
+    }
+
     func runAgain() async {
         guard let run = selectedRun else { return }
         await submit(language: run.language, code: run.code, timeout: run.timeoutSeconds)

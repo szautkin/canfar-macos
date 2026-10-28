@@ -114,6 +114,23 @@ struct RemoteComputeView: View {
         .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
     }
 
+    /// Pasted characters Python and Bash stop at, named, and the way to make
+    /// them plain. ⌘Z in the box takes the fix back.
+    private func pastedBanner(_ kinds: [PastedCode.Kind]) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(String(localized: "Python and Bash don't read these as code: \(kinds.map(\.title).formatted(.list(type: .and))). Inside a string, they may be meant."))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Fix Characters") { model.fixPastedCharacters() }
+                .help("Straight quotes, plain dashes and spaces, no invisible characters. ⌘Z undoes it.")
+                .pointable("compute.fixCharacters")
+        }
+        .padding(10)
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+    }
+
     private var statusLine: String {
         let state = model.state.title
         guard model.state == .running, let config = model.snapshot?.configuration else { return state }
@@ -307,13 +324,11 @@ struct RemoteComputeView: View {
                     .disabled(!model.canRun || model.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .pointable("compute.run")
             }
-            TextEditor(text: $model.code)
-                .font(.body.monospaced())
-                .autocorrectionDisabled()
+            CodeEditor(text: $model.code, label: String(localized: "Code to run"), pointable: "compute.snippet")
                 .frame(minHeight: 200)
-                .textEditorName(String(localized: "Code to run"), pointable: "compute.snippet")
                 .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
-                .pointable("compute.snippet")
+            let pasted = model.pastedCharacters
+            if !pasted.isEmpty { pastedBanner(pasted) }
             Text("It runs as you, on your session — the same way run_code runs your assistant's code.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
