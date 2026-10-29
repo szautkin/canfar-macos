@@ -449,7 +449,7 @@ extension AppState {
         let results = searchModel.resultsModel
         if let rowID = results.openDetailRowID, let row = results.result(forID: rowID) {
             view.openSearchDetail = .init(id: rowID,
-                                          publisherID: results.columns.value(in: row, forID: "publisherid"),
+                                          publisherID: results.columns.publisherID(in: row),
                                           observationID: results.columns.value(in: row, forID: "obsid"))
         }
         if let record = researchModel.selectedObservation {

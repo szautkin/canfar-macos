@@ -51,8 +51,8 @@ final class ObservationDetailModel {
         self.caom2Service = caom2Service
     }
 
-    /// Convenience accessor for the publisher ID stored on the row.
-    var publisherID: String { columns.value(in: result, forID: "publisherid") }
+    /// The row's publisher ID, whatever its query called it (plan 54 C2).
+    var publisherID: String { columns.publisherID(in: result) }
     var collection: String  { columns.value(in: result, forID: "collection") }
     var observationID: String { columns.value(in: result, forID: "obsid") }
     var targetName: String  { columns.value(in: result, forID: "targetname") }
@@ -63,7 +63,8 @@ final class ObservationDetailModel {
         guard mayLoad else { return }
         let attempt = load.begin()
 
-        let publisherID = self.publisherID
+        // A row of observations has no publisher ID, but CAOM-2 takes its URI.
+        let publisherID = columns.metadataID(in: result)
         guard !publisherID.isEmpty else {
             load.finish(attempt, with: .failure(Problem(.other, String(localized: "No publisher ID for this row."))))
             return

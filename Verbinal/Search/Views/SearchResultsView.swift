@@ -91,6 +91,10 @@ struct SearchResultsView: View {
         VStack(spacing: 0) {
             infoBar
             Divider()
+            if resultsModel.totalRows > 0, let gap = resultsModel.identifierGap {
+                IdentifierGapNote(gap: gap)
+                Divider()
+            }
             resultsStateContent
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -403,7 +407,7 @@ struct SearchResultsView: View {
         //     tap and effectively swallowed the nested Button presses.
         return HStack(spacing: 0) {
             PreviewThumbnailCell(
-                publisherID: resultsModel.columns.value(in: result, forID: "publisherid"),
+                publisherID: resultsModel.columns.publisherID(in: result),
                 tapClient: tapClient
             ) {
                 selectedRowID = result.id
@@ -435,7 +439,7 @@ struct SearchResultsView: View {
             selectedRowID = result.id
             selectedResult = result
         }
-        let pid = resultsModel.columns.value(in: result, forID: "publisherid")
+        let pid = resultsModel.columns.publisherID(in: result)
         if !pid.isEmpty, let url = TAPClient.detailURL(publisherID: pid) {
             Button("Open on CADC…") { openURL(url) }
         }

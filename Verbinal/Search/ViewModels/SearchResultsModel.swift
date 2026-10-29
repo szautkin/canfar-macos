@@ -35,7 +35,7 @@ final class SearchResultsModel {
     /// The loaded row of an observation, by its publisher ID.
     func result(publisherID: String) -> SearchResult? {
         let wanted = publisherID.trimmingCharacters(in: .whitespacesAndNewlines)
-        return results.first { columns.value(in: $0, forID: "publisherid") == wanted }
+        return results.first { columns.publisherID(in: $0) == wanted }
     }
     /// Column metadata — owns id→index lookup and visibility.
     var columns: SearchResultColumns = SearchResultColumns()
@@ -54,6 +54,9 @@ final class SearchResultsModel {
     /// Readable/writeable: ``SearchRootView`` copies a saved query's ADQL here
     /// to prefill the ADQL editor tab without re-running the search.
     var adqlQuery = ""
+    /// Why the loaded rows have no publisher ID, when their query said
+    /// (plan 54 C3); shown above the table.
+    private(set) var identifierGap: ADQLIdentifier.Gap?
 
     // MARK: - Derived state (updated only via `refresh`)
 
@@ -139,8 +142,10 @@ final class SearchResultsModel {
     // MARK: - Loading
 
     /// Replace the loaded rows. Resets sort, filter, and pagination state.
-    func loadResults(headers: [String], rows: [[String]], query: String, maxRec: Int) {
+    func loadResults(headers: [String], rows: [[String]], query: String, maxRec: Int,
+                     gap: ADQLIdentifier.Gap? = nil) {
         adqlQuery = query
+        identifierGap = gap
         columnFilters = [:]          // didSet triggers refresh — we'll rebuild everything below
         sortColumnID = nil
         currentPage = 0
@@ -181,12 +186,13 @@ final class SearchResultsModel {
 
     /// A row's id: its plane's publisher ID, which names one calibration
     /// level of one observation — the observation ID is shared by all of
-    /// them (QA M1: `oezt010e0` at levels 1, 2 and 3 was one id) — else the
-    /// observation ID, else its place.
+    /// them (QA M1: `oezt010e0` at levels 1, 2 and 3 was one id) — or, in
+    /// results of observations, its URI (plan 54); else the observation ID,
+    /// else its place.
     static func rowID(_ row: [String], columns: SearchResultColumns, rowIndex: Int) -> String {
         var raw = row
         while raw.count < columns.count { raw.append("") }
-        let pub = obtain(rawValue: raw, id: "publisherid", columns: columns)
+        let pub = columns.identifier.map { obtain(rawValue: raw, id: $0.id, columns: columns) } ?? ""
         if !pub.isEmpty { return pub }
         let obsid = obtain(rawValue: raw, id: "obsid", columns: columns)
         return obsid.isEmpty ? "row_\(rowIndex)" : obsid

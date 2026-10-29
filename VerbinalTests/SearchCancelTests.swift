@@ -226,7 +226,9 @@ final class EditorRecentSearchTests: XCTestCase {
         model.selectedTab = .search
         model.load(recent)
         XCTAssertEqual(model.selectedTab, .adql)
-        XCTAssertEqual(model.resultsModel.adqlQuery, adql)
+        // As it ran: a query of observations gains their URI (plan 54 B3, D1).
+        XCTAssertEqual(model.resultsModel.adqlQuery,
+                       "SELECT TOP 5\n  observationID, caom2.Observation.observationURI AS \"Observation URI\"\nFROM caom2.Observation")
     }
 
     func testASavedQueryRunFromItsListIsNotKeptAsRecent() async {

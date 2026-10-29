@@ -59,12 +59,72 @@
         }
       }
     },
+    "Join Plane" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Joindre Plane"
+          }
+        }
+      }
+    },
     "Registry-resolved values and CANFAR defaults apply at once." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Les valeurs résolues par le registre et les valeurs par défaut CANFAR s'appliquent tout de suite."
+          }
+        }
+      }
+    },
+    "These rows are observations: their details open, but previews and downloads need a product. For products, add %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces lignes sont des observations : leurs détails s'ouvrent, mais les aperçus et les téléchargements demandent un produit. Pour les produits, ajoutez %@"
+          }
+        }
+      }
+    },
+    "These rows are summaries (DISTINCT, GROUP BY or an aggregate), not products: they have no publisher ID, so no previews, details or downloads." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces lignes sont des résumés (DISTINCT, GROUP BY ou un agrégat), pas des produits : elles n'ont pas d'ID d'éditeur, donc ni aperçus, ni détails, ni téléchargements."
+          }
+        }
+      }
+    },
+    "These rows have no publisher ID (caom2.Plane and ivoa.ObsCore have one), so no previews, details or downloads." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces lignes n'ont pas d'ID d'éditeur (caom2.Plane et ivoa.ObsCore en ont un), donc ni aperçus, ni détails, ni téléchargements."
+          }
+        }
+      }
+    },
+    "These rows have no publisher ID, so no previews, details or downloads. For products, add %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces lignes n'ont pas d'ID d'éditeur, donc ni aperçus, ni détails, ni téléchargements. Pour les produits, ajoutez %@"
+          }
+        }
+      }
+    },
+    "Verbinal did not check this query for a publisher ID: it has a UNION or a subquery in FROM." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinal n'a pas cherché d'ID d'éditeur dans cette requête : elle contient un UNION ou une sous-requête dans FROM."
           }
         }
       }

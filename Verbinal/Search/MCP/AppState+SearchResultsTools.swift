@@ -47,6 +47,7 @@ extension AppState {
 
                 var rows: [[String]] = []
                 var rowIDs: [String] = []
+                var publisherIDs: [String?] = []
                 var returnedPage: Int?
                 var truncated = false
                 if args.includeRows ?? true {
@@ -68,6 +69,10 @@ extension AppState {
                     truncated = slice.count > cap
                     let limited = slice.prefix(cap)
                     rowIDs = limited.map(\.id)
+                    publisherIDs = limited.map { row in
+                        let id = resultsModel.columns.publisherID(in: row)
+                        return id.isEmpty ? nil : id
+                    }
                     rows = limited.map { row in
                         cols.map { col in
                             row.rawValues.indices.contains(col.index)
@@ -76,6 +81,7 @@ extension AppState {
                     }
                 }
 
+                let product = resultsModel.columns.identifier.flatMap { $0.identifies == .product ? $0.id : nil }
                 return GetSearchResultsTool.Output(
                     hasResults: true,
                     adqlQuery: resultsModel.adqlQuery,
@@ -92,7 +98,11 @@ extension AppState {
                     returnedPage: returnedPage,
                     rowIDs: rowIDs,
                     rows: rows,
-                    rowsTruncated: truncated)
+                    rowsTruncated: truncated,
+                    identifierColumn: product,
+                    publisherIDs: publisherIDs,
+                    publisherIDNote: product != nil ? nil : resultsModel.identifierGap?.message
+                        ?? "These results have no publisher ID column: products are in caom2.Plane and ivoa.ObsCore.")
             }
         }, readiness: { @MainActor [weak self] in
             (self?.searchModel.readiness ?? .empty, self?.searchModel.searchError)
@@ -217,14 +227,41 @@ extension AppState {
         ObservationDetailActions.openByRow { [weak self] args in
             guard let self else { return "App state unavailable" }
             return await MainActor.run {
-                let rows = self.searchModel.resultsModel.displayedRows
-                guard rows.indices.contains(args.row) else {
-                    return rows.isEmpty
-                        ? "No results on screen — run a search first"
-                        : "row \(args.row) is not on the page shown (0…\(rows.count - 1))"
+                switch self.shownRow(args.row) {
+                case .success(let shown): return self.openObservationDetail(rowID: shown.id, via: "show_search_row_detail")
+                case .failure(.invalidArgument(let why)): return why
+                case .failure(let reason): return reason.description
                 }
-                return self.openObservationDetail(rowID: rows[args.row].id, via: "show_search_row_detail")
             }
+        }
+    }
+
+    /// A row of the page shown: what `show_search_row_detail` and the
+    /// per-product tools' `row` name (plan 54 D3), or why there is none.
+    func shownRow(_ row: Int) -> Result<SearchResult, ToolFailureReason> {
+        let rows = searchModel.resultsModel.displayedRows
+        guard rows.indices.contains(row) else {
+            return .failure(.invalidArgument(rows.isEmpty
+                ? "No results on screen — run a search first"
+                : "row \(row) is not on the page shown (0…\(rows.count - 1))"))
+        }
+        return .success(rows[row])
+    }
+
+    /// The per-product tools' `row`: its publisher ID, or for metadata its
+    /// observation URI when it has none — or why the row has neither.
+    var resolveShownRow: ProductReference.Resolve {
+        { @MainActor [weak self] row, metadata in
+            guard let self else { throw ToolFailureReason.backendError("App state unavailable") }
+            let results = self.searchModel.resultsModel
+            let shown = try self.shownRow(row).get()
+            let id = metadata ? results.columns.metadataID(in: shown) : results.columns.publisherID(in: shown)
+            guard !id.isEmpty else {
+                let why = results.identifierGap?.message
+                    ?? "Its query did not select one: products are in caom2.Plane and ivoa.ObsCore."
+                throw ToolFailureReason.invalidArgument("Row \(row) has no publisher ID. \(why)")
+            }
+            return id
         }
     }
 

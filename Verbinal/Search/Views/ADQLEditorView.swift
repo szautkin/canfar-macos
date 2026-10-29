@@ -82,6 +82,12 @@ struct ADQLEditorView: View {
                 Divider()
                 problemList
             }
+            if let gap = searchModel.identified(editableQuery).gap {
+                Divider()
+                IdentifierGapNote(gap: gap) {
+                    if let join = gap.join { editableQuery = ADQLIdentifier.joining(join, into: editableQuery) }
+                }
+            }
         }
         .task { searchModel.tapSchema.prefetch() }
         // Single source of truth for syncing the upstream adqlQuery into the

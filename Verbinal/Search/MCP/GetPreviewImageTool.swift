@@ -61,23 +61,26 @@ struct GetPreviewImageTool: AITool {
     let resolvePreviews: @Sendable (_ publisherID: String) async throws -> [PreviewArtifact]
     let fetchImage: @Sendable (_ url: URL, _ maxBytes: Int) async throws -> (data: Data, contentType: String?)
 
+    /// A row of the results on screen → its publisher ID (plan 54 D3).
+    var resolveRow: ProductReference.Resolve = ProductReference.noResults
+
     var toolTimeoutSeconds: TimeInterval { 30 }
 
     struct Args: Decodable, Sendable {
-        let publisher_id: String
+        let publisher_id: String?
+        let row: Int?
         let band: String?
         let max_bytes: Int?
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_preview_image",
-        description: "Fetch a CADC observation's PREVIEW image server-side and return it as an inline image you can display to the user, plus a small JSON metadata block (filename, band, byteSize, sourceURL, contentType). The image itself is the inline image block — it is NOT duplicated as base64 in the JSON. Use the same publisher_id as get_data_links / get_observation_caom2. The backend fetches the bytes using the user's CADC auth (the agent sandbox blocks CADC hosts, so a client-side fetch can't display previews), follows the redirect to signed storage, and returns the raw image — never a URL. It resolves to a preview artifact (contentType image/*, productType preview), NEVER a science frame: pass `band` (e.g. G.MP9401) to pick a band for multi-band observations; omit it for the default preview. Safety: `max_bytes` (default ~680 KB, hard-capped) refuses a mis-resolved giant file and keeps the base64 response under MCP clients' ~1 MB body limit. Typed errors: previewNotFound (lists bands that DO have previews), previewTooLarge, authRequired (proprietary/embargoed), upstreamTimeout, contentTypeMismatch (the fetched bytes weren't a valid image). Bounded by a 30s watchdog.",
+        description: "Fetch a CADC observation's PREVIEW image server-side and return it as an inline image you can display to the user, plus a small JSON metadata block (filename, band, byteSize, sourceURL, contentType). The image itself is the inline image block — it is NOT duplicated as base64 in the JSON. Use the same publisher_id as get_data_links / get_observation_caom2, or `row` of the results on screen. The backend fetches the bytes using the user's CADC auth (the agent sandbox blocks CADC hosts, so a client-side fetch can't display previews), follows the redirect to signed storage, and returns the raw image — never a URL. It resolves to a preview artifact (contentType image/*, productType preview), NEVER a science frame: pass `band` (e.g. G.MP9401) to pick a band for multi-band observations; omit it for the default preview. Safety: `max_bytes` (default ~680 KB, hard-capped) refuses a mis-resolved giant file and keeps the base64 response under MCP clients' ~1 MB body limit. Typed errors: previewNotFound (lists bands that DO have previews), previewTooLarge, authRequired (proprietary/embargoed), upstreamTimeout, contentTypeMismatch (the fetched bytes weren't a valid image). Bounded by a 30s watchdog.",
         schema: #"""
         {
           "type": "object",
-          "required": ["publisher_id"],
           "properties": {
-            "publisher_id": { "type": "string" },
+            \#(ProductReference.schemaProperties),
             "band": { "type": "string" },
             "max_bytes": { "type": "integer", "minimum": 1 }
           },
@@ -93,9 +96,13 @@ struct GetPreviewImageTool: AITool {
         } catch {
             return .failed(.invalidArgument("get_preview_image: \(error)"))
         }
-        let publisherID = args.publisher_id.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !publisherID.isEmpty else {
-            return .failed(.invalidArgument("publisher_id is required"))
+        let publisherID: String
+        do {
+            publisherID = try await ProductReference.identifier(publisherID: args.publisher_id, row: args.row, resolve: resolveRow)
+        } catch let reason as ToolFailureReason {
+            return .failed(reason)
+        } catch {
+            return .failed(.invalidArgument("\(error)"))
         }
         // Clamp to the MCP-safe cap so a caller-supplied max_bytes can't push
         // the base64 response past the ~1 MB client limit.

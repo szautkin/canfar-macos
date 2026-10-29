@@ -39,6 +39,20 @@ struct DescribeTapSchemaTool: JSONReadTool {
         let description: String?
         let columnCount: Int
         let columns: [ColumnView]?
+        /// The column that identifies a row (plan 54 D4), and what it
+        /// identifies: `product` or `observation`.
+        let identifierColumn: String?
+        let identifies: String?
+
+        init(_ table: TapSchema.Table, in schema: TapSchema, columns: [ColumnView]?) {
+            name = table.name
+            description = table.description.isEmpty ? nil : table.description
+            columnCount = table.columns.count
+            self.columns = columns
+            let identifier = ResultIdentifier.column(of: table.name, schema: schema)
+            identifierColumn = identifier?.name
+            identifies = identifier?.identifies.rawValue
+        }
     }
 
     struct KeyView: Encodable, Sendable {
@@ -69,7 +83,7 @@ struct DescribeTapSchemaTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "describe_tap_schema",
-        description: "Read the CADC TAP service's own schema: its tables, what each column means (units, IVOA UCDs) and the joins the service declares. Call this BEFORE writing ADQL instead of guessing column names — the usual mistakes are ObsCore spellings on a CAOM2 table and a column that lives on the other side of a join. ADQL notes: `SELECT TOP n`, not LIMIT; geometry predicates compare to 1 (`CONTAINS(...) = 1`). No arguments lists the tables and joins; `table` gives one table's columns; `search` finds columns by name, description or UCD across every table.",
+        description: "Read the CADC TAP service's own schema: its tables, what each column means (units, IVOA UCDs) and the joins the service declares. Call this BEFORE writing ADQL instead of guessing column names — the usual mistakes are ObsCore spellings on a CAOM2 table and a column that lives on the other side of a join. ADQL notes: `SELECT TOP n`, not LIMIT; geometry predicates compare to 1 (`CONTAINS(...) = 1`). No arguments lists the tables and joins; `table` gives one table's columns; `search` finds columns by name, description or UCD across every table. Each table names its `identifierColumn`: a product's publisher ID (caom2.Plane.publisherID, ivoa.ObsCore.obs_publisher_did), which DataLink, previews, metadata and downloads take, or an observation's URI (caom2.Observation.observationURI), which metadata takes. A query of products always returns it: Verbinal adds it when the query does not select it.",
         schema: #"""
         {
           "type": "object",
@@ -94,8 +108,7 @@ struct DescribeTapSchemaTool: JSONReadTool {
                     "no table '\(name)'. Tables: \(schema.tables.prefix(25).map(\.name).joined(separator: ", "))")
             }
             return Output(
-                tables: [TableView(name: table.name, description: table.description.isEmpty ? nil : table.description,
-                                   columnCount: table.columns.count, columns: table.columns.map(ColumnView.init))],
+                tables: [TableView(table, in: schema, columns: table.columns.map(ColumnView.init))],
                 keys: schema.keys(touching: table.name).map(KeyView.init),
                 totalTables: schema.tables.count, truncated: false)
         }
@@ -109,18 +122,14 @@ struct DescribeTapSchemaTool: JSONReadTool {
                 }
                 total += hits.count
                 guard !hits.isEmpty else { return nil }
-                return TableView(name: table.name, description: table.description.isEmpty ? nil : table.description,
-                                 columnCount: table.columns.count, columns: hits.prefix(Self.maxMatches).map(ColumnView.init))
+                return TableView(table, in: schema, columns: hits.prefix(Self.maxMatches).map(ColumnView.init))
             }
             return Output(tables: tables, keys: [], totalTables: schema.tables.count, truncated: total > Self.maxMatches)
         }
 
         // The listing: tables and joins; ~400 columns left out on purpose.
         return Output(
-            tables: schema.tables.map {
-                TableView(name: $0.name, description: $0.description.isEmpty ? nil : $0.description,
-                          columnCount: $0.columns.count, columns: nil)
-            },
+            tables: schema.tables.map { TableView($0, in: schema, columns: nil) },
             keys: schema.keys.map(KeyView.init), totalTables: schema.tables.count, truncated: false)
     }
 }
@@ -147,12 +156,14 @@ struct ValidateADQLQueryTool: JSONReadTool {
         let valid: Bool
         let schemaLoaded: Bool
         let problems: [ProblemView]
+        /// Its publisher ID as it would run: there, added, or why not (plan 54 D2).
+        let identifier: IdentifierReport
     }
 
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "validate_adql_query",
-        description: "Check an ADQL query against the archive's own schema WITHOUT running it — the check the ADQL editor runs as the user types: LIMIT (ADQL writes SELECT TOP n), unknown tables, columns a table does not have, and the qualifier CADC rejects as ambiguous (`Plane.obsID` when both joined tables have obsID). Each problem quotes the text and, when there is one obvious answer, what to write. `valid: true` means nothing could be shown wrong — not a promise the query is right; subqueries and functions are left alone rather than guessed at.",
+        description: "Check an ADQL query against the archive's own schema WITHOUT running it — the check the ADQL editor runs as the user types: LIMIT (ADQL writes SELECT TOP n), unknown tables, columns a table does not have, and the qualifier CADC rejects as ambiguous (`Plane.obsID` when both joined tables have obsID). Each problem quotes the text and, when there is one obvious answer, what to write. `valid: true` means nothing could be shown wrong — not a promise the query is right; subqueries and functions are left alone rather than guessed at. `identifier` says what a run would do about its publisher ID: there already, `added` (the select item), or a `note` on why its rows have none, with the `join` that gives them one.",
         schema: #"""
         {
           "type": "object",
@@ -177,6 +188,7 @@ struct ValidateADQLQueryTool: JSONReadTool {
             problems: problems.map {
                 ProblemView(text: $0.text(in: args.adql), message: $0.message, fix: $0.fix,
                             start: $0.range.lowerBound, end: $0.range.upperBound)
-            })
+            },
+            identifier: IdentifierReport(ADQLIdentifier.ensure(args.adql, schema: schema)))
     }
 }

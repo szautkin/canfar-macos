@@ -71,7 +71,7 @@ final class TapSchemaService {
         do {
             let tables = try await query("SELECT table_name, description FROM TAP_SCHEMA.tables ORDER BY table_name", maxRows)
             let columns = try await query(
-                "SELECT table_name, column_name, datatype, description, unit, ucd FROM TAP_SCHEMA.columns ORDER BY table_name, column_name",
+                "SELECT table_name, column_name, datatype, description, unit, ucd, utype FROM TAP_SCHEMA.columns ORDER BY table_name, column_name",
                 maxRows)
             let keys = (try? await query(
                 "SELECT k.from_table, k.target_table, kc.from_column, kc.target_column, k.description FROM TAP_SCHEMA.keys AS k JOIN TAP_SCHEMA.key_columns AS kc ON k.key_id = kc.key_id",

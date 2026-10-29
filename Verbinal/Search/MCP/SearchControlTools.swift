@@ -8,10 +8,11 @@ import Foundation
 import VerbinalKit
 
 /// Search-form control tools — read and steer the live search form the
-/// user sees: constraint fields, the data-train cascade, the ADQL editor,
-/// the Search/Results/ADQL sub-tab, quick-search links, and the
-/// recent-searches side panel. Capability closures are injected by the
-/// app at wiring time; the tools themselves stay UI-framework-free.
+/// user sees: constraint fields, the data-train cascade, the ADQL editor
+/// (`SetADQLEditorTool.swift`), the Search/Results/ADQL sub-tab,
+/// quick-search links, and the recent-searches side panel. Capability
+/// closures are injected by the app at wiring time; the tools themselves
+/// stay UI-framework-free.
 
 // MARK: - get_search_form
 
@@ -404,108 +405,6 @@ struct RefreshDataTrainTool: AITool {
         do {
             let bytes = try JSONEncoder().encode(Output(
                 applied: true, lastRefreshedISO: result.lastRefreshedISO))
-            return .data(bytes)
-        } catch {
-            return .failed(.backendError("\(error)"))
-        }
-    }
-}
-
-// MARK: - set_adql_editor
-
-/// Put text into the ADQL editor tab (or regenerate it from the form),
-/// optionally executing it — without saving anything.
-struct SetADQLEditorTool: AITool {
-    static let verbClass: VerbClass = .viewState
-    static let agentSafe: Bool = true
-
-    struct Args: Decodable, Sendable {
-        var adql: String?
-        var generateFromForm: Bool?
-        var execute: Bool?
-        /// With `execute`, false: answer at once that it has started.
-        var wait: Bool?
-
-        init() {}
-        init(adql: String? = nil, generateFromForm: Bool? = nil, execute: Bool? = nil) {
-            self.adql = adql
-            self.generateFromForm = generateFromForm
-            self.execute = execute
-        }
-    }
-
-    struct Outcome: Sendable {
-        var error: String? = nil
-        var adql: String = ""
-        var executed: Bool = false
-        var resultCount: Int? = nil
-        var searchError: String? = nil
-        /// The person pressed Cancel while it ran.
-        var cancelled: Bool = false
-        /// Run without waiting (`wait: false`): it has started, and goes on.
-        var started: Bool = false
-    }
-
-    /// Also `execute_adql_query`'s reply.
-    struct Output: Encodable, Sendable {
-        let applied: Bool
-        let adql: String
-        let executed: Bool
-        let resultCount: Int?
-        let searchError: String?
-        let cancelled: Bool
-        /// It runs on; `cancel_search` stops it (plan 30 R2).
-        let started: Bool
-
-        init(_ outcome: Outcome) {
-            applied = true
-            adql = outcome.adql
-            executed = outcome.executed
-            resultCount = outcome.resultCount
-            searchError = outcome.searchError
-            cancelled = outcome.cancelled
-            started = outcome.started
-        }
-    }
-
-    let definition = AIToolDefinition.withStaticSchema(
-        name: "set_adql_query",
-        description: "Set the ADQL editor tab's text without saving anything: pass `adql` to set it directly, or `generateFromForm: true` to regenerate it from the current form (the editor's \"Generate from Form\" button) — not both. Pass `execute: true` to run the editor's (possibly new) content afterwards; with neither source given, `execute` runs the current editor text; a query the checker is sure CADC would refuse is not sent — `executed: false`, the reason in `searchError`. Switches the Search view to the ADQL tab. Live-applied; no proposal. (Windows wire name; macOS also exposes `set_adql_editor` and `execute_adql_query` aliases.)",
-        schema: #"""
-        {
-          "type": "object",
-          "properties": {
-            "adql":             { "type": "string", "description": "Raw ADQL to place in the editor; \"\" clears it." },
-            "generateFromForm": { "type": "boolean", "description": "Regenerate the editor text from the current form state." },
-            "execute":          { "type": "boolean", "description": "Run the editor's content after applying." },
-            "wait":             { "type": "boolean", "description": "With `execute`: false answers at once that it has started (`started: true`) — get_search_results then says `state: searching` until its results are there; cancel_search stops it. Default true: the answer waits for the results." }
-          },
-          "additionalProperties": false
-        }
-        """#
-    )
-
-    let apply: @Sendable (Args) async -> Outcome
-
-    func invoke(arguments: Data, context: AIToolContext) async -> ToolResult {
-        let args: Args
-        do {
-            args = try JSONDecoder().decode(Args.self, from: arguments)
-        } catch {
-            return .failed(.invalidArgument("\(error)"))
-        }
-        if args.adql != nil && args.generateFromForm == true {
-            return .failed(.invalidArgument("Pass `adql` or `generateFromForm`, not both"))
-        }
-        if args.adql == nil && args.generateFromForm != true && args.execute != true {
-            return .failed(.invalidArgument("Nothing to do — pass `adql`, `generateFromForm`, or `execute`"))
-        }
-        let outcome = await apply(args)
-        if let message = outcome.error {
-            return .failed(.invalidArgument(message))
-        }
-        do {
-            let bytes = try JSONEncoder().encode(Output(outcome))
             return .data(bytes)
         } catch {
             return .failed(.backendError("\(error)"))

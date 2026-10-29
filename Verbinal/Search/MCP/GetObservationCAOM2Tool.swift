@@ -14,7 +14,8 @@ import VerbinalKit
 /// publisher_id alongside this response and fetch it themselves.
 struct GetObservationCAOM2Tool: JSONReadTool {
     struct Args: Decodable, Sendable {
-        let publisher_id: String
+        let publisher_id: String?
+        let row: Int?
     }
 
     struct Output: Encodable, Sendable {
@@ -88,13 +89,12 @@ struct GetObservationCAOM2Tool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_observation_caom2",
-        description: "Fetch full CAOM-2 metadata for a CADC observation by publisher_id. Accepts either the publisher form ('ivo://cadc.nrc.ca/JWST?jw01147') or the canonical CAOM form returned by `search_observations` ('caom:JWST/jw01147'). Cached for ~5 minutes.",
+        description: "Fetch full CAOM-2 metadata for a CADC observation by publisher_id, or by `row` of the results on screen. Accepts either a product's publisher ID ('ivo://cadc.nrc.ca/JWST?jw01147/jw01147-o001_t001_nircam_clear-f200w') or an observation's URI ('caom:JWST/jw01147', the `observationURI` of a query of caom2.Observation); either way the answer is the whole observation, every plane. Cached for ~5 minutes.",
         schema: #"""
         {
           "type": "object",
-          "required": ["publisher_id"],
           "properties": {
-            "publisher_id": { "type": "string" }
+            \#(ProductReference.schemaProperties)
           },
           "additionalProperties": false
         }
@@ -105,6 +105,8 @@ struct GetObservationCAOM2Tool: JSONReadTool {
     /// flat encodable shape above so callers don't have to depend on
     /// VerbinalKit's domain types.
     let fetch: @Sendable (_ publisherID: String) async throws -> CAOM2Observation
+    /// A row of the results on screen → its publisher ID or observation URI (plan 54 D3).
+    var resolveRow: ProductReference.Resolve = ProductReference.noResults
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         // Sanity-check the publisher_id shape *before* hitting the
@@ -114,9 +116,10 @@ struct GetObservationCAOM2Tool: JSONReadTool {
         // (`caom:`) forms — `search_observations` returns the latter,
         // so requiring `ivo://` here forced agents to round-trip
         // through a translator that doesn't always exist.
-        let trimmed = args.publisher_id.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = try await ProductReference.identifier(publisherID: args.publisher_id, row: args.row,
+                                                            metadata: true, resolve: resolveRow)
         if CAOM2Observation.observationURI(fromPublisherID: trimmed) == nil {
-            throw ToolFailureReason.unsupportedIdScheme(args.publisher_id)
+            throw ToolFailureReason.unsupportedIdScheme(trimmed)
         }
 
         do {
@@ -126,7 +129,7 @@ struct GetObservationCAOM2Tool: JSONReadTool {
             let message = "\(error)"
             if message.contains("authenticationRequired") { throw ToolFailureReason.authRequired }
             if message.contains("observationNotFound") {
-                throw ToolFailureReason.unknownTarget(args.publisher_id)
+                throw ToolFailureReason.unknownTarget(trimmed)
             }
             throw ToolFailureReason.backendError(message)
         }

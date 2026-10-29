@@ -21,7 +21,7 @@ extension SearchResultsModel {
     func facts(for row: SearchResult) -> ObservationFacts {
         func raw(_ id: String) -> String { columns.value(in: row, forID: id) }
         return ObservationFacts(
-            observationID: raw("obsid"), collection: raw("collection"), publisherID: raw("publisherid"),
+            observationID: raw("obsid"), collection: raw("collection"), publisherID: columns.publisherID(in: row),
             target: raw("targetname"),
             ra: Double(raw("ra(j20000)")), dec: Double(raw("dec(j20000)")),
             instrument: raw("instrument"), filter: raw("filter"),

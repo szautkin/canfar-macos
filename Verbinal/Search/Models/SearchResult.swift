@@ -82,6 +82,10 @@ struct SearchResultColumn: Identifiable, Equatable {
 struct SearchResultColumns {
     private(set) var list: [SearchResultColumn]
     private var indexByID: [String: Int]
+    /// The column whose value identifies each row, and what it identifies:
+    /// a product's publisher ID first, else an observation's URI, whatever
+    /// the query called it (plan 54 C1).
+    private(set) var identifier: (id: String, identifies: ResultIdentifier)?
 
     init() {
         self.list = []
@@ -128,6 +132,23 @@ struct SearchResultColumns {
 
         self.list = list
         self.indexByID = indexByID
+        let identifiers = zip(list, headers).compactMap { column, header in
+            ResultIdentifier.of(header: header).map { (id: column.id, identifies: $0) }
+        }
+        self.identifier = identifiers.first { $0.identifies == .product } ?? identifiers.first
+    }
+
+    /// The row's publisher ID — what DataLink, previews and downloads take —
+    /// or "" when the results have none.
+    func publisherID(in row: SearchResult) -> String {
+        guard let identifier, identifier.identifies == .product else { return "" }
+        return value(in: row, forID: identifier.id)
+    }
+
+    /// What CAOM-2 metadata takes for the row: its publisher ID, else its
+    /// observation's URI; "" when the results have neither.
+    func metadataID(in row: SearchResult) -> String {
+        identifier.map { value(in: row, forID: $0.id) } ?? ""
     }
 
     /// Column count.

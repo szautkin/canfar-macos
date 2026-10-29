@@ -223,8 +223,9 @@ final class SearchFormModel {
     }
 
     /// Runs `query` and shows its rows. The one path the form and the ADQL
-    /// editor share, so a cancel or an error means the same in both.
-    private func runQuery(_ query: String) async -> SearchOutcome {
+    /// editor share, so a cancel or an error means the same in both. `gap`
+    /// says why its rows have no publisher ID, when they have none.
+    private func runQuery(_ query: String, gap: ADQLIdentifier.Gap? = nil) async -> SearchOutcome {
         runningQuery?.cancel()
         let client = tapClient
         let task = Task { try await client.tapQueryRows(adql: query) }
@@ -239,7 +240,7 @@ final class SearchFormModel {
                 self.query.finish(attempt, with: .failure(CancellationError()))
                 return .cancelled
             }
-            resultsModel.loadResults(headers: headers, rows: rows, query: query, maxRec: TAPConfig.maxRecords)
+            resultsModel.loadResults(headers: headers, rows: rows, query: query, maxRec: TAPConfig.maxRecords, gap: gap)
             selectedTab = .results
             self.query.finish(attempt, with: .success(rows.count))
             return .completed(rows: rows.count)
@@ -314,13 +315,22 @@ final class SearchFormModel {
             self.query.fail(Problem(.refused, problems.map(\.localizedSummary).joined(separator: "; "), retry: false))
             return .refused(String(localized: "Not sent: \(problems.map(\.summary).joined(separator: "; "))"))
         }
-        let outcome = await runQuery(adql)
+        // Every product query returns its publisher ID (plan 54 B); the
+        // editor then shows the query as it ran.
+        let checked = identified(adql)
+        let outcome = await runQuery(checked.adql, gap: checked.gap)
         if fromEditor, case .completed = outcome {
             recentSearchStore.save(RecentSearch(
                 name: RecentSearch.name(forQuery: adql), formSnapshot: SearchFormSnapshot(),
-                agentAttribution: attribution, adql: adql))
+                agentAttribution: attribution, adql: checked.adql))
         }
         return outcome
+    }
+
+    /// `adql` as it runs: with its publisher ID when its rows are products
+    /// (plan 54 B), read with the schema when it is loaded.
+    func identified(_ adql: String) -> ADQLIdentifier.Checked {
+        ADQLIdentifier.ensure(adql, schema: tapSchema.cached)
     }
 
     /// Puts a recent search back where it came from: an editor query into

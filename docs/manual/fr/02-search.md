@@ -146,6 +146,19 @@ Verbinal vérifie la requête pendant la saisie, d’après les tables et colonn
 problèmes en dessous ; cliquez sur un problème pour le sélectionner dans la requête. **Exécuter** attend
 qu’ils soient corrigés.
 
+Chaque ligne d’une requête de produits a son ID d’éditeur, l’identifiant qu’utilisent les aperçus, les
+détails et les téléchargements. Si votre requête ne le sélectionne pas, **Exécuter** l’ajoute, sous la
+forme `Plane.publisherID AS "Publisher ID"` (ou `obs_publisher_did` pour ObsCore), et l’éditeur montre
+la requête telle qu’elle a été lancée. Certaines lignes ne peuvent pas en avoir, et une note sous la
+requête dit pourquoi :
+
+- les lignes qui sont des résumés (`DISTINCT`, `GROUP BY`, `COUNT` et les autres agrégats) ;
+- les lignes d’observations (`caom2.Observation` seule). Leurs détails s’ouvrent par l’URI de
+  l’observation, que Verbinal ajoute, mais les aperçus et les téléchargements demandent un produit.
+  **Joindre Plane** ajoute la jointure qui donne à chaque ligne ses produits.
+
+La même note s’affiche au-dessus de ces résultats.
+
 ## Recherches récentes et requêtes enregistrées
 
 Le panneau latéral garde vos recherches.
@@ -162,5 +175,7 @@ Ce qu’un assistant IA a créé dans ces listes porte la pastille **Créé par 
 
 Tout ce qui est sur cet écran : remplir le formulaire et lancer la recherche, lire les résultats tels que
 vous les voyez, trier, filtrer, changer les unités et les colonnes, ouvrir les détails, exporter, écrire
-et vérifier de l’ADQL, enregistrer des requêtes, découper et télécharger. Il peut aussi chercher dans
+et vérifier de l’ADQL, enregistrer des requêtes, découper et télécharger. Chaque ligne qu’il lit porte
+son ID d’éditeur, et ses requêtes en reçoivent un comme les vôtres : il peut donc montrer l’aperçu, les
+liens ou les métadonnées d’une ligne en la désignant. Il peut aussi chercher dans
 les catalogues VizieR du CDS, que l’app elle-même n’offre que comme résolveur de noms.

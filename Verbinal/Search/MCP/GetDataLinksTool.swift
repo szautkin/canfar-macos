@@ -49,7 +49,8 @@ struct GetDataLinksTool: JSONReadTool {
     var toolTimeoutSeconds: TimeInterval { 30 }
 
     struct Args: Decodable, Sendable {
-        let publisher_id: String
+        let publisher_id: String?
+        let row: Int?
     }
 
     struct Output: Encodable, Sendable {
@@ -102,13 +103,12 @@ struct GetDataLinksTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_data_links",
-        description: "Fetch thumbnail / preview / direct-download URLs for a CADC observation by publisher_id, plus the full CAOM-2 artefact inventory. **For a single file you can fetch directly from inside a Skaha container**, use `caom2Artifacts[i].downloadURL` — it's a ready-to-curl HTTPS URL on `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data/pub/<collection>/<file>`, no construction needed and no DataLink round-trip required for public collections. `files[]` is DataLink #this when available (sometimes empty for public-archive-only observations); `caom2Artifacts[]` is the full inventory (science + weight + preview + aux + provenance), always populated when CAOM-2 is reachable. Use `files[]` for whatever DataLink advertises, `caom2Artifacts[]` for direct-by-name fetches and to discover sibling products DataLink suppresses. `packageDownloadURL` always works as a tarball fallback. `caom2Artifacts[]` covers every plane of the observation: each file says its plane (`productID`) and that plane's `publisherID`. To keep one in Research, pass its `filename` as `download_observation`'s `file`, with the `publisherID` it gives. Bounded by two independent 30-second watchdogs: a tool-level deadline around the whole call and a tighter deadline around the DataLink fetch specifically, so the rare DataLink-service hang the 2026-05 QA review documented surfaces as a typed timeout error rather than a multi-minute stall.",
+        description: "Fetch thumbnail / preview / direct-download URLs for a CADC product by publisher_id (or `row` of the results on screen), plus the full CAOM-2 artefact inventory. **For a single file you can fetch directly from inside a Skaha container**, use `caom2Artifacts[i].downloadURL` — it's a ready-to-curl HTTPS URL on `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/data/pub/<collection>/<file>`, no construction needed and no DataLink round-trip required for public collections. `files[]` is DataLink #this when available (sometimes empty for public-archive-only observations); `caom2Artifacts[]` is the full inventory (science + weight + preview + aux + provenance), always populated when CAOM-2 is reachable. Use `files[]` for whatever DataLink advertises, `caom2Artifacts[]` for direct-by-name fetches and to discover sibling products DataLink suppresses. `packageDownloadURL` always works as a tarball fallback. `caom2Artifacts[]` covers every plane of the observation: each file says its plane (`productID`) and that plane's `publisherID`. To keep one in Research, pass its `filename` as `download_observation`'s `file`, with the `publisherID` it gives. Bounded by two independent 30-second watchdogs: a tool-level deadline around the whole call and a tighter deadline around the DataLink fetch specifically, so the rare DataLink-service hang the 2026-05 QA review documented surfaces as a typed timeout error rather than a multi-minute stall.",
         schema: #"""
         {
           "type": "object",
-          "required": ["publisher_id"],
           "properties": {
-            "publisher_id": { "type": "string" }
+            \#(ProductReference.schemaProperties)
           },
           "additionalProperties": false
         }
@@ -128,8 +128,12 @@ struct GetDataLinksTool: JSONReadTool {
         faults: [String]
     )
 
+    /// A row of the results on screen → its publisher ID (plan 54 D3).
+    var resolveRow: ProductReference.Resolve = ProductReference.noResults
+
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
-        let r = try await fetch(args.publisher_id)
+        let id = try await ProductReference.identifier(publisherID: args.publisher_id, row: args.row, resolve: resolveRow)
+        let r = try await fetch(id)
         let files = r.files.map {
             Output.FileOut(
                 url: $0.url.absoluteString,

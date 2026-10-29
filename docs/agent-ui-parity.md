@@ -73,6 +73,8 @@ every later agent is told; **read** = pure data.
 | Cancel beside the spinner | `cancel_search` | live |
 | The archive's tables, columns and joins | `describe_tap_schema` | read |
 | Check a query without running it | `validate_adql_query` | read |
+| The publisher ID Execute adds, and the note under the query (plan 54) | `set_adql_editor` / `execute_adql_query` / `validate_adql_query` `identifier`; `search_observations` `identifier` | read |
+| Join Plane (the note's fix) | `set_adql_editor` `adql` with `identifier.join` | live |
 | Save Query | `save_query` (pre-existing) | write |
 
 ## Search — results table
@@ -80,6 +82,8 @@ every later agent is told; **read** = pure data.
 | UI interaction | Tool | Kind |
 |---|---|---|
 | Read rows as the user sees them (sort+filter applied) | `get_search_results` | read |
+| Each row's publisher ID; the note above results without one (plan 54) | `get_search_results` `publisherIDs` / `identifierColumn` / `publisherIDNote` | read |
+| A row's preview (hover), links and metadata | `get_preview_image` / `get_data_links` / `get_observation_caom2` `row` (on the page) or `publisher_id` | read |
 | Sort by column header | `set_results_view` sort fields | live |
 | Per-column filter row (⌘F) | `set_results_view` `filters` | live |
 | Pagination + page size (⌘[/⌘]) | `set_results_view` `page`/`rowsPerPage` | live |

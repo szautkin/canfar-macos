@@ -17,6 +17,9 @@ struct TapSchema: Sendable, Equatable {
         let unit: String
         /// IVOA UCD — what the number means, whatever the column is called.
         let ucd: String
+        /// The data model's name for it (`caom2:Plane.publisherID`): which
+        /// column identifies a row, whatever the table calls it (plan 54 A1).
+        var utype: String = ""
     }
 
     struct Table: Sendable, Equatable {
@@ -74,7 +77,7 @@ struct TapSchema: Sendable, Equatable {
             let owner = columnField(row, "table_name")
             let column = Column(name: columnField(row, "column_name"), datatype: columnField(row, "datatype"),
                                 description: columnField(row, "description"), unit: columnField(row, "unit"),
-                                ucd: columnField(row, "ucd"))
+                                ucd: columnField(row, "ucd"), utype: columnField(row, "utype"))
             if let index = schema.tables.firstIndex(where: { $0.name == owner }) {
                 schema.tables[index].columns.append(column)
             } else {

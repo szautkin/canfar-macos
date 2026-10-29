@@ -144,8 +144,11 @@ extension AppState {
                 model.selectedTab = .adql
                 return model.resultsModel.adqlQuery
             }
-            var outcome = SetADQLEditorTool.Outcome(adql: adql)
+            let checked = await MainActor.run { model.identified(adql) }
+            var outcome = SetADQLEditorTool.Outcome(adql: adql, identifier: IdentifierReport(checked))
             if args.execute == true {
+                // The editor shows the query as it runs.
+                outcome.adql = checked.adql
                 guard !adql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     return .init(error: "The ADQL editor is empty — pass `adql` or `generateFromForm`")
                 }

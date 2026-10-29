@@ -225,7 +225,9 @@ enum ADQLValidator {
 
     // MARK: - Reading the text
 
-    private struct Token {
+    // Internal, not private: `ADQLIdentifier` reads queries the same way.
+
+    struct Token {
         let text: String
         let range: Range<Int>
         /// A dotted identifier's parts; one part for a plain word.
@@ -233,7 +235,7 @@ enum ADQLValidator {
         var isIdentifier: Bool { text.first.map { $0.isLetter || $0 == "_" } ?? false }
     }
 
-    private struct FromEntry {
+    struct FromEntry {
         let written: String
         let range: Range<Int>
         let alias: String?
@@ -246,7 +248,7 @@ enum ADQLValidator {
     ]
 
     /// Tables after FROM (and its commas) and each JOIN, with their aliases.
-    private static func fromEntries(_ tokens: [Token]) -> [FromEntry] {
+    static func fromEntries(_ tokens: [Token]) -> [FromEntry] {
         var entries: [FromEntry] = []
         var i = 0
         while i < tokens.count {
@@ -274,7 +276,7 @@ enum ADQLValidator {
 
     /// Dotted identifiers and numbers as tokens; every other non-space
     /// character is a token of its own.
-    private static func tokenize(_ characters: [Character]) -> [Token] {
+    static func tokenize(_ characters: [Character]) -> [Token] {
         var tokens: [Token] = []
         var i = 0
         func isWord(_ c: Character) -> Bool { c.isLetter || c.isNumber || c == "_" }
@@ -299,7 +301,7 @@ enum ADQLValidator {
     /// The query with string literals, quoted names (`"Cal. Lev."`) and
     /// comments blanked, offsets kept. A quoted name is left alone: what is
     /// in it need not be a word.
-    private static func masked(_ adql: String) -> [Character] {
+    static func masked(_ adql: String) -> [Character] {
         var characters = Array(adql)
         var i = 0
         while i < characters.count {
@@ -332,7 +334,7 @@ enum ADQLValidator {
         return characters
     }
 
-    private static func same(_ a: String, _ b: String) -> Bool {
+    static func same(_ a: String, _ b: String) -> Bool {
         a.caseInsensitiveCompare(b) == .orderedSame
     }
 }

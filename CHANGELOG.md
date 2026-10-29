@@ -28,8 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   6 hours, when Verbinal comes back to the front, and when a service stops answering. A change, or an
   endpoint you type in Settings, applies at once, with no restart (see
   `docs/plans/53-endpoints-from-the-registry.md`).
+- **Every result row a product.** A query of products always returns each row's publisher ID, which
+  previews, details and downloads use. The ADQL editor adds `Plane.publisherID AS "Publisher ID"` (or
+  ObsCore's `obs_publisher_did`) when a query does not select it, and shows the query as it ran. Rows
+  that cannot have one (summaries, observations alone) say why, and **Join Plane** gives observations
+  their products. Assistants get each row's `publisherID` from `search_observations` and
+  `get_search_results`, and can name a row instead of copying its ID (see
+  `docs/plans/54-every-result-row-a-product.md`).
 
 ### Fixed
+- Results of ObsCore (`obs_publisher_did`), SIAv1 (`publisherDID`) or a query that named its publisher
+  ID otherwise showed no previews, details or downloads: the table knew it only as `publisherID`.
 - Sign-in went to CADC's former account service (`ws-cadc.canfar.net/ac`, now read-only) until a
   relaunch, after the registry had moved it to `cadc-west-01.canfar.net/ac`. CANFAR then took the
   requests as anonymous: "HTTP 400: cannot get group memberships for anonymous".

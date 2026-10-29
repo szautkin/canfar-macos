@@ -141,6 +141,18 @@ the form.
 Verbinal checks the query as you type, against the archive's tables and columns, and lists the problems
 under it; click a problem to select it in the query. **Execute** waits until they are fixed.
 
+Every row of a query of products has its publisher ID, the identifier that previews, details and
+downloads use. When your query does not select it, **Execute** adds it, as
+`Plane.publisherID AS "Publisher ID"` (or ObsCore's `obs_publisher_did`), and the editor shows the query
+as it ran. Some rows cannot have one, and a note under the query says why:
+
+- rows that are summaries (`DISTINCT`, `GROUP BY`, `COUNT` and the other aggregates);
+- rows of observations (`caom2.Observation` alone). Their details open by the observation's URI, which
+  Verbinal adds, but previews and downloads need a product. **Join Plane** adds the join that gives
+  each row its products.
+
+The same note shows above such results.
+
 ## Recent searches and saved queries
 
 The side panel keeps your searches.
@@ -157,5 +169,6 @@ What an AI assistant made in these lists carries the **Created by AI agent** bad
 
 Everything on this screen: fill in the form and run it, read the results as you see them, sort, filter,
 change units and columns, open details, export, write and check ADQL, save queries, cut out, and
-download. It can also search VizieR catalogues at CDS, which the app itself offers only as a name
+download. Each row it reads carries its publisher ID, and its queries get one just as yours do, so it
+can show a row's preview, links or metadata by the row. It can also search VizieR catalogues at CDS, which the app itself offers only as a name
 resolver.

@@ -66,7 +66,7 @@ struct DownloadedObservation: Codable, Identifiable, Equatable {
         dataLink: DataLinkResult? = nil
     ) -> DownloadedObservation {
         DownloadedObservation(
-            publisherID: columns.value(in: result, forID: "publisherid"),
+            publisherID: columns.publisherID(in: result),
             collection: columns.value(in: result, forID: "collection"),
             observationID: columns.value(in: result, forID: "obsid"),
             targetName: columns.value(in: result, forID: "targetname"),

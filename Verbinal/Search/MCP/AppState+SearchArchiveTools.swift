@@ -37,7 +37,8 @@ extension AppState {
                     throw ToolFailureReason.targetNotResolved(name)
                 }
                 return (ra: ra, dec: dec)
-            }
+            },
+            schema: { @MainActor [weak self] in self?.searchModel.tapSchema.cached }
         )
     }
 
@@ -97,9 +98,11 @@ extension AppState {
     }
 
     func makeGetObservationCAOM2Tool(caom2: CAOM2Service) -> GetObservationCAOM2Tool {
-        GetObservationCAOM2Tool(fetch: { id in
+        var tool = GetObservationCAOM2Tool(fetch: { id in
             try await caom2.fetch(publisherID: id)
         })
+        tool.resolveRow = resolveShownRow
+        return tool
     }
 
     func makeGetDataLinksTool(tap: TAPClient, caom2: CAOM2Service) -> GetDataLinksTool {
@@ -167,7 +170,7 @@ extension AppState {
                 packageDownloadURL: TAPClient.downloadURL(publisherID: id),
                 faults: r.faults
             )
-        })
+        }, resolveRow: resolveShownRow)
     }
 
     func makeGetPreviewImageTool(network: NetworkClient, caom2: CAOM2Service) -> GetPreviewImageTool {
@@ -224,7 +227,8 @@ extension AppState {
                         }
                     }
                 }
-            }
+            },
+            resolveRow: resolveShownRow
         )
     }
 

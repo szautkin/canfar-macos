@@ -52,6 +52,12 @@ struct GetSearchResultsTool: JSONReadTool {
         let rowIDs: [String]
         let rows: [[String]]
         let rowsTruncated: Bool
+        /// The column id holding each row's publisher ID (plan 54 D1).
+        var identifierColumn: String? = nil
+        /// Each returned row's publisher ID, in row order; null for a row without one.
+        var publisherIDs: [String?] = []
+        /// Why the rows have no publisher ID, when they have none.
+        var publisherIDNote: String? = nil
 
         struct Column: Encodable, Sendable {
             let id: String
@@ -67,7 +73,7 @@ struct GetSearchResultsTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_search_results",
-        description: "Read the in-app Search results table exactly as the user sees it. `state` says whether it holds what was last asked for: `searching` (a search runs — the rows are the previous search's, or none: read again, or run the search with wait), `ready`, `failed` (`searchError` says why; the rows are an earlier search's) or `empty`. Then: the loaded query, row counts (total + after the user's live per-column filters), sort state, active filters, pagination, and column metadata (id, label, kind, visibility, selected display unit). Returns one page of raw row values (positional per `columns`) plus `rowIDs` for `open_observation_detail` — each row's plane publisher ID, so each calibration level of an observation is its own row. Column `id`s are stable keys shared with Verbinal for Windows (built from the header: \"RA (J2000.0)\" is `ra(j20000)`); `label` is the column's name. `download` holds the plane's publisher ID when it can be downloaded. Pass `page` to read a different page than the one on screen, `allColumns: true` to include hidden columns, `includeRows: false` for state only. Rows are capped by `maxRows` (default 200, max 1000).",
+        description: "Read the in-app Search results table exactly as the user sees it. `state` says whether it holds what was last asked for: `searching` (a search runs — the rows are the previous search's, or none: read again, or run the search with wait), `ready`, `failed` (`searchError` says why; the rows are an earlier search's) or `empty`. Then: the loaded query, row counts (total + after the user's live per-column filters), sort state, active filters, pagination, and column metadata (id, label, kind, visibility, selected display unit). Returns one page of raw row values (positional per `columns`) plus `rowIDs` for `open_observation_detail` — each row's plane publisher ID, so each calibration level of an observation is its own row — and `publisherIDs`, each returned row's publisher ID (null when it has none; `publisherIDNote` says why and what to join), from the column `identifierColumn`, whatever the query called it. get_preview_image, get_data_links, get_observation_caom2 and download_observation take it, or take `row` (0-based on the page shown) instead. Column `id`s are stable keys shared with Verbinal for Windows (built from the header: \"RA (J2000.0)\" is `ra(j20000)`); `label` is the column's name. `download` holds the plane's publisher ID when it can be downloaded. Pass `page` to read a different page than the one on screen, `allColumns: true` to include hidden columns, `includeRows: false` for state only. Rows are capped by `maxRows` (default 200, max 1000).",
         schema: #"""
         {
           "type": "object",
