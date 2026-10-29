@@ -227,7 +227,7 @@ struct DownloadedFilesView: View {
                 exportService: model.exportService,
                 onVOSpaceUpload: { bundleURL in
                     let vospace = VOSpaceBrowserService(
-                        network: appState.network, endpoints: appState.endpoints)
+                        network: appState.network, endpoints: appState.liveEndpoints)
                     return try await model.exportService.uploadBundleToVOSpace(
                         bundleURL: bundleURL,
                         vospace: vospace,

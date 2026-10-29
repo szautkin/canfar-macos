@@ -60,7 +60,9 @@ enum AppMode: String, CaseIterable, Equatable {
 @MainActor
 final class AppState {
     let network: NetworkClient
-    let endpoints: APIEndpoints
+    /// Where the services are now, as the registry or the person last said (plan 53 A).
+    let liveEndpoints: LiveEndpoints
+    nonisolated var endpoints: APIEndpoints { liveEndpoints.current }
 
     // Services (all share the same NetworkClient for token injection)
     let authService: AuthService
@@ -95,7 +97,7 @@ final class AppState {
     @ObservationIgnored private(set) lazy var remoteCompute = RemoteComputeService(
         runs: ComputeRunStore(),
         sessions: sessionService,
-        files: VOSpaceBrowserService(network: network, endpoints: endpoints),
+        files: VOSpaceBrowserService(network: network, endpoints: liveEndpoints),
         username: { [weak self] in self?.username ?? "" },
         configuration: { [weak self] in
             let settings = self?.aiComputeSettings.settings
@@ -304,34 +306,31 @@ final class AppState {
         self.userImages = userImages ?? UserImageStore()
         self.fitsMarkEditor = MarkEditor(store: self.marks)
         self.cubeMarkEditor = MarkEditor(store: self.marks)
-        // Effective endpoints: user override > cached registry resolution >
-        // CANFAR default, per field. Captured once here — every service
-        // holds this value for the process lifetime (edits relaunch).
+        // Effective endpoints: user override > registry > CANFAR default, per
+        // field — live: services read them per request (plan 53).
         let registry = EndpointRegistryService(settings: endpointSettings)
         let endpoints = registry.effectiveEndpoints()
-        registry.activeAtLaunch = endpoints
         // Bearer token may only go to hosts derived from the effective
-        // endpoints (plus the classic CADC/CANFAR families). Without this,
-        // a Settings ▸ Endpoints override never receives Authorization.
+        // endpoints (plus the classic CADC/CANFAR families).
         let network = NetworkClient(
             trustedAuthHostSuffixes: NetworkClient.trustedHostSuffixes(from: endpoints)
         )
         self.endpointRegistry = registry
         self.network = network
-        self.endpoints = endpoints
+        self.liveEndpoints = LiveEndpoints(endpoints)
         #if os(macOS)
         // Search/Research read endpoints through the TAPConfig static —
         // configure it before any of their models exist.
-        TAPConfig.configure(endpoints)
+        TAPConfig.configure(liveEndpoints)
         GetServiceHealthTool.nameServicesInLedger()
         #endif
-        let authService = AuthService(network: network, endpoints: endpoints)
+        let authService = AuthService(network: network, endpoints: liveEndpoints)
         self.authService = authService
-        self.sessionService = SessionService(network: network, endpoints: endpoints)
-        self.imageService = ImageService(network: network, endpoints: endpoints)
-        self.platformService = PlatformService(network: network, endpoints: endpoints)
-        self.storageService = StorageService(network: network, endpoints: endpoints)
-        self.headlessService = HeadlessService(network: network, endpoints: endpoints)
+        self.sessionService = SessionService(network: network, endpoints: liveEndpoints)
+        self.imageService = ImageService(network: network, endpoints: liveEndpoints)
+        self.platformService = PlatformService(network: network, endpoints: liveEndpoints)
+        self.storageService = StorageService(network: network, endpoints: liveEndpoints)
+        self.headlessService = HeadlessService(network: network, endpoints: liveEndpoints)
 
         // Auth lifecycle owns the auth-only state; AppState orchestrates the
         // cross-module reactions (headless monitor, portal-cache prewarm,
@@ -466,6 +465,7 @@ final class AppState {
                 return await self.handleNetworkUnauthorized(attempt)
             }
         }
+        connectEndpoints()
     }
 
     /// Called by NetworkClient when an authenticated request returned 401.

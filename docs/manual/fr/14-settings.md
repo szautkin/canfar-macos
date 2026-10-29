@@ -135,7 +135,7 @@ de les changer. Certains de leurs noms restent en anglais dans l’app.
 
 | Réglage | Ce qu’il fait |
 |---|---|
-| **Registre IVOA** ▸ **IVOA registry (reg)** | Où Verbinal trouve les autres services. Il revérifie chaque jour ; **Actualiser maintenant** le fait tout de suite, et la ligne en dessous dit combien de services il a trouvés, et quand. |
+| **Registre IVOA** ▸ **IVOA registry (reg)** | Où Verbinal trouve les autres services. Il le consulte à l’ouverture de Verbinal, avant de vous connecter, puis toutes les 6 heures, quand Verbinal revient au premier plan, et quand un service ne répond plus ; **Actualiser maintenant** le consulte tout de suite, et la ligne en dessous dit combien de services il a trouvés, et quand. |
 | **Authentication** | **Login (CADC AC)** et **Account (Science Platform AC)** : la connexion, et votre compte de la plateforme. |
 | **Science Platform** | **Science Platform (Skaha)**, qui exécute sessions et tâches, et **Storage (VOSpace nodes)**. |
 | **Archive & Data** | **Archive (TAP / DataLink)**, pour la recherche, les métadonnées et les téléchargements, et **External web (browser)**. |
@@ -143,9 +143,9 @@ de les changer. Certains de leurs noms restent en anglais dans l’app.
 | **Tester les connexions** | Demande à chaque service s’il est disponible, et à quelle vitesse il répond. |
 
 Chaque adresse montre d’où vient sa valeur : **Default** (par défaut), **Resolved** (du registre), ou
-celle que vous avez saisie, qui l’emporte toujours ; **Effacer le remplacement** retire la vôtre. Les
-adresses s’appliquent au démarrage de Verbinal : après un changement, **Redémarrage requis** propose
-**Redémarrer maintenant**.
+celle que vous avez saisie, qui l’emporte toujours ; **Effacer le remplacement** retire la vôtre. Une
+adresse s’applique tout de suite : quand le registre déplace un service, ou que vous saisissez une
+adresse, la requête suivante de Verbinal y va, sans redémarrage.
 
 ## À propos
 

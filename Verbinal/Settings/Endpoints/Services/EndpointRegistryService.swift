@@ -12,21 +12,19 @@ import VerbinalKit
 /// Resolves the app's service endpoints from the IVOA registry and caches
 /// the result on disk.
 ///
-/// Resolution never blocks or degrades the running app:
-///  • `AppState.initialize()` fires `refreshIfStale()` as a detached task
-///    BEFORE the auth check — launch always proceeds on override/cache/
-///    default values.
+/// The registry is the source of truth (plan 53):
+///  • Each URL the app calls is the access URL of the capability its service
+///    publishes (`ServiceCapability`), not a root plus a fixed path.
+///  • `AppState.initialize()` asks for a stale answer before the auth check
+///    and waits for it briefly; a later answer applies when it lands.
+///  • Every answer is applied live: `onChange` tells the app, which updates
+///    the endpoints the services read on each request — no relaunch.
 ///  • A failed refresh (offline, registry down, garbage response) keeps
 ///    the previous cache untouched and surfaces only as `refreshState =
 ///    .failed(…)` in the Endpoints settings tab.
-///  • Services capture `APIEndpoints` by value at launch, so a resolution
-///    that changes an effective endpoint flips
-///    `resolvedChangesPendingRelaunch` (restart banner) rather than
-///    hot-swapping URLs under live requests.
 ///
-/// Only the services the app actually talks to are resolved (gms, skaha,
-/// arc, argus, caom2ops, resolver, data); the per-field precedence is
-/// user override > cached resolution > hardcoded CANFAR default.
+/// The per-field precedence is user override > cached resolution >
+/// hardcoded CANFAR default.
 @MainActor
 @Observable
 final class EndpointRegistryService {
@@ -38,7 +36,6 @@ final class EndpointRegistryService {
     }
 
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "EndpointRegistry")
-    private static let vospaceNodesStandardID = "ivo://ivoa.net/std/VOSpace/v2.0#nodes"
 
     /// CADC archive services share one host root; each entry maps the
     /// resource ID to the path suffix its service root carries, so the
@@ -57,11 +54,14 @@ final class EndpointRegistryService {
     /// Last successful resolution (possibly loaded from disk).
     private(set) var cached: ResolvedEndpoints?
     private(set) var refreshState: RefreshState = .idle
-    /// True when a fresh resolution moved an effective endpoint away from
-    /// what the running services captured at launch.
-    private(set) var resolvedChangesPendingRelaunch = false
-    /// Endpoints the app actually launched with. Set once by AppState.
-    var activeAtLaunch: APIEndpoints?
+    /// Told when a refresh has an answer: the app applies it live.
+    @ObservationIgnored var onChange: (@MainActor () -> Void)?
+    /// When the registry was last asked because a service was in trouble.
+    @ObservationIgnored private var askedForTrouble: Date?
+    /// A stale answer is asked for again after this long (plan 53 C1).
+    nonisolated static let freshFor: TimeInterval = 6 * 3600
+    /// A service in trouble asks the registry again at most this often (C3).
+    nonisolated static let troubleAskEvery: TimeInterval = 5 * 60
 
     init(
         settings: EndpointSettingsService,
@@ -115,10 +115,19 @@ final class EndpointRegistryService {
 
     /// Launch policy: hit the registry only when there's no usable cache
     /// or it is older than `maxAge`. "Refresh Now" bypasses this.
-    func refreshIfStale(maxAge: TimeInterval = 24 * 3600) async {
+    func refreshIfStale(maxAge: TimeInterval = EndpointRegistryService.freshFor) async {
         if let cache = applicableCache, Date().timeIntervalSince(cache.fetchedAt) < maxAge {
             return
         }
+        await refresh()
+    }
+
+    /// A service did not answer as it should (a 502 or 503, or no connection):
+    /// it may have moved, so the registry is asked again — at most once in
+    /// `troubleAskEvery` (plan 53 C3).
+    func serviceInTrouble(now: Date = Date()) async {
+        if let askedForTrouble, now.timeIntervalSince(askedForTrouble) < Self.troubleAskEvery { return }
+        askedForTrouble = now
         await refresh()
     }
 
@@ -144,6 +153,7 @@ final class EndpointRegistryService {
         // registry lists. A per-service failure just leaves that service
         // out — the affected fields keep their cache/default values.
         var wantedIDs = Set(Self.archiveServices.map(\.id))
+        wantedIDs.formUnion(ServiceCapability.allCases.map(\.resourceID))
         for field in EndpointField.allCases {
             if let id = field.resourceID { wantedIDs.insert(id) }
         }
@@ -183,22 +193,27 @@ final class EndpointRegistryService {
         }
 
         // Simple one-service fields: the service root IS the base URL.
-        if let root = resolved.perService["ivo://cadc.nrc.ca/gms"] {
-            resolved.values[.loginBaseURL] = root
+        for field in [EndpointField.loginBaseURL, .acBaseURL, .skahaBaseURL] {
+            if let id = field.resourceID, let root = resolved.perService[id] { resolved.values[field] = root }
         }
-        if let root = resolved.perService["ivo://cadc.nrc.ca/skaha"] {
-            resolved.values[.skahaBaseURL] = root
+
+        // Each URL the app calls, as its service publishes it (plan 53 B).
+        var published: [ServiceCapability: String] = [:]
+        for capability in ServiceCapability.allCases {
+            guard let caps = capabilitiesByID[capability.resourceID],
+                  let url = RegistryClient.accessURL(for: capability.standardID, in: caps) else { continue }
+            published[capability] = url.hasSuffix("/") ? String(url.dropLast()) : url
         }
+        // Storage's nodes URL is the storage base below, not a URL of its own.
+        let nodes = published.removeValue(forKey: .nodes)
+        resolved.capabilities = published
 
         // Storage: prefer the VOSpace #nodes accessURL (it already carries
         // the /nodes path); fall back to the arc service root.
-        if let arcCaps = capabilitiesByID["ivo://cadc.nrc.ca/arc"] {
-            if let nodes = RegistryClient.accessURL(for: Self.vospaceNodesStandardID, in: arcCaps) {
-                let base = nodes.hasSuffix("/") ? String(nodes.dropLast()) : nodes
-                resolved.values[.storageBaseURL] = base + "/home"
-            } else if let root = resolved.perService["ivo://cadc.nrc.ca/arc"] {
-                resolved.values[.storageBaseURL] = root + "/nodes/home"
-            }
+        if let nodes {
+            resolved.values[.storageBaseURL] = nodes + "/home"
+        } else if let root = resolved.perService[ServiceCapability.nodes.resourceID] {
+            resolved.values[.storageBaseURL] = root + "/nodes/home"
         }
 
         // Archive: every CADC archive service hangs off one host root.
@@ -230,6 +245,9 @@ final class EndpointRegistryService {
             for (field, value) in previous.values where resolved.values[field] == nil {
                 resolved.values[field] = value
             }
+            for (capability, url) in previous.capabilities ?? [:] where resolved.capabilities?[capability] == nil {
+                resolved.capabilities?[capability] = url
+            }
             if resolved.warnings.isEmpty, !previous.warnings.isEmpty {
                 resolved.warnings = previous.warnings
             }
@@ -250,9 +268,7 @@ final class EndpointRegistryService {
 
         cached = resolved
         refreshState = .idle
-        if let active = activeAtLaunch {
-            resolvedChangesPendingRelaunch = effectiveEndpoints() != active
-        }
+        onChange?()
         Self.logger.info("Resolved \(resolved.perService.count, privacy: .public) services from \(registry, privacy: .public)")
     }
 }

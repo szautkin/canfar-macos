@@ -424,7 +424,7 @@ struct ContentView: View {
             exportService: researchModel.exportService,
             onVOSpaceUpload: { bundleURL in
                 let vospace = VOSpaceBrowserService(
-                    network: appState.network, endpoints: appState.endpoints)
+                    network: appState.network, endpoints: appState.liveEndpoints)
                 return try await researchModel.exportService.uploadBundleToVOSpace(
                     bundleURL: bundleURL,
                     vospace: vospace,
@@ -645,7 +645,7 @@ struct ContentView: View {
         guard storageBrowserModel == nil, !appState.username.isEmpty else { return }
         let model = StorageBrowserModel(
             service: VOSpaceBrowserService(
-                network: appState.network, endpoints: appState.endpoints),
+                network: appState.network, endpoints: appState.liveEndpoints),
             username: appState.username
         )
         model.onOpenFile = { [weak appState] url in

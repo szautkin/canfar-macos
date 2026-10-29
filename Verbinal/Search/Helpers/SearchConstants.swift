@@ -25,11 +25,14 @@ enum TAPConfig {
     /// never call `configure`.
     /// `nonisolated(unsafe)` documents the set-once-before-use discipline —
     /// same pattern as `KeychainStorage.service`.
-    nonisolated(unsafe) private(set) static var endpoints = APIEndpoints()
+    nonisolated(unsafe) private(set) static var source: any EndpointsSource = APIEndpoints()
+    /// The archive's endpoints now: the app's live ones once configured,
+    /// so a registry answer reaches Search and Research (plan 53 A2).
+    static var endpoints: APIEndpoints { source.current }
 
     /// Call once at app launch, before any Search/Research model is built.
-    static func configure(_ endpoints: APIEndpoints) {
-        Self.endpoints = endpoints
+    static func configure(_ source: any EndpointsSource) {
+        Self.source = source
     }
 
     static var syncURL: String { endpoints.tapSyncURL }

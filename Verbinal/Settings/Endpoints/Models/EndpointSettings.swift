@@ -58,7 +58,8 @@ enum EndpointField: String, CaseIterable, Identifiable, Codable, Sendable {
         case .skahaBaseURL: return "ivo://cadc.nrc.ca/skaha"
         case .storageBaseURL: return "ivo://cadc.nrc.ca/arc"
         case .archiveBaseURL: return "ivo://cadc.nrc.ca/argus"
-        case .acBaseURL, .externalBaseURL, .registryBaseURL: return nil
+        case .acBaseURL: return "ivo://cadc.nrc.ca/ums"
+        case .externalBaseURL, .registryBaseURL: return nil
         }
     }
 }
@@ -109,6 +110,9 @@ struct ResolvedEndpoints: Codable, Equatable, Sendable {
     var values: [EndpointField: String] = [:]
     /// Raw per-resource service roots, for the Settings status UI.
     var perService: [String: String] = [:]
+    /// Each URL as its service published it, by capability (plan 53 B).
+    /// Optional, so a cache written before it still loads.
+    var capabilities: [ServiceCapability: String]? = nil
     /// Non-fatal oddities found during resolution (e.g. archive services
     /// disagreeing on a common host root). Shown in the Settings tab.
     var warnings: [String] = []
@@ -157,6 +161,12 @@ enum EndpointResolution {
         func value(_ field: EndpointField) -> String {
             effectiveValue(for: field, overrides: overrides, resolved: resolved)
         }
+        // A field the person overrode drops its service's published URLs:
+        // the override wins (plan 53 B2).
+        let published = (resolved?.capabilities ?? [:]).filter { overrides[$0.key.field] == nil }
+        let roots = (resolved?.perService ?? [:]).filter { id, _ in
+            EndpointField.of(resource: id).map { overrides[$0] == nil } ?? true
+        }
         return APIEndpoints(
             loginBaseURL: value(.loginBaseURL),
             skahaBaseURL: value(.skahaBaseURL),
@@ -164,7 +174,30 @@ enum EndpointResolution {
             storageBaseURL: value(.storageBaseURL),
             registryBaseURL: value(.registryBaseURL),
             archiveBaseURL: value(.archiveBaseURL),
-            externalBaseURL: value(.externalBaseURL)
+            externalBaseURL: value(.externalBaseURL),
+            capabilityURLs: published,
+            serviceRoots: roots
         )
+    }
+}
+
+extension EndpointField {
+    /// The field a registry resource backs: an override of it sets aside
+    /// what the registry said about that resource.
+    static func of(resource id: String) -> EndpointField? {
+        allCases.first { $0.resourceID == id } ?? ServiceCapability.allCases.first { $0.resourceID == id }?.field
+    }
+}
+
+extension ServiceCapability {
+    /// The endpoint field whose service publishes it: an override of that
+    /// field sets aside what the registry said for it.
+    var field: EndpointField {
+        switch self {
+        case .login, .whoami, .users: .loginBaseURL
+        case .sessions, .images, .context, .repository: .skahaBaseURL
+        case .nodes: .storageBaseURL
+        case .tap, .datalink, .meta, .pkg, .resolver, .files: .archiveBaseURL
+        }
     }
 }

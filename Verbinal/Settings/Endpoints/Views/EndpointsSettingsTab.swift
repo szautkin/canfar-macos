@@ -14,9 +14,8 @@ import VerbinalKit
 /// registry-refresh status and controls.
 ///
 /// Edits use local buffers committed on Return, on leaving the field, or on
-/// leaving the tab (never bound raw to the service), and take effect on relaunch — services capture their
-/// endpoints at launch, so the restart banner mirrors the General tab's
-/// language pattern.
+/// leaving the tab (never bound raw to the service), and apply at once:
+/// services read the endpoints in use on each request (plan 53).
 struct EndpointsSettingsTab: View {
     @Environment(AppState.self) private var appState
 
@@ -58,9 +57,6 @@ struct EndpointsSettingsTab: View {
             )
             resetSection
             testConnectionsSection
-            if settings.pendingRelaunch || registry.resolvedChangesPendingRelaunch {
-                relaunchSection
-            }
         }
         .formStyle(.grouped)
         .onAppear(perform: seedBuffers)
@@ -212,7 +208,7 @@ struct EndpointsSettingsTab: View {
             .foregroundStyle(tint)
     }
 
-    // MARK: - Reset + relaunch
+    // MARK: - Reset
 
     private var resetSection: some View {
         Section {
@@ -230,32 +226,8 @@ struct EndpointsSettingsTab: View {
                     invalidFields = []
                 }
             } message: {
-                Text("Registry-resolved values and CANFAR defaults will apply after the next launch.")
+                Text("Registry-resolved values and CANFAR defaults apply at once.")
             }
-        }
-    }
-
-    private var relaunchSection: some View {
-        Section {
-            HStack(spacing: 10) {
-                Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
-                    .foregroundStyle(.tint)
-                    .font(.title3)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Restart required")
-                        .font(.callout.bold())
-                    Text("Endpoints are applied at launch. Restart Verbinal to use the new values.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("Restart Now") {
-                    appState.relaunch()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-            }
-            .padding(.vertical, 4)
         }
     }
 
@@ -351,8 +323,8 @@ struct EndpointsSettingsTab: View {
         testResults = []
         // Scope to the configured deployment services only, dropping the
         // deployment-independent VizieR mirrors. `Endpoint` is Equatable, so
-        // the mirror list filters cleanly. Probe the effective (saved) values
-        // — the ones services will capture at the next launch.
+        // the mirror list filters cleanly. Probe the effective values: the
+        // ones the services use now.
         let mirrors = GetServiceHealthTool.vizierMirrors
         let endpoints = GetServiceHealthTool
             .deploymentEndpoints(for: registry.effectiveEndpoints())

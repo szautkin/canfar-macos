@@ -16,20 +16,21 @@ actor VOSpaceBrowserService {
     /// transfer. Both share the same canfar.net host the rest of the app
     /// uses; if `APIEndpoints` ever moves to a different host the storage
     /// URLs follow because they're derived from `nodesBase` not hand-typed.
-    private let nodesBase: String
-    private let filesBase: String
+    /// Where the services are, read on each request (plan 53 A2).
+    private let endpointsSource: any EndpointsSource
+    nonisolated private var nodesBase: String { endpointsSource.current.storageBaseURL }
+    // The files base mirrors the nodes base — they're symmetric paths.
+    nonisolated private var filesBase: String { nodesBase.replacingOccurrences(of: "/nodes/home", with: "/files/home") }
     private static let vosPrefix = "vos://cadc.nrc.ca~arc/home"
 
     /// Where each change to storage is recorded — here, where the Storage
     /// screen's and an assistant's are both made (plan 23 C).
     private let changes: ChangeLog
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared) {
+    init(network: NetworkClient, endpoints: any EndpointsSource = APIEndpoints(), changes: ChangeLog = .shared) {
         self.network = network
         self.changes = changes
-        self.nodesBase = endpoints.storageBaseURL
-        // Derive the files base from the nodes base — they're symmetric paths.
-        self.filesBase = endpoints.storageBaseURL.replacingOccurrences(of: "/nodes/home", with: "/files/home")
+        self.endpointsSource = endpoints
     }
 
     /// Percent-encode a single path segment (slashes are preserved in input by the caller

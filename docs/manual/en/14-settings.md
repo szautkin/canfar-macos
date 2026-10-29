@@ -131,7 +131,7 @@ The addresses of the CADC and CANFAR services Verbinal talks to. You rarely need
 
 | Setting | What it does |
 |---|---|
-| **IVOA Registry** ▸ **IVOA registry (reg)** | Where Verbinal looks up the other services. It checks again every day; **Refresh Now** does it now, and the line below says how many services it found, and when. |
+| **IVOA Registry** ▸ **IVOA registry (reg)** | Where Verbinal looks up the other services. It asks when Verbinal opens, before signing you in, then every 6 hours, when Verbinal comes back to the front, and when a service stops answering; **Refresh Now** asks now, and the line below says how many services it found, and when. |
 | **Authentication** | **Login (CADC AC)** and **Account (Science Platform AC)**: signing in, and your platform account. |
 | **Science Platform** | **Science Platform (Skaha)**, which runs sessions and jobs, and **Storage (VOSpace nodes)**. |
 | **Archive & Data** | **Archive (TAP / DataLink)**, for search, metadata and downloads, and **External web (browser)**. |
@@ -139,8 +139,8 @@ The addresses of the CADC and CANFAR services Verbinal talks to. You rarely need
 | **Test Connections** | Asks each service whether it is available, and how fast it answers. |
 
 Each address shows where its value comes from: **Default**, **Resolved** (from the registry), or the one
-you typed, which always wins; **Clear override** removes yours. Addresses apply when Verbinal starts:
-after a change, **Restart required** offers **Restart Now**.
+you typed, which always wins; **Clear override** removes yours. An address applies at once: when the
+registry moves a service, or you type an address, Verbinal's next request goes there, with no restart.
 
 ## About
 

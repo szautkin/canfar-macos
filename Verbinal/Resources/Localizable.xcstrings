@@ -49,6 +49,26 @@
         }
       }
     },
+    "CADC's account service is unavailable (%@). Verbinal keeps your sign-in and checks it again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le service de comptes du CADC est indisponible (%@). Verbinal garde votre connexion et la revérifie."
+          }
+        }
+      }
+    },
+    "Registry-resolved values and CANFAR defaults apply at once." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les valeurs résolues par le registre et les valeurs par défaut CANFAR s'appliquent tout de suite."
+          }
+        }
+      }
+    },
     "—" : {
       "shouldTranslate" : false
     },
@@ -8253,16 +8273,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Points d'accès"
-          }
-        }
-      }
-    },
-    "Endpoints are applied at launch. Restart Verbinal to use the new values." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les points d'accès sont appliqués au lancement. Redémarrez Verbinal pour utiliser les nouvelles valeurs."
           }
         }
       }
@@ -17034,16 +17044,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Identifiant du registre (images privées)"
-          }
-        }
-      }
-    },
-    "Registry-resolved values and CANFAR defaults will apply after the next launch." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les valeurs résolues par le registre et les valeurs par défaut CANFAR s'appliqueront au prochain lancement."
           }
         }
       }

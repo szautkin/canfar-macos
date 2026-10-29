@@ -423,7 +423,15 @@ final class RenewalTests: XCTestCase {
         var issued = "new-token"
         var password = "pw"
         var unreachable = false
+        /// The data service answers a token it does not take as Skaha does
+        /// an anonymous request: 400 "…for anonymous" (plan 52 E4).
+        var anonymousAs400 = false
+        /// Whoami refuses every token with 403, as a read-only account service did.
+        var whoamiRefuses = false
+        /// What the account service says of itself at /availability.
+        var accountAvailable = true
         private(set) var signIns = 0
+        private(set) var whoamis = 0
 
         func answer(_ request: URLRequest) throws -> (HTTPURLResponse, Data) {
             try lock.withLock {
@@ -440,9 +448,22 @@ final class RenewalTests: XCTestCase {
                     let form = String(decoding: request.httpBody ?? Data(), as: UTF8.self)
                     return form.contains("password=\(password)") ? reply(200, issued) : reply(401)
                 }
-                if path.hasSuffix("/whoami") { return bearer == "Bearer \(accepted)" ? reply(200, "alice") : reply(401) }
+                if path.hasSuffix("/whoami") {
+                    whoamis += 1
+                    if whoamiRefuses { return reply(403) }
+                    return bearer == "Bearer \(accepted)" ? reply(200, "alice") : reply(401)
+                }
+                if path.hasSuffix("/availability") {
+                    return reply(200, """
+                    <vosi:availability xmlns:vosi="http://www.ivoa.net/xml/VOSIAvailability/v1.0">
+                      <vosi:available>\(accountAvailable)</vosi:available>
+                      <vosi:note>\(accountAvailable ? "service is accepting requests" : "service is in read-only mode")</vosi:note>
+                    </vosi:availability>
+                    """)
+                }
                 if path.contains("/users/") { return reply(200, "<user/>") }
-                return bearer == "Bearer \(serviceAccepts)" ? reply(200, "data") : reply(401)
+                if bearer == "Bearer \(serviceAccepts)" { return reply(200, "data") }
+                return anonymousAs400 ? reply(400, "cannot get group memberships for anonymous") : reply(401)
             }
         }
     }
@@ -637,6 +658,79 @@ final class RenewalTests: XCTestCase {
         XCTAssertEqual(ended, 0)
         XCTAssertTrue(controller.isAuthenticated)
         XCTAssertEqual(cadc.signIns, 0)
+    }
+
+    // MARK: - Plan 52 E: what a check may not do
+
+    /// E1: checking another token never changes the one requests carry.
+    func testCheckingAnOlderTokenLeavesTheLiveOne() async {
+        KeychainStorage.saveCredentials(token: "old-token", username: "alice", password: nil)
+        await network.setToken("new-token")
+        let outcome = await AuthService(network: network).validateToken("old-token")
+        guard case .expired = outcome else { return XCTFail("\(outcome)") }
+        let live = await network.token
+        XCTAssertEqual(live, "new-token")
+    }
+
+    /// E2: two launch checks at once — two windows — check once, and leave
+    /// the fresh sign-in in place; a check while signed in asks nothing.
+    func testTwoLaunchChecksAtOnceCheckOnce() async {
+        KeychainStorage.saveCredentials(token: "old-token", username: "alice", password: "pw")
+        async let first: Void = controller.validateStoredToken()
+        async let second: Void = controller.validateStoredToken()
+        _ = await (first, second)
+        XCTAssertTrue(controller.isAuthenticated)
+        XCTAssertEqual(cadc.signIns, 1)
+        let live = await network.token
+        XCTAssertEqual(live, "new-token")
+        XCTAssertNotEqual(controller.statusMessage, String(localized: "Validating session..."))
+
+        let asked = cadc.whoamis
+        await controller.validateStoredToken()
+        XCTAssertEqual(cadc.whoamis, asked, "signed in: nothing to check")
+    }
+
+    /// E4: Skaha's anonymous 400 is a sign-in question: an expired token is
+    /// renewed, and the request goes again.
+    func testAnAnonymousRefusalRenewsAnExpiredSignIn() async {
+        await signedIn(rememberMe: true)
+        cadc.anonymousAs400 = true
+        let results = await fetchAll(1)
+        XCTAssertEqual(results.compactMap { try? $0.get() }, ["data"], "\(results)")
+        XCTAssertEqual(cadc.signIns, 1)
+    }
+
+    /// E4: with a token CADC accepts, an anonymous refusal is CANFAR's
+    /// trouble: no fresh sign-in, and the error says what it means.
+    func testAnAnonymousRefusalOfAGoodTokenIsSaidPlainly() async {
+        await signedIn(rememberMe: true)
+        cadc.accepted = "old-token"
+        cadc.serviceAccepts = "never"
+        cadc.anonymousAs400 = true
+        let results = await fetchAll(1)
+        XCTAssertEqual(cadc.signIns, 0, "signing in again would not help")
+        guard case .failure(let error) = results.first else { return XCTFail("\(results)") }
+        XCTAssertTrue(error.localizedDescription.contains("could not confirm who you are"), error.localizedDescription)
+    }
+
+    /// E4: whoami's 403 while the account service says it is unavailable is
+    /// not expiry: the session and the password are kept, and it says why.
+    func testARefusalWhileTheAccountServiceIsDownKeepsTheSession() async {
+        await signedIn(rememberMe: true)
+        cadc.whoamiRefuses = true
+        cadc.accountAvailable = false
+        let outcome = await controller.renew()
+        guard case .unavailable(let why) = outcome else { return XCTFail("\(outcome)") }
+        XCTAssertEqual(why, "service is in read-only mode")
+        XCTAssertTrue(controller.isAuthenticated)
+        XCTAssertEqual(cadc.signIns, 0, "the password is not spent on an outage")
+        XCTAssertNotNil(KeychainStorage.loadCredentials().password)
+        XCTAssertEqual(ended, 0)
+
+        cadc.accountAvailable = true
+        let again = await controller.renew()
+        XCTAssertEqual(again, .renewed, "available and refusing: expiry, so a fresh sign-in")
+        XCTAssertEqual(cadc.signIns, 1)
     }
 
     private final class Flag: @unchecked Sendable {

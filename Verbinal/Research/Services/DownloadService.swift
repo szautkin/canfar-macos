@@ -13,7 +13,9 @@ import VerbinalKit
 actor DownloadService {
     private static let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Downloads")
     private let session: URLSession
-    private let endpoints: APIEndpoints
+    /// Where the services are, read on each request (plan 53 A2).
+    private let endpointsSource: any EndpointsSource
+    nonisolated private var endpoints: APIEndpoints { endpointsSource.current }
     private let caom2: CAOM2Service
     private let tasks: TaskRegistry
     /// Where each download is recorded — here, whoever asks (plan 23 C).
@@ -21,7 +23,7 @@ actor DownloadService {
 
     init(
         session: URLSession = .shared,
-        endpoints: APIEndpoints = TAPConfig.endpoints,
+        endpoints: any EndpointsSource = TAPConfig.source,
         caom2: CAOM2Service = CAOM2Service(),
         tasks: TaskRegistry = .shared,
         changes: ChangeLog = .shared
@@ -29,7 +31,7 @@ actor DownloadService {
         self.tasks = tasks
         self.changes = changes
         self.session = session
-        self.endpoints = endpoints
+        self.endpointsSource = endpoints
         self.caom2 = caom2
     }
 

@@ -16,15 +16,20 @@ import MetricKit
 
 /// Signing in, and what the app starts for the person once they are: their sessions, jobs, images and storage.
 extension AppState {
-    /// Called on app launch — delegates to the controller. Registry
-    /// endpoint resolution is fired off first but never awaited: launch
-    /// and auth always proceed on the endpoints captured at init.
+    /// Called on app launch — delegates to the controller. Where the
+    /// services are comes first: a stale registry answer is asked for and
+    /// waited for at most `registryWait`, so the sign-in goes where the
+    /// registry says; a later answer applies when it lands (plan 53 C1).
     func initialize() async {
-        Task { [endpointRegistry] in
-            await endpointRegistry.refreshIfStale()
+        let registry = endpointRegistry
+        await withHardDeadline(seconds: Self.registryWait, cancelsWork: false, onDeadline: {}) {
+            await registry.refreshIfStale()
         }
         await auth.validateStoredToken()
     }
+
+    /// How long a launch waits for the registry before signing in.
+    static let registryWait: TimeInterval = 5
 
     /// True when sign-in is parked waiting for connectivity to return.
     /// Drives the offline hint + manual retry on the landing screen.
@@ -50,6 +55,7 @@ extension AppState {
     /// is checked, so a session that ended meanwhile asks to sign in now.
     func appDidBecomeActive() {
         Task { await auth.recheckIfStale() }
+        Task { [endpointRegistry] in await endpointRegistry.refreshIfStale() }
     }
 
     /// Pass-through used by `LoginSheet` after a successful login. Forwards
@@ -138,7 +144,7 @@ extension AppState {
         let coord = ImageDiscoveryCoordinator(
             store: store,
             headless: headlessService,
-            vospace: VOSpaceBrowserService(network: network, endpoints: endpoints),
+            vospace: VOSpaceBrowserService(network: network, endpoints: liveEndpoints),
             username: username,
             imageTypesLookup: typesLookup,
             registryAuthProvider: authProvider,

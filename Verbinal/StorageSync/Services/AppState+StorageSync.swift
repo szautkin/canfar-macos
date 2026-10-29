@@ -11,7 +11,7 @@ extension AppState {
     func startStorageSync() {
         // Research's files to and from the person's storage, while signed in.
         researchModel.transfer.storage = VOSpaceResearchStorage(
-            vospace: VOSpaceBrowserService(network: network, endpoints: endpoints), username: username)
+            vospace: VOSpaceBrowserService(network: network, endpoints: liveEndpoints), username: username)
         let quotas = storageService, user = username
         researchModel.storageFree = {
             guard let quota = try? await quotas.getQuota(username: user), quota.quotaBytes > 0 else { return nil }
@@ -19,7 +19,7 @@ extension AppState {
         }
         let remoteCompute = remoteCompute
         storageSync.signedIn(username: username, .init(
-            vospace: VOSpaceBrowserService(network: network, endpoints: endpoints),
+            vospace: VOSpaceBrowserService(network: network, endpoints: liveEndpoints),
             work: workCollections(username: username),
             importManifest: { @MainActor [weak self] data in
                 guard let coordinator = self?.imageDiscoveryCoordinator else { return false }

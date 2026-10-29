@@ -93,7 +93,7 @@ extension AppState {
         tools.append(makeGetWorkflowTool())
 
         // VOSpace domain
-        let vospace = VOSpaceBrowserService(network: network, endpoints: endpoints)
+        let vospace = VOSpaceBrowserService(network: network, endpoints: liveEndpoints)
         tools.append(makeListVOSpacePathTool(service: vospace))
         tools.append(makeGetVOSpaceNodeTool(service: vospace))
         tools.append(makeReadVOSpaceFileTool(service: vospace))
@@ -102,9 +102,9 @@ extension AppState {
         // the EFFECTIVE registry/archive/VOSpace/Skaha endpoints plus the
         // global VizieR mirrors (the canonical CANFAR list would report the
         // wrong backend when endpoints are overridden or resolved).
-        let healthEndpoints = GetServiceHealthTool.deploymentEndpoints(for: endpoints)
-        tools.append(GetServiceHealthTool(probe: {
-            await GetServiceHealthTool.runCanonicalProbes(endpoints: healthEndpoints)
+        tools.append(GetServiceHealthTool(probe: { [liveEndpoints] in
+            await GetServiceHealthTool.runCanonicalProbes(
+                endpoints: GetServiceHealthTool.deploymentEndpoints(for: liveEndpoints.current))
         }))
 
         // Sessions domain

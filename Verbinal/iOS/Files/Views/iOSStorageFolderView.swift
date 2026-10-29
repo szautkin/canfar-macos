@@ -231,7 +231,7 @@ struct iOSStorageFolderView: View {
 
     private func load() async {
         let attempt = listing.begin()
-        let storage = manage?.storage ?? VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints)
+        let storage = manage?.storage ?? VOSpaceBrowserService(network: appState.network, endpoints: appState.liveEndpoints)
         do {
             listing.finish(attempt, with: .success(try await storage.listNodes(username: appState.username, path: path)))
         } catch {
@@ -285,7 +285,7 @@ struct iOSYourStorageView: View {
         .task {
             if actions == nil {
                 actions = StorageActions(
-                    storage: VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints),
+                    storage: VOSpaceBrowserService(network: appState.network, endpoints: appState.liveEndpoints),
                     username: appState.username, library: library)
             }
             await library.reload()

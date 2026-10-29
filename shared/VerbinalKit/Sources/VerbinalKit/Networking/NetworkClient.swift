@@ -38,7 +38,10 @@ public actor NetworkClient {
     /// token stamped again; `false` if the 401 should propagate as
     /// `NetworkError.unauthorized`. A request is retried at most twice.
     public typealias UnauthorizedHandler = @Sendable (UnauthorizedAttempt) async -> Bool
-    private var onUnauthorized: UnauthorizedHandler?
+    var onUnauthorized: UnauthorizedHandler?
+
+    /// Told when a service is not there (`NetworkClient+ServiceTrouble`).
+    var onServiceTrouble: TroubleHandler?
 
     public init(
         session: URLSession = .shared,
@@ -52,32 +55,6 @@ public actor NetworkClient {
 
     public func setUnauthorizedHandler(_ handler: UnauthorizedHandler?) {
         self.onUnauthorized = handler
-    }
-
-    /// Default allow-list — the CADC + CANFAR domain families. Anything else
-    /// (including DataLink redirects to partner archives) is treated as
-    /// untrusted: requests still execute, but without our token.
-    public static let defaultCADCHosts: [String] = [
-        "cadc-ccda.hia-iha.nrc-cnrc.gc.ca",
-        "canfar.net",
-    ]
-
-    /// Build the bearer-token host allow-list from effective endpoints,
-    /// always unioned with the classic CADC/CANFAR families so a partial
-    /// override cannot lock the app out of the defaults mid-session.
-    public static func trustedHostSuffixes(from endpoints: APIEndpoints) -> [String] {
-        var hosts = Set(defaultCADCHosts.map { $0.lowercased() })
-        let urls = [
-            endpoints.loginBaseURL, endpoints.skahaBaseURL, endpoints.acBaseURL,
-            endpoints.storageBaseURL, endpoints.registryBaseURL,
-            endpoints.archiveBaseURL, endpoints.externalBaseURL,
-        ]
-        for urlString in urls {
-            if let host = URL(string: urlString)?.host?.lowercased(), !host.isEmpty {
-                hosts.insert(host)
-            }
-        }
-        return hosts.sorted()
     }
 
     // MARK: - Mutable configuration
@@ -121,16 +98,6 @@ public actor NetworkClient {
         self.trustedAuthHostSuffixes = hosts
     }
 
-    /// Whether the bearer token would be attached to a request to `host`.
-    /// Exposed for callers that need to decide whether to even make a call
-    /// (e.g., authenticated endpoints).
-    public func isTrustedAuthHost(_ host: String?) -> Bool {
-        guard let host = host?.lowercased() else { return false }
-        return trustedAuthHostSuffixes.contains { suffix in
-            host == suffix || host.hasSuffix("." + suffix)
-        }
-    }
-
     // MARK: - HTTP Methods
 
     /// `allowAuthRetry: false` opts a request out of the `onUnauthorized`
@@ -162,8 +129,9 @@ public actor NetworkClient {
         return try await execute(request, allowAuthRetry: allowAuthRetry)
     }
 
-    public func getText(_ urlString: String, timeout: TimeInterval = RequestTimeout.standard, allowAuthRetry: Bool = true) async throws -> String {
-        let (data, _) = try await get(urlString, timeout: timeout, allowAuthRetry: allowAuthRetry)
+    public func getText(_ urlString: String, additionalHeaders: [String: String]? = nil,
+                        timeout: TimeInterval = RequestTimeout.standard, allowAuthRetry: Bool = true) async throws -> String {
+        let (data, _) = try await get(urlString, additionalHeaders: additionalHeaders, timeout: timeout, allowAuthRetry: allowAuthRetry)
         return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
@@ -442,44 +410,6 @@ public actor NetworkClient {
         return (data, httpResponse)
     }
 
-    /// Restamp Authorization from the current token and retry `operation`
-    /// once after the host's `onUnauthorized` handler refreshes credentials.
-    /// Streaming PUT/GET bypass `execute`, so they share this helper instead
-    /// of duplicating the 401 interceptor.
-    func retryUnauthorized<T>(
-        original request: URLRequest,
-        allowAuthRetry: Bool = true,
-        operation: (URLRequest) async throws -> T
-    ) async throws -> T {
-        var attempt: UnauthorizedAttempt? = allowAuthRetry ? .first : nil
-        var current = request
-        while true {
-            do {
-                return try await operation(current)
-            } catch let error as NetworkError where error.isUnauthorized {
-                guard let asked = attempt, let handler = onUnauthorized, await handler(asked) else { throw error }
-                attempt = Self.next(after: asked)
-                current = restamped(request)
-            }
-        }
-    }
-
-    /// The 401 after `attempt`'s retry: a second is asked about, a third is not.
-    private static func next(after attempt: UnauthorizedAttempt) -> UnauthorizedAttempt? {
-        attempt == .first ? .again : nil
-    }
-
-    private func restamped(_ request: URLRequest) -> URLRequest {
-        var retried = request
-        if let url = retried.url, isTrustedAuthHost(url.host),
-           let token, !token.isEmpty {
-            retried.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        } else {
-            retried.setValue(nil, forHTTPHeaderField: "Authorization")
-        }
-        return retried
-    }
-
     // MARK: - Private
 
     func makeRequest(_ urlString: String, method: String, timeout: TimeInterval = RequestTimeout.standard) throws -> URLRequest {
@@ -507,10 +437,17 @@ public actor NetworkClient {
 
     private func execute(_ request: URLRequest, attempt: UnauthorizedAttempt?) async throws -> (Data, HTTPURLResponse) {
         let session = session
-        let (data, response) = try await ledger.send(request) { try await session.data(for: $0) }
+        let data: Data, response: URLResponse
+        do {
+            (data, response) = try await ledger.send(request) { try await session.data(for: $0) }
+        } catch {
+            if Self.isServiceTrouble(error) { reportTrouble(at: request.url) }
+            throw error
+        }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
+        if Self.isServiceTrouble(status: httpResponse.statusCode) { reportTrouble(at: request.url) }
         if httpResponse.statusCode == 401 {
             // Give the auth-lifecycle host a chance to refresh the token
             // (or surface a re-login UI) before we propagate the failure:
@@ -520,6 +457,15 @@ public actor NetworkClient {
                 return try await execute(restamped(request), attempt: Self.next(after: attempt))
             }
             throw NetworkError.unauthorized
+        }
+        // Skaha took a request that carried a token as anonymous: the sign-in
+        // is checked once — an expired one renews or asks — and the request
+        // goes again. A token CADC accepts is not signed in again for it: then
+        // it is CANFAR's trouble (plan 52 E4).
+        if NetworkError.isAnonymousRefusal(httpResponse.statusCode, data), attempt == .first,
+           request.value(forHTTPHeaderField: "Authorization") != nil,
+           let handler = onUnauthorized, await handler(.first) {
+            return try await execute(restamped(request), attempt: nil)
         }
         if httpResponse.statusCode >= 400 {
             let body = String(data: data, encoding: .utf8) ?? ""

@@ -37,24 +37,30 @@ final class EndpointSettingsServiceTests: XCTestCase {
         XCTAssertNil(reloaded.overrides[.loginBaseURL])
     }
 
-    func testPendingRelaunchFlipsOnChangeNotOnLoad() {
+    /// Plan 53 C5: a change is told at once, so it applies live; a load is not a change.
+    func testAChangeIsToldAtOnceALoadIsNot() {
         let service = EndpointSettingsService(userDefaults: defaults)
-        XCTAssertFalse(service.pendingRelaunch)
-
+        var told = 0
+        service.onChange = { told += 1 }
         service.setOverride("https://my.host/skaha", for: .skahaBaseURL)
-        XCTAssertTrue(service.pendingRelaunch)
+        XCTAssertEqual(told, 1)
 
         let reloaded = EndpointSettingsService(userDefaults: defaults)
-        XCTAssertFalse(reloaded.pendingRelaunch, "Loading persisted overrides is not a change")
+        var reloadTold = 0
+        reloaded.onChange = { reloadTold += 1 }
+        XCTAssertEqual(reloaded.overrides[.skahaBaseURL], "https://my.host/skaha")
+        XCTAssertEqual(reloadTold, 0, "Loading persisted overrides is not a change")
     }
 
-    func testNoOpWriteDoesNotRaiseRelaunchBanner() {
+    func testANoOpWriteTellsNothing() {
         let service = EndpointSettingsService(userDefaults: defaults)
         service.setOverride("https://my.host/skaha", for: .skahaBaseURL)
 
         let reloaded = EndpointSettingsService(userDefaults: defaults)
+        var told = 0
+        reloaded.onChange = { told += 1 }
         reloaded.setOverride("https://my.host/skaha/", for: .skahaBaseURL)
-        XCTAssertFalse(reloaded.pendingRelaunch, "Same normalized value must not require a relaunch")
+        XCTAssertEqual(told, 0, "Same normalized value changes nothing")
     }
 
     func testClearOverrideRemovesEntry() {
@@ -81,7 +87,9 @@ final class EndpointSettingsServiceTests: XCTestCase {
 
     func testResetOnPristineStoreIsNoOp() {
         let service = EndpointSettingsService(userDefaults: defaults)
+        var told = 0
+        service.onChange = { told += 1 }
         service.resetToDefaults()
-        XCTAssertFalse(service.pendingRelaunch)
+        XCTAssertEqual(told, 0)
     }
 }

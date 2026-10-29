@@ -25,7 +25,9 @@ protocol SessionLaunching: Sendable {
 
 final class SessionService: SessionLaunching {
     private let network: NetworkClient
-    private let endpoints: APIEndpoints
+    /// Where the services are, read on each request (plan 53 A2).
+    private let endpointsSource: any EndpointsSource
+    private var endpoints: APIEndpoints { endpointsSource.current }
     /// Where each change to the person's sessions is recorded — here, where
     /// every launch, delete and renewal is made, whoever asks (plan 23 C).
     private let changes: ChangeLog
@@ -34,10 +36,10 @@ final class SessionService: SessionLaunching {
     /// apart, until the session is gone or going.
     private let confirmation: (attempts: Int, interval: Duration)
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared,
+    init(network: NetworkClient, endpoints: any EndpointsSource = APIEndpoints(), changes: ChangeLog = .shared,
          confirmation: (attempts: Int, interval: Duration) = (5, .seconds(1))) {
         self.network = network
-        self.endpoints = endpoints
+        self.endpointsSource = endpoints
         self.changes = changes
         self.confirmation = confirmation
     }

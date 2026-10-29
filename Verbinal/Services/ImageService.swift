@@ -9,11 +9,13 @@ import VerbinalKit
 
 final class ImageService: Sendable {
     private let network: NetworkClient
-    private let endpoints: APIEndpoints
+    /// Where the services are, read on each request (plan 53 A2).
+    private let endpointsSource: any EndpointsSource
+    private var endpoints: APIEndpoints { endpointsSource.current }
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
+    init(network: NetworkClient, endpoints: any EndpointsSource = APIEndpoints()) {
         self.network = network
-        self.endpoints = endpoints
+        self.endpointsSource = endpoints
     }
 
     /// Fetches available container images.

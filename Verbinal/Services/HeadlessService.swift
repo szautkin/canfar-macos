@@ -9,7 +9,9 @@ import VerbinalKit
 
 final class HeadlessService: Sendable {
     private let network: NetworkClient
-    private let endpoints: APIEndpoints
+    /// Where the services are, read on each request (plan 53 A2).
+    private let endpointsSource: any EndpointsSource
+    private var endpoints: APIEndpoints { endpointsSource.current }
     /// Where each batch job launched or deleted is recorded — here, whoever
     /// asks: the person, an assistant, or an image probe (plan 23 C).
     private let changes: ChangeLog
@@ -18,10 +20,10 @@ final class HeadlessService: Sendable {
     /// 2026-09-30).
     private let sessions: SessionService
 
-    init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints(), changes: ChangeLog = .shared,
+    init(network: NetworkClient, endpoints: any EndpointsSource = APIEndpoints(), changes: ChangeLog = .shared,
          sessions: SessionService? = nil) {
         self.network = network
-        self.endpoints = endpoints
+        self.endpointsSource = endpoints
         self.changes = changes
         self.sessions = sessions ?? SessionService(network: network, endpoints: endpoints, changes: changes)
     }

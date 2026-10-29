@@ -23,7 +23,15 @@ public enum NetworkError: LocalizedError, Sendable {
         case .invalidURL(let url): return "Invalid URL: \(url)"
         case .invalidResponse: return "Invalid server response"
         case .unauthorized: return "Authentication required"
+        case .httpError(let code, let body) where Self.isAnonymousRefusal(code, Data(body.utf8)):
+            return "CANFAR took the request as anonymous: it could not confirm who you are. If it lasts, sign out and in again; CADC's account service may be unavailable."
         case .httpError(let code, let body): return "HTTP \(code): \(body)"
         }
+    }
+
+    /// Skaha's answer to a request it took as anonymous — no credential, or
+    /// one it could not resolve: 400 "cannot get group memberships for anonymous".
+    public static func isAnonymousRefusal(_ status: Int, _ body: Data) -> Bool {
+        status == 400 && String(decoding: body.prefix(512), as: UTF8.self).contains("for anonymous")
     }
 }

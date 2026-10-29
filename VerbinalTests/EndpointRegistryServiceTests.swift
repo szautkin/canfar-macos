@@ -77,7 +77,7 @@ final class EndpointRegistryServiceTests: XCTestCase {
         """
         let bodies: [String: String] = [
             "/resource-caps": resourceCaps,
-            "/caps/gms": capsXML(root: "https://ws-cadc.canfar.net/ac"),
+            "/caps/gms": capsXML(root: "https://cadc-west-01.canfar.net/ac"),
             "/caps/skaha": capsXML(root: "https://ws-uv.canfar.net/skaha"),
             "/caps/arc": capsXML(root: "https://ws-uv.canfar.net/arc", extra: nodesExtra),
             "/caps/argus": capsXML(root: "\(archive)/argus"),
@@ -107,13 +107,18 @@ final class EndpointRegistryServiceTests: XCTestCase {
         XCTAssertEqual(service.refreshState, .idle)
         let cached = service.cached
         XCTAssertNotNil(cached)
-        XCTAssertEqual(cached?.values[.loginBaseURL], "https://ws-cadc.canfar.net/ac")
+        XCTAssertEqual(cached?.values[.loginBaseURL], "https://cadc-west-01.canfar.net/ac")
         XCTAssertEqual(cached?.values[.skahaBaseURL], "https://ws-uv.canfar.net/skaha")
         XCTAssertEqual(cached?.values[.storageBaseURL], "https://ws-uv.canfar.net/arc/nodes/home")
         XCTAssertEqual(cached?.values[.archiveBaseURL], "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca")
         XCTAssertTrue(cached?.warnings.isEmpty ?? false)
-        // With CANFAR defaults the resolution matches the launch values.
-        XCTAssertEqual(service.effectiveEndpoints(), APIEndpoints())
+        // With CANFAR defaults the resolution matches the launch values, and
+        // each service's root is where its health is asked.
+        var resolvedNow = service.effectiveEndpoints()
+        XCTAssertEqual(resolvedNow.availabilityURL(of: "ivo://cadc.nrc.ca/skaha", else: "x"),
+                       "https://ws-uv.canfar.net/skaha/availability")
+        resolvedNow.serviceRoots = [:]
+        XCTAssertEqual(resolvedNow, APIEndpoints())
     }
 
     func testCacheFileRoundTripsToFreshInstance() async {
@@ -179,23 +184,76 @@ final class EndpointRegistryServiceTests: XCTestCase {
         XCTAssertEqual(service.cached?.values[.skahaBaseURL], "https://ws-uv.canfar.net/skaha")
     }
 
-    // MARK: - Relaunch flag + precedence
+    // MARK: - Live answers + precedence
 
-    func testPendingRelaunchOnlyWhenResolutionMovesEffectiveEndpoints() async {
+    /// Plan 53 C4: every answer is told, so the app applies it live.
+    func testEveryAnswerIsToldSoItAppliesLive() async {
         installRegistryHandler()
         let service = makeService()
-        service.activeAtLaunch = service.effectiveEndpoints()
-
+        var told = 0
+        service.onChange = { told += 1 }
         await service.refresh()
-        XCTAssertFalse(
-            service.resolvedChangesPendingRelaunch,
-            "Resolution matching the CANFAR defaults must not demand a relaunch"
-        )
+        XCTAssertEqual(told, 1)
+    }
 
-        // Now pretend we launched on something else entirely.
-        service.activeAtLaunch = APIEndpoints(skahaBaseURL: "https://old.example.org/skaha")
+    /// Plan 53 B: each URL is the one its service publishes, and an override
+    /// sets aside what its service published, not the others'.
+    func testPublishedCapabilitiesBecomeTheURLsAndAnOverrideSetsItsOwnAside() async {
+        let gms = capsXML(root: "https://moved.example.org/ac", extra: """
+        <capability standardID="ivo://ivoa.net/std/UMS#login-0.1"><interface><accessURL use="full">https://moved.example.org/ac/login</accessURL></interface></capability>
+        <capability standardID="ivo://ivoa.net/std/UMS#whoami-0.1"><interface><accessURL use="full">https://moved.example.org/ac/whoami/</accessURL></interface></capability>
+        """)
+        let skaha = capsXML(root: "https://ws-uv.canfar.net/skaha", extra: """
+        <capability standardID="http://www.opencadc.org/std/platform#session-1"><interface><accessURL use="base">https://ws-uv.canfar.net/skaha/v2/session</accessURL></interface></capability>
+        """)
+        let ums = capsXML(root: "https://moved.example.org/ac")
+        let bodies = ["/resource-caps": """
+        ivo://cadc.nrc.ca/gms = https://reg.test/caps/gms
+        ivo://cadc.nrc.ca/ums = https://reg.test/caps/ums
+        ivo://cadc.nrc.ca/skaha = https://reg.test/caps/skaha
+        """, "/caps/gms": gms, "/caps/ums": ums, "/caps/skaha": skaha]
+        MockURLProtocol.requestHandler = { request in
+            let body = bodies.first { (request.url?.path ?? "").hasSuffix($0.key) }?.value
+            return (HTTPURLResponse(url: request.url!, statusCode: body == nil ? 404 : 200, httpVersion: nil, headerFields: nil)!,
+                    Data((body ?? "").utf8))
+        }
+        let settings = EndpointSettingsService(userDefaults: defaults)
+        let service = makeService(settings: settings)
         await service.refresh()
-        XCTAssertTrue(service.resolvedChangesPendingRelaunch)
+
+        var endpoints = service.effectiveEndpoints()
+        XCTAssertEqual(endpoints.loginURL, "https://moved.example.org/ac/login")
+        XCTAssertEqual(endpoints.whoAmIURL, "https://moved.example.org/ac/whoami", "a trailing slash is dropped")
+        XCTAssertEqual(endpoints.acBaseURL, "https://moved.example.org/ac", "the account service from ums")
+        XCTAssertEqual(endpoints.sessionURL("s1"), "https://ws-uv.canfar.net/skaha/v2/session/s1")
+
+        settings.setOverride("https://pinned.example.org/skaha", for: .skahaBaseURL)
+        endpoints = service.effectiveEndpoints()
+        XCTAssertEqual(endpoints.sessionsURL, "https://pinned.example.org/skaha/v1/session", "the override wins")
+        XCTAssertEqual(endpoints.loginURL, "https://moved.example.org/ac/login", "the others stay as published")
+    }
+
+    /// Plan 53 C3: a service in trouble asks the registry again, at most once in the window.
+    func testAServiceInTroubleAsksAgainAtMostOnceInTheWindow() async {
+        installRegistryHandler()
+        let service = makeService()
+        var told = 0
+        service.onChange = { told += 1 }
+        let now = Date()
+        await service.serviceInTrouble(now: now)
+        await service.serviceInTrouble(now: now.addingTimeInterval(60))
+        XCTAssertEqual(told, 1, "once in the window")
+        await service.serviceInTrouble(now: now.addingTimeInterval(EndpointRegistryService.troubleAskEvery + 1))
+        XCTAssertEqual(told, 2)
+    }
+
+    /// Plan 53 C4: what moved, as the decision log says it.
+    func testWhatMovedIsSaidPlainly() {
+        let before = APIEndpoints(loginBaseURL: "https://ws-cadc.canfar.net/ac")
+        let after = APIEndpoints()
+        XCTAssertEqual(EndpointMoves.between(before, after),
+                       ["Sign-in is now reached at https://cadc-west-01.canfar.net/ac/login, not https://ws-cadc.canfar.net/ac/login."])
+        XCTAssertEqual(EndpointMoves.between(after, after), [])
     }
 
     func testOverrideBeatsResolvedValue() async {

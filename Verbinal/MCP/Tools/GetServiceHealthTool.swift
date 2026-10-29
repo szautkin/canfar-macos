@@ -98,7 +98,7 @@ struct GetServiceHealthTool: JSONReadTool {
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "get_service_health",
-        description: "Probe the upstream services Verbinal depends on (CADC auth/TAP, VOSpace, Skaha, VizieR mirrors) and return a per-service health snapshot. Use BEFORE long pipelines to decide whether to proceed or pause: when `vizier-cds-unistra` is down your cone searches will fail; when `skaha` is down no Skaha session will launch. Each entry has `status` (`ok`/`degraded`/`down`/`skipped`), `ok` (bool — usable?), and the summary's `healthyCount`. Auth is probed at `/whoami` (not the AC base URL, which always 404s). A 404/5xx is NOT healthy. `skipped` = plaintext-http blocked by App Transport Security. `seenByApp` adds what Verbinal's own requests showed in the last 15 minutes, by service: calls, failures, median seconds, whether it is failing now, the last answer and the last failure with what it means.",
+        description: "Probe the upstream services Verbinal depends on (CADC auth/TAP, VOSpace, Skaha, VizieR mirrors) and return a per-service health snapshot. Use BEFORE long pipelines to decide whether to proceed or pause: when `vizier-cds-unistra` is down your cone searches will fail; when `skaha` is down no Skaha session will launch. Each entry has `status` (`ok`/`degraded`/`down`/`skipped`), `ok` (bool — usable?), and the summary's `healthyCount`. Auth is probed at the account service's availability, which says when it is in read-only mode; a 200 that says \"not available\" is `degraded`. A 404/5xx is NOT healthy. `skipped` = plaintext-http blocked by App Transport Security. `seenByApp` adds what Verbinal's own requests showed in the last 15 minutes, by service: calls, failures, median seconds, whether it is failing now, the last answer and the last failure with what it means.",
         schema: #"""
         {
           "type": "object",
@@ -151,9 +151,10 @@ struct GetServiceHealthTool: JSONReadTool {
             Endpoint(
                 name: "cadc-auth",
                 host: host(endpoints.loginBaseURL),
-                // /whoami — the AC base URL itself always 404s and used
-                // to be mis-reported as healthy (Windows 1.3.3 F3).
-                url: endpoints.whoAmIURL
+                // Its VOSI availability, which says read-only mode; /whoami
+                // answers an anonymous probe 401 even then. Not the AC base
+                // URL, which always 404s (Windows 1.3.3 F3; plan 52 E4).
+                url: endpoints.availabilityURL(of: ServiceCapability.whoami.resourceID, else: endpoints.loginBaseURL)
             ),
             Endpoint(
                 name: "cadc-registry",
@@ -163,22 +164,23 @@ struct GetServiceHealthTool: JSONReadTool {
             Endpoint(
                 name: "cadc-tap",
                 host: host(endpoints.archiveBaseURL),
-                url: "\(endpoints.archiveBaseURL)/argus/availability"
+                url: endpoints.availabilityURL(of: ServiceCapability.tap.resourceID, else: "\(endpoints.archiveBaseURL)/argus")
             ),
             Endpoint(
                 name: "cadc-resolver",
                 host: host(endpoints.archiveBaseURL),
-                url: "\(endpoints.archiveBaseURL)/cadc-target-resolver/availability"
+                url: endpoints.availabilityURL(of: ServiceCapability.resolver.resourceID,
+                                               else: "\(endpoints.archiveBaseURL)/cadc-target-resolver")
             ),
             Endpoint(
                 name: "vospace",
                 host: host(vospaceRoot),
-                url: "\(vospaceRoot)/availability"
+                url: endpoints.availabilityURL(of: ServiceCapability.nodes.resourceID, else: vospaceRoot)
             ),
             Endpoint(
                 name: "skaha",
                 host: host(endpoints.skahaBaseURL),
-                url: "\(endpoints.skahaBaseURL)/availability"
+                url: endpoints.availabilityURL(of: ServiceCapability.sessions.resourceID, else: endpoints.skahaBaseURL)
             ),
         ] + vizierMirrors
     }
@@ -275,7 +277,7 @@ struct GetServiceHealthTool: JSONReadTool {
         let start = Date()
         do {
             // A probe asks without credentials: a 401 is the service answering (plan 30 N2).
-            let (_, response) = try await session.recordedData(for: request, anonymous: true)
+            let (data, response) = try await session.recordedData(for: request, anonymous: true)
             let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
             guard let http = response as? HTTPURLResponse else {
                 return Output.Service(
@@ -286,7 +288,8 @@ struct GetServiceHealthTool: JSONReadTool {
             }
             return classify(
                 name: endpoint.name, host: endpoint.host,
-                statusCode: http.statusCode, latencyMs: latencyMs
+                statusCode: http.statusCode, latencyMs: latencyMs,
+                availability: VOSIAvailability(data)
             )
         } catch {
             // How it failed, in the one classification (plan 23).
@@ -302,8 +305,18 @@ struct GetServiceHealthTool: JSONReadTool {
     /// Status code → status / ok. Pulled out as a pure function so tests
     /// can pin the classification rules without spinning a URLSession.
     static func classify(
-        name: String, host: String, statusCode: Int, latencyMs: Int?
+        name: String, host: String, statusCode: Int, latencyMs: Int?,
+        availability: VOSIAvailability? = nil
     ) -> Output.Service {
+        // A service can answer 200 and say it is not available — read-only
+        // mode is how CADC's account service was down (plan 52 E4).
+        if (200...299).contains(statusCode), let availability, !availability.available {
+            return Output.Service(
+                name: name, host: host,
+                status: "degraded", ok: false, latencyMs: latencyMs,
+                message: "not available: \(availability.note ?? "the service says so")"
+            )
+        }
         switch statusCode {
         case 500...599:
             return Output.Service(

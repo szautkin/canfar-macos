@@ -104,7 +104,7 @@ final class EndpointResolutionTests: XCTestCase {
         XCTAssertEqual(EndpointField.archiveBaseURL.resourceID, "ivo://cadc.nrc.ca/argus")
         XCTAssertNil(EndpointField.externalBaseURL.resourceID)
         XCTAssertNil(EndpointField.registryBaseURL.resourceID)
-        XCTAssertNil(EndpointField.acBaseURL.resourceID)
+        XCTAssertEqual(EndpointField.acBaseURL.resourceID, "ivo://cadc.nrc.ca/ums", "the account service, as the registry lists it (plan 53 B3)")
     }
 
     /// Plan 44, live: "I cannot update the storage, it does not pick it up,

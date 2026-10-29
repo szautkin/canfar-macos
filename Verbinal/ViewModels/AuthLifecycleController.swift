@@ -90,6 +90,9 @@ final class AuthLifecycleController {
     enum Renewal: Equatable, Sendable {
         /// Signed in again, or the stored sign-in still holds.
         case renewed
+        /// CADC's account service says it is not available: the session and
+        /// the stored password are kept, and checked again later (plan 52 E4).
+        case unavailable(String)
         /// Neither could be established: the stored sign-in is kept.
         case offline
         /// The person must sign in.
@@ -108,8 +111,11 @@ final class AuthLifecycleController {
 
     // MARK: Lifecycle
 
-    /// Validate the stored Keychain token at app launch.
+    /// Validate the stored Keychain token at app launch. Once: signed in,
+    /// or with a check already under way — another window's launch — there
+    /// is nothing to check (plan 52 E2).
     func validateStoredToken() async {
+        guard !isAuthenticated, activity == .idle else { return }
         let (storedToken, storedUsername) = KeychainStorage.loadToken()
 
         guard let token = storedToken, !token.isEmpty else {
@@ -137,7 +143,10 @@ final class AuthLifecycleController {
             let info = await authService.getUserInfo(username: name)
             apply(username: name, userInfo: info)
         case .expired:
-            await renew(from: .expiredToken)
+            // Every outcome leaves its own words, never "Validating…" (plan 52 E3).
+            if await renew(from: .expiredToken) == .renewed { statusMessage = welcomeMessage }
+        case .unavailable(let why):
+            settle(.unavailable(why), wasAuthenticated: false)
         case .networkError(let message):
             awaitingConnectivity = true
             statusMessage = String(localized: "Cannot connect: \(message). Verbinal will retry when the network returns.")
@@ -169,6 +178,8 @@ final class AuthLifecycleController {
                 return
             case .expired:
                 await renew(from: .expiredToken)
+            case .unavailable(let why):
+                settle(.unavailable(why), wasAuthenticated: true)
             case .networkError:
                 awaitingConnectivity = true
             }
@@ -193,10 +204,7 @@ final class AuthLifecycleController {
         self.userInfo = userInfo
         self.isAuthenticated = true
         self.signInReason = nil
-        let displayName = [userInfo?.firstName, userInfo?.lastName]
-            .compactMap { $0 }
-            .joined(separator: " ")
-        self.statusMessage = String(localized: "Welcome, \(displayName.isEmpty ? username : displayName)")
+        self.statusMessage = welcomeMessage
         confirmedAt = now()
         if !wasAuthenticated {
             // Outside the renewal, when a renewal signs in: what the hook
@@ -206,6 +214,12 @@ final class AuthLifecycleController {
             Renewing.$now.withValue(false) { onAuthenticated?() }
             events.notify(.signedIn(username))
         }
+    }
+
+    /// "Welcome, Serhii Zautkin", from the sign-in as it is now.
+    var welcomeMessage: String {
+        let displayName = [userInfo?.firstName, userInfo?.lastName].compactMap { $0 }.joined(separator: " ")
+        return String(localized: "Welcome, \(displayName.isEmpty ? username : displayName)")
     }
 
     /// Called when any service detects a 401 mid-session. Keeps
@@ -280,6 +294,9 @@ final class AuthLifecycleController {
         case .renewed:
             awaitingConnectivity = false
             confirmedAt = now()
+        case .unavailable(let why):
+            awaitingConnectivity = true
+            statusMessage = String(localized: "CADC's account service is unavailable (\(why)). Verbinal keeps your sign-in and checks it again.")
         case .offline:
             // Keep the session live; the connectivity retry soft-validates.
             awaitingConnectivity = true
@@ -318,6 +335,7 @@ final class AuthLifecycleController {
     private func silentReauth(from start: RenewalStart) async -> Renewal {
         let (storedToken, storedUsername) = KeychainStorage.loadToken()
         guard let token = storedToken, let storedUser = storedUsername else {
+            await authService.logout()
             username = ""
             userInfo = nil
             isAuthenticated = false
@@ -344,6 +362,10 @@ final class AuthLifecycleController {
                 // bail out, the connectivity retry path resumes the session.
                 decisions.record(.signInKept, "the stored sign-in was kept unchecked: CADC could not be reached (\(why))")
                 return .offline
+            case .unavailable(let why):
+                // Nor on an outage: a read-only account service refuses every token.
+                decisions.record(.signInKept, "the stored sign-in and password were kept: CADC's account service is unavailable (\(why))")
+                return .unavailable(why)
             case .expired:
                 break
             }
@@ -382,10 +404,10 @@ final class AuthLifecycleController {
             // Password rejected by CADC — likely user changed it.
             // Clear it so we don't keep retrying with a known-bad
             // password every launch.
-            KeychainStorage.clearToken()
+            await authService.logout()
             decisions.record(.signInLost, "the sign-in ended: CADC refused the stored password, so it was cleared and the person must sign in")
         } else {
-            KeychainStorage.clearToken()
+            await authService.logout()
             decisions.record(.signInLost, "the sign-in ended: it expired and no password is stored, so the person must sign in")
         }
 

@@ -23,7 +23,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fix Characters**, under Remote Compute's Run Code box: curly quotes, long dashes, special spaces
   and invisible characters pasted with code are named, and made plain when you ask. ⌘Z undoes it.
 
+- **Every service where the registry says, live.** Each URL Verbinal calls is the one its service
+  publishes in CADC's registry. The registry is asked before signing in (waiting at most 5 s), every
+  6 hours, when Verbinal comes back to the front, and when a service stops answering. A change, or an
+  endpoint you type in Settings, applies at once, with no restart (see
+  `docs/plans/53-endpoints-from-the-registry.md`).
+
 ### Fixed
+- Sign-in went to CADC's former account service (`ws-cadc.canfar.net/ac`, now read-only) until a
+  relaunch, after the registry had moved it to `cadc-west-01.canfar.net/ac`. CANFAR then took the
+  requests as anonymous: "HTTP 400: cannot get group memberships for anonymous".
+- An expired sign-in showed Skaha's "cannot get group memberships for anonymous" instead of asking to
+  sign in. That error now checks the sign-in: an expired one renews or asks, and otherwise it says what
+  it means.
+- Checking the stored sign-in could clear the one in use (a second window at launch did it), leaving
+  Verbinal signed in but sending no token, and "Validating session..." in the toolbar.
+- While CADC's account service is unavailable (read-only), Verbinal keeps your sign-in and saved
+  password and says so, instead of treating it as expired. The service health check reports it.
 - Remote Compute's Run Code box turned `"` and `'` into curly quotes (the Mac's smart quotes), which
   Python and Bash reject.
 - An assistant's bridge (`Verbinal mcp`) outlived its client, looked for Verbinal every 2 seconds

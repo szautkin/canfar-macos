@@ -13,7 +13,7 @@ extension AppState {
     /// upload over a file.
     func wireAssistantMade() {
         let made = AssistantMadeStore()
-        let files = VOSpaceBrowserService(network: network, endpoints: endpoints)
+        let files = VOSpaceBrowserService(network: network, endpoints: liveEndpoints)
         agentsService.kindResolver = { [weak self] proposal in
             let username = self?.username ?? ""
             return await ChangeKindResolver(

@@ -26,6 +26,9 @@ public struct Decision: Codable, Sendable, Equatable {
         case signInKept
         /// The sign-in could not be renewed, and why.
         case signInLost
+        /// A service is reached somewhere else now: the registry, or the
+        /// person's override, moved it (plan 53 C4).
+        case serviceMoved
     }
 
     public let rule: Rule

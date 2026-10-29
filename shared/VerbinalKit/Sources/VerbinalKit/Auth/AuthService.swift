@@ -9,12 +9,14 @@ import os.log
 
 public final class AuthService: Sendable {
     private let network: NetworkClient
-    private let endpoints: APIEndpoints
+    /// Where the services are, read on each request (plan 53 A2).
+    private let endpointsSource: any EndpointsSource
+    private var endpoints: APIEndpoints { endpointsSource.current }
     private let logger = Logger(subsystem: "com.codebg.Verbinal", category: "Auth")
 
-    public init(network: NetworkClient, endpoints: APIEndpoints = APIEndpoints()) {
+    public init(network: NetworkClient, endpoints: any EndpointsSource = APIEndpoints()) {
         self.network = network
-        self.endpoints = endpoints
+        self.endpointsSource = endpoints
     }
 
     /// Logs in with username/password. Returns an AuthResult.
@@ -107,8 +109,11 @@ public final class AuthService: Sendable {
         }
     }
 
-    /// Validates a stored token by calling /whoami.
-    /// Returns `.valid(username)`, `.expired`, or `.networkError`.
+    /// Validates a token by calling /whoami with it, on that request alone:
+    /// the token requests carry changes only when CADC accepts this one,
+    /// and is never cleared here — a check of an older token must not undo
+    /// a newer sign-in (plan 52 E1). Returns `.valid(username)`, `.expired`,
+    /// `.unavailable(note)` or `.networkError`.
     ///
     /// Waits `RequestTimeout.lookup`, not the standard timeout: this call
     /// gates the launch spinner, and on a half-dead network (associated
@@ -121,30 +126,41 @@ public final class AuthService: Sendable {
     /// an expired token would recurse 401 → validate → 401 → … forever,
     /// pinning app launch on the "Checking authentication…" spinner.
     public func validateToken(_ token: String) async -> TokenValidation {
-        await network.setToken(token)
         do {
             let username = try await network.getText(
                 endpoints.whoAmIURL,
+                additionalHeaders: ["Authorization": "Bearer \(token)"],
                 timeout: RequestTimeout.lookup,
                 allowAuthRetry: false
             )
-            return username.isEmpty ? .expired : .valid(username)
+            guard !username.isEmpty else { return .expired }
+            await network.setToken(token)
+            return .valid(username)
         } catch let error as NetworkError {
             switch error {
             case .unauthorized:
-                await network.setToken(nil)
                 return .expired
             case .httpError(let code, _) where code == 403:
-                // 403 from /whoami = token is invalid
-                await network.setToken(nil)
+                // A refusal is an expiry — unless the account service says it
+                // is not available, as a read-only one refuses every token.
+                if let why = await accountServiceUnavailable() { return .unavailable(why) }
                 return .expired
             default:
-                // Actual network failure — keep the token
+                // Actual network failure
                 return .networkError(error.localizedDescription)
             }
         } catch {
             return .networkError(error.localizedDescription)
         }
+    }
+
+    /// Why CADC's account service is not available, as its VOSI availability
+    /// says; nil when it is, or when it cannot say.
+    public func accountServiceUnavailable() async -> String? {
+        let url = endpoints.availabilityURL(of: ServiceCapability.whoami.resourceID, else: endpoints.loginBaseURL)
+        guard let (data, _) = try? await network.get(url, accept: "text/xml", timeout: RequestTimeout.lookup, allowAuthRetry: false),
+              let said = VOSIAvailability(data), !said.available else { return nil }
+        return said.note ?? "not available"
     }
 
     /// Fetches user profile info from the CADC user service (XML response).
@@ -218,4 +234,7 @@ public enum TokenValidation: Sendable {
     case valid(String)
     case expired
     case networkError(String)
+    /// CADC refused to confirm it while its account service says it is not
+    /// available — "service is in read-only mode": not an expiry (plan 52 E4).
+    case unavailable(String)
 }

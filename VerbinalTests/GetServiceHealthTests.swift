@@ -238,8 +238,26 @@ final class GetServiceHealthTests: XCTestCase {
         XCTAssertEqual(out.healthyCount, 1)
     }
 
-    func testCanonicalEndpointsIncludeAuthWhoAmI() {
+    /// Plan 52 E4: the account service is asked whether it is available —
+    /// whoami answers an anonymous probe 401 even in read-only mode.
+    func testTheAuthProbeAsksTheAccountServicesAvailability() {
         let auth = GetServiceHealthTool.canonicalEndpoints.first { $0.name == "cadc-auth" }
-        XCTAssertEqual(auth?.url, APIEndpoints().whoAmIURL)
+        XCTAssertEqual(auth?.url, "https://cadc-west-01.canfar.net/ac/availability")
+    }
+
+    /// Plan 52 E4: a 200 that says "not available" is not healthy.
+    func testAServiceThatSaysItIsNotAvailableIsDegraded() throws {
+        let readOnly = try XCTUnwrap(VOSIAvailability(Data("""
+        <?xml version="1.0"?><vosi:availability xmlns:vosi="http://www.ivoa.net/xml/VOSIAvailability/v1.0">
+          <vosi:available>false</vosi:available><vosi:note>service is in read-only mode</vosi:note></vosi:availability>
+        """.utf8)))
+        let down = GetServiceHealthTool.classify(name: "cadc-auth", host: "h", statusCode: 200, latencyMs: 5, availability: readOnly)
+        XCTAssertEqual(down.status, "degraded")
+        XCTAssertFalse(down.ok)
+        XCTAssertEqual(down.message, "not available: service is in read-only mode")
+        let up = GetServiceHealthTool.classify(name: "cadc-auth", host: "h", statusCode: 200, latencyMs: 5,
+                                               availability: VOSIAvailability(available: true, note: "ok"))
+        XCTAssertTrue(up.ok)
+        XCTAssertNil(VOSIAvailability(Data("<html>503</html>".utf8)), "not an availability document")
     }
 }

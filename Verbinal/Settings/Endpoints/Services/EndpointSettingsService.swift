@@ -16,9 +16,8 @@ import VerbinalKit
 /// on the published `overrides` only AFTER the write succeeds, matching
 /// the `ImageDiscoverySettingsService` convention.
 ///
-/// Effective endpoints are captured by services at app launch, so any
-/// post-launch change flips `pendingRelaunch`, which drives the restart
-/// banner in the Endpoints settings tab.
+/// A change applies at once: `onChange` tells the app, which updates the
+/// endpoints its services read on each request (plan 53 C5).
 @MainActor
 @Observable
 final class EndpointSettingsService {
@@ -29,10 +28,8 @@ final class EndpointSettingsService {
 
     private(set) var overrides: EndpointOverrides
 
-    /// True when an override changed after launch — the running services
-    /// still hold the endpoints captured at init, so a relaunch is needed
-    /// for the edit to take effect.
-    private(set) var pendingRelaunch = false
+    /// Told when an override changed: the app applies it live.
+    @ObservationIgnored var onChange: (@MainActor () -> Void)?
 
     /// Where each endpoint changed is recorded (plan 23 C).
     private let changes: ChangeLog
@@ -49,32 +46,32 @@ final class EndpointSettingsService {
     }
 
     /// Set (or clear, when blank) one endpoint override. No-op writes
-    /// don't touch persistence and don't raise the relaunch banner.
+    /// don't touch persistence and change nothing.
     func setOverride(_ value: String, for field: EndpointField) {
         var updated = overrides
         guard updated.set(value, for: field) else { return }
         persist(updated)
-        changes.done("change_setting", "the endpoint \(field.rawValue) to \(value.isEmpty ? "its default" : value), from the next launch")
+        changes.done("change_setting", "the endpoint \(field.rawValue) to \(value.isEmpty ? "its default" : value)")
     }
 
     func clearOverride(for field: EndpointField) {
         var updated = overrides
         guard updated.set(nil, for: field) else { return }
         persist(updated)
-        changes.done("change_setting", "the endpoint \(field.rawValue) to its default, from the next launch")
+        changes.done("change_setting", "the endpoint \(field.rawValue) to its default")
     }
 
     /// Drop every override. Exposed behind the destructive Reset button.
     func resetToDefaults() {
         guard !overrides.isEmpty else { return }
         persist(EndpointOverrides())
-        changes.done("change_setting", "every endpoint to its default, from the next launch")
+        changes.done("change_setting", "every endpoint to its default")
     }
 
     private func persist(_ updated: EndpointOverrides) {
         guard let data = try? JSONEncoder().encode(updated) else { return }
         userDefaults.set(data, forKey: Self.overridesKey)
         overrides = updated
-        pendingRelaunch = true
+        onChange?()
     }
 }

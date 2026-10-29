@@ -24,16 +24,27 @@ public struct APIEndpoints: Sendable, Equatable {
     /// Default cap on TAP MAXREC — large enough to cover normal browsing
     /// without breaking the server's response budget.
     public var tapMaxRecords: Int
+    /// Each URL as its service publishes it in the registry (plan 53 B2):
+    /// a derived URL uses its capability's when there is one, and the base
+    /// plus its usual path otherwise.
+    public var capabilityURLs: [ServiceCapability: String]
+    /// Each service's root, by resource ID, from its VOSI availability in
+    /// the registry: where its health is asked (plan 53).
+    public var serviceRoots: [String: String]
 
+    /// The defaults are where the registry put each service on 2026-10-28
+    /// (plan 53 B4): what is used until the registry has answered once.
     public init(
-        loginBaseURL: String = "https://ws-cadc.canfar.net/ac",
+        loginBaseURL: String = "https://cadc-west-01.canfar.net/ac",
         skahaBaseURL: String = "https://ws-uv.canfar.net/skaha",
-        acBaseURL: String = "https://ws-uv.canfar.net/ac",
+        acBaseURL: String = "https://cadc-west-01.canfar.net/ac",
         storageBaseURL: String = "https://ws-uv.canfar.net/arc/nodes/home",
         registryBaseURL: String = "https://cadc-west-01.canfar.net/reg",
         archiveBaseURL: String = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca",
         externalBaseURL: String = "https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca",
-        tapMaxRecords: Int = 30000
+        tapMaxRecords: Int = 30000,
+        capabilityURLs: [ServiceCapability: String] = [:],
+        serviceRoots: [String: String] = [:]
     ) {
         self.loginBaseURL = loginBaseURL
         self.skahaBaseURL = skahaBaseURL
@@ -43,6 +54,19 @@ public struct APIEndpoints: Sendable, Equatable {
         self.archiveBaseURL = archiveBaseURL
         self.externalBaseURL = externalBaseURL
         self.tapMaxRecords = tapMaxRecords
+        self.capabilityURLs = capabilityURLs
+        self.serviceRoots = serviceRoots
+    }
+
+    /// Where `resourceID`'s service says whether it is available: its root
+    /// as the registry published it, or `root`, plus `/availability`.
+    public func availabilityURL(of resourceID: String, else root: @autoclosure () -> String) -> String {
+        "\(serviceRoots[resourceID] ?? root())/availability"
+    }
+
+    /// `capability`'s URL as the registry published it, or `fallback`.
+    private func url(_ capability: ServiceCapability, else fallback: @autoclosure () -> String) -> String {
+        capabilityURLs[capability] ?? fallback()
     }
 
     // MARK: - IVOA Registry
@@ -52,37 +76,39 @@ public struct APIEndpoints: Sendable, Equatable {
     /// VOSI availability of the registry service.
     public var registryAvailabilityURL: String { "\(registryBaseURL)/availability" }
 
-    public var loginURL: String { "\(loginBaseURL)/login" }
-    public var whoAmIURL: String { "\(loginBaseURL)/whoami" }
-    public func userURL(_ username: String) -> String { "\(loginBaseURL)/users/\(username)?idType=HTTP&detail=display" }
+    public var loginURL: String { url(.login, else: "\(loginBaseURL)/login") }
+    public var whoAmIURL: String { url(.whoami, else: "\(loginBaseURL)/whoami") }
+    public func userURL(_ username: String) -> String {
+        "\(url(.users, else: "\(loginBaseURL)/users"))/\(username)?idType=HTTP&detail=display"
+    }
 
-    public var sessionsURL: String { "\(skahaBaseURL)/v1/session" }
-    public func sessionURL(_ id: String) -> String { "\(skahaBaseURL)/v1/session/\(id)" }
-    public func sessionRenewURL(_ id: String) -> String { "\(skahaBaseURL)/v1/session/\(id)?action=renew" }
+    public var sessionsURL: String { url(.sessions, else: "\(skahaBaseURL)/v1/session") }
+    public func sessionURL(_ id: String) -> String { "\(sessionsURL)/\(id)" }
+    public func sessionRenewURL(_ id: String) -> String { "\(sessionsURL)/\(id)?action=renew" }
     /// One desktop app, under its desktop's session id.
-    public func desktopAppURL(_ session: String, _ app: String) -> String { "\(skahaBaseURL)/v1/session/\(session)/app/\(app)" }
-    public func sessionEventsURL(_ id: String) -> String { "\(skahaBaseURL)/v1/session/\(id)?view=events" }
-    public func sessionLogsURL(_ id: String) -> String { "\(skahaBaseURL)/v1/session/\(id)?view=logs" }
-    public var statsURL: String { "\(skahaBaseURL)/v1/session?view=stats" }
+    public func desktopAppURL(_ session: String, _ app: String) -> String { "\(sessionsURL)/\(session)/app/\(app)" }
+    public func sessionEventsURL(_ id: String) -> String { "\(sessionsURL)/\(id)?view=events" }
+    public func sessionLogsURL(_ id: String) -> String { "\(sessionsURL)/\(id)?view=logs" }
+    public var statsURL: String { "\(sessionsURL)?view=stats" }
 
-    public var imagesURL: String { "\(skahaBaseURL)/v1/image" }
-    public var contextURL: String { "\(skahaBaseURL)/v1/context" }
-    public var repositoryURL: String { "\(skahaBaseURL)/v1/repository" }
+    public var imagesURL: String { url(.images, else: "\(skahaBaseURL)/v1/image") }
+    public var contextURL: String { url(.context, else: "\(skahaBaseURL)/v1/context") }
+    public var repositoryURL: String { url(.repository, else: "\(skahaBaseURL)/v1/repository") }
 
     public func storageURL(_ username: String) -> String { "\(storageBaseURL)/\(username)?limit=0" }
 
     // MARK: - CADC Archive (TAP / CAOM2 / DataLink)
 
     /// Synchronous TAP query endpoint (Argus). Accepts ADQL via POST.
-    public var tapSyncURL: String { "\(archiveBaseURL)/argus/sync" }
+    public var tapSyncURL: String { "\(url(.tap, else: "\(archiveBaseURL)/argus"))/sync" }
     /// Per-observation CAOM2 metadata document. ID query: `caom:{collection}/{obsID}`.
-    public var caom2MetaURL: String { "\(archiveBaseURL)/caom2ops/meta" }
+    public var caom2MetaURL: String { url(.meta, else: "\(archiveBaseURL)/caom2ops/meta") }
     /// IVOA DataLink-1.1 (file/cutout/preview links). ID query: publisher URI.
-    public var datalinkURL: String { "\(archiveBaseURL)/caom2ops/datalink" }
+    public var datalinkURL: String { url(.datalink, else: "\(archiveBaseURL)/caom2ops/datalink") }
     /// Packaging endpoint for direct file downloads.
-    public var caom2PkgURL: String { "\(archiveBaseURL)/caom2ops/pkg" }
+    public var caom2PkgURL: String { url(.pkg, else: "\(archiveBaseURL)/caom2ops/pkg") }
     /// Target name resolver (Sesame-style → coordinates).
-    public var targetResolverURL: String { "\(archiveBaseURL)/cadc-target-resolver/find" }
+    public var targetResolverURL: String { url(.resolver, else: "\(archiveBaseURL)/cadc-target-resolver/find") }
 
     /// Browser-facing CAOM2 UI observation viewer.
     public var caom2UIViewURL: String { "\(externalBaseURL)/caom2ui/view" }
@@ -115,6 +141,6 @@ public struct APIEndpoints: Sendable, Equatable {
                 return String(segment).addingPercentEncoding(withAllowedCharacters: allowed) ?? String(segment)
             }
             .joined(separator: "/")
-        return URL(string: "\(archiveBaseURL)/data/pub/\(encodedRest)")
+        return URL(string: "\(url(.files, else: "\(archiveBaseURL)/data/pub"))/\(encodedRest)")
     }
 }

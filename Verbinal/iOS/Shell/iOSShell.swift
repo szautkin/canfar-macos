@@ -101,7 +101,7 @@ struct iOSShell: View {
             guard computeHistory == nil else { return }
             let appState = appState
             computeHistory = ComputeRunHistory(
-                files: VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints),
+                files: VOSpaceBrowserService(network: appState.network, endpoints: appState.liveEndpoints),
                 username: { [weak appState] in appState?.username ?? "" })
         }
     }
@@ -109,7 +109,7 @@ struct iOSShell: View {
     /// Opens `file` in a place, header first, and shows that place.
     private func open(_ file: FileRef, in place: AppState.iOSDashboardTab) {
         let inspection = FileInspection(
-            file: file, storage: VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints),
+            file: file, storage: VOSpaceBrowserService(network: appState.network, endpoints: appState.liveEndpoints),
             username: appState.username, files: library.store)
         if place == .cube { openedCube = inspection } else { openedFITS = inspection }
         appState.iOSDashboardTab = place == .cube ? .cube : .fits

@@ -549,7 +549,7 @@ struct SearchResultsView: View {
         do {
             let file = try ResultUpload.stamped(try await write(), stem: "verbinal-results")
             defer { try? FileManager.default.removeItem(at: file) }
-            let vospace = VOSpaceBrowserService(network: appState.network, endpoints: appState.endpoints)
+            let vospace = VOSpaceBrowserService(network: appState.network, endpoints: appState.liveEndpoints)
             task.succeed(try await ResultUpload(vospace: vospace, username: appState.username).upload(file))
         } catch {
             task.fail(error.localizedDescription)

@@ -12,18 +12,55 @@ final class APIEndpointsTests: XCTestCase {
     private let endpoints = APIEndpoints()
 
     func testLoginURL() {
-        XCTAssertEqual(endpoints.loginURL, "https://ws-cadc.canfar.net/ac/login")
+        XCTAssertEqual(endpoints.loginURL, "https://cadc-west-01.canfar.net/ac/login")
     }
 
     func testWhoAmIURL() {
-        XCTAssertEqual(endpoints.whoAmIURL, "https://ws-cadc.canfar.net/ac/whoami")
+        XCTAssertEqual(endpoints.whoAmIURL, "https://cadc-west-01.canfar.net/ac/whoami")
     }
 
     func testUserURL() {
         XCTAssertEqual(
             endpoints.userURL("alice"),
-            "https://ws-cadc.canfar.net/ac/users/alice?idType=HTTP&detail=display"
+            "https://cadc-west-01.canfar.net/ac/users/alice?idType=HTTP&detail=display"
         )
+    }
+
+    /// Plan 53 B2: a URL the registry published is used as it is; without
+    /// one, the base and its usual path.
+    func testAPublishedCapabilityWinsOverTheBaseAndItsPath() {
+        let moved = APIEndpoints(capabilityURLs: [
+            .login: "https://ac.example.org/a/login",
+            .whoami: "https://ac.example.org/a/whoami",
+            .users: "https://ac.example.org/a/users",
+            .sessions: "https://p.example.org/skaha/v2/session",
+            .images: "https://p.example.org/skaha/v2/image",
+            .tap: "https://tap.example.org/argus",
+            .datalink: "https://dl.example.org/caom2ops/datalink",
+            .files: "https://data.example.org/data/pub",
+        ])
+        XCTAssertEqual(moved.loginURL, "https://ac.example.org/a/login")
+        XCTAssertEqual(moved.whoAmIURL, "https://ac.example.org/a/whoami")
+        XCTAssertEqual(moved.userURL("alice"), "https://ac.example.org/a/users/alice?idType=HTTP&detail=display")
+        XCTAssertEqual(moved.sessionURL("s1"), "https://p.example.org/skaha/v2/session/s1")
+        XCTAssertEqual(moved.statsURL, "https://p.example.org/skaha/v2/session?view=stats")
+        XCTAssertEqual(moved.desktopAppURL("s1", "a1"), "https://p.example.org/skaha/v2/session/s1/app/a1")
+        XCTAssertEqual(moved.imagesURL, "https://p.example.org/skaha/v2/image")
+        XCTAssertEqual(moved.contextURL, "https://ws-uv.canfar.net/skaha/v1/context", "not published: the base and its path")
+        XCTAssertEqual(moved.tapSyncURL, "https://tap.example.org/argus/sync")
+        XCTAssertEqual(moved.datalinkURL, "https://dl.example.org/caom2ops/datalink")
+        XCTAssertEqual(moved.dataPubURL(forArtifactURI: "cadc:JCMT/a b.fits")?.absoluteString,
+                       "https://data.example.org/data/pub/JCMT/a%20b.fits")
+    }
+
+    /// Plan 53 A1: what a service reads is what the source holds now.
+    func testLiveEndpointsGiveTheLatest() {
+        let live = LiveEndpoints()
+        let source: any EndpointsSource = live
+        XCTAssertEqual(source.current.loginURL, "https://cadc-west-01.canfar.net/ac/login")
+        live.update(APIEndpoints(capabilityURLs: [.login: "https://elsewhere.example.org/ac/login"]))
+        XCTAssertEqual(source.current.loginURL, "https://elsewhere.example.org/ac/login")
+        XCTAssertEqual(APIEndpoints().current, APIEndpoints(), "a fixed set is its own source")
     }
 
     func testRegistryURLs() {
