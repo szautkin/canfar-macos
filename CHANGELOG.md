@@ -56,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reached 3.5 GB. It now ends with its client and waits quietly, and leftover sockets are removed
   (Diagnostics counts them).
 - Turning off Allow external AI agents now closes every bridge. Diagnostics' Restart keeps sessions.
+- `describe_app` gave no `buildCommit` for a build made from scratch (a clean archive, CI): the script
+  that stamps the commit could run before Xcode wrote the app's Info.plist, which then replaced it.
 
 ## [1.4.1 for iPhone and iPad] - 2026-10-24
 

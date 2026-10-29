@@ -96,9 +96,14 @@ targets:
     # The commit a build was made from, for `describe_app` (plan 21 V): a
     # handout says "release/1.4.0 @ 62bdbf6 or later", and a pass could not
     # tell which build it had. "+" marks uncommitted changes.
+    # The processed Info.plist is its input, so it runs after Xcode writes
+    # that file: with no input it could run first, and a fresh build (CI, a
+    # clean archive) lost the stamp to the Info.plist written after it.
     postBuildScripts:
       - name: Stamp the build's commit
         basedOnDependencyAnalysis: false
+        inputFiles:
+          - $(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)
         script: |
           commit=$(git -C "$SRCROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)
           if [ "$commit" != unknown ] && ! git -C "$SRCROOT" diff --quiet HEAD -- 2>/dev/null; then commit="$commit+"; fi
