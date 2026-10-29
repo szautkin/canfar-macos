@@ -184,7 +184,7 @@ struct StorageSettingsTab: View {
     }
 
     /// A kind as the person reads it.
-    static func title(_ id: String) -> String {
+    nonisolated static func title(_ id: String) -> String {
         switch id {
         case "research": String(localized: "Research")
         case "marks": String(localized: "Marks on images")
@@ -256,7 +256,7 @@ struct SyncConflictRow: View {
     }
 
     /// "Saved queries: the query "M31 deep"".
-    static func heading(_ conflict: SyncConflict) -> String {
+    nonisolated static func heading(_ conflict: SyncConflict) -> String {
         "\(StorageSettingsTab.title(conflict.kind)): \(conflict.title)"
     }
 

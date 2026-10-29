@@ -10,13 +10,11 @@ import VerbinalKit
 /// Pointing at the interface: what is on screen, and hints on it (plan 27).
 extension AppState {
     func makeListUITargetsTool() -> ListUITargetsTool {
-        ListUITargetsTool(snapshot: { [weak self] in
+        ListUITargetsTool(snapshot: { @MainActor [weak self] in
             await self?.uiHintPresenter.ready()
-            return await MainActor.run { self?.uiHintPresenter.snapshot() ?? .empty }
-        }, hiddenPanels: { [weak self] in
-            await MainActor.run {
-                UIPanel.allCases.filter { self?.isShown($0) == false }.map { .init(id: $0.id, name: $0.name) }
-            }
+            return self?.uiHintPresenter.snapshot() ?? .empty
+        }, hiddenPanels: { @MainActor [weak self] in
+            UIPanel.allCases.filter { self?.isShown($0) == false }.map { .init(id: $0.id, name: $0.name) }
         })
     }
 
@@ -223,8 +221,8 @@ extension AppState {
     }
 
     func makeClearUIHintsTool() -> ClearUIHintsTool {
-        ClearUIHintsTool(clear: { [weak self] args in
-            await MainActor.run { self?.clearUIHints(args) ?? .init(cleared: 0, left: 0) }
+        ClearUIHintsTool(clear: { @MainActor [weak self] args in
+            self?.clearUIHints(args) ?? .init(cleared: 0, left: 0)
         })
     }
 

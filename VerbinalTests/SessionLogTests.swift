@@ -155,8 +155,8 @@ final class SessionLogTests: XCTestCase {
         let proposal = PendingProposal(toolName: "delete_session", kind: "delete_session", summary: "Delete session q9p87ajc",
                                        payload: Data(), origin: .external(clientID: "claude-code/2.1"),
                                        why: "throwaway from the QA pass", session: session)
-        try await Initiator.$current.withValue(.assistant) {
-            try await rig.changes.applying(proposal, by: .person) { }
+        await Initiator.$current.withValue(.assistant) {
+            await rig.changes.applying(proposal, by: .person) { }
         }
         await rig.hub.settle()
         let told = await entries(rig, session)

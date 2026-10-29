@@ -120,7 +120,7 @@ final class DownloadFolderSetting {
             }
         }
         #endif
-        DownloadsFolder.chosen.withLock { $0 = chosen }
+        DownloadsFolder.chosen.withLock { [chosen] in $0 = chosen }
         folder = chosen ?? DownloadsFolder.system
         isDownloads = chosen == nil
     }

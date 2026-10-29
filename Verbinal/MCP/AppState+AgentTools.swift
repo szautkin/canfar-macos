@@ -30,14 +30,14 @@ extension AppState {
         }
         var describeApp = DescribeAppTool()
         describeApp.published = published
-        describeApp.standingRules = { [weak self] in
-            await MainActor.run { self?.aiGuideService.snapshot().standingRules ?? [] }
+        describeApp.standingRules = { @MainActor [weak self] in
+            self?.aiGuideService.snapshot().standingRules ?? []
         }
-        describeApp.sessionIdleMinutes = { [weak self] in
-            await MainActor.run { self?.sessionApprovals.idleMinutes }
+        describeApp.sessionIdleMinutes = { @MainActor [weak self] in
+            self?.sessionApprovals.idleMinutes
         }
-        describeApp.connection = { [weak self] session in
-            await MainActor.run { self?.assistantConnections.connections.first { $0.session == session } }
+        describeApp.connection = { @MainActor [weak self] session in
+            self?.assistantConnections.connections.first { $0.session == session }
         }
         tools.append(describeApp)
         tools.append(ListAppsTool(published: published))
@@ -119,8 +119,8 @@ extension AppState {
         tools.append(makeGetHeadlessJobTool())
         tools.append(makeGetHeadlessJobLogsTool())
         tools.append(makeGetHeadlessJobEventsTool())
-        tools.append(LaunchHeadlessJobTool(offer: { [weak self] in
-            await MainActor.run { self?.portalImageCacheService.cache?.context?.gpuOffer }
+        tools.append(LaunchHeadlessJobTool(offer: { @MainActor [weak self] in
+            self?.portalImageCacheService.cache?.context?.gpuOffer
         }))
 
         // Sessions parity — the Events sheet, log view, and Connect button.
@@ -184,8 +184,8 @@ extension AppState {
         tools.append(OpenVOSpaceFileTool())
 
         // Write tools — Sessions + archive maintenance
-        tools.append(LaunchSessionTool(offer: { [weak self] in
-            await MainActor.run { self?.portalImageCacheService.cache?.context?.gpuOffer }
+        tools.append(LaunchSessionTool(offer: { @MainActor [weak self] in
+            self?.portalImageCacheService.cache?.context?.gpuOffer
         }))
         tools.append(DeleteSessionTool())
         tools.append(DeleteSessionsBulkTool())
@@ -245,8 +245,8 @@ extension AppState {
         tools.append(SetToolDescriptionTool())
         tools.append(ClearToolDescriptionTool())
         tools.append(AddGuideToolTool())
-        let findGuide: @Sendable (String) async -> UUID? = { [weak self] name in
-            await MainActor.run { self?.aiGuideService.guides.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }?.id }
+        let findGuide: @Sendable (String) async -> UUID? = { @MainActor [weak self] name in
+            self?.aiGuideService.guides.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }?.id
         }
         var updateGuide = UpdateGuideToolTool()
         updateGuide.findGuide = findGuide

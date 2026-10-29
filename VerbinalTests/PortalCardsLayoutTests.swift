@@ -101,18 +101,13 @@ final class PortalCardsLayoutTests: XCTestCase {
 
     private func onScreen(_ view: AnyView, width: CGFloat = 323, capture: String? = nil, dark: Bool = false,
                           _ body: (_ source: AXElementSource, _ look: () async throws -> Seen,
-                                   _ shot: (String) -> Void) async throws -> Void) async throws {
+                                   _ shot: @MainActor (String) -> Void) async throws -> Void) async throws {
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: width, height: 320), styleMask: [.titled],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         /// The window as drawn, to the folder VERBINAL_TEST_CAPTURES names.
-        func shot(_ name: String) {
-            guard let folder = ProcessInfo.processInfo.environment["VERBINAL_TEST_CAPTURES"],
-                  let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming]),
-                  let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { return }
-            try? png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("\(name).png"))
-        }
+        func shot(_ name: String) { TestCaptures.save(window, as: name) }
         window.contentView = NSHostingView(rootView: view.groupBoxStyle(PortalCardStyle()).padding(8)
             .frame(width: width, alignment: .top).uiWindowPlace(.main))
         window.makeKeyAndOrderFront(nil)

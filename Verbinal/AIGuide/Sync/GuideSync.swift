@@ -26,7 +26,7 @@ extension AIGuideService {
                     guard let (kind, name) = GuideEntry.parse(key: key) else { return }
                     if kind == .sessionInstructions { instructions.defaultInstructions = "" } else { self?.remove(kind, named: name) }
                 },
-                title: Self.title)),
+                title: { Self.title($0) })),
             watch: { [weak self] in
                 _ = self?.guides
                 _ = self?.overrides
@@ -34,7 +34,7 @@ extension AIGuideService {
             })
     }
 
-    @Sendable private static func title(_ entry: GuideEntry) -> String {
+    nonisolated private static func title(_ entry: GuideEntry) -> String {
         switch entry.kind {
         case .guide: "the guide \(entry.name) for assistants"
         case .toolDescription: "the description of \(entry.name) for assistants"
@@ -78,7 +78,7 @@ extension AIGuideService {
             if let guide = guides.first(where: { $0.name == entry.name }) {
                 try? updateGuide(id: guide.id, name: entry.name, description: entry.text, body: entry.body)
             } else {
-                try? addGuide(name: entry.name, description: entry.text, body: entry.body)
+                _ = try? addGuide(name: entry.name, description: entry.text, body: entry.body)
             }
         case .toolDescription:
             try? setOverride(toolName: entry.name, description: entry.text)

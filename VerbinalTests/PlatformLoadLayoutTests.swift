@@ -58,22 +58,13 @@ final class PlatformLoadLayoutTests: XCTestCase {
         let source = AXElementSource(screenName: { _, _, _ in "portal" })
         await source.ready()
         try await Task.sleep(for: .milliseconds(800))
-        if let capture { Self.capture(window, capture) }
+        if let capture { TestCaptures.save(window, as: capture) }
         let snapshot = source.snapshot()
         let ref = try XCTUnwrap(snapshot.windows.first { $0.number == window.windowNumber })
         let ringIDs: Set = ["portal.load.cpu", "portal.load.ram", "portal.load.gpu"]
         let rings = Dictionary(snapshot.elements(in: ref.index).filter { ringIDs.contains($0.id) }.map { ($0.id, $0) },
                                uniquingKeysWith: { first, _ in first })
         try body(rings, width)
-    }
-
-    /// For looking at: the window as drawn, to the scratch folder the
-    /// environment names (VERBINAL_TEST_CAPTURES), when it names one.
-    private static func capture(_ window: NSWindow, _ name: String) {
-        guard let folder = ProcessInfo.processInfo.environment["VERBINAL_TEST_CAPTURES"],
-              let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming]),
-              let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { return }
-        try? png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("\(name).png"))
     }
 
     func testThreeRingsWithTheirNumbers() async throws {

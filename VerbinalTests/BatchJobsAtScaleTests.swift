@@ -6,6 +6,7 @@
 
 import AppKit
 import SwiftUI
+import os
 import XCTest
 import VerbinalKit
 @testable import Verbinal
@@ -151,14 +152,14 @@ final class BatchJobsAtScaleTests: XCTestCase {
             headlessService: HeadlessService(network: NetworkClient(session: MockURLProtocol.mockSession())))
         await model.loadJobs()
         XCTAssertEqual(model.jobs.count, 2)
-        var touched = false
+        let touched = OSAllocatedUnfairLock(initialState: false)
         withObservationTracking {
             _ = model.jobs
             _ = model.runningCount
             _ = model.completedCount
-        } onChange: { touched = true }
+        } onChange: { touched.withLock { $0 = true } }
         await model.loadJobs()
-        XCTAssertFalse(touched, "the same jobs, the same counts: nothing set")
+        XCTAssertFalse(touched.withLock { $0 }, "the same jobs, the same counts: nothing set")
     }
 
     /// Plan 30 B: the filter is there with no jobs at all — the QA pass, on

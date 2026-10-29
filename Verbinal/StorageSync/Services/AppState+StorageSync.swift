@@ -21,8 +21,8 @@ extension AppState {
         storageSync.signedIn(username: username, .init(
             vospace: VOSpaceBrowserService(network: network, endpoints: endpoints),
             work: workCollections(username: username),
-            importManifest: { [weak self] data in
-                guard let coordinator = await MainActor.run(body: { self?.imageDiscoveryCoordinator }) else { return false }
+            importManifest: { @MainActor [weak self] data in
+                guard let coordinator = self?.imageDiscoveryCoordinator else { return false }
                 return await coordinator.importManifest(data)
             },
             resumeRuns: { await remoteCompute.resumeWatching() }))

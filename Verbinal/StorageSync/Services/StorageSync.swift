@@ -143,7 +143,7 @@ actor StorageSync {
     static let saveAfter: TimeInterval = 5
 
     init(remote: any StorageRemote, catalog: StorageKindCatalog, stateFile: URL,
-         now: @escaping @Sendable () -> Date = Date.init,
+         now: @escaping @Sendable () -> Date = { Date() },
          watcher: (@Sendable (Event) async -> Void)? = nil) {
         self.remote = remote
         self.catalog = catalog

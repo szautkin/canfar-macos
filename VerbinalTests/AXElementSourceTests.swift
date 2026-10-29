@@ -61,7 +61,12 @@ final class AXElementSourceTests: XCTestCase {
         }
     }
 
-    private func show(_ root: some View = Sample(), maxNodes: Int = AXElementSource.maxNodes)
+    /// The sample, on screen and read.
+    private func show() async throws -> (UISnapshot, [UIElement]) {
+        try await show(Sample())
+    }
+
+    private func show(_ root: some View, maxNodes: Int = AXElementSource.maxNodes)
         async throws -> (UISnapshot, [UIElement]) {
         try await AXReadable.require()
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 480, height: 520),

@@ -74,7 +74,7 @@ final class ResultDestinationTests: XCTestCase {
         let remote = StorageSyncTests.FakeVOSpace()
         await remote.put(StorageManifest.path, Data(#"{ "format": "verbinal.vospace-manifest", "version": 1, "kinds": { "results": { "folder": "Verbinal-Results", "format": 1, "since": "2026-10-09T12:00:00Z" } } }"#.utf8))
         let calls = Sent()
-        let kind = ResultsKind(send: { try? calls.add(URL(fileURLWithPath: "/x"), "sync"); return 1 })
+        let kind = ResultsKind(send: { _ = try? calls.add(URL(fileURLWithPath: "/x"), "sync"); return 1 })
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("results-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: directory) }
         let storage = StorageSync(remote: remote, catalog: StorageKindCatalog(kinds: [kind]),

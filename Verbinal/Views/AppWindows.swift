@@ -24,7 +24,8 @@ final class AppWindows {
     private let places: UIWindowPlaces
     private var observer: NSObjectProtocol?
 
-    init(places: UIWindowPlaces = .shared, lastMainWindowClosed: @escaping @MainActor (_ closing: NSWindow) -> Void) {
+    init(places: UIWindowPlaces? = nil, lastMainWindowClosed: @escaping @MainActor (_ closing: NSWindow) -> Void) {
+        let places = places ?? .shared
         self.places = places
         observer = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nil,
                                                           queue: .main) { [places] note in

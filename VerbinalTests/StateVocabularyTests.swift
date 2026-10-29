@@ -80,14 +80,16 @@ final class StateVocabularyTests: XCTestCase {
     func testOfTwoLoadsUnderWayTheNewestWins() async {
         let loader = Loader()
         let gate = AsyncStream<Void>.makeStream()
-        async let slow = loader.run(\.phase) {
-            for await _ in gate.stream { break }
-            return "slow"
+        let slow = Task {
+            await loader.run(\.phase) {
+                for await _ in gate.stream { break }
+                return "slow"
+            }
         }
         try? await Task.sleep(for: .milliseconds(20))
         let fastKept = await loader.run(\.phase) { "fast" }
         gate.continuation.yield()
-        let slowKept = await slow
+        let slowKept = await slow.value
         XCTAssertTrue(fastKept)
         XCTAssertFalse(slowKept, "the older load came back late and was dropped")
         XCTAssertEqual(loader.phase, .ready("fast"))

@@ -11,8 +11,8 @@ import VerbinalKit
 extension AppState {
     func makeMoveToTools() -> [any AITool] {
         [
-            GetMoveToViewTool(view: { [weak self] in
-                await MainActor.run { self?.moveToView() ?? .closed }
+            GetMoveToViewTool(view: { @MainActor [weak self] in
+                self?.moveToView() ?? .closed
             }),
             ShowMoveToTool(show: { [weak self] args in
                 guard let self else { throw ToolFailureReason.backendError("app state gone") }

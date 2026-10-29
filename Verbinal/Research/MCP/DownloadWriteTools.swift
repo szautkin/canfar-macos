@@ -271,7 +271,7 @@ struct DownloadObservationApplier: ProposalApplier, ResultReportingApplier {
         observation.agentAttribution = attribution
         // Into Research's record of the observation when it has one (kept
         // without its file, or downloaded before): the id stays the same.
-        let stored = await MainActor.run { observationStore.save(observation) }
+        let stored = await MainActor.run { [observation] in observationStore.save(observation) }
         downloadLogger.notice("agent download applied: \(payload.publisherID, privacy: .public)")
         return stored.id
     }

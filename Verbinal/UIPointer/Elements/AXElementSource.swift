@@ -6,7 +6,9 @@
 
 #if os(macOS)
 import AppKit
-import ApplicationServices
+// The accessibility API predates Sendable: an element crosses to the main
+// run loop only to be acted on there, where every other call on it is made.
+@preconcurrency import ApplicationServices
 
 /// The app's own windows, read through the accessibility API the way
 /// VoiceOver reads them (plan 27). It needs no Accessibility permission —
@@ -30,13 +32,13 @@ final class AXElementSource: UIElementSource {
     /// What is in sight is read first; what is scrolled away gets what is
     /// left, for at most `awayTime`.
     static let maxDepth = 60
-    static let maxNodes = 6_000
+    nonisolated static let maxNodes = 6_000
     static let awayTime: Duration = .milliseconds(800)
     private let maxNodes: Int
 
-    init(places: UIWindowPlaces = .shared, maxNodes: Int = AXElementSource.maxNodes,
+    init(places: UIWindowPlaces? = nil, maxNodes: Int = AXElementSource.maxNodes,
          screenName: @escaping ScreenNamer) {
-        self.places = places
+        self.places = places ?? .shared
         self.maxNodes = maxNodes
         self.screenName = screenName
     }

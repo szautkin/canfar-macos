@@ -402,8 +402,8 @@ final class AppState {
         // after).
         let sessionLog = AppEventHub(
             sources: .init(proposals: agentsService.eventLog.observers, tasks: TaskRegistry.shared.events, auth: auth.events),
-            header: { [weak self] session, client in
-                await MainActor.run { self?.sessionLogHeader(session, client) }
+            header: { @MainActor [weak self] session, client in
+                self?.sessionLogHeader(session, client)
                     ?? SessionLogHeader(session: session, client: client, opened: Date(), app: "?", buildCommit: nil,
                                         macOS: "?", endpoints: [:], overridden: [], autoApply: false, signedIn: false)
             })

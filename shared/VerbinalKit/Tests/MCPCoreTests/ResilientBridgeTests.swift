@@ -15,7 +15,8 @@ final class ResilientBridgeTests: XCTestCase {
         private var frames: [[String: Any]] = []
 
         init(_ transport: InMemoryTransport) {
-            Task {
+            // A stream that ends in an error ends the inbox: nothing more arrives.
+            _ = Task {
                 for try await frame in transport.incoming {
                     if let object = try JSONSerialization.jsonObject(with: frame) as? [String: Any] {
                         self.lock.withLock { self.frames.append(object) }

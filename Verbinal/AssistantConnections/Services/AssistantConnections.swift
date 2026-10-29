@@ -28,7 +28,7 @@ final class AssistantConnections {
     @ObservationIgnored var disconnect: (@MainActor (_ session: UUID, _ reason: String) async -> Void)?
     private let now: @Sendable () -> Date
 
-    init(now: @escaping @Sendable () -> Date = Date.init) {
+    init(now: @escaping @Sendable () -> Date = { Date() }) {
         self.now = now
     }
 

@@ -4,6 +4,7 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
+import os
 import XCTest
 import VerbinalKit
 @testable import Verbinal
@@ -95,16 +96,15 @@ final class SessionDeleteTests: XCTestCase {
     func testADeleteThatDidNotTakeFailsAndSaysWhy() async throws {
         let skaha = FakeSkaha([["id": "c1", "type": "carta", "status": "Running", "name": "c"]])
         skaha.ignoresDeletes = true
-        var heard: [Change] = []
-        let lock = NSLock()
-        changes.observe { change in lock.withLock { heard.append(change) } }
+        let heard = OSAllocatedUnfairLock<[Change]>(initialState: [])
+        changes.observe { change in heard.withLock { $0.append(change) } }
         do {
             try await service(skaha).deleteSession(id: "c1")
             XCTFail("it is still running")
         } catch let error as SessionStillRunning {
             XCTAssertEqual(error, SessionStillRunning(what: "session c1", status: "Running"))
         }
-        let change = lock.withLock { heard.last }
+        let change = heard.withLock { $0.last }
         XCTAssertEqual(change?.outcome, .failed)
         XCTAssertTrue(change?.failure?.contains("still Running") == true, "\(String(describing: change?.failure))")
     }

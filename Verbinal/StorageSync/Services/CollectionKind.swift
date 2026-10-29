@@ -36,7 +36,7 @@ struct CollectionKind<Collection: SyncCollection>: StorageKind {
     let declaredWhenFound = false
     let collection: Collection
     var changes: ChangeLog = .shared
-    var now: @Sendable () -> Date = Date.init
+    var now: @Sendable () -> Date = { Date() }
 
     /// One sync of the collection: what it knows, and what it did.
     private struct Pass {

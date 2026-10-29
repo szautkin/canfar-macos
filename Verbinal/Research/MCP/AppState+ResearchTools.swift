@@ -69,7 +69,7 @@ extension AppState {
                 guard let self else { throw ProposalApplyError.backendError("app state gone") }
                 var record = await describe(SaveObservationToResearchTool.record(from: payload))
                 record.agentAttribution = attribution
-                return await MainActor.run {
+                return await MainActor.run { [record] in
                     let kept = self.researchModel.observationStore.keep(record)
                     return (kept.record.id, kept.added)
                 }

@@ -94,8 +94,8 @@ extension AppState {
                     rows: rows,
                     rowsTruncated: truncated)
             }
-        }, readiness: { [weak self] in
-            await MainActor.run { (self?.searchModel.readiness ?? .empty, self?.searchModel.searchError) }
+        }, readiness: { @MainActor [weak self] in
+            (self?.searchModel.readiness ?? .empty, self?.searchModel.searchError)
         })
     }
 

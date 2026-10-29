@@ -53,9 +53,9 @@ final class SessionLogReadingTests: XCTestCase {
         cause.proposal = proposal.id
         decisions.record(.heldForPerson, "\"Delete session q9p87ajc\" waits in Pending: a delete always waits for the person",
                          subject: proposal.summary, cause: cause)
-        await hub.callEnded(session, call: call, tool: "delete_session",
-                            traced: .init(result: .proposed(proposal), seconds: 0.1, trace: RequestTrace(parent: nil)))
-        try await Initiator.$current.withValue(.assistant) { try await changes.applying(proposal, by: .person) { } }
+        _ = await hub.callEnded(session, call: call, tool: "delete_session",
+                                traced: .init(result: .proposed(proposal), seconds: 0.1, trace: RequestTrace(parent: nil)))
+        await Initiator.$current.withValue(.assistant) { await changes.applying(proposal, by: .person) { } }
         await hub.settle()
         return (call, proposal)
     }
