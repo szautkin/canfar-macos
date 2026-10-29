@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import AppKit
+import ScreenCaptureKit
 import VerbinalKit
 
 /// A window as the person sees it.
@@ -14,7 +15,8 @@ import VerbinalKit
 /// so the Portal header and the Cube side panel came out as grey bars and
 /// the spectrum's axes blank (plan 19 C1, QA N16). The window server's own
 /// picture of Verbinal's window needs no Screen Recording permission: the
-/// app's windows are its own. The layers are the fallback, for a window
+/// app's windows are its own, which ScreenCaptureKit's `currentProcess`
+/// lists (macOS 14.4). The layers are the fallback, for a window
 /// the window server has no picture of.
 @MainActor
 enum WindowCapture {
@@ -40,9 +42,13 @@ enum WindowCapture {
     /// `window` as the window server composites it, with the hints drawn
     /// over it, its longer side at most `maxSide` pixels; nil when it has no
     /// picture of it (off screen).
-    static func composited(_ window: NSWindow, maxSide: Int) -> CGImage? {
-        guard let image = picture(of: window) else { return nil }
-        let panels = hintPanels(over: window).compactMap { panel in picture(of: panel).map { (frame: panel.frame, image: $0) } }
+    static func composited(_ window: NSWindow, maxSide: Int) async -> CGImage? {
+        guard window.isVisible, let own = try? await SCShareableContent.currentProcess,
+              let image = await picture(of: window, among: own.windows) else { return nil }
+        var panels: [(frame: CGRect, image: CGImage)] = []
+        for panel in hintPanels(over: window) {
+            if let picture = await picture(of: panel, among: own.windows) { panels.append((panel.frame, picture)) }
+        }
         let scale = min(1, CGFloat(maxSide) / CGFloat(max(image.width, image.height)))
         guard scale < 1 || !panels.isEmpty else { return image }
         let width = max(1, Int((CGFloat(image.width) * scale).rounded())), height = max(1, Int((CGFloat(image.height) * scale).rounded()))
@@ -61,11 +67,20 @@ enum WindowCapture {
         return context.makeImage()
     }
 
-    /// The window server's picture of one window; nil when it has none (off screen).
-    private static func picture(of window: NSWindow) -> CGImage? {
+    /// The window server's picture of one window — without its shadow, at
+    /// the screen's full resolution — from Verbinal's own `windows`; nil when
+    /// it has none (off screen).
+    private static func picture(of window: NSWindow, among windows: [SCWindow]) async -> CGImage? {
         guard window.isVisible, window.windowNumber > 0,
-              let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber),
-                                                  [.boundsIgnoreFraming, .bestResolution]),
+              let shared = windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else { return nil }
+        let filter = SCContentFilter(desktopIndependentWindow: shared)
+        let configuration = SCStreamConfiguration()
+        configuration.width = Int(filter.contentRect.width * CGFloat(filter.pointPixelScale))
+        configuration.height = Int(filter.contentRect.height * CGFloat(filter.pointPixelScale))
+        configuration.ignoreShadowsSingleWindow = true
+        configuration.showsCursor = false
+        configuration.captureResolution = .best
+        guard let image = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration),
               image.width > 1, image.height > 1 else { return nil }
         return image
     }

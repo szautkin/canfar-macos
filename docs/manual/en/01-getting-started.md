@@ -7,7 +7,7 @@ CANFAR. This chapter installs it, walks through the first launch, and shows you 
 
 ## What you need
 
-- A Mac with **macOS 14 (Sonoma) or newer**, with Apple silicon or an Intel processor.
+- A Mac with **macOS 14.4 (Sonoma) or newer**, with Apple silicon or an Intel processor.
 - For **Portal**, **Storage** and **Remote Compute**: a CADC account, and for sessions and jobs on
   CANFAR, an account that has access to the CANFAR science platform. See [canfar.net](https://www.canfar.net/).
 - Nothing else for **Search**, **Research**, the **FITS Viewer**, the **Cube Viewer**, **Workflows**

@@ -128,7 +128,7 @@ See [Building](#building) below.
 ## Requirements
 
 ### Runtime
-- macOS 14 or newer, or iOS and iPadOS 17 or newer
+- macOS 14.4 or newer, or iOS and iPadOS 17 or newer
 - A CANFAR account (on iPhone and iPad, only for the Portal, Compute and your storage)
 
 ### Build

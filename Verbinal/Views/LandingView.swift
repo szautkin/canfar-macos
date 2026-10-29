@@ -20,7 +20,7 @@ struct LandingView: View {
 
     var body: some View {
         // The GeometryReader supplies the container size (the deployment
-        // target is macOS 14, where the newer `.onGeometryChange` isn't
+        // target is macOS 14.4, where the newer `.onGeometryChange` isn't
         // available): width drives the adaptive column count, and height
         // becomes the scroll content's minHeight so the Spacer-centered
         // layout stays vertically centered when it fits — and scrolls,

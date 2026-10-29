@@ -30,12 +30,13 @@ final class WindowCaptureTests: XCTestCase {
         window.orderFrontRegardless()
         defer { window.orderOut(nil) }
         try await Task.sleep(for: .milliseconds(300))
-        guard let image = WindowCapture.composited(window, maxSide: 400) else {
+        guard let image = await WindowCapture.composited(window, maxSide: 400) else {
             throw XCTSkip("no window server picture here (headless)")
         }
         XCTAssertLessThanOrEqual(max(image.width, image.height), 400)
         let hidden = self.window()
-        XCTAssertNil(WindowCapture.composited(hidden, maxSide: 400), "not on screen: the layers are drawn instead")
+        let unseen = await WindowCapture.composited(hidden, maxSide: 400)
+        XCTAssertNil(unseen, "not on screen: the layers are drawn instead")
         XCTAssertTrue(WindowCapture.shown(window) === window)
     }
 
@@ -53,7 +54,7 @@ final class WindowCaptureTests: XCTestCase {
         hints.contentView = NSHostingView(rootView: Color.red.frame(width: 120, height: 80)
             .frame(maxWidth: .infinity, maxHeight: .infinity))
         try await Task.sleep(for: .milliseconds(300))
-        guard let plain = WindowCapture.composited(window, maxSide: 400) else {
+        guard let plain = await WindowCapture.composited(window, maxSide: 400) else {
             throw XCTSkip("no window server picture here (headless)")
         }
         guard !isClear(atCentreOf: plain) else {
@@ -64,7 +65,8 @@ final class WindowCaptureTests: XCTestCase {
         defer { hints.close() }
         try await Task.sleep(for: .milliseconds(300))
         XCTAssertEqual(WindowCapture.hintPanels(over: window), [hints])
-        let hinted = try XCTUnwrap(WindowCapture.composited(window, maxSide: 400))
+        let picture = await WindowCapture.composited(window, maxSide: 400)
+        let hinted = try XCTUnwrap(picture)
         XCTAssertFalse(isRed(atCentreOf: plain), "the window alone")
         XCTAssertTrue(isRed(atCentreOf: hinted), "the hint drawn over it")
     }

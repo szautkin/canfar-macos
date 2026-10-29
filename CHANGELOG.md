@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Verbinal for macOS needs macOS 14.4 or newer (it was 14.0): `capture_view` takes Verbinal's own
+  windows with ScreenCaptureKit, which replaces a window capture deprecated since macOS 14. macOS
+  14.4 is a free update for every Mac that runs 14.0.
+
 ### Added
 - **Connected Assistants**, in Settings ▸ AI Agent and as a count beside the activity bar: each
   assistant connected now, with its client, session, bridge and last call, and **Close** (see

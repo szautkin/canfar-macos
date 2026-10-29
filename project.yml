@@ -2,7 +2,7 @@ name: Verbinal
 options:
   bundleIdPrefix: com.codebg
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "14.4"
     iOS: "17.0"
   xcodeVersion: "16.0"
   generateEmptyDirectories: true
@@ -12,7 +12,7 @@ configs:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.4"
     PRODUCT_BUNDLE_IDENTIFIER: com.codebg.Verbinal
     MARKETING_VERSION: "1.4.1"
     CURRENT_PROJECT_VERSION: "18"

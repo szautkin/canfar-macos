@@ -101,13 +101,13 @@ final class PortalCardsLayoutTests: XCTestCase {
 
     private func onScreen(_ view: AnyView, width: CGFloat = 323, capture: String? = nil, dark: Bool = false,
                           _ body: (_ source: AXElementSource, _ look: () async throws -> Seen,
-                                   _ shot: @MainActor (String) -> Void) async throws -> Void) async throws {
+                                   _ shot: @MainActor (String) async -> Void) async throws -> Void) async throws {
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: width, height: 320), styleMask: [.titled],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         /// The window as drawn, to the folder VERBINAL_TEST_CAPTURES names.
-        func shot(_ name: String) { TestCaptures.save(window, as: name) }
+        func shot(_ name: String) async { await TestCaptures.save(window, as: name) }
         window.contentView = NSHostingView(rootView: view.groupBoxStyle(PortalCardStyle()).padding(8)
             .frame(width: width, alignment: .top).uiWindowPlace(.main))
         window.makeKeyAndOrderFront(nil)
@@ -116,7 +116,7 @@ final class PortalCardsLayoutTests: XCTestCase {
         await source.ready()
         try await Task.sleep(for: .milliseconds(700))
         try await body(source, {
-            if let capture { shot(capture) }
+            if let capture { await shot(capture) }
             let snapshot = source.snapshot()
             let ref = try XCTUnwrap(snapshot.windows.first { $0.number == window.windowNumber })
             let elements = snapshot.elements(in: ref.index)
@@ -317,15 +317,15 @@ final class PortalCardsLayoutTests: XCTestCase {
                 network.hold = 1.2
                 let reloading = Task { await storage.reload() }
                 try await Task.sleep(for: .milliseconds(120))
-                shot("storage-bar-1-running-back\(suffix)")
+                await shot("storage-bar-1-running-back\(suffix)")
                 try await Task.sleep(for: .milliseconds(600))
-                shot("storage-bar-2-waiting\(suffix)")
+                await shot("storage-bar-2-waiting\(suffix)")
                 network.hold = 0
                 await reloading.value
                 try await Task.sleep(for: .milliseconds(250))
-                shot("storage-bar-3-filling\(suffix)")
+                await shot("storage-bar-3-filling\(suffix)")
                 try await Task.sleep(for: .milliseconds(1200))
-                shot("storage-bar-4-full\(suffix)")
+                await shot("storage-bar-4-full\(suffix)")
                 let after = try await look()
                 same(before.bounds, after.bounds, "Storage, after its bar ran")
             }
@@ -354,7 +354,7 @@ final class PortalCardsLayoutTests: XCTestCase {
                 network.hold = 1.5
                 let reloading = Task { await load.loadStats() }
                 try await Task.sleep(for: .milliseconds(500))
-                shot(name)
+                await shot(name)
                 let during = try await look()
                 for id in ["portal.load.cpu", "portal.load.ram", "portal.load.gpu"] {
                     XCTAssertEqual(during.byID[id]?.help, "Refreshing", "\(id) at \(width)")
@@ -380,7 +380,7 @@ final class PortalCardsLayoutTests: XCTestCase {
                 network.hold = 1.5
                 let reloading = Task { await card.reload() }
                 try await Task.sleep(for: .milliseconds(500))
-                shot("refreshing-\(card.reloadID)")
+                await shot("refreshing-\(card.reloadID)")
                 let during = try await look()
                 network.hold = 0
                 await reloading.value

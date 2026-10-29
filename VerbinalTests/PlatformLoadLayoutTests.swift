@@ -58,7 +58,7 @@ final class PlatformLoadLayoutTests: XCTestCase {
         let source = AXElementSource(screenName: { _, _, _ in "portal" })
         await source.ready()
         try await Task.sleep(for: .milliseconds(800))
-        if let capture { TestCaptures.save(window, as: capture) }
+        if let capture { await TestCaptures.save(window, as: capture) }
         let snapshot = source.snapshot()
         let ref = try XCTUnwrap(snapshot.windows.first { $0.number == window.windowNumber })
         let ringIDs: Set = ["portal.load.cpu", "portal.load.ram", "portal.load.gpu"]

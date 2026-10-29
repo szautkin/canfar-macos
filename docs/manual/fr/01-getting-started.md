@@ -8,7 +8,7 @@ l’app, suit le premier lancement et fait le tour de la fenêtre.
 
 ## Ce qu’il vous faut
 
-- Un Mac sous **macOS 14 (Sonoma) ou plus récent**, avec une puce Apple ou un processeur Intel.
+- Un Mac sous **macOS 14.4 (Sonoma) ou plus récent**, avec une puce Apple ou un processeur Intel.
 - Pour **Portail**, **Stockage** et **Calcul à distance** : un compte CADC et, pour les sessions et
   les tâches sur CANFAR, un compte qui a accès à la plateforme scientifique CANFAR. Voir
   [canfar.net](https://www.canfar.net/).

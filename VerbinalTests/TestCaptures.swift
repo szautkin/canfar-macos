@@ -12,9 +12,9 @@ import AppKit
 /// to take the picture, the app's own (`WindowCapture`).
 @MainActor
 enum TestCaptures {
-    static func save(_ window: NSWindow, as name: String) {
+    static func save(_ window: NSWindow, as name: String) async {
         guard let folder = ProcessInfo.processInfo.environment["VERBINAL_TEST_CAPTURES"],
-              let image = WindowCapture.composited(window, maxSide: .max),
+              let image = await WindowCapture.composited(window, maxSide: .max),
               let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { return }
         try? png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("\(name).png"))
     }
