@@ -9,12 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Connected Assistants**, in Settings ▸ AI Agent and as a count beside the activity bar: each
+  assistant connected now, with its client, session, bridge and last call, and **Close** (see
+  `docs/plans/52-assistant-connections.md`).
+- **Connecting any assistant.** Settings ▸ MCP Clients ▸ Other Assistants, and **Another assistant** in
+  the setup, show the settings for Codex, Cursor, Gemini CLI, Windsurf and VS Code with this Mac's
+  path. A prompt lets an assistant set itself up.
 - **Fix Characters**, under Remote Compute's Run Code box: curly quotes, long dashes, special spaces
   and invisible characters pasted with code are named, and made plain when you ask. ⌘Z undoes it.
 
 ### Fixed
 - Remote Compute's Run Code box turned `"` and `'` into curly quotes (the Mac's smart quotes), which
   Python and Bash reject.
+- An assistant's bridge (`Verbinal mcp`) outlived its client, looked for Verbinal every 2 seconds
+  forever while it was away, and tried every socket file an earlier Verbinal left behind: one log
+  reached 3.5 GB. It now ends with its client and waits quietly, and leftover sockets are removed
+  (Diagnostics counts them).
+- Turning off Allow external AI agents now closes every bridge. Diagnostics' Restart keeps sessions.
 
 ## [1.4.1 for iPhone and iPad] - 2026-10-24
 

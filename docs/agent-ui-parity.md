@@ -275,6 +275,16 @@ every later agent is told; **read** = pure data.
 | End Session (plan 34 S) | — the person's own | — |
 | Show in Finder | — (the file path: `export_session_log` answers with it) | — |
 
+## Connected assistants (Settings ▸ AI Agent ▸ Connected Assistants; the activity bar)
+
+| UI interaction | Tool | Kind |
+|---|---|---|
+| Each connected assistant: its client, session, bridge and calls (plan 52 C1) | `describe_app` → `connection`: its own, never another's | read |
+| Close / Close All (C2) | — the person's own | — |
+| Turning off Allow external AI agents closes every bridge (C3) | — the person's own | — |
+| Settings ▸ MCP Clients ▸ Other Assistants: each client's settings and the prompt (D) | — for a person, or an assistant not yet connected; AGENTS.md has the same | — |
+| Diagnostics ▸ Leftover sockets ▸ Remove (B3) | — the person's own | — |
+
 ## Wire-name aliases (Windows = canonical)
 
 Mac keeps legacy names as aliases so older agents keep working:

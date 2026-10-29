@@ -143,6 +143,8 @@ targets:
           - "**/Sync/**"
           # The assistant's session log: macOS only, like the MCP server (plan 23).
           - "AgentSession/**"
+          # Connected assistants and their bridges: macOS only, like the MCP server (plan 52).
+          - "AssistantConnections/**"
           # Not one of the iOS app's four places (plan 47 0.9): the archive
           # search, Research, Image Discovery, and what shapes an assistant's
           # tools (AI Guide, Workflows). They stay Mac only.

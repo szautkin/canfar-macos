@@ -88,6 +88,12 @@ final class MCPDiagnosticsModel {
         // 6. Sidecar readable + matches the live socket
         out.append(sidecarCheck())
 
+        // 6b. Sockets left by runs that ended, which waiting relays try (plan 52 B)
+        let dead = SocketSidecar.deadSockets().count
+        out.append(dead == 0
+            ? check("leftoverSockets", "Leftover sockets", .pass, "None: every socket file has a running Verbinal.")
+            : check("leftoverSockets", "Leftover sockets", .warn, "\(dead) socket file\(dead == 1 ? "" : "s") left by Verbinal runs that quit, crashed or were stopped. Each assistant waiting for Verbinal tries them.", fix: .removeLeftoverSockets))
+
         // 7. Tools registered (snapshotted at listener start)
         let n = agents.tools.count
         out.append(n > 0
@@ -195,6 +201,9 @@ final class MCPDiagnosticsModel {
             settings.revealHelperInFinder()
         case .openClaude:
             settings.openClaude()
+        case .removeLeftoverSockets:
+            SocketSidecar.removeDeadSockets()
+            runAll()
         }
     }
 
@@ -223,16 +232,10 @@ final class MCPDiagnosticsModel {
         }
     }
 
+    /// A new listener; sessions and relays carry on (plan 52).
     func restartServer() {
-        agents.isEnabled = false   // synchronous stopServer() in didSet
-        // @MainActor-isolate the closure explicitly: it touches @MainActor
-        // state (agents.isEnabled, runAll) after the suspension point.
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 100_000_000)  // let serverLoopTask cancellation settle
-            guard let self else { return }
-            self.agents.isEnabled = true                     // synchronous startServer()
-            self.runAll()
-        }
+        agents.restartServer()
+        runAll()
     }
 
     // MARK: - Helper launch self-test

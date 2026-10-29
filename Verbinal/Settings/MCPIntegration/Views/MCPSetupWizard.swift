@@ -18,8 +18,8 @@ import VerbinalKit
 ///
 /// Deliberately a small step machine with a progress header — NOT an
 /// animated carousel/tour (per the discoverability plan's "tasteful ceiling").
-/// Covers Claude Desktop + Claude Code; the `Client` enum is the seam where a
-/// third client slots in later.
+/// Covers Claude Desktop, Claude Code, and any other assistant — by its
+/// settings, or a prompt it follows itself (plan 52 D3).
 struct MCPSetupWizard: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
@@ -50,28 +50,38 @@ struct MCPSetupWizard: View {
         }
     }
 
-    /// The MCP clients the wizard can configure. Codex is intentionally
-    /// deferred; the enum is the extension point for a third client.
+    /// The clients the wizard sets up: the two Claude apps step by step,
+    /// any other by its settings or a prompt.
     enum Client: String, CaseIterable, Identifiable {
-        case claudeDesktop, claudeCode
+        case claudeDesktop, claudeCode, other
         var id: String { rawValue }
 
         var displayName: String {
             switch self {
             case .claudeDesktop: "Claude Desktop"
             case .claudeCode:    "Claude Code"
+            case .other:         String(localized: "Another assistant")
             }
         }
         var icon: String {
             switch self {
             case .claudeDesktop: "menubar.dock.rectangle"
             case .claudeCode:    "terminal"
+            case .other:         "ellipsis.bubble"
             }
         }
         var blurb: LocalizedStringKey {
             switch self {
             case .claudeDesktop: "The desktop chat app. Verbinal can update its config for you."
             case .claudeCode:    "The CLI coding agent. Run one command to register Verbinal."
+            case .other:         "Codex, Cursor, Gemini CLI, Windsurf, VS Code, or any other: its settings, or a prompt."
+            }
+        }
+        /// What to do once it is set up, so its tools appear.
+        var relaunch: String {
+            switch self {
+            case .other: String(localized: "Now reload your assistant's MCP servers, or restart it, then confirm the Verbinal tools appear.")
+            default: String(localized: "Now fully quit and relaunch \(displayName), then confirm the Verbinal tools appear.")
             }
         }
     }
@@ -246,6 +256,20 @@ struct MCPSetupWizard: View {
         switch client {
         case .claudeDesktop: configureClaudeDesktop
         case .claudeCode:    configureClaudeCode
+        case .other:         configureOther
+        }
+    }
+
+    private var configureOther: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Connect another assistant")
+                .font(.title3.bold())
+            AssistantPromptView(executable: settings.executablePath())
+            Divider()
+            Text("Or add Verbinal to its settings yourself:")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            AssistantRecipesList(executable: settings.executablePath())
         }
     }
 
@@ -363,8 +387,7 @@ struct MCPSetupWizard: View {
             }
 
             GroupBox {
-                Label("Now fully quit and relaunch \(client.displayName), then confirm the Verbinal tools appear.",
-                      systemImage: "arrow.clockwise")
+                Label(client.relaunch, systemImage: "arrow.clockwise")
                     .font(.callout)
                     .fixedSize(horizontal: false, vertical: true)
             }

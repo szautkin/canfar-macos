@@ -81,6 +81,27 @@ final class SocketSidecarTests: XCTestCase {
         "/tmp/vb-\(name)-\(UUID().uuidString.prefix(8)).sock"
     }
 
+    /// Plan 52 B: what quits and crashes left goes; a running Verbinal's stays.
+    func testOnlySocketsNobodyListensAtAreRemoved() throws {
+        let fm = FileManager.default
+        let dir = URL(fileURLWithPath: "/tmp/vb-dead-\(UUID().uuidString.prefix(8))", isDirectory: true)
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: dir) }
+        let live = SocketServer(socketPath: dir.appendingPathComponent("mcp-1.sock").path)
+        try live.start()
+        defer { live.stop() }
+        for name in ["mcp-2.sock", "mcp-3.sock", "notes.txt"] {
+            fm.createFile(atPath: dir.appendingPathComponent(name).path, contents: Data())
+        }
+
+        XCTAssertEqual(Set(SocketSidecar.deadSockets(in: dir).map { ($0 as NSString).lastPathComponent }),
+                       ["mcp-2.sock", "mcp-3.sock"])
+        XCTAssertEqual(SocketSidecar.removeDeadSockets(in: dir), 2)
+        XCTAssertEqual(Set(try fm.contentsOfDirectory(atPath: dir.path)), ["mcp-1.sock", "notes.txt"])
+        XCTAssertTrue(SocketSidecar.isListening(dir.appendingPathComponent("mcp-1.sock").path))
+        XCTAssertEqual(SocketSidecar.removeDeadSockets(in: nil), 0, "no shared container: nothing to do")
+    }
+
     func testClearingRemovesOnlyTheSidecarThatNamesThisSocket() throws {
         try SocketSidecar.write(socketPath: "/tmp/theirs.sock", directory: sidecarDir)
         SocketSidecar.clear(ifNaming: "/tmp/mine.sock", directory: sidecarDir)

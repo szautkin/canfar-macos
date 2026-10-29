@@ -25,8 +25,8 @@ Cliquez sur la tuile **Assistant IA** de l’accueil, ou choisissez **Aide ▸ C
 La configuration, **Connectez votre agent IA**, compte quatre étapes :
 
 1. **Autoriser les agents IA** : activez **Autoriser les agents IA externes**.
-2. **Choisir votre client** : **Claude Desktop** ou **Claude Code**. Pour un autre client, voir
-   [Autres clients](#autres-clients).
+2. **Choisir votre client** : **Claude Desktop**, **Claude Code** ou **Un autre assistant**. Pour un
+   autre client, voir [Autres clients](#autres-clients).
 3. **Configurer** : comme ci-dessous, pour le client choisi.
 4. **Vérifier** : **Lancer l'autotest** vérifie que le serveur de Verbinal répond. La preuve finale
    est dans votre client : quittez-le complètement, rouvrez-le, et vérifiez que les outils de Verbinal
@@ -56,16 +56,24 @@ Ou collez l’extrait JSON (**Copier l'extrait JSON**) dans le `mcpServers` de p
 
 Tout assistant capable de lancer un serveur MCP local fonctionne de la même façon : nom
 `verbinal-canfar`, commande `/Applications/Verbinal.app/Contents/MacOS/Verbinal`, argument `mcp`. Il n’y
-a ni port, ni URL, ni clé. [AGENTS.md](https://github.com/szautkin/canfar-macos/blob/main/AGENTS.md) donne les réglages exacts pour Codex,
-Cursor, Gemini CLI, Windsurf et VS Code ; vous pouvez donner ce fichier à votre assistant pour qu’il se
-configure lui-même. **Réglages ▸ Clients MCP** affiche la commande exacte pour ce Mac et la copie
-(**Copier la commande**).
+a ni port, ni URL, ni clé.
+
+**Réglages ▸ Clients MCP ▸ Autres assistants**, et **Un autre assistant** dans la configuration,
+montrent les réglages de Codex, Cursor, Gemini CLI, Windsurf et VS Code avec le chemin propre à ce Mac :
+chacun avec son fichier et **Copier**. Ajoutez-le à côté des serveurs déjà présents, puis redémarrez ou
+rechargez le client.
+
+Ou laissez l’assistant se configurer lui-même : **Copier l'invite** copie **Une invite pour votre
+assistant**, que vous collez dans sa conversation. Elle dit quoi ajouter et où lire les réglages de
+chaque client ([AGENTS.md](https://github.com/szautkin/canfar-macos/blob/main/AGENTS.md)), puis vous
+demande d’ouvrir une session.
 
 ### Vérifier la connexion
 
 Verbinal doit être ouvert, avec **Autoriser les agents IA externes** activé. Quand Verbinal est fermé,
 l’assistant se connecte quand même, et chacun de ses outils répond que Verbinal n’est pas ouvert ; dès
-que vous ouvrez Verbinal, il le retrouve de lui-même.
+que vous ouvrez Verbinal, il le retrouve de lui-même, en une seconde ou deux. D’ici là, son pont cherche
+Verbinal toutes les 2 secondes pendant une minute, puis toutes les 30 secondes.
 
 Si un assistant ne se connecte pas, **Réglages ▸ Clients MCP ▸ Diagnostic** vérifie chaque maillon : le
 serveur, son écoute, le conteneur partagé, la prise (socket), les outils et la configuration de Claude
@@ -103,6 +111,37 @@ connections outside Verbinal. Ask before anything destructive. »* (n’utiliser
 outils, sans autre app ni connexion réseau hors de Verbinal, et demander avant toute action
 destructive). L’assistant doit les suivre et le journal de session les conserve, mais Verbinal ne peut
 pas empêcher un assistant d’utiliser ses autres outils ou des connexions hors de Verbinal.
+
+## Les assistants connectés
+
+**Réglages ▸ Agent IA ▸ Assistants connectés** liste chaque assistant connecté maintenant. Tant qu’il y
+en a un, la barre d’activité en bas de la fenêtre dit combien ; un clic les liste là aussi. Pour
+chacun :
+
+- l’assistant tel qu’il se présente quand il demande une session, ou d’ici là le nom de son app ;
+- sa session : pas encore ouverte, en demande, autorisée, ou terminée, et pourquoi ;
+- son pont, le petit processus `Verbinal mcp` que son app a lancé : l’app qui l’a lancé, et le Verbinal
+  dont il vient ;
+- combien d’appels il a faits, et quand le dernier.
+
+**Fermer** termine la session de l’assistant et son pont : son app montre que le serveur Verbinal s’est
+arrêté, et ses outils disparaissent jusqu’à ce que vous l’y reconnectiez. **Tout fermer** les ferme
+tous. Si l’app d’un assistant relance son pont, quittez-la, ou retirez Verbinal de ses réglages.
+
+Une ligne est signalée quand :
+
+- son pont vient d’un autre Verbinal. Quittez et rouvrez l’app de l’assistant pour utiliser celui-ci.
+- son pont vient d’un Verbinal antérieur à 1.4.2, qui ne peut pas être fermé d’ici. **Fermer** termine
+  sa session ; pour arrêter le pont, quittez l’app de l’assistant, que le signalement nomme. Une fois la
+  session terminée, la ligne n’a plus de **Fermer**.
+- sa session est terminée, mais son pont est toujours connecté : **Fermer** l’arrête.
+
+Un pont s’arrête avec l’app qui l’a lancé, même si elle quitte sans prévenir. Tant que Verbinal est
+fermé, il attend sans bruit, et dès que vous ouvrez Verbinal il se reconnecte, avec la session qu’il
+avait.
+
+Sans assistant connecté, la section montre **Une invite pour votre assistant** (voir
+[Autres clients](#autres-clients)).
 
 ## Ce qu’un assistant peut faire sans demander
 
@@ -261,7 +300,10 @@ Certaines choses restent à vous, exprès :
 - **Refuser** une session qu’il demande.
 - **Terminer la session** dans les journaux de session : son prochain appel est refusé, et il doit vous
   redemander votre accord.
+- Le **Fermer** dans **Assistants connectés** : sa session et son pont s’arrêtent, et son app montre que
+  le serveur Verbinal s’est arrêté.
 - **Rejeter** ce qui attend dans En attente.
 - Désactiver **Autoriser les agents IA externes** dans **Réglages ▸ Agent IA** : le serveur s’arrête,
-  et aucun assistant ne peut joindre Verbinal avant que vous le réactiviez.
+  chaque pont est fermé, et aucun assistant ne peut joindre Verbinal avant que vous le réactiviez et le
+  reconnectiez dans son app.
 - Ou quitter l’app de l’assistant elle-même.

@@ -36,6 +36,9 @@ extension AppState {
         describeApp.sessionIdleMinutes = { [weak self] in
             await MainActor.run { self?.sessionApprovals.idleMinutes }
         }
+        describeApp.connection = { [weak self] session in
+            await MainActor.run { self?.assistantConnections.connections.first { $0.session == session } }
+        }
         tools.append(describeApp)
         tools.append(ListAppsTool(published: published))
         tools.append(SearchToolsTool(published: published))

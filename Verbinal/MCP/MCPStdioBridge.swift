@@ -52,7 +52,8 @@ enum MCPStdioBridge {
         // Ignore SIGPIPE process-wide: an MCP client can close stdout while
         // a write is in flight; we want EPIPE on `write(2)`, not death.
         signal(SIGPIPE, SIG_IGN)
-        BridgeLog.info("mcp bridge startup pid=\(getpid())")
+        let identity = RelayIdentity.thisRelay()
+        BridgeLog.info("mcp bridge startup pid=\(identity.pid) launched by \(identity.parentName ?? "?") (\(identity.parentPID))")
         let sem = DispatchSemaphore(value: 0)
         Task {
             let bridge = ResilientBridge(
@@ -61,18 +62,33 @@ enum MCPStdioBridge {
                 manifest: .standard(),
                 configuration: .init(
                     serverName: "Verbinal",
-                    serverVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
+                    serverVersion: identity.version,
                     notRunningMessage: notRunningMessage,
                     instructions: AgentSession.instructions,
-                    whyClosed: { lastMiss.withLock { $0?.message } }),
+                    whyClosed: { lastMiss.withLock { $0?.message } },
+                    identity: identity),
                 log: { BridgeLog.info($0) })
+            // It ends with the client that launched it, even one that never
+            // closes its pipe (plan 52 A1)…
+            let client = ProcessExitWatch(pid: identity.parentPID) {
+                Task { await bridge.stop(clientQuit) }
+            }
+            if getppid() != identity.parentPID { await bridge.stop(clientQuit) }
+            // …and looks for Verbinal as soon as it announces itself (A2).
+            let announcements = SocketSidecar.groupContainerDirectory().flatMap { folder in
+                FolderWatch(directory: folder) { Task { await bridge.appMayBeBack() } }
+            }
             await bridge.run()
+            withExtendedLifetime((client, announcements)) {}
             sem.signal()
         }
         sem.wait()
         BridgeLog.info("mcp bridge shutting down")
         exit(0)
     }
+
+    /// Why a relay whose client has gone ends (plan 52 A1).
+    static let clientQuit = "The assistant's client has quit."
 
     /// What an assistant reads while Verbinal is closed.
     static let notRunningMessage = "Verbinal is not running. Open Verbinal and turn on Settings ▸ AI Agent ▸ Allow external AI agents; its tools come back on their own once it is running."
@@ -98,26 +114,43 @@ enum MCPStdioBridge {
     private static let lastMiss = OSAllocatedUnfairLock<Miss?>(initialState: nil)
 
     /// The running app's socket, or nil while it is closed. The sidecar's
-    /// socket first; when it is gone, any other socket a Verbinal opened here,
-    /// newest first (plan 36 2.4).
+    /// socket first; when it is gone, the newest few others a Verbinal opened
+    /// here (plan 36 2.4, plan 52 A3).
     @Sendable
     private static func connectToApp() async -> (any MCPTransport)? {
         let named = try? SocketSidecar.read()
         var paths = named.map { [$0] } ?? []
-        paths += SocketSidecar.socketsNewestFirst().filter { $0 != named }
+        paths += SocketSidecar.socketsNewestFirst().filter { $0 != named }.prefix(3)
         for socketPath in paths {
             let socket = SocketTransport.client(socketPath: socketPath)
-            do {
-                try await socket.start()
-                BridgeLog.info("connected to \(socketPath)\(socketPath == named ? "" : " (the sidecar named \(named ?? "none"))")")
-                lastMiss.withLock { $0 = nil }
-                return socket
-            } catch {
-                BridgeLog.info("connect to \(socketPath) failed — \(error)")
-            }
+            guard (try? await socket.start()) != nil else { continue }
+            BridgeLog.info("connected to \(socketPath)\(socketPath == named ? "" : " (the sidecar named \(named ?? "none"))")")
+            lastMiss.withLock { $0 = nil }
+            return socket
         }
-        lastMiss.withLock { $0 = named == nil ? .noSidecar : .gone }
+        // One line when the reason changes, not one per try (plan 52 A3).
+        let miss: Miss = named == nil ? .noSidecar : .gone
+        let changed = lastMiss.withLock { last in
+            defer { last = miss }
+            return last != miss
+        }
+        if changed { BridgeLog.info("Verbinal unreachable (\(miss)); tried \(paths.count) socket\(paths.count == 1 ? "" : "s")") }
         return nil
+    }
+}
+
+extension RelayIdentity {
+    /// This process: a relay, launched by an assistant's client.
+    static func thisRelay() -> RelayIdentity {
+        let parent = getppid()
+        var name = [CChar](repeating: 0, count: 256)
+        let length = proc_name(parent, &name, UInt32(name.count))
+        let info = Bundle.main.infoDictionary
+        return RelayIdentity(pid: getpid(), started: Date(), parentPID: parent,
+                             parentName: length > 0 ? String(cString: name) : nil,
+                             version: info?["CFBundleShortVersionString"] as? String ?? "1.0.0",
+                             build: info?["CFBundleVersion"] as? String,
+                             executable: Bundle.main.executablePath ?? CommandLine.arguments[0])
     }
 }
 

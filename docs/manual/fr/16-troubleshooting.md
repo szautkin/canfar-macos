@@ -107,6 +107,14 @@ ouvert** (ou **Autoriser les agents IA externes** est désactivé), ou le Verbin
 **s’est fermé**. Dès que Verbinal est rouvert, ses outils reviennent d’eux-mêmes ; rien n’est à relancer
 dans l’assistant.
 
+Après avoir **Fermé** un assistant dans **Assistants connectés**, ou désactivé **Autoriser les agents IA
+externes**, son app montre que le serveur Verbinal s’est arrêté. Reconnectez-le là (dans Claude Code,
+`/mcp`), ou quittez et rouvrez l’app.
+
+Chaque fois que Verbinal quitte ou plante, il peut laisser un fichier de prise (socket), qu’un assistant
+qui attend Verbinal essaierait. Verbinal les retire chaque fois qu’il se met à l’écoute, et
+**Réglages ▸ Clients MCP ▸ Diagnostic** les compte, avec **Remove**.
+
 Si l’assistant se connecte mais ne peut rien faire, il attend que vous autorisiez sa session : cherchez la
 fenêtre **Un assistant veut ouvrir une session**. Une modification qu’il a proposée attend dans
 **En attente**, et expire après trois heures. Voir [Travailler avec un assistant IA](12-ai-assistant.md).

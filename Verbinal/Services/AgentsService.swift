@@ -4,6 +4,9 @@
 //
 // Copyright (C) 2025-2026 Serhii Zautkin
 
+#if os(macOS)
+import AppKit
+#endif
 import Foundation
 import Observation
 import os.log
@@ -111,7 +114,7 @@ final class AgentsService {
         ChangeCatalog.decision(kind: await resolveKind(proposal), permissions: permissions)
     }
 
-    private func resolveKind(_ proposal: PendingProposal) async -> ChangeKind {
+    func resolveKind(_ proposal: PendingProposal) async -> ChangeKind {
         let kind = await kindResolver?(proposal) ?? ChangeCatalog.kind(of: proposal)
         resolvedKinds[proposal.id] = kind
         return kind
@@ -170,7 +173,7 @@ final class AgentsService {
 
     private let identity: MCPBridgeService.ServerIdentity
     private let auditSink: CapturingAuditSink
-    private let proposals: any ProposalStore
+    let proposals: any ProposalStore
     /// Single event log shared across all connections — agents call
     /// `list_events` to observe proposal lifecycle transitions without
     /// per-proposal polling. In-memory; not for the user-facing UI.
@@ -210,15 +213,14 @@ final class AgentsService {
     var onTurnedOff: (@MainActor () -> Void)?
 
     private var server: SocketServer?
+    @ObservationIgnored private var quitObserver: NSObjectProtocol?
     /// Where `Verbinal mcp` finds the server, kept true (plan 36 2.2, 2.3).
     private let sidecar = SidecarKeeper()
     private var serverLoopTask: Task<Void, Never>?
     private var router: AIToolRouter?
-    /// In-flight agent connections, keyed by a per-connection token. Each
-    /// is served on its own task (see `serveConcurrently`) so one
-    /// long-lived client can't starve the others; tracked here only so a
-    /// shutdown can close them promptly.
-    private var activeConnections: [UUID: SocketTransport] = [:]
+    /// In-flight agent connections. Each is served on its own task (see
+    /// `serveConcurrently`) so one long-lived client can't starve the others.
+    private let connections = AgentConnectionRoster()
 
     // MARK: - Init
 
@@ -267,6 +269,14 @@ final class AgentsService {
             self.permissions = .migrating(autoApplyOn: UserDefaults.standard.bool(forKey: Self.autoApplyKey))
         }
         self.followAgentActivity = UserDefaults.standard.bool(forKey: Self.followActivityKey)
+        #if os(macOS)
+        // Quitting stops the listener, so its socket goes with it (plan 52 B);
+        // sessions continue at the next launch (plan 34 S).
+        quitObserver = NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
+                                                              object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.stopServer() }
+        }
+        #endif
     }
 
     // MARK: - Tool registration
@@ -388,67 +398,6 @@ final class AgentsService {
             : AutoApplyPolicy.rule(forChange: kind, appliedAtOnce: false)
     }
 
-    // MARK: - Background applies
-
-    /// What `start_background_apply` answered.
-    struct BackgroundStart: Encodable, Sendable {
-        let started: Bool
-        let jobId: String?
-        let kind: String?
-        let summary: String?
-        let status: String
-        let message: String
-    }
-
-    /// Why a pending proposal may not be started in the background, or nil.
-    /// The person's approval is not the agent's to give: only a kind they
-    /// allow may start (plan 30 A).
-    nonisolated static func backgroundRefusal(_ proposal: PendingProposal, kind: ChangeKind? = nil,
-                                              permissions: ChangePermissions) -> String? {
-        let decision = ChangeCatalog.decision(kind: kind ?? ChangeCatalog.kind(of: proposal), permissions: permissions)
-        guard !decision.appliesAtOnce else { return nil }
-        return "'\(proposal.kind)' \(decision.rule): only the person can apply it"
-    }
-
-    /// Starts applying a pending proposal without holding the call open.
-    func startBackgroundApply(_ raw: String) async -> BackgroundStart {
-        func refused(_ message: String) -> BackgroundStart {
-            BackgroundStart(started: false, jobId: nil, kind: nil, summary: nil, status: "notStarted", message: message)
-        }
-        guard let id = UUID(uuidString: raw.trimmingCharacters(in: .whitespaces)) else {
-            return refused("'\(raw)' is not a proposal id — list_pending_proposals reports them")
-        }
-        guard let proposal = await proposals.list(origin: nil).first(where: { $0.id == id }) else {
-            return refused("no pending proposal '\(raw)' — list_pending_proposals shows the ones there are")
-        }
-        if let why = Self.backgroundRefusal(proposal, kind: await resolveKind(proposal), permissions: permissions) {
-            return refused(why)
-        }
-        if await proposals.state(id) == .applying {
-            return refused("'\(proposal.kind)' is already being applied — follow it with get_job_status")
-        }
-        let jobs = applyJobs
-        await jobs.start(proposal)
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                let result = try await self.applyProposalReturningResult(id, by: .background)
-                await jobs.succeed(id, result: result)
-            } catch {
-                await jobs.fail(id, message: error.localizedDescription)
-            }
-        }
-        return BackgroundStart(started: true, jobId: id.uuidString, kind: proposal.kind, summary: proposal.summary,
-                               status: "running", message: "started; follow it with get_job_status")
-    }
-
-    /// A job's state, or — for an id that never ran as a job — what the
-    /// proposal queue knows of it.
-    func jobStatus(_ raw: String) async -> (job: ApplyJobRegistry.Job?, state: ProposalState)? {
-        guard let id = UUID(uuidString: raw.trimmingCharacters(in: .whitespaces)) else { return nil }
-        return (await applyJobs.job(id), await proposals.state(id))
-    }
-
     /// Reject a pending proposal — sets the tombstone and removes it
     /// from the queue. Idempotent; safe to call after apply.
     func rejectProposal(_ id: UUID) async {
@@ -499,9 +448,25 @@ final class AgentsService {
         if isEnabled {
             startServer()
         } else {
-            stopServer()
+            // Off is off: every relay is told, and ends (plan 52 C3).
+            stopServer(telling: "The person turned off external AI agents in Verbinal.")
             onTurnedOff?()
         }
+    }
+
+    /// Closes the connection serving `session` (plan 52 C2): its relay is
+    /// told why, answers what it holds and exits, so its client sees its
+    /// server end. A relay older than plan 52 is only disconnected.
+    func closeConnection(serving session: UUID, telling reason: String) async {
+        await connections.close(serving: session, telling: reason)
+    }
+
+    /// Diagnostics' Restart: a new listener, the same sessions. Each relay
+    /// finds the new socket by itself (plan 52).
+    func restartServer() {
+        guard isEnabled else { return }
+        stopServer()
+        startServer()
     }
 
     /// Apply persisted state at app launch. Call once after init from
@@ -563,6 +528,9 @@ final class AgentsService {
                                   onCarryOn: Self.carryOn)
         self.router = router
 
+        // What quits and crashes left, which every waiting relay would try (plan 52 B).
+        let removed = SocketSidecar.removeDeadSockets()
+        if removed > 0 { logger.notice("removed \(removed) leftover sockets") }
         // A fresh socket per instance (its PID): a crashed run's file confuses no one.
         let path = SocketSidecar.suggestedSocketPath()
         let server = SocketServer(socketPath: path)
@@ -606,7 +574,9 @@ final class AgentsService {
         logger.notice("agents service started at \(path, privacy: .public)")
     }
 
-    private func stopServer() {
+    /// Stops listening and closes every connection — each relay told why,
+    /// when there is a reason; without one, relays wait for the next server.
+    private func stopServer(telling reason: String? = nil) {
         guard isRunning else { return }
         serverLoopTask?.cancel()
         serverLoopTask = nil
@@ -614,11 +584,7 @@ final class AgentsService {
         server = nil
         // Close any in-flight agent connections so their serve loops end
         // now instead of lingering until each client happens to hang up.
-        let live = Array(activeConnections.values)
-        activeConnections.removeAll()
-        if !live.isEmpty {
-            Task { for transport in live { await transport.close() } }
-        }
+        connections.closeAll(telling: reason)
         sidecar.stopped()
         socketPath = nil
         serverState = .off
@@ -629,20 +595,18 @@ final class AgentsService {
     // MARK: - Per-connection handler
 
     /// Serve one accepted connection on a dedicated task so concurrent
-    /// clients are independent. The connection is tracked in
-    /// `activeConnections` for the duration so a shutdown can close it;
-    /// the task self-removes on completion. See the accept loop in
+    /// clients are independent. The connection is on the roster for the
+    /// duration so a shutdown can close it. See the accept loop in
     /// `startServer` for why serial serving was the MCP-server bug.
     private func serveConcurrently(_ transport: SocketTransport) {
-        let token = UUID()
-        activeConnections[token] = transport
+        let token = connections.add(transport)
         Task { [weak self] in
-            await self?.handle(connection: transport)
-            self?.activeConnections[token] = nil
+            await self?.handle(connection: transport, token: token)
+            self?.connections.remove(token)
         }
     }
 
-    private func handle(connection transport: SocketTransport) async {
+    private func handle(connection transport: SocketTransport, token: UUID) async {
         guard let router = router else { return }
         connectionCount += 1
         defer { connectionCount = max(0, connectionCount - 1) }
@@ -664,6 +628,7 @@ final class AgentsService {
             aiGuide: aiGuideResolver,
             toolRule: { [weak self] tool, _ in await self?.toolRule(tool) }
         )
+        connections.attach(bridge, to: token)
 
         // Background poller: refresh the strip's @Observable snapshot
         // periodically while the connection is active. This is coarse

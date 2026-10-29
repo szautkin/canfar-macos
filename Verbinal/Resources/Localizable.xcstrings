@@ -1338,6 +1338,46 @@
         }
       }
     },
+    "%lld assistants" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld assistant"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld assistants"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld assistant"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld assistants"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld items" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2083,6 +2123,16 @@
         }
       }
     },
+    "A prompt for your assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une invite pour votre assistant"
+          }
+        }
+      }
+    },
     "A spectral cube: it opens in Cube." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2290,6 +2340,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajouter"
+          }
+        }
+      }
+    },
+    "Add it beside the servers already there, then restart or reload the client." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez-le à côté des serveurs déjà présents, puis redémarrez ou rechargez le client."
           }
         }
       }
@@ -2788,6 +2848,16 @@
         }
       }
     },
+    "Another assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un autre assistant"
+          }
+        }
+      }
+    },
     "another device" : {
       "localizations" : {
         "fr" : {
@@ -3045,6 +3115,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Demande au CADC de ce qu'il peut découper…"
+          }
+        }
+      }
+    },
+    "Asking you to start a session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous demande d’ouvrir une session"
           }
         }
       }
@@ -3514,6 +3594,16 @@
         }
       }
     },
+    "Bridge %@, launched by %@, from Verbinal %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pont %@, lancé par %@, venu de Verbinal %@"
+          }
+        }
+      }
+    },
     "Brightest Along the Ray (MIP)" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3728,6 +3818,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Appels"
+          }
+        }
+      }
+    },
+    "Calls: %lld, the last %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appels : %lld, le dernier %@"
           }
         }
       }
@@ -4532,6 +4632,16 @@
         }
       }
     },
+    "Close All" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout fermer"
+          }
+        }
+      }
+    },
     "Close all hints" : {
       "localizations" : {
         "fr" : {
@@ -4674,6 +4784,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le code que votre assistant IA exécute avec run_code, et celui que vous exécutez ici, va dans une session de votre compte CANFAR nommée verbinal-compute. Elle utilise vos cœurs, n'a ni shell ni réseau entrant, et écrit ses résultats dans votre stockage. Pour dimensionner un groupe de processus, lisez les cœurs de la session dans son quota CPU, /sys/fs/cgroup/cpu.max (quota ÷ période) — os.cpu_count() et os.sched_getaffinity() comptent ceux de tout le nœud."
+          }
+        }
+      }
+    },
+    "Codex, Cursor, Gemini CLI, Windsurf, VS Code, or any assistant that starts a local MCP server: copy its settings, or give it the prompt and let it set itself up." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex, Cursor, Gemini CLI, Windsurf, VS Code, ou tout assistant qui lance un serveur MCP local : copiez ses réglages, ou donnez-lui l’invite et laissez-le se configurer lui-même."
+          }
+        }
+      }
+    },
+    "Codex, Cursor, Gemini CLI, Windsurf, VS Code, or any other: its settings, or a prompt." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex, Cursor, Gemini CLI, Windsurf, VS Code, ou tout autre : ses réglages, ou une invite."
           }
         }
       }
@@ -4987,6 +5117,16 @@
         }
       }
     },
+    "Connect another assistant" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecter un autre assistant"
+          }
+        }
+      }
+    },
     "Connect Claude Desktop or Claude Code (~60 tools) to drive Verbinal for you." : {
       "localizations" : {
         "fr" : {
@@ -5024,6 +5164,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connectez votre agent IA"
+          }
+        }
+      }
+    },
+    "Connect yourself to Verbinal, the CADC/CANFAR app on this Mac. It is a local stdio MCP server: name `%@`, command `%@`, arguments `%@`; no port, URL or key. Add it to your MCP configuration without removing the servers already there, then reload so it appears. Call `describe_app`, then `start_session` saying who you are and why; I approve the session in Verbinal. Exact settings for each client: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecte-toi à Verbinal, l’app du CADC et de CANFAR sur ce Mac. C’est un serveur MCP local en stdio : nom `%@`, commande `%@`, arguments `%@` ; ni port, ni URL, ni clé. Ajoute-le à ta configuration MCP sans retirer les serveurs déjà présents, puis recharge-la pour qu’il apparaisse. Appelle `describe_app`, puis `start_session` en disant qui tu es et pourquoi ; j’autorise la session dans Verbinal. Les réglages exacts de chaque client : %@"
+          }
+        }
+      }
+    },
+    "Connected Assistants" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Assistants connectés"
           }
         }
       }
@@ -5254,6 +5414,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier"
+          }
+        }
+      }
+    },
+    "Copy Prompt" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier l'invite"
           }
         }
       }
@@ -7914,6 +8084,16 @@
         }
       }
     },
+    "Each assistant's app runs a small bridge to Verbinal. Close ends the assistant's session and its bridge, and its app shows the Verbinal server ended; turning off Allow external AI agents closes them all. If an app starts its bridge again, quit that app, or remove Verbinal from its settings." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’app de chaque assistant lance un petit pont vers Verbinal. Fermer termine la session de l’assistant et son pont, et son app montre que le serveur Verbinal s’est arrêté ; désactiver Autoriser les agents IA externes les ferme tous. Si une app relance son pont, quittez-la, ou retirez Verbinal de ses réglages."
+          }
+        }
+      }
+    },
     "Edit" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8083,6 +8263,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Les points d'accès sont appliqués au lancement. Redémarrez Verbinal pour utiliser les nouvelles valeurs."
+          }
+        }
+      }
+    },
+    "Ends its session and its bridge: its app shows the Verbinal server ended." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termine sa session et son pont : son app montre que le serveur Verbinal s’est arrêté."
           }
         }
       }
@@ -10960,6 +11150,26 @@
         }
       }
     },
+    "Its bridge is from a Verbinal older than 1.4.2, which can't be closed from here: quit the assistant's app (%@) to end it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son pont vient d’un Verbinal antérieur à 1.4.2, qui ne peut pas être fermé d’ici : quittez l’app de l’assistant (%@) pour l’arrêter."
+          }
+        }
+      }
+    },
+    "Its bridge runs from Verbinal %@. Quit and reopen the assistant's app to use this one." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son pont vient de Verbinal %@. Quittez et rouvrez l’app de l’assistant pour utiliser celui-ci."
+          }
+        }
+      }
+    },
     "Its events say what it waits for." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -10999,6 +11209,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sa seule copie : la supprimer la perd"
+          }
+        }
+      }
+    },
+    "Its session has ended, but its bridge is still connected. Close ends it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sa session est terminée, mais son pont est toujours connecté. Fermer l’arrête."
           }
         }
       }
@@ -12996,6 +13216,16 @@
         }
       }
     },
+    "No assistant is connected." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun assistant n’est connecté."
+          }
+        }
+      }
+    },
     "No batch jobs" : {
       "localizations" : {
         "fr" : {
@@ -13044,6 +13274,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucune image en cache — ouvrez l'onglet Portail une fois pour remplir ces options."
+          }
+        }
+      }
+    },
+    "No call yet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun appel pour l’instant"
           }
         }
       }
@@ -13601,6 +13841,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun type de session — lancez-la depuis l'onglet Avancé"
+          }
+        }
+      }
+    },
+    "No session yet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore de session"
           }
         }
       }
@@ -14209,6 +14459,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quittez complètement puis relancez %@, et confirmez que les outils Verbinal apparaissent."
+          }
+        }
+      }
+    },
+    "Now reload your assistant's MCP servers, or restart it, then confirm the Verbinal tools appear." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechargez maintenant les serveurs MCP de votre assistant, ou redémarrez-le, puis vérifiez que les outils de Verbinal apparaissent."
           }
         }
       }
@@ -14944,6 +15204,16 @@
         }
       }
     },
+    "Or add Verbinal to its settings yourself:" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ou ajoutez Verbinal à ses réglages vous-même :"
+          }
+        }
+      }
+    },
     "Orientation" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -14992,6 +15262,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Autres"
+          }
+        }
+      }
+    },
+    "Other Assistants" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autres assistants"
           }
         }
       }
@@ -15172,6 +15452,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coller"
+          }
+        }
+      }
+    },
+    "Paste it into your assistant's chat. It adds Verbinal to its own settings, then asks you to start a session." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collez-la dans la conversation de votre assistant. Il ajoute Verbinal à ses propres réglages, puis vous demande d’ouvrir une session."
           }
         }
       }
@@ -19098,6 +19388,26 @@
         }
       }
     },
+    "Session allowed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session autorisée"
+          }
+        }
+      }
+    },
+    "Session allowed: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session autorisée : %@"
+          }
+        }
+      }
+    },
     "Session Configuration" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -19105,6 +19415,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Configuration de la session"
+          }
+        }
+      }
+    },
+    "Session ended by you" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session terminée par vous"
+          }
+        }
+      }
+    },
+    "Session ended when AI agents were turned off" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session terminée à la désactivation des agents IA"
+          }
+        }
+      }
+    },
+    "Session ended: no call for the idle time" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session terminée : aucun appel pendant le délai d’inactivité"
+          }
+        }
+      }
+    },
+    "Session ended: you closed its connection" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session terminée : vous avez fermé sa connexion"
           }
         }
       }
@@ -21352,6 +21702,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "L’assistant doit les suivre pendant toute la session, et le journal de la session les conserve. Verbinal ne peut pas empêcher un assistant d’utiliser ses autres outils ou des connexions hors de Verbinal."
+          }
+        }
+      }
+    },
+    "The assistants connected now" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les assistants connectés maintenant"
           }
         }
       }

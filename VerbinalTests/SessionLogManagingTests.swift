@@ -60,7 +60,7 @@ final class SessionLogManagingTests: XCTestCase {
     /// Two closed sessions and an open one.
     private func sessions() async -> (closed: [UUID], open: UUID) {
         let first = UUID(), second = UUID(), open = UUID()
-        for id in [first, second, open] { await hub.opened(id, client: "claude-code/2.1") }
+        for id in [first, second, open] { await hub.opened(id, client: "claude-code/2.1", relay: nil) }
         await hub.closed(first)
         await hub.closed(second)
         return ([first, second], open)

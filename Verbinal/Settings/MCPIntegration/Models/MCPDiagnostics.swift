@@ -40,6 +40,7 @@ enum FixAction: Sendable, Equatable {
     case updateConfig
     case revealHelper
     case openClaude
+    case removeLeftoverSockets
 
     var title: String {
         switch self {
@@ -49,6 +50,7 @@ enum FixAction: Sendable, Equatable {
         case .updateConfig:     "Update Config"
         case .revealHelper:     "Reveal"
         case .openClaude:       "Open Claude"
+        case .removeLeftoverSockets: "Remove"
         }
     }
 }

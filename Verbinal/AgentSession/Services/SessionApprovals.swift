@@ -59,6 +59,8 @@ final class SessionApprovals {
         case byPerson
         /// The person turned external AI agents off.
         case agentsTurnedOff
+        /// The person closed its connection, in Connected Assistants (plan 52 C2).
+        case closedByPerson
     }
 
     /// A relay's session, kept across launches.
@@ -200,6 +202,7 @@ final class SessionApprovals {
         case .idle: return "Your session ended after \(Self.idleText(idleMinutes)) without a call."
         case .byPerson: return "The person ended your session in Verbinal."
         case .agentsTurnedOff: return "Your session ended when the person turned off external AI agents."
+        case .closedByPerson: return "The person closed your connection in Verbinal."
         }
     }
 
@@ -298,8 +301,9 @@ final class SessionApprovals {
     }
 
     /// The state as kept, without ending an idle one — what `end` and
-    /// `allow` ask, so ending never re-enters itself.
-    private func keptState(of session: UUID) -> SessionState {
+    /// `allow` ask, so ending never re-enters itself, and what a view reads,
+    /// which must not end a session while it draws (plan 52 C).
+    func keptState(of session: UUID) -> SessionState {
         if let approval = kept[session]?.approval { return .active(approval) }
         if pending.contains(where: { $0.id == session }) { return .asking }
         if let ending = kept[session]?.ended { return .ended(ending) }

@@ -42,6 +42,14 @@ final class ResilientBridgeTests: XCTestCase {
         var isEmpty: Bool { lock.withLock { frames.isEmpty } }
     }
 
+    /// Set once, read from any task.
+    private final class Flag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = false
+        func set() { lock.withLock { value = true } }
+        var isSet: Bool { lock.withLock { value } }
+    }
+
     /// The app side of every connection the bridge makes.
     private final class FakeApp: @unchecked Sendable {
         private let lock = NSLock()
@@ -85,19 +93,38 @@ final class ResilientBridgeTests: XCTestCase {
     }
 
     private func start(_ app: FakeApp, cached: [String] = []) -> (client: InMemoryTransport, inbox: Inbox, task: Task<Void, Never>) {
+        let started = relay(app, cached: cached)
+        return (started.client, started.inbox, started.task)
+    }
+
+    /// A running relay, its configuration as the tests' with `configure`'s changes.
+    private func relay(_ app: FakeApp, cached: [String] = [],
+                       configure: (inout ResilientBridge.Configuration) -> Void = { _ in })
+        -> (bridge: ResilientBridge, client: InMemoryTransport, inbox: Inbox, task: Task<Void, Never>) {
         let cache = ToolManifestCache(url: cacheURL)
         cache.save(cached.map { ToolDefinitionWire(name: $0, description: $0, inputSchema: .object(["type": .string("object")])) })
         let (clientEnd, bridgeEnd) = InMemoryTransport.pair()
-        let bridge = ResilientBridge(
-            client: bridgeEnd,
-            connect: { await app.connect() },
-            manifest: cache,
-            configuration: .init(serverName: "Verbinal", serverVersion: "1.4.0",
-                                 notRunningMessage: notRunning, instructions: AgentSession.instructions,
-                                 reconnectInterval: .milliseconds(20),
-                                 firstConnectGrace: .milliseconds(50)))
+        var configuration = ResilientBridge.Configuration(
+            serverName: "Verbinal", serverVersion: "1.4.0",
+            notRunningMessage: notRunning, instructions: AgentSession.instructions,
+            reconnectInterval: .milliseconds(20),
+            firstConnectGrace: .milliseconds(50))
+        configure(&configuration)
+        let bridge = ResilientBridge(client: bridgeEnd, connect: { await app.connect() }, manifest: cache,
+                                     configuration: configuration)
         let task = Task { await bridge.run() }
-        return (clientEnd, Inbox(clientEnd), task)
+        return (bridge, clientEnd, Inbox(clientEnd), task)
+    }
+
+    /// Whether `task` ends within `limit`.
+    private func ends(_ task: Task<Void, Never>, within limit: Duration = .seconds(2)) async -> Bool {
+        let ended = Flag()
+        Task { await task.value; ended.set() }
+        let deadline = ContinuousClock.now + limit
+        while !ended.isSet, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return ended.isSet
     }
 
     private func send(_ transport: InMemoryTransport, _ json: String) async throws {
@@ -192,7 +219,8 @@ final class ResilientBridgeTests: XCTestCase {
         XCTAssertEqual(result(later)["isError"] as? Bool, true)
     }
 
-    func testAnAssistantTheAppRefusedIsNotAskedAgain() async throws {
+    /// Plan 52 A5: a refused relay stops, rather than ask the person again.
+    func testARefusedAssistantStopsWithoutAskingAgain() async throws {
         let app = FakeApp()
         let (client, inbox, task) = start(app)
         defer { task.cancel() }
@@ -206,13 +234,96 @@ final class ResilientBridgeTests: XCTestCase {
         let replayID = try XCTUnwrap(replay["id"] as? String)
         try await send(link.end, #"{"jsonrpc":"2.0","id":"\#(replayID)","error":{"code":\#(JSONRPCErrorCode.sessionNotApproved),"message":"Client not approved by user."}}"#)
 
-        try await Task.sleep(for: .milliseconds(200))
+        let ended = await ends(task)
+        XCTAssertTrue(ended, "the relay ends, and its client sees its server go")
         let attempts = app.attemptCount
         try await Task.sleep(for: .milliseconds(200))
         XCTAssertEqual(app.attemptCount, attempts, "a refused assistant must not re-prompt the user")
-        try await send(client, #"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"x"}}"#)
-        let call = try await inbox.take(id(2))
-        XCTAssertEqual(result(call)["isError"] as? Bool, true)
+    }
+
+    // MARK: - Plan 52: a relay ends with its client
+
+    /// A4: the app closing a relay answers what the app held with its words, and ends the relay.
+    func testTheAppClosingTheRelayAnswersWhatItHeldAndEndsIt() async throws {
+        let app = FakeApp()
+        app.setRunning(true)
+        let (client, inbox, task) = start(app)
+        defer { task.cancel() }
+        let first = await waitForLink(app)
+        let link = try XCTUnwrap(first)
+        try await send(client, initialize)
+        _ = try await link.inbox.take(id(1))
+        try await send(link.end, #"{"jsonrpc":"2.0","id":1,"result":{}}"#)
+        _ = try await inbox.take(id(1))
+        try await send(client, #"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"run_search"}}"#)
+        _ = try await link.inbox.take(id(5))
+
+        try await link.end.send(AgentSession.relayClose(reason: "You closed this assistant in Verbinal."))
+        let held = try await inbox.take(id(5))
+        XCTAssertEqual((held["error"] as? [String: Any])?["message"] as? String, "You closed this assistant in Verbinal.")
+        let ended = await ends(task)
+        XCTAssertTrue(ended)
+        XCTAssertTrue(inbox.isEmpty, "the close itself is the relay's, never the assistant's")
+    }
+
+    /// A1: its owner stops it — the client gone — and it ends, the app away or not.
+    func testStoppingEndsTheRelayEvenWhileTheAppIsAway() async throws {
+        let app = FakeApp()
+        let started = relay(app)
+        defer { started.task.cancel() }
+        try await send(started.client, initialize)
+        _ = try await started.inbox.take(id(1))
+        await started.bridge.stop("The assistant's client has quit.")
+        let ended = await ends(started.task)
+        XCTAssertTrue(ended)
+        let attempts = app.attemptCount
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(app.attemptCount, attempts, "a stopped relay looks for the app no more")
+    }
+
+    /// A6: each connection says who the relay is, beside its secret.
+    func testTheIntroductionSaysWhoTheRelayIs() async throws {
+        let who = RelayIdentity(pid: 4242, started: Date(timeIntervalSince1970: 1_800_000_000), parentPID: 4241,
+                                parentName: "claude", version: "1.4.2", build: "19",
+                                executable: "/Applications/Verbinal.app/Contents/MacOS/Verbinal")
+        let app = FakeApp()
+        app.setRunning(true)
+        let started = relay(app) { $0.identity = who }
+        defer { started.task.cancel() }
+        let first = await waitForLink(app)
+        let link = try XCTUnwrap(first)
+        let introduction = try await link.inbox.take(method(AgentSession.relayNotification))
+        XCTAssertEqual(AgentSession.relayIdentity(introduction: introduction["params"] as? [String: Any]), who)
+        XCTAssertNotNil(AgentSession.relayFingerprint(introduction: introduction["params"] as? [String: Any]))
+        XCTAssertNil(AgentSession.relayIdentity(introduction: ["secret": AgentSession.newRelaySecret()]), "an older relay says nothing")
+    }
+
+    /// A2: often while the app has just gone, then patiently.
+    func testItLooksLessOftenOnceTheAppHasBeenAwayAWhile() {
+        let configuration = ResilientBridge.Configuration(serverName: "V", serverVersion: "1", notRunningMessage: "")
+        XCTAssertEqual(ResilientBridge.retryInterval(away: .seconds(5), configuration), .seconds(2))
+        XCTAssertEqual(ResilientBridge.retryInterval(away: .seconds(59), configuration), .seconds(2))
+        XCTAssertEqual(ResilientBridge.retryInterval(away: .seconds(60), configuration), .seconds(30))
+        XCTAssertEqual(ResilientBridge.retryInterval(away: .seconds(3600), configuration), .seconds(30))
+    }
+
+    /// A2: told the app may be back, a patient relay looks at once.
+    func testAWaitingRelayLooksAtOnceWhenWoken() async throws {
+        let app = FakeApp()
+        let started = relay(app) {
+            $0.patience = .zero
+            $0.patientReconnectInterval = .seconds(60)
+        }
+        defer { started.task.cancel() }
+        try await send(started.client, initialize)
+        _ = try await started.inbox.take(id(1))
+        try await Task.sleep(for: .milliseconds(100))
+        let attempts = app.attemptCount
+        app.setRunning(true)
+        await started.bridge.appMayBeBack()
+        let link = await waitForLink(app)
+        XCTAssertNotNil(link, "found without waiting the minute")
+        XCTAssertEqual(app.attemptCount, attempts + 1)
     }
 
     /// A first attempt stuck longer than the grace must not hold the

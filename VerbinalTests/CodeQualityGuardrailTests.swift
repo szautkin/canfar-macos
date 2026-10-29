@@ -77,10 +77,10 @@ final class CodeQualityGuardrailTests: XCTestCase {
     /// shrink, never grow. Shrink only.
     static let overBudget: [String: Int] = [
         "Verbinal/ImageDiscovery/Services/ImageDiscoveryCoordinator.swift": 1194,
-        "Verbinal/ViewModels/AppState.swift": 793,
+        "Verbinal/ViewModels/AppState.swift": 786,
         "Verbinal/Search/MCP/SearchControlTools.swift": 805,
         "shared/VerbinalKit/Sources/VerbinalKit/Networking/NetworkClient.swift": 719,
-        "Verbinal/Services/AgentsService.swift": 695,
+        "Verbinal/Services/AgentsService.swift": 660,
         "Verbinal/Views/ContentView.swift": 680,
         "Verbinal/ImageDiscovery/ViewModels/ImageDiscoveryModel.swift": 661,
         "Verbinal/Storage/MCP/VOSpaceWriteTools.swift": 639,

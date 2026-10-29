@@ -41,7 +41,7 @@ enum MCPConfigError: LocalizedError, Equatable {
 final class MCPIntegrationSettingsService {
     /// The key under `mcpServers` we own. Matches the existing user config.
     /// `nonisolated` so the pure `mergedRoot` helper (and tests) can read it.
-    nonisolated static let serverKey = "verbinal-canfar"
+    nonisolated static let serverKey = AssistantRecipes.serverName
     static let configFileName = "claude_desktop_config.json"
     /// Claude Desktop's bundle id (current first, legacy fallback).
     static let claudeBundleIDs = ["com.anthropic.claudefordesktop", "com.anthropic.Claude"]
@@ -75,7 +75,7 @@ final class MCPIntegrationSettingsService {
     }
 
     /// Arguments that switch the app binary into headless MCP-bridge mode.
-    nonisolated static let serverLaunchArguments = ["mcp"]
+    nonisolated static let serverLaunchArguments = AssistantRecipes.arguments
 
     func resolveHelperPath() throws -> String {
         let url = Self.helperURL
@@ -86,6 +86,11 @@ final class MCPIntegrationSettingsService {
             throw MCPConfigError.helperNotExecutable(url.path)
         }
         return url.path
+    }
+
+    /// The server's command on this Mac: this app's executable, found or not.
+    func executablePath() -> String {
+        (try? resolveHelperPath()) ?? Self.helperURL.path
     }
 
     // MARK: - Claude Desktop app
@@ -281,10 +286,7 @@ final class MCPIntegrationSettingsService {
 
     /// The JSON the user would paste manually, with the correct helper path.
     func configSnippet() -> String {
-        let path = (try? resolveHelperPath()) ?? Self.helperURL.path
-        let dict: [String: Any] = ["mcpServers": [Self.serverKey: ["command": path, "args": Self.serverLaunchArguments]]]
-        let data = (try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])) ?? Data()
-        return String(data: data, encoding: .utf8) ?? ""
+        AssistantRecipes.recipe(for: .claudeDesktop, executable: executablePath()).text
     }
 
     func copyConfigSnippet() {
@@ -345,25 +347,20 @@ final class MCPIntegrationSettingsService {
     /// spaces and suppresses `$`/backtick/quote expansion that double quotes
     /// would allow. Embedded single quotes use the standard `'\''` idiom.
     nonisolated static func shellSingleQuoted(_ s: String) -> String {
-        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        AssistantRecipes.shellSingleQuoted(s)
     }
 
     /// The exact `claude mcp add` command, pre-populated with this app's helper
     /// path — the safe, official way to register a user-scoped stdio server.
     func claudeCodeAddCommand() -> String {
-        let path = (try? resolveHelperPath()) ?? Self.helperURL.path
-        let args = Self.serverLaunchArguments.map(Self.shellSingleQuoted).joined(separator: " ")
-        return "claude mcp add --transport stdio --scope user \(Self.serverKey) -- \(Self.shellSingleQuoted(path)) \(args)"
+        AssistantRecipes.claudeCodeCommand(executablePath())
     }
 
     /// The JSON to merge into `~/.claude.json`'s top-level `mcpServers` for
     /// users who prefer hand-editing. Includes `type: "stdio"` (Claude Code's
     /// stdio entry shape).
     func claudeCodeConfigSnippet() -> String {
-        let path = (try? resolveHelperPath()) ?? Self.helperURL.path
-        let dict: [String: Any] = ["mcpServers": [Self.serverKey: ["type": "stdio", "command": path, "args": Self.serverLaunchArguments]]]
-        let data = (try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])) ?? Data()
-        return String(data: data, encoding: .utf8) ?? ""
+        AssistantRecipes.claudeCodeEntry(executablePath())
     }
 
     func copyClaudeCodeAddCommand() {

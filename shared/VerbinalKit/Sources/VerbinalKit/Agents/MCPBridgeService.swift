@@ -76,6 +76,9 @@ public actor MCPBridgeService {
     public private(set) var session = UUID()
     /// The relay's fingerprint, from its introduction (plan 34 S).
     private var relay: String?
+    /// Who the relay is, from its introduction (plan 52 A6); nil from a
+    /// client that connects without a relay, or an older relay.
+    private var relayIdentity: RelayIdentity?
     /// A modern client's session opening, which its first calls wait for.
     private var opening: Task<Void, Never>?
     /// The MCP version the client speaks: its `initialize`'s, or what its
@@ -152,7 +155,11 @@ public actor MCPBridgeService {
         }
         if method == AgentSession.relayNotification {
             // Only before the session opens: it cannot be changed after.
-            if !initialized { relay = AgentSession.relayFingerprint(introduction: object?["params"] as? [String: Any]) }
+            if !initialized {
+                let introduction = object?["params"] as? [String: Any]
+                relay = AgentSession.relayFingerprint(introduction: introduction)
+                relayIdentity = AgentSession.relayIdentity(introduction: introduction)
+            }
             return
         }
         guard method == "tools/call", inFlightCalls.count < Self.maxConcurrentCalls else {
@@ -322,7 +329,7 @@ public actor MCPBridgeService {
         if let relay, let continuity = services.continuity {
             session = await continuity.session(forRelay: relay, fresh: session)
         }
-        await services.recorder?.opened(session, client: client)
+        await services.recorder?.opened(session, client: client, relay: relayIdentity)
     }
 
     // MARK: - initialize

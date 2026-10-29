@@ -107,5 +107,6 @@ screen. Areas that are about assistants only point at the AI chapter.
 | `Workflows` | — | 11-workflows.md | Following a workflow |
 | `Assistant session (the approval window; Settings ▸ AI Agent ▸ Session Instructions)` | — | 12-ai-assistant.md | Allowing a session |
 | `Session log (Settings ▸ AI Agent ▸ Session Logs)` | — | 12-ai-assistant.md | The session log |
+| `Connected assistants (Settings ▸ AI Agent ▸ Connected Assistants; the activity bar)` | — | 12-ai-assistant.md | Connected assistants |
 | `Wire-name aliases (Windows = canonical)` | — | 12-ai-assistant.md | What an assistant can and cannot do |
 | `Intentionally not exposed` | — | 12-ai-assistant.md | What an assistant can and cannot do |

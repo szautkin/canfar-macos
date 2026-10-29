@@ -111,6 +111,19 @@ the server finds it by itself and says its tool list has changed. If the call fa
   fails to launch; Settings ▸ MCP Clients has the current one.
 - **Still failing?** Settings ▸ AI Agent ▸ Diagnostics says what the server last did.
 
+## Your bridge's lifetime
+
+The `Verbinal mcp` process your client started is your bridge.
+
+- **It ends with your client**, even a client that quits without closing its pipe.
+- **While Verbinal is closed, it waits quietly.** It looks every 2 seconds for a minute, then every 30
+  seconds, and at once when Verbinal opens. Your session continues.
+- **The person can close it**, in **Settings ▸ AI Agent ▸ Connected Assistants**, or by turning off
+  **Allow external AI agents**. The calls you have waiting are answered with why, the bridge exits, and
+  your client shows the server ended. Ask the person to reconnect it in your client.
+- **`describe_app` → `connection`** says since when you are connected and which Verbinal your bridge
+  runs from.
+
 ## Once you are connected
 
 - **Start your session.** Call `start_session` first, saying who you are and your purpose. The

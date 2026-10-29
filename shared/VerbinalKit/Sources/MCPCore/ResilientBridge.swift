@@ -18,6 +18,9 @@ import Foundation
 /// not a protocol error. When the app appears it replays the assistant's
 /// handshake to it and tells the assistant its tool list has changed; when
 /// the app quits mid-call, every request it was holding gets an answer.
+///
+/// It ends with its client (plan 52): when the client hangs up, when the
+/// app closes it, or when its owner calls `stop` — the client gone.
 public actor ResilientBridge {
 
     public struct Configuration: Sendable {
@@ -34,7 +37,13 @@ public actor ResilientBridge {
         /// What the handshake tells an assistant besides that the app is
         /// closed — how to start once it is running.
         public var instructions: String?
+        /// How often it looks for the app at first, and after `patience`.
         public var reconnectInterval: Duration
+        public var patientReconnectInterval: Duration
+        /// How long the app may be away before the relay looks less often (plan 52 A2).
+        public var patience: Duration
+        /// Who the relay is, told to the app with its introduction (plan 52 A6).
+        public var identity: RelayIdentity?
         /// How long a replayed handshake may take (the app may ask the user
         /// to approve the assistant).
         public var handshakeTimeout: Duration
@@ -45,15 +54,19 @@ public actor ResilientBridge {
         public var firstConnectGrace: Duration
 
         public init(serverName: String, serverVersion: String, notRunningMessage: String, instructions: String? = nil,
-                    whyClosed: (@Sendable () -> String?)? = nil,
-                    reconnectInterval: Duration = .seconds(2), handshakeTimeout: Duration = .seconds(120),
+                    whyClosed: (@Sendable () -> String?)? = nil, identity: RelayIdentity? = nil,
+                    reconnectInterval: Duration = .seconds(2), patientReconnectInterval: Duration = .seconds(30),
+                    patience: Duration = .seconds(60), handshakeTimeout: Duration = .seconds(120),
                     firstConnectGrace: Duration = .seconds(3)) {
             self.whyClosed = whyClosed
             self.serverName = serverName
             self.serverVersion = serverVersion
             self.notRunningMessage = notRunningMessage
             self.instructions = instructions
+            self.identity = identity
             self.reconnectInterval = reconnectInterval
+            self.patientReconnectInterval = patientReconnectInterval
+            self.patience = patience
             self.handshakeTimeout = handshakeTimeout
             self.firstConnectGrace = firstConnectGrace
         }
@@ -75,8 +88,14 @@ public actor ResilientBridge {
     private var pending: [JSONRPCID: String] = [:]
     private var handshake: (id: JSONRPCID, waiter: CheckedContinuation<JSONRPCResponse?, Never>)?
     private var reconnecting: Task<Void, Never>?
-    /// The app refused this assistant; asking again would only ask the user again.
-    private var refused = false
+    /// Since when the app has been away; nil while attached.
+    private var awaySince: ContinuousClock.Instant?
+    /// Ends the wait before the next look for the app (`appMayBeBack`).
+    private var waker: ResumeOnce?
+    /// Why the relay is ending; nil while it relays (plan 52 A4).
+    private var stopReason: String?
+    /// `run()`, waiting for the client to hang up or `stop`.
+    private var finished: ResumeOnce?
     /// Made once: each connection introduces the relay with it first, so the
     /// app continues this assistant's session after a restart (plan 34 S).
     private let relaySecret = AgentSession.newRelaySecret()
@@ -93,17 +112,54 @@ public actor ResilientBridge {
         self.log = log
     }
 
-    /// Relays until the assistant hangs up.
+    /// Relays until the assistant hangs up, or the relay is stopped.
     public func run() async {
+        guard stopReason == nil else { return }
         let first = Task { if await !self.attach() { self.startReconnecting() } }
         await Self.wait(for: first, atMost: configuration.firstConnectGrace)
+        let relaying = Task { await self.relayClient() }
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            finished = ResumeOnce(done)
+            if stopReason != nil { finished?.resume() }
+        }
+        relaying.cancel()
+        reconnecting?.cancel()
+        waker?.resume()
+        await app?.close()
+    }
+
+    private func relayClient() async {
         do {
             for try await frame in client.incoming { await fromClient(frame) }
         } catch {
             log("client stream ended: \(error)")
         }
+        finished?.resume()
+    }
+
+    /// Ends the relay (plan 52 A4): every request the app was holding is
+    /// answered with `reason`, the app's link closes, and `run()` returns.
+    public func stop(_ reason: String) async {
+        guard stopReason == nil else { return }
+        stopReason = reason
+        log("stopping: \(reason)")
         reconnecting?.cancel()
-        await app?.close()
+        reconnecting = nil
+        waker?.resume()
+        abandonHandshake()
+        await answerPending { _ in reason }
+        if let app {
+            self.app = nil
+            generation += 1
+            await app.close()
+        }
+        finished?.resume()
+    }
+
+    /// Something changed where the app announces itself: look now rather
+    /// than at the next try (plan 52 A2).
+    public func appMayBeBack() {
+        waker?.resume()
     }
 
     // MARK: - Assistant → app
@@ -114,6 +170,13 @@ public actor ResilientBridge {
         if let request, request.method == "initialize", isRequest { clientInitialize = request }
         if request?.method == "notifications/initialized" { clientSentInitialized = true }
 
+        if let stopReason {
+            if let request, isRequest {
+                await send(.failure(id: request.id, error: JSONRPCErrorPayload(
+                    code: JSONRPCErrorCode.serviceUnavailable, message: stopReason)))
+            }
+            return
+        }
         if let app {
             // Recorded before sending: the answer can arrive while `send` awaits.
             if let request, isRequest { pending[request.id] = request.method }
@@ -179,6 +242,11 @@ public actor ResilientBridge {
     private func fromApp(_ frame: Data, generation gen: Int) async {
         guard gen == generation else { return }
         let object = (try? JSONSerialization.jsonObject(with: frame)) as? [String: Any]
+        // The app closing this relay: for the relay, not the assistant.
+        if let reason = AgentSession.closeReason(object) {
+            await stop(reason)
+            return
+        }
         let isResponse = object != nil && object?["method"] == nil
         if isResponse, let response = try? JSONDecoder().decode(JSONRPCResponse.self, from: frame) {
             if let handshake, handshake.id == response.id {
@@ -198,18 +266,21 @@ public actor ResilientBridge {
         guard gen == generation, app != nil || handshake != nil else { return }
         log("app connection closed")
         app = nil
-        if let handshake {
-            self.handshake = nil
-            handshake.waiter.resume(returning: nil)
-        }
+        abandonHandshake()
+        let closed = configuration.closedMessage
+        await answerPending { method in "Verbinal closed before answering \(method). \(closed)" }
+        startReconnecting()
+    }
+
+    /// Answers every request the app was holding, each with what `message`
+    /// says for its method.
+    private func answerPending(_ message: (String) -> String) async {
         let unanswered = pending
         pending.removeAll()
         for (id, method) in unanswered {
             await send(.failure(id: id, error: JSONRPCErrorPayload(
-                code: JSONRPCErrorCode.serviceUnavailable,
-                message: "Verbinal closed before answering \(method). \(configuration.closedMessage)")))
+                code: JSONRPCErrorCode.serviceUnavailable, message: message(method))))
         }
-        startReconnecting()
     }
 
     // MARK: - Connecting
@@ -228,7 +299,7 @@ public actor ResilientBridge {
             await self?.appClosed(generation: gen)
         }
         do {
-            try await link.send(AgentSession.relayIntroduction(secret: relaySecret))
+            try await link.send(AgentSession.relayIntroduction(secret: relaySecret, identity: configuration.identity))
         } catch {
             generation += 1
             await link.close()
@@ -242,6 +313,7 @@ public actor ResilientBridge {
             }
         }
         app = link
+        awaySince = nil
         log("attached to the app")
         if clientInitialize != nil {
             await notifyClient("notifications/tools/list_changed")
@@ -263,9 +335,9 @@ public actor ResilientBridge {
             }
         }
         guard let response, response.error == nil else {
+            // Asking again would only ask the person again.
             if response?.error?.code == JSONRPCErrorCode.sessionNotApproved {
-                refused = true
-                log("the app did not approve this assistant; not asking again")
+                await stop("Verbinal did not approve this assistant.")
             }
             return false
         }
@@ -276,27 +348,45 @@ public actor ResilientBridge {
         return true
     }
 
-    private func abandonHandshake(_ id: JSONRPCID) {
-        guard let handshake, handshake.id == id else { return }
+    /// Ends the handshake being replayed, if it is `id`'s — or any, without one.
+    private func abandonHandshake(_ id: JSONRPCID? = nil) {
+        guard let handshake, id == nil || handshake.id == id else { return }
         self.handshake = nil
         handshake.waiter.resume(returning: nil)
     }
 
     private func startReconnecting() {
-        guard reconnecting == nil, !refused else { return }
-        let interval = configuration.reconnectInterval
+        guard reconnecting == nil, stopReason == nil else { return }
+        if awaySince == nil { awaySince = .now }
         reconnecting = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: interval)
+                await self?.pauseBeforeLooking()
                 guard let self, !Task.isCancelled else { return }
                 if await self.reconnectOnce() { return }
             }
         }
     }
 
+    /// Waits until the next look for the app, or until `appMayBeBack`.
+    private func pauseBeforeLooking() async {
+        let interval = Self.retryInterval(away: awaySince.map { ContinuousClock.now - $0 } ?? .zero, configuration)
+        await withCheckedContinuation { (next: CheckedContinuation<Void, Never>) in
+            let once = ResumeOnce(next)
+            waker = once
+            Task { try? await Task.sleep(for: interval); once.resume() }
+        }
+        waker = nil
+    }
+
+    /// How long to wait before looking again, the app away for `away`:
+    /// often at first, then patiently (plan 52 A2).
+    static func retryInterval(away: Duration, _ configuration: Configuration) -> Duration {
+        away < configuration.patience ? configuration.reconnectInterval : configuration.patientReconnectInterval
+    }
+
     /// One attempt; true when the loop should stop.
     private func reconnectOnce() async -> Bool {
-        if await attach() || refused {
+        if await attach() || stopReason != nil {
             reconnecting = nil
             return true
         }

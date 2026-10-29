@@ -211,6 +211,20 @@ public enum SocketSidecar {
             .sorted { modified($0) > modified($1) }.map(\.path)
     }
 
+    /// The sockets in `directory` nobody listens at (plan 52 B): each a
+    /// Verbinal that quit, crashed or was stopped in Xcode left behind, which
+    /// every waiting relay would try.
+    public static func deadSockets(in directory: URL? = groupContainerDirectory()) -> [String] {
+        socketsNewestFirst(in: directory).filter { !isListening($0) }
+    }
+
+    /// Removes the dead sockets; one that answers is another running
+    /// Verbinal's and stays. How many went.
+    @discardableResult
+    public static func removeDeadSockets(in directory: URL? = groupContainerDirectory()) -> Int {
+        deadSockets(in: directory).filter { (try? FileManager.default.removeItem(atPath: $0)) != nil }.count
+    }
+
     /// Whether something listens at `socketPath`: a connect succeeds, and is closed.
     public static func isListening(_ socketPath: String) -> Bool {
         let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)

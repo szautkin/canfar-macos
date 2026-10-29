@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import MCPCore
 import VerbinalKit
 
 /// Who is reading a session's log: the session, and the other sessions'
@@ -313,6 +314,9 @@ enum SessionLogLine {
         case .agentsTurnedOff:
             entry = Self.entry(.app, at: at, "The person turned off external AI agents, which ended the session.")
             entry.who = .person
+        case .closedByPerson:
+            entry = Self.entry(.app, at: at, "The person closed the assistant's connection, which ended the session.")
+            entry.who = .person
         }
         entry.outcome = "ended"
         return entry
@@ -321,8 +325,8 @@ enum SessionLogLine {
     // MARK: - The session
 
     /// The same assistant, back after Verbinal restarted (plan 34 S).
-    static func reconnected(_ client: String, session: UUID) -> SessionLogEntry {
-        var entry = Self.entry(.opened, "The assistant (\(client)) connected again: its session continues.")
+    static func reconnected(_ client: String, session: UUID, relay: RelayIdentity? = nil) -> SessionLogEntry {
+        var entry = Self.entry(.opened, "The assistant (\(client)) connected again\(through(relay)): its session continues.")
         entry.who = .assistant
         entry.outcome = "reconnected"
         entry.ids.session = session
@@ -332,10 +336,18 @@ enum SessionLogLine {
     static func opened(_ header: SessionLogHeader) -> SessionLogEntry {
         let commit = header.buildCommit.map { ", \($0)" } ?? ""
         var entry = Self.entry(.opened, at: header.opened,
-                               "The assistant (\(header.client)) connected to Verbinal \(header.app)\(commit) on macOS \(header.macOS). Auto-apply is \(header.autoApply ? "on" : "off"); the person is \(header.signedIn ? "signed in" : "not signed in").")
+                               "The assistant (\(header.client)) connected to Verbinal \(header.app)\(commit) on macOS \(header.macOS)\(through(header.bridge)). Auto-apply is \(header.autoApply ? "on" : "off"); the person is \(header.signedIn ? "signed in" : "not signed in").")
         entry.who = .assistant
         entry.ids.session = header.session
         return entry
+    }
+
+    /// ", through its bridge (pid 5206, launched by claude, pid 5181)" — or
+    /// nothing, from a relay that did not say (plan 52 C6).
+    static func through(_ relay: RelayIdentity?) -> String {
+        guard let relay else { return "" }
+        let parent = relay.parentName.map { "\($0), pid \(relay.parentPID)" } ?? "pid \(relay.parentPID)"
+        return ", through its bridge (pid \(relay.pid), launched by \(parent))"
     }
 
     /// How a session ended.

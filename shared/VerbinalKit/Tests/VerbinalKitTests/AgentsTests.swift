@@ -785,7 +785,7 @@ final class MCPBridgeServiceTests: XCTestCase {
         actor Heard: AgentSessionRecorder {
             var events: [String] = []
             var session: UUID?
-            func opened(_ session: UUID, client: String) { self.session = session; events.append("opened \(client)") }
+            func opened(_ session: UUID, client: String, relay: RelayIdentity?) { self.session = session; events.append("opened \(client)") }
             func callBegan(_ session: UUID, call: UUID, tool: String) { events.append("began \(tool)") }
             func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) -> Int? {
                 events.append("ended \(tool) \(traced.result.isFailure ? "failed" : "ok")")

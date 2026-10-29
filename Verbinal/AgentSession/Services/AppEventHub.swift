@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import MCPCore
 import VerbinalKit
 
 /// Everything that happens in the app while an assistant is connected,
@@ -30,7 +31,7 @@ actor AppEventHub: AgentSessionRecorder {
         case task(TrackedTask)
         case auth(AuthLifecycleController.Event)
         // The bridge's.
-        case opened(UUID, client: String)
+        case opened(UUID, client: String, relay: RelayIdentity?)
         case callBegan(UUID, call: UUID)
         case callEnded(UUID, call: UUID, tool: String, traced: AIToolRouter.Traced)
         case closed(UUID)
@@ -95,7 +96,9 @@ actor AppEventHub: AgentSessionRecorder {
 
     // MARK: - The bridge
 
-    func opened(_ session: UUID, client: String) async { await submit(.opened(session, client: client)) }
+    func opened(_ session: UUID, client: String, relay: RelayIdentity?) async {
+        await submit(.opened(session, client: client, relay: relay))
+    }
     func callBegan(_ session: UUID, call: UUID, tool: String) async { await submit(.callBegan(session, call: call)) }
     func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async -> Int? {
         await submit(.callEnded(session, call: call, tool: tool, traced: traced))
@@ -118,19 +121,20 @@ actor AppEventHub: AgentSessionRecorder {
         }
     }
 
-    private func open(_ session: UUID, client: String) async {
+    private func open(_ session: UUID, client: String, relay: RelayIdentity?) async {
         // A relay's reconnection continues its session's log (plan 34 S).
         if let open = journals[session] {
-            await open.record(SessionLogLine.reconnected(client, session: session))
+            await open.record(SessionLogLine.reconnected(client, session: session, relay: relay))
             return
         }
         if let url = store.url(of: session), let journal = SessionJournal(continuing: url, store: store) {
-            await journal.record(SessionLogLine.reconnected(client, session: session))
+            await journal.record(SessionLogLine.reconnected(client, session: session, relay: relay))
             journals[session] = journal
             clients[session] = client
             return
         }
-        let header = await header(session, client)
+        var header = await header(session, client)
+        header.bridge = relay
         let journal = SessionJournal(header: header, store: store)
         await journal.record(SessionLogLine.opened(header))
         for other in journals.values { await other.record(SessionLogLine.assistantArrived(client, session: session)) }
@@ -158,7 +162,7 @@ actor AppEventHub: AgentSessionRecorder {
 
     private func handle(_ event: Event) async {
         switch event {
-        case .opened(let session, let client): await open(session, client: client)
+        case .opened(let session, let client, let relay): await open(session, client: client, relay: relay)
         case .callBegan(let session, let call): await journals[session]?.callBegan(call)
         case .callEnded(let session, let call, let tool, let traced): await end(session, call: call, tool: tool, traced: traced)
         case .closed(let session): await close(session)

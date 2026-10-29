@@ -27,7 +27,7 @@ final class SessionLogReadingTests: XCTestCase {
             SessionLogHeader(session: session, client: client, opened: Date(), app: "1.4.0 (17)", buildCommit: nil,
                              macOS: "26.0", endpoints: [:], overridden: [], autoApply: false, signedIn: true)
         }
-        await hub.opened(session, client: "claude-code/2.1")
+        await hub.opened(session, client: "claude-code/2.1", relay: nil)
     }
 
     override func tearDown() {
@@ -103,7 +103,7 @@ final class SessionLogReadingTests: XCTestCase {
 
     func testAnotherSessionIsReadFromItsFile() async throws {
         let earlier = UUID()
-        await hub.opened(earlier, client: "claude-code/2.0")
+        await hub.opened(earlier, client: "claude-code/2.0", relay: nil)
         await hub.closed(earlier)
         let tool = GetSessionLogTool(query: query, now: { .quiet })
         let out = try await tool.handle(.init(session: String(earlier.uuidString.prefix(8))), context: context())

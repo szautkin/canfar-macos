@@ -50,7 +50,7 @@ final class SessionGateTests: XCTestCase {
 
     private actor Heard: AgentSessionRecorder {
         var events: [String] = []
-        func opened(_ session: UUID, client: String) { events.append("opened") }
+        func opened(_ session: UUID, client: String, relay: RelayIdentity?) { events.append("opened") }
         func callBegan(_ session: UUID, call: UUID, tool: String) { events.append("began \(tool)") }
         func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) -> Int? {
             events.append("ended \(tool)")

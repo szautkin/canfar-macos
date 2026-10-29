@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import MCPCore
 
 /// What the MCP bridge tells the session log: a session opened, a call
 /// began and ended, the session closed (plan 23 L2). The bridge serves one
@@ -12,8 +13,9 @@ import Foundation
 /// segregation: four calls, nothing more; dependency inversion: the kit
 /// declares it, the app implements it).
 public protocol AgentSessionRecorder: Sendable {
-    /// An assistant connected: `client` is its `name/version`.
-    func opened(_ session: UUID, client: String) async
+    /// An assistant connected: `client` is its `name/version`; `relay` who
+    /// its relay is, when it said (plan 52 A6).
+    func opened(_ session: UUID, client: String, relay: RelayIdentity?) async
     /// A call arrived.
     func callBegan(_ session: UUID, call: UUID, tool: String) async
     /// A call ended: what came of it, how long it took, the requests it
@@ -21,6 +23,36 @@ public protocol AgentSessionRecorder: Sendable {
     func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async -> Int?
     /// The assistant left, or the connection dropped.
     func closed(_ session: UUID) async
+}
+
+/// Several recorders as one (plan 52 C): the session log and the list of
+/// connected assistants hear the same bridge, which knows of neither.
+public struct AgentSessionRecorders: AgentSessionRecorder {
+    private let recorders: [any AgentSessionRecorder]
+
+    public init(_ recorders: [any AgentSessionRecorder]) { self.recorders = recorders }
+
+    public func opened(_ session: UUID, client: String, relay: RelayIdentity?) async {
+        for recorder in recorders { await recorder.opened(session, client: client, relay: relay) }
+    }
+
+    public func callBegan(_ session: UUID, call: UUID, tool: String) async {
+        for recorder in recorders { await recorder.callBegan(session, call: call, tool: tool) }
+    }
+
+    /// The first token any of them answers: the session log's.
+    public func callEnded(_ session: UUID, call: UUID, tool: String, traced: AIToolRouter.Traced) async -> Int? {
+        var token: Int?
+        for recorder in recorders {
+            let answered = await recorder.callEnded(session, call: call, tool: tool, traced: traced)
+            token = token ?? answered
+        }
+        return token
+    }
+
+    public func closed(_ session: UUID) async {
+        for recorder in recorders { await recorder.closed(session) }
+    }
 }
 
 /// Whether an assistant may use Verbinal's tools yet: the person allows a

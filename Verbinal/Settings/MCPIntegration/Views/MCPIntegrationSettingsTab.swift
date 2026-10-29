@@ -29,6 +29,7 @@ struct MCPIntegrationSettingsTab: View {
             selfTestSection
             configSection
             claudeCodeSection
+            otherAssistantsSection
             if let err = model?.actionError {
                 Section {
                     Label(err, systemImage: "exclamationmark.triangle")
@@ -156,6 +157,20 @@ struct MCPIntegrationSettingsTab: View {
             Text("Claude Desktop Configuration")
         } footer: {
             Text("“Configure Claude Desktop” grants one-time access to the Claude config folder, then points the \(MCPIntegrationSettingsService.serverKey) entry at this app, launched in MCP mode. Only that entry is changed; a .bak backup is written first. Restart Claude Desktop after updating. The one-click “Configure Claude Desktop” is the normal path — the other buttons are manual alternatives for advanced setups.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// Every other client, and the prompt for any assistant (plan 52 D3).
+    private var otherAssistantsSection: some View {
+        Section {
+            AssistantPromptView(executable: settings.executablePath())
+            AssistantRecipesList(executable: settings.executablePath())
+        } header: {
+            Text("Other Assistants")
+        } footer: {
+            Text("Codex, Cursor, Gemini CLI, Windsurf, VS Code, or any assistant that starts a local MCP server: copy its settings, or give it the prompt and let it set itself up.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

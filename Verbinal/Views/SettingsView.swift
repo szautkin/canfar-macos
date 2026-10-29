@@ -213,6 +213,12 @@ private struct AgentsSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
 
+            #if os(macOS)
+            if appState.agentsService.isRunning {
+                ConnectedAssistantsSection()
+            }
+            #endif
+
             if appState.agentsService.isEnabled {
                 ChangePermissionsSection(agents: appState.agentsService)
                 Section {

@@ -24,8 +24,8 @@ Click the **AI Assistant** tile on Home, or choose **Help ▸ Connect an AI Agen
 **Connect your AI agent**, has four steps:
 
 1. **Allow AI agents**: turn on **Allow external AI agents**.
-2. **Pick your client**: **Claude Desktop** or **Claude Code**. For another client, see
-   [Other clients](#other-clients).
+2. **Pick your client**: **Claude Desktop**, **Claude Code** or **Another assistant**. For another
+   client, see [Other clients](#other-clients).
 3. **Configure**: as below, for the client you picked.
 4. **Verify**: **Run self-test** checks that Verbinal's server answers. The final proof is in your
    client: quit it completely, open it again, and check that Verbinal's tools are listed.
@@ -53,15 +53,21 @@ Restart Claude Code afterwards.
 
 Any assistant that can start a local MCP server works the same way: name `verbinal-canfar`, command
 `/Applications/Verbinal.app/Contents/MacOS/Verbinal`, argument `mcp`. There is no port, URL or key.
-[AGENTS.md](https://github.com/szautkin/canfar-macos/blob/main/AGENTS.md) has the exact settings for Codex, Cursor, Gemini CLI, Windsurf and
-VS Code; you can give that file to your assistant and let it set itself up.
-**Settings ▸ MCP Clients** shows the exact command for this Mac and copies it (**Copy Command**).
+
+**Settings ▸ MCP Clients ▸ Other Assistants**, and **Another assistant** in the setup, show the settings
+for Codex, Cursor, Gemini CLI, Windsurf and VS Code with this Mac's own path: each with its file and
+**Copy**. Add it beside the servers already there, then restart or reload the client.
+
+Or let the assistant set itself up: **Copy Prompt** copies **A prompt for your assistant**, which you
+paste into its chat. It says what to add and where to read each client's settings
+([AGENTS.md](https://github.com/szautkin/canfar-macos/blob/main/AGENTS.md)), then asks you to start a session.
 
 ### Checking the connection
 
 Verbinal must be running, with **Allow external AI agents** on. While Verbinal is closed, the
 assistant still connects, and each of its tools answers that Verbinal is not running; once you open
-Verbinal, it finds it by itself.
+Verbinal, it finds it by itself, within a second or two. Until then its bridge looks for Verbinal
+every 2 seconds for a minute, then every 30 seconds.
 
 If an assistant cannot connect, **Settings ▸ MCP Clients ▸ Diagnostics** checks each link: the
 server, its listener, the shared container, the socket, the tools and Claude Desktop's
@@ -97,6 +103,36 @@ read: *"Use only Verbinal and its tools for this work: no other apps, and no net
 outside Verbinal. Ask before anything destructive."* The assistant is told to follow them, and the
 session log keeps them, but Verbinal cannot stop an assistant from using its other tools or
 connections outside Verbinal.
+
+## Connected assistants
+
+**Settings ▸ AI Agent ▸ Connected Assistants** lists each assistant connected now. While any is
+connected, the activity bar at the bottom of the window shows how many; a click lists them there too.
+Each shows:
+
+- the assistant as it presents itself when it asks for a session, or until then its app's name;
+- its session: not started yet, asking you, allowed, or ended and why;
+- its bridge, the small `Verbinal mcp` process its app started: the app that started it, and the
+  Verbinal it runs from;
+- how many calls it has made, and when the last was.
+
+**Close** ends the assistant's session and its bridge: its app shows the Verbinal server ended, and
+its tools are gone until you reconnect it there. **Close All** closes every one. If an assistant's app
+starts its bridge again, quit that app, or remove Verbinal from its settings.
+
+A row is marked when:
+
+- its bridge runs from another Verbinal. Quit and reopen the assistant's app to use this one.
+- its bridge is from a Verbinal older than 1.4.2, which cannot be closed from here. **Close** ends its
+  session; to end the bridge, quit the assistant's app, which the mark names. Once the session has
+  ended, the row has no **Close**.
+- its session has ended, but its bridge is still connected: **Close** ends it.
+
+A bridge ends with the app that started it, even one that quits without saying so. While Verbinal is
+closed it waits quietly, and when you open Verbinal it connects again, with the session it had.
+
+With no assistant connected, the section shows **A prompt for your assistant** (see
+[Other clients](#other-clients)).
 
 ## What an assistant may do without asking
 
@@ -239,7 +275,10 @@ Some things stay yours, on purpose:
 
 - **Deny** a session it asks for.
 - **End Session** in the session logs: its next call is refused, and it must ask you again.
+- **Close** it in **Connected Assistants**: its session and its bridge end, and its app shows the
+  Verbinal server ended.
 - **Reject** what waits in Pending.
-- Turn off **Allow external AI agents** in **Settings ▸ AI Agent**: the server stops, and no assistant
-  can reach Verbinal until you turn it on again.
+- Turn off **Allow external AI agents** in **Settings ▸ AI Agent**: the server stops, every bridge
+  is closed, and no assistant can reach Verbinal until you turn it on again and reconnect it in its
+  app.
 - Or quit the assistant's own app.

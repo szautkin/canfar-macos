@@ -141,6 +141,8 @@ final class AppState {
     private(set) var sessionLog: AppEventHub?
     /// The person's say over assistant sessions, and its window (plan 25).
     let sessionApprovals = SessionApprovals(file: SessionApprovals.productionFile)
+    /// The assistants connected now, each of which the person can close (plan 52 C).
+    let assistantConnections = AssistantConnections()
     /// Verbinal's data in VOSpace, synced in the background (plan 34 V).
     let storageSync = StorageSyncModel()
     @ObservationIgnored private var sessionApprovalWindow: SessionApprovalWindow?
@@ -406,17 +408,8 @@ final class AppState {
                                         macOS: "?", endpoints: [:], overridden: [], autoApply: false, signedIn: false)
             })
         self.sessionLog = sessionLog
-        agentsService.sessionRecorder = sessionLog
+        connectAgentSessions(to: sessionLog)
         Task { await sessionLog.start() }
-        // No session, no tools: the person allows each one (plan 25); a
-        // relay's reconnection continues its session (plan 34 S).
-        let sessionGate = SessionApprovalGate(approvals: sessionApprovals)
-        agentsService.sessionGate = sessionGate
-        agentsService.sessionContinuity = sessionGate
-        sessionApprovals.onEnded = { session, why, at in
-            Task { await sessionLog.note(session, SessionLogLine.ended(why, at: at)) }
-        }
-        agentsService.onTurnedOff = { [weak self] in self?.sessionApprovals.endAll(.agentsTurnedOff) }
         sessionApprovalWindow = SessionApprovalWindow(approvals: sessionApprovals)
         // The app's other windows go with its last main window.
         appWindows = AppWindows { [weak self] closing in self?.mainWindowClosed(closing) }

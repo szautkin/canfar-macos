@@ -5,6 +5,7 @@
 // Copyright (C) 2025-2026 Serhii Zautkin
 
 import Foundation
+import MCPCore
 import VerbinalKit
 
 /// One entry of an assistant's session log (plan 23 L2): what happened, in
@@ -110,6 +111,8 @@ struct SessionLogHeader: Codable, Sendable, Equatable {
     let overridden: [String]
     let autoApply: Bool
     let signedIn: Bool
+    /// The relay it came through, when it said (plan 52 A6).
+    var bridge: RelayIdentity?
 }
 
 /// A line of a session's file: its header, or an entry.

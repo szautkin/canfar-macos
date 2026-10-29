@@ -285,9 +285,12 @@ struct ContentView: View {
             hoistedModeToolbar
             Divider()
             modeBody
-            // What the app is doing, whatever the mode.
+            // What the app is doing, whatever the mode, and who is connected (plan 52 C4).
             Divider()
-            ActivityBar(registry: appState.tasks)
+            HStack(spacing: 0) {
+                ActivityBar(registry: appState.tasks)
+                ConnectedAssistantsButton()
+            }
         }
         #else
         modeBody

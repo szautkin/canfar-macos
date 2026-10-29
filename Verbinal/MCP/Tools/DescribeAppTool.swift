@@ -33,11 +33,25 @@ struct DescribeAppTool: JSONReadTool {
         /// How long an allowed session lasts without a call, as the person
         /// set it (plan 34 S): "1 hour".
         var sessionEndsAfterIdle: String? = nil
+        /// The caller's own connection (plan 52 C7); never another assistant's.
+        var connection: Connection? = nil
+
+        struct Connection: Encodable, Sendable, Equatable {
+            /// When it connected, ISO 8601.
+            let since: String
+            /// The Verbinal its bridge runs from; nil from a bridge older than 1.4.2.
+            let bridgeVersion: String?
+
+            init(_ connection: AssistantConnection) {
+                since = connection.connected.ISO8601Format()
+                bridgeVersion = connection.relay?.version
+            }
+        }
     }
 
     let definition = AIToolDefinition.withStaticSchema(
         name: "describe_app",
-        description: "Get a prose overview of Verbinal's capabilities, tool surface, and proposal model — call this once at the start of a session; `serverVersion` and `buildCommit` say which build answers. It opens with the person's standing rules (`standingRules`: their own guide tools; call each for its whole text and follow it). With `app` (an area id from list_apps), get that area's tools with a one-line summary each instead; `man` gives one tool's arguments.",
+        description: "Get a prose overview of Verbinal's capabilities, tool surface, and proposal model — call this once at the start of a session; `serverVersion` and `buildCommit` say which build answers. It opens with the person's standing rules (`standingRules`: their own guide tools; call each for its whole text and follow it); `connection` says since when you are connected and which Verbinal your bridge runs from. With `app` (an area id from list_apps), get that area's tools with a one-line summary each instead; `man` gives one tool's arguments.",
         schema: #"""
         {
           "type": "object",
@@ -54,14 +68,19 @@ struct DescribeAppTool: JSONReadTool {
     var standingRules: @Sendable () async -> [AIGuideSnapshot.StandingRule] = { [] }
     /// The person's idle time for a session, in minutes; nil when none applies.
     var sessionIdleMinutes: @Sendable () async -> Int? = { nil }
+    /// A session's connection, as Connected Assistants has it.
+    var connection: @Sendable (UUID) async -> AssistantConnection? = { _ in nil }
 
     func handle(_ args: Args, context: AIToolContext) async throws -> Output {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         guard let wanted = args.app?.trimmingCharacters(in: .whitespacesAndNewlines), !wanted.isEmpty else {
             let rules = await standingRules()
             let brief = [AIGuideSnapshot.briefSection(rules), Self.brief].compactMap { $0 }.joined(separator: "\n\n")
+            var own: Output.Connection?
+            if let session = context.session { own = await connection(session).map(Output.Connection.init) }
             return Output(standingRules: rules, brief: brief, serverVersion: version, app: nil, tools: nil,
-                          sessionEndsAfterIdle: await sessionIdleMinutes().map(SessionApprovals.idleText))
+                          sessionEndsAfterIdle: await sessionIdleMinutes().map(SessionApprovals.idleText),
+                          connection: own)
         }
         let tools = await published()
         let areas = ToolMap.areas(tools)

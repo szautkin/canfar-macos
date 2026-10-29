@@ -90,6 +90,14 @@ While Verbinal cannot be reached, the assistant's tools say why: Verbinal is **n
 external AI agents** is off), or the Verbinal it was talking to **has quit**. Once Verbinal is open again,
 its tools come back on their own; nothing in the assistant needs restarting.
 
+After you **Close** an assistant in **Connected Assistants**, or turn off **Allow external AI agents**,
+its app shows the Verbinal server ended. Reconnect it there (in Claude Code, `/mcp`), or quit and
+reopen the app.
+
+Each time Verbinal quits or crashes, it may leave a socket file behind, which an assistant waiting for
+Verbinal would try. Verbinal removes them each time it starts listening, and **Settings ▸ MCP Clients ▸
+Diagnostics** counts them, with **Remove**.
+
 If the assistant connects but cannot do anything, it is waiting for you to allow its session: look for
 the window **An assistant wants to start a session**. A change it proposed waits in **Pending**, and
 expires after three hours. See [Working with an AI assistant](12-ai-assistant.md).

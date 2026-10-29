@@ -38,9 +38,38 @@ public enum AgentSession {
             .replacingOccurrences(of: "=", with: "")
     }
 
-    /// The introduction the relay sends first on each connection.
-    public static func relayIntroduction(secret: String) -> Data {
-        let frame: [String: Any] = ["jsonrpc": "2.0", "method": relayNotification, "params": ["secret": secret]]
+    /// The introduction the relay sends first on each connection: its
+    /// secret, and who it is (plan 52 A6).
+    public static func relayIntroduction(secret: String, identity: RelayIdentity? = nil) -> Data {
+        var params: [String: Any] = ["secret": secret]
+        params["relay"] = identity?.jsonObject
+        return notification(relayNotification, params)
+    }
+
+    /// Who the relay of an introduction is; nil from a relay older than plan 52.
+    public static func relayIdentity(introduction params: [String: Any]?) -> RelayIdentity? {
+        RelayIdentity(jsonObject: params?["relay"])
+    }
+
+    // MARK: - Closing a relay (plan 52 A4)
+
+    /// The app tells a relay to end: it answers what it holds with the
+    /// reason, and exits, so its client sees its server end.
+    public static let relayCloseNotification = "notifications/com.codebg.verbinal/relay/close"
+
+    /// The close the app sends, with the words the assistant reads.
+    public static func relayClose(reason: String) -> Data {
+        notification(relayCloseNotification, ["reason": reason])
+    }
+
+    /// The words of a close; nil when the frame is not one.
+    public static func closeReason(_ frame: [String: Any]?) -> String? {
+        guard frame?["method"] as? String == relayCloseNotification else { return nil }
+        return (frame?["params"] as? [String: Any])?["reason"] as? String ?? "Verbinal closed this connection."
+    }
+
+    private static func notification(_ method: String, _ params: [String: Any]) -> Data {
+        let frame: [String: Any] = ["jsonrpc": "2.0", "method": method, "params": params]
         return (try? JSONSerialization.data(withJSONObject: frame)) ?? Data()
     }
 

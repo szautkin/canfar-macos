@@ -139,8 +139,8 @@ final class SessionLogTests: XCTestCase {
     func testTwoConnectionsFromOneClientAreTwoSessions() async {
         let rig = rig()
         let first = UUID(), second = UUID()
-        await rig.hub.opened(first, client: "claude-code/2.1")
-        await rig.hub.opened(second, client: "claude-code/2.1")
+        await rig.hub.opened(first, client: "claude-code/2.1", relay: nil)
+        await rig.hub.opened(second, client: "claude-code/2.1", relay: nil)
         let open = await rig.hub.openSessions
         XCTAssertEqual(open, [first, second])
         let told = await entries(rig, first).map(\.line)
@@ -151,7 +151,7 @@ final class SessionLogTests: XCTestCase {
     func testAnAppliedChangeSaysWhoProposedItWhoAppliedItAndWhy() async throws {
         let rig = rig()
         let session = UUID()
-        await rig.hub.opened(session, client: "claude-code/2.1")
+        await rig.hub.opened(session, client: "claude-code/2.1", relay: nil)
         let proposal = PendingProposal(toolName: "delete_session", kind: "delete_session", summary: "Delete session q9p87ajc",
                                        payload: Data(), origin: .external(clientID: "claude-code/2.1"),
                                        why: "throwaway from the QA pass", session: session)
@@ -170,7 +170,7 @@ final class SessionLogTests: XCTestCase {
     func testThePersonsChangeIsTheirs() async throws {
         let rig = rig()
         let session = UUID()
-        await rig.hub.opened(session, client: "claude-code/2.1")
+        await rig.hub.opened(session, client: "claude-code/2.1", relay: nil)
         rig.changes.done("vospace_mkdir", "folder data/run2 in storage")
         await rig.hub.settle()
         let told = await entries(rig, session)
@@ -183,7 +183,7 @@ final class SessionLogTests: XCTestCase {
     func testACallTellsItsRequestsAndAFailureOutsideIsItsOwn() async throws {
         let rig = rig()
         let session = UUID(), call = UUID()
-        await rig.hub.opened(session, client: "claude-code/2.1")
+        await rig.hub.opened(session, client: "claude-code/2.1", relay: nil)
         await rig.hub.callBegan(session, call: call, tool: "search_observations")
         let trace = RequestTrace(parent: nil)
         try await Cause.$current.withValue(Cause(session: session, call: call)) {
@@ -211,8 +211,8 @@ final class SessionLogTests: XCTestCase {
     func testClosingTellsTheOthersAndEndsTheLog() async throws {
         let rig = rig()
         let first = UUID(), second = UUID()
-        await rig.hub.opened(first, client: "claude-code/2.1")
-        await rig.hub.opened(second, client: "cursor/1.0")
+        await rig.hub.opened(first, client: "claude-code/2.1", relay: nil)
+        await rig.hub.opened(second, client: "cursor/1.0", relay: nil)
         await rig.hub.closed(second)
         let told = await entries(rig, first).last?.line
         XCTAssertEqual(told, "Another assistant left: cursor/1.0.")
@@ -227,7 +227,7 @@ final class SessionLogTests: XCTestCase {
         let session = UUID()
         do {
             let before = rig()
-            await before.hub.opened(session, client: "claude-code/2.1")
+            await before.hub.opened(session, client: "claude-code/2.1", relay: nil)
             await before.hub.note(session, SessionLogLine.signedIn("alice"))
             await before.hub.settle()
         }
@@ -237,7 +237,7 @@ final class SessionLogTests: XCTestCase {
         after.store.closeAbandoned(open: [])
         XCTAssertEqual(after.store.list().first?.ending, "verbinalQuit")
 
-        await after.hub.opened(session, client: "claude-code/2.1")
+        await after.hub.opened(session, client: "claude-code/2.1", relay: nil)
         await after.hub.settle()
         let logs = after.store.list().filter { $0.header.session == session }
         XCTAssertEqual(logs.count, 1, "one session, one log")
@@ -254,7 +254,7 @@ final class SessionLogTests: XCTestCase {
     func testASignInLeavesNothingOfItsFormInTheFile() async throws {
         let rig = rig()
         let session = UUID()
-        await rig.hub.opened(session, client: "claude-code/2.1")
+        await rig.hub.opened(session, client: "claude-code/2.1", relay: nil)
         var login = URLRequest(url: URL(string: "https://ws-cadc.canfar.net/ac/login")!)
         login.httpMethod = "POST"
         login.httpBody = Data("username=alice&password=hunter2-secret".utf8)
