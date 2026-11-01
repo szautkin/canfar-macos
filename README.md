@@ -39,7 +39,9 @@ screen, setting and shortcut of Verbinal 1.4.
 - **CADC archive search** — build queries against the CADC TAP service (with a radius for
   cone searches and VizieR beside CADC), review results in a sortable, filterable table,
   switch units (RA/Dec HMS·DMS, 14-unit spectral conversion), and open rich CAOM2
-  observation detail — with an ADQL editor that checks your query as you type.
+  observation detail — with an ADQL editor that checks your query as you type. Every row
+  of a query of products has its publisher ID, so previews, details and downloads work for
+  your own ADQL too.
 - **Research assistant** — a workspace that tracks your observations, with or without
   their files: download whole observations, choose individual files, or cut out just the
   region you need. Keep each file on this Mac, in your CANFAR storage, or both, and move
@@ -72,12 +74,15 @@ screen, setting and shortcut of Verbinal 1.4.
     its work on the activity bar, without ever pressing a button for you;
   - a session log explains every call, every change and every request to CADC and CANFAR.
 
-  A guided setup wizard connects Claude in a few clicks, and an AI Guide tunes what each
-  tool tells the assistant. [The manual's chapter 12](docs/manual/en/12-ai-assistant.md) explains it
+  A guided setup wizard connects Claude in a few clicks; Settings ▸ MCP Clients gives Codex,
+  Cursor, Gemini CLI, Windsurf and VS Code their settings, and a prompt for any assistant to
+  connect itself. **Connected Assistants** shows each one connected now, with Close, and an
+  assistant's bridge ends with its app. An AI Guide tunes what each tool tells the assistant. [The manual's chapter 12](docs/manual/en/12-ai-assistant.md) explains it
   for you, [AGENTS.md](AGENTS.md) shows how to connect any client, and
   [docs/MCP-Setup.md](docs/MCP-Setup.md) covers how it works inside.
 - **Privacy first** — no analytics or telemetry; credentials live in the macOS Keychain;
-  all traffic goes directly to CANFAR/CADC over HTTPS.
+  all traffic goes directly to CANFAR/CADC over HTTPS, to each service where CADC's
+  registry says it is (followed live, so a service that moves keeps working).
 - **Localized and accessible** — full English and French interfaces, with VoiceOver
   support.
 

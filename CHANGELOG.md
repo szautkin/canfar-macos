@@ -6,7 +6,15 @@ in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.2] - 2026-10-31
+
+Verbinal follows CADC's services where its registry says they are, live;
+every product row of a search has its publisher ID; an assistant's bridge
+ends with its app, with Connected Assistants and a way to connect any
+assistant; and Remote Compute keeps your quotes as typed (see
+`docs/plans/52-assistant-connections.md` to
+`docs/plans/54-every-result-row-a-product.md`). Version 1.4.2 (19), for
+macOS 14.4 or newer.
 
 ### Changed
 - Verbinal for macOS needs macOS 14.4 or newer (it was 14.0): `capture_view` takes Verbinal's own
@@ -22,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   path. A prompt lets an assistant set itself up.
 - **Fix Characters**, under Remote Compute's Run Code box: curly quotes, long dashes, special spaces
   and invisible characters pasted with code are named, and made plain when you ask. ⌘Z undoes it.
-
 - **Every service where the registry says, live.** Each URL Verbinal calls is the one its service
   publishes in CADC's registry. The registry is asked before signing in (waiting at most 5 s), every
   6 hours, when Verbinal comes back to the front, and when a service stops answering. A change, or an
@@ -37,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/plans/54-every-result-row-a-product.md`).
 
 ### Fixed
+- **An expired session asks you to sign in again** on the Mac too: the fix listed under 1.4.1 for
+  iPhone and iPad, in a Mac release now.
 - Results of ObsCore (`obs_publisher_did`), SIAv1 (`publisherDID`) or a query that named its publisher
   ID otherwise showed no previews, details or downloads: the table knew it only as `publisherID`.
 - Sign-in went to CADC's former account service (`ws-cadc.canfar.net/ac`, now read-only) until a
