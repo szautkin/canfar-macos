@@ -7,6 +7,8 @@ import XCTest
 /// when Verbinal comes back.
 final class RelayWatchesTests: XCTestCase {
 
+    #if os(macOS)
+    // A child process to watch: iOS has no Process, and no relay runs there.
     func testAProcessExitingIsTold() throws {
         let child = Process()
         child.executableURL = URL(fileURLWithPath: "/bin/sleep")
@@ -17,6 +19,7 @@ final class RelayWatchesTests: XCTestCase {
         wait(for: [exited], timeout: 3)
         withExtendedLifetime(watch) {}
     }
+    #endif
 
     func testAFileWrittenInTheFolderIsTold() throws {
         let folder = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("vb-watch-\(UUID().uuidString)")
